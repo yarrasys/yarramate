@@ -2,6 +2,12 @@
   "name": "yarramate",
   "version": "0.1.0",
   "private": true,
+  "files": [
+    "dist",
+    "schema",
+    "skills/yarramate-architecture",
+    "docs/CONSUMING-YARRAMATE.md"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -32,7 +38,8 @@
     "./schema/workspace": "./schema/yarramate-workspace.schema.json",
     "./schema/evidence": "./schema/yarramate-evidence.schema.json",
     "./schema/evidence-report": "./schema/yarramate-evidence-report.schema.json",
-    "./schema/core-contract": "./schema/yarramate-core-contract.schema.json"
+    "./schema/core-contract": "./schema/yarramate-core-contract.schema.json",
+    "./skill/yarramate-architecture": "./skills/yarramate-architecture/SKILL.md"
   },
   "bin": {
     "yarramate": "dist/cli.js",
@@ -44,6 +51,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "prepack": "pnpm build",
     "docs:dev": "pnpm self:export:likec4 && likec4 serve .yarramate-out/likec4",
     "format": "likec4 format .yarramate/integrations/likec4/prototype",
     "self:check": "pnpm build && node dist/cli.js check .yarramate/workspace.yaml",

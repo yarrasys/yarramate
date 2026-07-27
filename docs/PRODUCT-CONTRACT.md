@@ -35,6 +35,13 @@ Agent harnesses orchestrate the stable CLI and consume its machine-readable
 contracts. They do not require a privileged agent API, database, governance
 server, or tool-specific canonical format.
 
+The installable consumer package contains the built CLI and library runtime,
+normative schemas, consumer guidance, and one canonical agent skill. It does
+not contain the YarraMate repository self-model, source, tests, research, or
+fixtures. Harness-specific repository paths may link to the packaged skill for
+discovery but must not fork its methodology. Packaging and local installation
+do not imply publication or licensing approval.
+
 ## Canonical model
 
 - Versioned, tool-neutral YarraMate documents are stored as reviewable text in

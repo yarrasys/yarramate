@@ -67,6 +67,18 @@ observations:
     result: confirmed
     evidence:
       uri: repo:docs/PRODUCT-JOURNEYS.md
+  - subject: yarramate-repository#consumer-guide
+    result: confirmed
+    evidence:
+      uri: repo:docs/CONSUMING-YARRAMATE.md
+  - subject: yarramate-repository#consumer-package
+    result: confirmed
+    evidence:
+      uri: repo:package.json
+  - subject: yarramate-repository#package-consumer-tests
+    result: confirmed
+    evidence:
+      uri: repo:test/package-consumer.test.ts
   - subject: yarramate-engine#state-comparison-schema
     result: confirmed
     evidence:

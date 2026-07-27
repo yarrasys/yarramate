@@ -153,6 +153,11 @@ the separation of evidence from declared intent.
 The repository also models and observes the portable agent skill, journey
 guide, and CLI-level journey tests. The tests execute a repository-discovery
 fixture and a pre-build design fixture rather than validating prose alone.
+The consumer package, installation guide, and package-consumer tests are also
+native subjects. The package test builds the real tarball, rejects repository
+development content, invokes npm-style binary symlinks, runs both journey
+primitives from the packed runtime, and resolves Codex and Claude entrypoints
+to the same skill directory.
 The comparison view carries adapter-owned change presentation and valid local
 LikeC4 styles; neither appears in native graph claims.
 

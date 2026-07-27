@@ -16,6 +16,16 @@ A versioned, explicit, traversal-safe index of files belonging to one
 workspace.
 _Avoid_: Automatic discovery, build system, governance configuration
 
+**Consumer package**:
+The installable YarraMate runtime boundary containing the CLI, normative
+schemas, and canonical agent skill.
+_Avoid_: Repository source archive, published service, canonical workspace
+
+**Harness skill entrypoint**:
+A discovery alias through which one agent harness loads the canonical
+YarraMate skill.
+_Avoid_: Skill fork, harness-specific methodology, semantic authority
+
 **Architecture discovery**:
 Evidence-supported reconstruction of an existing project's architecture as a
 proposal for native YarraMate documents.

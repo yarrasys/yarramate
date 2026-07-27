@@ -31,9 +31,9 @@ automatically.
   and unobserved claims without silently rewriting it.
 
 Read [references/journey-checklists.md](references/journey-checklists.md) for
-the minimum evidence and design questions. Read the repository's
-`docs/NATIVE-DOCUMENT.md`, `docs/PROJECTIONS.md`, and
-`docs/ARCHITECTURE-STATES.md` only when their corresponding syntax is needed.
+the minimum evidence and design questions. Read
+[references/native-authoring.md](references/native-authoring.md) when native
+document, projection, evidence, or architecture-state syntax is needed.
 
 ## Discover an existing project
 

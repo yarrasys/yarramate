@@ -12,11 +12,15 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { resolve } from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { fileURLToPath } from 'node:url'
 import { createHash, randomUUID } from 'node:crypto'
 import Ajv2020Module from 'ajv/dist/2020.js'
 import { parseDocument } from 'yaml'
-import { resolveCliWorkspaceSources, type CliResult } from '../cli-support.js'
+import {
+  isMainModule,
+  resolveCliWorkspaceSources,
+  type CliResult,
+} from '../cli-support.js'
 import { locateSourcePath } from '../source-document.js'
 import {
   prepareLikeC4Export,
@@ -623,11 +627,7 @@ export function runLikeC4Cli(
   }
 }
 
-const entrypoint = process.argv[1]
-if (
-  entrypoint !== undefined &&
-  import.meta.url === pathToFileURL(resolve(entrypoint)).href
-) {
+if (isMainModule(import.meta.url, process.argv[1])) {
   const result = runLikeC4Cli(process.argv.slice(2))
   process.stdout.write(result.stdout)
   process.stderr.write(result.stderr)

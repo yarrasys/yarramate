@@ -84,8 +84,17 @@ mappings:
   - native: yarramate-repository#agent-skill-source
     external: agentSkillSource
     type: concept
+  - native: yarramate-repository#consumer-guide
+    external: consumerGuide
+    type: concept
+  - native: yarramate-repository#consumer-package
+    external: consumerPackage
+    type: concept
   - native: yarramate-repository#journey-tests
     external: journeyTests
+    type: concept
+  - native: yarramate-repository#package-consumer-tests
+    external: packageConsumerTests
     type: concept
   - native: yarramate-repository#product-journeys-guide
     external: productJourneysGuide

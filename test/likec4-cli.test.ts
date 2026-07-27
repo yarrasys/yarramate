@@ -780,7 +780,7 @@ views:
         "view starter-technology-deployment {\n" +
           "    title 'Technology and deployment'\n" +
           "    description 'Technology structure, behavior, services, networks, and deployed artifacts.'\n" +
-          "    include * where metadata.yarramateId is '__yarramate_no_match__'",
+          '    include consumerPackage, packageConsumerTests, productDesignSolutionBeforeBuild, productDiscoverProjectArchitecture, productStableCli',
       )
       const marker = JSON.parse(
         readFileSync(
@@ -1155,8 +1155,8 @@ mappings:
               'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
             subject: 'yarramate-repository#likec4-export-source',
             path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/13/kind',
-            line: 61,
+            pointer: '/concepts/15/kind',
+            line: 70,
             column: 11,
           },
           {
@@ -1166,8 +1166,8 @@ mappings:
               'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
             subject: 'yarramate-repository#likec4-prepare-source',
             path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/16/kind',
-            line: 73,
+            pointer: '/concepts/18/kind',
+            line: 82,
             column: 11,
           },
           {
@@ -1177,8 +1177,8 @@ mappings:
               'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
             subject: 'yarramate-repository#likec4-project-source',
             path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/17/kind',
-            line: 77,
+            pointer: '/concepts/19/kind',
+            line: 86,
             column: 11,
           },
           {
@@ -1189,8 +1189,8 @@ mappings:
             subject:
               'yarramate-repository#likec4-project-definition-source',
             path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/18/kind',
-            line: 81,
+            pointer: '/concepts/20/kind',
+            line: 90,
             column: 11,
           },
           {
@@ -1201,8 +1201,8 @@ mappings:
             subject:
               'yarramate-repository#likec4-project-schema-source',
             path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/41/kind',
-            line: 178,
+            pointer: '/concepts/43/kind',
+            line: 187,
             column: 11,
           },
           {
@@ -1213,8 +1213,8 @@ mappings:
             subject:
               'yarramate-repository#likec4-generated-project-v2-schema-source',
             path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/42/kind',
-            line: 182,
+            pointer: '/concepts/44/kind',
+            line: 191,
             column: 11,
           },
         ],

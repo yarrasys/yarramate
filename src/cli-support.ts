@@ -1,5 +1,6 @@
-import { readFileSync } from 'node:fs'
+import { readFileSync, realpathSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { parseDocument } from 'yaml'
 import type { Diagnostic } from './compiler.js'
 import { loadWorkspaceManifest } from './workspace.js'
@@ -8,6 +9,21 @@ export interface CliResult {
   readonly exitCode: 0 | 1 | 2
   readonly stdout: string
   readonly stderr: string
+}
+
+export const isMainModule = (
+  moduleUrl: string,
+  entrypoint: string | undefined,
+): boolean => {
+  if (entrypoint === undefined) return false
+  try {
+    return (
+      realpathSync(fileURLToPath(moduleUrl)) ===
+      realpathSync(entrypoint)
+    )
+  } catch {
+    return false
+  }
 }
 
 export const usage =

@@ -15,6 +15,15 @@ concepts:
     kind: deliverable
     name: Product journey guide
     description: Defines the shared discovery and architecture-first design lifecycle.
+  - id: consumer-guide
+    kind: deliverable
+    name: Consumer installation guide
+    description: Defines local package installation and canonical skill discovery for agent harnesses.
+  - id: consumer-package
+    kind: artifact
+    name: YarraMate consumer package
+    description: Narrow installable boundary containing the built runtime, normative schemas, consumer guide, and canonical agent skill.
+    status: current
   - id: likec4-adapter-prototype
     kind: applicationComponent
     name: LikeC4 adapter prototype
@@ -215,6 +224,10 @@ concepts:
     kind: repository-file
     name: test/journeys.test.ts
     status: current
+  - id: package-consumer-tests
+    kind: repository-file
+    name: test/package-consumer.test.ts
+    status: current
   - id: agent-skill-source
     kind: repository-file
     name: skills/yarramate-architecture/SKILL.md
@@ -317,6 +330,26 @@ relationships:
     kind: realization
     from: product-journeys-guide
     to: yarramate-product#design-solution-before-build
+  - id: consumer-guide-realizes-discovery
+    kind: realization
+    from: consumer-guide
+    to: yarramate-product#discover-project-architecture
+  - id: consumer-guide-realizes-design
+    kind: realization
+    from: consumer-guide
+    to: yarramate-product#design-solution-before-build
+  - id: consumer-package-realizes-cli
+    kind: realization
+    from: consumer-package
+    to: yarramate-product#stable-cli
+  - id: consumer-package-realizes-discovery
+    kind: realization
+    from: consumer-package
+    to: yarramate-product#discover-project-architecture
+  - id: consumer-package-realizes-design
+    kind: realization
+    from: consumer-package
+    to: yarramate-product#design-solution-before-build
   - id: agent-skill-realizes-discovery
     kind: realization
     from: agent-skill-source
@@ -337,6 +370,10 @@ relationships:
     kind: association
     from: journey-tests
     to: yarramate-product#design-solution-before-build
+  - id: package-tests-verify-consumer-package
+    kind: association
+    from: package-consumer-tests
+    to: consumer-package
   - id: adapter-specializes-authoring
     kind: association
     from: likec4-adapter-prototype

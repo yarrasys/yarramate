@@ -106,6 +106,10 @@ notation.
   Codex, Claude Code, and other agent harnesses. **Both journeys have literal
   CLI acceptance fixtures and the shared skill has been independently
   forward-tested on clean temporary projects.**
+- Prove consumer portability from a packed artifact. **The package now has an
+  explicit runtime/schema/skill boundary; a clean consumer contract invokes
+  both installed CLI binaries, all journey primitives, schema and skill
+  exports, and thin Codex/Claude links without repository source paths.**
 
 ## 0.6 — Optional adapters
 

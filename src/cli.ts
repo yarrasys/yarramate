@@ -7,7 +7,6 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { dirname, relative, resolve } from 'node:path'
-import { pathToFileURL } from 'node:url'
 import { isSeq, parseDocument } from 'yaml'
 import {
   compileWorkspace,
@@ -18,6 +17,7 @@ import { serializeSemanticGraph } from './graph.js'
 import {
   diagnosticJson,
   humanDiagnostics,
+  isMainModule,
   resolveCliWorkspaceSources,
   usage,
   type CliResult,
@@ -623,11 +623,7 @@ export function runCli(
   return { exitCode: 2, stdout: '', stderr: usage }
 }
 
-const entrypoint = process.argv[1]
-if (
-  entrypoint !== undefined &&
-  import.meta.url === pathToFileURL(resolve(entrypoint)).href
-) {
+if (isMainModule(import.meta.url, process.argv[1])) {
   const result = runCli(process.argv.slice(2))
   process.stdout.write(result.stdout)
   process.stderr.write(result.stderr)

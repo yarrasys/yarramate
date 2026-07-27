@@ -75,6 +75,8 @@ compiler foundation:
 - `skills/yarramate-architecture/SKILL.md` — portable agent workflow over the stable CLI
 - `test/fixtures/journeys/` — executable discovery and design examples
 - `test/journeys.test.ts` — cross-harness journey acceptance seam
+- `docs/CONSUMING-YARRAMATE.md` — local package and harness setup
+- `test/package-consumer.test.ts` — packed-runtime consumer contract
 - `.yarramate/architecture/*.yaml` — this repository's canonical native model
 - `.yarramate/contracts/yarramate-core-0.1.yaml` — dogfooded Core 0.1 implementation contract
 - `.yarramate/profiles/yarramate-development.yaml` — self-hosted development vocabulary
@@ -117,6 +119,7 @@ Core remains independent of the optional configuration under
 ```sh
 pnpm install
 pnpm build
+pnpm pack --pack-destination /tmp/yarramate-package
 pnpm self:check
 pnpm self:context
 pnpm self:view
@@ -130,6 +133,11 @@ pnpm validate
 pnpm test
 pnpm docs:dev
 ```
+
+The package is private and is not published. The pack command creates a local
+artifact containing only the runtime, normative schemas, consumer guide, and
+canonical YarraMate architecture skill. See
+`docs/CONSUMING-YARRAMATE.md` for installation and Codex/Claude skill links.
 
 Check native documents through the stable CLI:
 
