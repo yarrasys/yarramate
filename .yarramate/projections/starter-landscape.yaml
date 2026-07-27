@@ -1,0 +1,22 @@
+format: yarramate/projection/v1
+id: starter-landscape
+version: "1.0"
+query:
+  kinds:
+    - yarramate/core@0.1#goal
+    - yarramate/core@0.1#capability
+    - yarramate/core@0.1#businessActor
+    - yarramate/core@0.1#businessService
+    - yarramate/core@0.1#applicationComponent
+    - yarramate/core@0.1#applicationService
+    - yarramate/core@0.1#technologyService
+    - yarramate/core@0.1#plateau
+  relationshipKinds:
+    - yarramate/core@0.1#assignment
+    - yarramate/core@0.1#influence
+    - yarramate/core@0.1#realization
+    - yarramate/core@0.1#serving
+  relationships: connected
+presentation:
+  title: Architecture landscape
+  description: A cross-domain orientation view of significant intent, capabilities, services, components, and architecture states.

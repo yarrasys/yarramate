@@ -83,11 +83,44 @@ const unionProjection = (
   ].sort((left, right) => left.id.localeCompare(right.id)),
 })
 
-const viewBody = (source: string): string => {
+const viewBody = ({
+  prepared,
+}: PreparedLikeC4ProjectView): string => {
+  const source = prepared.source
   const startToken = '\nviews {\n'
   const start = source.indexOf(startToken)
   const end = source.lastIndexOf('\n}\n')
-  return source.slice(start + startToken.length, end)
+  const externalByNative = new Map(
+    prepared.subjectMapping.mappings
+      .filter(({ type }) => type === 'concept')
+      .map(({ native, external }) => [native, external] as const),
+  )
+  const includedConcepts = prepared.projection.subjects
+    .filter(({ type }) => type === 'concept')
+    .flatMap(({ id }) => {
+      const external = externalByNative.get(id)
+      return external === undefined ? [] : [external]
+    })
+    .sort()
+  const includeRule =
+    includedConcepts.length === 0
+      ? `    include * where metadata.yarramateId is '__yarramate_no_match__'`
+      : `    include ${includedConcepts.join(', ')}`
+  const relationshipRules = prepared.projection.subjects
+    .filter(({ type }) => type === 'relationship')
+    .map(
+      ({ id }) =>
+        `    include * -> * where metadata.yarramateId is '${id}'`,
+    )
+    .sort()
+  const membershipRules = [
+    includeRule,
+    '    exclude * -> *',
+    ...relationshipRules,
+  ].join('\n')
+  return source
+    .slice(start + startToken.length, end)
+    .replace('    include *', membershipRules)
 }
 
 export function exportLikeC4Project(
@@ -106,9 +139,7 @@ export function exportLikeC4Project(
   if (!model.ok) return model
   const startToken = '\nviews {\n'
   const modelEnd = model.source.indexOf(startToken)
-  const renderedViews = views.map(({ prepared }) =>
-    viewBody(prepared.source),
-  )
+  const renderedViews = views.map(viewBody)
   return {
     ok: true,
     source: `${model.source.slice(0, modelEnd)}\nviews {\n${renderedViews.join('\n')}\n}\n`,

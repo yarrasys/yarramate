@@ -2,6 +2,11 @@
 
 A versioned adapter-owned project definition composes multiple semantic
 projections into one derived LikeC4 logical model with one view per projection.
+Each view uses explicit mapped concept predicates, excludes the union model's
+inferred relationships, then includes projected relationships by their native
+identity. Both node and edge membership therefore survive composition;
+`include *` is valid only before models are unioned and must not leak the whole
+project into every view.
 The adapter unions mapped subjects before rendering rather than merging
 independently generated model files, which avoids duplicate declarations while
 keeping projection queries independent and native YarraMate documents

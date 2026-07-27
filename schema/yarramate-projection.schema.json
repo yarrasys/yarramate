@@ -73,8 +73,16 @@
             "$ref": "#/$defs/subjectIdentity"
           }
         },
+        "relationshipKinds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/qualifiedKind"
+          }
+        },
         "relationships": {
-          "enum": ["between", "none"]
+          "enum": ["between", "connected", "none"]
         }
       }
     },

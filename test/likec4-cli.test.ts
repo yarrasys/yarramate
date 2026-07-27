@@ -502,6 +502,9 @@ states:
     kind: target
     name: Target
 concepts:
+  - id: shared
+    kind: applicationComponent
+    name: Shared
   - id: legacy
     kind: applicationComponent
     name: Legacy
@@ -510,7 +513,17 @@ concepts:
     kind: applicationComponent
     name: Modern
     presentIn: [target]
-relationships: []
+relationships:
+  - id: legacy-uses-shared
+    kind: association
+    from: legacy
+    to: shared
+    presentIn: [baseline]
+  - id: modern-uses-shared
+    kind: association
+    from: modern
+    to: shared
+    presentIn: [target]
 `,
       )
       writeFileSync(
@@ -532,6 +545,16 @@ query:
 `,
       )
       writeFileSync(
+        join(parent, 'empty.projection.yaml'),
+        `format: yarramate/projection/v1
+id: empty
+version: "1.0"
+query:
+  kinds: [yarramate/core@0.1#device]
+  relationships: connected
+`,
+      )
+      writeFileSync(
         join(parent, 'likec4.mapping.yaml'),
         `format: yarramate/adapter-mapping/v1
 id: system-likec4
@@ -543,6 +566,9 @@ mappings:
     type: concept
   - native: system#modern
     external: modern
+    type: concept
+  - native: system#shared
+    external: shared
     type: concept
 `,
       )
@@ -556,6 +582,7 @@ mapping: likec4.mapping.yaml
 views:
   - projection: baseline.projection.yaml
   - projection: target.projection.yaml
+  - projection: empty.projection.yaml
 `,
       )
 
@@ -600,8 +627,47 @@ views:
       expect(model.match(/^views \{/gm)).toHaveLength(1)
       expect(model).toContain('view baseline')
       expect(model).toContain('view target')
+      expect(model).toContain('view empty')
       expect(model).toContain("legacy = applicationComponent 'Legacy'")
       expect(model).toContain("modern = applicationComponent 'Modern'")
+      expect(model).toContain("shared = applicationComponent 'Shared'")
+      expect(model).toContain(
+        'view baseline {\n    include legacy, shared\n',
+      )
+      expect(model).toContain(
+        'view target {\n    include modern, shared\n',
+      )
+      expect(model).not.toContain(
+        'view baseline {\n    include *\n',
+      )
+      expect(model).not.toContain(
+        'view target {\n    include *\n',
+      )
+      expect(model).toContain(
+        "view empty {\n    include * where metadata.yarramateId is '__yarramate_no_match__'\n",
+      )
+      const baselineView = model.slice(
+        model.indexOf('  view baseline {'),
+        model.indexOf('  view target {'),
+      )
+      const targetView = model.slice(
+        model.indexOf('  view target {'),
+        model.indexOf('  view empty {'),
+      )
+      expect(baselineView).toContain('    exclude * -> *')
+      expect(baselineView).toContain(
+        "metadata.yarramateId is 'system#legacy-uses-shared'",
+      )
+      expect(baselineView).not.toContain(
+        "metadata.yarramateId is 'system#modern-uses-shared'",
+      )
+      expect(targetView).toContain('    exclude * -> *')
+      expect(targetView).toContain(
+        "metadata.yarramateId is 'system#modern-uses-shared'",
+      )
+      expect(targetView).not.toContain(
+        "metadata.yarramateId is 'system#legacy-uses-shared'",
+      )
       expect(
         JSON.parse(
           readFileSync(join(project, 'likec4.config.json'), 'utf8'),
@@ -623,6 +689,7 @@ views:
         views: [
           { projection: 'baseline@1.0' },
           { projection: 'target@1.0' },
+          { projection: 'empty@1.0' },
         ],
       })
       const markerSchema = JSON.parse(
@@ -671,6 +738,64 @@ views:
         stdout: `Updated LikeC4 project at ${project}\n`,
         stderr: '',
       })
+    } finally {
+      rmSync(parent, { recursive: true, force: true })
+    }
+  })
+
+  it('materializes the repository starter pack as independent views', () => {
+    const parent = mkdtempSync(
+      join(tmpdir(), 'yarramate-likec4-starter-pack-'),
+    )
+    const project = join(parent, 'generated')
+    try {
+      const result = runLikeC4Cli(
+        [
+          'export-project',
+          '.yarramate/integrations/likec4/project.yaml',
+          project,
+          '.yarramate/workspace.yaml',
+        ],
+        repositoryRoot,
+      )
+
+      expect(result.exitCode).toBe(0)
+      const model = readFileSync(join(project, 'model.likec4'), 'utf8')
+      expect(model.match(/^  view /gm)).toHaveLength(12)
+      expect(model).not.toMatch(/^    include \*$/gm)
+      expect(model).toContain('view starter-landscape')
+      expect(model).toContain('view starter-motivation')
+      expect(model).toContain('view starter-strategy')
+      expect(model).toContain('view starter-business-operation')
+      expect(model).toContain('view starter-application-cooperation')
+      expect(model).toContain('view starter-information-structure')
+      expect(model).toContain('view starter-technology-deployment')
+      expect(model).toContain('view starter-implementation-roadmap')
+      expect(model).toContain(
+        "view starter-technology-deployment {\n" +
+          "    title 'Technology and deployment'\n" +
+          "    description 'Technology structure, behavior, services, networks, and deployed artifacts.'\n" +
+          "    include * where metadata.yarramateId is '__yarramate_no_match__'",
+      )
+      const marker = JSON.parse(
+        readFileSync(
+          join(project, 'yarramate.generated.json'),
+          'utf8',
+        ),
+      )
+      expect(marker.views).toHaveLength(12)
+      expect(marker.views.slice(0, 8).map(({ projection }: {
+        projection: string
+      }) => projection)).toEqual([
+        'starter-landscape@1.0',
+        'starter-motivation@1.0',
+        'starter-strategy@1.0',
+        'starter-business-operation@1.0',
+        'starter-application-cooperation@1.0',
+        'starter-information-structure@1.0',
+        'starter-technology-deployment@1.0',
+        'starter-implementation-roadmap@1.0',
+      ])
     } finally {
       rmSync(parent, { recursive: true, force: true })
     }

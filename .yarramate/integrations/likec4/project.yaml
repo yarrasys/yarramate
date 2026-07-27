@@ -5,6 +5,14 @@ title: YarraMate architecture
 mapping: .yarramate/integrations/likec4/subject-mapping.yaml
 kindMapping: .yarramate/integrations/likec4/kind-mapping.yaml
 views:
+  - projection: .yarramate/projections/starter-landscape.yaml
+  - projection: .yarramate/projections/starter-motivation.yaml
+  - projection: .yarramate/projections/starter-strategy.yaml
+  - projection: .yarramate/projections/starter-business-operation.yaml
+  - projection: .yarramate/projections/starter-application-cooperation.yaml
+  - projection: .yarramate/projections/starter-information-structure.yaml
+  - projection: .yarramate/projections/starter-technology-deployment.yaml
+  - projection: .yarramate/projections/starter-implementation-roadmap.yaml
   - projection: .yarramate/projections/likec4-export-path.yaml
   - projection: .yarramate/projections/state-engine-adapter.yaml
   - projection: .yarramate/projections/state-engine-target.yaml

@@ -56,10 +56,14 @@ notation.
   implemented.**
 - Define projections as semantic queries with presentation hints.
   **Document, kind, lifecycle-status, owner, required-constraint, and
-  explicit-subject and relationship-inclusion queries are implemented.**
+  explicit-subject, qualified relationship-kind, and bounded one-hop
+  relationship-inclusion queries are implemented.**
 - Render projection results for humans and agent harnesses. **Deterministic
   JSON context is implemented through `yarramate context`, with deterministic
   Markdown through `yarramate view`.**
+- Supply an optional native starter view pack. **Eight original concern-based
+  projections are dogfooded in one unified LikeC4 project; unmatched templates
+  remain valid and impose no completeness requirement.**
 - Represent optional baseline, transition, and target planning contexts.
   **Architecture-state declarations, concise subject presence, state-filtered
   projections, deterministic comparisons, and repository dogfooding are
@@ -73,8 +77,9 @@ notation.
   projection-to-LikeC4 export, self-contained project materialization, adapter
   CLI with a source-located non-writing check, explicit kind-compatibility
   mapping, one-model multi-view project composition, state-specific and
-  comparison visualization, and regression-fixture and self-dogfooding mappings
-  are implemented. Import, round-tripping,
+  comparison visualization, explicit per-view membership after model union,
+  and regression-fixture and self-dogfooding mappings are implemented. Import,
+  round-tripping,
   deployment and dynamic views, and general styling parity remain future
   adapter work.**
 - Generic evidence-provider interface.

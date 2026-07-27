@@ -61,6 +61,7 @@ compiler foundation:
 - `.yarramate/contracts/yarramate-core-0.1.yaml` — dogfooded Core 0.1 implementation contract
 - `.yarramate/profiles/yarramate-development.yaml` — self-hosted development vocabulary
 - `.yarramate/projections/*.yaml` — canonical focused queries over the self-model
+- `.yarramate/projections/starter-*.yaml` — eight optional native starter views
 - `docs/DOGFOODING.md` — self-modelling coverage and observed semantic friction
 - `test/profile.test.ts` — catalogue synchronization checks
 - `docs/PRODUCT-CONTRACT.md` — agreed product and architecture contract
@@ -196,4 +197,5 @@ render deterministic source through one typed operation.
 Version `0.1.0` is a validated native compiler, projection, safe-authoring,
 workspace, ownership, constraint-reference, evidence-overlay, and optional
 architecture-state foundation, plus a narrow projection-driven LikeC4 export
-adapter. It is not yet the complete YarraMate engine or adapter suite.
+adapter and an optional eight-view native starter pack. It is not yet the
+complete YarraMate engine or adapter suite.

@@ -49,9 +49,124 @@ relationships:
     from: second
     to: future
     status: planned
+  - id: first-influences-future
+    kind: influence
+    from: first
+    to: future
 `
 
 describe('evaluateProjection', () => {
+  it('selects only relationships matching portable qualified kind selectors', () => {
+    const compilation = compileWorkspace([
+      { path: 'projection-model.yaml', source },
+    ])
+    expect(compilation.ok).toBe(true)
+    if (!compilation.ok) return
+
+    const result = evaluateProjection(compilation.graph, {
+      format: 'yarramate/projection/v1',
+      id: 'influences',
+      version: '1.0',
+      query: {
+        relationshipKinds: ['yarramate/core@0.1#influence'],
+        relationships: 'between',
+      },
+    } as ProjectionDefinition)
+
+    expect(
+      result.subjects.filter(({ type }) => type === 'relationship'),
+    ).toEqual([
+      {
+        id: 'projection-model#first-influences-future',
+        type: 'relationship',
+      },
+    ])
+  })
+
+  it('includes the other endpoint of matching one-hop relationships', () => {
+    const compilation = compileWorkspace([
+      { path: 'projection-model.yaml', source },
+    ])
+    expect(compilation.ok).toBe(true)
+    if (!compilation.ok) return
+
+    const result = evaluateProjection(compilation.graph, {
+      format: 'yarramate/projection/v1',
+      id: 'capability-neighbours',
+      version: '1.0',
+      query: {
+        kinds: ['yarramate/core@0.1#capability'],
+        relationshipKinds: ['yarramate/core@0.1#association'],
+        relationships: 'connected',
+      },
+    } as ProjectionDefinition)
+
+    expect(result.subjects).toEqual([
+      { id: 'projection-model#first', type: 'concept' },
+      {
+        id: 'projection-model#first-supports-second',
+        type: 'relationship',
+      },
+      { id: 'projection-model#future', type: 'concept' },
+      { id: 'projection-model#second', type: 'concept' },
+      {
+        id: 'projection-model#second-supports-future',
+        type: 'relationship',
+      },
+    ])
+  })
+
+  it('keeps concepts while an unmatched relationship-kind selector selects no relationships', () => {
+    const compilation = compileWorkspace([
+      { path: 'projection-model.yaml', source },
+    ])
+    expect(compilation.ok).toBe(true)
+    if (!compilation.ok) return
+
+    const result = evaluateProjection(compilation.graph, {
+      format: 'yarramate/projection/v1',
+      id: 'portable-relationship-kind',
+      version: '1.0',
+      query: {
+        kinds: ['yarramate/core@0.1#capability'],
+        relationshipKinds: ['other/profile@1.0#dependency'],
+        relationships: 'connected',
+      },
+    })
+
+    expect(result.subjects).toEqual([
+      { id: 'projection-model#first', type: 'concept' },
+      { id: 'projection-model#second', type: 'concept' },
+    ])
+  })
+
+  it('loads relationship-kind and connected-endpoint selectors through the normative schema', () => {
+    const loaded = loadProjection({
+      path: 'connected.projection.yaml',
+      source: `format: yarramate/projection/v1
+id: connected
+version: "1.0"
+query:
+  relationshipKinds:
+    - yarramate/core@0.1#serving
+  relationships: connected
+`,
+    })
+
+    expect(loaded).toEqual({
+      ok: true,
+      projection: {
+        format: 'yarramate/projection/v1',
+        id: 'connected',
+        version: '1.0',
+        query: {
+          relationshipKinds: ['yarramate/core@0.1#serving'],
+          relationships: 'connected',
+        },
+      },
+    })
+  })
+
   it('selects scoped and unscoped subjects in an architecture state', () => {
     const compilation = compileWorkspace([
       {

@@ -15,6 +15,9 @@ mappings:
   - native: yarramate-engine#export-likec4
     external: exportLikeC4
     type: concept
+  - native: yarramate-engine#evaluate-projection
+    external: evaluateProjection
+    type: concept
   - native: yarramate-engine#architecture-state-engine
     external: architectureStateEngine
     type: concept
@@ -44,6 +47,9 @@ mappings:
     type: concept
   - native: yarramate-engine#projection-result
     external: projectionResult
+    type: concept
+  - native: yarramate-engine#starter-view-pack
+    external: starterViewPack
     type: concept
   - native: yarramate-engine#likec4-project-definition
     external: likec4ProjectDefinition
@@ -83,4 +89,214 @@ mappings:
     type: concept
   - native: yarramate-repository#evolution-model
     external: evolutionModel
+    type: concept
+  - native: yarramate-engine#adapter-mapping-schema
+    external: engineAdapterMappingSchema
+    type: concept
+  - native: yarramate-engine#add-command
+    external: engineAddCommand
+    type: concept
+  - native: yarramate-engine#check-command
+    external: engineCheckCommand
+    type: concept
+  - native: yarramate-engine#check-core-contract
+    external: engineCheckCoreContract
+    type: concept
+  - native: yarramate-engine#check-result
+    external: engineCheckResult
+    type: concept
+  - native: yarramate-engine#check-result-schema
+    external: engineCheckResultSchema
+    type: concept
+  - native: yarramate-engine#cli
+    external: engineCli
+    type: concept
+  - native: yarramate-engine#compile-command
+    external: engineCompileCommand
+    type: concept
+  - native: yarramate-engine#compile-semantic-graph
+    external: engineCompileSemanticGraph
+    type: concept
+  - native: yarramate-engine#connect-command
+    external: engineConnectCommand
+    type: concept
+  - native: yarramate-engine#core-contract-manifest
+    external: engineCoreContractManifest
+    type: concept
+  - native: yarramate-engine#core-contract-schema
+    external: engineCoreContractSchema
+    type: concept
+  - native: yarramate-engine#diagnostic-result
+    external: engineDiagnosticResult
+    type: concept
+  - native: yarramate-engine#diagnostic-result-schema
+    external: engineDiagnosticResultSchema
+    type: concept
+  - native: yarramate-engine#diagnostics
+    external: engineDiagnostics
+    type: concept
+  - native: yarramate-engine#document-schema
+    external: engineDocumentSchema
+    type: concept
+  - native: yarramate-engine#evaluate-evidence
+    external: engineEvaluateEvidence
+    type: concept
+  - native: yarramate-engine#evidence-command
+    external: engineEvidenceCommand
+    type: concept
+  - native: yarramate-engine#evidence-document
+    external: engineEvidenceDocument
+    type: concept
+  - native: yarramate-engine#evidence-report
+    external: engineEvidenceReport
+    type: concept
+  - native: yarramate-engine#evidence-report-schema
+    external: engineEvidenceReportSchema
+    type: concept
+  - native: yarramate-engine#evidence-schema
+    external: engineEvidenceSchema
+    type: concept
+  - native: yarramate-engine#init-command
+    external: engineInitCommand
+    type: concept
+  - native: yarramate-engine#kind-catalogue
+    external: engineKindCatalogue
+    type: concept
+  - native: yarramate-engine#likec4-check-result-schema
+    external: engineLikec4CheckResultSchema
+    type: concept
+  - native: yarramate-engine#likec4-diagnostic-result-schema
+    external: engineLikec4DiagnosticResultSchema
+    type: concept
+  - native: yarramate-engine#likec4-generated-project-schema
+    external: engineLikec4GeneratedProjectSchema
+    type: concept
+  - native: yarramate-engine#likec4-kind-mapping
+    external: engineLikec4KindMapping
+    type: concept
+  - native: yarramate-engine#likec4-kind-mapping-schema
+    external: engineLikec4KindMappingSchema
+    type: concept
+  - native: yarramate-engine#load-core-contract
+    external: engineLoadCoreContract
+    type: concept
+  - native: yarramate-engine#load-source-document
+    external: engineLoadSourceDocument
+    type: concept
+  - native: yarramate-engine#native-document
+    external: engineNativeDocument
+    type: concept
+  - native: yarramate-engine#parse-document
+    external: engineParseDocument
+    type: concept
+  - native: yarramate-engine#profile-catalogue
+    external: engineProfileCatalogue
+    type: concept
+  - native: yarramate-engine#projection-definition
+    external: engineProjectionDefinition
+    type: concept
+  - native: yarramate-engine#projection-result-schema
+    external: engineProjectionResultSchema
+    type: concept
+  - native: yarramate-engine#projection-schema
+    external: engineProjectionSchema
+    type: concept
+  - native: yarramate-engine#relationship-policy-catalogue
+    external: engineRelationshipPolicyCatalogue
+    type: concept
+  - native: yarramate-engine#resolve-workspace
+    external: engineResolveWorkspace
+    type: concept
+  - native: yarramate-engine#semantic-graph
+    external: engineSemanticGraph
+    type: concept
+  - native: yarramate-engine#semantic-graph-schema
+    external: engineSemanticGraphSchema
+    type: concept
+  - native: yarramate-engine#serialize-semantic-graph
+    external: engineSerializeSemanticGraph
+    type: concept
+  - native: yarramate-engine#validate-adapter-mapping
+    external: engineValidateAdapterMapping
+    type: concept
+  - native: yarramate-engine#validate-document-structure
+    external: engineValidateDocumentStructure
+    type: concept
+  - native: yarramate-engine#validate-semantic-claims
+    external: engineValidateSemanticClaims
+    type: concept
+  - native: yarramate-engine#workspace-manifest
+    external: engineWorkspaceManifest
+    type: concept
+  - native: yarramate-engine#workspace-schema
+    external: engineWorkspaceSchema
+    type: concept
+  - native: yarramate-evolution#adapter-foundation
+    external: evolutionAdapterFoundation
+    type: concept
+  - native: yarramate-evolution#core-contract-foundation
+    external: evolutionCoreContractFoundation
+    type: concept
+  - native: yarramate-evolution#native-foundation
+    external: evolutionNativeFoundation
+    type: concept
+  - native: yarramate-evolution#state-foundation
+    external: evolutionStateFoundation
+    type: concept
+  - native: yarramate-product#compile-native-architecture
+    external: productCompileNativeArchitecture
+    type: concept
+  - native: yarramate-product#deterministic-correctness
+    external: productDeterministicCorrectness
+    type: concept
+  - native: yarramate-product#evaluate-architecture-evidence
+    external: productEvaluateArchitectureEvidence
+    type: concept
+  - native: yarramate-product#native-documents-are-canonical
+    external: productNativeDocumentsAreCanonical
+    type: concept
+  - native: yarramate-product#provide-machine-context
+    external: productProvideMachineContext
+    type: concept
+  - native: yarramate-product#repository-native-operation
+    external: productRepositoryNativeOperation
+    type: concept
+  - native: yarramate-product#shared-architecture-context
+    external: productSharedArchitectureContext
+    type: concept
+  - native: yarramate-product#stable-cli
+    external: productStableCli
+    type: concept
+  - native: yarramate-product#tool-neutral-core
+    external: productToolNeutralCore
+    type: concept
+  - native: yarramate-product#validate-native-architecture
+    external: productValidateNativeArchitecture
+    type: concept
+  - native: yarramate-product#yarramate-maintainers
+    external: productYarramateMaintainers
+    type: concept
+  - native: yarramate-repository#architecture-decisions
+    external: repositoryArchitectureDecisions
+    type: concept
+  - native: yarramate-repository#likec4-adapter-prototype
+    external: repositoryLikec4AdapterPrototype
+    type: concept
+  - native: yarramate-repository#likec4-kind-mapping-tests
+    external: repositoryLikec4KindMappingTests
+    type: concept
+  - native: yarramate-repository#product-contract
+    external: repositoryProductContract
+    type: concept
+  - native: yarramate-repository#projection-source
+    external: repositoryProjectionSource
+    type: concept
+  - native: yarramate-repository#roadmap
+    external: repositoryRoadmap
+    type: concept
+  - native: yarramate-repository#check-command-source
+    external: repositoryCheckCommandSource
+    type: concept
+  - native: yarramate-repository#likec4-cli-source
+    external: repositoryLikec4CliSource
     type: concept

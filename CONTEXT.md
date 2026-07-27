@@ -65,6 +65,17 @@ A well-formed projection selector that may have no match in a particular
 workspace without becoming invalid.
 _Avoid_: Broken reference, mandatory workspace dependency
 
+**Connected projection**:
+A bounded projection mode that selects matching relationships incident to the
+initial concept selection and includes their opposite endpoints exactly one
+hop away.
+_Avoid_: Transitive closure, dependency discovery, completeness inference
+
+**Starter view pack**:
+Optional native projection templates addressing common architecture concerns
+without asserting conformance to an external viewpoint catalogue.
+_Avoid_: Mandatory views, ArchiMate compatibility profile
+
 **Architecture state**:
 An identified planning context representing a baseline, transition, or target
 configuration of architecture subjects.

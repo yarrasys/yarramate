@@ -47,6 +47,14 @@ observations:
     result: confirmed
     evidence:
       uri: repo:schema/yarramate-projection-result.schema.json
+  - subject: yarramate-engine#evaluate-projection
+    result: confirmed
+    evidence:
+      uri: repo:src/projection.ts
+  - subject: yarramate-engine#starter-view-pack
+    result: confirmed
+    evidence:
+      uri: repo:.yarramate/projections/starter-landscape.yaml
   - subject: yarramate-engine#state-comparison-schema
     result: confirmed
     evidence:

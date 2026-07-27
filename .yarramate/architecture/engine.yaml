@@ -127,6 +127,11 @@ concepts:
     name: Evaluate evidence overlay
     description: Produces a deterministic report without modifying graph v2.
     status: current
+  - id: evaluate-projection
+    kind: applicationFunction
+    name: Evaluate semantic projection
+    description: Selects concepts and relationships deterministically, with optional qualified relationship-kind filtering and bounded one-hop endpoint inclusion.
+    status: current
   - id: export-likec4
     kind: applicationFunction
     name: Export LikeC4 source
@@ -318,6 +323,11 @@ concepts:
     kind: dataObject
     name: Projection result JSON Schema
     status: current
+  - id: starter-view-pack
+    kind: dataObject
+    name: Native starter view pack
+    description: Eight optional projection templates for landscape, motivation, strategy, business, application, information, technology, and implementation concerns.
+    status: current
   - id: state-comparison
     kind: dataObject
     name: Architecture-state comparison
@@ -475,6 +485,11 @@ relationships:
     kind: access
     from: assemble-likec4-project
     to: projection-result
+    mode: read
+  - id: likec4-project-assembly-reads-starter-pack
+    kind: access
+    from: assemble-likec4-project
+    to: starter-view-pack
     mode: read
   - id: likec4-project-assembly-reads-definition-schema
     kind: access
@@ -654,6 +669,29 @@ relationships:
     kind: implements
     from: evidence-evaluator
     to: yarramate-product#evaluate-architecture-evidence
+  - id: compiler-evaluates-projections
+    kind: assignment
+    from: compiler
+    to: evaluate-projection
+  - id: projection-evaluation-reads-definition
+    kind: access
+    from: evaluate-projection
+    to: projection-definition
+    mode: read
+  - id: projection-evaluation-reads-graph
+    kind: access
+    from: evaluate-projection
+    to: semantic-graph
+    mode: read
+  - id: projection-evaluation-writes-result
+    kind: access
+    from: evaluate-projection
+    to: projection-result
+    mode: write
+  - id: projection-evaluation-delivers-context
+    kind: realization
+    from: evaluate-projection
+    to: yarramate-product#provide-machine-context
   - id: evidence-evaluation-reads-document
     kind: access
     from: evaluate-evidence

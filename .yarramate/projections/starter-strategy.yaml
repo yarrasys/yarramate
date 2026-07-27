@@ -1,0 +1,22 @@
+format: yarramate/projection/v1
+id: starter-strategy
+version: "1.0"
+query:
+  kinds:
+    - yarramate/core@0.1#resource
+    - yarramate/core@0.1#capability
+    - yarramate/core@0.1#valueStream
+    - yarramate/core@0.1#courseOfAction
+    - yarramate/core@0.1#outcome
+    - yarramate/core@0.1#value
+  relationshipKinds:
+    - yarramate/core@0.1#aggregation
+    - yarramate/core@0.1#association
+    - yarramate/core@0.1#composition
+    - yarramate/core@0.1#influence
+    - yarramate/core@0.1#realization
+    - yarramate/core@0.1#specialization
+  relationships: connected
+presentation:
+  title: Strategy and capabilities
+  description: Strategic outcomes, resources, capabilities, value streams, and courses of action.

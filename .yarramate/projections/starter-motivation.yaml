@@ -1,0 +1,21 @@
+format: yarramate/projection/v1
+id: starter-motivation
+version: "1.0"
+query:
+  kinds:
+    - yarramate/core@0.1#stakeholder
+    - yarramate/core@0.1#driver
+    - yarramate/core@0.1#assessment
+    - yarramate/core@0.1#goal
+    - yarramate/core@0.1#outcome
+    - yarramate/core@0.1#principle
+    - yarramate/core@0.1#requirement
+    - yarramate/core@0.1#constraint
+  relationshipKinds:
+    - yarramate/core@0.1#association
+    - yarramate/core@0.1#influence
+    - yarramate/core@0.1#realization
+  relationships: connected
+presentation:
+  title: Motivation and outcomes
+  description: Architectural intent and the outcomes, principles, requirements, and constraints that shape it.

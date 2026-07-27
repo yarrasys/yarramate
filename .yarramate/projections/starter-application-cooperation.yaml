@@ -1,0 +1,27 @@
+format: yarramate/projection/v1
+id: starter-application-cooperation
+version: "1.0"
+query:
+  kinds:
+    - yarramate/core@0.1#applicationComponent
+    - yarramate/core@0.1#applicationCollaboration
+    - yarramate/core@0.1#applicationInterface
+    - yarramate/core@0.1#applicationFunction
+    - yarramate/core@0.1#applicationInteraction
+    - yarramate/core@0.1#applicationProcess
+    - yarramate/core@0.1#applicationEvent
+    - yarramate/core@0.1#applicationService
+  relationshipKinds:
+    - yarramate/core@0.1#access
+    - yarramate/core@0.1#aggregation
+    - yarramate/core@0.1#assignment
+    - yarramate/core@0.1#association
+    - yarramate/core@0.1#composition
+    - yarramate/core@0.1#flow
+    - yarramate/core@0.1#realization
+    - yarramate/core@0.1#serving
+    - yarramate/core@0.1#triggering
+  relationships: between
+presentation:
+  title: Application cooperation
+  description: Application structure and behavior collaborating to provide services and information.

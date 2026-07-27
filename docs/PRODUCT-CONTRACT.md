@@ -188,6 +188,15 @@ whose endpoints are both selected. `yarramate context` renders the closed
 projection result as deterministic JSON for agents and CI.
 Queries may also name an explicit portable set of globally qualified concept
 subjects when a deliberately bounded context is required.
+Queries may restrict relationships by globally qualified kind. A connected
+relationship mode may include matching relationships incident to the initial
+concept selection and add their opposite endpoints exactly one hop away. It
+does not compute recursive reachability.
+
+YarraMate may ship optional native starter projections for recurring
+architecture concerns. They are reusable queries, may legitimately be empty
+in partial workspaces, and are neither mandatory completeness checks nor
+claims of compatibility with an external viewpoint catalogue.
 
 ## Optional integrations
 
@@ -203,6 +212,9 @@ definition may compose multiple projections into one deterministically
 ordered logical model with independent views. It does not change graph v2,
 interpret layout as semantics, import LikeC4, or promise round-tripping. Core
 does not import the adapter module.
+Every composed view retains the exact concept membership of its source
+projection; a project-wide wildcard must not expose the unioned model in each
+view.
 The adapter may preserve selected compiled claims as flat LikeC4 metadata for
 traceability; those fields remain derived and have no authority over the
 native claims.

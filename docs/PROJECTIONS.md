@@ -16,9 +16,10 @@ query:
   kinds: [yarramate/development@1.0#compiler-module]
   owners: [yarramate-product#yarramate-maintainers]
   constraints: [yarramate-product#tool-neutral-core]
+  relationshipKinds: [yarramate/core@0.1#realization]
   statuses: [current]
   states: [yarramate-evolution#state-foundation]
-  relationships: between
+  relationships: connected
 presentation:
   title: Current engine
 ```
@@ -30,16 +31,28 @@ Query fields combine with logical AND:
 - `kinds` filters globally qualified concept kind identities;
 - `owners` filters globally qualified owner subject identities;
 - `constraints` filters globally qualified required-constraint identities;
+- `relationshipKinds` filters relationships by globally qualified semantic
+  kind identity without changing concept selection;
 - `statuses` filters controlled lifecycle status;
 - `states` filters subject presence in globally qualified architecture states;
-- `relationships` is `between` or `none` and defaults to `between`.
+- `relationships` is `between`, `connected`, or `none` and defaults to
+  `between`.
 
 Values within each filter list combine with logical OR; different fields
 combine with logical AND. Concepts without the corresponding owner,
-constraint, or status claim do not match that filter. With
-`relationships: between`, a relationship is selected only when both semantic
-endpoint concepts are selected. Claims about excluded concepts and
-relationships are excluded as well.
+constraint, or status claim do not match that filter.
+
+With `relationships: between`, a relationship is selected only when both
+semantic endpoint concepts are initially selected. With `connected`, a
+matching relationship is selected when either endpoint is initially selected,
+and its opposite endpoint is added to the result. Expansion is exactly one
+hop: newly added endpoints do not trigger further selection. `none` excludes
+all relationships.
+
+`relationshipKinds` applies after concept selection and before relationship
+mode evaluation. An unavailable qualified relationship kind selects no
+relationships but does not remove otherwise matching concepts or produce a
+diagnostic. Claims about excluded concepts and relationships are excluded.
 
 For a state filter, unscoped concepts match every existing selected state.
 Unscoped relationships follow their selected endpoints; explicitly scoped
@@ -73,21 +86,15 @@ The library exposes `loadProjection` and `evaluateProjection`. The CLI produces
 agent-ready JSON:
 
 ```sh
-yarramate context projections/current-engine.yaml \
-  profiles/yarramate-development.yaml \
-  architecture/product.yaml \
-  architecture/engine.yaml \
-  architecture/repository.yaml
+yarramate context .yarramate/projections/current-engine.yaml \
+  .yarramate/workspace.yaml
 ```
 
 The same result renders as deterministic Markdown for reviewers:
 
 ```sh
-yarramate view projections/current-engine.yaml \
-  profiles/yarramate-development.yaml \
-  architecture/product.yaml \
-  architecture/engine.yaml \
-  architecture/repository.yaml
+yarramate view .yarramate/projections/current-engine.yaml \
+  .yarramate/workspace.yaml
 ```
 
 JSON-context correctness failures emit the versioned
@@ -99,6 +106,24 @@ not a second source of architectural truth.
 
 Projection documents are canonical queries, not canonical diagrams. Layout,
 colors, coordinates, and renderer configuration belong to optional adapters.
+
+## Native starter views
+
+The dogfooding workspace supplies eight optional projection templates:
+
+- architecture landscape;
+- motivation and outcomes;
+- strategy and capabilities;
+- business operation;
+- application cooperation;
+- information structure;
+- technology and deployment;
+- implementation roadmap.
+
+They use original YarraMate query definitions, tolerate partial adoption, and
+may produce an empty view when a workspace has no matching concepts. They are
+not mandatory documentation and do not reproduce or claim conformance with an
+external viewpoint catalogue.
 
 Architecture-state authoring and comparison are described in
 `docs/ARCHITECTURE-STATES.md`. The schemas are exported as `yarramate/schema/projection` and

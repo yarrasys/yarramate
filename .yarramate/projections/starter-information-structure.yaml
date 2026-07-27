@@ -1,0 +1,19 @@
+format: yarramate/projection/v1
+id: starter-information-structure
+version: "1.0"
+query:
+  kinds:
+    - yarramate/core@0.1#businessObject
+    - yarramate/core@0.1#contract
+    - yarramate/core@0.1#representation
+    - yarramate/core@0.1#dataObject
+    - yarramate/core@0.1#artifact
+  relationshipKinds:
+    - yarramate/core@0.1#access
+    - yarramate/core@0.1#aggregation
+    - yarramate/core@0.1#association
+    - yarramate/core@0.1#composition
+  relationships: connected
+presentation:
+  title: Information structure
+  description: Information, data, representations, artifacts, and the architecture behavior that uses or realizes them.

@@ -1,0 +1,21 @@
+format: yarramate/projection/v1
+id: starter-implementation-roadmap
+version: "1.0"
+query:
+  kinds:
+    - yarramate/core@0.1#workPackage
+    - yarramate/core@0.1#deliverable
+    - yarramate/core@0.1#implementationEvent
+    - yarramate/core@0.1#plateau
+    - yarramate/core@0.1#gap
+  relationshipKinds:
+    - yarramate/core@0.1#aggregation
+    - yarramate/core@0.1#association
+    - yarramate/core@0.1#composition
+    - yarramate/core@0.1#flow
+    - yarramate/core@0.1#realization
+    - yarramate/core@0.1#triggering
+  relationships: connected
+presentation:
+  title: Implementation roadmap
+  description: Work, deliverables, events, architecture states, and gaps involved in changing the architecture.

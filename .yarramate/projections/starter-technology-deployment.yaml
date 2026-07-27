@@ -1,0 +1,30 @@
+format: yarramate/projection/v1
+id: starter-technology-deployment
+version: "1.0"
+query:
+  kinds:
+    - yarramate/core@0.1#node
+    - yarramate/core@0.1#device
+    - yarramate/core@0.1#systemSoftware
+    - yarramate/core@0.1#technologyCollaboration
+    - yarramate/core@0.1#technologyInterface
+    - yarramate/core@0.1#path
+    - yarramate/core@0.1#communicationNetwork
+    - yarramate/core@0.1#technologyFunction
+    - yarramate/core@0.1#technologyProcess
+    - yarramate/core@0.1#technologyInteraction
+    - yarramate/core@0.1#technologyEvent
+    - yarramate/core@0.1#technologyService
+    - yarramate/core@0.1#artifact
+  relationshipKinds:
+    - yarramate/core@0.1#access
+    - yarramate/core@0.1#aggregation
+    - yarramate/core@0.1#assignment
+    - yarramate/core@0.1#association
+    - yarramate/core@0.1#composition
+    - yarramate/core@0.1#realization
+    - yarramate/core@0.1#serving
+  relationships: connected
+presentation:
+  title: Technology and deployment
+  description: Technology structure, behavior, services, networks, and deployed artifacts.

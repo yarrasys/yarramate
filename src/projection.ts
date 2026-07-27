@@ -29,7 +29,8 @@ export interface ProjectionDefinition {
     readonly states?: readonly string[]
     readonly owners?: readonly string[]
     readonly constraints?: readonly string[]
-    readonly relationships?: 'between' | 'none'
+    readonly relationshipKinds?: readonly string[]
+    readonly relationships?: 'between' | 'connected' | 'none'
   }
   readonly presentation?: {
     readonly title?: string
@@ -124,7 +125,7 @@ export function evaluateProjection(
       presence.some((state) => selectedStateIds.includes(state))
     )
   }
-  const selectedConceptIds = new Set(
+  const initiallySelectedConceptIds = new Set(
     graph.subjects
       .filter(({ type }) => type === 'concept')
       .filter(({ id }) => {
@@ -173,22 +174,45 @@ export function evaluateProjection(
       })
       .map(({ id }) => id),
   )
+  const selectedConceptIds = new Set(initiallySelectedConceptIds)
 
   const selectedRelationshipIds = new Set<string>()
-  if ((projection.query.relationships ?? 'between') === 'between') {
+  const relationshipMode = projection.query.relationships ?? 'between'
+  if (relationshipMode !== 'none') {
     for (const subject of graph.subjects) {
       if (subject.type !== 'relationship') continue
       const relationship = graph.claims.find(
         (claim) => claim.id === subject.id,
       )
       if (
-        relationship !== undefined &&
-        'ref' in relationship.object &&
-        participatesInSelectedState(subject.id) &&
-        selectedConceptIds.has(relationship.subject) &&
-        selectedConceptIds.has(relationship.object.ref)
+        relationship === undefined ||
+        !('ref' in relationship.object) ||
+        (projection.query.relationshipKinds !== undefined &&
+          !projection.query.relationshipKinds.includes(
+            relationship.predicate,
+          )) ||
+        !participatesInSelectedState(subject.id)
+      ) {
+        continue
+      }
+      const sourceSelected = initiallySelectedConceptIds.has(
+        relationship.subject,
+      )
+      const targetSelected = initiallySelectedConceptIds.has(
+        relationship.object.ref,
+      )
+      if (
+        (relationshipMode === 'between' &&
+          sourceSelected &&
+          targetSelected) ||
+        (relationshipMode === 'connected' &&
+          (sourceSelected || targetSelected))
       ) {
         selectedRelationshipIds.add(subject.id)
+        if (relationshipMode === 'connected') {
+          selectedConceptIds.add(relationship.subject)
+          selectedConceptIds.add(relationship.object.ref)
+        }
       }
     }
   }

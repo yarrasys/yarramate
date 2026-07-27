@@ -126,9 +126,13 @@ The bounded `state-engine-adapter`, `state-engine-target`, and
 across the architecture-state engine slice. The shared repository LikeC4
 mapping keeps external identities explicit and singular.
 `.yarramate/integrations/likec4/project.yaml` composes these with the export-path
-projection into one derived model containing four independent views.
-The comparison view carries adapter-owned change presentation and valid local LikeC4 styles;
-neither appears in native graph claims.
+projection and eight native starter projections into one derived model
+containing twelve independent views. Explicit mapped node predicates and
+native relationship-identity predicates retain each projection's exact
+membership after model union; the technology template currently demonstrates
+that an unmatched portable projection remains a valid empty view.
+The comparison view carries adapter-owned change presentation and valid local
+LikeC4 styles; neither appears in native graph claims.
 
 `.yarramate/contracts/yarramate-core-0.1.yaml` declares the first tool-neutral release
 boundary and is included explicitly by the root workspace. `self:check`

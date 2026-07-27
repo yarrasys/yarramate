@@ -32,8 +32,10 @@ People and agents can request focused context from the canonical graph without
 creating parallel models. Generated context is reproducible and suitable for
 CI or harness input.
 
-Projection v1 does not define graph traversal depth, arbitrary predicates,
-layout, templates, renderer configuration, remote sources, or adapter output.
-Those capabilities require explicit later semantics.
+Projection v1 initially omitted traversal. ADR 0028 subsequently adds
+qualified relationship-kind filtering and one explicit, bounded one-hop
+connected mode. It still does not define arbitrary predicates, recursive
+reachability, layout, renderer configuration, remote sources, or adapter
+output.
 
 The query behavior and wording are original YarraMate definitions.

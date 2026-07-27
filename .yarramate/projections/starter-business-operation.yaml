@@ -1,0 +1,28 @@
+format: yarramate/projection/v1
+id: starter-business-operation
+version: "1.0"
+query:
+  kinds:
+    - yarramate/core@0.1#businessActor
+    - yarramate/core@0.1#businessRole
+    - yarramate/core@0.1#businessCollaboration
+    - yarramate/core@0.1#businessInterface
+    - yarramate/core@0.1#businessProcess
+    - yarramate/core@0.1#businessFunction
+    - yarramate/core@0.1#businessInteraction
+    - yarramate/core@0.1#businessEvent
+    - yarramate/core@0.1#businessService
+  relationshipKinds:
+    - yarramate/core@0.1#access
+    - yarramate/core@0.1#aggregation
+    - yarramate/core@0.1#assignment
+    - yarramate/core@0.1#association
+    - yarramate/core@0.1#composition
+    - yarramate/core@0.1#flow
+    - yarramate/core@0.1#realization
+    - yarramate/core@0.1#serving
+    - yarramate/core@0.1#triggering
+  relationships: connected
+presentation:
+  title: Business operation
+  description: Business participants, behavior, events, interfaces, and services involved in operating the architecture.
