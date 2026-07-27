@@ -36,6 +36,21 @@ export interface LikeC4ProjectDefinition {
         readonly title?: string
       }>
     }
+    readonly deployment?: LikeC4Deployment
+  }>
+}
+
+export interface LikeC4Deployment {
+  readonly nodes: ReadonlyArray<{
+    readonly id: string
+    readonly kind: 'environment' | 'zone' | 'host' | 'runtime'
+    readonly name: string
+    readonly parent?: string
+  }>
+  readonly instances: ReadonlyArray<{
+    readonly id: string
+    readonly subject: string
+    readonly node: string
   }>
 }
 
@@ -59,6 +74,7 @@ export interface PreparedLikeC4ProjectView {
       readonly title?: string
     }>
   }
+  readonly deployment?: LikeC4Deployment
 }
 
 const quote = (value: string): string =>
@@ -104,6 +120,7 @@ const viewBody = ({
   id,
   prepared,
   dynamic,
+  deployment,
 }: PreparedLikeC4ProjectView): string => {
   const source = prepared.source
   const startToken = '\nviews {\n'
@@ -132,6 +149,30 @@ const viewBody = ({
         `    include * -> * where metadata.yarramateId is '${id}'`,
     )
     .sort()
+  if (deployment !== undefined) {
+    const roots = deployment.nodes
+      .filter(({ parent }) => parent === undefined)
+      .map(({ id }) => `${id}.**`)
+      .sort()
+    const viewId =
+      id ?? prepared.projection.projection.split('@')[0]
+    return [
+      `  deployment view ${viewId} {`,
+      ...(prepared.projection.presentation?.title === undefined
+        ? []
+        : [`    title ${quote(prepared.projection.presentation.title)}`]),
+      ...(prepared.projection.presentation?.description === undefined
+        ? []
+        : [
+            `    description ${quote(
+              prepared.projection.presentation.description,
+            )}`,
+          ]),
+      `    include ${roots.join(', ')}`,
+      '    autoLayout LeftRight',
+      '  }',
+    ].join('\n')
+  }
   if (dynamic !== undefined) {
     const claimsById = new Map(
       prepared.projection.claims.map((claim) => [claim.id, claim]),
@@ -188,6 +229,58 @@ const viewBody = ({
     .replace('    include *', membershipRules)
 }
 
+const deploymentBody = ({
+  deployment,
+  prepared,
+}: PreparedLikeC4ProjectView): string | undefined => {
+  if (deployment === undefined) return undefined
+  const externalByNative = new Map(
+    prepared.subjectMapping.mappings
+      .filter(({ type }) => type === 'concept')
+      .map(({ native, external }) => [native, external] as const),
+  )
+  const childrenByParent = new Map<string | undefined, typeof deployment.nodes>()
+  for (const node of deployment.nodes) {
+    childrenByParent.set(node.parent, [
+      ...(childrenByParent.get(node.parent) ?? []),
+      node,
+    ])
+  }
+  const instancesByNode = new Map<string, typeof deployment.instances>()
+  for (const instance of deployment.instances) {
+    instancesByNode.set(instance.node, [
+      ...(instancesByNode.get(instance.node) ?? []),
+      instance,
+    ])
+  }
+  const renderNode = (
+    node: (typeof deployment.nodes)[number],
+    indentation: string,
+  ): readonly string[] => [
+    `${indentation}${node.kind} ${node.id} ${quote(node.name)} {`,
+    ...(childrenByParent.get(node.id) ?? [])
+      .slice()
+      .sort((left, right) => left.id.localeCompare(right.id))
+      .flatMap((child) => renderNode(child, `${indentation}  `)),
+    ...(instancesByNode.get(node.id) ?? [])
+      .slice()
+      .sort((left, right) => left.id.localeCompare(right.id))
+      .map(
+        (instance) =>
+          `${indentation}  ${instance.id} = instanceOf ${externalByNative.get(instance.subject)!}`,
+      ),
+    `${indentation}}`,
+  ]
+  return [
+    'deployment {',
+    ...(childrenByParent.get(undefined) ?? [])
+      .slice()
+      .sort((left, right) => left.id.localeCompare(right.id))
+      .flatMap((node) => renderNode(node, '  ')),
+    '}',
+  ].join('\n')
+}
+
 export function exportLikeC4Project(
   project: LikeC4ProjectDefinition,
   views: readonly PreparedLikeC4ProjectView[],
@@ -204,9 +297,13 @@ export function exportLikeC4Project(
   if (!model.ok) return model
   const startToken = '\nviews {\n'
   const modelEnd = model.source.indexOf(startToken)
+  const deployments = views.flatMap((view) => {
+    const rendered = deploymentBody(view)
+    return rendered === undefined ? [] : [rendered]
+  })
   const renderedViews = views.map(viewBody)
   return {
     ok: true,
-    source: `${model.source.slice(0, modelEnd)}\nviews {\n${renderedViews.join('\n')}\n}\n`,
+    source: `${model.source.slice(0, modelEnd)}${deployments.length === 0 ? '' : `\n${deployments.join('\n')}\n`}\nviews {\n${renderedViews.join('\n')}\n}\n`,
   }
 }

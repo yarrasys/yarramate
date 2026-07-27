@@ -225,6 +225,9 @@ mappings:
   - native: yarramate-engine#render-likec4-dynamic-view
     external: engineRenderLikeC4DynamicView
     type: concept
+  - native: yarramate-engine#render-likec4-deployment-view
+    external: engineRenderLikeC4DeploymentView
+    type: concept
   - native: yarramate-engine#init-command
     external: engineInitCommand
     type: concept

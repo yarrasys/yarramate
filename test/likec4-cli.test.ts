@@ -837,6 +837,28 @@ views:
           title: constrains discovery
         - relationship: yarramate-product#discovery-supports-context
           title: produces shared context
+  - id: engine-deployment
+    projection: .yarramate/projections/current-engine.yaml
+    deployment:
+      nodes:
+        - id: production
+          kind: environment
+          name: Production
+        - id: application-zone
+          kind: zone
+          name: Application zone
+          parent: production
+        - id: compiler-host
+          kind: host
+          name: Compiler host
+          parent: application-zone
+      instances:
+        - id: compiler-instance
+          subject: yarramate-engine#compiler
+          node: compiler-host
+        - id: cli-instance
+          subject: yarramate-engine#cli
+          node: compiler-host
 `,
       )
       const result = runLikeC4Cli(
@@ -858,6 +880,26 @@ views:
           "    description 'Existing-project discovery and architecture-first design converge on one native, Git-reviewed lifecycle.'\n" +
           "    productEvidenceIntentSeparation -> productDiscoverProjectArchitecture 'constrains discovery'\n" +
           "    productDiscoverProjectArchitecture -> productSharedArchitectureContext 'produces shared context'\n" +
+          '  }',
+      )
+      expect(model).toContain(
+        "deployment {\n" +
+          "  environment production 'Production' {\n" +
+          "    zone application-zone 'Application zone' {\n" +
+          "      host compiler-host 'Compiler host' {\n" +
+          '        cli-instance = instanceOf engineCli\n' +
+          '        compiler-instance = instanceOf compiler\n' +
+          '      }\n' +
+          '    }\n' +
+          '  }\n' +
+          '}',
+      )
+      expect(model).toContain(
+        "deployment view engine-deployment {\n" +
+          "    title 'Current engine'\n" +
+          "    description 'Currently operative compiler and CLI architecture.'\n" +
+          '    include production.**\n' +
+          '    autoLayout LeftRight\n' +
           '  }',
       )
       const validation = spawnSync(

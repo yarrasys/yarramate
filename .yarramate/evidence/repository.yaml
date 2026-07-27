@@ -67,6 +67,10 @@ observations:
     result: confirmed
     evidence:
       uri: repo:src/adapters/likec4-project.ts
+  - subject: yarramate-engine#render-likec4-deployment-view
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/likec4-project.ts
   - subject: yarramate-repository#graphify-tests
     result: confirmed
     evidence:

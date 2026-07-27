@@ -286,3 +286,33 @@ Every step must name a relationship selected by that view's projection.
 Endpoints and the default displayed relationship name come from compiled
 claims. Step order and title overrides are presentation hints; they do not
 become native claims or alter graph v2.
+
+## Deployment-view presentation
+
+A project view may instantiate projected concepts into adapter-owned
+deployment nodes:
+
+```yaml
+views:
+  - id: production
+    projection: .yarramate/projections/runtime.yaml
+    deployment:
+      nodes:
+        - id: production
+          kind: environment
+          name: Production
+        - id: app-host
+          kind: host
+          name: Application host
+          parent: production
+      instances:
+        - id: api
+          subject: checkout#api
+          node: app-host
+```
+
+The available node kinds are `environment`, `zone`, `host`, and `runtime`.
+Node parents must exist and form an acyclic hierarchy. Instance IDs are named
+explicitly, their nodes must exist, and their subjects must be concepts
+selected by the view projection. The topology remains adapter presentation
+rather than native deployment claims.

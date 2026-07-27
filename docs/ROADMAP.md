@@ -122,8 +122,9 @@ notation.
   comparison visualization, explicit per-view membership after model union,
   ordered dynamic views over projected relationship subjects, and
   regression-fixture and self-dogfooding mappings are implemented. Import,
-  round-tripping, deployment views, and general styling parity remain future
-  adapter work.**
+  round-tripping and general styling parity remain future adapter work.
+  Adapter-owned deployment nodes and named instances of projected concepts
+  are implemented with regression validation.**
 - Generic evidence-provider interface.
   **A provider-neutral existing-claim evidence overlay and deterministic report
   are implemented. Constraint assessment reuses that seam; the first optional

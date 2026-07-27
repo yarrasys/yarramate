@@ -465,12 +465,174 @@ export function runLikeC4Cli(
                   ...(view.dynamic === undefined
                     ? {}
                     : { dynamic: view.dynamic }),
+                  ...(view.deployment === undefined
+                    ? {}
+                    : { deployment: view.deployment }),
                 },
               ]
             : [],
       )
       const renderedViewIds = new Set<string>()
       for (const [index, view] of successfulViews.entries()) {
+        const deployment = view.deployment
+        if (deployment !== undefined) {
+          const nodeIds = new Set<string>()
+          for (const [nodeIndex, node] of deployment.nodes.entries()) {
+            const problem =
+              nodeIds.has(node.id)
+                ? `Deployment node "${node.id}" is duplicated`
+                : node.parent === node.id
+                  ? `Deployment node "${node.id}" cannot parent itself`
+                  : undefined
+            if (problem !== undefined) {
+              const field = nodeIds.has(node.id) ? 'id' : 'parent'
+              const pointer =
+                `/views/${index}/deployment/nodes/${nodeIndex}/${field}`
+              const location = locateSourcePath(
+                projectSource.path,
+                loadedProject.document.yaml,
+                loadedProject.document.lineCounter,
+                ['views', index, 'deployment', 'nodes', nodeIndex, field],
+                pointer,
+              )
+              return {
+                exitCode: 1,
+                stdout: diagnosticOutput([{
+                  severity: 'error',
+                  code: 'YMLC109',
+                  message: problem,
+                  ...location,
+                }]),
+                stderr: '',
+              }
+            }
+            nodeIds.add(node.id)
+          }
+          for (const [nodeIndex, node] of deployment.nodes.entries()) {
+            if (
+              node.parent !== undefined &&
+              !nodeIds.has(node.parent)
+            ) {
+              const pointer =
+                `/views/${index}/deployment/nodes/${nodeIndex}/parent`
+              const location = locateSourcePath(
+                projectSource.path,
+                loadedProject.document.yaml,
+                loadedProject.document.lineCounter,
+                [
+                  'views',
+                  index,
+                  'deployment',
+                  'nodes',
+                  nodeIndex,
+                  'parent',
+                ],
+                pointer,
+              )
+              return {
+                exitCode: 1,
+                stdout: diagnosticOutput([{
+                  severity: 'error',
+                  code: 'YMLC109',
+                  message: `Deployment parent "${node.parent}" does not exist`,
+                  ...location,
+                }]),
+                stderr: '',
+              }
+            }
+            const nodeById = new Map(
+              deployment.nodes.map((candidate) => [
+                candidate.id,
+                candidate,
+              ]),
+            )
+            const ancestors = new Set([node.id])
+            let parent = node.parent
+            while (parent !== undefined) {
+              if (ancestors.has(parent)) {
+                const pointer =
+                  `/views/${index}/deployment/nodes/${nodeIndex}/parent`
+                const location = locateSourcePath(
+                  projectSource.path,
+                  loadedProject.document.yaml,
+                  loadedProject.document.lineCounter,
+                  [
+                    'views',
+                    index,
+                    'deployment',
+                    'nodes',
+                    nodeIndex,
+                    'parent',
+                  ],
+                  pointer,
+                )
+                return {
+                  exitCode: 1,
+                  stdout: diagnosticOutput([{
+                    severity: 'error',
+                    code: 'YMLC109',
+                    message: `Deployment node "${node.id}" participates in a parent cycle`,
+                    ...location,
+                  }]),
+                  stderr: '',
+                }
+              }
+              ancestors.add(parent)
+              parent = nodeById.get(parent)?.parent
+            }
+          }
+          const instanceIds = new Set<string>()
+          for (const [instanceIndex, instance] of (
+            deployment.instances
+          ).entries()) {
+            const projected = view.prepared.projection.subjects.find(
+              ({ id }) => id === instance.subject,
+            )
+            const problem =
+              instanceIds.has(instance.id)
+                ? `Deployment instance "${instance.id}" is duplicated`
+                : !nodeIds.has(instance.node)
+                  ? `Deployment instance node "${instance.node}" does not exist`
+                  : projected?.type !== 'concept'
+                    ? `Deployment instance subject "${instance.subject}" is not selected as a concept by its projection`
+                    : undefined
+            if (problem !== undefined) {
+              const field =
+                instanceIds.has(instance.id)
+                  ? 'id'
+                  : !nodeIds.has(instance.node)
+                    ? 'node'
+                    : 'subject'
+              const pointer =
+                `/views/${index}/deployment/instances/${instanceIndex}/${field}`
+              const location = locateSourcePath(
+                projectSource.path,
+                loadedProject.document.yaml,
+                loadedProject.document.lineCounter,
+                [
+                  'views',
+                  index,
+                  'deployment',
+                  'instances',
+                  instanceIndex,
+                  field,
+                ],
+                pointer,
+              )
+              return {
+                exitCode: 1,
+                stdout: diagnosticOutput([{
+                  severity: 'error',
+                  code: 'YMLC109',
+                  message: problem,
+                  ...location,
+                }]),
+                stderr: '',
+              }
+            }
+            instanceIds.add(instance.id)
+          }
+        }
         for (const [stepIndex, step] of (
           view.dynamic?.steps ?? []
         ).entries()) {

@@ -26,6 +26,27 @@ specification {
   tag aspectBehavior
   tag aspectPassive
 
+  // Adapter-owned deployment presentation kinds.
+  deploymentNode environment {
+    notation 'Environment'
+    style { color technologyColor }
+  }
+
+  deploymentNode zone {
+    notation 'Zone'
+    style { color compositeColor }
+  }
+
+  deploymentNode host {
+    notation 'Host'
+    style { color technologyColor }
+  }
+
+  deploymentNode runtime {
+    notation 'Runtime'
+    style { color applicationColor }
+  }
+
   // ── Motivation ────────────────────────────────────────────────────────────
 
   element stakeholder {

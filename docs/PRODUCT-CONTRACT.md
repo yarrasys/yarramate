@@ -285,6 +285,9 @@ The LikeC4 adapter may render a Core state comparison only when its projection
 selects both ordered states. Change metadata, colors, and borders remain
 derived adapter presentation and do not become graph claims. Generated-project
 ownership includes the ordered comparison.
+The adapter project may likewise order projected relationships as dynamic
+steps or instantiate projected concepts into a closed deployment hierarchy.
+Those declarations remain presentation hints and do not extend graph v2.
 
 Optional adapter mappings are versioned companion documents outside Core.
 They map globally qualified compiled native subject identities to opaque

@@ -163,6 +163,11 @@ concepts:
     name: Render LikeC4 dynamic view
     description: Orders projected relationship subjects as adapter-owned interaction steps.
     status: current
+  - id: render-likec4-deployment-view
+    kind: applicationFunction
+    name: Render LikeC4 deployment view
+    description: Instantiates projected concepts into a validated adapter-owned deployment hierarchy.
+    status: current
   - id: render-likec4-state-comparison
     kind: applicationFunction
     name: Render LikeC4 state comparison
@@ -480,6 +485,10 @@ relationships:
     kind: assignment
     from: likec4-export-adapter
     to: render-likec4-dynamic-view
+  - id: likec4-adapter-renders-deployment-view
+    kind: assignment
+    from: likec4-export-adapter
+    to: render-likec4-deployment-view
   - id: likec4-adapter-renders-state-comparison
     kind: assignment
     from: likec4-export-adapter
@@ -501,6 +510,10 @@ relationships:
     kind: serving
     from: likec4-export-command
     to: render-likec4-dynamic-view
+  - id: likec4-command-serves-deployment-view
+    kind: serving
+    from: likec4-export-command
+    to: render-likec4-deployment-view
   - id: likec4-command-serves-state-comparison
     kind: serving
     from: likec4-export-command
