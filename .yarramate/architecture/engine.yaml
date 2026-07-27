@@ -158,6 +158,11 @@ concepts:
     name: Assemble multi-view LikeC4 project
     description: Unions mapped projection results into one derived logical model with independent views.
     status: current
+  - id: render-likec4-dynamic-view
+    kind: applicationFunction
+    name: Render LikeC4 dynamic view
+    description: Orders projected relationship subjects as adapter-owned interaction steps.
+    status: current
   - id: render-likec4-state-comparison
     kind: applicationFunction
     name: Render LikeC4 state comparison
@@ -471,6 +476,10 @@ relationships:
     kind: assignment
     from: likec4-export-adapter
     to: assemble-likec4-project
+  - id: likec4-adapter-renders-dynamic-view
+    kind: assignment
+    from: likec4-export-adapter
+    to: render-likec4-dynamic-view
   - id: likec4-adapter-renders-state-comparison
     kind: assignment
     from: likec4-export-adapter
@@ -488,6 +497,10 @@ relationships:
     kind: serving
     from: likec4-export-command
     to: assemble-likec4-project
+  - id: likec4-command-serves-dynamic-view
+    kind: serving
+    from: likec4-export-command
+    to: render-likec4-dynamic-view
   - id: likec4-command-serves-state-comparison
     kind: serving
     from: likec4-export-command

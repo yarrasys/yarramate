@@ -120,9 +120,9 @@ notation.
   CLI with a source-located non-writing check, explicit kind-compatibility
   mapping, one-model multi-view project composition, state-specific and
   comparison visualization, explicit per-view membership after model union,
-  and regression-fixture and self-dogfooding mappings are implemented. Import,
-  round-tripping,
-  deployment and dynamic views, and general styling parity remain future
+  ordered dynamic views over projected relationship subjects, and
+  regression-fixture and self-dogfooding mappings are implemented. Import,
+  round-tripping, deployment views, and general styling parity remain future
   adapter work.**
 - Generic evidence-provider interface.
   **A provider-neutral existing-claim evidence overlay and deterministic report

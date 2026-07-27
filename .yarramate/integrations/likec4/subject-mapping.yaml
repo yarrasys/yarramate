@@ -222,6 +222,9 @@ mappings:
   - native: yarramate-engine#reconciliation-report-schema
     external: engineReconciliationReportSchema
     type: concept
+  - native: yarramate-engine#render-likec4-dynamic-view
+    external: engineRenderLikeC4DynamicView
+    type: concept
   - native: yarramate-engine#init-command
     external: engineInitCommand
     type: concept

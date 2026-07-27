@@ -73,6 +73,37 @@
         },
         "compare": {
           "$ref": "#/$defs/comparison"
+        },
+        "dynamic": {
+          "$ref": "#/$defs/dynamic"
+        }
+      }
+    },
+    "dynamic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["steps"],
+      "properties": {
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/dynamicStep"
+          }
+        }
+      }
+    },
+    "dynamicStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relationship"],
+      "properties": {
+        "relationship": {
+          "$ref": "#/$defs/subjectIdentity"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
         }
       }
     }

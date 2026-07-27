@@ -63,6 +63,10 @@ observations:
     result: confirmed
     evidence:
       uri: repo:src/adapters/graphify.ts
+  - subject: yarramate-engine#render-likec4-dynamic-view
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/likec4-project.ts
   - subject: yarramate-repository#graphify-tests
     result: confirmed
     evidence:

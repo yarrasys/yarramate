@@ -16,6 +16,16 @@ views:
   - projection: .yarramate/projections/starter-technology-deployment.yaml
   - projection: .yarramate/projections/starter-implementation-roadmap.yaml
   - projection: .yarramate/projections/engine-components.yaml
+  - id: compiler-pipeline
+    projection: .yarramate/projections/current-engine.yaml
+    dynamic:
+      steps:
+        - relationship: yarramate-engine#parse-triggers-structure-validation
+          title: validates structure
+        - relationship: yarramate-engine#structure-triggers-semantic-validation
+          title: validates semantic claims
+        - relationship: yarramate-engine#semantic-validation-triggers-compilation
+          title: compiles graph
   - projection: .yarramate/projections/likec4-export-path.yaml
   - projection: .yarramate/projections/state-engine-adapter.yaml
   - projection: .yarramate/projections/state-engine-target.yaml

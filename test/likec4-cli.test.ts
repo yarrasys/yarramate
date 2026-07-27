@@ -763,7 +763,7 @@ views:
 
       expect(result.exitCode).toBe(0)
       const model = readFileSync(join(project, 'model.likec4'), 'utf8')
-      expect(model.match(/^  view /gm)).toHaveLength(14)
+      expect(model.match(/^  (?:dynamic )?view /gm)).toHaveLength(15)
       expect(model).not.toMatch(/^    include \*$/gm)
       expect(model).toContain('view index')
       expect(model).not.toContain('view starter-landscape')
@@ -776,6 +776,7 @@ views:
       expect(model).toContain('view starter-technology-deployment')
       expect(model).toContain('view starter-implementation-roadmap')
       expect(model).toContain('view engine-components')
+      expect(model).toContain('dynamic view compiler-pipeline')
       expect(model).toContain(
         "view starter-technology-deployment {\n" +
           "    title 'Technology and deployment'\n" +
@@ -788,7 +789,7 @@ views:
           'utf8',
         ),
       )
-      expect(marker.views).toHaveLength(14)
+      expect(marker.views).toHaveLength(15)
       expect(marker.views[0]).toEqual({
         id: 'index',
         projection: 'starter-landscape@1.0',
@@ -807,6 +808,64 @@ views:
         'starter-technology-deployment@1.0',
         'starter-implementation-roadmap@1.0',
       ])
+    } finally {
+      rmSync(parent, { recursive: true, force: true })
+    }
+  })
+
+  it('renders ordered dynamic steps from projected relationship subjects', () => {
+    const parent = mkdtempSync(
+      join(tmpdir(), 'yarramate-likec4-dynamic-'),
+    )
+    const definition = join(parent, 'project.yaml')
+    const project = join(parent, 'generated')
+    try {
+      writeFileSync(
+        definition,
+        `format: yarramate/likec4-project/v1
+id: journey-flow
+version: "1.0"
+title: Journey flow
+mapping: .yarramate/integrations/likec4/subject-mapping.yaml
+kindMapping: .yarramate/integrations/likec4/kind-mapping.yaml
+views:
+  - id: discovery-flow
+    projection: .yarramate/projections/product-journeys.yaml
+    dynamic:
+      steps:
+        - relationship: yarramate-product#evidence-separation-supports-discovery
+          title: constrains discovery
+        - relationship: yarramate-product#discovery-supports-context
+          title: produces shared context
+`,
+      )
+      const result = runLikeC4Cli(
+        [
+          'export-project',
+          definition,
+          project,
+          '.yarramate/workspace.yaml',
+        ],
+        repositoryRoot,
+      )
+
+      expect(result.exitCode).toBe(0)
+      expect(result.stderr).toBe('')
+      const model = readFileSync(join(project, 'model.likec4'), 'utf8')
+      expect(model).toContain(
+        "dynamic view discovery-flow {\n" +
+          "    title 'Product journeys'\n" +
+          "    description 'Existing-project discovery and architecture-first design converge on one native, Git-reviewed lifecycle.'\n" +
+          "    productEvidenceIntentSeparation -> productDiscoverProjectArchitecture 'constrains discovery'\n" +
+          "    productDiscoverProjectArchitecture -> productSharedArchitectureContext 'produces shared context'\n" +
+          '  }',
+      )
+      const validation = spawnSync(
+        join(repositoryRoot, 'node_modules/.bin/likec4'),
+        ['validate', '--no-layout', project],
+        { cwd: repositoryRoot, encoding: 'utf8' },
+      )
+      expect(validation.status, validation.stderr).toBe(0)
     } finally {
       rmSync(parent, { recursive: true, force: true })
     }

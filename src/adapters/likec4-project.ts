@@ -30,6 +30,12 @@ export interface LikeC4ProjectDefinition {
       readonly from: string
       readonly to: string
     }
+    readonly dynamic?: {
+      readonly steps: ReadonlyArray<{
+        readonly relationship: string
+        readonly title?: string
+      }>
+    }
   }>
 }
 
@@ -47,7 +53,16 @@ export interface PreparedLikeC4ProjectView {
     readonly from: string
     readonly to: string
   }
+  readonly dynamic?: {
+    readonly steps: ReadonlyArray<{
+      readonly relationship: string
+      readonly title?: string
+    }>
+  }
 }
+
+const quote = (value: string): string =>
+  `'${value.replaceAll('\\', '\\\\').replaceAll("'", "\\'").replaceAll('\n', '\\n')}'`
 
 const unionProjection = (
   project: LikeC4ProjectDefinition,
@@ -88,6 +103,7 @@ const unionProjection = (
 const viewBody = ({
   id,
   prepared,
+  dynamic,
 }: PreparedLikeC4ProjectView): string => {
   const source = prepared.source
   const startToken = '\nviews {\n'
@@ -116,6 +132,48 @@ const viewBody = ({
         `    include * -> * where metadata.yarramateId is '${id}'`,
     )
     .sort()
+  if (dynamic !== undefined) {
+    const claimsById = new Map(
+      prepared.projection.claims.map((claim) => [claim.id, claim]),
+    )
+    const lines = dynamic.steps.map((step) => {
+      const structural = claimsById.get(step.relationship)!
+      const source = externalByNative.get(structural.subject)!
+      const target =
+        'ref' in structural.object
+          ? externalByNative.get(structural.object.ref)!
+          : ''
+      const declaredTitle = prepared.projection.claims.find(
+        (claim) =>
+          claim.subject === step.relationship &&
+          claim.predicate === 'yarramate/relationship/name' &&
+          'value' in claim.object,
+      )
+      const title =
+        step.title ??
+        (declaredTitle !== undefined && 'value' in declaredTitle.object
+          ? declaredTitle.object.value
+          : undefined)
+      return `    ${source} -> ${target}${title === undefined ? '' : ` ${quote(title)}`}`
+    })
+    const viewId =
+      id ?? prepared.projection.projection.split('@')[0]
+    return [
+      `  dynamic view ${viewId} {`,
+      ...(prepared.projection.presentation?.title === undefined
+        ? []
+        : [`    title ${quote(prepared.projection.presentation.title)}`]),
+      ...(prepared.projection.presentation?.description === undefined
+        ? []
+        : [
+            `    description ${quote(
+              prepared.projection.presentation.description,
+            )}`,
+          ]),
+      ...lines,
+      '  }',
+    ].join('\n')
+  }
   const membershipRules = [
     includeRule,
     '    exclude * -> *',

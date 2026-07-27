@@ -462,12 +462,52 @@ export function runLikeC4Cli(
                   ...(view.compare === undefined
                     ? {}
                     : { comparison: view.compare }),
+                  ...(view.dynamic === undefined
+                    ? {}
+                    : { dynamic: view.dynamic }),
                 },
               ]
             : [],
       )
       const renderedViewIds = new Set<string>()
       for (const [index, view] of successfulViews.entries()) {
+        for (const [stepIndex, step] of (
+          view.dynamic?.steps ?? []
+        ).entries()) {
+          const projected = view.prepared.projection.subjects.find(
+            ({ id }) => id === step.relationship,
+          )
+          if (projected?.type !== 'relationship') {
+            const pointer =
+              `/views/${index}/dynamic/steps/${stepIndex}/relationship`
+            const location = locateSourcePath(
+              projectSource.path,
+              loadedProject.document.yaml,
+              loadedProject.document.lineCounter,
+              [
+                'views',
+                index,
+                'dynamic',
+                'steps',
+                stepIndex,
+                'relationship',
+              ],
+              pointer,
+            )
+            return {
+              exitCode: 1,
+              stdout: diagnosticOutput([
+                {
+                  severity: 'error',
+                  code: 'YMLC108',
+                  message: `Dynamic step relationship "${step.relationship}" is not selected as a relationship by its projection`,
+                  ...location,
+                },
+              ]),
+              stderr: '',
+            }
+          }
+        }
         const renderedId =
           view.id ?? view.prepared.projection.projection.split('@')[0]!
         if (renderedViewIds.has(renderedId)) {

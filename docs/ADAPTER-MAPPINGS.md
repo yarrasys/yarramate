@@ -123,6 +123,7 @@ canonical. Projection title and description hints become view properties.
 Raw projection export emits a flat logical model and one ordinary element
 view. It does not emit deployments, dynamic views, imports, or layout state,
 and it does not import or round-trip LikeC4.
+Project export may add adapter-owned dynamic views as described below.
 
 `export-project` writes `model.likec4`, `specification.likec4`, and
 `likec4.config.json` into a project directory, plus a versioned
@@ -265,3 +266,23 @@ In a multi-view project, direct comparison styles remain local to the selected
 view and marker v2 records its ordered comparison. Because model elements are
 shared by every view, view-specific `yarramateChange` metadata is not placed on
 the shared declarations.
+
+## Dynamic-view presentation
+
+A project view may declare adapter-owned dynamic steps:
+
+```yaml
+views:
+  - id: request-flow
+    projection: .yarramate/projections/request-flow.yaml
+    dynamic:
+      steps:
+        - relationship: checkout#client-calls-api
+          title: submits request
+        - relationship: checkout#api-reads-orders
+```
+
+Every step must name a relationship selected by that view's projection.
+Endpoints and the default displayed relationship name come from compiled
+claims. Step order and title overrides are presentation hints; they do not
+become native claims or alter graph v2.

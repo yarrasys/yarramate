@@ -106,6 +106,9 @@ proving vocabulary extension does not leak into Core or lose provenance.
 `self:check:likec4` exercises all repository visualization projections without
 writing derived files, while `self:export:likec4` proves repeatable
 materialization of the single `.yarramate-out/likec4` project.
+The same project renders the compiler validation pipeline as an ordered
+dynamic view over existing triggering relationships. The order lives only in
+the adapter project; the relationships remain canonical native claims.
 Both commands now delegate semantic orchestration to the same exported
 `prepareLikeC4Export` operation; the CLI retains argument handling, result
 formatting, and staged, marker-last filesystem publication rather than
@@ -130,7 +133,8 @@ across the architecture-state engine slice. The shared repository LikeC4
 mapping keeps external identities explicit and singular.
 `.yarramate/integrations/likec4/project.yaml` composes these with the export-path
 projection, the focused product-journeys projection, and eight native starter
-projections into one derived model containing fourteen independent views.
+projections into one derived model containing fifteen independent views,
+including the compiler pipeline dynamic view.
 Explicit mapped node predicates and
 native relationship-identity predicates retain each projection's exact
 membership after model union; the technology template currently demonstrates
