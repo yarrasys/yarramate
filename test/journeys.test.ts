@@ -1,0 +1,118 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { describe, expect, it } from 'vitest'
+import { runCli } from '../src/cli.js'
+
+const repositoryRoot = fileURLToPath(new URL('..', import.meta.url))
+const fixture = (journey: 'discovery' | 'design', path: string) =>
+  join('test/fixtures/journeys', journey, path)
+
+describe('agent journeys through the stable CLI', () => {
+  it('checks, evaluates evidence for, and renders an existing-project discovery proposal', () => {
+    const workspace = fixture('discovery', '.yarramate/workspace.yaml')
+    const check = runCli(['check', workspace, '--json'], repositoryRoot)
+    const evidence = runCli(
+      [
+        'evidence',
+        fixture('discovery', '.yarramate/evidence/repository.yaml'),
+        workspace,
+      ],
+      repositoryRoot,
+    )
+    const context = runCli(
+      [
+        'context',
+        fixture('discovery', '.yarramate/projections/project-context.yaml'),
+        workspace,
+      ],
+      repositoryRoot,
+    )
+
+    expect(JSON.parse(check.stdout)).toEqual({
+      format: 'yarramate/check-result/v1',
+      ok: true,
+      diagnostics: [],
+    })
+    expect(JSON.parse(evidence.stdout).summary).toEqual({
+      confirmed: 3,
+      contradicted: 0,
+      unknown: 0,
+      notObserved: 0,
+    })
+    expect(JSON.parse(context.stdout).subjects).toEqual([
+      { id: 'orders-project#customer', type: 'concept' },
+      { id: 'orders-project#order-api', type: 'concept' },
+      { id: 'orders-project#order-api-accesses-order-record', type: 'relationship' },
+      { id: 'orders-project#order-api-realizes-order-service', type: 'relationship' },
+      { id: 'orders-project#order-record', type: 'concept' },
+      { id: 'orders-project#order-service', type: 'concept' },
+      { id: 'orders-project#order-service-serves-customer', type: 'relationship' },
+    ])
+  })
+
+  it('checks alternatives and emits bounded target context before implementation', () => {
+    const workspace = fixture('design', '.yarramate/workspace.yaml')
+    const check = runCli(['check', workspace, '--json'], repositoryRoot)
+    const alternatives = runCli(
+      [
+        'context',
+        fixture('design', '.yarramate/projections/alternatives.yaml'),
+        workspace,
+      ],
+      repositoryRoot,
+    )
+    const target = runCli(
+      [
+        'context',
+        fixture('design', '.yarramate/projections/target-solution.yaml'),
+        workspace,
+      ],
+      repositoryRoot,
+    )
+    const comparison = runCli(
+      [
+        'compare',
+        'delivery-design#empty-baseline',
+        'delivery-design#target',
+        workspace,
+      ],
+      repositoryRoot,
+    )
+
+    expect(JSON.parse(check.stdout).ok).toBe(true)
+    expect(JSON.parse(alternatives.stdout).subjects).toEqual(
+      expect.arrayContaining([
+        { id: 'delivery-design#modular-monolith', type: 'concept' },
+        { id: 'delivery-design#microservices', type: 'concept' },
+      ]),
+    )
+    expect(JSON.parse(target.stdout).subjects).toEqual([
+      { id: 'delivery-design#api-realizes-service', type: 'relationship' },
+      { id: 'delivery-design#delivery-api', type: 'concept' },
+      { id: 'delivery-design#delivery-data', type: 'concept' },
+      { id: 'delivery-design#delivery-service', type: 'concept' },
+      { id: 'delivery-design#modular-monolith', type: 'concept' },
+      { id: 'delivery-design#modular-monolith-realizes-delivery', type: 'relationship' },
+      { id: 'delivery-design#monolith-contains-api', type: 'relationship' },
+      { id: 'delivery-design#monolith-contains-data', type: 'relationship' },
+      { id: 'delivery-design#reliable-delivery', type: 'concept' },
+    ])
+    expect(JSON.parse(comparison.stdout).added).toHaveLength(6)
+  })
+
+  it('ships one portable skill for both journeys', () => {
+    const skill = readFileSync(
+      join(repositoryRoot, 'skills/yarramate-architecture/SKILL.md'),
+      'utf8',
+    )
+
+    expect(skill).toContain('## Discover an existing project')
+    expect(skill).toContain('## Design a new solution')
+    expect(skill).toContain('yarramate check')
+    expect(skill).toContain('yarramate context')
+    expect(skill).toMatch(
+      /Never promote evidence into declared intent\s+automatically\./,
+    )
+  })
+})

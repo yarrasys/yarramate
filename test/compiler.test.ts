@@ -1,7 +1,10 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { compileWorkspace } from '../src/compiler.js'
+import {
+  compileWorkspace,
+  compileWorkspaceWithProfileContext,
+} from '../src/compiler.js'
 
 const fixture = (path: string): string =>
   readFileSync(
@@ -10,6 +13,34 @@ const fixture = (path: string): string =>
   )
 
 describe('compileWorkspace', () => {
+  it('keeps graph v2 identical when resolved profile context is requested', () => {
+    const sources = [
+      {
+        path: 'minimal.yaml',
+        source: `format: yarramate/v1
+id: minimal
+profile: yarramate/core@0.1
+concepts:
+  - id: service
+    kind: applicationService
+    name: Service
+relationships: []
+`,
+      },
+    ]
+
+    const graphOnly = compileWorkspace(sources)
+    const contextual = compileWorkspaceWithProfileContext(sources)
+    expect(graphOnly.ok).toBe(true)
+    expect(contextual.ok).toBe(true)
+    if (!graphOnly.ok || !contextual.ok) return
+
+    expect(contextual.graph).toEqual(graphOnly.graph)
+    expect(contextual.profileContext.conceptKindLineages.get(
+      'yarramate/core@0.1#applicationService',
+    )).toEqual(['yarramate/core@0.1#applicationService'])
+  })
+
   it('compiles architecture states and concise subject presence into claims', () => {
     const result = compileWorkspace([
       {

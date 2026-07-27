@@ -32,6 +32,14 @@ Connected expansion is exactly one hop. An endpoint introduced by expansion
 does not cause another relationship to be selected. State applicability still
 applies, selector ordering does not affect output, and graph v2 is unchanged.
 
+Projection v1 also accepts `isolatedConcepts: include | exclude`, defaulting to
+`include`. Exclusion removes concept subjects that are not endpoints of any
+selected relationship after relationship selection. It never removes an
+endpoint, computes reachability, or judges whether the architecture is
+complete. This rule and its wording are original to YarraMate and arise from
+rendering the repository's broad starter views, where isolated catalogues
+obscured the selected neighbourhood.
+
 YarraMate dogfoods these rules through eight optional native starter
 projections. Their wording and query composition are original. They are
 templates rather than completeness requirements and do not reproduce or claim
@@ -47,7 +55,8 @@ producing a valid empty view instead of exposing the unioned model.
 Views can include useful immediate context without hidden recursive expansion.
 Relationship semantics remain visible and globally qualified. Partial
 workspaces can adopt the starter pack without being forced to populate every
-concern.
+concern. Broad views can suppress isolated catalogue entries without changing
+the default behavior of existing projections or imposing a completeness rule.
 
 More expressive query clauses, reference-claim expansion, hierarchy, layout,
 and external-language viewpoint rules remain separate future decisions.

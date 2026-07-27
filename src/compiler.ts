@@ -97,10 +97,12 @@ interface NativeProfile {
 interface ResolvedConceptKind {
   readonly identity: string
   readonly aspect: (typeof conceptKinds)[number]['aspect']
+  readonly lineage: readonly string[]
 }
 
 interface ResolvedRelationshipKind {
   readonly identity: string
+  readonly lineage: readonly string[]
   readonly sourceAspects?: readonly (typeof conceptKinds)[number]['aspect'][]
   readonly targetAspects?: readonly (typeof conceptKinds)[number]['aspect'][]
 }
@@ -143,8 +145,21 @@ export interface SemanticGraph {
   readonly claims: readonly GraphClaim[]
 }
 
+export interface ResolvedProfileContext {
+  readonly conceptKindLineages: ReadonlyMap<string, readonly string[]>
+  readonly relationshipKindLineages: ReadonlyMap<string, readonly string[]>
+}
+
 export type CompilationResult =
   | { readonly ok: true; readonly graph: SemanticGraph }
+  | { readonly ok: false; readonly diagnostics: readonly Diagnostic[] }
+
+export type ContextualCompilationResult =
+  | {
+      readonly ok: true
+      readonly graph: SemanticGraph
+      readonly profileContext: ResolvedProfileContext
+    }
   | { readonly ok: false; readonly diagnostics: readonly Diagnostic[] }
 
 const compareById = <T extends { readonly id: string }>(left: T, right: T) =>
@@ -155,7 +170,7 @@ const presenceClaimId = (subject: string, state: string) =>
 
 const diagnosticFailure = (
   diagnostics: readonly Diagnostic[],
-): CompilationResult => ({
+): Extract<CompilationResult, { readonly ok: false }> => ({
   ok: false,
   diagnostics: [...diagnostics].sort(
     (left, right) =>
@@ -167,9 +182,9 @@ const diagnosticFailure = (
   ),
 })
 
-export function compileWorkspace(
+function compileWorkspaceResolved(
   sources: readonly WorkspaceSource[],
-): CompilationResult {
+): ContextualCompilationResult {
   const profileInputs: WorkspaceSource[] = []
   const documentInputs: WorkspaceSource[] = []
   for (const source of sources) {
@@ -189,6 +204,7 @@ export function compileWorkspace(
     const resolved = {
       identity: `${coreProfile}#${kind.id}`,
       aspect: kind.aspect,
+      lineage: [`${coreProfile}#${kind.id}`],
     } satisfies ResolvedConceptKind
     coreConceptKinds.set(kind.id, resolved)
     conceptKindByIdentity.set(resolved.identity, resolved)
@@ -197,6 +213,7 @@ export function compileWorkspace(
   for (const policy of relationshipPolicies) {
     const resolved = {
       identity: `${coreProfile}#${policy.id}`,
+      lineage: [`${coreProfile}#${policy.id}`],
       sourceAspects: policy.sourceAspects,
       targetAspects: policy.targetAspects,
     } satisfies ResolvedRelationshipKind
@@ -345,6 +362,7 @@ export function compileWorkspace(
         const resolved = {
           identity: `${identity}#${kind.id}`,
           aspect: parent.aspect,
+          lineage: [...parent.lineage, `${identity}#${kind.id}`],
         } satisfies ResolvedConceptKind
         resolvedConceptKinds.set(kind.id, resolved)
         conceptKindByIdentity.set(resolved.identity, resolved)
@@ -413,6 +431,7 @@ export function compileWorkspace(
         }
         const resolved = {
           identity: `${identity}#${kind.id}`,
+          lineage: [...parent.lineage, `${identity}#${kind.id}`],
           sourceAspects: kind.sourceAspects ?? parent.sourceAspects,
           targetAspects: kind.targetAspects ?? parent.targetAspects,
         } satisfies ResolvedRelationshipKind
@@ -1295,6 +1314,18 @@ export function compileWorkspace(
 
   return {
     ok: true,
+    profileContext: {
+      conceptKindLineages: new Map(
+        [...conceptKindByIdentity]
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([identity, kind]) => [identity, kind.lineage]),
+      ),
+      relationshipKindLineages: new Map(
+        [...relationshipKindByIdentity]
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([identity, kind]) => [identity, kind.lineage]),
+      ),
+    },
     graph: {
       format: 'yarramate/graph/v2',
       profiles: [
@@ -1312,3 +1343,14 @@ export function compileWorkspace(
     },
   }
 }
+
+export function compileWorkspace(
+  sources: readonly WorkspaceSource[],
+): CompilationResult {
+  const result = compileWorkspaceResolved(sources)
+  return result.ok ? { ok: true, graph: result.graph } : result
+}
+
+export const compileWorkspaceWithProfileContext = (
+  sources: readonly WorkspaceSource[],
+): ContextualCompilationResult => compileWorkspaceResolved(sources)

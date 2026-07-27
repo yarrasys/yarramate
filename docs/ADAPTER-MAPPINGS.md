@@ -92,6 +92,7 @@ the authored value that can correct the failure:
 | `YMLC104` | A resolved kind is absent from the bundled specification. | Kind mapping `external`, or the native kind when no mapping exists. |
 | `YMLC105` | A compared architecture state is absent from the graph. | Projection state selector. |
 | `YMLC106` | A compared state is omitted from the projection query. | Projection `states` array. |
+| `YMLC107` | Two project entries resolve to the same LikeC4 view identity. | Duplicate project view `id`, or `projection` when no override is present. |
 
 Schema and source parsing failures retain their existing Core diagnostic
 codes in the same envelope. Mixed Core and adapter failures use the shared
@@ -101,7 +102,10 @@ For callers starting with source documents, `prepareLikeC4Export` is the deep
 adapter seam. One call compiles the workspace, loads and evaluates the
 projection, loads and validates subject and optional kind mappings, enforces
 either the bundled or consumer-managed vocabulary contract, and renders the
-source. It returns no partial success state.
+source. It supplies resolved profile context when a projection explicitly
+requests descendant kind matching. That context is tool-neutral and
+in-memory; it is not an adapter field or graph v2 extension. The operation
+returns no partial success state.
 
 Every projected concept must have a valid LikeC4 identifier in the mapping.
 Relationship declarations use mapped endpoint identities and the terminal
@@ -151,6 +155,8 @@ title: YarraMate architecture
 mapping: .yarramate/integrations/likec4/subject-mapping.yaml
 kindMapping: .yarramate/integrations/likec4/kind-mapping.yaml
 views:
+  - id: index
+    projection: .yarramate/projections/starter-landscape.yaml
   - projection: .yarramate/projections/likec4-export-path.yaml
   - projection: .yarramate/projections/state-engine-change.yaml
     compare:
@@ -168,7 +174,11 @@ yarramate-likec4 export-project \
 The adapter unions mapped subjects and claims into one `model` block, then
 emits one ordinary LikeC4 view per projection. This avoids duplicate
 declarations without copying or weakening the semantic queries. Project
-definition and generated marker v2 schemas are
+entries may supply an adapter-owned `id` override without changing the native
+projection identity. Using `id: index` on a curated landscape prevents LikeC4
+from synthesizing a landing view over the entire unioned model. The generated
+ownership marker records both the override and projection identity.
+Project definition and generated marker v2 schemas are
 `schema/yarramate-likec4-project.schema.json` and
 `schema/yarramate-likec4-generated-project-v2.schema.json`. The lower-level
 `export` command still writes one projection's model source to stdout.

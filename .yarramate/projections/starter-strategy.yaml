@@ -17,6 +17,7 @@ query:
     - yarramate/core@0.1#realization
     - yarramate/core@0.1#specialization
   relationships: connected
+  isolatedConcepts: exclude
 presentation:
   title: Strategy and capabilities
   description: Strategic outcomes, resources, capabilities, value streams, and courses of action.

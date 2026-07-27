@@ -580,7 +580,8 @@ version: "1.0"
 title: System architecture
 mapping: likec4.mapping.yaml
 views:
-  - projection: baseline.projection.yaml
+  - id: index
+    projection: baseline.projection.yaml
   - projection: target.projection.yaml
   - projection: empty.projection.yaml
 `,
@@ -625,20 +626,21 @@ views:
       const model = readFileSync(join(project, 'model.likec4'), 'utf8')
       expect(model.match(/^model \{/gm)).toHaveLength(1)
       expect(model.match(/^views \{/gm)).toHaveLength(1)
-      expect(model).toContain('view baseline')
+      expect(model).toContain('view index')
+      expect(model).not.toContain('view baseline')
       expect(model).toContain('view target')
       expect(model).toContain('view empty')
       expect(model).toContain("legacy = applicationComponent 'Legacy'")
       expect(model).toContain("modern = applicationComponent 'Modern'")
       expect(model).toContain("shared = applicationComponent 'Shared'")
       expect(model).toContain(
-        'view baseline {\n    include legacy, shared\n',
+        'view index {\n    include legacy, shared\n',
       )
       expect(model).toContain(
         'view target {\n    include modern, shared\n',
       )
       expect(model).not.toContain(
-        'view baseline {\n    include *\n',
+        'view index {\n    include *\n',
       )
       expect(model).not.toContain(
         'view target {\n    include *\n',
@@ -647,7 +649,7 @@ views:
         "view empty {\n    include * where metadata.yarramateId is '__yarramate_no_match__'\n",
       )
       const baselineView = model.slice(
-        model.indexOf('  view baseline {'),
+        model.indexOf('  view index {'),
         model.indexOf('  view target {'),
       )
       const targetView = model.slice(
@@ -687,7 +689,7 @@ views:
         project: 'system@1.0',
         mapping: 'system-likec4@1.0',
         views: [
-          { projection: 'baseline@1.0' },
+          { id: 'index', projection: 'baseline@1.0' },
           { projection: 'target@1.0' },
           { projection: 'empty@1.0' },
         ],
@@ -761,16 +763,19 @@ views:
 
       expect(result.exitCode).toBe(0)
       const model = readFileSync(join(project, 'model.likec4'), 'utf8')
-      expect(model.match(/^  view /gm)).toHaveLength(12)
+      expect(model.match(/^  view /gm)).toHaveLength(14)
       expect(model).not.toMatch(/^    include \*$/gm)
-      expect(model).toContain('view starter-landscape')
+      expect(model).toContain('view index')
+      expect(model).not.toContain('view starter-landscape')
       expect(model).toContain('view starter-motivation')
       expect(model).toContain('view starter-strategy')
+      expect(model).toContain('view product-journeys')
       expect(model).toContain('view starter-business-operation')
       expect(model).toContain('view starter-application-cooperation')
       expect(model).toContain('view starter-information-structure')
       expect(model).toContain('view starter-technology-deployment')
       expect(model).toContain('view starter-implementation-roadmap')
+      expect(model).toContain('view engine-components')
       expect(model).toContain(
         "view starter-technology-deployment {\n" +
           "    title 'Technology and deployment'\n" +
@@ -783,8 +788,14 @@ views:
           'utf8',
         ),
       )
-      expect(marker.views).toHaveLength(12)
-      expect(marker.views.slice(0, 8).map(({ projection }: {
+      expect(marker.views).toHaveLength(14)
+      expect(marker.views[0]).toEqual({
+        id: 'index',
+        projection: 'starter-landscape@1.0',
+      })
+      expect(marker.views.filter(({ projection }: {
+        projection: string
+      }) => projection.startsWith('starter-')).map(({ projection }: {
         projection: string
       }) => projection)).toEqual([
         'starter-landscape@1.0',
@@ -796,6 +807,57 @@ views:
         'starter-technology-deployment@1.0',
         'starter-implementation-roadmap@1.0',
       ])
+    } finally {
+      rmSync(parent, { recursive: true, force: true })
+    }
+  })
+
+  it('rejects duplicate rendered view identities in a project definition', () => {
+    const parent = mkdtempSync(
+      join(tmpdir(), 'yarramate-likec4-duplicate-view-'),
+    )
+    const definition = join(parent, 'project.yaml')
+    try {
+      writeFileSync(
+        definition,
+        `format: yarramate/likec4-project/v1
+id: duplicate-view
+version: "1.0"
+title: Duplicate view
+mapping: test/fixtures/valid/governed-change.likec4-mapping.yaml
+views:
+  - id: index
+    projection: test/fixtures/valid/governed-change.projection.yaml
+  - id: index
+    projection: test/fixtures/valid/governed-change.projection.yaml
+`,
+      )
+
+      const result = runLikeC4Cli(
+        [
+          'check',
+          definition,
+          '--json',
+          'test/fixtures/valid/governed-change.workspace.yaml',
+        ],
+        repositoryRoot,
+      )
+
+      expect(result.exitCode).toBe(1)
+      expect(JSON.parse(result.stdout)).toMatchObject({
+        ok: false,
+        diagnostics: [
+          {
+            severity: 'error',
+            code: 'YMLC107',
+            message: 'LikeC4 view identity "index" is duplicated',
+            path: definition,
+            pointer: '/views/1/id',
+            line: 9,
+            column: 9,
+          },
+        ],
+      })
     } finally {
       rmSync(parent, { recursive: true, force: true })
     }
@@ -1093,8 +1155,8 @@ mappings:
               'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
             subject: 'yarramate-repository#likec4-export-source',
             path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/12/kind',
-            line: 57,
+            pointer: '/concepts/13/kind',
+            line: 61,
             column: 11,
           },
           {
@@ -1103,17 +1165,6 @@ mappings:
             message:
               'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
             subject: 'yarramate-repository#likec4-prepare-source',
-            path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/15/kind',
-            line: 69,
-            column: 11,
-          },
-          {
-            severity: 'error',
-            code: 'YMLC104',
-            message:
-              'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
-            subject: 'yarramate-repository#likec4-project-source',
             path: '.yarramate/architecture/repository.yaml',
             pointer: '/concepts/16/kind',
             line: 73,
@@ -1124,8 +1175,7 @@ mappings:
             code: 'YMLC104',
             message:
               'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
-            subject:
-              'yarramate-repository#likec4-project-definition-source',
+            subject: 'yarramate-repository#likec4-project-source',
             path: '.yarramate/architecture/repository.yaml',
             pointer: '/concepts/17/kind',
             line: 77,
@@ -1137,10 +1187,22 @@ mappings:
             message:
               'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
             subject:
+              'yarramate-repository#likec4-project-definition-source',
+            path: '.yarramate/architecture/repository.yaml',
+            pointer: '/concepts/18/kind',
+            line: 81,
+            column: 11,
+          },
+          {
+            severity: 'error',
+            code: 'YMLC104',
+            message:
+              'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
+            subject:
               'yarramate-repository#likec4-project-schema-source',
             path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/40/kind',
-            line: 174,
+            pointer: '/concepts/41/kind',
+            line: 178,
             column: 11,
           },
           {
@@ -1151,8 +1213,8 @@ mappings:
             subject:
               'yarramate-repository#likec4-generated-project-v2-schema-source',
             path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/41/kind',
-            line: 178,
+            pointer: '/concepts/42/kind',
+            line: 182,
             column: 11,
           },
         ],

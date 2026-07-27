@@ -6,6 +6,18 @@ mappings:
   - native: yarramate-engine#compiler
     external: compiler
     type: concept
+  - native: yarramate-engine#workspace-loader
+    external: workspaceLoader
+    type: concept
+  - native: yarramate-engine#evidence-evaluator
+    external: evidenceEvaluator
+    type: concept
+  - native: yarramate-engine#core-contract-checker
+    external: coreContractChecker
+    type: concept
+  - native: yarramate-engine#source-document-loader
+    external: sourceDocumentLoader
+    type: concept
   - native: yarramate-engine#adapter-mapping
     external: adapterMapping
     type: concept
@@ -68,6 +80,15 @@ mappings:
     type: concept
   - native: yarramate-repository#likec4-project-source
     external: likec4ProjectSource
+    type: concept
+  - native: yarramate-repository#agent-skill-source
+    external: agentSkillSource
+    type: concept
+  - native: yarramate-repository#journey-tests
+    external: journeyTests
+    type: concept
+  - native: yarramate-repository#product-journeys-guide
+    external: productJourneysGuide
     type: concept
   - native: yarramate-repository#likec4-project-definition-source
     external: likec4ProjectDefinitionSource
@@ -249,6 +270,15 @@ mappings:
   - native: yarramate-product#deterministic-correctness
     external: productDeterministicCorrectness
     type: concept
+  - native: yarramate-product#design-solution-before-build
+    external: productDesignSolutionBeforeBuild
+    type: concept
+  - native: yarramate-product#discover-project-architecture
+    external: productDiscoverProjectArchitecture
+    type: concept
+  - native: yarramate-product#evidence-intent-separation
+    external: productEvidenceIntentSeparation
+    type: concept
   - native: yarramate-product#evaluate-architecture-evidence
     external: productEvaluateArchitectureEvidence
     type: concept
@@ -257,6 +287,9 @@ mappings:
     type: concept
   - native: yarramate-product#provide-machine-context
     external: productProvideMachineContext
+    type: concept
+  - native: yarramate-product#reconcile-intent-and-evidence
+    external: productReconcileIntentAndEvidence
     type: concept
   - native: yarramate-product#repository-native-operation
     external: productRepositoryNativeOperation

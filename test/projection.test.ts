@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import Ajv2020Module from 'ajv/dist/2020.js'
 import {
   compileWorkspace,
+  compileWorkspaceWithProfileContext,
   evaluateProjection,
   loadProjection,
   renderProjectionMarkdown,
@@ -56,6 +57,90 @@ relationships:
 `
 
 describe('evaluateProjection', () => {
+  it('matches extension kinds through resolved semantic parent lineages', () => {
+    const compilation = compileWorkspaceWithProfileContext([
+      {
+        path: 'platform-profile.yaml',
+        source: `format: yarramate/profile/v1
+id: example/platform
+version: "1.0"
+extends: yarramate/core@0.1
+conceptKinds:
+  - id: platform-team
+    name: Platform team
+    parent: yarramate/core@0.1#businessActor
+relationshipKinds:
+  - id: owns
+    name: Owns
+    parent: yarramate/core@0.1#assignment
+    targetAspects: [behavior]
+`,
+      },
+      {
+        path: 'platform.yaml',
+        source: `format: yarramate/v1
+id: platform
+profile: example/platform@1.0
+concepts:
+  - id: team
+    kind: platform-team
+    name: Platform team
+  - id: operate
+    kind: businessFunction
+    name: Operate platform
+relationships:
+  - id: team-owns-operation
+    kind: owns
+    from: team
+    to: operate
+`,
+      },
+    ])
+    expect(compilation.ok).toBe(true)
+    if (!compilation.ok) return
+
+    const exactResult = evaluateProjection(
+      compilation.graph,
+      {
+        format: 'yarramate/projection/v1',
+        id: 'exact-business-ownership',
+        version: '1.0',
+        query: {
+          kinds: ['yarramate/core@0.1#businessActor'],
+          relationshipKinds: ['yarramate/core@0.1#assignment'],
+          relationships: 'connected',
+        },
+      },
+      compilation.profileContext,
+    )
+    expect(exactResult.subjects).toEqual([])
+
+    const result = evaluateProjection(
+      compilation.graph,
+      {
+        format: 'yarramate/projection/v1',
+        id: 'business-ownership',
+        version: '1.0',
+        query: {
+          kinds: ['yarramate/core@0.1#businessActor'],
+          relationshipKinds: ['yarramate/core@0.1#assignment'],
+          kindMatching: 'descendants',
+          relationships: 'connected',
+        },
+      },
+      compilation.profileContext,
+    )
+
+    expect(result.subjects).toEqual([
+      { id: 'platform#operate', type: 'concept' },
+      { id: 'platform#team', type: 'concept' },
+      {
+        id: 'platform#team-owns-operation',
+        type: 'relationship',
+      },
+    ])
+  })
+
   it('selects only relationships matching portable qualified kind selectors', () => {
     const compilation = compileWorkspace([
       { path: 'projection-model.yaml', source },
@@ -140,6 +225,41 @@ describe('evaluateProjection', () => {
     ])
   })
 
+  it('can exclude concepts isolated from the selected relationships', () => {
+    const compilation = compileWorkspace([
+      { path: 'projection-model.yaml', source },
+    ])
+    expect(compilation.ok).toBe(true)
+    if (!compilation.ok) return
+
+    const result = evaluateProjection(compilation.graph, {
+      format: 'yarramate/projection/v1',
+      id: 'connected-subgraph',
+      version: '1.0',
+      query: {
+        isolatedConcepts: 'exclude',
+      },
+    } as ProjectionDefinition)
+
+    expect(result.subjects).toEqual([
+      { id: 'projection-model#first', type: 'concept' },
+      {
+        id: 'projection-model#first-influences-future',
+        type: 'relationship',
+      },
+      {
+        id: 'projection-model#first-supports-second',
+        type: 'relationship',
+      },
+      { id: 'projection-model#future', type: 'concept' },
+      { id: 'projection-model#second', type: 'concept' },
+      {
+        id: 'projection-model#second-supports-future',
+        type: 'relationship',
+      },
+    ])
+  })
+
   it('loads relationship-kind and connected-endpoint selectors through the normative schema', () => {
     const loaded = loadProjection({
       path: 'connected.projection.yaml',
@@ -150,6 +270,7 @@ query:
   relationshipKinds:
     - yarramate/core@0.1#serving
   relationships: connected
+  isolatedConcepts: exclude
 `,
     })
 
@@ -162,6 +283,7 @@ query:
         query: {
           relationshipKinds: ['yarramate/core@0.1#serving'],
           relationships: 'connected',
+          isolatedConcepts: 'exclude',
         },
       },
     })

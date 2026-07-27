@@ -1,0 +1,15 @@
+format: yarramate/projection/v1
+id: engine-components
+version: "1.0"
+query:
+  documents:
+    - yarramate-engine
+  kinds:
+    - yarramate/core@0.1#applicationComponent
+  kindMatching: descendants
+  statuses:
+    - current
+  relationships: none
+presentation:
+  title: Engine components
+  description: Core application components and explicit semantic descendants that make up the YarraMate engine.

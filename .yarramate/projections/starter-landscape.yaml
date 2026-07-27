@@ -17,6 +17,7 @@ query:
     - yarramate/core@0.1#realization
     - yarramate/core@0.1#serving
   relationships: connected
+  isolatedConcepts: exclude
 presentation:
   title: Architecture landscape
   description: A cross-domain orientation view of significant intent, capabilities, services, components, and architecture states.

@@ -14,6 +14,7 @@ query:
     - yarramate/core@0.1#association
     - yarramate/core@0.1#composition
   relationships: connected
+  isolatedConcepts: exclude
 presentation:
   title: Information structure
   description: Information, data, representations, artifacts, and the architecture behavior that uses or realizes them.

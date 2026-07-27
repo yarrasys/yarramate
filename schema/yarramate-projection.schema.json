@@ -81,8 +81,14 @@
             "$ref": "#/$defs/qualifiedKind"
           }
         },
+        "kindMatching": {
+          "enum": ["exact", "descendants"]
+        },
         "relationships": {
           "enum": ["between", "connected", "none"]
+        },
+        "isolatedConcepts": {
+          "enum": ["include", "exclude"]
         }
       }
     },

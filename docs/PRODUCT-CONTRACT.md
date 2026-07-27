@@ -10,6 +10,31 @@ methodology. It owns a tool-neutral semantic graph, validates architectural
 claims and rules, generates task-specific context and projections, and
 supports incremental solution design through human and agent interfaces.
 
+## Primary product journeys
+
+YarraMate serves two primary repository-native journeys:
+
+1. **Architecture discovery** — an agent harness invokes the CLI while
+   inspecting an existing project, then proposes a native architecture model
+   supported by repository evidence.
+2. **Architecture-first design** — people and an agent harness explore a new
+   solution before implementation, recording agreed intent directly in native
+   documents.
+
+Both journeys converge on the same versioned documents, profiles, claims,
+projections, diagnostics, and Git review boundary. YarraMate does not maintain
+separate discovered and designed canonical models.
+
+Discovery observations and generated documents are proposals until accepted
+through the repository's normal Git process. Evidence supports or challenges
+claims but cannot silently author declared intent. Architecture-first design
+may begin without implementation evidence; deterministic correctness does not
+pretend that the proposed design is complete or good.
+
+Agent harnesses orchestrate the stable CLI and consume its machine-readable
+contracts. They do not require a privileged agent API, database, governance
+server, or tool-specific canonical format.
+
 ## Canonical model
 
 - Versioned, tool-neutral YarraMate documents are stored as reviewable text in
@@ -192,6 +217,14 @@ Queries may restrict relationships by globally qualified kind. A connected
 relationship mode may include matching relationships incident to the initial
 concept selection and add their opposite endpoints exactly one hop away. It
 does not compute recursive reachability.
+Kind selectors use exact globally qualified identity by default. A projection
+may explicitly request descendant matching for both concept and relationship
+kinds. Descendant matching uses resolved, versioned profile parent chains
+provided as evaluation context; it does not add profile data to graph v2 or
+silently broaden existing queries.
+Queries may optionally exclude concepts that are not endpoints of a selected
+relationship. Isolated concepts remain included by default; exclusion is a
+deterministic selection operation, not an architectural-quality judgment.
 
 YarraMate may ship optional native starter projections for recurring
 architecture concerns. They are reusable queries, may legitimately be empty
@@ -212,9 +245,12 @@ definition may compose multiple projections into one deterministically
 ordered logical model with independent views. It does not change graph v2,
 interpret layout as semantics, import LikeC4, or promise round-tripping. Core
 does not import the adapter module.
-Every composed view retains the exact concept membership of its source
-projection; a project-wide wildcard must not expose the unioned model in each
-view.
+An adapter project may assign a renderer-specific view identity to a
+projection. The generated ownership marker retains both identities, and the
+override does not alter the projection result.
+Every composed view retains the exact concept and relationship membership of
+its source projection; a project-wide wildcard must not expose the unioned
+model in each view.
 The adapter may preserve selected compiled claims as flat LikeC4 metadata for
 traceability; those fields remain derived and have no authority over the
 native claims.

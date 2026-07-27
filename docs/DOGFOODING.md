@@ -126,11 +126,33 @@ The bounded `state-engine-adapter`, `state-engine-target`, and
 across the architecture-state engine slice. The shared repository LikeC4
 mapping keeps external identities explicit and singular.
 `.yarramate/integrations/likec4/project.yaml` composes these with the export-path
-projection and eight native starter projections into one derived model
-containing twelve independent views. Explicit mapped node predicates and
+projection, the focused product-journeys projection, and eight native starter
+projections into one derived model containing fourteen independent views.
+Explicit mapped node predicates and
 native relationship-identity predicates retain each projection's exact
 membership after model union; the technology template currently demonstrates
 that an unmatched portable projection remains a valid empty view.
+The landscape projection is rendered as LikeC4's special `index` view while
+retaining `starter-landscape@1.0` in the ownership marker. This prevents an
+implicit 99-element union view from becoming the project landing page.
+Rendered-view inspection drove optional isolated-concept exclusion in the
+four broadest starter projections. In this workspace it reduced landscape
+from 36 to 22 nodes, strategy from 7 to 4, application cooperation from 27 to
+14, and information structure from 55 to 48, without dropping any selected
+relationship endpoint. Sparse business and roadmap views retain isolated
+concepts.
+The focused `engine-components` projection opts into descendant kind matching.
+It selects the Core `applicationComponent` kind and the repository's explicit
+development-profile descendants without making the broad starter application
+view ancestry-aware. Descendant expansion therefore remains deliberate and
+reviewable.
+The `product-journeys` projection dogfoods the two primary entry points:
+existing-project discovery and architecture-first design. Both influence the
+same shared architecture context and are constrained by the stable CLI and
+the separation of evidence from declared intent.
+The repository also models and observes the portable agent skill, journey
+guide, and CLI-level journey tests. The tests execute a repository-discovery
+fixture and a pre-build design fixture rather than validating prose alone.
 The comparison view carries adapter-owned change presentation and valid local
 LikeC4 styles; neither appears in native graph claims.
 

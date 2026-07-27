@@ -130,7 +130,7 @@ concepts:
   - id: evaluate-projection
     kind: applicationFunction
     name: Evaluate semantic projection
-    description: Selects concepts and relationships deterministically, with optional qualified relationship-kind filtering and bounded one-hop endpoint inclusion.
+    description: Selects concepts and relationships deterministically, with exact kind matching by default and opt-in resolved-profile descendant matching, qualified relationship-kind filtering, bounded one-hop endpoint inclusion, and isolated-concept exclusion.
     status: current
   - id: export-likec4
     kind: applicationFunction
@@ -271,7 +271,7 @@ concepts:
   - id: likec4-project-definition
     kind: dataObject
     name: LikeC4 project definition
-    description: Adapter-owned composition of semantic projections into one derived multi-view project.
+    description: Adapter-owned composition of semantic projections into one derived multi-view project, with optional renderer view identities that preserve native projection identity.
     status: current
   - id: likec4-project-schema
     kind: dataObject
@@ -326,7 +326,7 @@ concepts:
   - id: starter-view-pack
     kind: dataObject
     name: Native starter view pack
-    description: Eight optional projection templates for landscape, motivation, strategy, business, application, information, technology, and implementation concerns.
+    description: Eight optional projection templates for landscape, motivation, strategy, business, application, information, technology, and implementation concerns, with selective isolated-concept suppression for broad views.
     status: current
   - id: state-comparison
     kind: dataObject

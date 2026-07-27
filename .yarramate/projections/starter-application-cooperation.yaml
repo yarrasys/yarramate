@@ -22,6 +22,7 @@ query:
     - yarramate/core@0.1#serving
     - yarramate/core@0.1#triggering
   relationships: between
+  isolatedConcepts: exclude
 presentation:
   title: Application cooperation
   description: Application structure and behavior collaborating to provide services and information.

@@ -1,0 +1,17 @@
+format: yarramate/evidence/v1
+id: orders-repository
+version: "1.0"
+provider: repository-inspection
+observations:
+  - subject: orders-project#order-api
+    result: confirmed
+    evidence:
+      uri: repo:test/fixtures/journeys/discovery/src/orders.ts
+  - subject: orders-project#order-record
+    result: confirmed
+    evidence:
+      uri: repo:test/fixtures/journeys/discovery/src/orders.ts
+  - claim: orders-project#order-api-accesses-order-record
+    result: confirmed
+    evidence:
+      uri: repo:test/fixtures/journeys/discovery/src/orders.ts

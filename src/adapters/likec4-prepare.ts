@@ -5,7 +5,7 @@ import {
   type AdapterMapping,
 } from '../adapter-mapping.js'
 import {
-  compileWorkspace,
+  compileWorkspaceWithProfileContext,
   type Diagnostic,
   type WorkspaceSource,
 } from '../compiler.js'
@@ -152,7 +152,7 @@ const unsupportedBundledKinds = (
 export function prepareLikeC4Export(
   input: LikeC4PreparationInput,
 ): LikeC4PreparationResult {
-  const compilation = compileWorkspace(input.sources)
+  const compilation = compileWorkspaceWithProfileContext(input.sources)
   if (!compilation.ok) return compilation
   const projection = loadProjection(input.projection)
   if (!projection.ok) return projection
@@ -206,6 +206,7 @@ export function prepareLikeC4Export(
   const projectionResult = evaluateProjection(
     compilation.graph,
     projection.projection,
+    compilation.profileContext,
   )
   const comparison =
     input.comparison === undefined

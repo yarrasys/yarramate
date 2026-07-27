@@ -16,6 +16,24 @@ A versioned, explicit, traversal-safe index of files belonging to one
 workspace.
 _Avoid_: Automatic discovery, build system, governance configuration
 
+**Architecture discovery**:
+Evidence-supported reconstruction of an existing project's architecture as a
+proposal for native YarraMate documents.
+_Avoid_: Automatic canonicalization, repository scraping as truth
+
+**Architecture-first design**:
+Intentional modelling of a new solution before implementation begins.
+_Avoid_: Generated implementation plan, mandatory up-front completeness
+
+**Architecture proposal**:
+A candidate native-document change produced by a person or agent that becomes
+declared architecture only through normal Git acceptance.
+_Avoid_: Observed claim, approval workflow, automatically canonical model
+
+**Architecture reconciliation**:
+Comparison of declared architectural intent with observed project evidence.
+_Avoid_: Core correctness validation, automatic remediation, compliance score
+
 **Semantic graph**:
 The tool-neutral graph compiled deterministically from native YarraMate
 documents. Graph v2 is a normative, canonically serialized interchange
@@ -65,11 +83,28 @@ A well-formed projection selector that may have no match in a particular
 workspace without becoming invalid.
 _Avoid_: Broken reference, mandatory workspace dependency
 
+**Resolved profile context**:
+An in-memory index of globally qualified concept- and relationship-kind
+lineages supplied alongside graph v2 for operations that explicitly need
+profile ancestry.
+_Avoid_: Graph extension, serialized semantic claim, adapter mapping
+
+**Descendant kind matching**:
+An explicit projection mode in which kind selectors match their exact
+globally qualified identity and resolved profile descendants. Exact matching
+is the default.
+_Avoid_: Implicit subtype expansion, unqualified kind matching
+
 **Connected projection**:
 A bounded projection mode that selects matching relationships incident to the
 initial concept selection and includes their opposite endpoints exactly one
 hop away.
 _Avoid_: Transitive closure, dependency discovery, completeness inference
+
+**Isolated concept policy**:
+An optional projection choice to retain or remove concepts that are not
+endpoints of any selected relationship. Retention is the default.
+_Avoid_: Completeness check, architecture-quality judgment, reachability
 
 **Starter view pack**:
 Optional native projection templates addressing common architecture concerns

@@ -282,10 +282,12 @@ describe('workspace manifests', () => {
       projections: [
         '.yarramate/projections/core-contract-foundation.yaml',
         '.yarramate/projections/current-engine.yaml',
+        '.yarramate/projections/engine-components.yaml',
         '.yarramate/projections/implementation-traceability.yaml',
         '.yarramate/projections/likec4-export-path.yaml',
         '.yarramate/projections/maintainer-tool-neutral-engine.yaml',
         '.yarramate/projections/product-context.yaml',
+        '.yarramate/projections/product-journeys.yaml',
         '.yarramate/projections/starter-application-cooperation.yaml',
         '.yarramate/projections/starter-business-operation.yaml',
         '.yarramate/projections/starter-implementation-roadmap.yaml',

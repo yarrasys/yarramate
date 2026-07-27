@@ -3,6 +3,18 @@
 YarraMate grows by semantic depth and interoperability, not by accumulating
 notation.
 
+## Target product journeys
+
+- **Discover an existing project** through an agent harness, producing
+  evidence-backed native-document proposals, focused views, and reconciliation
+  findings for Git review.
+- **Design a new solution before building it** through a guided agent
+  methodology, producing intentional native architecture, alternatives, and
+  bounded implementation context.
+- Use the same CLI, native documents, semantic graph, profiles, and projections
+  for both journeys. Do not create a separate agent service or discovered-model
+  authority.
+
 ## 0.1 — Adapter-backed foundation
 
 - Validate the initial vocabulary and relationship policies.
@@ -57,7 +69,9 @@ notation.
 - Define projections as semantic queries with presentation hints.
   **Document, kind, lifecycle-status, owner, required-constraint, and
   explicit-subject, qualified relationship-kind, and bounded one-hop
-  relationship-inclusion queries are implemented.**
+  relationship-inclusion queries are implemented, together with optional
+  deterministic isolated-concept exclusion and opt-in descendant matching
+  over resolved profile ancestry.**
 - Render projection results for humans and agent harnesses. **Deterministic
   JSON context is implemented through `yarramate context`, with deterministic
   Markdown through `yarramate view`.**
@@ -70,7 +84,30 @@ notation.
   implemented without changing graph v2. State-scoped claim values remain a
   future graph-version decision.**
 
-## 0.5 — Optional adapters
+## 0.5 — Agent journeys
+
+- Publish a tool-neutral YarraMate agent skill that orchestrates only stable
+  CLI and schema contracts. **The first portable
+  `skills/yarramate-architecture` workflow is implemented and validated.**
+- Implement a smallest useful `discover` workflow: orient to a repository,
+  gather evidence, propose native documents, check them, and render reviewable
+  projections. **An executable existing-project fixture validates the native
+  proposal, evidence overlay, and focused context through the CLI.**
+- Implement a smallest useful `design` workflow: capture drivers and
+  constraints, explore alternatives, declare a target solution, check it, and
+  provide bounded context before implementation. **An executable greenfield
+  fixture validates alternatives, target context, and state comparison.**
+- Implement deterministic reconciliation between declared subjects or claims
+  and provider observations without allowing evidence to mutate intent.
+  **The discovery journey evaluates its proposal through the existing
+  provider-neutral evidence report; richer drift proposal generation remains
+  adapter work.**
+- Define repeatable journey fixtures and acceptance scenarios usable across
+  Codex, Claude Code, and other agent harnesses. **Both journeys have literal
+  CLI acceptance fixtures and the shared skill has been independently
+  forward-tested on clean temporary projects.**
+
+## 0.6 — Optional adapters
 
 - LikeC4 authoring, import/export, and visualization adapter.
   **A versioned subject-identity mapping seam, deterministic
@@ -89,7 +126,7 @@ notation.
 - Graphify evidence and architecture-drift adapter.
 - Additional authoring, catalogue, source, and runtime adapters.
 
-## 0.6 — Compatibility
+## 0.7 — Compatibility
 
 - Add independently governed mappings to external languages.
 - Confirm licensing before distributing normative matrices or derivation rules.

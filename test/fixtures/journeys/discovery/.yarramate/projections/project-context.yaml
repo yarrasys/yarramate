@@ -1,0 +1,12 @@
+format: yarramate/projection/v1
+id: orders-project-context
+version: "1.0"
+query:
+  documents:
+    - orders-project
+  statuses:
+    - current
+  relationships: between
+presentation:
+  title: Discovered orders architecture
+  description: Reviewable context proposed from existing project evidence.

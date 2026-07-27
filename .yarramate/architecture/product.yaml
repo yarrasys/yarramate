@@ -30,6 +30,10 @@ concepts:
     kind: requirement
     name: Stable CLI
     description: Humans, CI, skills, and agent harnesses share one command interface.
+  - id: evidence-intent-separation
+    kind: requirement
+    name: Evidence and intent remain distinct
+    description: Observations may support or challenge architecture proposals but cannot silently author declared intent.
   - id: compile-native-architecture
     kind: capability
     name: Compile native architecture
@@ -46,6 +50,21 @@ concepts:
     kind: capability
     name: Evaluate architecture evidence
     description: Compare provider observations with existing semantic subjects and claims without changing canonical intent.
+    status: current
+  - id: discover-project-architecture
+    kind: capability
+    name: Discover project architecture
+    description: Guide an agent harness from existing project evidence to a reviewable native architecture proposal.
+    status: current
+  - id: design-solution-before-build
+    kind: capability
+    name: Design solution before build
+    description: Guide people and an agent harness from intent and alternatives to a reviewable target solution.
+    status: current
+  - id: reconcile-intent-and-evidence
+    kind: capability
+    name: Reconcile intent and evidence
+    description: Compare declared architecture with provider observations without allowing evidence to mutate intent.
     status: current
 relationships:
   - id: repository-operation-supports-context
@@ -64,3 +83,31 @@ relationships:
     kind: influence
     from: stable-cli
     to: shared-architecture-context
+  - id: discovery-supports-context
+    kind: influence
+    from: discover-project-architecture
+    to: shared-architecture-context
+  - id: design-supports-context
+    kind: influence
+    from: design-solution-before-build
+    to: shared-architecture-context
+  - id: reconciliation-supports-context
+    kind: influence
+    from: reconcile-intent-and-evidence
+    to: shared-architecture-context
+  - id: evidence-separation-supports-discovery
+    kind: association
+    from: evidence-intent-separation
+    to: discover-project-architecture
+  - id: evidence-separation-supports-reconciliation
+    kind: association
+    from: evidence-intent-separation
+    to: reconcile-intent-and-evidence
+  - id: cli-supports-discovery
+    kind: association
+    from: stable-cli
+    to: discover-project-architecture
+  - id: cli-supports-design
+    kind: association
+    from: stable-cli
+    to: design-solution-before-build

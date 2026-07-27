@@ -1,0 +1,16 @@
+format: yarramate/projection/v1
+id: delivery-target-solution
+version: "1.0"
+query:
+  subjects:
+    - delivery-design#reliable-delivery
+    - delivery-design#modular-monolith
+    - delivery-design#delivery-service
+    - delivery-design#delivery-api
+    - delivery-design#delivery-data
+  states:
+    - delivery-design#target
+  relationships: between
+presentation:
+  title: Initial delivery target
+  description: Bounded implementation context for the selected target solution.

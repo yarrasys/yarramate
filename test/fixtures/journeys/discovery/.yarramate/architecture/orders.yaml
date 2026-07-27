@@ -1,0 +1,35 @@
+format: yarramate/v1
+id: orders-project
+profile: yarramate/core@0.1
+concepts:
+  - id: customer
+    kind: businessActor
+    name: Customer
+    status: current
+  - id: order-api
+    kind: applicationComponent
+    name: Order API
+    description: Entry point observed in the existing orders project.
+    status: current
+  - id: order-service
+    kind: applicationService
+    name: Order management
+    status: current
+  - id: order-record
+    kind: dataObject
+    name: Order record
+    status: current
+relationships:
+  - id: order-api-realizes-order-service
+    kind: realization
+    from: order-api
+    to: order-service
+  - id: order-api-accesses-order-record
+    kind: access
+    from: order-api
+    to: order-record
+    mode: read-write
+  - id: order-service-serves-customer
+    kind: serving
+    from: order-service
+    to: customer

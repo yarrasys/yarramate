@@ -17,6 +17,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import Ajv2020Module from 'ajv/dist/2020.js'
 import { parseDocument } from 'yaml'
 import { resolveCliWorkspaceSources, type CliResult } from '../cli-support.js'
+import { locateSourcePath } from '../source-document.js'
 import {
   prepareLikeC4Export,
   type LikeC4PreparationDiagnostic,
@@ -452,6 +453,7 @@ export function runLikeC4Cli(
           prepared.ok
             ? [
                 {
+                  ...(view.id === undefined ? {} : { id: view.id }),
                   prepared,
                   ...(view.compare === undefined
                     ? {}
@@ -460,6 +462,35 @@ export function runLikeC4Cli(
               ]
             : [],
       )
+      const renderedViewIds = new Set<string>()
+      for (const [index, view] of successfulViews.entries()) {
+        const renderedId =
+          view.id ?? view.prepared.projection.projection.split('@')[0]!
+        if (renderedViewIds.has(renderedId)) {
+          const field = view.id === undefined ? 'projection' : 'id'
+          const pointer = `/views/${index}/${field}`
+          const location = locateSourcePath(
+            projectSource.path,
+            loadedProject.document.yaml,
+            loadedProject.document.lineCounter,
+            ['views', index, field],
+            pointer,
+          )
+          return {
+            exitCode: 1,
+            stdout: diagnosticOutput([
+              {
+                severity: 'error',
+                code: 'YMLC107',
+                message: `LikeC4 view identity "${renderedId}" is duplicated`,
+                ...location,
+              },
+            ]),
+            stderr: '',
+          }
+        }
+        renderedViewIds.add(renderedId)
+      }
       const exported = exportLikeC4Project(
         loadedProject.document.value,
         successfulViews,
@@ -502,7 +533,8 @@ export function runLikeC4Cli(
           ...(kindMappingIdentity === undefined
             ? {}
             : { kindMapping: kindMappingIdentity }),
-          views: successfulViews.map(({ prepared, comparison }) => ({
+          views: successfulViews.map(({ id, prepared, comparison }) => ({
+            ...(id === undefined ? {} : { id }),
             projection: prepared.projection.projection,
             ...(comparison === undefined
               ? {}

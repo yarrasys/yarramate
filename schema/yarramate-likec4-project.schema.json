@@ -65,6 +65,9 @@
       "additionalProperties": false,
       "required": ["projection"],
       "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
         "projection": {
           "$ref": "#/$defs/path"
         },

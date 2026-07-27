@@ -1,0 +1,10 @@
+format: yarramate/projection/v1
+id: platform-actors
+version: "1.0"
+query:
+  kinds:
+    - yarramate/core@0.1#businessActor
+  relationshipKinds:
+    - yarramate/core@0.1#assignment
+  kindMatching: descendants
+  relationships: connected

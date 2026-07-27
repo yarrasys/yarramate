@@ -229,6 +229,28 @@ describe('YarraMate CLI', () => {
     })
   })
 
+  it('renders extension kinds through their semantic parents', () => {
+    const result = runCli(
+      [
+        'context',
+        'test/fixtures/valid/platform-actors.projection.yaml',
+        'test/fixtures/valid/platform-profile.yaml',
+        'test/fixtures/valid/platform-document.yaml',
+      ],
+      repositoryRoot,
+    )
+
+    expect(result.exitCode).toBe(0)
+    expect(JSON.parse(result.stdout).subjects).toEqual([
+      { id: 'platform#delivery', type: 'concept' },
+      { id: 'platform#team', type: 'concept' },
+      {
+        id: 'platform#team-owns-delivery',
+        type: 'relationship',
+      },
+    ])
+  })
+
   it('compares two architecture states as deterministic JSON', () => {
     const result = runCli(
       [

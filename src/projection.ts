@@ -2,6 +2,7 @@ import Ajv2020Module from 'ajv/dist/2020.js'
 import type {
   Diagnostic,
   GraphClaim,
+  ResolvedProfileContext,
   SemanticGraph,
   WorkspaceSource,
 } from './compiler.js'
@@ -30,7 +31,9 @@ export interface ProjectionDefinition {
     readonly owners?: readonly string[]
     readonly constraints?: readonly string[]
     readonly relationshipKinds?: readonly string[]
+    readonly kindMatching?: 'exact' | 'descendants'
     readonly relationships?: 'between' | 'connected' | 'none'
+    readonly isolatedConcepts?: 'include' | 'exclude'
   }
   readonly presentation?: {
     readonly title?: string
@@ -100,6 +103,7 @@ const claimReferences = (
 export function evaluateProjection(
   graph: SemanticGraph,
   projection: ProjectionDefinition,
+  profileContext?: ResolvedProfileContext,
 ): ProjectionResult {
   const architectureStateIds = new Set(
     graph.claims
@@ -159,7 +163,15 @@ export function evaluateProjection(
           (projection.query.documents === undefined ||
             projection.query.documents.includes(documentId)) &&
           (projection.query.kinds === undefined ||
-            (kind !== undefined && projection.query.kinds.includes(kind))) &&
+            (kind !== undefined &&
+              projection.query.kinds.some(
+                (selectedKind) =>
+                  selectedKind === kind ||
+                  (projection.query.kindMatching === 'descendants' &&
+                    profileContext?.conceptKindLineages
+                      .get(kind)
+                      ?.includes(selectedKind) === true),
+              ))) &&
           (projection.query.statuses === undefined ||
             (status !== undefined &&
               projection.query.statuses.includes(status as LifecycleStatus))) &&
@@ -188,8 +200,13 @@ export function evaluateProjection(
         relationship === undefined ||
         !('ref' in relationship.object) ||
         (projection.query.relationshipKinds !== undefined &&
-          !projection.query.relationshipKinds.includes(
-            relationship.predicate,
+          !projection.query.relationshipKinds.some(
+            (selectedKind) =>
+              selectedKind === relationship.predicate ||
+              (projection.query.kindMatching === 'descendants' &&
+                profileContext?.relationshipKindLineages
+                  .get(relationship.predicate)
+                  ?.includes(selectedKind) === true),
           )) ||
         !participatesInSelectedState(subject.id)
       ) {
@@ -213,6 +230,23 @@ export function evaluateProjection(
           selectedConceptIds.add(relationship.subject)
           selectedConceptIds.add(relationship.object.ref)
         }
+      }
+    }
+  }
+  if (projection.query.isolatedConcepts === 'exclude') {
+    const relationshipEndpoints = new Set<string>()
+    for (const relationshipId of selectedRelationshipIds) {
+      const relationship = graph.claims.find(
+        ({ id, object }) => id === relationshipId && 'ref' in object,
+      )
+      if (relationship !== undefined && 'ref' in relationship.object) {
+        relationshipEndpoints.add(relationship.subject)
+        relationshipEndpoints.add(relationship.object.ref)
+      }
+    }
+    for (const conceptId of selectedConceptIds) {
+      if (!relationshipEndpoints.has(conceptId)) {
+        selectedConceptIds.delete(conceptId)
       }
     }
   }

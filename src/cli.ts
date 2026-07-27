@@ -9,7 +9,10 @@ import {
 import { dirname, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { isSeq, parseDocument } from 'yaml'
-import { compileWorkspace } from './compiler.js'
+import {
+  compileWorkspace,
+  compileWorkspaceWithProfileContext,
+} from './compiler.js'
 import { compareArchitectureStates } from './architecture-state.js'
 import { serializeSemanticGraph } from './graph.js'
 import {
@@ -66,7 +69,7 @@ const runProjection = (
         stderr: '',
       }
     }
-    const compilation = compileWorkspace(
+    const compilation = compileWorkspaceWithProfileContext(
       resolved.paths.map((path) => ({
         path,
         source: readFileSync(resolve(cwd, path), 'utf8'),
@@ -79,7 +82,11 @@ const runProjection = (
         stderr: '',
       }
     }
-    const result = evaluateProjection(compilation.graph, loaded.projection)
+    const result = evaluateProjection(
+      compilation.graph,
+      loaded.projection,
+      compilation.profileContext,
+    )
     return {
       exitCode: 0,
       stdout:

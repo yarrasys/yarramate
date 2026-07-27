@@ -1,0 +1,13 @@
+format: yarramate/projection/v1
+id: delivery-alternatives
+version: "1.0"
+query:
+  subjects:
+    - delivery-design#reliable-delivery
+    - delivery-design#australia-only
+    - delivery-design#modular-monolith
+    - delivery-design#microservices
+  relationships: between
+presentation:
+  title: Delivery solution alternatives
+  description: Competing approaches retained as explicit design context.

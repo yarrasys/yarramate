@@ -29,6 +29,20 @@ YarraMate is not affiliated with or certified by The Open Group. ArchiMate® is
 a registered trademark of The Open Group. LikeC4 and Graphify are independent
 projects; their mention does not imply affiliation or endorsement.
 
+## Primary workflows
+
+YarraMate is designed for two agent-assisted workflows:
+
+- discover the architecture of an existing project and propose an
+  evidence-backed native model for Git review;
+- design the architecture of a new solution before implementation and later
+  reconcile that intent with implementation evidence.
+
+Both use the same native documents and stable CLI. Agent harnesses such as
+Codex or Claude Code orchestrate YarraMate; they do not become the semantic
+authority. The portable workflow is packaged in
+`skills/yarramate-architecture/`; see `docs/PRODUCT-JOURNEYS.md`.
+
 ## Current foundation
 
 The repository now implements and dogfoods the first tool-neutral native
@@ -57,6 +71,10 @@ compiler foundation:
 - `docs/ARCHITECTURE-STATES.md` — optional baseline, transition, and target contexts
 - `docs/CORE-CONTRACT.md` — machine-readable Core release boundary
 - `docs/ADAPTER-MAPPINGS.md` — optional external subject-identity mappings
+- `docs/PRODUCT-JOURNEYS.md` — target discovery and architecture-first design workflows
+- `skills/yarramate-architecture/SKILL.md` — portable agent workflow over the stable CLI
+- `test/fixtures/journeys/` — executable discovery and design examples
+- `test/journeys.test.ts` — cross-harness journey acceptance seam
 - `.yarramate/architecture/*.yaml` — this repository's canonical native model
 - `.yarramate/contracts/yarramate-core-0.1.yaml` — dogfooded Core 0.1 implementation contract
 - `.yarramate/profiles/yarramate-development.yaml` — self-hosted development vocabulary
@@ -158,6 +176,11 @@ const result = compileWorkspace([
   { path: 'architecture.yaml', source: yamlSource },
 ])
 ```
+
+`compileWorkspaceWithProfileContext` is the deeper projection seam when an
+evaluator needs resolved profile ancestry. It returns the same graph v2 plus
+in-memory lineage context; the stable graph-only result and serialization do
+not change.
 
 The normative schemas are exported as `yarramate/schema/document` and
 `yarramate/schema/profile`; the projection schema is exported as

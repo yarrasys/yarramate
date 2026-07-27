@@ -1,0 +1,16 @@
+format: yarramate/projection/v1
+id: product-journeys
+version: "1.0"
+query:
+  subjects:
+    - yarramate-product#shared-architecture-context
+    - yarramate-product#stable-cli
+    - yarramate-product#native-documents-are-canonical
+    - yarramate-product#evidence-intent-separation
+    - yarramate-product#discover-project-architecture
+    - yarramate-product#design-solution-before-build
+    - yarramate-product#reconcile-intent-and-evidence
+  relationships: between
+presentation:
+  title: Product journeys
+  description: Existing-project discovery and architecture-first design converge on one native, Git-reviewed lifecycle.

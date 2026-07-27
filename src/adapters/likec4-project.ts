@@ -24,6 +24,7 @@ export interface LikeC4ProjectDefinition {
   readonly mapping: string
   readonly kindMapping?: string
   readonly views: ReadonlyArray<{
+    readonly id?: string
     readonly projection: string
     readonly compare?: {
       readonly from: string
@@ -40,6 +41,7 @@ export const loadLikeC4ProjectDefinition = (source: WorkspaceSource) =>
   )
 
 export interface PreparedLikeC4ProjectView {
+  readonly id?: string
   readonly prepared: Extract<LikeC4PreparationResult, { readonly ok: true }>
   readonly comparison?: {
     readonly from: string
@@ -84,6 +86,7 @@ const unionProjection = (
 })
 
 const viewBody = ({
+  id,
   prepared,
 }: PreparedLikeC4ProjectView): string => {
   const source = prepared.source
@@ -120,6 +123,10 @@ const viewBody = ({
   ].join('\n')
   return source
     .slice(start + startToken.length, end)
+    .replace(
+      /^  view [A-Za-z_][A-Za-z0-9_-]* \{/,
+      `  view ${id ?? prepared.projection.projection.split('@')[0]} {`,
+    )
     .replace('    include *', membershipRules)
 }
 

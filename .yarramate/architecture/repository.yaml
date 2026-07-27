@@ -11,6 +11,10 @@ concepts:
   - id: roadmap
     kind: deliverable
     name: Product roadmap
+  - id: product-journeys-guide
+    kind: deliverable
+    name: Product journey guide
+    description: Defines the shared discovery and architecture-first design lifecycle.
   - id: likec4-adapter-prototype
     kind: applicationComponent
     name: LikeC4 adapter prototype
@@ -207,6 +211,14 @@ concepts:
     kind: repository-file
     name: test/cli.test.ts
     status: current
+  - id: journey-tests
+    kind: repository-file
+    name: test/journeys.test.ts
+    status: current
+  - id: agent-skill-source
+    kind: repository-file
+    name: skills/yarramate-architecture/SKILL.md
+    status: current
   - id: adapter-mapping-tests
     kind: repository-file
     name: test/adapter-mapping.test.ts
@@ -297,6 +309,34 @@ relationships:
     kind: serving
     from: roadmap
     to: product-contract
+  - id: journey-guide-realizes-discovery
+    kind: realization
+    from: product-journeys-guide
+    to: yarramate-product#discover-project-architecture
+  - id: journey-guide-realizes-design
+    kind: realization
+    from: product-journeys-guide
+    to: yarramate-product#design-solution-before-build
+  - id: agent-skill-realizes-discovery
+    kind: realization
+    from: agent-skill-source
+    to: yarramate-product#discover-project-architecture
+  - id: agent-skill-realizes-design
+    kind: realization
+    from: agent-skill-source
+    to: yarramate-product#design-solution-before-build
+  - id: agent-skill-realizes-reconciliation
+    kind: realization
+    from: agent-skill-source
+    to: yarramate-product#reconcile-intent-and-evidence
+  - id: journey-tests-verify-discovery
+    kind: association
+    from: journey-tests
+    to: yarramate-product#discover-project-architecture
+  - id: journey-tests-verify-design
+    kind: association
+    from: journey-tests
+    to: yarramate-product#design-solution-before-build
   - id: adapter-specializes-authoring
     kind: association
     from: likec4-adapter-prototype

@@ -1,0 +1,72 @@
+format: yarramate/v1
+id: delivery-design
+profile: yarramate/core@0.1
+states:
+  - id: empty-baseline
+    kind: baseline
+    name: Before implementation
+  - id: target
+    kind: target
+    name: Initial target solution
+    after: empty-baseline
+concepts:
+  - id: reliable-delivery
+    kind: goal
+    name: Reliable delivery
+  - id: australia-only
+    kind: constraint
+    name: Australian data residency
+  - id: modular-monolith
+    kind: courseOfAction
+    name: Modular monolith option
+  - id: microservices
+    kind: courseOfAction
+    name: Microservices option
+  - id: delivery-service
+    kind: applicationService
+    name: Delivery management
+    status: planned
+    constraints:
+      - id: residency
+        ref: australia-only
+    presentIn:
+      - target
+  - id: delivery-api
+    kind: applicationComponent
+    name: Delivery API
+    status: planned
+    presentIn:
+      - target
+  - id: delivery-data
+    kind: dataObject
+    name: Delivery data
+    status: planned
+    presentIn:
+      - target
+relationships:
+  - id: modular-monolith-realizes-delivery
+    kind: realization
+    from: modular-monolith
+    to: reliable-delivery
+  - id: microservices-associated-with-delivery
+    kind: association
+    from: microservices
+    to: reliable-delivery
+  - id: monolith-contains-api
+    kind: composition
+    from: modular-monolith
+    to: delivery-api
+    presentIn:
+      - target
+  - id: monolith-contains-data
+    kind: composition
+    from: modular-monolith
+    to: delivery-data
+    presentIn:
+      - target
+  - id: api-realizes-service
+    kind: realization
+    from: delivery-api
+    to: delivery-service
+    presentIn:
+      - target

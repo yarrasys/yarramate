@@ -1,4 +1,7 @@
-export { compileWorkspace } from './compiler.js'
+export {
+  compileWorkspace,
+  compileWorkspaceWithProfileContext,
+} from './compiler.js'
 export { serializeSemanticGraph } from './graph.js'
 export {
   checkCoreContract,
@@ -36,10 +39,12 @@ export {
 } from './evidence.js'
 export type {
   CompilationResult,
+  ContextualCompilationResult,
   Diagnostic,
   GraphClaim,
   GraphSource,
   SemanticGraph,
+  ResolvedProfileContext,
   WorkspaceSource,
 } from './compiler.js'
 export {

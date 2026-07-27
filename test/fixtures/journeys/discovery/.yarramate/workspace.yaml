@@ -1,0 +1,10 @@
+format: yarramate/workspace/v1
+id: orders-discovery
+documents:
+  - architecture/*.yaml
+profiles: []
+projections:
+  - projections/*.yaml
+adapterMappings: []
+evidence:
+  - evidence/*.yaml

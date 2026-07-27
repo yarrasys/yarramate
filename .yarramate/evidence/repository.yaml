@@ -55,6 +55,18 @@ observations:
     result: confirmed
     evidence:
       uri: repo:.yarramate/projections/starter-landscape.yaml
+  - subject: yarramate-repository#agent-skill-source
+    result: confirmed
+    evidence:
+      uri: repo:skills/yarramate-architecture/SKILL.md
+  - subject: yarramate-repository#journey-tests
+    result: confirmed
+    evidence:
+      uri: repo:test/journeys.test.ts
+  - subject: yarramate-repository#product-journeys-guide
+    result: confirmed
+    evidence:
+      uri: repo:docs/PRODUCT-JOURNEYS.md
   - subject: yarramate-engine#state-comparison-schema
     result: confirmed
     evidence:
