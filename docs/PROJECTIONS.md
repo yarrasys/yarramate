@@ -11,6 +11,7 @@ format: yarramate/projection/v1
 id: current-engine
 version: "1.0"
 query:
+  subjects: [yarramate-engine#compiler]
   documents: [yarramate-engine]
   kinds: [yarramate/development@1.0#compiler-module]
   owners: [yarramate-product#yarramate-maintainers]
@@ -23,6 +24,7 @@ presentation:
 
 Query fields combine with logical AND:
 
+- `subjects` filters globally qualified concept subject identities;
 - `documents` filters canonical document IDs;
 - `kinds` filters globally qualified concept kind identities;
 - `owners` filters globally qualified owner subject identities;
@@ -42,10 +44,12 @@ even when a referenced concept is outside the selected documents or kinds.
 Projection filters select result subjects; they do not silently expand the
 query into a transitive reference closure.
 
-Selectors are portable by default. A well-formed document, kind, owner, or
-constraint identity that is absent from the current graph contributes no
-matches and is not a validation error. This supports partial models and reuse
-across repositories without weakening schema validation.
+Selectors are portable by default. A well-formed subject, document, kind,
+owner, or constraint identity that is absent from the current graph
+contributes no matches and is not a validation error. This supports partial
+models and reuse across repositories without weakening schema validation.
+Explicit subjects are useful for deliberately bounded contexts that should
+not expand merely because their source document gains another concept.
 
 `title` and `description` are presentation hints. They do not affect selection
 or carry semantic authority.
@@ -77,6 +81,9 @@ yarramate view projections/current-engine.yaml \
   architecture/engine.yaml \
   architecture/repository.yaml
 ```
+
+JSON-context correctness failures emit the versioned
+`yarramate/diagnostic-result/v1` contract.
 
 Markdown lists selected concepts with their qualified kinds and lifecycle
 status, followed by selected semantic relationships. It is generated output,

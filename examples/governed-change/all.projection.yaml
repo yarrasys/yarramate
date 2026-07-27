@@ -1,0 +1,7 @@
+format: yarramate/projection/v1
+id: governed-change
+version: "1.0"
+query:
+  relationships: between
+presentation:
+  title: YarraMate · Governed change

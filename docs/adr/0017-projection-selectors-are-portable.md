@@ -1,9 +1,9 @@
 # Projection selectors are portable
 
-Projection selectors may name documents, kinds, owners, constraints, or
-statuses that are absent from the current graph. An unmatched selector is a
-valid query that contributes no matches, rather than a correctness error. This
-keeps projections reusable across partial and incrementally adopted
+Projection selectors may name subjects, documents, kinds, owners, constraints,
+or statuses that are absent from the current graph. An unmatched selector is
+a valid query that contributes no matches, rather than a correctness error.
+This keeps projections reusable across partial and incrementally adopted
 workspaces, while malformed selector syntax remains a schema error.
 
 ## Status

@@ -245,10 +245,13 @@ describe('workspace manifests', () => {
       projections: [
         'projections/current-engine.yaml',
         'projections/implementation-traceability.yaml',
+        'projections/likec4-export-path.yaml',
         'projections/maintainer-tool-neutral-engine.yaml',
         'projections/product-context.yaml',
       ],
-      adapterMappings: [],
+      adapterMappings: [
+        'adapters/likec4-export-path.mapping.yaml',
+      ],
       evidence: ['evidence/repository.yaml'],
     })
   })

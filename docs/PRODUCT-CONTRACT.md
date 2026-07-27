@@ -99,6 +99,8 @@ yarramate evidence
 Machine-readable checking uses the versioned
 `yarramate/check-result/v1` contract. It reports deterministic correctness
 diagnostics only; it is not an approval, completeness, or quality score.
+Other JSON-producing semantic commands report correctness failures through
+the versioned `yarramate/diagnostic-result/v1` contract.
 
 A versioned workspace manifest may explicitly enumerate local documents,
 profiles, projections, and adapter mappings. Paths resolve relative to the
@@ -169,6 +171,8 @@ The first projection query filters compiled concepts by document, globally
 qualified kind, and operational lifecycle status. It may include relationships
 whose endpoints are both selected. `yarramate context` renders the closed
 projection result as deterministic JSON for agents and CI.
+Queries may also name an explicit portable set of globally qualified concept
+subjects when a deliberately bounded context is required.
 
 ## Optional integrations
 
@@ -177,6 +181,15 @@ projection result as deterministic JSON for agents and CI.
 - ArchiMate is an optional compatibility profile.
 
 YarraMate Core must not depend on any of them.
+
+The first LikeC4 export path consumes a compiled projection result and an
+explicit `likec4` subject mapping. It emits deterministically ordered logical
+model elements, typed relationships, and one element view. It does not change
+graph v2, interpret layout as semantics, import LikeC4, or promise
+round-tripping. Core does not import the adapter module.
+The adapter may preserve selected compiled claims as flat LikeC4 metadata for
+traceability; those fields remain derived and have no authority over the
+native claims.
 
 Optional adapter mappings are versioned companion documents outside Core.
 They map globally qualified compiled native subject identities to opaque

@@ -6,6 +6,7 @@ profiles:
   - profiles/*.yaml
 projections:
   - projections/*.yaml
-adapterMappings: []
+adapterMappings:
+  - adapters/*.yaml
 evidence:
   - evidence/*.yaml

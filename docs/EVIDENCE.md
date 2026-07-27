@@ -56,7 +56,8 @@ yarramate evidence evidence/repository.yaml yarramate.workspace.yaml
 
 Exit status is `0` for a valid report even when observations are contradicted,
 unknown, or not observed. Status `1` means structural or reference
-correctness failed; status `2` means invocation or file access failed.
+correctness failed and emits `yarramate/diagnostic-result/v1`; status `2`
+means invocation or file access failed.
 
 The typed API exposes `loadEvidence`, `evaluateEvidence`, and
 `evaluateEvidenceWorkspace`. Evidence documents may be declared in the

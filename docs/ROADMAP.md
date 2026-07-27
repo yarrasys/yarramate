@@ -54,7 +54,7 @@ notation.
   implemented.**
 - Define projections as semantic queries with presentation hints.
   **Document, kind, lifecycle-status, owner, required-constraint, and
-  relationship-inclusion queries are implemented.**
+  explicit-subject and relationship-inclusion queries are implemented.**
 - Render projection results for humans and agent harnesses. **Deterministic
   JSON context is implemented through `yarramate context`, with deterministic
   Markdown through `yarramate view`.**
@@ -62,8 +62,11 @@ notation.
 ## 0.5 — Optional adapters
 
 - LikeC4 authoring, import/export, and visualization adapter.
-  **A versioned subject-identity mapping seam and governed-change mapping are
-  implemented; transformations and round-tripping remain future adapter work.**
+  **A versioned subject-identity mapping seam, deterministic
+  projection-to-LikeC4 export, self-contained project materialization, adapter
+  CLI, and governed-change mapping are implemented. Import, round-tripping,
+  deployment and dynamic views, and styling parity remain future adapter
+  work.**
 - Generic evidence-provider interface.
   **A provider-neutral existing-claim evidence overlay and deterministic report
   are implemented. Constraint assessment reuses that seam; provider execution

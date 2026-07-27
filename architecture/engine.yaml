@@ -45,6 +45,12 @@ concepts:
     constraints:
       - id: tool-neutral
         ref: yarramate-product#tool-neutral-core
+  - id: likec4-export-adapter
+    kind: applicationComponent
+    name: LikeC4 export adapter
+    description: Projects compiled claims into deterministic optional LikeC4 source.
+    status: current
+    owner: yarramate-product#yarramate-maintainers
   - id: source-document-loader
     kind: compiler-module
     name: Source-located document loader
@@ -92,6 +98,11 @@ concepts:
     name: Evaluate evidence overlay
     description: Produces a deterministic report without modifying graph v2.
     status: current
+  - id: export-likec4
+    kind: applicationFunction
+    name: Export LikeC4 source
+    description: Applies explicit concept identities to a closed projection result.
+    status: current
   - id: check-command
     kind: applicationService
     name: Check command
@@ -121,6 +132,11 @@ concepts:
     kind: applicationService
     name: Evidence command
     description: Evaluates one evidence document over compiled native sources.
+    status: current
+  - id: likec4-export-command
+    kind: applicationService
+    name: LikeC4 export command
+    description: Emits source or materializes a non-overwriting derived LikeC4 project without changing native documents.
     status: current
   - id: native-document
     kind: dataObject
@@ -153,6 +169,22 @@ concepts:
   - id: check-result-schema
     kind: dataObject
     name: Check result JSON Schema
+    status: current
+  - id: diagnostic-result
+    kind: dataObject
+    name: Semantic command diagnostic result
+    status: current
+  - id: diagnostic-result-schema
+    kind: dataObject
+    name: Diagnostic result JSON Schema
+    status: current
+  - id: likec4-diagnostic-result-schema
+    kind: dataObject
+    name: LikeC4 diagnostic result JSON Schema
+    status: current
+  - id: likec4-generated-project-schema
+    kind: dataObject
+    name: Generated LikeC4 project marker JSON Schema
     status: current
   - id: adapter-mapping
     kind: dataObject
@@ -208,6 +240,24 @@ concepts:
     name: Evidence report JSON Schema
     status: current
 relationships:
+  - id: likec4-adapter-performs-export
+    kind: assignment
+    from: likec4-export-adapter
+    to: export-likec4
+  - id: likec4-command-serves-export
+    kind: serving
+    from: likec4-export-command
+    to: export-likec4
+  - id: likec4-export-reads-projection
+    kind: access
+    from: export-likec4
+    to: projection-result
+    mode: read
+  - id: likec4-export-reads-mapping
+    kind: access
+    from: export-likec4
+    to: adapter-mapping
+    mode: read
   - id: compiler-delivers-compilation
     kind: implements
     from: compiler
@@ -331,6 +381,16 @@ relationships:
     kind: access
     from: check-command
     to: check-result-schema
+    mode: read
+  - id: cli-writes-diagnostic-result
+    kind: access
+    from: cli
+    to: diagnostic-result
+    mode: write
+  - id: cli-reads-diagnostic-result-schema
+    kind: access
+    from: cli
+    to: diagnostic-result-schema
     mode: read
   - id: compilation-writes-graph
     kind: access

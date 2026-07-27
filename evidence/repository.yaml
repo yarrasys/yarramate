@@ -11,6 +11,10 @@ observations:
     result: confirmed
     evidence:
       uri: repo:src/source-document.ts
+  - subject: yarramate-engine#check-command
+    result: confirmed
+    evidence:
+      uri: repo:src/check-command.ts
   - claim: yarramate-repository#compiler-source-realizes-compiler
     result: confirmed
     evidence:
@@ -35,7 +39,35 @@ observations:
     result: confirmed
     evidence:
       uri: repo:schema/yarramate-check-result.schema.json
+  - subject: yarramate-engine#diagnostic-result-schema
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-diagnostic-result.schema.json
   - subject: yarramate-engine#workspace-manifest
     result: confirmed
     evidence:
       uri: repo:yarramate.workspace.yaml
+  - subject: yarramate-engine#likec4-export-adapter
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/likec4-export.ts
+  - subject: yarramate-engine#likec4-export-command
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/likec4-cli.ts
+  - subject: yarramate-engine#likec4-diagnostic-result-schema
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-likec4-diagnostic-result.schema.json
+  - subject: yarramate-engine#likec4-generated-project-schema
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-likec4-generated-project.schema.json
+  - claim: yarramate-repository#likec4-projection-source-realizes-definition
+    result: confirmed
+    evidence:
+      uri: repo:projections/likec4-export-path.yaml
+  - claim: yarramate-repository#likec4-mapping-source-realizes-mapping
+    result: confirmed
+    evidence:
+      uri: repo:adapters/likec4-export-path.mapping.yaml

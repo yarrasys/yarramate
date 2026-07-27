@@ -63,3 +63,51 @@ Relationship mappings are supported, but the example deliberately maps only
 concepts because its current LikeC4 relationship declarations do not carry
 authored stable identities. YarraMate does not invent position-derived
 external relationship identities.
+
+## LikeC4 export
+
+The optional adapter has its own binary and package subpath:
+
+```sh
+yarramate-likec4 export-project \
+  examples/governed-change/all.projection.yaml \
+  examples/governed-change/likec4.mapping.yaml \
+  generated/governed-change \
+  examples/governed-change/yarramate.workspace.yaml
+```
+
+The same typed seam is exported from `yarramate/adapter/likec4` as
+`exportLikeC4`. Its inputs are a closed projection result and one mapping; its
+output is deterministic LikeC4 source or sorted adapter diagnostics.
+CLI failures use the closed
+`yarramate/likec4-diagnostic-result/v1` envelope.
+
+Every projected concept must have a valid LikeC4 identifier in the mapping.
+Relationship declarations use mapped endpoint identities and the terminal
+identifier of each globally qualified relationship kind. Relationships do not
+need mappings because this export does not manufacture external relationship
+identities.
+
+Generated elements and relationships carry their globally qualified native
+identity as `metadata.yarramateId`. When selected claims exist, the adapter
+also emits flat `status`, `owner`, `constraints`, `mode`, and `content`
+metadata. These values preserve traceability and filtering context; they do
+not make LikeC4 canonical. Projection title and description hints become view
+properties.
+
+This first slice emits a flat logical model and one ordinary element view. It
+does not emit specifications, deployments, dynamic views, styling, imports,
+or layout state, and it does not import or round-trip LikeC4.
+
+`export-project` writes `model.likec4`, `specification.likec4`, and
+`likec4.config.json` into a project directory, plus a versioned
+`yarramate.generated.json` marker. A matching marker permits deterministic
+regeneration of only those three declared files and preserves unrelated
+files. Unmarked, malformed, or differently owned directories are refused.
+The marker's normative schema is
+`schema/yarramate-likec4-generated-project.schema.json`.
+
+One project per projection avoids LikeC4's multi-file merge turning separate
+exports into duplicate elements and views. The lower-level `export` command
+still writes model source to stdout for harnesses that manage their own
+project and specification.

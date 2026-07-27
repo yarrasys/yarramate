@@ -75,6 +75,10 @@ A versioned machine-readable outcome containing deterministic correctness
 diagnostics.
 _Avoid_: Approval record, completeness score, human console text
 
+**Diagnostic result**:
+A versioned machine-readable correctness failure shared by semantic commands.
+_Avoid_: Successful command output, invocation error, policy verdict
+
 **Adapter**:
 An optional integration that imports, exports, renders, or supplies evidence
 without defining YarraMate Core.

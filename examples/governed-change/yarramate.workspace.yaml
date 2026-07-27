@@ -3,7 +3,8 @@ id: governed-change
 documents:
   - architecture.yaml
 profiles: []
-projections: []
+projections:
+  - all.projection.yaml
 adapterMappings:
   - likec4.mapping.yaml
 evidence: []

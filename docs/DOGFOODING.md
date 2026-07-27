@@ -83,5 +83,13 @@ write-only authoring fields.
 The repository model also declares the shared source-located document loader,
 which keeps schema-backed companion formats aligned on parsing and diagnostic
 behavior without widening the public compiler API.
+Check orchestration and shared CLI support are modelled as repository files
+behind the unchanged `runCli` interface, keeping command complexity local
+without multiplying public entry points.
+The `likec4-export-path` projection and its explicit adapter mapping generate
+a self-contained LikeC4 project from YarraMate's own native engine model. This
+exercises precise subject selection, projection evaluation, mapping
+validation, semantic metadata preservation, and project materialization end
+to end.
 The remaining gaps are observations, not permission to add generic metadata.
 Each requires explicit claim syntax, profile semantics, or an adapter contract.

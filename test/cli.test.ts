@@ -229,6 +229,58 @@ describe('YarraMate CLI', () => {
     })
   })
 
+  it('versions machine-readable diagnostics for semantic commands', () => {
+    const projectionFailure = runCli(
+      [
+        'context',
+        'test/fixtures/valid/current-capabilities.projection.yaml',
+        'test/fixtures/invalid/unknown-concept-kind.yaml',
+      ],
+      repositoryRoot,
+    )
+    const evidenceFailure = runCli(
+      [
+        'evidence',
+        'test/fixtures/valid/repository-evidence.yaml',
+        'test/fixtures/invalid/unknown-concept-kind.yaml',
+      ],
+      repositoryRoot,
+    )
+
+    expect(JSON.parse(projectionFailure.stdout).format).toBe(
+      'yarramate/diagnostic-result/v1',
+    )
+    expect(JSON.parse(evidenceFailure.stdout).format).toBe(
+      'yarramate/diagnostic-result/v1',
+    )
+  })
+
+  it('emits semantic command failures conforming to the diagnostic schema', () => {
+    const schema = JSON.parse(
+      readFileSync(
+        join(
+          repositoryRoot,
+          'schema/yarramate-diagnostic-result.schema.json',
+        ),
+        'utf8',
+      ),
+    )
+    const validate = new Ajv2020({ allErrors: true }).compile(schema)
+    const result = runCli(
+      [
+        'context',
+        'test/fixtures/valid/current-capabilities.projection.yaml',
+        'test/fixtures/invalid/unknown-concept-kind.yaml',
+      ],
+      repositoryRoot,
+    )
+
+    expect(
+      validate(JSON.parse(result.stdout)),
+      JSON.stringify(validate.errors ?? []),
+    ).toBe(true)
+  })
+
   it('renders the same semantic projection as Markdown for reviewers', () => {
     const result = runCli(
       [

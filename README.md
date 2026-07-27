@@ -104,6 +104,7 @@ YarraMate models its own repository through the same interface:
 
 ```sh
 pnpm self:check
+pnpm self:export:likec4
 ```
 
 The governed-change example keeps native YAML canonical while linking its
@@ -111,8 +112,16 @@ stable subjects to the optional LikeC4 visualization model:
 
 ```sh
 pnpm example:check
+pnpm example:export:likec4:project
 pnpm validate
 ```
+
+The project export compiles the native workspace, evaluates its projection,
+applies the explicit subject mapping, and writes a self-contained LikeC4
+project under `generated/governed-change`. Generated projects are derived
+output. A versioned marker allows safe repeat generation of the three
+YarraMate-owned files while unmarked directories are refused; the native YAML
+remains canonical.
 
 The typed library entrypoint exposes the same compiler seam:
 
@@ -134,9 +143,17 @@ The normative schemas are exported as `yarramate/schema/document` and
 `yarramate/schema/evidence` and `yarramate/schema/evidence-report`.
 Machine-readable check results are exported as
 `yarramate/schema/check-result`.
+Machine-readable semantic-command failures use
+`yarramate/diagnostic-result/v1`, exported as
+`yarramate/schema/diagnostic-result`.
+The optional adapter's mixed Core/adapter failure envelope is exported as
+`yarramate/schema/likec4-diagnostic-result`.
+Its generated-project marker schema is exported as
+`yarramate/schema/likec4-generated-project`.
 
 ## Status
 
 Version `0.1.0` is a validated native compiler, projection, safe-authoring,
 workspace, ownership, constraint-reference, and evidence-overlay foundation,
-not yet the complete YarraMate engine or adapter suite.
+plus a narrow projection-driven LikeC4 export adapter. It is not yet the
+complete YarraMate engine or adapter suite.

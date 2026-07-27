@@ -22,6 +22,7 @@ export interface ProjectionDefinition {
   readonly id: string
   readonly version: string
   readonly query: {
+    readonly subjects?: readonly string[]
     readonly documents?: readonly string[]
     readonly kinds?: readonly string[]
     readonly statuses?: readonly LifecycleStatus[]
@@ -124,6 +125,8 @@ export function evaluateProjection(
           'yarramate/constraint/requires',
         )
         return (
+          (projection.query.subjects === undefined ||
+            projection.query.subjects.includes(id)) &&
           (projection.query.documents === undefined ||
             projection.query.documents.includes(documentId)) &&
           (projection.query.kinds === undefined ||

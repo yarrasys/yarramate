@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yarramate.dev/schema/yarramate-likec4-diagnostic-result.schema.json",
+  "title": "YarraMate LikeC4 diagnostic result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "diagnostics"],
+  "properties": {
+    "format": {
+      "const": "yarramate/likec4-diagnostic-result/v1"
+    },
+    "diagnostics": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          {
+            "$ref": "https://yarramate.org/schema/diagnostic-result/v1#/$defs/diagnostic"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["code", "message"],
+            "properties": {
+              "code": {
+                "enum": ["YMLC101", "YMLC102", "YMLC103"]
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1
+              },
+              "subject": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

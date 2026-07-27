@@ -20,6 +20,14 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "subjects": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/subjectIdentity"
+          }
+        },
         "documents": {
           "type": "array",
           "uniqueItems": true,

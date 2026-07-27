@@ -52,6 +52,33 @@ relationships:
 `
 
 describe('evaluateProjection', () => {
+  it('selects an explicit portable set of globally qualified subjects', () => {
+    const compilation = compileWorkspace([
+      { path: 'projection-model.yaml', source },
+    ])
+    expect(compilation.ok).toBe(true)
+    if (!compilation.ok) return
+
+    const result = evaluateProjection(compilation.graph, {
+      format: 'yarramate/projection/v1',
+      id: 'explicit-context',
+      version: '1.0',
+      query: {
+        subjects: [
+          'projection-model#first',
+          'projection-model#second',
+        ],
+        relationships: 'between',
+      },
+    } as ProjectionDefinition)
+
+    expect(result.subjects).toEqual([
+      { id: 'projection-model#first', type: 'concept' },
+      { id: 'projection-model#first-supports-second', type: 'relationship' },
+      { id: 'projection-model#second', type: 'concept' },
+    ])
+  })
+
   it('selects concepts by globally qualified owner', () => {
     const compilation = compileWorkspace([
       { path: 'projection-model.yaml', source },
