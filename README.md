@@ -40,12 +40,18 @@ compiler foundation:
 - `schema/yarramate-document.schema.json` — normative native document schema
 - `schema/yarramate-profile.schema.json` — normative extension-profile schema
 - `schema/yarramate-graph-v2.schema.json` — normative graph interchange schema
+- `schema/yarramate-workspace.schema.json` — normative workspace manifest schema
+- `schema/yarramate-evidence.schema.json` — normative optional evidence schema
 - `src/compiler.ts` — native loader and deterministic claim compiler
 - `src/graph.ts` — canonical graph-v2 serialization
+- `src/workspace.ts` — explicit deterministic workspace resolution
+- `src/evidence.ts` — existing-subject and claim evidence evaluation
 - `docs/NATIVE-DOCUMENT.md` — authoring, identity, graph, and diagnostic rules
 - `docs/PROFILES.md` — profile inheritance and qualified kind identities
 - `docs/PROJECTIONS.md` — semantic query and context-result rules
 - `docs/SEMANTIC-GRAPH.md` — normative graph-v2 interchange contract
+- `docs/WORKSPACES.md` — explicit deterministic workspace manifests
+- `docs/EVIDENCE.md` — optional evidence evaluation overlays
 - `docs/ADAPTER-MAPPINGS.md` — optional external subject-identity mappings
 - `architecture/*.yaml` — this repository's canonical native model
 - `profiles/yarramate-development.yaml` — self-hosted development vocabulary
@@ -66,6 +72,7 @@ pnpm build
 pnpm self:check
 pnpm self:context
 pnpm self:view
+pnpm self:evidence
 pnpm example:check
 pnpm validate
 pnpm test
@@ -84,6 +91,10 @@ node dist/cli.js check architecture.yaml
 node dist/cli.js check architecture.yaml --json
 node dist/cli.js compile architecture.yaml > graph.json
 ```
+
+`init` creates `architecture/main.yaml` and `yarramate.workspace.yaml`.
+Commands accept either explicit source files or one explicitly supplied
+workspace manifest.
 
 `add` and `connect` validate the candidate workspace before replacing the
 target document. Supply extension profiles and cross-document dependencies
@@ -116,10 +127,14 @@ const result = compileWorkspace([
 The normative schemas are exported as `yarramate/schema/document` and
 `yarramate/schema/profile`; the projection schema is exported as
 `yarramate/schema/projection`, and the optional mapping schema as
-`yarramate/schema/adapter-mapping`. The normative graph schema is exported as
-`yarramate/schema/graph-v2`.
+`yarramate/schema/adapter-mapping`. Projection results are exported as
+`yarramate/schema/projection-result`. The normative graph schema is exported as
+`yarramate/schema/graph-v2`, and the manifest schema as
+`yarramate/schema/workspace`. The optional evidence schemas are exported as
+`yarramate/schema/evidence` and `yarramate/schema/evidence-report`.
 
 ## Status
 
-Version `0.1.0` is a validated native compiler, projection, and safe-authoring
-foundation, not yet the complete YarraMate engine or adapter suite.
+Version `0.1.0` is a validated native compiler, projection, safe-authoring,
+workspace, ownership, constraint-reference, and evidence-overlay foundation,
+not yet the complete YarraMate engine or adapter suite.

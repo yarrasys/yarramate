@@ -2,6 +2,10 @@ format: yarramate/v1
 id: yarramate-product
 profile: yarramate/core@0.1
 concepts:
+  - id: yarramate-maintainers
+    kind: businessActor
+    name: YarraMate maintainers
+    description: People accountable for stewardship of the YarraMate Core repository.
   - id: shared-architecture-context
     kind: goal
     name: Shared architecture context
@@ -37,6 +41,11 @@ concepts:
   - id: provide-machine-context
     kind: capability
     name: Provide machine-readable context
+    status: current
+  - id: evaluate-architecture-evidence
+    kind: capability
+    name: Evaluate architecture evidence
+    description: Compare provider observations with existing semantic subjects and claims without changing canonical intent.
     status: current
 relationships:
   - id: repository-operation-supports-context

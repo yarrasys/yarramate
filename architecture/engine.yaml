@@ -7,16 +7,44 @@ concepts:
     name: Native compiler
     description: Loads native YAML and produces the tool-neutral semantic graph.
     status: current
+    owner: yarramate-product#yarramate-maintainers
+    constraints:
+      - id: tool-neutral
+        ref: yarramate-product#tool-neutral-core
+      - id: deterministic
+        ref: yarramate-product#deterministic-correctness
   - id: cli
     kind: compiler-module
     name: YarraMate CLI
     description: Stable repository-native interface over compiler behavior.
     status: current
+    owner: yarramate-product#yarramate-maintainers
+    constraints:
+      - id: stable-interface
+        ref: yarramate-product#stable-cli
   - id: profile-catalogue
     kind: compiler-module
     name: Native profile catalogue
     description: Supplies known concept kinds and broad relationship policies.
     status: current
+  - id: workspace-loader
+    kind: compiler-module
+    name: Workspace manifest loader
+    description: Resolves explicit local source patterns deterministically without repository discovery.
+    status: current
+    owner: yarramate-product#yarramate-maintainers
+    constraints:
+      - id: repository-native
+        ref: yarramate-product#repository-native-operation
+  - id: evidence-evaluator
+    kind: compiler-module
+    name: Evidence evaluator
+    description: Evaluates provider observations against existing graph subjects and claims.
+    status: current
+    owner: yarramate-product#yarramate-maintainers
+    constraints:
+      - id: tool-neutral
+        ref: yarramate-product#tool-neutral-core
   - id: parse-document
     kind: applicationFunction
     name: Parse native document
@@ -43,6 +71,16 @@ concepts:
     name: Serialize semantic graph
     description: Emits canonical graph-v2 JSON for adapters, agents, and CI.
     status: current
+  - id: resolve-workspace
+    kind: applicationFunction
+    name: Resolve workspace manifest
+    description: Expands safe relative patterns into typed, sorted source paths.
+    status: current
+  - id: evaluate-evidence
+    kind: applicationFunction
+    name: Evaluate evidence overlay
+    description: Produces a deterministic report without modifying graph v2.
+    status: current
   - id: check-command
     kind: applicationService
     name: Check command
@@ -67,6 +105,11 @@ concepts:
     kind: applicationService
     name: Compile command
     description: Emits the normative graph-v2 interchange document without writing a derived artifact.
+    status: current
+  - id: evidence-command
+    kind: applicationService
+    name: Evidence command
+    description: Evaluates one evidence document over compiled native sources.
     status: current
   - id: native-document
     kind: dataObject
@@ -105,6 +148,46 @@ concepts:
     kind: dataObject
     name: Semantic graph v2 JSON Schema
     status: current
+  - id: projection-definition
+    kind: dataObject
+    name: Semantic projection definition
+    status: current
+  - id: projection-schema
+    kind: dataObject
+    name: Projection definition JSON Schema
+    status: current
+  - id: projection-result
+    kind: dataObject
+    name: Deterministic projection result
+    status: current
+  - id: projection-result-schema
+    kind: dataObject
+    name: Projection result JSON Schema
+    status: current
+  - id: workspace-manifest
+    kind: dataObject
+    name: Workspace manifest
+    status: current
+  - id: workspace-schema
+    kind: dataObject
+    name: Workspace manifest JSON Schema
+    status: current
+  - id: evidence-document
+    kind: dataObject
+    name: Evidence overlay document
+    status: current
+  - id: evidence-report
+    kind: dataObject
+    name: Deterministic evidence report
+    status: current
+  - id: evidence-schema
+    kind: dataObject
+    name: Evidence overlay JSON Schema
+    status: current
+  - id: evidence-report-schema
+    kind: dataObject
+    name: Evidence report JSON Schema
+    status: current
 relationships:
   - id: compiler-delivers-compilation
     kind: implements
@@ -142,6 +225,14 @@ relationships:
     kind: assignment
     from: compiler
     to: serialize-semantic-graph
+  - id: workspace-loader-resolves-manifest
+    kind: assignment
+    from: workspace-loader
+    to: resolve-workspace
+  - id: evidence-evaluator-evaluates-overlay
+    kind: assignment
+    from: evidence-evaluator
+    to: evaluate-evidence
   - id: cli-provides-check
     kind: implements
     from: cli
@@ -162,6 +253,10 @@ relationships:
     kind: implements
     from: cli
     to: compile-command
+  - id: cli-provides-evidence
+    kind: implements
+    from: cli
+    to: evidence-command
   - id: parse-reads-native-document
     kind: access
     from: parse-document
@@ -218,6 +313,50 @@ relationships:
     kind: access
     from: serialize-semantic-graph
     to: semantic-graph-schema
+    mode: read
+  - id: workspace-resolution-reads-manifest
+    kind: access
+    from: resolve-workspace
+    to: workspace-manifest
+    mode: read
+  - id: workspace-resolution-reads-schema
+    kind: access
+    from: resolve-workspace
+    to: workspace-schema
+    mode: read
+  - id: cli-uses-workspace-loader
+    kind: association
+    from: cli
+    to: workspace-loader
+    name: Explicit source resolution
+  - id: evidence-evaluator-delivers-capability
+    kind: implements
+    from: evidence-evaluator
+    to: yarramate-product#evaluate-architecture-evidence
+  - id: evidence-evaluation-reads-document
+    kind: access
+    from: evaluate-evidence
+    to: evidence-document
+    mode: read
+  - id: evidence-evaluation-reads-graph
+    kind: access
+    from: evaluate-evidence
+    to: semantic-graph
+    mode: read
+  - id: evidence-evaluation-reads-schema
+    kind: access
+    from: evaluate-evidence
+    to: evidence-schema
+    mode: read
+  - id: evidence-evaluation-writes-report
+    kind: access
+    from: evaluate-evidence
+    to: evidence-report
+    mode: write
+  - id: evidence-evaluation-reads-report-schema
+    kind: access
+    from: evaluate-evidence
+    to: evidence-report-schema
     mode: read
   - id: validation-writes-diagnostics
     kind: access

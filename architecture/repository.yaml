@@ -36,6 +36,14 @@ concepts:
     kind: repository-file
     name: src/graph.ts
     status: current
+  - id: workspace-source
+    kind: repository-file
+    name: src/workspace.ts
+    status: current
+  - id: evidence-source
+    kind: repository-file
+    name: src/evidence.ts
+    status: current
   - id: document-schema-source
     kind: repository-file
     name: schema/yarramate-document.schema.json
@@ -48,6 +56,10 @@ concepts:
     kind: repository-file
     name: schema/yarramate-projection.schema.json
     status: current
+  - id: projection-result-schema-source
+    kind: repository-file
+    name: schema/yarramate-projection-result.schema.json
+    status: current
   - id: adapter-mapping-schema-source
     kind: repository-file
     name: schema/yarramate-adapter-mapping.schema.json
@@ -55,6 +67,18 @@ concepts:
   - id: graph-schema-source
     kind: repository-file
     name: schema/yarramate-graph-v2.schema.json
+    status: current
+  - id: workspace-schema-source
+    kind: repository-file
+    name: schema/yarramate-workspace.schema.json
+    status: current
+  - id: evidence-schema-source
+    kind: repository-file
+    name: schema/yarramate-evidence.schema.json
+    status: current
+  - id: evidence-report-schema-source
+    kind: repository-file
+    name: schema/yarramate-evidence-report.schema.json
     status: current
   - id: compiler-tests
     kind: repository-file
@@ -71,6 +95,22 @@ concepts:
   - id: graph-schema-tests
     kind: repository-file
     name: test/graph-schema.test.ts
+    status: current
+  - id: workspace-tests
+    kind: repository-file
+    name: test/workspace.test.ts
+    status: current
+  - id: root-workspace-manifest
+    kind: repository-file
+    name: yarramate.workspace.yaml
+    status: current
+  - id: evidence-tests
+    kind: repository-file
+    name: test/evidence.test.ts
+    status: current
+  - id: repository-evidence
+    kind: repository-file
+    name: evidence/repository.yaml
     status: current
 relationships:
   - id: contract-realizes-tool-neutral-core
@@ -118,6 +158,14 @@ relationships:
     kind: realization
     from: graph-source
     to: yarramate-engine#serialize-semantic-graph
+  - id: workspace-source-realizes-loader
+    kind: realization
+    from: workspace-source
+    to: yarramate-engine#workspace-loader
+  - id: evidence-source-realizes-evaluator
+    kind: realization
+    from: evidence-source
+    to: yarramate-engine#evidence-evaluator
   - id: document-schema-realizes-schema
     kind: realization
     from: document-schema-source
@@ -129,7 +177,11 @@ relationships:
   - id: projection-schema-realizes-context
     kind: realization
     from: projection-schema-source
-    to: yarramate-product#provide-machine-context
+    to: yarramate-engine#projection-schema
+  - id: projection-result-schema-realizes-schema
+    kind: realization
+    from: projection-result-schema-source
+    to: yarramate-engine#projection-result-schema
   - id: adapter-schema-realizes-mapping-schema
     kind: realization
     from: adapter-mapping-schema-source
@@ -138,6 +190,18 @@ relationships:
     kind: realization
     from: graph-schema-source
     to: yarramate-engine#semantic-graph-schema
+  - id: workspace-schema-realizes-workspace-schema
+    kind: realization
+    from: workspace-schema-source
+    to: yarramate-engine#workspace-schema
+  - id: evidence-schema-realizes-evidence-schema
+    kind: realization
+    from: evidence-schema-source
+    to: yarramate-engine#evidence-schema
+  - id: evidence-report-schema-realizes-report-schema
+    kind: realization
+    from: evidence-report-schema-source
+    to: yarramate-engine#evidence-report-schema
   - id: tests-validate-compiler
     kind: association
     from: compiler-tests
@@ -154,3 +218,19 @@ relationships:
     kind: association
     from: graph-schema-tests
     to: yarramate-engine#serialize-semantic-graph
+  - id: workspace-tests-validate-resolution
+    kind: association
+    from: workspace-tests
+    to: yarramate-engine#resolve-workspace
+  - id: root-manifest-realizes-workspace
+    kind: realization
+    from: root-workspace-manifest
+    to: yarramate-engine#workspace-manifest
+  - id: evidence-tests-validate-evaluation
+    kind: association
+    from: evidence-tests
+    to: yarramate-engine#evaluate-evidence
+  - id: repository-evidence-realizes-document
+    kind: realization
+    from: repository-evidence
+    to: yarramate-engine#evidence-document

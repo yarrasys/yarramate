@@ -1,5 +1,6 @@
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
@@ -209,6 +210,30 @@ describe('YarraMate CLI', () => {
     expect(result.stdout).not.toContain('Planned goal')
   })
 
+  it('renders a deterministic evidence report over compiled sources', () => {
+    const result = runCli(
+      [
+        'evidence',
+        'test/fixtures/valid/repository-evidence.yaml',
+        'test/fixtures/valid/minimal.yaml',
+      ],
+      repositoryRoot,
+    )
+
+    expect(result.exitCode).toBe(0)
+    expect(result.stderr).toBe('')
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      format: 'yarramate/evidence-report/v1',
+      evidence: 'checkout-repository@1.0',
+      summary: {
+        confirmed: 1,
+        contradicted: 1,
+        unknown: 0,
+        notObserved: 0,
+      },
+    })
+  })
+
   it('initializes a minimal native workspace without overwriting it', () => {
     const directory = mkdtempSync(join(tmpdir(), 'yarramate-init-'))
     try {
@@ -216,7 +241,8 @@ describe('YarraMate CLI', () => {
 
       expect(created).toEqual({
         exitCode: 0,
-        stdout: 'Created architecture/main.yaml\n',
+        stdout:
+          'Created architecture/main.yaml and yarramate.workspace.yaml\n',
         stderr: '',
       })
       expect(
@@ -229,12 +255,231 @@ describe('YarraMate CLI', () => {
           'relationships: []\n',
       )
       expect(existsSync(join(directory, 'architecture/main.yaml'))).toBe(true)
+      expect(
+        readFileSync(join(directory, 'yarramate.workspace.yaml'), 'utf8'),
+      ).toBe(
+        'format: yarramate/workspace/v1\n' +
+          'id: main\n' +
+          'documents:\n' +
+          '  - architecture/*.yaml\n' +
+          'profiles: []\n' +
+          'projections: []\n' +
+          'adapterMappings: []\n' +
+          'evidence: []\n',
+      )
 
       expect(runCli(['init', '.'], directory)).toEqual({
         exitCode: 2,
         stdout: '',
-        stderr: 'architecture/main.yaml already exists; nothing was changed\n',
+        stderr:
+          'architecture/main.yaml and yarramate.workspace.yaml already exist; nothing was changed\n',
       })
+    } finally {
+      rmSync(directory, { recursive: true })
+    }
+  })
+
+  it('checks documents selected by an explicit workspace manifest', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'yarramate-workspace-'))
+    try {
+      expect(runCli(['init', '.'], directory).exitCode).toBe(0)
+      writeFileSync(
+        join(directory, 'yarramate.workspace.yaml'),
+        'format: yarramate/workspace/v1\n' +
+          'id: test-workspace\n' +
+          'documents:\n' +
+          '  - architecture/*.yaml\n' +
+          'profiles: []\n' +
+          'projections: []\n' +
+          'adapterMappings: []\n',
+        'utf8',
+      )
+
+      expect(
+        runCli(['check', 'yarramate.workspace.yaml'], directory),
+      ).toEqual({
+        exitCode: 0,
+        stdout: 'Checked 1 document: no errors\n',
+        stderr: '',
+      })
+    } finally {
+      rmSync(directory, { recursive: true })
+    }
+  })
+
+  it('compiles documents selected by an explicit workspace manifest', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'yarramate-workspace-'))
+    try {
+      expect(runCli(['init', '.'], directory).exitCode).toBe(0)
+      writeFileSync(
+        join(directory, 'yarramate.workspace.yaml'),
+        'format: yarramate/workspace/v1\n' +
+          'id: test-workspace\n' +
+          'documents:\n' +
+          '  - architecture/*.yaml\n' +
+          'profiles: []\n' +
+          'projections: []\n' +
+          'adapterMappings: []\n',
+        'utf8',
+      )
+
+      const result = runCli(
+        ['compile', 'yarramate.workspace.yaml'],
+        directory,
+      )
+      expect(result.exitCode).toBe(0)
+      expect(JSON.parse(result.stdout).documents).toEqual([
+        { id: 'main', source: 'architecture/main.yaml' },
+      ])
+    } finally {
+      rmSync(directory, { recursive: true })
+    }
+  })
+
+  it('evaluates a projection over an explicit workspace manifest', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'yarramate-workspace-'))
+    try {
+      mkdirSync(join(directory, 'architecture'))
+      mkdirSync(join(directory, 'projections'))
+      writeFileSync(
+        join(directory, 'architecture/lifecycle.yaml'),
+        readFileSync(
+          join(
+            repositoryRoot,
+            'test/fixtures/valid/lifecycle-status.yaml',
+          ),
+          'utf8',
+        ),
+        'utf8',
+      )
+      writeFileSync(
+        join(directory, 'projections/current.yaml'),
+        readFileSync(
+          join(
+            repositoryRoot,
+            'test/fixtures/valid/current-capabilities.projection.yaml',
+          ),
+          'utf8',
+        ),
+        'utf8',
+      )
+      writeFileSync(
+        join(directory, 'yarramate.workspace.yaml'),
+        'format: yarramate/workspace/v1\n' +
+          'id: test-workspace\n' +
+          'documents:\n' +
+          '  - architecture/*.yaml\n' +
+          'profiles: []\n' +
+          'projections:\n' +
+          '  - projections/*.yaml\n' +
+          'adapterMappings: []\n',
+        'utf8',
+      )
+
+      const result = runCli(
+        [
+          'context',
+          'projections/current.yaml',
+          'yarramate.workspace.yaml',
+        ],
+        directory,
+      )
+      expect(result.exitCode).toBe(0)
+      expect(JSON.parse(result.stdout).subjects).toEqual([
+        expect.objectContaining({ id: 'lifecycle#current-capability' }),
+      ])
+    } finally {
+      rmSync(directory, { recursive: true })
+    }
+  })
+
+  it('checks projection documents declared by a workspace manifest', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'yarramate-workspace-'))
+    try {
+      expect(runCli(['init', '.'], directory).exitCode).toBe(0)
+      mkdirSync(join(directory, 'projections'))
+      writeFileSync(
+        join(directory, 'projections/invalid.yaml'),
+        'format: yarramate/projection/v1\n' +
+          'id: invalid\n' +
+          'version: "1.0"\n' +
+          'query: {}\n' +
+          'metadata: {}\n',
+        'utf8',
+      )
+      writeFileSync(
+        join(directory, 'yarramate.workspace.yaml'),
+        'format: yarramate/workspace/v1\n' +
+          'id: test-workspace\n' +
+          'documents:\n' +
+          '  - architecture/*.yaml\n' +
+          'profiles: []\n' +
+          'projections:\n' +
+          '  - projections/*.yaml\n' +
+          'adapterMappings: []\n',
+        'utf8',
+      )
+
+      const result = runCli(
+        ['check', 'yarramate.workspace.yaml', '--json'],
+        directory,
+      )
+      expect(result.exitCode).toBe(1)
+      expect(JSON.parse(result.stdout).diagnostics).toContainEqual(
+        expect.objectContaining({
+          code: 'YM201',
+          path: 'projections/invalid.yaml',
+          pointer: '/metadata',
+        }),
+      )
+    } finally {
+      rmSync(directory, { recursive: true })
+    }
+  })
+
+  it('checks evidence declared by a workspace manifest against its graph', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'yarramate-workspace-'))
+    try {
+      expect(runCli(['init', '.'], directory).exitCode).toBe(0)
+      mkdirSync(join(directory, 'evidence'))
+      writeFileSync(
+        join(directory, 'evidence/repository.yaml'),
+        'format: yarramate/evidence/v1\n' +
+          'id: repository\n' +
+          'version: "1.0"\n' +
+          'provider: repository-audit\n' +
+          'observations:\n' +
+          '  - subject: main#missing\n' +
+          '    result: unknown\n' +
+          '    evidence:\n' +
+          '      uri: repo:missing\n',
+        'utf8',
+      )
+      writeFileSync(
+        join(directory, 'yarramate.workspace.yaml'),
+        'format: yarramate/workspace/v1\n' +
+          'id: test-workspace\n' +
+          'documents:\n' +
+          '  - architecture/*.yaml\n' +
+          'profiles: []\n' +
+          'projections: []\n' +
+          'adapterMappings: []\n' +
+          'evidence:\n' +
+          '  - evidence/*.yaml\n',
+        'utf8',
+      )
+
+      const result = runCli(
+        ['check', 'yarramate.workspace.yaml', '--json'],
+        directory,
+      )
+      expect(result.exitCode).toBe(1)
+      expect(JSON.parse(result.stdout).diagnostics).toContainEqual(
+        expect.objectContaining({
+          code: 'YM801',
+          path: 'evidence/repository.yaml',
+        }),
+      )
     } finally {
       rmSync(directory, { recursive: true })
     }
@@ -302,6 +547,63 @@ describe('YarraMate CLI', () => {
       expect(
         readFileSync(join(directory, 'architecture/main.yaml'), 'utf8'),
       ).toBe(beforeRejectedEdit)
+    } finally {
+      rmSync(directory, { recursive: true })
+    }
+  })
+
+  it('adds ownership and identified constraints through the stable CLI', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'yarramate-add-semantics-'))
+    try {
+      expect(runCli(['init', '.'], directory).exitCode).toBe(0)
+      for (const [id, kind, name] of [
+        ['payments-team', 'businessActor', 'Payments team'],
+        ['australia-only', 'constraint', 'Australia only'],
+      ] as const) {
+        expect(
+          runCli(
+            [
+              'add',
+              'architecture/main.yaml',
+              '--id',
+              id,
+              '--kind',
+              kind,
+              '--name',
+              name,
+            ],
+            directory,
+          ).exitCode,
+        ).toBe(0)
+      }
+
+      const result = runCli(
+        [
+          'add',
+          'architecture/main.yaml',
+          '--id',
+          'customer-data',
+          '--kind',
+          'dataObject',
+          '--name',
+          'Customer data',
+          '--owner',
+          'payments-team',
+          '--constraint',
+          'residency=australia-only',
+        ],
+        directory,
+      )
+
+      expect(result.exitCode).toBe(0)
+      expect(
+        readFileSync(join(directory, 'architecture/main.yaml'), 'utf8'),
+      ).toContain(
+        '    owner: payments-team\n' +
+          '    constraints:\n' +
+          '      - id: residency\n' +
+          '        ref: australia-only\n',
+      )
     } finally {
       rmSync(directory, { recursive: true })
     }
@@ -414,6 +716,18 @@ describe('YarraMate CLI', () => {
       const documentPath = join(directory, 'platform-document.yaml')
       writeFileSync(profilePath, profileSource, 'utf8')
       writeFileSync(documentPath, documentSource, 'utf8')
+      writeFileSync(
+        join(directory, 'yarramate.workspace.yaml'),
+        'format: yarramate/workspace/v1\n' +
+          'id: platform\n' +
+          'documents:\n' +
+          '  - platform-document.yaml\n' +
+          'profiles:\n' +
+          '  - platform-profile.yaml\n' +
+          'projections: []\n' +
+          'adapterMappings: []\n',
+        'utf8',
+      )
 
       const result = runCli(
         [
@@ -426,7 +740,7 @@ describe('YarraMate CLI', () => {
           '--name',
           'Secondary team',
           '--source',
-          'platform-profile.yaml',
+          'yarramate.workspace.yaml',
         ],
         directory,
       )

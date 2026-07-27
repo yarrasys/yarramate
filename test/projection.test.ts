@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import Ajv2020Module from 'ajv/dist/2020.js'
 import {
   compileWorkspace,
   evaluateProjection,
@@ -9,18 +10,30 @@ import {
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
+const Ajv2020 = Ajv2020Module.default
+
 const source = `format: yarramate/v1
 id: projection-model
 profile: yarramate/core@0.1
 concepts:
+  - id: platform-team
+    kind: businessActor
+    name: Platform team
+  - id: australia-only
+    kind: constraint
+    name: Australia only
   - id: first
     kind: capability
     name: First
     status: current
+    owner: platform-team
   - id: second
     kind: capability
     name: Second
     status: current
+    constraints:
+      - id: residency
+        ref: australia-only
   - id: future
     kind: goal
     name: Future
@@ -39,6 +52,152 @@ relationships:
 `
 
 describe('evaluateProjection', () => {
+  it('selects concepts by globally qualified owner', () => {
+    const compilation = compileWorkspace([
+      { path: 'projection-model.yaml', source },
+    ])
+    expect(compilation.ok).toBe(true)
+    if (!compilation.ok) return
+
+    const result = evaluateProjection(
+      compilation.graph,
+      {
+        format: 'yarramate/projection/v1',
+        id: 'platform-owned',
+        version: '1.0',
+        query: {
+          owners: ['projection-model#platform-team'],
+          relationships: 'none',
+        },
+      } as ProjectionDefinition,
+    )
+
+    expect(result.subjects).toEqual([
+      { id: 'projection-model#first', type: 'concept' },
+    ])
+  })
+
+  it('selects concepts requiring a globally qualified constraint', () => {
+    const compilation = compileWorkspace([
+      { path: 'projection-model.yaml', source },
+    ])
+    expect(compilation.ok).toBe(true)
+    if (!compilation.ok) return
+
+    const result = evaluateProjection(
+      compilation.graph,
+      {
+        format: 'yarramate/projection/v1',
+        id: 'residency-constrained',
+        version: '1.0',
+        query: {
+          constraints: ['projection-model#australia-only'],
+          relationships: 'none',
+        },
+      } as ProjectionDefinition,
+    )
+
+    expect(result.subjects).toEqual([
+      { id: 'projection-model#second', type: 'concept' },
+    ])
+  })
+
+  it('allows portable selectors with no workspace match', () => {
+    const compilation = compileWorkspace([
+      { path: 'projection-model.yaml', source },
+    ])
+    expect(compilation.ok).toBe(true)
+    if (!compilation.ok) return
+
+    const result = evaluateProjection(compilation.graph, {
+      format: 'yarramate/projection/v1',
+      id: 'other-workspace-team',
+      version: '1.0',
+      query: {
+        owners: ['other-workspace#payments-team'],
+      },
+    })
+
+    expect(result).toMatchObject({
+      documents: [],
+      subjects: [],
+      claims: [],
+    })
+  })
+
+  it('serializes identically after presentation key reordering', () => {
+    const compilation = compileWorkspace([
+      { path: 'projection-model.yaml', source },
+    ])
+    expect(compilation.ok).toBe(true)
+    if (!compilation.ok) return
+    const first = loadProjection({
+      path: 'first.projection.yaml',
+      source:
+        'format: yarramate/projection/v1\n' +
+        'id: reordered\n' +
+        'version: "1.0"\n' +
+        'query: {}\n' +
+        'presentation:\n' +
+        '  title: Reordered\n' +
+        '  description: Stable output\n',
+    })
+    const second = loadProjection({
+      path: 'second.projection.yaml',
+      source:
+        'presentation:\n' +
+        '  description: Stable output\n' +
+        '  title: Reordered\n' +
+        'query: {}\n' +
+        'version: "1.0"\n' +
+        'id: reordered\n' +
+        'format: yarramate/projection/v1\n',
+    })
+    expect(first.ok).toBe(true)
+    expect(second.ok).toBe(true)
+    if (!first.ok || !second.ok) return
+
+    expect(
+      JSON.stringify(
+        evaluateProjection(compilation.graph, first.projection),
+      ),
+    ).toBe(
+      JSON.stringify(
+        evaluateProjection(compilation.graph, second.projection),
+      ),
+    )
+  })
+
+  it('emits results conforming to the normative result schema', () => {
+    const compilation = compileWorkspace([
+      { path: 'projection-model.yaml', source },
+    ])
+    expect(compilation.ok).toBe(true)
+    if (!compilation.ok) return
+    const schema = JSON.parse(
+      readFileSync(
+        fileURLToPath(
+          new URL(
+            '../schema/yarramate-projection-result.schema.json',
+            import.meta.url,
+          ),
+        ),
+        'utf8',
+      ),
+    )
+    const validate = new Ajv2020({ allErrors: true }).compile(schema)
+    const result = evaluateProjection(compilation.graph, {
+      format: 'yarramate/projection/v1',
+      id: 'all-concepts',
+      version: '1.0',
+      query: {},
+    })
+
+    expect(validate(result), JSON.stringify(validate.errors ?? [])).toBe(
+      true,
+    )
+  })
+
   it('selects concepts semantically and includes relationships between them', () => {
     const compilation = compileWorkspace([
       { path: 'projection-model.yaml', source },

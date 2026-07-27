@@ -93,7 +93,13 @@ yarramate check
 yarramate compile
 yarramate view
 yarramate context
+yarramate evidence
 ```
+
+A versioned workspace manifest may explicitly enumerate local documents,
+profiles, projections, and adapter mappings. Paths resolve relative to the
+manifest with deterministic, traversal-safe glob expansion. The CLI never
+searches parent directories for a manifest or infers governance from it.
 
 ## Validation
 
@@ -173,3 +179,24 @@ They map globally qualified compiled native subject identities to opaque
 external identities. Generic validation checks native existence, subject type,
 and one-to-one identity; the named adapter validates its external side.
 Mappings do not become claims and are not required for semantic completeness.
+
+Optional evidence overlays evaluate existing globally qualified subjects or
+stable claim IDs without changing native documents or graph v2. Controlled
+results are provider observations, not approvals or automatic Core failures.
+Provider locators remain opaque; independent observed claims require a
+separate future contract.
+
+Native concepts may concisely declare a single accountable owner and multiple
+identified constraint references. Both compile into explicit, globally
+referenced claims. Core validates their deterministic structural correctness;
+it does not infer approval authority, evaluate constraint satisfaction, or
+judge architectural merit.
+
+Constraint assessment reuses evidence overlays over stable constraint claim
+IDs. Core does not contain a policy language, compliance engine, exception or
+waiver workflow, missing-evidence policy, or automatic CI consequence.
+
+Projection selectors are portable: well-formed selectors that do not match the
+current graph produce no matches rather than correctness diagnostics. This
+allows incremental adoption and reusable queries without introducing implicit
+workspace dependencies.

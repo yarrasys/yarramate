@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yarramate.org/schema/evidence/v1",
+  "title": "YarraMate evidence overlay",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "id", "version", "provider", "observations"],
+  "properties": {
+    "format": {
+      "const": "yarramate/evidence/v1"
+    },
+    "id": {
+      "$ref": "#/$defs/id"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
+    "provider": {
+      "$ref": "#/$defs/id"
+    },
+    "observations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/observation"
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+    },
+    "qualifiedIdentity": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*#[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:~[a-z][a-z0-9-]*)?$"
+    },
+    "evidenceLocator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uri"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["result", "evidence"],
+      "properties": {
+        "subject": {
+          "$ref": "#/$defs/qualifiedIdentity"
+        },
+        "claim": {
+          "$ref": "#/$defs/qualifiedIdentity"
+        },
+        "result": {
+          "enum": [
+            "confirmed",
+            "contradicted",
+            "unknown",
+            "not-observed"
+          ]
+        },
+        "evidence": {
+          "$ref": "#/$defs/evidenceLocator"
+        }
+      },
+      "oneOf": [
+        {
+          "required": ["subject"],
+          "not": {
+            "required": ["claim"]
+          }
+        },
+        {
+          "required": ["claim"],
+          "not": {
+            "required": ["subject"]
+          }
+        }
+      ]
+    }
+  }
+}

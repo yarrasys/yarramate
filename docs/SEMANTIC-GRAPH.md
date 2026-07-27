@@ -26,6 +26,11 @@ Every graph-v2 claim has:
 - the `declared` origin;
 - source document, path, YAML pointer, line, and column.
 
+Native ownership uses predicate `yarramate/ownership/owner`. Native constraint
+references use `yarramate/constraint/requires`. Both point to globally
+qualified concept subjects and use stable claim IDs derived from authored
+syntax; neither adds fields to graph v2.
+
 The JSON Schema is structural. Compiler conformance additionally guarantees
 referential integrity, unique semantic IDs, known qualified kinds, and the
 correctness rules documented for native compilation.
@@ -46,7 +51,7 @@ No generated graph file is required in Git. The same native inputs must produce
 byte-identical canonical output regardless of workspace source order.
 
 ```sh
-yarramate compile profiles/project.yaml architecture/*.yaml > graph.json
+yarramate compile yarramate.workspace.yaml > graph.json
 ```
 
 Exit status is `0` with the graph on standard output, `1` with deterministic
@@ -67,5 +72,9 @@ Implementations may fix a compiler defect when existing output violates the
 documented v2 contract. New source-language features may emit additional
 claims using the existing v2 claim structure. Consumers must interpret
 predicates by identity and may ignore predicates they do not understand.
+
+Graph v2 remains declared-only. Provider observations are evaluated through
+the separate evidence overlay described in `docs/EVIDENCE.md`; they do not
+change graph subjects, claims, or provenance.
 
 The v2 schema is exported as `yarramate/schema/graph-v2`.

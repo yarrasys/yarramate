@@ -10,6 +10,196 @@ const fixture = (path: string): string =>
   )
 
 describe('compileWorkspace', () => {
+  it('compiles concise ownership into an explicit stable claim', () => {
+    const result = compileWorkspace([
+      {
+        path: 'ownership.yaml',
+        source:
+          'format: yarramate/v1\n' +
+          'id: ownership\n' +
+          'profile: yarramate/core@0.1\n' +
+          'concepts:\n' +
+          '  - id: payments-team\n' +
+          '    kind: businessActor\n' +
+          '    name: Payments team\n' +
+          '  - id: payments-api\n' +
+          '    kind: applicationService\n' +
+          '    name: Payments API\n' +
+          '    owner: payments-team\n' +
+          'relationships: []\n',
+      },
+    ])
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.graph.claims).toContainEqual({
+      id: 'ownership#payments-api~owner',
+      subject: 'ownership#payments-api',
+      predicate: 'yarramate/ownership/owner',
+      object: { ref: 'ownership#payments-team' },
+      origin: 'declared',
+      source: {
+        document: 'ownership',
+        path: 'ownership.yaml',
+        pointer: '/concepts/1/owner',
+        line: 11,
+        column: 12,
+      },
+    })
+  })
+
+  it('reports an unresolved owner at the authored reference', () => {
+    const result = compileWorkspace([
+      {
+        path: 'ownership.yaml',
+        source:
+          'format: yarramate/v1\n' +
+          'id: ownership\n' +
+          'profile: yarramate/core@0.1\n' +
+          'concepts:\n' +
+          '  - id: payments-api\n' +
+          '    kind: applicationService\n' +
+          '    name: Payments API\n' +
+          '    owner: missing-team\n' +
+          'relationships: []\n',
+      },
+    ])
+
+    expect(result).toEqual({
+      ok: false,
+      diagnostics: [
+        {
+          severity: 'error',
+          code: 'YM304',
+          message: 'Unresolved owner reference "missing-team"',
+          path: 'ownership.yaml',
+          pointer: '/concepts/0/owner',
+          line: 8,
+          column: 12,
+        },
+      ],
+    })
+  })
+
+  it('compiles identified constraints into stable explicit claims', () => {
+    const result = compileWorkspace([
+      {
+        path: 'constraints.yaml',
+        source:
+          'format: yarramate/v1\n' +
+          'id: constraints\n' +
+          'profile: yarramate/core@0.1\n' +
+          'concepts:\n' +
+          '  - id: australia-only\n' +
+          '    kind: constraint\n' +
+          '    name: Data remains in Australia\n' +
+          '  - id: customer-data\n' +
+          '    kind: dataObject\n' +
+          '    name: Customer data\n' +
+          '    constraints:\n' +
+          '      - id: residency\n' +
+          '        ref: australia-only\n' +
+          'relationships: []\n',
+      },
+    ])
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.graph.claims).toContainEqual({
+      id: 'constraints#customer-data~constraint-residency',
+      subject: 'constraints#customer-data',
+      predicate: 'yarramate/constraint/requires',
+      object: { ref: 'constraints#australia-only' },
+      origin: 'declared',
+      source: {
+        document: 'constraints',
+        path: 'constraints.yaml',
+        pointer: '/concepts/1/constraints/0/ref',
+        line: 13,
+        column: 14,
+      },
+    })
+  })
+
+  it('reports an unresolved constraint at the authored reference', () => {
+    const result = compileWorkspace([
+      {
+        path: 'constraints.yaml',
+        source:
+          'format: yarramate/v1\n' +
+          'id: constraints\n' +
+          'profile: yarramate/core@0.1\n' +
+          'concepts:\n' +
+          '  - id: customer-data\n' +
+          '    kind: dataObject\n' +
+          '    name: Customer data\n' +
+          '    constraints:\n' +
+          '      - id: residency\n' +
+          '        ref: missing-constraint\n' +
+          'relationships: []\n',
+      },
+    ])
+
+    expect(result).toEqual({
+      ok: false,
+      diagnostics: [
+        {
+          severity: 'error',
+          code: 'YM305',
+          message:
+            'Unresolved constraint reference "missing-constraint"',
+          path: 'constraints.yaml',
+          pointer: '/concepts/0/constraints/0/ref',
+          line: 10,
+          column: 14,
+        },
+      ],
+    })
+  })
+
+  it('rejects duplicate constraint IDs on one subject', () => {
+    const result = compileWorkspace([
+      {
+        path: 'constraints.yaml',
+        source:
+          'format: yarramate/v1\n' +
+          'id: constraints\n' +
+          'profile: yarramate/core@0.1\n' +
+          'concepts:\n' +
+          '  - id: first-rule\n' +
+          '    kind: constraint\n' +
+          '    name: First rule\n' +
+          '  - id: second-rule\n' +
+          '    kind: constraint\n' +
+          '    name: Second rule\n' +
+          '  - id: customer-data\n' +
+          '    kind: dataObject\n' +
+          '    name: Customer data\n' +
+          '    constraints:\n' +
+          '      - id: residency\n' +
+          '        ref: first-rule\n' +
+          '      - id: residency\n' +
+          '        ref: second-rule\n' +
+          'relationships: []\n',
+      },
+    ])
+
+    expect(result).toEqual({
+      ok: false,
+      diagnostics: [
+        {
+          severity: 'error',
+          code: 'YM306',
+          message: 'Duplicate constraint ID "residency"',
+          path: 'constraints.yaml',
+          pointer: '/concepts/2/constraints/1/id',
+          line: 17,
+          column: 13,
+        },
+      ],
+    })
+  })
+
   it('compiles concise authoring syntax into explicit declared claims', () => {
     const result = compileWorkspace([
       {

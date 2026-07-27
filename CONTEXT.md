@@ -11,6 +11,11 @@ A repository-native collection of YarraMate source documents, profiles,
 policies, and adapter configuration.
 _Avoid_: LikeC4 project, governance server
 
+**Workspace manifest**:
+A versioned, explicit, traversal-safe index of files belonging to one
+workspace.
+_Avoid_: Automatic discovery, build system, governance configuration
+
 **Semantic graph**:
 The tool-neutral graph compiled deterministically from native YarraMate
 documents. Graph v2 is a normative, canonically serialized interchange
@@ -21,6 +26,19 @@ _Avoid_: Diagram, Graphify graph
 A sourced assertion about a subject, including its kind, relationship,
 classification, constraint, or evidence.
 _Avoid_: Metadata field, unqualified fact
+
+**Owner**:
+The single concept referenced as accountable steward of another concept.
+_Avoid_: Approver, workflow participant, inferred team
+
+**Constraint reference**:
+An identified declaration that a concept requires another concept representing
+an architectural restriction.
+_Avoid_: Embedded policy engine, compliance result, free-form metadata
+
+**Constraint assessment**:
+An evidence-provider observation about an existing constraint claim.
+_Avoid_: Core validation result, approval, canonical compliance status
 
 **Concept kind**:
 A named semantic category available to elements, such as `goal`, `capability`,
@@ -42,6 +60,11 @@ A versioned semantic query with optional presentation hints. It may produce a
 diagram, report, or agent context.
 _Avoid_: Canonical diagram, separate model
 
+**Portable selector**:
+A well-formed projection selector that may have no match in a particular
+workspace without becoming invalid.
+_Avoid_: Broken reference, mandatory workspace dependency
+
 **Conformance rule**:
 A deterministic restriction over documents, claims, kinds, relationships, or
 adapter mappings.
@@ -61,6 +84,11 @@ _Avoid_: Native metadata, generated claim, canonical external model
 An adapter that resolves declared claims against observed sources such as
 repositories, catalogues, tests, or runtime systems.
 _Avoid_: Authority over architectural intent
+
+**Evidence overlay**:
+A versioned provider report evaluating existing graph subjects or claims
+without modifying canonical intent.
+_Avoid_: Observed semantic graph, approval record, generic metadata
 
 **Compatibility profile**:
 A separately governed mapping between YarraMate semantics and an external

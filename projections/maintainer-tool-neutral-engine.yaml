@@ -1,0 +1,12 @@
+format: yarramate/projection/v1
+id: maintainer-tool-neutral-engine
+version: "1.0"
+query:
+  documents: [yarramate-engine]
+  owners: [yarramate-product#yarramate-maintainers]
+  constraints: [yarramate-product#tool-neutral-core]
+  statuses: [current]
+  relationships: none
+presentation:
+  title: Maintainer-owned tool-neutral engine
+  description: Current engine modules stewarded by YarraMate maintainers and constrained to preserve tool neutrality.

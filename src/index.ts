@@ -1,5 +1,24 @@
 export { compileWorkspace } from './compiler.js'
 export { serializeSemanticGraph } from './graph.js'
+export {
+  loadWorkspaceManifest,
+  type ResolvedWorkspace,
+  type WorkspaceManifest,
+  type WorkspaceManifestResult,
+} from './workspace.js'
+export {
+  evaluateEvidence,
+  evaluateEvidenceWorkspace,
+  loadEvidence,
+  type EvidenceDocument,
+  type EvidenceEvaluationResult,
+  type EvidenceLoadResult,
+  type EvidenceLocator,
+  type EvidenceObservation,
+  type EvidenceReport,
+  type EvidenceResult,
+  type EvidenceWorkspaceEvaluationResult,
+} from './evidence.js'
 export type {
   CompilationResult,
   Diagnostic,

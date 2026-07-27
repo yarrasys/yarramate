@@ -21,7 +21,8 @@ notation.
 - Publish a typed library API and deterministic graph serialization.
   **`compileWorkspace` is exported through the typed package entrypoint with
   deterministic graph-v2 serialization.**
-- Keep compiled artifacts reproducible and ignored by default.
+- Keep compiled artifacts reproducible and ignored by default. **Canonical
+  serializers are deterministic and `dist/` remains ignored.**
 - Publish a normative, canonical graph interchange contract. **Graph v2 JSON
   Schema, serializer, and `compile` CLI output implemented.**
 - Maintain a canonical native model of the YarraMate repository. **Initial
@@ -33,6 +34,9 @@ notation.
 - Implement `init`, `add`, `connect`, `check`, `view`, and `context`.
   **The initial explicit-file command set is implemented. `add` and `connect`
   use validated writes and repeatable explicit workspace sources.**
+- Define deterministic workspace input configuration. **Versioned explicit
+  manifests, safe glob resolution, CLI consumption, and dogfooding
+  implemented.**
 - Validate schema, references, identifiers, kinds, endpoint compatibility,
   controlled fields, contradictions, and adapter mappings. **Core checks
   and optional subject-mapping integrity are implemented; contradiction
@@ -49,7 +53,8 @@ notation.
   profile documents, transitive inheritance, and constraint narrowing
   implemented.**
 - Define projections as semantic queries with presentation hints.
-  **Projection v1 supports document, qualified-kind, and lifecycle filters.**
+  **Document, kind, lifecycle-status, owner, required-constraint, and
+  relationship-inclusion queries are implemented.**
 - Render projection results for humans and agent harnesses. **Deterministic
   JSON context is implemented through `yarramate context`, with deterministic
   Markdown through `yarramate view`.**
@@ -60,6 +65,9 @@ notation.
   **A versioned subject-identity mapping seam and governed-change mapping are
   implemented; transformations and round-tripping remain future adapter work.**
 - Generic evidence-provider interface.
+  **A provider-neutral existing-claim evidence overlay and deterministic report
+  are implemented. Constraint assessment reuses that seam; provider execution
+  and CI policy remain future adapter or consumer work.**
 - Graphify evidence and architecture-drift adapter.
 - Additional authoring, catalogue, source, and runtime adapters.
 
@@ -75,5 +83,5 @@ notation.
 - Public product name and trademark review.
 - Repository licence, documentation licence, and contribution provenance.
 - Automatic profile discovery and external registries.
-- Controlled shorthand for ownership, constraints, and evidence. **Operational
-  lifecycle status implemented.**
+  **Local explicit manifests are implemented; automatic discovery and remote
+  registries remain intentionally unresolved.**

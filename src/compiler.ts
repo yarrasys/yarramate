@@ -37,6 +37,11 @@ interface NativeConcept {
   readonly name: string
   readonly description?: string
   readonly status?: 'planned' | 'current' | 'retired'
+  readonly owner?: string
+  readonly constraints?: ReadonlyArray<{
+    readonly id: string
+    readonly ref: string
+  }>
 }
 
 interface NativeRelationship {
@@ -611,6 +616,66 @@ export function compileWorkspace(
           column: source.column,
         })
       }
+      if (
+        concept.owner !== undefined &&
+        !conceptByQualifiedId.has(
+          qualifyReference(value.id, concept.owner),
+        )
+      ) {
+        const pointer = `/concepts/${index}/owner`
+        const source = location(['concepts', index, 'owner'], pointer)
+        diagnostics.push({
+          severity: 'error',
+          code: 'YM304',
+          message: `Unresolved owner reference "${concept.owner}"`,
+          path: input.path,
+          pointer,
+          line: source.line,
+          column: source.column,
+        })
+      }
+      const seenConstraintIds = new Set<string>()
+      for (const [constraintIndex, constraint] of (
+        concept.constraints ?? []
+      ).entries()) {
+        if (seenConstraintIds.has(constraint.id)) {
+          const pointer = `/concepts/${index}/constraints/${constraintIndex}/id`
+          const source = location(
+            ['concepts', index, 'constraints', constraintIndex, 'id'],
+            pointer,
+          )
+          diagnostics.push({
+            severity: 'error',
+            code: 'YM306',
+            message: `Duplicate constraint ID "${constraint.id}"`,
+            path: input.path,
+            pointer,
+            line: source.line,
+            column: source.column,
+          })
+        }
+        seenConstraintIds.add(constraint.id)
+        if (
+          !conceptByQualifiedId.has(
+            qualifyReference(value.id, constraint.ref),
+          )
+        ) {
+          const pointer = `/concepts/${index}/constraints/${constraintIndex}/ref`
+          const source = location(
+            ['concepts', index, 'constraints', constraintIndex, 'ref'],
+            pointer,
+          )
+          diagnostics.push({
+            severity: 'error',
+            code: 'YM305',
+            message: `Unresolved constraint reference "${constraint.ref}"`,
+            path: input.path,
+            pointer,
+            line: source.line,
+            column: source.column,
+          })
+        }
+      }
     }
     const wholePartByEndpoints = new Map<
       string,
@@ -797,6 +862,38 @@ export function compileWorkspace(
           source: location(
             ['concepts', index, 'status'],
             `/concepts/${index}/status`,
+          ),
+        })
+      }
+      if (concept.owner !== undefined) {
+        claims.push({
+          id: `${subject}~owner`,
+          subject,
+          predicate: 'yarramate/ownership/owner',
+          object: {
+            ref: qualifyReference(value.id, concept.owner),
+          },
+          origin: 'declared',
+          source: location(
+            ['concepts', index, 'owner'],
+            `/concepts/${index}/owner`,
+          ),
+        })
+      }
+      for (const [constraintIndex, constraint] of (
+        concept.constraints ?? []
+      ).entries()) {
+        claims.push({
+          id: `${subject}~constraint-${constraint.id}`,
+          subject,
+          predicate: 'yarramate/constraint/requires',
+          object: {
+            ref: qualifyReference(value.id, constraint.ref),
+          },
+          origin: 'declared',
+          source: location(
+            ['concepts', index, 'constraints', constraintIndex, 'ref'],
+            `/concepts/${index}/constraints/${constraintIndex}/ref`,
           ),
         })
       }

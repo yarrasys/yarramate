@@ -42,7 +42,7 @@ claims, and `compileWorkspace` does not load or depend on them. The stable
 `check` CLI orchestrates the optional layer:
 
 ```sh
-yarramate check architecture.yaml likec4.mapping.yaml
+yarramate check yarramate.workspace.yaml
 ```
 
 The typed package API exposes `loadAdapterMapping`, `validateAdapterMapping`,
@@ -56,8 +56,7 @@ the existing LikeC4 visualization prototype:
 
 ```sh
 node dist/cli.js check \
-  examples/governed-change/architecture.yaml \
-  examples/governed-change/likec4.mapping.yaml
+  examples/governed-change/yarramate.workspace.yaml
 ```
 
 Relationship mappings are supported, but the example deliberately maps only

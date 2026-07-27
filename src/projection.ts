@@ -25,6 +25,8 @@ export interface ProjectionDefinition {
     readonly documents?: readonly string[]
     readonly kinds?: readonly string[]
     readonly statuses?: readonly LifecycleStatus[]
+    readonly owners?: readonly string[]
+    readonly constraints?: readonly string[]
     readonly relationships?: 'between' | 'none'
   }
   readonly presentation?: {
@@ -123,6 +125,30 @@ const claimValue = (
   return object !== undefined && 'value' in object ? object.value : undefined
 }
 
+const claimReference = (
+  claims: readonly GraphClaim[],
+  subject: string,
+  predicate: string,
+): string | undefined => {
+  const object = claims.find(
+    (claim) => claim.subject === subject && claim.predicate === predicate,
+  )?.object
+  return object !== undefined && 'ref' in object ? object.ref : undefined
+}
+
+const claimReferences = (
+  claims: readonly GraphClaim[],
+  subject: string,
+  predicate: string,
+): readonly string[] =>
+  claims.flatMap((claim) =>
+    claim.subject === subject &&
+    claim.predicate === predicate &&
+    'ref' in claim.object
+      ? [claim.object.ref]
+      : [],
+  )
+
 export function evaluateProjection(
   graph: SemanticGraph,
   projection: ProjectionDefinition,
@@ -142,6 +168,16 @@ export function evaluateProjection(
           id,
           'yarramate/lifecycle/status',
         )
+        const owner = claimReference(
+          graph.claims,
+          id,
+          'yarramate/ownership/owner',
+        )
+        const constraints = claimReferences(
+          graph.claims,
+          id,
+          'yarramate/constraint/requires',
+        )
         return (
           (projection.query.documents === undefined ||
             projection.query.documents.includes(documentId)) &&
@@ -149,7 +185,14 @@ export function evaluateProjection(
             (kind !== undefined && projection.query.kinds.includes(kind))) &&
           (projection.query.statuses === undefined ||
             (status !== undefined &&
-              projection.query.statuses.includes(status as LifecycleStatus)))
+              projection.query.statuses.includes(status as LifecycleStatus))) &&
+          (projection.query.owners === undefined ||
+            (owner !== undefined &&
+              projection.query.owners.includes(owner))) &&
+          (projection.query.constraints === undefined ||
+            constraints.some((constraint) =>
+              projection.query.constraints?.includes(constraint),
+            ))
         )
       })
       .map(({ id }) => id),
@@ -199,7 +242,16 @@ export function evaluateProjection(
     projection: `${projection.id}@${projection.version}`,
     ...(projection.presentation === undefined
       ? {}
-      : { presentation: projection.presentation }),
+      : {
+          presentation: {
+            ...(projection.presentation.title === undefined
+              ? {}
+              : { title: projection.presentation.title }),
+            ...(projection.presentation.description === undefined
+              ? {}
+              : { description: projection.presentation.description }),
+          },
+        }),
     documents: graph.documents.filter(({ id }) => selectedDocuments.has(id)),
     subjects,
     claims,

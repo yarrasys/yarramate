@@ -11,6 +11,12 @@ import { pathToFileURL } from 'node:url'
 import { isSeq, parseDocument } from 'yaml'
 import { compileWorkspace } from './compiler.js'
 import { serializeSemanticGraph } from './graph.js'
+import { loadWorkspaceManifest } from './workspace.js'
+import {
+  evaluateEvidence,
+  evaluateEvidenceWorkspace,
+  loadEvidence,
+} from './evidence.js'
 import {
   loadAdapterMapping,
   validateAdapterMappings,
@@ -28,7 +34,7 @@ export interface CliResult {
 }
 
 const usage =
-  'Usage:\n  yarramate init <directory>\n  yarramate add <document.yaml> --id <id> --kind <kind> --name <name> [--status <status>] [--description <text>] [--source <source.yaml> ...]\n  yarramate connect <document.yaml> --id <id> --kind <kind> --from <ref> --to <ref> [--name <name>] [--status <status>] [--mode <mode>] [--content <text>] [--source <source.yaml> ...]\n  yarramate check <source.yaml> [source.yaml ...] [--json]\n  yarramate compile <source.yaml> [source.yaml ...]\n  yarramate context <projection.yaml> <source.yaml> [source.yaml ...]\n  yarramate view <projection.yaml> <source.yaml> [source.yaml ...]\n'
+  'Usage:\n  yarramate init <directory>\n  yarramate add <document.yaml> --id <id> --kind <kind> --name <name> [--status <status>] [--description <text>] [--owner <ref>] [--constraint <id>=<ref> ...] [--source <source.yaml> ...]\n  yarramate connect <document.yaml> --id <id> --kind <kind> --from <ref> --to <ref> [--name <name>] [--status <status>] [--mode <mode>] [--content <text>] [--source <source.yaml> ...]\n  yarramate check <source.yaml> [source.yaml ...] [--json]\n  yarramate compile <source.yaml> [source.yaml ...]\n  yarramate context <projection.yaml> <source.yaml> [source.yaml ...]\n  yarramate view <projection.yaml> <source.yaml> [source.yaml ...]\n  yarramate evidence <evidence.yaml> <source.yaml> [source.yaml ...]\n'
 
 const diagnosticJson = (diagnostics: unknown) =>
   `${JSON.stringify({ ok: false, diagnostics }, null, 2)}\n`
@@ -48,6 +54,14 @@ const runProjection = (
   }
 
   try {
+    const resolved = resolveCliWorkspaceSources(paths, cwd)
+    if (!resolved.ok) {
+      return {
+        exitCode: 1,
+        stdout: diagnosticJson(resolved.diagnostics),
+        stderr: '',
+      }
+    }
     const loaded = loadProjection({
       path: projectionPath,
       source: readFileSync(resolve(cwd, projectionPath), 'utf8'),
@@ -60,7 +74,7 @@ const runProjection = (
       }
     }
     const compilation = compileWorkspace(
-      paths.map((path) => ({
+      resolved.paths.map((path) => ({
         path,
         source: readFileSync(resolve(cwd, path), 'utf8'),
       })),
@@ -87,6 +101,72 @@ const runProjection = (
   }
 }
 
+const runEvidence = (
+  options: readonly string[],
+  cwd: string,
+): CliResult => {
+  const [evidencePath, ...paths] = options
+  if (
+    evidencePath === undefined ||
+    paths.length === 0 ||
+    options.some((option) => option.startsWith('-'))
+  ) {
+    return { exitCode: 2, stdout: '', stderr: usage }
+  }
+  try {
+    const resolved = resolveCliWorkspaceSources(paths, cwd)
+    if (!resolved.ok) {
+      return {
+        exitCode: 1,
+        stdout: diagnosticJson(resolved.diagnostics),
+        stderr: '',
+      }
+    }
+    const loaded = loadEvidence({
+      path: evidencePath,
+      source: readFileSync(resolve(cwd, evidencePath), 'utf8'),
+    })
+    if (!loaded.ok) {
+      return {
+        exitCode: 1,
+        stdout: diagnosticJson(loaded.diagnostics),
+        stderr: '',
+      }
+    }
+    const compilation = compileWorkspace(
+      resolved.paths.map((path) => ({
+        path,
+        source: readFileSync(resolve(cwd, path), 'utf8'),
+      })),
+    )
+    if (!compilation.ok) {
+      return {
+        exitCode: 1,
+        stdout: diagnosticJson(compilation.diagnostics),
+        stderr: '',
+      }
+    }
+    const evaluation = evaluateEvidence(
+      compilation.graph,
+      loaded.evidence,
+    )
+    return evaluation.ok
+      ? {
+          exitCode: 0,
+          stdout: `${JSON.stringify(evaluation.report, null, 2)}\n`,
+          stderr: '',
+        }
+      : {
+          exitCode: 1,
+          stdout: diagnosticJson(evaluation.diagnostics),
+          stderr: '',
+        }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    return { exitCode: 2, stdout: '', stderr: `${message}\n` }
+  }
+}
+
 const runInit = (options: readonly string[], cwd: string): CliResult => {
   const target = options[0]
   if (
@@ -96,13 +176,20 @@ const runInit = (options: readonly string[], cwd: string): CliResult => {
   ) {
     return { exitCode: 2, stdout: '', stderr: usage }
   }
-  const documentPath = resolve(cwd, target, 'architecture/main.yaml')
+  const workspaceRoot = resolve(cwd, target)
+  const documentPath = resolve(workspaceRoot, 'architecture/main.yaml')
+  const manifestPath = resolve(workspaceRoot, 'yarramate.workspace.yaml')
   const displayPath = relative(cwd, documentPath)
-  if (existsSync(documentPath)) {
+  const displayManifestPath = relative(cwd, manifestPath)
+  const existing = [
+    ...(existsSync(documentPath) ? [displayPath] : []),
+    ...(existsSync(manifestPath) ? [displayManifestPath] : []),
+  ]
+  if (existing.length > 0) {
     return {
       exitCode: 2,
       stdout: '',
-      stderr: `${displayPath} already exists; nothing was changed\n`,
+      stderr: `${existing.join(' and ')} ${existing.length === 1 ? 'already exists' : 'already exist'}; nothing was changed\n`,
     }
   }
   mkdirSync(dirname(documentPath), { recursive: true })
@@ -115,9 +202,21 @@ const runInit = (options: readonly string[], cwd: string): CliResult => {
       'relationships: []\n',
     'utf8',
   )
+  writeFileSync(
+    manifestPath,
+    'format: yarramate/workspace/v1\n' +
+      'id: main\n' +
+      'documents:\n' +
+      '  - architecture/*.yaml\n' +
+      'profiles: []\n' +
+      'projections: []\n' +
+      'adapterMappings: []\n' +
+      'evidence: []\n',
+    'utf8',
+  )
   return {
     exitCode: 0,
-    stdout: `Created ${displayPath}\n`,
+    stdout: `Created ${displayPath} and ${displayManifestPath}\n`,
     stderr: '',
   }
 }
@@ -163,7 +262,10 @@ const hasRepeatedSingletonFlag = (
   flags: ReadonlyMap<string, readonly string[]>,
 ) =>
   [...flags.entries()].some(
-    ([flag, values]) => flag !== '--source' && values.length !== 1,
+    ([flag, values]) =>
+      flag !== '--source' &&
+      flag !== '--constraint' &&
+      values.length !== 1,
   )
 
 const humanDiagnostics = (
@@ -202,10 +304,68 @@ const sortDiagnostics = <
       left.message.localeCompare(right.message),
   )
 
+const resolveCliWorkspaceSources = (
+  paths: readonly string[],
+  cwd: string,
+  options: {
+    readonly includeAdapterMappings?: boolean
+  } = {},
+):
+  | {
+      readonly ok: true
+      readonly paths: readonly string[]
+      readonly projections: readonly string[]
+      readonly evidence: readonly string[]
+    }
+  | {
+      readonly ok: false
+      readonly diagnostics: readonly {
+        readonly severity: 'error'
+        readonly path: string
+        readonly pointer: string
+        readonly line: number
+        readonly column: number
+        readonly code: string
+        readonly message: string
+      }[]
+    } => {
+  if (paths.length !== 1) {
+    return { ok: true, paths, projections: [], evidence: [] }
+  }
+  const manifestPath = paths[0]
+  if (manifestPath === undefined) {
+    return { ok: true, paths, projections: [], evidence: [] }
+  }
+  const source = readFileSync(resolve(cwd, manifestPath), 'utf8')
+  if (
+    parseDocument(source).get('format') !== 'yarramate/workspace/v1'
+  ) {
+    return { ok: true, paths, projections: [], evidence: [] }
+  }
+  const loaded = loadWorkspaceManifest(
+    { path: manifestPath, source },
+    cwd,
+  )
+  return loaded.ok
+    ? {
+        ok: true,
+        paths: [
+          ...loaded.workspace.profiles,
+          ...loaded.workspace.documents,
+          ...(options.includeAdapterMappings === true
+            ? loaded.workspace.adapterMappings
+            : []),
+        ],
+        projections: loaded.workspace.projections,
+        evidence: loaded.workspace.evidence,
+      }
+    : { ok: false, diagnostics: loaded.diagnostics }
+}
+
 const appendBlockItem = (
   document: ReturnType<typeof parseDocument>,
   collection: 'concepts' | 'relationships',
-  item: Readonly<Record<string, string>>,
+  item: Readonly<Record<string, unknown>>,
 ) => {
   document.addIn([collection], item)
   const sequence = document.getIn([collection], true)
@@ -225,6 +385,8 @@ const runAdd = (options: readonly string[], cwd: string): CliResult => {
     '--name',
     '--status',
     '--description',
+    '--owner',
+    '--constraint',
     '--source',
   ])
   if (
@@ -237,6 +399,20 @@ const runAdd = (options: readonly string[], cwd: string): CliResult => {
   const kind = oneFlag(parsed.flags, '--kind')
   const name = oneFlag(parsed.flags, '--name')
   if (id === undefined || kind === undefined || name === undefined) {
+    return { exitCode: 2, stdout: '', stderr: usage }
+  }
+  const constraints = (parsed.flags.get('--constraint') ?? []).map(
+    (value) => {
+      const separator = value.indexOf('=')
+      return separator <= 0 || separator === value.length - 1
+        ? undefined
+        : {
+            id: value.slice(0, separator),
+            ref: value.slice(separator + 1),
+          }
+    },
+  )
+  if (constraints.some((constraint) => constraint === undefined)) {
     return { exitCode: 2, stdout: '', stderr: usage }
   }
 
@@ -253,14 +429,33 @@ const runAdd = (options: readonly string[], cwd: string): CliResult => {
       ...(oneFlag(parsed.flags, '--status') === undefined
         ? {}
         : { status: oneFlag(parsed.flags, '--status') }),
+      ...(oneFlag(parsed.flags, '--owner') === undefined
+        ? {}
+        : { owner: oneFlag(parsed.flags, '--owner') }),
+      ...(constraints.length === 0 ? {} : { constraints }),
     })
     const candidate = document.toString({ lineWidth: 0 })
+    const companions = resolveCliWorkspaceSources(
+      parsed.flags.get('--source') ?? [],
+      cwd,
+    )
+    if (!companions.ok) {
+      return {
+        exitCode: 1,
+        stdout: humanDiagnostics(companions.diagnostics),
+        stderr: '',
+      }
+    }
     const compilation = compileWorkspace([
       { path: parsed.path, source: candidate },
-      ...(parsed.flags.get('--source') ?? []).map((path) => ({
-        path,
-        source: readFileSync(resolve(cwd, path), 'utf8'),
-      })),
+      ...companions.paths
+        .filter(
+          (path) => resolve(cwd, path) !== resolve(cwd, parsed.path),
+        )
+        .map((path) => ({
+          path,
+          source: readFileSync(resolve(cwd, path), 'utf8'),
+        })),
     ])
     if (!compilation.ok) {
       return {
@@ -338,12 +533,27 @@ const runConnect = (options: readonly string[], cwd: string): CliResult => {
         : { content: oneFlag(parsed.flags, '--content') }),
     })
     const candidate = document.toString({ lineWidth: 0 })
+    const companions = resolveCliWorkspaceSources(
+      parsed.flags.get('--source') ?? [],
+      cwd,
+    )
+    if (!companions.ok) {
+      return {
+        exitCode: 1,
+        stdout: humanDiagnostics(companions.diagnostics),
+        stderr: '',
+      }
+    }
     const compilation = compileWorkspace([
       { path: parsed.path, source: candidate },
-      ...(parsed.flags.get('--source') ?? []).map((path) => ({
-        path,
-        source: readFileSync(resolve(cwd, path), 'utf8'),
-      })),
+      ...companions.paths
+        .filter(
+          (path) => resolve(cwd, path) !== resolve(cwd, parsed.path),
+        )
+        .map((path) => ({
+          path,
+          source: readFileSync(resolve(cwd, path), 'utf8'),
+        })),
     ])
     if (!compilation.ok) {
       return {
@@ -372,8 +582,16 @@ const runCompile = (options: readonly string[], cwd: string): CliResult => {
     return { exitCode: 2, stdout: '', stderr: usage }
   }
   try {
+    const resolved = resolveCliWorkspaceSources(options, cwd)
+    if (!resolved.ok) {
+      return {
+        exitCode: 1,
+        stdout: humanDiagnostics(resolved.diagnostics),
+        stderr: '',
+      }
+    }
     const result = compileWorkspace(
-      options.map((path) => ({
+      resolved.paths.map((path) => ({
         path,
         source: readFileSync(resolve(cwd, path), 'utf8'),
       })),
@@ -418,6 +636,9 @@ export function runCli(
   if (command === 'view') {
     return runProjection(options, cwd, 'markdown')
   }
+  if (command === 'evidence') {
+    return runEvidence(options, cwd)
+  }
   if (command !== 'check') {
     return { exitCode: 2, stdout: '', stderr: usage }
   }
@@ -430,7 +651,48 @@ export function runCli(
   }
 
   try {
-    const sources = paths.map((path) => ({
+    const resolved = resolveCliWorkspaceSources(paths, cwd, {
+      includeAdapterMappings: true,
+    })
+    if (!resolved.ok) {
+      const output = json
+        ? diagnosticJson(resolved.diagnostics)
+        : humanDiagnostics(resolved.diagnostics)
+      return { exitCode: 1, stdout: output, stderr: '' }
+    }
+    const projectionDiagnostics = sortDiagnostics(
+      resolved.projections.flatMap((path) => {
+        const loaded = loadProjection({
+          path,
+          source: readFileSync(resolve(cwd, path), 'utf8'),
+        })
+        return loaded.ok ? [] : loaded.diagnostics
+      }),
+    )
+    if (projectionDiagnostics.length > 0) {
+      const output = json
+        ? diagnosticJson(projectionDiagnostics)
+        : humanDiagnostics(projectionDiagnostics)
+      return { exitCode: 1, stdout: output, stderr: '' }
+    }
+    const loadedEvidence = resolved.evidence.map((path) =>
+      loadEvidence({
+        path,
+        source: readFileSync(resolve(cwd, path), 'utf8'),
+      }),
+    )
+    const evidenceLoadDiagnostics = sortDiagnostics(
+      loadedEvidence.flatMap((loaded) =>
+        loaded.ok ? [] : loaded.diagnostics,
+      ),
+    )
+    if (evidenceLoadDiagnostics.length > 0) {
+      const output = json
+        ? diagnosticJson(evidenceLoadDiagnostics)
+        : humanDiagnostics(evidenceLoadDiagnostics)
+      return { exitCode: 1, stdout: output, stderr: '' }
+    }
+    const sources = resolved.paths.map((path) => ({
       path,
       source: readFileSync(resolve(cwd, path), 'utf8'),
     }))
@@ -475,8 +737,26 @@ export function runCli(
       mappingValidation === undefined || mappingValidation.ok
         ? []
         : mappingValidation.diagnostics
-    const ok = result.ok && mappingDiagnostics.length === 0
-    const diagnostics = result.ok ? mappingDiagnostics : result.diagnostics
+    const evidenceEvaluation = result.ok
+      ? evaluateEvidenceWorkspace(
+          result.graph,
+          loadedEvidence.flatMap((loaded) =>
+            loaded.ok ? [loaded.evidence] : [],
+          ),
+        )
+      : undefined
+    const evidenceDiagnostics =
+      evidenceEvaluation === undefined || evidenceEvaluation.ok
+        ? []
+        : evidenceEvaluation.diagnostics
+    const optionalDiagnostics = sortDiagnostics([
+      ...mappingDiagnostics,
+      ...evidenceDiagnostics,
+    ])
+    const ok = result.ok && optionalDiagnostics.length === 0
+    const diagnostics = result.ok
+      ? optionalDiagnostics
+      : result.diagnostics
 
     if (json) {
       const output = ok
@@ -493,6 +773,8 @@ export function runCli(
       const documentCount = result.graph.documents.length
       const profileCount = coreSources.length - documentCount
       const mappingCount = mappingSources.length
+      const projectionCount = resolved.projections.length
+      const evidenceCount = resolved.evidence.length
       const checked = [
         `${documentCount} ${documentCount === 1 ? 'document' : 'documents'}`,
         ...(profileCount > 0
@@ -503,6 +785,16 @@ export function runCli(
         ...(mappingCount > 0
           ? [
               `${mappingCount} ${mappingCount === 1 ? 'adapter mapping' : 'adapter mappings'}`,
+            ]
+          : []),
+        ...(projectionCount > 0
+          ? [
+              `${projectionCount} ${projectionCount === 1 ? 'projection' : 'projections'}`,
+            ]
+          : []),
+        ...(evidenceCount > 0
+          ? [
+              `${evidenceCount} ${evidenceCount === 1 ? 'evidence document' : 'evidence documents'}`,
             ]
           : []),
       ].join(' and ')

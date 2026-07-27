@@ -1,0 +1,33 @@
+format: yarramate/evidence/v1
+id: yarramate-repository
+version: "1.0"
+provider: repository-audit
+observations:
+  - subject: yarramate-engine#compiler
+    result: confirmed
+    evidence:
+      uri: repo:src/compiler.ts
+  - claim: yarramate-repository#compiler-source-realizes-compiler
+    result: confirmed
+    evidence:
+      uri: repo:src/compiler.ts
+  - claim: yarramate-engine#compiler~constraint-tool-neutral
+    result: confirmed
+    evidence:
+      uri: repo:src/compiler.ts
+  - subject: yarramate-engine#semantic-graph-schema
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-graph-v2.schema.json
+  - subject: yarramate-engine#evidence-report-schema
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-evidence-report.schema.json
+  - subject: yarramate-engine#projection-result-schema
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-projection-result.schema.json
+  - subject: yarramate-engine#workspace-manifest
+    result: confirmed
+    evidence:
+      uri: repo:yarramate.workspace.yaml

@@ -1,0 +1,11 @@
+format: yarramate/workspace/v1
+id: yarramate
+documents:
+  - architecture/*.yaml
+profiles:
+  - profiles/*.yaml
+projections:
+  - projections/*.yaml
+adapterMappings: []
+evidence:
+  - evidence/*.yaml

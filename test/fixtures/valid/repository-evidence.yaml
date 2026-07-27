@@ -1,0 +1,14 @@
+format: yarramate/evidence/v1
+id: checkout-repository
+version: "1.0"
+provider: repository-audit
+observations:
+  - subject: checkout#approval-api
+    result: confirmed
+    evidence:
+      uri: repo:src/approval-api.ts
+  - claim: checkout#api-realizes-approval
+    result: contradicted
+    evidence:
+      uri: repo:src/approval-api.ts
+      message: Expected realization marker was not found

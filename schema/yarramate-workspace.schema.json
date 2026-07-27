@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yarramate.org/schema/workspace/v1",
+  "title": "YarraMate workspace manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "id",
+    "documents",
+    "profiles",
+    "projections",
+    "adapterMappings"
+  ],
+  "properties": {
+    "format": {
+      "const": "yarramate/workspace/v1"
+    },
+    "id": {
+      "$ref": "#/$defs/id"
+    },
+    "documents": {
+      "$ref": "#/$defs/patterns"
+    },
+    "profiles": {
+      "$ref": "#/$defs/patterns"
+    },
+    "projections": {
+      "$ref": "#/$defs/patterns"
+    },
+    "adapterMappings": {
+      "$ref": "#/$defs/patterns"
+    },
+    "evidence": {
+      "$ref": "#/$defs/patterns"
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+    },
+    "patterns": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

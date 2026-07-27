@@ -13,6 +13,8 @@ version: "1.0"
 query:
   documents: [yarramate-engine]
   kinds: [yarramate/development@1.0#compiler-module]
+  owners: [yarramate-product#yarramate-maintainers]
+  constraints: [yarramate-product#tool-neutral-core]
   statuses: [current]
   relationships: between
 presentation:
@@ -23,13 +25,27 @@ Query fields combine with logical AND:
 
 - `documents` filters canonical document IDs;
 - `kinds` filters globally qualified concept kind identities;
+- `owners` filters globally qualified owner subject identities;
+- `constraints` filters globally qualified required-constraint identities;
 - `statuses` filters controlled lifecycle status;
 - `relationships` is `between` or `none` and defaults to `between`.
 
-Concepts without a status claim do not match a status filter. With
+Values within each filter list combine with logical OR; different fields
+combine with logical AND. Concepts without the corresponding owner,
+constraint, or status claim do not match that filter. With
 `relationships: between`, a relationship is selected only when both semantic
 endpoint concepts are selected. Claims about excluded concepts and
 relationships are excluded as well.
+
+Owner and constraint claim objects retain their globally qualified references
+even when a referenced concept is outside the selected documents or kinds.
+Projection filters select result subjects; they do not silently expand the
+query into a transitive reference closure.
+
+Selectors are portable by default. A well-formed document, kind, owner, or
+constraint identity that is absent from the current graph contributes no
+matches and is not a validation error. This supports partial models and reuse
+across repositories without weakening schema validation.
 
 `title` and `description` are presentation hints. They do not affect selection
 or carry semantic authority.
@@ -38,7 +54,8 @@ or carry semantic authority.
 
 Evaluation returns deterministic `yarramate/projection-result/v1` JSON with
 the projection identity, optional presentation hints, contributing documents,
-selected subjects, and the closed set of selected claims.
+selected subjects, and selected claims. Its normative structure is
+`schema/yarramate-projection-result.schema.json`.
 
 The library exposes `loadProjection` and `evaluateProjection`. The CLI produces
 agent-ready JSON:
@@ -67,3 +84,6 @@ not a second source of architectural truth.
 
 Projection documents are canonical queries, not canonical diagrams. Layout,
 colors, coordinates, and renderer configuration belong to optional adapters.
+
+The schemas are exported as `yarramate/schema/projection` and
+`yarramate/schema/projection-result`.

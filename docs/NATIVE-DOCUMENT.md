@@ -32,6 +32,50 @@ adapter configuration.
 Optional concept `description` and relationship `name` fields compile into
 explicit descriptive claims.
 
+Concepts may also declare one optional `owner` reference:
+
+```yaml
+concepts:
+  - id: payments-team
+    kind: businessActor
+    name: Payments team
+  - id: payments-api
+    kind: applicationService
+    name: Payments API
+    owner: payments-team
+```
+
+`owner` resolves locally or through a globally qualified `document#concept`
+reference. It compiles to a stable `~owner` claim with predicate
+`yarramate/ownership/owner`. The claim expresses accountable stewardship,
+not approval authority or workflow. Core checks only that the subject exists.
+
+A concept may require multiple explicitly identified constraints:
+
+```yaml
+concepts:
+  - id: australia-only
+    kind: constraint
+    name: Customer data remains in Australia
+  - id: customer-data
+    kind: dataObject
+    name: Customer data
+    constraints:
+      - id: residency
+        ref: australia-only
+```
+
+Each entry compiles to `<subject>~constraint-<id>` with predicate
+`yarramate/constraint/requires`. The authored ID keeps claim identity stable
+when entries are reordered. Core checks that references resolve and IDs are
+unique within the concept; it does not determine satisfaction, enforcement,
+completeness, exceptions, or architectural merit.
+
+Constraint satisfaction is assessed outside Core. Evidence providers may
+evaluate the stable generated claim ID and report through an evidence overlay;
+the observation does not mutate declared intent or become a Core validation
+result.
+
 Concepts and relationships may also declare an operational `status` of
 `planned`, `current`, or `retired`. It compiles into a
 `yarramate/lifecycle/status` claim. Status describes architecture lifecycle,
@@ -107,10 +151,12 @@ and one-based line and column.
 | --- | --- | --- |
 | `YM1xx` | YAML parsing | `YM101` malformed YAML |
 | `YM2xx` | Document structure | `YM201` JSON Schema violation |
-| `YM3xx` | Identity and references | `YM301` duplicate local ID; `YM302` unresolved concept reference; `YM303` duplicate document ID |
+| `YM3xx` | Identity and references | `YM301` duplicate local ID; `YM302` unresolved concept reference; `YM303` duplicate document ID; `YM304` unresolved owner; `YM305` unresolved constraint; `YM306` duplicate constraint ID |
 | `YM4xx` | Profile conformance | `YM401` unknown concept kind; `YM402` unknown relationship kind; `YM403` unavailable profile; `YM404` incompatible endpoint; `YM405` misplaced controlled field; `YM406` unavailable parent profile; `YM407`/`YM408` unavailable semantic parent; `YM409`/`YM410` inherited-name collision; `YM411` duplicate profile; `YM412` broadened constraint |
 | `YM5xx` | Claim consistency | `YM501` competing whole-part claims |
 | `YM6xx` | Adapter mapping integrity | `YM601` unknown native subject; `YM602` subject type mismatch; `YM603` duplicate native mapping; `YM604` duplicate external mapping; `YM605` duplicate versioned mapping |
+| `YM7xx` | Workspace resolution | `YM701` unsafe pattern; `YM702` unmatched pattern; `YM703` cross-category file |
+| `YM8xx` | Evidence integrity | `YM801` unknown subject; `YM802` unknown claim; `YM803` duplicate target; `YM804` duplicate evidence document |
 
 Compilation returns no partial graph when an error diagnostic exists.
 Diagnostic arrays are ordered by path, line, column, code, and message.
@@ -151,16 +197,17 @@ yarramate connect architecture/main.yaml \
   --from approval-api --to order-approval
 ```
 
-`init` creates `architecture/main.yaml` and refuses to overwrite an existing
-file. `add` appends a concept; `connect` appends a relationship. Both preserve
-concise block-style YAML, compile the entire candidate workspace in memory,
-and replace the target only when validation succeeds. A rejected edit leaves
-the source byte-for-byte unchanged.
+`init` creates `architecture/main.yaml` and `yarramate.workspace.yaml`, and
+refuses to overwrite either. `add` appends a concept; `connect` appends a
+relationship. Both preserve concise block-style YAML, compile the entire
+candidate workspace in memory, and replace the target only when validation
+succeeds. A rejected edit leaves the source byte-for-byte unchanged.
 
-Optional `add` flags are `--status` and `--description`. Optional `connect`
-flags are `--name`, `--status`, `--mode`, and `--content`. Extension profiles
-and documents needed for qualified references are passed explicitly using a
-repeatable `--source <source.yaml>`:
+Optional `add` flags are `--status`, `--description`, `--owner <ref>`, and
+repeatable `--constraint <id>=<ref>`. Optional `connect` flags are `--name`,
+`--status`, `--mode`, and `--content`. Extension profiles and documents needed
+for qualified references are passed explicitly using a repeatable
+`--source <source.yaml>`:
 
 ```sh
 yarramate add architecture/engine.yaml \
@@ -175,7 +222,7 @@ profile registry.
 
 ## Deliberate exclusions
 
-This foundation does not define ownership, evidence, arbitrary properties,
-automatic profile discovery, derived claims, adapters, repository file
-discovery, or governance workflow. These require separate semantic decisions
-or later conformance work.
+This foundation does not define arbitrary properties, automatic profile or
+repository discovery, remote registries, inferred claims, adapter execution
+or round-tripping, constraint-policy execution, or governance workflow. These
+require separate semantic decisions or later adapter and conformance work.

@@ -1,0 +1,9 @@
+format: yarramate/evidence/v1
+id: missing-claim
+version: "1.0"
+provider: repository-audit
+observations:
+  - claim: checkout#missing-claim
+    result: not-observed
+    evidence:
+      uri: repo:src/missing.ts
