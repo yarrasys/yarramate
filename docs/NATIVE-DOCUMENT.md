@@ -183,8 +183,10 @@ yarramate check architecture/*.yaml --json
 Explicit files are checked as one workspace, so qualified references may cross
 between them. Exit status is `0` when valid,
 `1` for correctness diagnostics, and `2` for invocation or file errors.
-`--json` emits a deterministic `{ "ok", "diagnostics" }` object. The command
-does not write compiled artifacts.
+`--json` emits a deterministic `yarramate/check-result/v1` object with `ok`
+and `diagnostics`. Its normative structure is
+`schema/yarramate-check-result.schema.json`, exported as
+`yarramate/schema/check-result`. The command does not write compiled artifacts.
 
 ## Safe authoring CLI
 

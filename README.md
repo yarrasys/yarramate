@@ -132,6 +132,8 @@ The normative schemas are exported as `yarramate/schema/document` and
 `yarramate/schema/graph-v2`, and the manifest schema as
 `yarramate/schema/workspace`. The optional evidence schemas are exported as
 `yarramate/schema/evidence` and `yarramate/schema/evidence-report`.
+Machine-readable check results are exported as
+`yarramate/schema/check-result`.
 
 ## Status
 

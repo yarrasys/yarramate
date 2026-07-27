@@ -1,10 +1,15 @@
 import Ajv2020Module from 'ajv/dist/2020.js'
-import { LineCounter, parseDocument } from 'yaml'
 import type {
   Diagnostic,
   SemanticGraph,
   WorkspaceSource,
 } from './compiler.js'
+import {
+  diagnosticOrder,
+  loadSourceDocument,
+  locateSourcePath,
+  type SourceLocation,
+} from './source-document.js'
 import adapterMappingSchema from '../schema/yarramate-adapter-mapping.schema.json' with {
   type: 'json',
 }
@@ -28,12 +33,7 @@ export interface AdapterMapping {
   readonly mappings: readonly AdapterSubjectMapping[]
 }
 
-interface MappingLocation {
-  readonly path: string
-  readonly pointer: string
-  readonly line: number
-  readonly column: number
-}
+type MappingLocation = SourceLocation
 
 interface AdapterMappingLocations {
   readonly id: MappingLocation
@@ -56,79 +56,16 @@ export type AdapterMappingsValidationResult =
   | { readonly ok: true; readonly mappings: readonly AdapterMapping[] }
   | { readonly ok: false; readonly diagnostics: readonly Diagnostic[] }
 
-const diagnosticOrder = (left: Diagnostic, right: Diagnostic) =>
-  left.path.localeCompare(right.path) ||
-  left.line - right.line ||
-  left.column - right.column ||
-  left.code.localeCompare(right.code) ||
-  left.message.localeCompare(right.message)
-
 export function loadAdapterMapping(
   source: WorkspaceSource,
 ): AdapterMappingLoadResult {
-  const lineCounter = new LineCounter()
-  const yaml = parseDocument(source.source, { lineCounter })
-  if (yaml.errors.length > 0) {
-    return {
-      ok: false,
-      diagnostics: yaml.errors.map((error) => {
-        const position = error.linePos?.[0] ?? { line: 1, col: 1 }
-        return {
-          severity: 'error',
-          code: 'YM101',
-          message: error.message.split(' at line ')[0] ?? error.message,
-          path: source.path,
-          pointer: '/',
-          line: position.line,
-          column: position.col,
-        }
-      }),
-    }
-  }
-
-  const value = yaml.toJS() as AdapterMapping
-  if (!validateSchema(value)) {
-    return {
-      ok: false,
-      diagnostics: (validateSchema.errors ?? [])
-        .map((error): Diagnostic => {
-          const property =
-            error.keyword === 'additionalProperties'
-              ? String(error.params.additionalProperty)
-              : undefined
-          const pointer = property
-            ? `${error.instancePath}/${property}`
-            : error.instancePath || '/'
-          const yamlPath = pointer
-            .split('/')
-            .slice(1)
-            .map((segment) =>
-              /^\d+$/.test(segment) ? Number(segment) : segment,
-            )
-          const node = yaml.getIn(yamlPath, true)
-          const offset =
-            typeof node === 'object' &&
-            node !== null &&
-            'range' in node &&
-            Array.isArray(node.range)
-              ? node.range[0]
-              : 0
-          const position = lineCounter.linePos(offset)
-          return {
-            severity: 'error',
-            code: 'YM201',
-            message: property
-              ? `Property "${property}" is not allowed`
-              : `Adapter mapping schema violation: ${error.message ?? error.keyword}`,
-            path: source.path,
-            pointer,
-            line: position.line,
-            column: position.col,
-          }
-        })
-        .sort(diagnosticOrder),
-    }
-  }
+  const loaded = loadSourceDocument<AdapterMapping>(
+    source,
+    validateSchema,
+    'Adapter mapping',
+  )
+  if (!loaded.ok) return loaded
+  const { value, yaml, lineCounter } = loaded.document
 
   const mapping: AdapterMapping = {
     ...value,
@@ -142,23 +79,14 @@ export function loadAdapterMapping(
   const locateNode = (
     yamlPath: readonly (string | number)[],
     pointer: string,
-  ): MappingLocation => {
-    const node = yaml.getIn(yamlPath, true)
-    const offset =
-      typeof node === 'object' &&
-      node !== null &&
-      'range' in node &&
-      Array.isArray(node.range)
-        ? node.range[0]
-        : 0
-    const position = lineCounter.linePos(offset)
-    return {
-      path: source.path,
+  ): MappingLocation =>
+    locateSourcePath(
+      source.path,
+      yaml,
+      lineCounter,
+      yamlPath,
       pointer,
-      line: position.line,
-      column: position.col,
-    }
-  }
+    )
   mappingLocations.set(mapping, {
     id: locateNode(['id'], '/id'),
     mappings: mapping.mappings.map((entry) => {

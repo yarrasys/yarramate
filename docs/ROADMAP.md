@@ -41,8 +41,8 @@ notation.
   controlled fields, contradictions, and adapter mappings. **Core checks
   and optional subject-mapping integrity are implemented; contradiction
   coverage is deliberately incremental.**
-- Emit stable, source-located, machine-readable diagnostics. **Implemented for
-  `check --json`.**
+- Emit stable, source-located, machine-readable diagnostics. **Implemented as
+  the normative `yarramate/check-result/v1` contract for `check --json`.**
 - Keep completeness and organizational governance opt-in.
 
 ## 0.4 — Profiles and projections

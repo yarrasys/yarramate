@@ -39,6 +39,17 @@ const usage =
 const diagnosticJson = (diagnostics: unknown) =>
   `${JSON.stringify({ ok: false, diagnostics }, null, 2)}\n`
 
+const checkResultJson = (ok: boolean, diagnostics: unknown) =>
+  `${JSON.stringify(
+    {
+      format: 'yarramate/check-result/v1',
+      ok,
+      diagnostics,
+    },
+    null,
+    2,
+  )}\n`
+
 const runProjection = (
   options: readonly string[],
   cwd: string,
@@ -656,7 +667,7 @@ export function runCli(
     })
     if (!resolved.ok) {
       const output = json
-        ? diagnosticJson(resolved.diagnostics)
+        ? checkResultJson(false, resolved.diagnostics)
         : humanDiagnostics(resolved.diagnostics)
       return { exitCode: 1, stdout: output, stderr: '' }
     }
@@ -671,7 +682,7 @@ export function runCli(
     )
     if (projectionDiagnostics.length > 0) {
       const output = json
-        ? diagnosticJson(projectionDiagnostics)
+        ? checkResultJson(false, projectionDiagnostics)
         : humanDiagnostics(projectionDiagnostics)
       return { exitCode: 1, stdout: output, stderr: '' }
     }
@@ -688,7 +699,7 @@ export function runCli(
     )
     if (evidenceLoadDiagnostics.length > 0) {
       const output = json
-        ? diagnosticJson(evidenceLoadDiagnostics)
+        ? checkResultJson(false, evidenceLoadDiagnostics)
         : humanDiagnostics(evidenceLoadDiagnostics)
       return { exitCode: 1, stdout: output, stderr: '' }
     }
@@ -714,7 +725,7 @@ export function runCli(
     )
     if (mappingLoadDiagnostics.length > 0) {
       const output = json
-        ? diagnosticJson(mappingLoadDiagnostics)
+        ? checkResultJson(false, mappingLoadDiagnostics)
         : humanDiagnostics(mappingLoadDiagnostics)
       return { exitCode: 1, stdout: output, stderr: '' }
     }
@@ -759,12 +770,9 @@ export function runCli(
       : result.diagnostics
 
     if (json) {
-      const output = ok
-        ? { ok: true, diagnostics: [] }
-        : { ok: false, diagnostics }
       return {
         exitCode: ok ? 0 : 1,
-        stdout: `${JSON.stringify(output, null, 2)}\n`,
+        stdout: checkResultJson(ok, ok ? [] : diagnostics),
         stderr: '',
       }
     }

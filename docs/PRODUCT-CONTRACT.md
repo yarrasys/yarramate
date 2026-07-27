@@ -96,6 +96,10 @@ yarramate context
 yarramate evidence
 ```
 
+Machine-readable checking uses the versioned
+`yarramate/check-result/v1` contract. It reports deterministic correctness
+diagnostics only; it is not an approval, completeness, or quality score.
+
 A versioned workspace manifest may explicitly enumerate local documents,
 profiles, projections, and adapter mappings. Paths resolve relative to the
 manifest with deterministic, traversal-safe glob expansion. The CLI never

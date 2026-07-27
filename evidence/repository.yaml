@@ -7,6 +7,10 @@ observations:
     result: confirmed
     evidence:
       uri: repo:src/compiler.ts
+  - subject: yarramate-engine#source-document-loader
+    result: confirmed
+    evidence:
+      uri: repo:src/source-document.ts
   - claim: yarramate-repository#compiler-source-realizes-compiler
     result: confirmed
     evidence:
@@ -27,6 +31,10 @@ observations:
     result: confirmed
     evidence:
       uri: repo:schema/yarramate-projection-result.schema.json
+  - subject: yarramate-engine#check-result-schema
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-check-result.schema.json
   - subject: yarramate-engine#workspace-manifest
     result: confirmed
     evidence:

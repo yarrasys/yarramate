@@ -70,6 +70,11 @@ A deterministic restriction over documents, claims, kinds, relationships, or
 adapter mappings.
 _Avoid_: Architectural taste, rendering rule
 
+**Check result**:
+A versioned machine-readable outcome containing deterministic correctness
+diagnostics.
+_Avoid_: Approval record, completeness score, human console text
+
 **Adapter**:
 An optional integration that imports, exports, renders, or supplies evidence
 without defining YarraMate Core.

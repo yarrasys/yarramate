@@ -45,9 +45,20 @@ concepts:
     constraints:
       - id: tool-neutral
         ref: yarramate-product#tool-neutral-core
+  - id: source-document-loader
+    kind: compiler-module
+    name: Source-located document loader
+    description: Centralizes YAML parsing, normative schema validation, and deterministic source-located diagnostics.
+    status: current
+    owner: yarramate-product#yarramate-maintainers
   - id: parse-document
     kind: applicationFunction
     name: Parse native document
+    status: current
+  - id: load-source-document
+    kind: applicationFunction
+    name: Load source document
+    description: Parses and validates one schema-backed YAML source while retaining authored locations.
     status: current
   - id: validate-document-structure
     kind: applicationFunction
@@ -134,6 +145,14 @@ concepts:
   - id: diagnostics
     kind: dataObject
     name: Source-located diagnostics
+    status: current
+  - id: check-result
+    kind: dataObject
+    name: Machine-readable check result
+    status: current
+  - id: check-result-schema
+    kind: dataObject
+    name: Check result JSON Schema
     status: current
   - id: adapter-mapping
     kind: dataObject
@@ -233,6 +252,10 @@ relationships:
     kind: assignment
     from: evidence-evaluator
     to: evaluate-evidence
+  - id: source-loader-loads-document
+    kind: assignment
+    from: source-document-loader
+    to: load-source-document
   - id: cli-provides-check
     kind: implements
     from: cli
@@ -299,6 +322,16 @@ relationships:
     from: validate-semantic-claims
     to: check-command
     content: Diagnostics
+  - id: check-command-writes-result
+    kind: access
+    from: check-command
+    to: check-result
+    mode: write
+  - id: check-command-reads-result-schema
+    kind: access
+    from: check-command
+    to: check-result-schema
+    mode: read
   - id: compilation-writes-graph
     kind: access
     from: compile-semantic-graph

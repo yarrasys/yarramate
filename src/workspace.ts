@@ -7,8 +7,11 @@ import {
   sep,
 } from 'node:path'
 import Ajv2020Module from 'ajv/dist/2020.js'
-import { LineCounter, parseDocument } from 'yaml'
 import type { Diagnostic, WorkspaceSource } from './compiler.js'
+import {
+  diagnosticOrder,
+  loadSourceDocument,
+} from './source-document.js'
 import workspaceSchema from '../schema/yarramate-workspace.schema.json' with {
   type: 'json',
 }
@@ -45,80 +48,17 @@ export type WorkspaceManifestResult =
     }
   | { readonly ok: false; readonly diagnostics: readonly Diagnostic[] }
 
-const diagnosticOrder = (left: Diagnostic, right: Diagnostic) =>
-  left.path.localeCompare(right.path) ||
-  left.line - right.line ||
-  left.column - right.column ||
-  left.code.localeCompare(right.code) ||
-  left.message.localeCompare(right.message)
-
 export function loadWorkspaceManifest(
   source: WorkspaceSource,
   cwd: string,
 ): WorkspaceManifestResult {
-  const lineCounter = new LineCounter()
-  const yaml = parseDocument(source.source, { lineCounter })
-  if (yaml.errors.length > 0) {
-    return {
-      ok: false,
-      diagnostics: yaml.errors.map((error) => {
-        const position = error.linePos?.[0] ?? { line: 1, col: 1 }
-        return {
-          severity: 'error',
-          code: 'YM101',
-          message: error.message.split(' at line ')[0] ?? error.message,
-          path: source.path,
-          pointer: '/',
-          line: position.line,
-          column: position.col,
-        }
-      }),
-    }
-  }
-
-  const value = yaml.toJS() as WorkspaceManifest
-  if (!validateWorkspace(value)) {
-    return {
-      ok: false,
-      diagnostics: (validateWorkspace.errors ?? [])
-        .map((error): Diagnostic => {
-          const property =
-            error.keyword === 'additionalProperties'
-              ? String(error.params.additionalProperty)
-              : undefined
-          const pointer = property
-            ? `${error.instancePath}/${property}`
-            : error.instancePath || '/'
-          const yamlPath = pointer
-            .split('/')
-            .slice(1)
-            .map((segment) =>
-              /^\d+$/.test(segment) ? Number(segment) : segment,
-            )
-          const node = yaml.getIn(yamlPath, true)
-          const offset =
-            typeof node === 'object' &&
-            node !== null &&
-            'range' in node &&
-            Array.isArray(node.range)
-              ? node.range[0]
-              : 0
-          const position = lineCounter.linePos(offset)
-          return {
-            severity: 'error',
-            code: 'YM201',
-            message: property
-              ? `Property "${property}" is not allowed`
-              : `Workspace schema violation: ${error.message ?? error.keyword}`,
-            path: source.path,
-            pointer,
-            line: position.line,
-            column: position.col,
-          }
-        })
-        .sort(diagnosticOrder),
-    }
-  }
+  const loaded = loadSourceDocument<WorkspaceManifest>(
+    source,
+    validateWorkspace,
+    'Workspace',
+  )
+  if (!loaded.ok) return loaded
+  const { value, yaml, lineCounter } = loaded.document
 
   const base = dirname(resolve(cwd, source.path))
   const realBase = realpathSync(base)

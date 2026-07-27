@@ -1,10 +1,15 @@
 import Ajv2020Module from 'ajv/dist/2020.js'
-import { LineCounter, parseDocument } from 'yaml'
 import type {
   Diagnostic,
   SemanticGraph,
   WorkspaceSource,
 } from './compiler.js'
+import {
+  diagnosticOrder,
+  loadSourceDocument,
+  locateSourcePath,
+  type SourceLocation,
+} from './source-document.js'
 import evidenceSchema from '../schema/yarramate-evidence.schema.json' with {
   type: 'json',
 }
@@ -70,12 +75,7 @@ export type EvidenceWorkspaceEvaluationResult =
   | { readonly ok: true; readonly reports: readonly EvidenceReport[] }
   | { readonly ok: false; readonly diagnostics: readonly Diagnostic[] }
 
-interface EvidenceLocation {
-  readonly path: string
-  readonly pointer: string
-  readonly line: number
-  readonly column: number
-}
+type EvidenceLocation = SourceLocation
 
 interface EvidenceLocations {
   readonly id: EvidenceLocation
@@ -84,80 +84,17 @@ interface EvidenceLocations {
 
 const evidenceLocations = new WeakMap<EvidenceDocument, EvidenceLocations>()
 
-const diagnosticOrder = (left: Diagnostic, right: Diagnostic) =>
-  left.path.localeCompare(right.path) ||
-  left.line - right.line ||
-  left.column - right.column ||
-  left.code.localeCompare(right.code) ||
-  left.message.localeCompare(right.message)
-
 const observationTarget = (observation: EvidenceObservation) =>
   'subject' in observation ? observation.subject : observation.claim
 
 export function loadEvidence(source: WorkspaceSource): EvidenceLoadResult {
-  const lineCounter = new LineCounter()
-  const yaml = parseDocument(source.source, { lineCounter })
-  if (yaml.errors.length > 0) {
-    return {
-      ok: false,
-      diagnostics: yaml.errors.map((error) => {
-        const position = error.linePos?.[0] ?? { line: 1, col: 1 }
-        return {
-          severity: 'error',
-          code: 'YM101',
-          message: error.message.split(' at line ')[0] ?? error.message,
-          path: source.path,
-          pointer: '/',
-          line: position.line,
-          column: position.col,
-        }
-      }),
-    }
-  }
-
-  const value = yaml.toJS() as EvidenceDocument
-  if (!validateEvidenceSchema(value)) {
-    return {
-      ok: false,
-      diagnostics: (validateEvidenceSchema.errors ?? [])
-        .map((error): Diagnostic => {
-          const property =
-            error.keyword === 'additionalProperties'
-              ? String(error.params.additionalProperty)
-              : undefined
-          const pointer = property
-            ? `${error.instancePath}/${property}`
-            : error.instancePath || '/'
-          const yamlPath = pointer
-            .split('/')
-            .slice(1)
-            .map((segment) =>
-              /^\d+$/.test(segment) ? Number(segment) : segment,
-            )
-          const node = yaml.getIn(yamlPath, true)
-          const offset =
-            typeof node === 'object' &&
-            node !== null &&
-            'range' in node &&
-            Array.isArray(node.range)
-              ? node.range[0]
-              : 0
-          const position = lineCounter.linePos(offset)
-          return {
-            severity: 'error',
-            code: 'YM201',
-            message: property
-              ? `Property "${property}" is not allowed`
-              : `Evidence schema violation: ${error.message ?? error.keyword}`,
-            path: source.path,
-            pointer,
-            line: position.line,
-            column: position.col,
-          }
-        })
-        .sort(diagnosticOrder),
-    }
-  }
+  const loaded = loadSourceDocument<EvidenceDocument>(
+    source,
+    validateEvidenceSchema,
+    'Evidence',
+  )
+  if (!loaded.ok) return loaded
+  const { value, yaml, lineCounter } = loaded.document
 
   const orderedObservations = value.observations
     .map((observation, authoredIndex) => ({
@@ -190,44 +127,23 @@ export function loadEvidence(source: WorkspaceSource): EvidenceLoadResult {
   evidenceLocations.set(
     evidence,
     {
-      id: (() => {
-        const node = yaml.getIn(['id'], true)
-        const offset =
-          typeof node === 'object' &&
-          node !== null &&
-          'range' in node &&
-          Array.isArray(node.range)
-            ? node.range[0]
-            : 0
-        const position = lineCounter.linePos(offset)
-        return {
-          path: source.path,
-          pointer: '/id',
-          line: position.line,
-          column: position.col,
-        }
-      })(),
+      id: locateSourcePath(
+        source.path,
+        yaml,
+        lineCounter,
+        ['id'],
+        '/id',
+      ),
       observations: orderedObservations.map(
         ({ observation, authoredIndex }) => {
-        const field = 'subject' in observation ? 'subject' : 'claim'
-        const node = yaml.getIn(
-          ['observations', authoredIndex, field],
-          true,
-        )
-        const offset =
-          typeof node === 'object' &&
-          node !== null &&
-          'range' in node &&
-          Array.isArray(node.range)
-            ? node.range[0]
-            : 0
-        const position = lineCounter.linePos(offset)
-        return {
-          path: source.path,
-          pointer: `/observations/${authoredIndex}/${field}`,
-          line: position.line,
-          column: position.col,
-        }
+          const field = 'subject' in observation ? 'subject' : 'claim'
+          return locateSourcePath(
+            source.path,
+            yaml,
+            lineCounter,
+            ['observations', authoredIndex, field],
+            `/observations/${authoredIndex}/${field}`,
+          )
         },
       ),
     },

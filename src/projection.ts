@@ -1,11 +1,11 @@
 import Ajv2020Module from 'ajv/dist/2020.js'
-import { LineCounter, parseDocument } from 'yaml'
 import type {
   Diagnostic,
   GraphClaim,
   SemanticGraph,
   WorkspaceSource,
 } from './compiler.js'
+import { loadSourceDocument } from './source-document.js'
 import projectionSchema from '../schema/yarramate-projection.schema.json' with {
   type: 'json',
 }
@@ -49,69 +49,14 @@ export type ProjectionLoadResult =
   | { readonly ok: false; readonly diagnostics: readonly Diagnostic[] }
 
 export function loadProjection(source: WorkspaceSource): ProjectionLoadResult {
-  const lineCounter = new LineCounter()
-  const yaml = parseDocument(source.source, { lineCounter })
-  if (yaml.errors.length > 0) {
-    return {
-      ok: false,
-      diagnostics: yaml.errors.map((error) => {
-        const position = error.linePos?.[0] ?? { line: 1, col: 1 }
-        return {
-          severity: 'error',
-          code: 'YM101',
-          message: error.message.split(' at line ')[0] ?? error.message,
-          path: source.path,
-          pointer: '/',
-          line: position.line,
-          column: position.col,
-        }
-      }),
-    }
-  }
-
-  const value = yaml.toJS() as ProjectionDefinition
-  if (validateProjection(value)) {
-    return { ok: true, projection: value }
-  }
-
-  return {
-    ok: false,
-    diagnostics: (validateProjection.errors ?? []).map((error) => {
-      const property =
-        error.keyword === 'additionalProperties'
-          ? String(error.params.additionalProperty)
-          : undefined
-      const pointer = property
-        ? `${error.instancePath}/${property}`
-        : error.instancePath || '/'
-      const yamlPath = pointer
-        .split('/')
-        .slice(1)
-        .map((segment) =>
-          /^\d+$/.test(segment) ? Number(segment) : segment,
-        )
-      const node = yaml.getIn(yamlPath, true)
-      const offset =
-        typeof node === 'object' &&
-        node !== null &&
-        'range' in node &&
-        Array.isArray(node.range)
-          ? node.range[0]
-          : 0
-      const position = lineCounter.linePos(offset)
-      return {
-        severity: 'error',
-        code: 'YM201',
-        message: property
-          ? `Property "${property}" is not allowed`
-          : `Projection schema violation: ${error.message ?? error.keyword}`,
-        path: source.path,
-        pointer,
-        line: position.line,
-        column: position.col,
-      }
-    }),
-  }
+  const loaded = loadSourceDocument<ProjectionDefinition>(
+    source,
+    validateProjection,
+    'Projection',
+  )
+  return loaded.ok
+    ? { ok: true, projection: loaded.document.value }
+    : loaded
 }
 
 const claimValue = (

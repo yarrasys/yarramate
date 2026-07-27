@@ -31,6 +31,7 @@ It is checked through the same compiler and CLI exposed to users:
 
 ```sh
 pnpm self:check
+pnpm self:check:json
 ```
 
 The regression test in `test/self-model.test.ts` also compiles the model through
@@ -79,5 +80,8 @@ they add neither approval workflow nor constraint-satisfaction policy.
 The `maintainer-tool-neutral-engine` projection queries those claims directly,
 showing that ownership and constraints are usable semantic context rather than
 write-only authoring fields.
+The repository model also declares the shared source-located document loader,
+which keeps schema-backed companion formats aligned on parsing and diagnostic
+behavior without widening the public compiler API.
 The remaining gaps are observations, not permission to add generic metadata.
 Each requires explicit claim syntax, profile semantics, or an adapter contract.

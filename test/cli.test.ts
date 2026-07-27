@@ -9,12 +9,49 @@ import {
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import Ajv2020Module from 'ajv/dist/2020.js'
 import { describe, expect, it } from 'vitest'
 import { runCli } from '../src/cli.js'
 
 const repositoryRoot = fileURLToPath(new URL('..', import.meta.url))
+const Ajv2020 = Ajv2020Module.default
 
 describe('YarraMate CLI', () => {
+  it('emits check results conforming to the normative result schema', () => {
+    const schema = JSON.parse(
+      readFileSync(
+        join(repositoryRoot, 'schema/yarramate-check-result.schema.json'),
+        'utf8',
+      ),
+    )
+    const validate = new Ajv2020({ allErrors: true }).compile(schema)
+    const success = runCli(
+      [
+        'check',
+        'test/fixtures/valid/minimal.yaml',
+        '--json',
+      ],
+      repositoryRoot,
+    )
+    const failure = runCli(
+      [
+        'check',
+        'test/fixtures/invalid/unknown-concept-kind.yaml',
+        '--json',
+      ],
+      repositoryRoot,
+    )
+
+    expect(
+      validate(JSON.parse(success.stdout)),
+      JSON.stringify(validate.errors ?? []),
+    ).toBe(true)
+    expect(
+      validate(JSON.parse(failure.stdout)),
+      JSON.stringify(validate.errors ?? []),
+    ).toBe(true)
+  })
+
   it('emits deterministic machine-readable diagnostics and a failing exit code', () => {
     const result = runCli(
       [
@@ -29,6 +66,7 @@ describe('YarraMate CLI', () => {
       exitCode: 1,
       stdout:
         '{\n' +
+        '  "format": "yarramate/check-result/v1",\n' +
         '  "ok": false,\n' +
         '  "diagnostics": [\n' +
         '    {\n' +
