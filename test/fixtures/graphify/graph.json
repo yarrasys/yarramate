@@ -1,0 +1,12 @@
+{
+  "directed": true,
+  "multigraph": false,
+  "graph": {},
+  "nodes": [
+    {
+      "id": "checkout_node",
+      "label": "Checkout"
+    }
+  ],
+  "links": []
+}

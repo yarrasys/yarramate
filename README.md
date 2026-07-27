@@ -64,12 +64,14 @@ compiler foundation:
 - `src/workspace.ts` — explicit deterministic workspace resolution
 - `src/evidence.ts` — existing-subject and claim evidence evaluation
 - `src/reconciliation.ts` — deterministic workspace evidence reconciliation
+- `src/adapters/graphify.ts` — optional explicit Graphify node evidence adapter
 - `docs/NATIVE-DOCUMENT.md` — authoring, identity, graph, and diagnostic rules
 - `docs/PROFILES.md` — profile inheritance and qualified kind identities
 - `docs/PROJECTIONS.md` — semantic query and context-result rules
 - `docs/SEMANTIC-GRAPH.md` — normative graph-v2 interchange contract
 - `docs/WORKSPACES.md` — explicit deterministic workspace manifests
 - `docs/EVIDENCE.md` — optional evidence evaluation overlays
+- `docs/GRAPHIFY-ADAPTER.md` — explicit Graphify evidence mapping and boundary
 - `docs/ARCHITECTURE-STATES.md` — optional baseline, transition, and target contexts
 - `docs/CORE-CONTRACT.md` — machine-readable Core release boundary
 - `docs/ADAPTER-MAPPINGS.md` — optional external subject-identity mappings

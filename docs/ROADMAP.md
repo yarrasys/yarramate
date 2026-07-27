@@ -126,9 +126,14 @@ notation.
   adapter work.**
 - Generic evidence-provider interface.
   **A provider-neutral existing-claim evidence overlay and deterministic report
-  are implemented. Constraint assessment reuses that seam; provider execution
-  and CI policy remain future adapter or consumer work.**
+  are implemented. Constraint assessment reuses that seam; the first optional
+  provider execution emits ordinary overlays from explicit Graphify node
+  mappings. CI policy remains consumer work.**
 - Graphify evidence and architecture-drift adapter.
+  **Initial explicit concept-subject observation is implemented without
+  inference or a Core dependency. Provider-driven proposal generation,
+  relationship observation, and richer drift interpretation remain future
+  adapter work pending stable external identities and semantics.**
 - Additional authoring, catalogue, source, and runtime adapters.
 
 ## 0.7 — Compatibility

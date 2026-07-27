@@ -124,3 +124,22 @@ yarramate compare \
 
 The CLI verifies deterministic correctness. It does not approve the design or
 require a complete model.
+
+## Optional Graphify evidence
+
+When Graphify has generated `graphify-out/graph.json`, an explicit subject
+mapping can produce a standard evidence overlay:
+
+```sh
+yarramate-graphify observe \
+  graphify-out/graph.json \
+  .yarramate/integrations/graphify/subject-mapping.yaml \
+  .yarramate/workspace.yaml \
+  --id repository-graphify \
+  --version 1.0 \
+  > .yarramate/evidence/graphify.yaml
+```
+
+Graphify extraction remains a separate installation and operation. The
+adapter observes only explicitly mapped nodes and never promotes them into
+canonical architecture.

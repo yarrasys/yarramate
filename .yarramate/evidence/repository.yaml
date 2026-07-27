@@ -55,6 +55,18 @@ observations:
     result: confirmed
     evidence:
       uri: repo:src/reconciliation.ts
+  - subject: yarramate-engine#graphify-evidence-adapter
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/graphify.ts
+  - subject: yarramate-engine#observe-graphify
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/graphify.ts
+  - subject: yarramate-repository#graphify-tests
+    result: confirmed
+    evidence:
+      uri: repo:test/graphify-cli.test.ts
   - subject: yarramate-engine#projection-result-schema
     result: confirmed
     evidence:

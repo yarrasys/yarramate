@@ -55,6 +55,12 @@ concepts:
       - yarramate-evolution#adapter-foundation
       - yarramate-evolution#state-foundation
       - yarramate-evolution#core-contract-foundation
+  - id: graphify-evidence-adapter
+    kind: applicationComponent
+    name: Graphify evidence adapter
+    description: Converts explicitly mapped Graphify nodes into provider-neutral evidence without inferring architectural intent.
+    status: current
+    owner: yarramate-product#yarramate-maintainers
   - id: architecture-state-engine
     kind: compiler-module
     name: Architecture state engine
@@ -131,6 +137,11 @@ concepts:
     kind: applicationFunction
     name: Reconcile workspace evidence
     description: Aggregates evidence reports into deterministic unresolved findings without proposing or applying remediation.
+    status: current
+  - id: observe-graphify
+    kind: applicationFunction
+    name: Observe mapped Graphify nodes
+    description: Reports mapped concept subjects as confirmed or not observed using opaque Graphify node identities.
     status: current
   - id: evaluate-projection
     kind: applicationFunction
@@ -211,6 +222,11 @@ concepts:
     kind: applicationService
     name: Reconcile command
     description: Emits provider-neutral workspace reconciliation for review by humans and agents.
+    status: current
+  - id: graphify-observe-command
+    kind: applicationService
+    name: Graphify observe command
+    description: Emits a standard evidence overlay from a Graphify graph and explicit adapter mapping.
     status: current
   - id: likec4-export-command
     kind: applicationService
@@ -568,6 +584,10 @@ relationships:
     kind: assignment
     from: evidence-evaluator
     to: reconcile-evidence
+  - id: graphify-adapter-observes-nodes
+    kind: assignment
+    from: graphify-evidence-adapter
+    to: observe-graphify
   - id: source-loader-loads-document
     kind: assignment
     from: source-document-loader
@@ -600,6 +620,10 @@ relationships:
     kind: implements
     from: cli
     to: reconcile-command
+  - id: graphify-adapter-provides-observation
+    kind: implements
+    from: graphify-evidence-adapter
+    to: graphify-observe-command
   - id: parse-reads-native-document
     kind: access
     from: parse-document
@@ -763,6 +787,20 @@ relationships:
     kind: implements
     from: evidence-evaluator
     to: yarramate-product#reconcile-intent-and-evidence
+  - id: graphify-observation-reads-mapping
+    kind: access
+    from: observe-graphify
+    to: adapter-mapping
+    mode: read
+  - id: graphify-observation-writes-evidence
+    kind: access
+    from: observe-graphify
+    to: evidence-document
+    mode: write
+  - id: graphify-adapter-delivers-evidence
+    kind: implements
+    from: graphify-evidence-adapter
+    to: yarramate-product#evaluate-architecture-evidence
   - id: validation-writes-diagnostics
     kind: access
     from: validate-semantic-claims

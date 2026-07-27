@@ -248,6 +248,12 @@ claims of compatibility with an external viewpoint catalogue.
 
 YarraMate Core must not depend on any of them.
 
+The initial Graphify adapter consumes only explicitly mapped Graphify node
+identities and emits a standard evidence overlay. A present mapped node is
+confirmed; an absent mapped node is not observed. The adapter does not infer
+native subjects or intent from Graphify labels, paths, communities, similarity,
+or topology, and Core does not execute Graphify.
+
 The LikeC4 export path consumes compiled projection results and an explicit
 `likec4` subject mapping. Raw export emits one view; an adapter-owned project
 definition may compose multiple projections into one deterministically

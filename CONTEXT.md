@@ -191,6 +191,11 @@ An adapter that resolves declared claims against observed sources such as
 repositories, catalogues, tests, or runtime systems.
 _Avoid_: Authority over architectural intent
 
+**Graphify observation**:
+Provider evidence that an explicitly mapped Graphify node is present or absent.
+_Avoid_: Inferred native model, automatic architecture extraction, semantic
+equivalence by label
+
 **Evidence overlay**:
 A versioned provider report evaluating existing graph subjects or claims
 without modifying canonical intent.

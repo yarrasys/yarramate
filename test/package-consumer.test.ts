@@ -135,6 +135,12 @@ describe('consumer package contract', () => {
       const likec4Cli = join(binDirectory, 'yarramate-likec4')
       chmodSync(join(packagePath, 'dist/adapters/likec4-cli.js'), 0o755)
       symlinkSync('../yarramate/dist/adapters/likec4-cli.js', likec4Cli)
+      const graphifyCli = join(binDirectory, 'yarramate-graphify')
+      chmodSync(join(packagePath, 'dist/adapters/graphify-cli.js'), 0o755)
+      symlinkSync(
+        '../yarramate/dist/adapters/graphify-cli.js',
+        graphifyCli,
+      )
       const run = (args: readonly string[]) =>
         execFileSync(cli, args, {
           cwd: consumer,
@@ -291,6 +297,14 @@ evidence:
       })
       expect(likec4Invocation.status).toBe(2)
       expect(likec4Invocation.stderr).toContain('yarramate-likec4 check')
+      const graphifyInvocation = spawnSync(graphifyCli, [], {
+        cwd: consumer,
+        encoding: 'utf8',
+      })
+      expect(graphifyInvocation.status).toBe(2)
+      expect(graphifyInvocation.stderr).toContain(
+        'yarramate-graphify observe',
+      )
 
       const requireFromConsumer = createRequire(
         join(consumer, 'consumer.js'),

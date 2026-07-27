@@ -1201,8 +1201,8 @@ mappings:
             subject:
               'yarramate-repository#likec4-project-schema-source',
             path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/45/kind',
-            line: 195,
+            pointer: '/concepts/47/kind',
+            line: 203,
             column: 11,
           },
           {
@@ -1213,8 +1213,8 @@ mappings:
             subject:
               'yarramate-repository#likec4-generated-project-v2-schema-source',
             path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/46/kind',
-            line: 199,
+            pointer: '/concepts/48/kind',
+            line: 207,
             column: 11,
           },
         ],

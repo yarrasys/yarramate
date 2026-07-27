@@ -102,6 +102,15 @@ mappings:
   - native: yarramate-repository#reconciliation-report-schema-source
     external: reconciliationReportSchemaSource
     type: concept
+  - native: yarramate-repository#graphify-adapter-source
+    external: graphifyAdapterSource
+    type: concept
+  - native: yarramate-repository#graphify-cli-source
+    external: graphifyCliSource
+    type: concept
+  - native: yarramate-repository#graphify-tests
+    external: graphifyTests
+    type: concept
   - native: yarramate-repository#product-journeys-guide
     external: productJourneysGuide
     type: concept
@@ -176,6 +185,15 @@ mappings:
     type: concept
   - native: yarramate-engine#evaluate-evidence
     external: engineEvaluateEvidence
+    type: concept
+  - native: yarramate-engine#graphify-evidence-adapter
+    external: engineGraphifyEvidenceAdapter
+    type: concept
+  - native: yarramate-engine#graphify-observe-command
+    external: engineGraphifyObserveCommand
+    type: concept
+  - native: yarramate-engine#observe-graphify
+    external: engineObserveGraphify
     type: concept
   - native: yarramate-engine#reconcile-evidence
     external: engineReconcileEvidence

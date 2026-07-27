@@ -118,6 +118,14 @@ concepts:
     kind: repository-file
     name: src/reconciliation.ts
     status: current
+  - id: graphify-adapter-source
+    kind: repository-file
+    name: src/adapters/graphify.ts
+    status: current
+  - id: graphify-cli-source
+    kind: repository-file
+    name: src/adapters/graphify-cli.ts
+    status: current
   - id: source-document-source
     kind: repository-file
     name: src/source-document.ts
@@ -288,6 +296,10 @@ concepts:
   - id: evidence-tests
     kind: repository-file
     name: test/evidence.test.ts
+    status: current
+  - id: graphify-tests
+    kind: repository-file
+    name: test/graphify-cli.test.ts
     status: current
   - id: repository-evidence
     kind: repository-file
@@ -471,6 +483,14 @@ relationships:
     kind: realization
     from: reconciliation-source
     to: yarramate-engine#reconcile-evidence
+  - id: graphify-source-realizes-adapter
+    kind: realization
+    from: graphify-adapter-source
+    to: yarramate-engine#graphify-evidence-adapter
+  - id: graphify-cli-realizes-command
+    kind: realization
+    from: graphify-cli-source
+    to: yarramate-engine#graphify-observe-command
   - id: source-document-source-realizes-loader
     kind: realization
     from: source-document-source
@@ -607,6 +627,10 @@ relationships:
     kind: association
     from: evidence-tests
     to: yarramate-engine#evaluate-evidence
+  - id: graphify-tests-validate-observation
+    kind: association
+    from: graphify-tests
+    to: yarramate-engine#observe-graphify
   - id: repository-evidence-realizes-document
     kind: realization
     from: repository-evidence

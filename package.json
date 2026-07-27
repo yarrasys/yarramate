@@ -20,6 +20,10 @@
       "types": "./dist/adapters/likec4.d.ts",
       "import": "./dist/adapters/likec4.js"
     },
+    "./adapter/graphify": {
+      "types": "./dist/adapters/graphify-entry.d.ts",
+      "import": "./dist/adapters/graphify-entry.js"
+    },
     "./schema/document": "./schema/yarramate-document.schema.json",
     "./schema/profile": "./schema/yarramate-profile.schema.json",
     "./schema/projection": "./schema/yarramate-projection.schema.json",
@@ -44,7 +48,8 @@
   },
   "bin": {
     "yarramate": "dist/cli.js",
-    "yarramate-likec4": "dist/adapters/likec4-cli.js"
+    "yarramate-likec4": "dist/adapters/likec4-cli.js",
+    "yarramate-graphify": "dist/adapters/graphify-cli.js"
   },
   "packageManager": "pnpm@11.7.0",
   "engines": {

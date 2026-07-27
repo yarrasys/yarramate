@@ -1,0 +1,11 @@
+format: yarramate/adapter-mapping/v1
+id: minimal-graphify
+version: "1.0"
+adapter: graphify
+mappings:
+  - native: checkout#approval-api
+    external: checkout_node
+    type: concept
+  - native: checkout#approve-order
+    external: missing_capability
+    type: concept

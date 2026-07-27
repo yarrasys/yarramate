@@ -26,6 +26,7 @@ The model currently covers:
 - provider-neutral evidence evaluation over existing graph identities;
 - provider-neutral workspace reconciliation that reports unresolved evidence
   without mutating intent;
+- optional Graphify node observation through explicit subject mappings;
 - schemas, catalogues, native documents, diagnostics, and semantic graphs;
 - the product contract, ADR collection, and roadmap.
 
