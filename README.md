@@ -90,6 +90,7 @@ compiler foundation:
 - `test/profile.test.ts` — catalogue synchronization checks
 - `docs/PRODUCT-CONTRACT.md` — agreed product and architecture contract
 - `docs/ROADMAP.md` — staged delivery plan
+- `docs/BACKLOG-DISPOSITION.md` — completed scope and explicit future-work gates
 - `docs/adr` — durable design decisions
 - `docs/research` — primary-source research
 

@@ -3,6 +3,9 @@ id: yarramate-likec4-export-path
 version: "1.0"
 adapter: likec4
 mappings:
+  - native: yarramate-repository#backlog-disposition
+    external: backlogDisposition
+    type: concept
   - native: yarramate-engine#compiler
     external: compiler
     type: concept

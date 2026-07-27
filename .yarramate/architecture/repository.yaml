@@ -11,6 +11,10 @@ concepts:
   - id: roadmap
     kind: deliverable
     name: Product roadmap
+  - id: backlog-disposition
+    kind: deliverable
+    name: Backlog disposition
+    description: Distinguishes completed local scope from decision-gated, externally blocked, and demand-gated future work.
   - id: product-journeys-guide
     kind: deliverable
     name: Product journey guide
@@ -306,6 +310,10 @@ concepts:
     name: .yarramate/evidence/repository.yaml
     status: current
 relationships:
+  - id: backlog-disposition-qualifies-roadmap
+    kind: association
+    from: backlog-disposition
+    to: roadmap
   - id: core-contract-source-realizes-checker
     kind: realization
     from: core-contract-source

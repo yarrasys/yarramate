@@ -161,3 +161,10 @@ notation.
 - Automatic profile discovery and external registries.
   **Local explicit manifests are implemented; automatic discovery and remote
   registries remain intentionally unresolved.**
+
+## Backlog disposition
+
+All concrete work in the agreed Core 0.1 and initial journey scope is
+implemented. Remaining future statements are decision-gated, externally
+blocked, or demand-gated rather than locally executable backlog. See
+`docs/BACKLOG-DISPOSITION.md` for the explicit gates.

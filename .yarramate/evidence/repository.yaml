@@ -3,6 +3,10 @@ id: yarramate-repository
 version: "1.0"
 provider: repository-audit
 observations:
+  - subject: yarramate-repository#backlog-disposition
+    result: confirmed
+    evidence:
+      uri: repo:docs/BACKLOG-DISPOSITION.md
   - subject: yarramate-engine#compiler
     result: confirmed
     evidence:
