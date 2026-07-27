@@ -56,12 +56,14 @@ compiler foundation:
 - `schema/yarramate-graph-v2.schema.json` — normative graph interchange schema
 - `schema/yarramate-workspace.schema.json` — normative workspace manifest schema
 - `schema/yarramate-evidence.schema.json` — normative optional evidence schema
+- `schema/yarramate-reconciliation-report.schema.json` — normative reconciliation findings schema
 - `schema/yarramate-state-comparison.schema.json` — normative architecture-state comparison schema
 - `src/compiler.ts` — native loader and deterministic claim compiler
 - `src/architecture-state.ts` — architecture-state comparison engine
 - `src/graph.ts` — canonical graph-v2 serialization
 - `src/workspace.ts` — explicit deterministic workspace resolution
 - `src/evidence.ts` — existing-subject and claim evidence evaluation
+- `src/reconciliation.ts` — deterministic workspace evidence reconciliation
 - `docs/NATIVE-DOCUMENT.md` — authoring, identity, graph, and diagnostic rules
 - `docs/PROFILES.md` — profile inheritance and qualified kind identities
 - `docs/PROJECTIONS.md` — semantic query and context-result rules
@@ -127,6 +129,7 @@ pnpm self:compare
 pnpm self:compare:contract
 pnpm self:contract
 pnpm self:evidence
+pnpm self:reconcile
 pnpm self:check:likec4
 pnpm self:export:likec4
 pnpm validate
@@ -138,6 +141,9 @@ The package is private and is not published. The pack command creates a local
 artifact containing only the runtime, normative schemas, consumer guide, and
 canonical YarraMate architecture skill. See
 `docs/CONSUMING-YARRAMATE.md` for installation and Codex/Claude skill links.
+After publication, the intended quick start uses
+`npm install --global yarramate`, `npx skills add`, and direct
+`yarramate ...` commands; pnpm remains this repository's development tool.
 
 Check native documents through the stable CLI:
 
@@ -198,6 +204,8 @@ The normative schemas are exported as `yarramate/schema/document` and
 `yarramate/schema/graph-v2`, and the manifest schema as
 `yarramate/schema/workspace`. The optional evidence schemas are exported as
 `yarramate/schema/evidence` and `yarramate/schema/evidence-report`.
+Provider-neutral reconciliation reports are exported as
+`yarramate/schema/reconciliation-report`.
 Architecture-state comparisons use `yarramate/state-comparison/v1`, exported
 as `yarramate/schema/state-comparison`.
 Machine-readable check results are exported as

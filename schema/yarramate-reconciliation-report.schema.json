@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yarramate.org/schema/reconciliation-report/v1",
+  "title": "YarraMate reconciliation report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "workspace", "summary", "findings"],
+  "properties": {
+    "format": { "const": "yarramate/reconciliation-report/v1" },
+    "workspace": { "$ref": "#/$defs/id" },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidenceDocuments",
+        "observations",
+        "confirmed",
+        "findings",
+        "contradicted",
+        "unknown",
+        "notObserved"
+      ],
+      "properties": {
+        "evidenceDocuments": { "type": "integer", "minimum": 0 },
+        "observations": { "type": "integer", "minimum": 0 },
+        "confirmed": { "type": "integer", "minimum": 0 },
+        "findings": { "type": "integer", "minimum": 0 },
+        "contradicted": { "type": "integer", "minimum": 0 },
+        "unknown": { "type": "integer", "minimum": 0 },
+        "notObserved": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/finding" }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+    },
+    "qualifiedIdentity": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*#[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:~[a-z][a-z0-9-]*)?$"
+    },
+    "evidenceIdentity": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*@[0-9]+\\.[0-9]+$"
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id"],
+      "properties": {
+        "type": { "enum": ["subject", "claim"] },
+        "id": { "$ref": "#/$defs/qualifiedIdentity" }
+      }
+    },
+    "evidenceLocator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uri"],
+      "properties": {
+        "uri": { "type": "string", "minLength": 1 },
+        "message": { "type": "string", "minLength": 1 }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target",
+        "result",
+        "provider",
+        "evidenceDocument",
+        "evidence"
+      ],
+      "properties": {
+        "target": { "$ref": "#/$defs/target" },
+        "result": {
+          "enum": ["contradicted", "unknown", "not-observed"]
+        },
+        "provider": { "$ref": "#/$defs/id" },
+        "evidenceDocument": { "$ref": "#/$defs/evidenceIdentity" },
+        "evidence": { "$ref": "#/$defs/evidenceLocator" }
+      }
+    }
+  }
+}

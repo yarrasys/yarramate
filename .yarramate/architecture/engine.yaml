@@ -127,6 +127,11 @@ concepts:
     name: Evaluate evidence overlay
     description: Produces a deterministic report without modifying graph v2.
     status: current
+  - id: reconcile-evidence
+    kind: applicationFunction
+    name: Reconcile workspace evidence
+    description: Aggregates evidence reports into deterministic unresolved findings without proposing or applying remediation.
+    status: current
   - id: evaluate-projection
     kind: applicationFunction
     name: Evaluate semantic projection
@@ -201,6 +206,11 @@ concepts:
     kind: applicationService
     name: Evidence command
     description: Evaluates one evidence document over compiled native sources.
+    status: current
+  - id: reconcile-command
+    kind: applicationService
+    name: Reconcile command
+    description: Emits provider-neutral workspace reconciliation for review by humans and agents.
     status: current
   - id: likec4-export-command
     kind: applicationService
@@ -380,6 +390,15 @@ concepts:
     kind: dataObject
     name: Evidence report JSON Schema
     status: current
+  - id: reconciliation-report
+    kind: dataObject
+    name: Reconciliation report
+    description: Deterministic unresolved evidence findings with provider provenance.
+    status: current
+  - id: reconciliation-report-schema
+    kind: dataObject
+    name: Reconciliation report JSON Schema
+    status: current
 relationships:
   - id: core-contract-checker-loads-contract
     kind: assignment
@@ -545,6 +564,10 @@ relationships:
     kind: assignment
     from: evidence-evaluator
     to: evaluate-evidence
+  - id: evidence-evaluator-reconciles-reports
+    kind: assignment
+    from: evidence-evaluator
+    to: reconcile-evidence
   - id: source-loader-loads-document
     kind: assignment
     from: source-document-loader
@@ -573,6 +596,10 @@ relationships:
     kind: implements
     from: cli
     to: evidence-command
+  - id: cli-provides-reconciliation
+    kind: implements
+    from: cli
+    to: reconcile-command
   - id: parse-reads-native-document
     kind: access
     from: parse-document
@@ -717,6 +744,25 @@ relationships:
     from: evaluate-evidence
     to: evidence-report-schema
     mode: read
+  - id: reconciliation-reads-evidence-report
+    kind: access
+    from: reconcile-evidence
+    to: evidence-report
+    mode: read
+  - id: reconciliation-writes-report
+    kind: access
+    from: reconcile-evidence
+    to: reconciliation-report
+    mode: write
+  - id: reconciliation-reads-report-schema
+    kind: access
+    from: reconcile-evidence
+    to: reconciliation-report-schema
+    mode: read
+  - id: reconciliation-delivers-capability
+    kind: implements
+    from: evidence-evaluator
+    to: yarramate-product#reconcile-intent-and-evidence
   - id: validation-writes-diagnostics
     kind: access
     from: validate-semantic-claims

@@ -38,6 +38,7 @@
     "./schema/workspace": "./schema/yarramate-workspace.schema.json",
     "./schema/evidence": "./schema/yarramate-evidence.schema.json",
     "./schema/evidence-report": "./schema/yarramate-evidence-report.schema.json",
+    "./schema/reconciliation-report": "./schema/yarramate-reconciliation-report.schema.json",
     "./schema/core-contract": "./schema/yarramate-core-contract.schema.json",
     "./skill/yarramate-architecture": "./skills/yarramate-architecture/SKILL.md"
   },
@@ -63,6 +64,7 @@
     "self:compare:contract": "pnpm build && node dist/cli.js compare yarramate-evolution#state-foundation yarramate-evolution#core-contract-foundation .yarramate/workspace.yaml",
     "self:contract": "pnpm build && node dist/cli.js context .yarramate/projections/core-contract-foundation.yaml .yarramate/workspace.yaml",
     "self:evidence": "pnpm build && node dist/cli.js evidence .yarramate/evidence/repository.yaml .yarramate/workspace.yaml",
+    "self:reconcile": "pnpm build && node dist/cli.js reconcile .yarramate/workspace.yaml",
     "self:check:likec4": "pnpm build && node dist/adapters/likec4-cli.js check .yarramate/integrations/likec4/project.yaml .yarramate/workspace.yaml",
     "self:check:likec4:json": "pnpm build && node dist/adapters/likec4-cli.js check .yarramate/integrations/likec4/project.yaml --json .yarramate/workspace.yaml",
     "self:export:likec4": "pnpm build && node dist/adapters/likec4-cli.js export-project .yarramate/integrations/likec4/project.yaml .yarramate-out/likec4 .yarramate/workspace.yaml",

@@ -37,6 +37,11 @@ export {
   type EvidenceResult,
   type EvidenceWorkspaceEvaluationResult,
 } from './evidence.js'
+export {
+  reconcileEvidenceReports,
+  type ReconciliationFinding,
+  type ReconciliationReport,
+} from './reconciliation.js'
 export type {
   CompilationResult,
   ContextualCompilationResult,

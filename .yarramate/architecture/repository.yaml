@@ -114,6 +114,10 @@ concepts:
     kind: repository-file
     name: src/evidence.ts
     status: current
+  - id: reconciliation-source
+    kind: repository-file
+    name: src/reconciliation.ts
+    status: current
   - id: source-document-source
     kind: repository-file
     name: src/source-document.ts
@@ -166,6 +170,10 @@ concepts:
   - id: evidence-report-schema-source
     kind: repository-file
     name: schema/yarramate-evidence-report.schema.json
+    status: current
+  - id: reconciliation-report-schema-source
+    kind: repository-file
+    name: schema/yarramate-reconciliation-report.schema.json
     status: current
   - id: check-result-schema-source
     kind: repository-file
@@ -459,6 +467,10 @@ relationships:
     kind: realization
     from: evidence-source
     to: yarramate-engine#evidence-evaluator
+  - id: reconciliation-source-realizes-function
+    kind: realization
+    from: reconciliation-source
+    to: yarramate-engine#reconcile-evidence
   - id: source-document-source-realizes-loader
     kind: realization
     from: source-document-source
@@ -503,6 +515,10 @@ relationships:
     kind: realization
     from: evidence-report-schema-source
     to: yarramate-engine#evidence-report-schema
+  - id: reconciliation-report-schema-realizes-schema
+    kind: realization
+    from: reconciliation-report-schema-source
+    to: yarramate-engine#reconciliation-report-schema
   - id: check-result-schema-realizes-schema
     kind: realization
     from: check-result-schema-source

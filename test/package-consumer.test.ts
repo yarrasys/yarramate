@@ -33,6 +33,19 @@ describe('consumer package contract', () => {
     expect(
       packageJson.exports['./skill/yarramate-architecture'],
     ).toBe('./skills/yarramate-architecture/SKILL.md')
+    expect(
+      packageJson.exports['./schema/reconciliation-report'],
+    ).toBe('./schema/yarramate-reconciliation-report.schema.json')
+
+    const consumerGuide = readFileSync(
+      join(repositoryRoot, 'docs/CONSUMING-YARRAMATE.md'),
+      'utf8',
+    )
+    expect(consumerGuide).toContain(
+      'npx skills add yarradev/yarramate --skill yarramate-architecture',
+    )
+    expect(consumerGuide).toContain('yarramate init .')
+    expect(consumerGuide).not.toContain('pnpm exec yarramate')
   })
 
   it('packs only a self-contained consumer surface', () => {
@@ -59,6 +72,9 @@ describe('consumer package contract', () => {
 
       expect(files).toContain('package/dist/cli.js')
       expect(files).toContain('package/schema/yarramate-document.schema.json')
+      expect(files).toContain(
+        'package/schema/yarramate-reconciliation-report.schema.json',
+      )
       expect(files).toContain(
         'package/skills/yarramate-architecture/SKILL.md',
       )
@@ -246,6 +262,21 @@ evidence:
       ).toBe(1)
       expect(
         JSON.parse(
+          run(['reconcile', '.yarramate/workspace.yaml']),
+        ),
+      ).toMatchObject({
+        format: 'yarramate/reconciliation-report/v1',
+        workspace: 'consumer',
+        summary: {
+          evidenceDocuments: 1,
+          observations: 1,
+          confirmed: 1,
+          findings: 0,
+        },
+        findings: [],
+      })
+      expect(
+        JSON.parse(
           run([
             'compare',
             'consumer#baseline',
@@ -269,6 +300,16 @@ evidence:
           'yarramate/skill/yarramate-architecture',
         ),
       ).toBe(join(packagePath, 'skills/yarramate-architecture/SKILL.md'))
+      expect(
+        requireFromConsumer.resolve(
+          'yarramate/schema/reconciliation-report',
+        ),
+      ).toBe(
+        join(
+          packagePath,
+          'schema/yarramate-reconciliation-report.schema.json',
+        ),
+      )
 
       for (const harness of ['.agents', '.claude']) {
         const skillDirectory = join(consumer, harness, 'skills')

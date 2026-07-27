@@ -25,8 +25,11 @@ import {
 import { runCheckCommand } from './check-command.js'
 import {
   evaluateEvidence,
+  evaluateEvidenceWorkspace,
   loadEvidence,
 } from './evidence.js'
+import { reconcileEvidenceReports } from './reconciliation.js'
+import { loadWorkspaceManifest } from './workspace.js'
 import {
   evaluateProjection,
   loadProjection,
@@ -161,6 +164,94 @@ const runEvidence = (
           stdout: diagnosticJson(evaluation.diagnostics),
           stderr: '',
         }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    return { exitCode: 2, stdout: '', stderr: `${message}\n` }
+  }
+}
+
+const runReconciliation = (
+  options: readonly string[],
+  cwd: string,
+): CliResult => {
+  const [workspacePath] = options
+  if (
+    options.length !== 1 ||
+    workspacePath === undefined ||
+    workspacePath.startsWith('-')
+  ) {
+    return { exitCode: 2, stdout: '', stderr: usage }
+  }
+  try {
+    const loadedWorkspace = loadWorkspaceManifest(
+      {
+        path: workspacePath,
+        source: readFileSync(resolve(cwd, workspacePath), 'utf8'),
+      },
+      cwd,
+    )
+    if (!loadedWorkspace.ok) {
+      return {
+        exitCode: 1,
+        stdout: diagnosticJson(loadedWorkspace.diagnostics),
+        stderr: '',
+      }
+    }
+    const sourcePaths = [
+      ...loadedWorkspace.workspace.profiles,
+      ...loadedWorkspace.workspace.documents,
+    ]
+    const compilation = compileWorkspace(
+      sourcePaths.map((path) => ({
+        path,
+        source: readFileSync(resolve(cwd, path), 'utf8'),
+      })),
+    )
+    if (!compilation.ok) {
+      return {
+        exitCode: 1,
+        stdout: diagnosticJson(compilation.diagnostics),
+        stderr: '',
+      }
+    }
+    const evidenceDocuments = []
+    for (const path of loadedWorkspace.workspace.evidence) {
+      const loaded = loadEvidence({
+        path,
+        source: readFileSync(resolve(cwd, path), 'utf8'),
+      })
+      if (!loaded.ok) {
+        return {
+          exitCode: 1,
+          stdout: diagnosticJson(loaded.diagnostics),
+          stderr: '',
+        }
+      }
+      evidenceDocuments.push(loaded.evidence)
+    }
+    const evaluation = evaluateEvidenceWorkspace(
+      compilation.graph,
+      evidenceDocuments,
+    )
+    if (!evaluation.ok) {
+      return {
+        exitCode: 1,
+        stdout: diagnosticJson(evaluation.diagnostics),
+        stderr: '',
+      }
+    }
+    return {
+      exitCode: 0,
+      stdout: `${JSON.stringify(
+        reconcileEvidenceReports(
+          loadedWorkspace.workspace.id,
+          evaluation.reports,
+        ),
+        null,
+        2,
+      )}\n`,
+      stderr: '',
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     return { exitCode: 2, stdout: '', stderr: `${message}\n` }
@@ -616,6 +707,9 @@ export function runCli(
   }
   if (command === 'evidence') {
     return runEvidence(options, cwd)
+  }
+  if (command === 'reconcile') {
+    return runReconciliation(options, cwd)
   }
   if (command === 'check') {
     return runCheckCommand(options, cwd)

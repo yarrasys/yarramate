@@ -39,6 +39,9 @@ formats:
   - id: yarramate/evidence-report/v1
     schema: schema/yarramate-evidence-report.schema.json
     packageExport: ./schema/evidence-report
+  - id: yarramate/reconciliation-report/v1
+    schema: schema/yarramate-reconciliation-report.schema.json
+    packageExport: ./schema/reconciliation-report
   - id: yarramate/state-comparison/v1
     schema: schema/yarramate-state-comparison.schema.json
     packageExport: ./schema/state-comparison
@@ -66,6 +69,9 @@ commands:
   - name: evidence
     binary: yarramate
     machineFormat: yarramate/evidence-report/v1
+  - name: reconcile
+    binary: yarramate
+    machineFormat: yarramate/reconciliation-report/v1
 guarantees:
   - adapter-independent-core
   - canonical-graph-serialization

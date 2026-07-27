@@ -28,6 +28,10 @@ describe('agent journeys through the stable CLI', () => {
       ],
       repositoryRoot,
     )
+    const reconciliation = runCli(
+      ['reconcile', workspace],
+      repositoryRoot,
+    )
 
     expect(JSON.parse(check.stdout)).toEqual({
       format: 'yarramate/check-result/v1',
@@ -36,7 +40,7 @@ describe('agent journeys through the stable CLI', () => {
     })
     expect(JSON.parse(evidence.stdout).summary).toEqual({
       confirmed: 3,
-      contradicted: 0,
+      contradicted: 1,
       unknown: 0,
       notObserved: 0,
     })
@@ -48,6 +52,15 @@ describe('agent journeys through the stable CLI', () => {
       { id: 'orders-project#order-record', type: 'concept' },
       { id: 'orders-project#order-service', type: 'concept' },
       { id: 'orders-project#order-service-serves-customer', type: 'relationship' },
+    ])
+    expect(JSON.parse(reconciliation.stdout).findings).toEqual([
+      expect.objectContaining({
+        target: {
+          type: 'subject',
+          id: 'orders-project#customer',
+        },
+        result: 'contradicted',
+      }),
     ])
   })
 

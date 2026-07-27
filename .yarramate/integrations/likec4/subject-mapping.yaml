@@ -96,6 +96,12 @@ mappings:
   - native: yarramate-repository#package-consumer-tests
     external: packageConsumerTests
     type: concept
+  - native: yarramate-repository#reconciliation-source
+    external: reconciliationSource
+    type: concept
+  - native: yarramate-repository#reconciliation-report-schema-source
+    external: reconciliationReportSchemaSource
+    type: concept
   - native: yarramate-repository#product-journeys-guide
     external: productJourneysGuide
     type: concept
@@ -171,6 +177,9 @@ mappings:
   - native: yarramate-engine#evaluate-evidence
     external: engineEvaluateEvidence
     type: concept
+  - native: yarramate-engine#reconcile-evidence
+    external: engineReconcileEvidence
+    type: concept
   - native: yarramate-engine#evidence-command
     external: engineEvidenceCommand
     type: concept
@@ -185,6 +194,15 @@ mappings:
     type: concept
   - native: yarramate-engine#evidence-schema
     external: engineEvidenceSchema
+    type: concept
+  - native: yarramate-engine#reconcile-command
+    external: engineReconcileCommand
+    type: concept
+  - native: yarramate-engine#reconciliation-report
+    external: engineReconciliationReport
+    type: concept
+  - native: yarramate-engine#reconciliation-report-schema
+    external: engineReconciliationReportSchema
     type: concept
   - native: yarramate-engine#init-command
     external: engineInitCommand

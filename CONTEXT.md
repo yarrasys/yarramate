@@ -44,6 +44,16 @@ _Avoid_: Observed claim, approval workflow, automatically canonical model
 Comparison of declared architectural intent with observed project evidence.
 _Avoid_: Core correctness validation, automatic remediation, compliance score
 
+**Reconciliation finding**:
+A contradicted, unknown, or unobserved evidence target retained with provider
+provenance for review.
+_Avoid_: Validation error, remediation instruction, replacement claim
+
+**Reconciliation report**:
+A deterministic workspace summary of evidence observations and unresolved
+findings.
+_Avoid_: Drift policy, CI verdict, approval record
+
 **Semantic graph**:
 The tool-neutral graph compiled deterministically from native YarraMate
 documents. Graph v2 is a normative, canonically serialized interchange

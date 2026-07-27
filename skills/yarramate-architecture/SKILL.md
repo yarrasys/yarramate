@@ -59,12 +59,14 @@ document, projection, evidence, or architecture-state syntax is needed.
 ```sh
 yarramate check .yarramate/workspace.yaml --json
 yarramate evidence .yarramate/evidence/<evidence>.yaml .yarramate/workspace.yaml
+yarramate reconcile .yarramate/workspace.yaml
 yarramate context .yarramate/projections/<projection>.yaml .yarramate/workspace.yaml
 yarramate view .yarramate/projections/<projection>.yaml .yarramate/workspace.yaml
 ```
 
-9. Present observations, interpretive proposals, evidence gaps, and Git diff
-   separately. Do not claim completeness from a green check.
+9. Present observations, reconciliation findings, interpretive proposals,
+   evidence gaps, and Git diff separately. Do not claim completeness from a
+   green check and do not automatically turn findings into edits.
 
 ## Design a new solution
 

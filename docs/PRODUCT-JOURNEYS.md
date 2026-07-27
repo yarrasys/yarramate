@@ -30,6 +30,7 @@ automatically promotes observations into canonical claims.
 - explicit provenance in the Git change and optional evidence overlays;
 - at least one useful projection;
 - deterministic `check` and context output;
+- a deterministic reconciliation report when evidence overlays exist;
 - no unreviewed mutation of architectural intent.
 
 ## Design a new solution

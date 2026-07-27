@@ -160,6 +160,7 @@ yarramate context <projection.yaml> .yarramate/workspace.yaml
 yarramate view <projection.yaml> .yarramate/workspace.yaml
 yarramate compare <from-state> <to-state> .yarramate/workspace.yaml
 yarramate evidence <evidence.yaml> .yarramate/workspace.yaml
+yarramate reconcile .yarramate/workspace.yaml
 ```
 
 Treat exit `0` as successful execution, `1` as correctness diagnostics, and

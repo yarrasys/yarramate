@@ -99,9 +99,10 @@ notation.
   fixture validates alternatives, target context, and state comparison.**
 - Implement deterministic reconciliation between declared subjects or claims
   and provider observations without allowing evidence to mutate intent.
-  **The discovery journey evaluates its proposal through the existing
-  provider-neutral evidence report; richer drift proposal generation remains
-  adapter work.**
+  **The discovery journey evaluates its proposal through provider-neutral
+  evidence reports and aggregates unresolved observations through the
+  normative workspace reconciliation report. Provider execution and richer
+  drift proposal generation remain adapter work.**
 - Define repeatable journey fixtures and acceptance scenarios usable across
   Codex, Claude Code, and other agent harnesses. **Both journeys have literal
   CLI acceptance fixtures and the shared skill has been independently

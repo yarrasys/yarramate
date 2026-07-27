@@ -62,6 +62,7 @@ describe('Core contract manifests', () => {
       'context',
       'compare',
       'evidence',
+      'reconcile',
     ])
     expect(
       loaded.contract.formats.some(({ id }) => id.includes('likec4')),

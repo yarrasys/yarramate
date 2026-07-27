@@ -390,6 +390,62 @@ describe('YarraMate CLI', () => {
     })
   })
 
+  it('reconciles workspace evidence into deterministic unresolved findings', () => {
+    const schema = JSON.parse(
+      readFileSync(
+        join(
+          repositoryRoot,
+          'schema/yarramate-reconciliation-report.schema.json',
+        ),
+        'utf8',
+      ),
+    )
+    const validate = new Ajv2020({ allErrors: true }).compile(schema)
+    const result = runCli(
+      [
+        'reconcile',
+        'test/fixtures/journeys/discovery/.yarramate/workspace.yaml',
+      ],
+      repositoryRoot,
+    )
+
+    expect(result.exitCode).toBe(0)
+    expect(result.stderr).toBe('')
+    const report = JSON.parse(result.stdout)
+    expect(
+      validate(report),
+      JSON.stringify(validate.errors ?? []),
+    ).toBe(true)
+    expect(report).toEqual({
+      format: 'yarramate/reconciliation-report/v1',
+      workspace: 'orders-discovery',
+      summary: {
+        evidenceDocuments: 1,
+        observations: 4,
+        confirmed: 3,
+        findings: 1,
+        contradicted: 1,
+        unknown: 0,
+        notObserved: 0,
+      },
+      findings: [
+        {
+          target: {
+            type: 'subject',
+            id: 'orders-project#customer',
+          },
+          result: 'contradicted',
+          provider: 'repository-inspection',
+          evidenceDocument: 'orders-repository@1.0',
+          evidence: {
+            uri: 'repo:test/fixtures/journeys/discovery/src/customer.ts',
+            message: 'No customer integration was observed in the repository',
+          },
+        },
+      ],
+    })
+  })
+
   it('initializes a minimal native workspace without overwriting it', () => {
     const directory = mkdtempSync(join(tmpdir(), 'yarramate-init-'))
     try {

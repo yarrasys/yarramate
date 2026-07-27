@@ -24,6 +24,8 @@ The model currently covers:
 - canonical graph-v2 serialization and schema conformance;
 - explicit deterministic workspace resolution;
 - provider-neutral evidence evaluation over existing graph identities;
+- provider-neutral workspace reconciliation that reports unresolved evidence
+  without mutating intent;
 - schemas, catalogues, native documents, diagnostics, and semantic graphs;
 - the product contract, ADR collection, and roadmap.
 

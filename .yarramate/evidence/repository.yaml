@@ -43,6 +43,18 @@ observations:
     result: confirmed
     evidence:
       uri: repo:schema/yarramate-evidence-report.schema.json
+  - subject: yarramate-engine#reconcile-evidence
+    result: confirmed
+    evidence:
+      uri: repo:src/reconciliation.ts
+  - subject: yarramate-engine#reconciliation-report-schema
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-reconciliation-report.schema.json
+  - subject: yarramate-repository#reconciliation-source
+    result: confirmed
+    evidence:
+      uri: repo:src/reconciliation.ts
   - subject: yarramate-engine#projection-result-schema
     result: confirmed
     evidence:

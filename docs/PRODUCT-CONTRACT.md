@@ -38,8 +38,9 @@ server, or tool-specific canonical format.
 The installable consumer package contains the built CLI and library runtime,
 normative schemas, consumer guidance, and one canonical agent skill. It does
 not contain the YarraMate repository self-model, source, tests, research, or
-fixtures. Harness-specific repository paths may link to the packaged skill for
-discovery but must not fork its methodology. Packaging and local installation
+fixtures. The public repository may expose that same skill through a generic
+agent-skill installer. Installed directories and harness-specific links are
+deployments and must not fork its methodology. Packaging and local installation
 do not imply publication or licensing approval.
 
 ## Canonical model
@@ -127,6 +128,7 @@ yarramate view
 yarramate context
 yarramate compare
 yarramate evidence
+yarramate reconcile
 ```
 
 Machine-readable checking uses the versioned
@@ -289,6 +291,11 @@ stable claim IDs without changing native documents or graph v2. Controlled
 results are provider observations, not approvals or automatic Core failures.
 Provider locators remain opaque; independent observed claims require a
 separate future contract.
+
+Workspace reconciliation deterministically aggregates evidence reports,
+summarizes confirmations, and emits contradicted, unknown, or unobserved
+targets as review findings. It neither proposes replacement claims nor mutates
+declared intent. Provider execution and remediation remain outside Core.
 
 Native concepts may concisely declare a single accountable owner and multiple
 identified constraint references. Both compile into explicit, globally

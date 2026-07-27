@@ -64,6 +64,24 @@ The typed API exposes `loadEvidence`, `evaluateEvidence`, and
 optional `evidence` category of a workspace manifest, in which case
 `yarramate check` validates them against the compiled graph.
 
+## Reconciliation
+
+```sh
+yarramate reconcile .yarramate/workspace.yaml
+```
+
+This command evaluates every evidence overlay declared by the manifest and
+emits deterministic `yarramate/reconciliation-report/v1` JSON. Its normative
+schema is `schema/yarramate-reconciliation-report.schema.json`.
+
+The summary counts all observations. The `findings` array contains only
+`contradicted`, `unknown`, and `not-observed` results, ordered by target and
+provider. Confirmed observations remain summarized rather than repeated so a
+reviewer or agent can focus on unresolved evidence.
+
+A finding is advisory evidence, not a proposed replacement claim, validation
+error, CI verdict, or authorization to modify the native model.
+
 ## Boundary
 
 Evidence overlays do not:
@@ -89,4 +107,5 @@ into CI failure.
 Diagnostics use `YM801` for an unknown subject, `YM802` for an unknown claim,
 `YM803` for a duplicate target, and `YM804` for a duplicate evidence document.
 The schemas are exported as `yarramate/schema/evidence` and
-`yarramate/schema/evidence-report`.
+`yarramate/schema/evidence-report`. The reconciliation schema is exported as
+`yarramate/schema/reconciliation-report`.

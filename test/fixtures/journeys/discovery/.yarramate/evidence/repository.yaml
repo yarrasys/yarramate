@@ -3,6 +3,11 @@ id: orders-repository
 version: "1.0"
 provider: repository-inspection
 observations:
+  - subject: orders-project#customer
+    result: contradicted
+    evidence:
+      uri: repo:test/fixtures/journeys/discovery/src/customer.ts
+      message: No customer integration was observed in the repository
   - subject: orders-project#order-api
     result: confirmed
     evidence:

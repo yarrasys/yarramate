@@ -1,11 +1,49 @@
 # Consuming YarraMate
 
-YarraMate is currently validated as a local package artifact and is not
-published. Native documents in the consuming repository remain canonical.
+Native documents in the consuming repository remain canonical. Consumer
+commands are documented as `yarramate ...` because the executable is the
+stable product interface regardless of how it was installed.
+
+## Published quick start
+
+Once the package and public repository are published:
+
+```sh
+npm install --global yarramate
+npx skills add yarradev/yarramate --skill yarramate-architecture
+yarramate init .
+yarramate check .yarramate/workspace.yaml --json
+```
+
+The first command installs the engine executable. The second installs the
+canonical guided methodology for supported agent harnesses. They are separate:
+the skill orchestrates the CLI and does not contain its runtime.
+
+Projects that prefer a version-pinned development dependency may instead use:
+
+```sh
+npm install --save-dev yarramate
+npx yarramate init .
+```
+
+Inside package scripts and agent harness commands, the project-local
+executable is resolved as `yarramate`:
+
+```json
+{
+  "scripts": {
+    "architecture:check": "yarramate check .yarramate/workspace.yaml --json",
+    "architecture:reconcile": "yarramate reconcile .yarramate/workspace.yaml"
+  }
+}
+```
+
+The remainder of this guide uses the direct executable form.
 
 ## Install a local artifact
 
-From the YarraMate repository:
+YarraMate is currently private and validated through this pre-publication
+path. From the YarraMate repository:
 
 ```sh
 pnpm pack --pack-destination /tmp/yarramate-package
@@ -14,19 +52,26 @@ pnpm pack --pack-destination /tmp/yarramate-package
 In a consuming project:
 
 ```sh
-pnpm add --save-dev /tmp/yarramate-package/yarramate-0.1.0.tgz
-pnpm exec yarramate init .
-pnpm exec yarramate check .yarramate/workspace.yaml --json
+npm install --save-dev /tmp/yarramate-package/yarramate-0.1.0.tgz
+npx yarramate init .
+npx yarramate check .yarramate/workspace.yaml --json
 ```
 
 The package contains the CLI runtime, normative schemas, and the canonical
 `yarramate-architecture` skill. It excludes the YarraMate repository
 self-model, source, tests, and fixtures.
 
-## Make the skill visible to an agent harness
+## Install the agent skill
 
-Keep the packaged skill as the single source. Thin repository-local links may
-expose it using a harness convention:
+After the repository is public, use the agent-skills installer:
+
+```sh
+npx skills add yarradev/yarramate --skill yarramate-architecture
+```
+
+The installed directory is a deployment of the canonical repository skill,
+not a harness-specific fork. Before publication, packed-artifact testing may
+instead expose the packaged copy through thin local links:
 
 ```sh
 mkdir -p .agents/skills .claude/skills
@@ -36,11 +81,8 @@ ln -s ../../node_modules/yarramate/skills/yarramate-architecture \
   .claude/skills/yarramate-architecture
 ```
 
-The `.agents` link is suitable for Codex installations that load repository
-skills from that convention. The `.claude` link uses Claude Code's
-repository-skill convention. Harnesses may also load the canonical
-`SKILL.md` by its package path directly. Do not copy and independently edit
-the skill for each harness.
+Do not independently edit installed or linked copies. Changes to the
+methodology belong in the canonical repository skill.
 
 ## Existing-project discovery
 
@@ -48,11 +90,12 @@ Ask the harness to use `$yarramate-architecture` to discover the project.
 The skill will inspect repository evidence, propose native documents, and run:
 
 ```sh
-pnpm exec yarramate check .yarramate/workspace.yaml --json
-pnpm exec yarramate evidence \
+yarramate check .yarramate/workspace.yaml --json
+yarramate evidence \
   .yarramate/evidence/<evidence>.yaml \
   .yarramate/workspace.yaml
-pnpm exec yarramate context \
+yarramate reconcile .yarramate/workspace.yaml
+yarramate context \
   .yarramate/projections/<projection>.yaml \
   .yarramate/workspace.yaml
 ```
@@ -67,14 +110,14 @@ implementation. The skill records alternatives, target intent, and bounded
 implementation context, then runs:
 
 ```sh
-pnpm exec yarramate check .yarramate/workspace.yaml --json
-pnpm exec yarramate context \
+yarramate check .yarramate/workspace.yaml --json
+yarramate context \
   .yarramate/projections/<alternatives>.yaml \
   .yarramate/workspace.yaml
-pnpm exec yarramate context \
+yarramate context \
   .yarramate/projections/<target>.yaml \
   .yarramate/workspace.yaml
-pnpm exec yarramate compare \
+yarramate compare \
   <baseline-state> <target-state> \
   .yarramate/workspace.yaml
 ```
