@@ -62,10 +62,11 @@ relationships: []
       ),
     })
     const result = compileWorkspace([
-      source('profiles/yarramate-development.yaml'),
-      source('architecture/product.yaml'),
-      source('architecture/engine.yaml'),
-      source('architecture/repository.yaml'),
+      source('.yarramate/profiles/yarramate-development.yaml'),
+      source('.yarramate/architecture/product.yaml'),
+      source('.yarramate/architecture/engine.yaml'),
+      source('.yarramate/architecture/repository.yaml'),
+      source('.yarramate/architecture/evolution.yaml'),
     ])
     expect(result.ok).toBe(true)
     if (!result.ok) return

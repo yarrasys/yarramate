@@ -1,5 +1,6 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import Ajv2020Module from 'ajv/dist/2020.js'
 import { parseDocument } from 'yaml'
 import {
   loadAdapterMapping,
@@ -15,10 +16,16 @@ import {
 } from './cli-support.js'
 import { compileWorkspace } from './compiler.js'
 import {
+  checkCoreContract,
+  loadCoreContract,
+} from './core-contract.js'
+import {
   evaluateEvidenceWorkspace,
   loadEvidence,
 } from './evidence.js'
 import { loadProjection } from './projection.js'
+
+const Ajv2020 = Ajv2020Module.default
 
 export function runCheckCommand(
   options: readonly string[],
@@ -39,6 +46,115 @@ export function runCheckCommand(
       const output = json
         ? checkResultJson(false, resolved.diagnostics)
         : humanDiagnostics(resolved.diagnostics)
+      return { exitCode: 1, stdout: output, stderr: '' }
+    }
+    const contractDiagnostics = sortDiagnostics(
+      resolved.contracts.flatMap((path) => {
+        const source = {
+          path,
+          source: readFileSync(resolve(cwd, path), 'utf8'),
+        }
+        const loaded = loadCoreContract(source)
+        if (!loaded.ok) return loaded.diagnostics
+        let packageManifest: unknown
+        try {
+          packageManifest = JSON.parse(
+            readFileSync(
+              resolve(cwd, loaded.contract.packageManifest),
+              'utf8',
+            ),
+          )
+        } catch {
+          packageManifest = undefined
+        }
+        const packageRecord =
+          typeof packageManifest === 'object' &&
+          packageManifest !== null &&
+          !Array.isArray(packageManifest)
+            ? (packageManifest as Record<string, unknown>)
+            : undefined
+        const exportsRecord =
+          typeof packageRecord?.exports === 'object' &&
+          packageRecord.exports !== null
+            ? Object.fromEntries(
+                Object.entries(
+                  packageRecord.exports as Record<string, unknown>,
+                ).filter(
+                  (entry): entry is [string, string] =>
+                    typeof entry[1] === 'string',
+                ),
+              )
+            : {}
+        const binaries =
+          typeof packageRecord?.bin === 'object' &&
+          packageRecord.bin !== null
+            ? Object.keys(packageRecord.bin)
+            : typeof packageRecord?.bin === 'string' &&
+                typeof packageRecord.name === 'string'
+              ? [packageRecord.name]
+              : []
+        const schemas: Record<
+          string,
+          { readonly ok: false } | {
+            readonly ok: true
+            readonly format?: string
+            readonly validSchema: boolean
+          }
+        > = {}
+        for (const { schema } of loaded.contract.formats) {
+          if (!existsSync(resolve(cwd, schema))) continue
+          try {
+            const value = JSON.parse(
+              readFileSync(resolve(cwd, schema), 'utf8'),
+            ) as unknown
+            const record =
+              typeof value === 'object' && value !== null
+                ? (value as Record<string, unknown>)
+                : undefined
+            const properties =
+              typeof record?.properties === 'object' &&
+              record.properties !== null
+                ? (record.properties as Record<string, unknown>)
+                : undefined
+            const format =
+              typeof properties?.format === 'object' &&
+              properties.format !== null
+                ? (properties.format as Record<string, unknown>)
+                : undefined
+            let validSchema = true
+            try {
+              new Ajv2020({ strict: false }).compile(value as object)
+            } catch {
+              validSchema = false
+            }
+            schemas[schema] = {
+              ok: true,
+              validSchema,
+              ...(typeof format?.const === 'string'
+                ? { format: format.const }
+                : {}),
+            }
+          } catch {
+            schemas[schema] = { ok: false }
+          }
+        }
+        const checked = checkCoreContract(source, {
+          files: [
+            loaded.contract.packageManifest,
+            ...loaded.contract.formats.map(({ schema }) => schema),
+          ].filter((file) => existsSync(resolve(cwd, file))),
+          packageManifestValid: packageRecord !== undefined,
+          packageExports: exportsRecord,
+          packageBinaries: binaries,
+          schemas,
+        })
+        return checked.ok ? [] : checked.diagnostics
+      }),
+    )
+    if (contractDiagnostics.length > 0) {
+      const output = json
+        ? checkResultJson(false, contractDiagnostics)
+        : humanDiagnostics(contractDiagnostics)
       return { exitCode: 1, stdout: output, stderr: '' }
     }
     const projectionDiagnostics = sortDiagnostics(
@@ -148,6 +264,7 @@ export function runCheckCommand(
       const mappingCount = mappingSources.length
       const projectionCount = resolved.projections.length
       const evidenceCount = resolved.evidence.length
+      const contractCount = resolved.contracts.length
       const checked = [
         `${documentCount} ${documentCount === 1 ? 'document' : 'documents'}`,
         ...(profileCount > 0
@@ -168,6 +285,11 @@ export function runCheckCommand(
         ...(evidenceCount > 0
           ? [
               `${evidenceCount} ${evidenceCount === 1 ? 'evidence document' : 'evidence documents'}`,
+            ]
+          : []),
+        ...(contractCount > 0
+          ? [
+              `${contractCount} ${contractCount === 1 ? 'Core contract' : 'Core contracts'}`,
             ]
           : []),
       ].join(' and ')

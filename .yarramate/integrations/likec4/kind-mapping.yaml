@@ -1,0 +1,11 @@
+format: yarramate/likec4-kind-mapping/v1
+id: yarramate-development-likec4
+version: "1.0"
+conceptKinds:
+  - native: yarramate/development@1.0#compiler-module
+    external: applicationComponent
+  - native: yarramate/development@1.0#repository-file
+    external: artifact
+relationshipKinds:
+  - native: yarramate/development@1.0#implements
+    external: realization

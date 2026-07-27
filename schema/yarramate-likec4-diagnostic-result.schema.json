@@ -20,10 +20,21 @@
           {
             "type": "object",
             "additionalProperties": false,
-            "required": ["code", "message"],
+            "required": [
+              "severity",
+              "code",
+              "message",
+              "path",
+              "pointer",
+              "line",
+              "column"
+            ],
             "properties": {
+              "severity": {
+                "const": "error"
+              },
               "code": {
-                "enum": ["YMLC101", "YMLC102", "YMLC103"]
+                "enum": ["YMLC101", "YMLC102", "YMLC103", "YMLC104", "YMLC105", "YMLC106"]
               },
               "message": {
                 "type": "string",
@@ -32,6 +43,22 @@
               "subject": {
                 "type": "string",
                 "minLength": 1
+              },
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "pointer": {
+                "type": "string",
+                "pattern": "^/"
+              },
+              "line": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "column": {
+                "type": "integer",
+                "minimum": 1
               }
             }
           }

@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yarramate.org/schema/core-contract/v1",
+  "title": "YarraMate Core contract manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "id",
+    "version",
+    "packageManifest",
+    "formats",
+    "commands",
+    "guarantees",
+    "exclusions"
+  ],
+  "properties": {
+    "format": {
+      "const": "yarramate/core-contract/v1"
+    },
+    "id": {
+      "$ref": "#/$defs/id"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
+    "packageManifest": {
+      "$ref": "#/$defs/repositoryPath"
+    },
+    "formats": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "schema", "packageExport"],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/formatIdentity"
+          },
+          "schema": {
+            "$ref": "#/$defs/repositoryPath"
+          },
+          "packageExport": {
+            "type": "string",
+            "pattern": "^\\./schema/[a-z][a-z0-9-]*$"
+          }
+        }
+      }
+    },
+    "commands": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "binary"],
+        "properties": {
+          "name": {
+            "enum": [
+              "init",
+              "add",
+              "connect",
+              "check",
+              "compile",
+              "view",
+              "context",
+              "compare",
+              "evidence"
+            ]
+          },
+          "binary": {
+            "const": "yarramate"
+          },
+          "machineFormat": {
+            "$ref": "#/$defs/formatIdentity"
+          }
+        }
+      }
+    },
+    "guarantees": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "adapter-independent-core",
+          "canonical-graph-serialization",
+          "correctness-not-completeness",
+          "deterministic-diagnostic-order",
+          "git-native-governance",
+          "globally-qualified-compiled-identities",
+          "no-partial-graph-on-error",
+          "portable-projection-selectors",
+          "source-located-diagnostics"
+        ]
+      }
+    },
+    "exclusions": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "adapter-runtime-dependency",
+          "approval-workflow",
+          "architectural-completeness",
+          "architectural-quality",
+          "automatic-discovery",
+          "external-language-conformance",
+          "state-scoped-claim-values"
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+    },
+    "formatIdentity": {
+      "type": "string",
+      "pattern": "^yarramate/[a-z][a-z0-9-]*(?:/[a-z0-9]+)?$"
+    },
+    "repositoryPath": {
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\).+$"
+    }
+  }
+}

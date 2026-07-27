@@ -34,15 +34,17 @@ projects; their mention does not imply affiliation or endorsement.
 The repository now implements and dogfoods the first tool-neutral native
 compiler foundation:
 
-- `profile/specification.likec4` — current adapter vocabulary
-- `profile/SEMANTICS.md` — semantic guidance
+- `.yarramate/integrations/likec4/prototype/specification.likec4` — current adapter vocabulary
+- `.yarramate/integrations/likec4/prototype/SEMANTICS.md` — semantic guidance
 - `src/profile.ts` — machine-readable kind catalogue and relationship policies
 - `schema/yarramate-document.schema.json` — normative native document schema
 - `schema/yarramate-profile.schema.json` — normative extension-profile schema
 - `schema/yarramate-graph-v2.schema.json` — normative graph interchange schema
 - `schema/yarramate-workspace.schema.json` — normative workspace manifest schema
 - `schema/yarramate-evidence.schema.json` — normative optional evidence schema
+- `schema/yarramate-state-comparison.schema.json` — normative architecture-state comparison schema
 - `src/compiler.ts` — native loader and deterministic claim compiler
+- `src/architecture-state.ts` — architecture-state comparison engine
 - `src/graph.ts` — canonical graph-v2 serialization
 - `src/workspace.ts` — explicit deterministic workspace resolution
 - `src/evidence.ts` — existing-subject and claim evidence evaluation
@@ -52,17 +54,44 @@ compiler foundation:
 - `docs/SEMANTIC-GRAPH.md` — normative graph-v2 interchange contract
 - `docs/WORKSPACES.md` — explicit deterministic workspace manifests
 - `docs/EVIDENCE.md` — optional evidence evaluation overlays
+- `docs/ARCHITECTURE-STATES.md` — optional baseline, transition, and target contexts
+- `docs/CORE-CONTRACT.md` — machine-readable Core release boundary
 - `docs/ADAPTER-MAPPINGS.md` — optional external subject-identity mappings
-- `architecture/*.yaml` — this repository's canonical native model
-- `profiles/yarramate-development.yaml` — self-hosted development vocabulary
-- `projections/*.yaml` — canonical focused queries over the self-model
+- `.yarramate/architecture/*.yaml` — this repository's canonical native model
+- `.yarramate/contracts/yarramate-core-0.1.yaml` — dogfooded Core 0.1 implementation contract
+- `.yarramate/profiles/yarramate-development.yaml` — self-hosted development vocabulary
+- `.yarramate/projections/*.yaml` — canonical focused queries over the self-model
 - `docs/DOGFOODING.md` — self-modelling coverage and observed semantic friction
 - `test/profile.test.ts` — catalogue synchronization checks
-- `examples/governed-change` — cross-layer example with a conditional path
 - `docs/PRODUCT-CONTRACT.md` — agreed product and architecture contract
 - `docs/ROADMAP.md` — staged delivery plan
 - `docs/adr` — durable design decisions
 - `docs/research` — primary-source research
+
+## Repository workspace
+
+YarraMate dogfoods the same canonical-input and derived-output boundary it
+expects consumers to preserve:
+
+```text
+.yarramate/
+├── workspace.yaml
+├── architecture/
+├── profiles/
+├── projections/
+├── evidence/
+├── contracts/
+└── integrations/
+    └── likec4/
+
+.yarramate-out/
+└── likec4/
+```
+
+Everything under `.yarramate/` is reviewable canonical input. Everything under
+`.yarramate-out/` is reproducible, disposable output and is ignored by Git.
+Core remains independent of the optional configuration under
+`.yarramate/integrations/`.
 
 ## Current commands
 
@@ -72,8 +101,12 @@ pnpm build
 pnpm self:check
 pnpm self:context
 pnpm self:view
+pnpm self:compare
+pnpm self:compare:contract
+pnpm self:contract
 pnpm self:evidence
-pnpm example:check
+pnpm self:check:likec4
+pnpm self:export:likec4
 pnpm validate
 pnpm test
 pnpm docs:dev
@@ -84,15 +117,16 @@ Check native documents through the stable CLI:
 ```sh
 pnpm build
 node dist/cli.js init .
-node dist/cli.js add architecture/main.yaml --id delivery --kind capability --name "Reliable delivery"
-node dist/cli.js add architecture/main.yaml --id delivery-service --kind applicationService --name "Delivery service"
-node dist/cli.js connect architecture/main.yaml --id service-realizes-delivery --kind realization --from delivery-service --to delivery
+node dist/cli.js add .yarramate/architecture/main.yaml --id delivery --kind capability --name "Reliable delivery"
+node dist/cli.js add .yarramate/architecture/main.yaml --id delivery-service --kind applicationService --name "Delivery service"
+node dist/cli.js connect .yarramate/architecture/main.yaml --id service-realizes-delivery --kind realization --from delivery-service --to delivery
 node dist/cli.js check architecture.yaml
 node dist/cli.js check architecture.yaml --json
 node dist/cli.js compile architecture.yaml > graph.json
+node dist/cli.js compare roadmap#baseline roadmap#target architecture.yaml
 ```
 
-`init` creates `architecture/main.yaml` and `yarramate.workspace.yaml`.
+`init` creates `.yarramate/architecture/main.yaml` and `.yarramate/workspace.yaml`.
 Commands accept either explicit source files or one explicitly supplied
 workspace manifest.
 
@@ -104,24 +138,15 @@ YarraMate models its own repository through the same interface:
 
 ```sh
 pnpm self:check
+pnpm self:check:likec4
+pnpm self:check:likec4:json
 pnpm self:export:likec4
+pnpm self:compare
 ```
 
-The governed-change example keeps native YAML canonical while linking its
-stable subjects to the optional LikeC4 visualization model:
-
-```sh
-pnpm example:check
-pnpm example:export:likec4:project
-pnpm validate
-```
-
-The project export compiles the native workspace, evaluates its projection,
-applies the explicit subject mapping, and writes a self-contained LikeC4
-project under `generated/governed-change`. Generated projects are derived
-output. A versioned marker allows safe repeat generation of the three
-YarraMate-owned files while unmarked directories are refused; the native YAML
-remains canonical.
+`pnpm self:export:likec4` uses
+`.yarramate/integrations/likec4/project.yaml` to materialize the repository's
+single multi-view LikeC4 project under `.yarramate-out/likec4`.
 
 The typed library entrypoint exposes the same compiler seam:
 
@@ -141,6 +166,8 @@ The normative schemas are exported as `yarramate/schema/document` and
 `yarramate/schema/graph-v2`, and the manifest schema as
 `yarramate/schema/workspace`. The optional evidence schemas are exported as
 `yarramate/schema/evidence` and `yarramate/schema/evidence-report`.
+Architecture-state comparisons use `yarramate/state-comparison/v1`, exported
+as `yarramate/schema/state-comparison`.
 Machine-readable check results are exported as
 `yarramate/schema/check-result`.
 Machine-readable semantic-command failures use
@@ -150,10 +177,23 @@ The optional adapter's mixed Core/adapter failure envelope is exported as
 `yarramate/schema/likec4-diagnostic-result`.
 Its generated-project marker schema is exported as
 `yarramate/schema/likec4-generated-project`.
+Multi-view project definitions and markers are exported as
+`yarramate/schema/likec4-project` and
+`yarramate/schema/likec4-generated-project-v2`.
+The optional kind-compatibility schema is exported as
+`yarramate/schema/likec4-kind-mapping`; its loader is available from
+`yarramate/adapter/likec4`.
+Machine-readable adapter checks use
+`yarramate/likec4-check-result/v1`, exported as
+`yarramate/schema/likec4-check-result`.
+Adapter harnesses can call `prepareLikeC4Export` from
+`yarramate/adapter/likec4` to compile sources, evaluate a projection, validate
+subject and kind mappings, enforce the selected vocabulary contract, and
+render deterministic source through one typed operation.
 
 ## Status
 
 Version `0.1.0` is a validated native compiler, projection, safe-authoring,
-workspace, ownership, constraint-reference, and evidence-overlay foundation,
-plus a narrow projection-driven LikeC4 export adapter. It is not yet the
-complete YarraMate engine or adapter suite.
+workspace, ownership, constraint-reference, evidence-overlay, and optional
+architecture-state foundation, plus a narrow projection-driven LikeC4 export
+adapter. It is not yet the complete YarraMate engine or adapter suite.

@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yarramate.org/schema/likec4-check-result/v1",
+  "title": "YarraMate LikeC4 check result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "ok", "diagnostics"],
+  "properties": {
+    "format": {
+      "const": "yarramate/likec4-check-result/v1"
+    },
+    "ok": {
+      "type": "boolean"
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "$ref": "https://yarramate.dev/schema/yarramate-likec4-diagnostic-result.schema.json#/properties/diagnostics/items"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "ok": {
+            "const": true
+          }
+        },
+        "required": ["ok"]
+      },
+      "then": {
+        "properties": {
+          "diagnostics": {
+            "type": "array",
+            "maxItems": 0
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "diagnostics": {
+            "type": "array",
+            "minItems": 1
+          }
+        }
+      }
+    }
+  ]
+}

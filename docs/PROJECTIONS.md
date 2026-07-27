@@ -17,6 +17,7 @@ query:
   owners: [yarramate-product#yarramate-maintainers]
   constraints: [yarramate-product#tool-neutral-core]
   statuses: [current]
+  states: [yarramate-evolution#state-foundation]
   relationships: between
 presentation:
   title: Current engine
@@ -30,6 +31,7 @@ Query fields combine with logical AND:
 - `owners` filters globally qualified owner subject identities;
 - `constraints` filters globally qualified required-constraint identities;
 - `statuses` filters controlled lifecycle status;
+- `states` filters subject presence in globally qualified architecture states;
 - `relationships` is `between` or `none` and defaults to `between`.
 
 Values within each filter list combine with logical OR; different fields
@@ -38,6 +40,12 @@ constraint, or status claim do not match that filter. With
 `relationships: between`, a relationship is selected only when both semantic
 endpoint concepts are selected. Claims about excluded concepts and
 relationships are excluded as well.
+
+For a state filter, unscoped concepts match every existing selected state.
+Unscoped relationships follow their selected endpoints; explicitly scoped
+relationships must also match the state. Architecture-state subjects are not
+included in the result. An unavailable state selector produces no matches,
+preserving portable projection behavior.
 
 Owner and constraint claim objects retain their globally qualified references
 even when a referenced concept is outside the selected documents or kinds.
@@ -92,5 +100,6 @@ not a second source of architectural truth.
 Projection documents are canonical queries, not canonical diagrams. Layout,
 colors, coordinates, and renderer configuration belong to optional adapters.
 
-The schemas are exported as `yarramate/schema/projection` and
+Architecture-state authoring and comparison are described in
+`docs/ARCHITECTURE-STATES.md`. The schemas are exported as `yarramate/schema/projection` and
 `yarramate/schema/projection-result`.

@@ -290,14 +290,17 @@ describe('evidence overlays', () => {
       source: readFileSync(join(repositoryRoot, path), 'utf8'),
     })
     const compilation = compileWorkspace([
-      source('profiles/yarramate-development.yaml'),
-      source('architecture/product.yaml'),
-      source('architecture/engine.yaml'),
-      source('architecture/repository.yaml'),
+      source('.yarramate/profiles/yarramate-development.yaml'),
+      source('.yarramate/architecture/product.yaml'),
+      source('.yarramate/architecture/engine.yaml'),
+      source('.yarramate/architecture/evolution.yaml'),
+      source('.yarramate/architecture/repository.yaml'),
     ])
     expect(compilation.ok).toBe(true)
     if (!compilation.ok) return
-    const loaded = loadEvidence(source('evidence/repository.yaml'))
+    const loaded = loadEvidence(
+      source('.yarramate/evidence/repository.yaml'),
+    )
     expect(loaded.ok).toBe(true)
     if (!loaded.ok) return
 

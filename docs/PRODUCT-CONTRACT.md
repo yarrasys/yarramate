@@ -93,6 +93,7 @@ yarramate check
 yarramate compile
 yarramate view
 yarramate context
+yarramate compare
 yarramate evidence
 ```
 
@@ -103,9 +104,21 @@ Other JSON-producing semantic commands report correctness failures through
 the versioned `yarramate/diagnostic-result/v1` contract.
 
 A versioned workspace manifest may explicitly enumerate local documents,
-profiles, projections, and adapter mappings. Paths resolve relative to the
-manifest with deterministic, traversal-safe glob expansion. The CLI never
-searches parent directories for a manifest or infers governance from it.
+profiles, projections, adapter mappings, evidence overlays, and Core contract
+manifests. Paths resolve relative to the manifest with deterministic,
+traversal-safe glob expansion. The CLI never searches parent directories for
+a manifest or infers governance from it.
+
+Repositories may colocate canonical workspace inputs under `.yarramate/` and
+place reproducible derived artifacts under the ignored `.yarramate-out/`.
+These are repository-layout conventions rather than additional semantic
+formats: moving a source file does not change its document or subject identity.
+
+A Core release may publish a versioned contract manifest declaring its
+tool-neutral formats, command families, deterministic guarantees, and explicit
+exclusions. `check` verifies its repository and package integrity. This
+manifest is not certification, completeness policy, or external-language
+conformance.
 
 ## Validation
 
@@ -120,6 +133,8 @@ Core `yarramate check` enforces correctness:
 - controlled metadata values
 - absence of contradictory declared claims
 - adapter mapping integrity
+- Core contract schema, reference, normative-schema, declared-format,
+  package-export, and binary integrity
 
 Core validation does not fail merely because a recommended owner, realization,
 viewpoint, layer, or design practice is absent. Completeness and governance
@@ -182,14 +197,31 @@ subjects when a deliberately bounded context is required.
 
 YarraMate Core must not depend on any of them.
 
-The first LikeC4 export path consumes a compiled projection result and an
-explicit `likec4` subject mapping. It emits deterministically ordered logical
-model elements, typed relationships, and one element view. It does not change
-graph v2, interpret layout as semantics, import LikeC4, or promise
-round-tripping. Core does not import the adapter module.
+The LikeC4 export path consumes compiled projection results and an explicit
+`likec4` subject mapping. Raw export emits one view; an adapter-owned project
+definition may compose multiple projections into one deterministically
+ordered logical model with independent views. It does not change graph v2,
+interpret layout as semantics, import LikeC4, or promise round-tripping. Core
+does not import the adapter module.
 The adapter may preserve selected compiled claims as flat LikeC4 metadata for
 traceability; those fields remain derived and have no authority over the
 native claims.
+Compatibility between extensible semantic kinds and LikeC4 declaration kinds
+uses a separate, versioned adapter-owned mapping. Transforming a presentation
+kind never changes the globally qualified semantic kind retained in graph v2
+and generated traceability metadata.
+Self-contained projects validate resolved kinds against their bundled LikeC4
+specification before writing; raw source export may target a separately
+managed external specification.
+The optional adapter exposes a non-writing check with a versioned
+machine-readable result for CI and agents; this does not add adapter behavior
+to Core. Adapter correctness diagnostics identify the authored value that can
+repair the failure using a stable code, JSON Pointer, and one-based source
+location.
+The LikeC4 adapter may render a Core state comparison only when its projection
+selects both ordered states. Change metadata, colors, and borders remain
+derived adapter presentation and do not become graph claims. Generated-project
+ownership includes the ordered comparison.
 
 Optional adapter mappings are versioned companion documents outside Core.
 They map globally qualified compiled native subject identities to opaque
@@ -208,6 +240,14 @@ identified constraint references. Both compile into explicit, globally
 referenced claims. Core validates their deterministic structural correctness;
 it does not infer approval authority, evaluate constraint satisfaction, or
 judge architectural merit.
+
+Native documents may optionally declare generic baseline, transition, and
+target architecture states. Concepts and relationships retain one global
+identity and use explicit presence claims rather than copied state models.
+Operational lifecycle remains separate. Core validates state references,
+acyclic ordering, and relationship endpoint presence, and produces
+deterministic added/removed/retained comparisons; it does not define migration
+workflow, state-specific claim values, or external-method conformance.
 
 Constraint assessment reuses evidence overlays over stable constraint claim
 IDs. Core does not contain a policy language, compliance engine, exception or

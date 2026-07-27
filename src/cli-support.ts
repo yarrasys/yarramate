@@ -11,7 +11,7 @@ export interface CliResult {
 }
 
 export const usage =
-  'Usage:\n  yarramate init <directory>\n  yarramate add <document.yaml> --id <id> --kind <kind> --name <name> [--status <status>] [--description <text>] [--owner <ref>] [--constraint <id>=<ref> ...] [--source <source.yaml> ...]\n  yarramate connect <document.yaml> --id <id> --kind <kind> --from <ref> --to <ref> [--name <name>] [--status <status>] [--mode <mode>] [--content <text>] [--source <source.yaml> ...]\n  yarramate check <source.yaml> [source.yaml ...] [--json]\n  yarramate compile <source.yaml> [source.yaml ...]\n  yarramate context <projection.yaml> <source.yaml> [source.yaml ...]\n  yarramate view <projection.yaml> <source.yaml> [source.yaml ...]\n  yarramate evidence <evidence.yaml> <source.yaml> [source.yaml ...]\n'
+  'Usage:\n  yarramate init <directory>\n  yarramate add <document.yaml> --id <id> --kind <kind> --name <name> [--status <status>] [--description <text>] [--owner <ref>] [--constraint <id>=<ref> ...] [--present-in <state-ref> ...] [--source <source.yaml> ...]\n  yarramate connect <document.yaml> --id <id> --kind <kind> --from <ref> --to <ref> [--name <name>] [--status <status>] [--mode <mode>] [--content <text>] [--present-in <state-ref> ...] [--source <source.yaml> ...]\n  yarramate check <source.yaml> [source.yaml ...] [--json]\n  yarramate compile <source.yaml> [source.yaml ...]\n  yarramate context <projection.yaml> <source.yaml> [source.yaml ...]\n  yarramate view <projection.yaml> <source.yaml> [source.yaml ...]\n  yarramate compare <from-state> <to-state> <source.yaml> [source.yaml ...]\n  yarramate evidence <evidence.yaml> <source.yaml> [source.yaml ...]\n'
 
 export const diagnosticJson = (diagnostics: unknown) =>
   `${JSON.stringify(
@@ -71,23 +71,42 @@ export const resolveCliWorkspaceSources = (
       readonly paths: readonly string[]
       readonly projections: readonly string[]
       readonly evidence: readonly string[]
+      readonly contracts: readonly string[]
     }
   | {
       readonly ok: false
       readonly diagnostics: readonly Diagnostic[]
     } => {
   if (paths.length !== 1) {
-    return { ok: true, paths, projections: [], evidence: [] }
+    return {
+      ok: true,
+      paths,
+      projections: [],
+      evidence: [],
+      contracts: [],
+    }
   }
   const manifestPath = paths[0]
   if (manifestPath === undefined) {
-    return { ok: true, paths, projections: [], evidence: [] }
+    return {
+      ok: true,
+      paths,
+      projections: [],
+      evidence: [],
+      contracts: [],
+    }
   }
   const source = readFileSync(resolve(cwd, manifestPath), 'utf8')
   if (
     parseDocument(source).get('format') !== 'yarramate/workspace/v1'
   ) {
-    return { ok: true, paths, projections: [], evidence: [] }
+    return {
+      ok: true,
+      paths,
+      projections: [],
+      evidence: [],
+      contracts: [],
+    }
   }
   const loaded = loadWorkspaceManifest(
     { path: manifestPath, source },
@@ -105,6 +124,7 @@ export const resolveCliWorkspaceSources = (
         ],
         projections: loaded.workspace.projections,
         evidence: loaded.workspace.evidence,
+        contracts: loaded.workspace.contracts,
       }
     : { ok: false, diagnostics: loaded.diagnostics }
 }

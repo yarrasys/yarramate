@@ -27,8 +27,11 @@ Each field compiles into a claim about the stable relationship subject. Using
 either field on another relationship kind is an error.
 
 The initial contradiction rule rejects declaring both `composition` and
-`aggregation` over the same ordered endpoints. This rule means that one
-whole-part assertion cannot simultaneously claim strong and weak membership.
+`aggregation` over the same ordered endpoints with overlapping relationship
+applicability. This workspace-wide rule means that one whole-part assertion
+cannot simultaneously claim strong and weak membership in the same
+architecture state, while explicitly disjoint state scopes can describe a
+change in whole-part semantics.
 No broader architectural consistency inference is implied.
 
 Diagnostics are sorted by source path, line, column, code, and message.

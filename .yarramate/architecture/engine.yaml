@@ -51,6 +51,35 @@ concepts:
     description: Projects compiled claims into deterministic optional LikeC4 source.
     status: current
     owner: yarramate-product#yarramate-maintainers
+    presentIn:
+      - yarramate-evolution#adapter-foundation
+      - yarramate-evolution#state-foundation
+      - yarramate-evolution#core-contract-foundation
+  - id: architecture-state-engine
+    kind: compiler-module
+    name: Architecture state engine
+    description: Selects and compares optional planning states without changing graph v2.
+    status: current
+    owner: yarramate-product#yarramate-maintainers
+    constraints:
+      - id: deterministic
+        ref: yarramate-product#deterministic-correctness
+    presentIn:
+      - yarramate-evolution#state-foundation
+      - yarramate-evolution#core-contract-foundation
+  - id: core-contract-checker
+    kind: compiler-module
+    name: Core contract checker
+    description: Loads release contracts and verifies schema identities and package surfaces without claiming certification.
+    status: current
+    owner: yarramate-product#yarramate-maintainers
+    constraints:
+      - id: deterministic
+        ref: yarramate-product#deterministic-correctness
+      - id: tool-neutral
+        ref: yarramate-product#tool-neutral-core
+    presentIn:
+      - yarramate-evolution#core-contract-foundation
   - id: source-document-loader
     kind: compiler-module
     name: Source-located document loader
@@ -103,6 +132,41 @@ concepts:
     name: Export LikeC4 source
     description: Applies explicit concept identities to a closed projection result.
     status: current
+  - id: assemble-likec4-project
+    kind: applicationFunction
+    name: Assemble multi-view LikeC4 project
+    description: Unions mapped projection results into one derived logical model with independent views.
+    status: current
+  - id: render-likec4-state-comparison
+    kind: applicationFunction
+    name: Render LikeC4 state comparison
+    description: Adds adapter-owned change metadata and valid local view styles to a projected architecture-state comparison.
+    status: current
+    presentIn:
+      - yarramate-evolution#state-foundation
+      - yarramate-evolution#core-contract-foundation
+  - id: compare-architecture-states
+    kind: applicationFunction
+    name: Compare architecture states
+    description: Classifies subjects as added, removed, or retained between two declared states.
+    status: current
+    presentIn:
+      - yarramate-evolution#state-foundation
+      - yarramate-evolution#core-contract-foundation
+  - id: load-core-contract
+    kind: applicationFunction
+    name: Load Core contract
+    description: Parses a closed versioned release contract with source-located structural and semantic diagnostics.
+    status: current
+    presentIn:
+      - yarramate-evolution#core-contract-foundation
+  - id: check-core-contract
+    kind: applicationFunction
+    name: Check Core contract
+    description: Verifies declared schemas, exports, and binaries against an explicit implementation surface.
+    status: current
+    presentIn:
+      - yarramate-evolution#core-contract-foundation
   - id: check-command
     kind: applicationService
     name: Check command
@@ -136,8 +200,21 @@ concepts:
   - id: likec4-export-command
     kind: applicationService
     name: LikeC4 export command
-    description: Emits source or materializes a non-overwriting derived LikeC4 project without changing native documents.
+    description: Emits source or atomically replaces guarded derived LikeC4 project files without changing native documents.
     status: current
+  - id: likec4-check-command
+    kind: applicationService
+    name: LikeC4 check command
+    description: Validates the complete bundled adapter path without writing derived output.
+    status: current
+  - id: compare-command
+    kind: applicationService
+    name: Compare command
+    description: Emits a deterministic architecture-state comparison for humans, CI, and agents.
+    status: current
+    presentIn:
+      - yarramate-evolution#state-foundation
+      - yarramate-evolution#core-contract-foundation
   - id: native-document
     kind: dataObject
     name: Native YAML document
@@ -186,6 +263,32 @@ concepts:
     kind: dataObject
     name: Generated LikeC4 project marker JSON Schema
     status: current
+  - id: likec4-project-definition
+    kind: dataObject
+    name: LikeC4 project definition
+    description: Adapter-owned composition of semantic projections into one derived multi-view project.
+    status: current
+  - id: likec4-project-schema
+    kind: dataObject
+    name: LikeC4 project definition JSON Schema
+    status: current
+  - id: likec4-generated-project-v2-schema
+    kind: dataObject
+    name: Multi-view generated LikeC4 project marker JSON Schema
+    status: current
+  - id: likec4-kind-mapping
+    kind: dataObject
+    name: LikeC4 kind compatibility mapping
+    description: Versioned adapter-owned mapping from qualified semantic kinds to LikeC4 declaration kinds.
+    status: current
+  - id: likec4-kind-mapping-schema
+    kind: dataObject
+    name: LikeC4 kind mapping JSON Schema
+    status: current
+  - id: likec4-check-result-schema
+    kind: dataObject
+    name: LikeC4 check result JSON Schema
+    status: current
   - id: adapter-mapping
     kind: dataObject
     name: Optional adapter mapping
@@ -215,6 +318,34 @@ concepts:
     kind: dataObject
     name: Projection result JSON Schema
     status: current
+  - id: state-comparison
+    kind: dataObject
+    name: Architecture-state comparison
+    description: Versioned deterministic added, removed, and retained subject classification.
+    status: current
+    presentIn:
+      - yarramate-evolution#state-foundation
+      - yarramate-evolution#core-contract-foundation
+  - id: state-comparison-schema
+    kind: dataObject
+    name: Architecture-state comparison JSON Schema
+    status: current
+    presentIn:
+      - yarramate-evolution#state-foundation
+      - yarramate-evolution#core-contract-foundation
+  - id: core-contract-manifest
+    kind: dataObject
+    name: Core contract manifest
+    description: Versioned declaration of one tool-neutral Core release boundary.
+    status: current
+    presentIn:
+      - yarramate-evolution#core-contract-foundation
+  - id: core-contract-schema
+    kind: dataObject
+    name: Core contract JSON Schema
+    status: current
+    presentIn:
+      - yarramate-evolution#core-contract-foundation
   - id: workspace-manifest
     kind: dataObject
     name: Workspace manifest
@@ -240,13 +371,85 @@ concepts:
     name: Evidence report JSON Schema
     status: current
 relationships:
+  - id: core-contract-checker-loads-contract
+    kind: assignment
+    from: core-contract-checker
+    to: load-core-contract
+  - id: core-contract-checker-checks-surface
+    kind: assignment
+    from: core-contract-checker
+    to: check-core-contract
+  - id: core-contract-load-reads-manifest
+    kind: access
+    from: load-core-contract
+    to: core-contract-manifest
+    mode: read
+  - id: core-contract-load-reads-schema
+    kind: access
+    from: load-core-contract
+    to: core-contract-schema
+    mode: read
+  - id: core-contract-check-reads-manifest
+    kind: access
+    from: check-core-contract
+    to: core-contract-manifest
+    mode: read
+  - id: core-contract-schema-describes-manifest
+    kind: realization
+    from: core-contract-schema
+    to: core-contract-manifest
+  - id: check-command-serves-core-contract-check
+    kind: serving
+    from: check-command
+    to: check-core-contract
+  - id: state-engine-performs-comparison
+    kind: assignment
+    from: architecture-state-engine
+    to: compare-architecture-states
+  - id: compare-command-serves-comparison
+    kind: serving
+    from: compare-command
+    to: compare-architecture-states
+  - id: comparison-produces-result
+    kind: realization
+    from: compare-architecture-states
+    to: state-comparison
+  - id: comparison-schema-describes-result
+    kind: realization
+    from: state-comparison-schema
+    to: state-comparison
   - id: likec4-adapter-performs-export
     kind: assignment
     from: likec4-export-adapter
     to: export-likec4
+  - id: likec4-adapter-assembles-project
+    kind: assignment
+    from: likec4-export-adapter
+    to: assemble-likec4-project
+  - id: likec4-adapter-renders-state-comparison
+    kind: assignment
+    from: likec4-export-adapter
+    to: render-likec4-state-comparison
+  - id: likec4-comparison-reads-state-comparison
+    kind: access
+    from: render-likec4-state-comparison
+    to: state-comparison
+    mode: read
   - id: likec4-command-serves-export
     kind: serving
     from: likec4-export-command
+    to: export-likec4
+  - id: likec4-command-serves-project-assembly
+    kind: serving
+    from: likec4-export-command
+    to: assemble-likec4-project
+  - id: likec4-command-serves-state-comparison
+    kind: serving
+    from: likec4-export-command
+    to: render-likec4-state-comparison
+  - id: likec4-check-serves-export
+    kind: serving
+    from: likec4-check-command
     to: export-likec4
   - id: likec4-export-reads-projection
     kind: access
@@ -257,6 +460,31 @@ relationships:
     kind: access
     from: export-likec4
     to: adapter-mapping
+    mode: read
+  - id: likec4-export-reads-kind-mapping
+    kind: access
+    from: export-likec4
+    to: likec4-kind-mapping
+    mode: read
+  - id: likec4-project-assembly-reads-definition
+    kind: access
+    from: assemble-likec4-project
+    to: likec4-project-definition
+    mode: read
+  - id: likec4-project-assembly-reads-projections
+    kind: access
+    from: assemble-likec4-project
+    to: projection-result
+    mode: read
+  - id: likec4-project-assembly-reads-definition-schema
+    kind: access
+    from: assemble-likec4-project
+    to: likec4-project-schema
+    mode: read
+  - id: likec4-project-assembly-reads-marker-schema
+    kind: access
+    from: assemble-likec4-project
+    to: likec4-generated-project-v2-schema
     mode: read
   - id: compiler-delivers-compilation
     kind: implements

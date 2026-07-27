@@ -1,11 +1,29 @@
-import type { AdapterMapping } from '../adapter-mapping.js'
+import {
+  adapterMappingEntryLocation,
+  adapterMappingLocation,
+  type AdapterMapping,
+} from '../adapter-mapping.js'
 import type { GraphClaim } from '../compiler.js'
+import type { StateComparison } from '../architecture-state.js'
 import type { ProjectionResult } from '../projection.js'
+import { diagnosticOrder } from '../source-document.js'
+import type { LikeC4KindMapping } from './likec4-kind-mapping.js'
 
 export interface LikeC4ExportDiagnostic {
-  readonly code: 'YMLC101' | 'YMLC102' | 'YMLC103'
+  readonly severity: 'error'
+  readonly code:
+    | 'YMLC101'
+    | 'YMLC102'
+    | 'YMLC103'
+    | 'YMLC104'
+    | 'YMLC105'
+    | 'YMLC106'
   readonly message: string
   readonly subject?: string
+  readonly path: string
+  readonly pointer: string
+  readonly line: number
+  readonly column: number
 }
 
 export type LikeC4ExportResult =
@@ -14,6 +32,10 @@ export type LikeC4ExportResult =
       readonly ok: false
       readonly diagnostics: readonly LikeC4ExportDiagnostic[]
     }
+
+export interface LikeC4ExportOptions {
+  readonly comparison?: StateComparison
+}
 
 const identifier = /^[A-Za-z_][A-Za-z0-9_-]*$/
 
@@ -44,6 +66,16 @@ const referencesFor = (
         : [],
     )
     .sort()
+
+const sourceForConcept = (
+  claims: readonly GraphClaim[],
+  subject: string,
+) =>
+  claims.find(
+    (claim) =>
+      claim.subject === subject &&
+      claim.predicate === 'yarramate/concept/kind',
+  )?.source
 
 const metadataLines = (
   entries: readonly [
@@ -82,12 +114,20 @@ const quote = (value: string): string =>
 export function exportLikeC4(
   projection: ProjectionResult,
   mapping: AdapterMapping,
+  kindMapping?: LikeC4KindMapping,
+  options: LikeC4ExportOptions = {},
 ): LikeC4ExportResult {
   const diagnostics: LikeC4ExportDiagnostic[] = []
   if (mapping.adapter !== 'likec4') {
+    const source = adapterMappingLocation(mapping, 'adapter')
     diagnostics.push({
+      severity: 'error',
       code: 'YMLC101',
       message: `Adapter mapping "${mapping.id}@${mapping.version}" targets "${mapping.adapter}", not "likec4"`,
+      path: source.path,
+      pointer: source.pointer,
+      line: source.line,
+      column: source.column,
     })
   }
 
@@ -96,35 +136,78 @@ export function exportLikeC4(
       .filter(({ type }) => type === 'concept')
       .map(({ native, external }) => [native, external] as const),
   )
+  const externalConceptKind = new Map(
+    kindMapping?.conceptKinds.map(({ native, external }) => [
+      native,
+      external,
+    ]) ?? [],
+  )
+  const externalRelationshipKind = new Map(
+    kindMapping?.relationshipKinds.map(({ native, external }) => [
+      native,
+      external,
+    ]) ?? [],
+  )
   const concepts = projection.subjects
     .filter(({ type }) => type === 'concept')
     .sort((left, right) => left.id.localeCompare(right.id))
+  const comparisonChange = new Map(
+    options.comparison === undefined
+      ? []
+      : [
+          ...options.comparison.added.map(
+            ({ id }) => [id, 'added'] as const,
+          ),
+          ...options.comparison.removed.map(
+            ({ id }) => [id, 'removed'] as const,
+          ),
+          ...options.comparison.retained.map(
+            ({ id }) => [id, 'retained'] as const,
+          ),
+        ],
+  )
 
   for (const concept of concepts) {
     const external = externalByNative.get(concept.id)
     if (external === undefined) {
+      const source = sourceForConcept(projection.claims, concept.id)
+      if (source === undefined) continue
       diagnostics.push({
+        severity: 'error',
         code: 'YMLC102',
         message: `Projected concept "${concept.id}" has no LikeC4 mapping`,
         subject: concept.id,
+        path: source.path,
+        pointer: source.pointer,
+        line: source.line,
+        column: source.column,
       })
     } else if (!identifier.test(external)) {
+      const entry = mapping.mappings.find(
+        ({ native, type }) =>
+          native === concept.id && type === 'concept',
+      )!
+      const source = adapterMappingEntryLocation(
+        mapping,
+        entry,
+        'external',
+      )
       diagnostics.push({
+        severity: 'error',
         code: 'YMLC103',
         message: `LikeC4 identity "${external}" is not a valid identifier`,
         subject: concept.id,
+        path: source.path,
+        pointer: source.pointer,
+        line: source.line,
+        column: source.column,
       })
     }
   }
   if (diagnostics.length > 0) {
     return {
       ok: false,
-      diagnostics: diagnostics.sort(
-        (left, right) =>
-          left.code.localeCompare(right.code) ||
-          (left.subject ?? '').localeCompare(right.subject ?? '') ||
-          left.message.localeCompare(right.message),
-      ),
+      diagnostics: diagnostics.sort(diagnosticOrder),
     }
   }
 
@@ -134,13 +217,14 @@ export function exportLikeC4(
   ]
   for (const concept of concepts) {
     const external = externalByNative.get(concept.id)!
-    const kind = kindId(
+    const semanticKind =
       valueFor(
         projection.claims,
         concept.id,
         'yarramate/concept/kind',
-      ) ?? 'element',
-    )
+      ) ?? 'element'
+    const kind =
+      externalConceptKind.get(semanticKind) ?? kindId(semanticKind)
     const name =
       valueFor(
         projection.claims,
@@ -155,6 +239,8 @@ export function exportLikeC4(
     const metadata = metadataLines(
       [
         ['yarramateId', concept.id],
+        ['yarramateKind', semanticKind],
+        ['yarramateChange', comparisonChange.get(concept.id)],
         [
           'status',
           valueFor(
@@ -221,6 +307,8 @@ export function exportLikeC4(
     const metadata = metadataLines(
       [
         ['yarramateId', relationship.id],
+        ['yarramateKind', structural.predicate],
+        ['yarramateChange', comparisonChange.get(relationship.id)],
         [
           'status',
           valueFor(
@@ -249,7 +337,7 @@ export function exportLikeC4(
       '    ',
     )
     lines.push(
-      `  ${source} -[${kindId(structural.predicate)}]-> ${target}${name === undefined ? '' : ` ${quote(name)}`}${metadata.length === 0 ? '' : ' {'}`,
+      `  ${source} -[${externalRelationshipKind.get(structural.predicate) ?? kindId(structural.predicate)}]-> ${target}${name === undefined ? '' : ` ${quote(name)}`}${metadata.length === 0 ? '' : ' {'}`,
       ...metadata,
       ...(metadata.length === 0 ? [] : ['  }']),
     )
@@ -272,6 +360,19 @@ export function exportLikeC4(
           `    description ${quote(projection.presentation.description)}`,
         ]),
     '    include *',
+    ...(options.comparison === undefined
+      ? []
+      : concepts.map((concept) => {
+          const external = externalByNative.get(concept.id)!
+          const change = comparisonChange.get(concept.id)
+          if (change === 'added') {
+            return `    style ${external} { color green }`
+          }
+          if (change === 'removed') {
+            return `    style ${external} { color red; border dashed }`
+          }
+          return `    style ${external} { color gray }`
+        })),
     '    autoLayout LeftRight',
     '  }',
     '}',

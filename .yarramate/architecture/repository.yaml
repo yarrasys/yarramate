@@ -20,6 +20,19 @@ concepts:
     kind: repository-file
     name: src/compiler.ts
     status: current
+  - id: architecture-state-source
+    kind: repository-file
+    name: src/architecture-state.ts
+    status: current
+    presentIn:
+      - yarramate-evolution#state-foundation
+      - yarramate-evolution#core-contract-foundation
+  - id: core-contract-source
+    kind: repository-file
+    name: src/core-contract.ts
+    status: current
+    presentIn:
+      - yarramate-evolution#core-contract-foundation
   - id: cli-source
     kind: repository-file
     name: src/cli.ts
@@ -48,13 +61,33 @@ concepts:
     kind: repository-file
     name: src/adapters/likec4-cli.ts
     status: current
+  - id: likec4-kind-mapping-source
+    kind: repository-file
+    name: src/adapters/likec4-kind-mapping.ts
+    status: current
+  - id: likec4-prepare-source
+    kind: repository-file
+    name: src/adapters/likec4-prepare.ts
+    status: current
+  - id: likec4-project-source
+    kind: repository-file
+    name: src/adapters/likec4-project.ts
+    status: current
+  - id: likec4-project-definition-source
+    kind: repository-file
+    name: .yarramate/integrations/likec4/project.yaml
+    status: current
   - id: likec4-export-projection-source
     kind: repository-file
-    name: projections/likec4-export-path.yaml
+    name: .yarramate/projections/likec4-export-path.yaml
     status: current
   - id: likec4-export-mapping-source
     kind: repository-file
-    name: adapters/likec4-export-path.mapping.yaml
+    name: .yarramate/integrations/likec4/subject-mapping.yaml
+    status: current
+  - id: likec4-kind-profile-source
+    kind: repository-file
+    name: .yarramate/integrations/likec4/kind-mapping.yaml
     status: current
   - id: graph-source
     kind: repository-file
@@ -88,6 +121,19 @@ concepts:
     kind: repository-file
     name: schema/yarramate-projection-result.schema.json
     status: current
+  - id: state-comparison-schema-source
+    kind: repository-file
+    name: schema/yarramate-state-comparison.schema.json
+    status: current
+    presentIn:
+      - yarramate-evolution#state-foundation
+      - yarramate-evolution#core-contract-foundation
+  - id: core-contract-schema-source
+    kind: repository-file
+    name: schema/yarramate-core-contract.schema.json
+    status: current
+    presentIn:
+      - yarramate-evolution#core-contract-foundation
   - id: adapter-mapping-schema-source
     kind: repository-file
     name: schema/yarramate-adapter-mapping.schema.json
@@ -124,10 +170,39 @@ concepts:
     kind: repository-file
     name: schema/yarramate-likec4-generated-project.schema.json
     status: current
+  - id: likec4-project-schema-source
+    kind: repository-file
+    name: schema/yarramate-likec4-project.schema.json
+    status: current
+  - id: likec4-generated-project-v2-schema-source
+    kind: repository-file
+    name: schema/yarramate-likec4-generated-project-v2.schema.json
+    status: current
+  - id: likec4-kind-mapping-schema-source
+    kind: repository-file
+    name: schema/yarramate-likec4-kind-mapping.schema.json
+    status: current
+  - id: likec4-check-result-schema-source
+    kind: repository-file
+    name: schema/yarramate-likec4-check-result.schema.json
+    status: current
   - id: compiler-tests
     kind: repository-file
     name: test/compiler.test.ts
     status: current
+  - id: architecture-state-tests
+    kind: repository-file
+    name: test/architecture-state.test.ts
+    status: current
+    presentIn:
+      - yarramate-evolution#state-foundation
+      - yarramate-evolution#core-contract-foundation
+  - id: core-contract-tests
+    kind: repository-file
+    name: test/core-contract.test.ts
+    status: current
+    presentIn:
+      - yarramate-evolution#core-contract-foundation
   - id: cli-tests
     kind: repository-file
     name: test/cli.test.ts
@@ -144,6 +219,14 @@ concepts:
     kind: repository-file
     name: test/likec4-cli.test.ts
     status: current
+  - id: likec4-kind-mapping-tests
+    kind: repository-file
+    name: test/likec4-kind-mapping.test.ts
+    status: current
+  - id: likec4-prepare-tests
+    kind: repository-file
+    name: test/likec4-prepare.test.ts
+    status: current
   - id: graph-schema-tests
     kind: repository-file
     name: test/graph-schema.test.ts
@@ -154,17 +237,46 @@ concepts:
     status: current
   - id: root-workspace-manifest
     kind: repository-file
-    name: yarramate.workspace.yaml
+    name: .yarramate/workspace.yaml
     status: current
+  - id: core-contract-release-manifest
+    kind: repository-file
+    name: .yarramate/contracts/yarramate-core-0.1.yaml
+    status: current
+    presentIn:
+      - yarramate-evolution#core-contract-foundation
+  - id: evolution-model
+    kind: repository-file
+    name: .yarramate/architecture/evolution.yaml
+    status: current
+    presentIn:
+      - yarramate-evolution#state-foundation
+      - yarramate-evolution#core-contract-foundation
   - id: evidence-tests
     kind: repository-file
     name: test/evidence.test.ts
     status: current
   - id: repository-evidence
     kind: repository-file
-    name: evidence/repository.yaml
+    name: .yarramate/evidence/repository.yaml
     status: current
 relationships:
+  - id: core-contract-source-realizes-checker
+    kind: realization
+    from: core-contract-source
+    to: yarramate-engine#core-contract-checker
+  - id: core-contract-schema-source-realizes-schema
+    kind: realization
+    from: core-contract-schema-source
+    to: yarramate-engine#core-contract-schema
+  - id: core-contract-release-realizes-manifest
+    kind: realization
+    from: core-contract-release-manifest
+    to: yarramate-engine#core-contract-manifest
+  - id: core-contract-tests-validate-checker
+    kind: association
+    from: core-contract-tests
+    to: yarramate-engine#core-contract-checker
   - id: contract-realizes-tool-neutral-core
     kind: realization
     from: product-contract
@@ -194,6 +306,10 @@ relationships:
     kind: realization
     from: compiler-source
     to: yarramate-engine#compiler
+  - id: state-source-realizes-engine
+    kind: realization
+    from: architecture-state-source
+    to: yarramate-engine#architecture-state-engine
   - id: cli-source-realizes-cli
     kind: realization
     from: cli-source
@@ -222,6 +338,26 @@ relationships:
     kind: realization
     from: likec4-cli-source
     to: yarramate-engine#likec4-export-command
+  - id: likec4-cli-source-realizes-check
+    kind: realization
+    from: likec4-cli-source
+    to: yarramate-engine#likec4-check-command
+  - id: likec4-kind-source-realizes-mapping
+    kind: realization
+    from: likec4-kind-mapping-source
+    to: yarramate-engine#likec4-kind-mapping
+  - id: likec4-prepare-source-realizes-export
+    kind: realization
+    from: likec4-prepare-source
+    to: yarramate-engine#export-likec4
+  - id: likec4-project-source-realizes-assembly
+    kind: realization
+    from: likec4-project-source
+    to: yarramate-engine#assemble-likec4-project
+  - id: likec4-project-definition-realizes-definition
+    kind: realization
+    from: likec4-project-definition-source
+    to: yarramate-engine#likec4-project-definition
   - id: likec4-projection-source-realizes-definition
     kind: realization
     from: likec4-export-projection-source
@@ -230,6 +366,10 @@ relationships:
     kind: realization
     from: likec4-export-mapping-source
     to: yarramate-engine#adapter-mapping
+  - id: likec4-kind-profile-realizes-mapping
+    kind: realization
+    from: likec4-kind-profile-source
+    to: yarramate-engine#likec4-kind-mapping
   - id: graph-source-realizes-serialization
     kind: realization
     from: graph-source
@@ -262,6 +402,10 @@ relationships:
     kind: realization
     from: projection-result-schema-source
     to: yarramate-engine#projection-result-schema
+  - id: state-comparison-schema-realizes-schema
+    kind: realization
+    from: state-comparison-schema-source
+    to: yarramate-engine#state-comparison-schema
   - id: adapter-schema-realizes-mapping-schema
     kind: realization
     from: adapter-mapping-schema-source
@@ -298,10 +442,30 @@ relationships:
     kind: realization
     from: likec4-generated-project-schema-source
     to: yarramate-engine#likec4-generated-project-schema
+  - id: likec4-project-schema-realizes-schema
+    kind: realization
+    from: likec4-project-schema-source
+    to: yarramate-engine#likec4-project-schema
+  - id: likec4-generated-v2-schema-realizes-schema
+    kind: realization
+    from: likec4-generated-project-v2-schema-source
+    to: yarramate-engine#likec4-generated-project-v2-schema
+  - id: likec4-kind-schema-realizes-schema
+    kind: realization
+    from: likec4-kind-mapping-schema-source
+    to: yarramate-engine#likec4-kind-mapping-schema
+  - id: likec4-check-schema-realizes-schema
+    kind: realization
+    from: likec4-check-result-schema-source
+    to: yarramate-engine#likec4-check-result-schema
   - id: tests-validate-compiler
     kind: association
     from: compiler-tests
     to: yarramate-engine#compiler
+  - id: state-tests-validate-comparison
+    kind: association
+    from: architecture-state-tests
+    to: yarramate-engine#compare-architecture-states
   - id: cli-tests-validate-cli
     kind: association
     from: cli-tests
@@ -318,6 +482,18 @@ relationships:
     kind: association
     from: likec4-cli-tests
     to: yarramate-engine#likec4-export-command
+  - id: likec4-cli-tests-validate-check
+    kind: association
+    from: likec4-cli-tests
+    to: yarramate-engine#likec4-check-command
+  - id: likec4-kind-tests-validate-mapping
+    kind: association
+    from: likec4-kind-mapping-tests
+    to: yarramate-engine#likec4-kind-mapping
+  - id: likec4-prepare-tests-validate-export
+    kind: association
+    from: likec4-prepare-tests
+    to: yarramate-engine#export-likec4
   - id: graph-tests-validate-interchange
     kind: association
     from: graph-schema-tests
@@ -330,6 +506,10 @@ relationships:
     kind: realization
     from: root-workspace-manifest
     to: yarramate-engine#workspace-manifest
+  - id: evolution-model-realizes-states
+    kind: realization
+    from: evolution-model
+    to: yarramate-engine#architecture-state-engine
   - id: evidence-tests-validate-evaluation
     kind: association
     from: evidence-tests

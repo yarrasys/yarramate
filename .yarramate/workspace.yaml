@@ -7,6 +7,8 @@ profiles:
 projections:
   - projections/*.yaml
 adapterMappings:
-  - adapters/*.yaml
+  - integrations/likec4/subject-mapping.yaml
 evidence:
   - evidence/*.yaml
+contracts:
+  - contracts/*.yaml

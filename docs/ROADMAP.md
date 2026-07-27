@@ -39,8 +39,10 @@ notation.
   implemented.**
 - Validate schema, references, identifiers, kinds, endpoint compatibility,
   controlled fields, contradictions, and adapter mappings. **Core checks
-  and optional subject-mapping integrity are implemented; contradiction
-  coverage is deliberately incremental.**
+  and optional subject-mapping integrity are implemented. Whole-part
+  contradictions are checked workspace-wide with architecture-state
+  applicability; additional contradiction coverage remains deliberately
+  incremental.**
 - Emit stable, source-located, machine-readable diagnostics. **Implemented as
   the normative `yarramate/check-result/v1` contract for `check --json`.**
 - Keep completeness and organizational governance opt-in.
@@ -58,15 +60,23 @@ notation.
 - Render projection results for humans and agent harnesses. **Deterministic
   JSON context is implemented through `yarramate context`, with deterministic
   Markdown through `yarramate view`.**
+- Represent optional baseline, transition, and target planning contexts.
+  **Architecture-state declarations, concise subject presence, state-filtered
+  projections, deterministic comparisons, and repository dogfooding are
+  implemented without changing graph v2. State-scoped claim values remain a
+  future graph-version decision.**
 
 ## 0.5 — Optional adapters
 
 - LikeC4 authoring, import/export, and visualization adapter.
   **A versioned subject-identity mapping seam, deterministic
   projection-to-LikeC4 export, self-contained project materialization, adapter
-  CLI, and governed-change mapping are implemented. Import, round-tripping,
-  deployment and dynamic views, and styling parity remain future adapter
-  work.**
+  CLI with a source-located non-writing check, explicit kind-compatibility
+  mapping, one-model multi-view project composition, state-specific and
+  comparison visualization, and regression-fixture and self-dogfooding mappings
+  are implemented. Import, round-tripping,
+  deployment and dynamic views, and general styling parity remain future
+  adapter work.**
 - Generic evidence-provider interface.
   **A provider-neutral existing-claim evidence overlay and deterministic report
   are implemented. Constraint assessment reuses that seam; provider execution
@@ -80,6 +90,16 @@ notation.
 - Confirm licensing before distributing normative matrices or derivation rules.
 - Version import/export behavior explicitly.
 - Keep certification claims separate from technical interoperability.
+
+## Core 0.1 release contract
+
+- Publish a machine-readable boundary for stable Core formats and commands.
+  **Implemented through `yarramate/core-contract/v1`, the native Core 0.1
+  manifest, declared-format and package-surface verification in `check`, and
+  repository dogfooding.**
+- Keep adapter formats and external certification outside the Core contract.
+  **The Core 0.1 manifest contains no LikeC4 or external-language formats and
+  records controlled exclusions explicitly.**
 
 ## Decisions still required
 

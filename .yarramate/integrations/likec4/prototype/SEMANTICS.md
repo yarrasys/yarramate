@@ -56,8 +56,11 @@ Native `access` relationships may declare a controlled `mode` of `read`,
 declare non-empty `content`. These values are semantic claims, not rendering
 metadata.
 
-A document must not claim both `composition` and `aggregation` for the same
-ordered endpoints. Strong and weak whole-part membership are competing claims.
+A workspace must not claim both `composition` and `aggregation` for the same
+ordered endpoints in overlapping architecture states. Strong and weak
+whole-part membership are competing claims while their relationship
+applicability overlaps. Explicitly disjoint state scopes may express a
+whole-part change over time.
 
 ## LikeC4 containment
 

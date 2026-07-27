@@ -33,6 +33,9 @@
     },
     "evidence": {
       "$ref": "#/$defs/patterns"
+    },
+    "contracts": {
+      "$ref": "#/$defs/patterns"
     }
   },
   "$defs": {

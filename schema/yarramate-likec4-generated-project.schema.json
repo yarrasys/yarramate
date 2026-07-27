@@ -15,6 +15,42 @@
     "mapping": {
       "$ref": "#/$defs/versionedIdentity"
     },
+    "kindMapping": {
+      "$ref": "#/$defs/versionedIdentity"
+    },
+    "comparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to"],
+      "properties": {
+        "from": {
+          "$ref": "#/$defs/subjectIdentity"
+        },
+        "to": {
+          "$ref": "#/$defs/subjectIdentity"
+        }
+      }
+    },
+    "digests": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "likec4.config.json",
+        "model.likec4",
+        "specification.likec4"
+      ],
+      "properties": {
+        "likec4.config.json": {
+          "$ref": "#/$defs/sha256"
+        },
+        "model.likec4": {
+          "$ref": "#/$defs/sha256"
+        },
+        "specification.likec4": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
     "files": {
       "const": [
         "likec4.config.json",
@@ -27,6 +63,14 @@
     "versionedIdentity": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*@[0-9]+\\.[0-9]+$"
+    },
+    "subjectIdentity": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*#[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
     }
   }
 }

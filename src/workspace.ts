@@ -29,6 +29,7 @@ export interface WorkspaceManifest {
   readonly projections: readonly string[]
   readonly adapterMappings: readonly string[]
   readonly evidence?: readonly string[]
+  readonly contracts?: readonly string[]
 }
 
 export interface ResolvedWorkspace {
@@ -38,6 +39,7 @@ export interface ResolvedWorkspace {
   readonly projections: readonly string[]
   readonly adapterMappings: readonly string[]
   readonly evidence: readonly string[]
+  readonly contracts: readonly string[]
 }
 
 export type WorkspaceManifestResult =
@@ -70,7 +72,8 @@ export function loadWorkspaceManifest(
       | 'profiles'
       | 'projections'
       | 'adapterMappings'
-      | 'evidence',
+      | 'evidence'
+      | 'contracts',
     label: string,
     patterns: readonly string[],
   ) =>
@@ -170,6 +173,11 @@ export function loadWorkspaceManifest(
       value.adapterMappings,
     ),
     evidence: expand('evidence', 'evidence', value.evidence ?? []),
+    contracts: expand(
+      'contracts',
+      'Core contract',
+      value.contracts ?? [],
+    ),
   }
   if (resolutionDiagnostics.length > 0) {
     return {

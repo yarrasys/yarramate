@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yarramate.org/schema/likec4-kind-mapping/v1",
+  "title": "YarraMate LikeC4 kind mapping",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "id",
+    "version",
+    "conceptKinds",
+    "relationshipKinds"
+  ],
+  "properties": {
+    "format": {
+      "const": "yarramate/likec4-kind-mapping/v1"
+    },
+    "id": {
+      "$ref": "#/$defs/id"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
+    "conceptKinds": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/kindMapping"
+      }
+    },
+    "relationshipKinds": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/kindMapping"
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+    },
+    "qualifiedKind": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*(?:/[a-z][a-z0-9-]*)+@[0-9]+\\.[0-9]+#[a-z][A-Za-z0-9-]*$"
+    },
+    "likec4Identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_-]*$"
+    },
+    "kindMapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["native", "external"],
+      "properties": {
+        "native": {
+          "$ref": "#/$defs/qualifiedKind"
+        },
+        "external": {
+          "$ref": "#/$defs/likec4Identifier"
+        }
+      }
+    }
+  }
+}

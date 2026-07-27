@@ -1,10 +1,10 @@
 format: yarramate/workspace/v1
 id: governed-change
 documents:
-  - architecture.yaml
+  - governed-change.yaml
 profiles: []
 projections:
-  - all.projection.yaml
+  - governed-change.projection.yaml
 adapterMappings:
-  - likec4.mapping.yaml
+  - governed-change.likec4-mapping.yaml
 evidence: []

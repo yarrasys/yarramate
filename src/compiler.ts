@@ -42,6 +42,7 @@ interface NativeConcept {
     readonly id: string
     readonly ref: string
   }>
+  readonly presentIn?: readonly string[]
 }
 
 interface NativeRelationship {
@@ -53,12 +54,22 @@ interface NativeRelationship {
   readonly mode?: 'read' | 'write' | 'read-write' | 'unspecified'
   readonly content?: string
   readonly status?: 'planned' | 'current' | 'retired'
+  readonly presentIn?: readonly string[]
+}
+
+interface NativeArchitectureState {
+  readonly id: string
+  readonly kind: 'baseline' | 'transition' | 'target'
+  readonly name: string
+  readonly description?: string
+  readonly after?: string
 }
 
 interface NativeDocument {
   readonly format: 'yarramate/v1'
   readonly id: string
   readonly profile: string
+  readonly states?: readonly NativeArchitectureState[]
   readonly concepts: readonly NativeConcept[]
   readonly relationships: readonly NativeRelationship[]
 }
@@ -138,6 +149,9 @@ export type CompilationResult =
 
 const compareById = <T extends { readonly id: string }>(left: T, right: T) =>
   left.id.localeCompare(right.id)
+
+const presenceClaimId = (subject: string, state: string) =>
+  `${subject}~present-in-${Buffer.from(state, 'utf8').toString('hex')}`
 
 const diagnosticFailure = (
   diagnostics: readonly Diagnostic[],
@@ -542,20 +556,58 @@ export function compileWorkspace(
 
   const conceptByQualifiedId = new Map<
     string,
-    { readonly concept: NativeConcept; readonly profile: string }
+    {
+      readonly concept: NativeConcept
+      readonly profile: string
+      readonly document: string
+    }
   >(
     documents.flatMap(({ value }) =>
       value.concepts.map(
         (concept) =>
           [
             `${value.id}#${concept.id}`,
-            { concept, profile: value.profile },
+            {
+              concept,
+              profile: value.profile,
+              document: value.id,
+            },
           ] as const,
       ),
     ),
   )
   const qualifyReference = (documentId: string, reference: string) =>
     reference.includes('#') ? reference : `${documentId}#${reference}`
+  const architectureStateIds = new Set(
+    documents.flatMap(({ value }) =>
+      (value.states ?? []).map((state) => `${value.id}#${state.id}`),
+    ),
+  )
+  const architectureStateAfter = new Map<string, string>(
+    documents.flatMap(({ value }) =>
+      (value.states ?? []).flatMap((state) =>
+        state.after === undefined
+          ? []
+          : [
+              [
+                `${value.id}#${state.id}`,
+                qualifyReference(value.id, state.after),
+              ] as const,
+            ],
+      ),
+    ),
+  )
+  const participatesInStateCycle = (start: string) => {
+    const visited = new Set<string>()
+    let current = architectureStateAfter.get(start)
+    while (current !== undefined) {
+      if (current === start) return true
+      if (visited.has(current)) return false
+      visited.add(current)
+      current = architectureStateAfter.get(current)
+    }
+    return false
+  }
 
   for (const { input, value, location } of documents) {
     const selectedProfile = profiles.get(value.profile)
@@ -575,6 +627,11 @@ export function compileWorkspace(
 
     const seenIds = new Set<string>()
     const declarations = [
+      ...(value.states ?? []).map((state, index) => ({
+        id: state.id,
+        yamlPath: ['states', index, 'id'] as const,
+        pointer: `/states/${index}/id`,
+      })),
       ...value.concepts.map((concept, index) => ({
         id: concept.id,
         yamlPath: ['concepts', index, 'id'] as const,
@@ -600,6 +657,112 @@ export function compileWorkspace(
         })
       }
       seenIds.add(declaration.id)
+    }
+
+    for (const [index, state] of (value.states ?? []).entries()) {
+      const stateIdentity = `${value.id}#${state.id}`
+      if (
+        state.after !== undefined &&
+        !architectureStateIds.has(
+          qualifyReference(value.id, state.after),
+        )
+      ) {
+        const pointer = `/states/${index}/after`
+        const source = location(['states', index, 'after'], pointer)
+        diagnostics.push({
+          severity: 'error',
+          code: 'YM307',
+          message: `Unresolved architecture state reference "${state.after}"`,
+          path: input.path,
+          pointer,
+          line: source.line,
+          column: source.column,
+        })
+      }
+      if (
+        state.after !== undefined &&
+        participatesInStateCycle(stateIdentity)
+      ) {
+        const pointer = `/states/${index}/after`
+        const source = location(['states', index, 'after'], pointer)
+        diagnostics.push({
+          severity: 'error',
+          code: 'YM502',
+          message: `Architecture state "${stateIdentity}" participates in an ordering cycle`,
+          path: input.path,
+          pointer,
+          line: source.line,
+          column: source.column,
+        })
+      }
+    }
+
+    for (const [index, state] of (value.states ?? []).entries()) {
+      const subject = `${value.id}#${state.id}`
+      subjects.push({ id: subject, type: 'concept' })
+      claims.push(
+        {
+          id: `${subject}~kind`,
+          subject,
+          predicate: 'yarramate/concept/kind',
+          object: { value: `${coreProfile}#plateau` },
+          origin: 'declared',
+          source: location(
+            ['states', index, 'kind'],
+            `/states/${index}/kind`,
+          ),
+        },
+        {
+          id: `${subject}~name`,
+          subject,
+          predicate: 'yarramate/concept/name',
+          object: { value: state.name },
+          origin: 'declared',
+          source: location(
+            ['states', index, 'name'],
+            `/states/${index}/name`,
+          ),
+        },
+        {
+          id: `${subject}~state-type`,
+          subject,
+          predicate: 'yarramate/state/type',
+          object: { value: state.kind },
+          origin: 'declared',
+          source: location(
+            ['states', index, 'kind'],
+            `/states/${index}/kind`,
+          ),
+        },
+      )
+      if (state.description !== undefined) {
+        claims.push({
+          id: `${subject}~description`,
+          subject,
+          predicate: 'yarramate/concept/description',
+          object: { value: state.description },
+          origin: 'declared',
+          source: location(
+            ['states', index, 'description'],
+            `/states/${index}/description`,
+          ),
+        })
+      }
+      if (state.after !== undefined) {
+        claims.push({
+          id: `${subject}~after`,
+          subject,
+          predicate: 'yarramate/state/after',
+          object: {
+            ref: qualifyReference(value.id, state.after),
+          },
+          origin: 'declared',
+          source: location(
+            ['states', index, 'after'],
+            `/states/${index}/after`,
+          ),
+        })
+      }
     }
 
     for (const [index, concept] of value.concepts.entries()) {
@@ -676,12 +839,87 @@ export function compileWorkspace(
           })
         }
       }
+      for (const [stateIndex, state] of (
+        concept.presentIn ?? []
+      ).entries()) {
+        if (
+          !architectureStateIds.has(
+            qualifyReference(value.id, state),
+          )
+        ) {
+          const pointer = `/concepts/${index}/presentIn/${stateIndex}`
+          const source = location(
+            ['concepts', index, 'presentIn', stateIndex],
+            pointer,
+          )
+          diagnostics.push({
+            severity: 'error',
+            code: 'YM307',
+            message: `Unresolved architecture state reference "${state}"`,
+            path: input.path,
+            pointer,
+            line: source.line,
+            column: source.column,
+          })
+        }
+      }
     }
-    const wholePartByEndpoints = new Map<
-      string,
-      { readonly id: string; readonly kind: 'composition' | 'aggregation' }
-    >()
     for (const [index, relationship] of value.relationships.entries()) {
+      for (const [stateIndex, state] of (
+        relationship.presentIn ?? []
+      ).entries()) {
+        const stateIdentity = qualifyReference(value.id, state)
+        if (
+          !architectureStateIds.has(stateIdentity)
+        ) {
+          const pointer = `/relationships/${index}/presentIn/${stateIndex}`
+          const source = location(
+            ['relationships', index, 'presentIn', stateIndex],
+            pointer,
+          )
+          diagnostics.push({
+            severity: 'error',
+            code: 'YM307',
+            message: `Unresolved architecture state reference "${state}"`,
+            path: input.path,
+            pointer,
+            line: source.line,
+            column: source.column,
+          })
+        } else {
+          for (const endpoint of [
+            relationship.from,
+            relationship.to,
+          ]) {
+            const endpointIdentity = qualifyReference(value.id, endpoint)
+            const resolved = conceptByQualifiedId.get(endpointIdentity)
+            const endpointStates =
+              resolved?.concept.presentIn?.map((candidate) =>
+                qualifyReference(resolved.document, candidate),
+              ) ?? []
+            if (
+              resolved !== undefined &&
+              endpointStates.length > 0 &&
+              !endpointStates.includes(stateIdentity)
+            ) {
+              const pointer = `/relationships/${index}/presentIn/${stateIndex}`
+              const source = location(
+                ['relationships', index, 'presentIn', stateIndex],
+                pointer,
+              )
+              diagnostics.push({
+                severity: 'error',
+                code: 'YM503',
+                message: `Relationship "${relationship.id}" is present in "${stateIdentity}" but endpoint "${endpointIdentity}" is absent`,
+                path: input.path,
+                pointer,
+                line: source.line,
+                column: source.column,
+              })
+            }
+          }
+        }
+      }
       for (const controlled of [
         { field: 'mode', kind: 'access' },
         { field: 'content', kind: 'flow' },
@@ -718,31 +956,6 @@ export function compileWorkspace(
           line: source.line,
           column: source.column,
         })
-      }
-      if (
-        relationship.kind === 'composition' ||
-        relationship.kind === 'aggregation'
-      ) {
-        const endpointKey = `${qualifyReference(value.id, relationship.from)}\u0000${qualifyReference(value.id, relationship.to)}`
-        const previous = wholePartByEndpoints.get(endpointKey)
-        if (previous !== undefined && previous.kind !== relationship.kind) {
-          const pointer = `/relationships/${index}/kind`
-          const source = location(['relationships', index, 'kind'], pointer)
-          diagnostics.push({
-            severity: 'error',
-            code: 'YM501',
-            message: `Relationship "${relationship.id}" contradicts "${previous.id}": the same endpoints cannot be both aggregation and composition`,
-            path: input.path,
-            pointer,
-            line: source.line,
-            column: source.column,
-          })
-        } else if (previous === undefined) {
-          wholePartByEndpoints.set(endpointKey, {
-            id: relationship.id,
-            kind: relationship.kind,
-          })
-        }
       }
       for (const endpoint of ['from', 'to'] as const) {
         const reference = relationship[endpoint]
@@ -897,6 +1110,22 @@ export function compileWorkspace(
           ),
         })
       }
+      for (const [stateIndex, state] of (
+        concept.presentIn ?? []
+      ).entries()) {
+        const stateIdentity = qualifyReference(value.id, state)
+        claims.push({
+          id: presenceClaimId(subject, stateIdentity),
+          subject,
+          predicate: 'yarramate/state/present-in',
+          object: { ref: stateIdentity },
+          origin: 'declared',
+          source: location(
+            ['concepts', index, 'presentIn', stateIndex],
+            `/concepts/${index}/presentIn/${stateIndex}`,
+          ),
+        })
+      }
     }
 
     for (const [index, relationship] of value.relationships.entries()) {
@@ -967,7 +1196,97 @@ export function compileWorkspace(
           ),
         })
       }
+      for (const [stateIndex, state] of (
+        relationship.presentIn ?? []
+      ).entries()) {
+        const stateIdentity = qualifyReference(value.id, state)
+        claims.push({
+          id: presenceClaimId(id, stateIdentity),
+          subject: id,
+          predicate: 'yarramate/state/present-in',
+          object: { ref: stateIdentity },
+          origin: 'declared',
+          source: location(
+            ['relationships', index, 'presentIn', stateIndex],
+            `/relationships/${index}/presentIn/${stateIndex}`,
+          ),
+        })
+      }
     }
+  }
+
+  const wholePartByEndpoints = new Map<
+    string,
+    Array<{
+      readonly id: string
+      readonly localId: string
+      readonly document: string
+      readonly kind: 'composition' | 'aggregation'
+      readonly states: ReadonlySet<string>
+    }>
+  >()
+  const wholePartRelationships = documents
+    .flatMap(({ value, location }) =>
+      value.relationships.flatMap((relationship, index) =>
+        relationship.kind === 'composition' ||
+        relationship.kind === 'aggregation'
+          ? [
+              {
+                id: `${value.id}#${relationship.id}`,
+                localId: relationship.id,
+                document: value.id,
+                kind: relationship.kind as 'composition' | 'aggregation',
+                from: qualifyReference(value.id, relationship.from),
+                to: qualifyReference(value.id, relationship.to),
+                states: new Set(
+                  (relationship.presentIn ?? []).map((state) =>
+                    qualifyReference(value.id, state),
+                  ),
+                ),
+                source: location(
+                  ['relationships', index, 'kind'],
+                  `/relationships/${index}/kind`,
+                ),
+              },
+            ]
+          : [],
+      ),
+    )
+    .sort(compareById)
+
+  for (const relationship of wholePartRelationships) {
+    const endpointKey = `${relationship.from}\u0000${relationship.to}`
+    const previousRelationships = wholePartByEndpoints.get(endpointKey) ?? []
+    const previous = previousRelationships.find(
+      (candidate) =>
+        candidate.kind !== relationship.kind &&
+        (candidate.states.size === 0 ||
+          relationship.states.size === 0 ||
+          [...candidate.states].some((state) =>
+            relationship.states.has(state),
+          )),
+    )
+    if (previous !== undefined) {
+      const currentName =
+        previous.document === relationship.document
+          ? relationship.localId
+          : relationship.id
+      const previousName =
+        previous.document === relationship.document
+          ? previous.localId
+          : previous.id
+      diagnostics.push({
+        severity: 'error',
+        code: 'YM501',
+        message: `Relationship "${currentName}" contradicts "${previousName}": the same endpoints cannot be both aggregation and composition`,
+        path: relationship.source.path,
+        pointer: relationship.source.pointer,
+        line: relationship.source.line,
+        column: relationship.source.column,
+      })
+    }
+    previousRelationships.push(relationship)
+    wholePartByEndpoints.set(endpointKey, previousRelationships)
   }
 
   if (diagnostics.length > 0) {

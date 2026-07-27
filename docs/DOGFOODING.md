@@ -1,6 +1,6 @@
 # Modelling YarraMate with YarraMate
 
-The `architecture` directory contains the canonical native architecture model
+The `.yarramate/architecture` directory contains the canonical native architecture model
 for this repository:
 
 - `product.yaml` — product goals, requirements, and capabilities;
@@ -10,7 +10,7 @@ for this repository:
 The documents use qualified references and the bundled
 `yarramate/core@0.1` profile. The engine document selects the explicit
 `yarramate/development@1.0` profile from
-`profiles/yarramate-development.yaml`, dogfooding extension kinds and inherited
+`.yarramate/profiles/yarramate-development.yaml`, dogfooding extension kinds and inherited
 Core semantics.
 
 The model currently covers:
@@ -37,6 +37,12 @@ pnpm self:check:json
 The regression test in `test/self-model.test.ts` also compiles the model through
 the public library interface.
 
+Canonical dogfooding inputs live together under `.yarramate/`. Optional
+integration configuration remains visibly subordinate to that workspace and
+does not enter Core. Derived outputs live under the ignored
+`.yarramate-out/`; they can be deleted and regenerated without changing the
+architecture.
+
 ## Observed and resolved semantic friction
 
 The first self-model did not require a new concept or relationship kind. It did
@@ -62,15 +68,14 @@ generic path metadata field.
 The self-model now includes the safe authoring services and their CLI
 regression tests. Their explicit-source contract was derived from using an
 extension profile and qualified cross-document references in this repository.
-The governed-change example is now authored canonically as native YAML and
-uses a separate LikeC4 subject mapping. Only stable LikeC4 concept identities
-are mapped; relationship identities are not fabricated from source position.
+The governed-change regression fixture uses a separate LikeC4 subject mapping.
+Only stable LikeC4 concept identities are mapped; relationship identities are
+not fabricated from source position.
 The repository model compiles through `self:compile` to the same normative
 graph-v2 JSON consumed by projections and adapter mapping validation.
-The root and governed-change models now use separate manifests. This keeps
-self-modelling, example mappings, and projections explicit without
-parent-directory discovery or repeated CLI source lists.
-The root manifest also evaluates `evidence/repository.yaml`. Its confirmed
+The root self-model and governed-change regression fixture use separate
+manifests, preventing test material from entering the dogfooding workspace.
+The root manifest also evaluates `.yarramate/evidence/repository.yaml`. Its confirmed
 `repo:` locators are checked against real repository files in the evidence
 regression suite; the generic engine still treats those locators as opaque.
 The engine model now uses singular owner references for accountable
@@ -91,5 +96,44 @@ a self-contained LikeC4 project from YarraMate's own native engine model. This
 exercises precise subject selection, projection evaluation, mapping
 validation, semantic metadata preservation, and project materialization end
 to end.
+The same projection includes the development profile's `repository-file`
+kind. Its adapter profile maps that semantic kind to LikeC4 `artifact` while
+the generated `yarramateKind` metadata retains the qualified development kind,
+proving vocabulary extension does not leak into Core or lose provenance.
+`self:check:likec4` exercises all repository visualization projections without
+writing derived files, while `self:export:likec4` proves repeatable
+materialization of the single `.yarramate-out/likec4` project.
+Both commands now delegate semantic orchestration to the same exported
+`prepareLikeC4Export` operation; the CLI retains argument handling, result
+formatting, and staged, marker-last filesystem publication rather than
+reimplementing the adapter pipeline. Failures from that path carry authored
+source locations:
+native declarations identify missing mappings, while invalid adapter-owned
+values identify their subject or kind mapping documents.
 The remaining gaps are observations, not permission to add generic metadata.
 Each requires explicit claim syntax, profile semantics, or an adapter contract.
+
+`.yarramate/architecture/evolution.yaml` declares the repository's native foundation,
+adapter foundation, and architecture-state foundation as ordered planning
+contexts. Selected engine and repository subjects use `presentIn`, while
+`.yarramate/projections/state-foundation.yaml` exercises state selection. `self:compare`
+classifies the native-foundation-to-state-foundation delta through the same
+public API and CLI available to consumers; no copied model or lifecycle
+overloading is involved.
+
+The bounded `state-engine-adapter`, `state-engine-target`, and
+`state-engine-change` projections render the repository before, after, and
+across the architecture-state engine slice. The shared repository LikeC4
+mapping keeps external identities explicit and singular.
+`.yarramate/integrations/likec4/project.yaml` composes these with the export-path
+projection into one derived model containing four independent views.
+The comparison view carries adapter-owned change presentation and valid local LikeC4 styles;
+neither appears in native graph claims.
+
+`.yarramate/contracts/yarramate-core-0.1.yaml` declares the first tool-neutral release
+boundary and is included explicitly by the root workspace. `self:check`
+validates its real schema files, package exports, and binary alongside the
+architecture model. `.yarramate/projections/core-contract-foundation.yaml`,
+`self:contract`, and `self:compare:contract` expose the new target and its
+delta from the preceding state foundation. LikeC4 schemas remain intentionally
+outside the Core contract.

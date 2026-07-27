@@ -1,0 +1,86 @@
+format: yarramate/adapter-mapping/v1
+id: yarramate-likec4-export-path
+version: "1.0"
+adapter: likec4
+mappings:
+  - native: yarramate-engine#compiler
+    external: compiler
+    type: concept
+  - native: yarramate-engine#adapter-mapping
+    external: adapterMapping
+    type: concept
+  - native: yarramate-engine#assemble-likec4-project
+    external: assembleLikeC4Project
+    type: concept
+  - native: yarramate-engine#export-likec4
+    external: exportLikeC4
+    type: concept
+  - native: yarramate-engine#architecture-state-engine
+    external: architectureStateEngine
+    type: concept
+  - native: yarramate-engine#compare-architecture-states
+    external: compareArchitectureStates
+    type: concept
+  - native: yarramate-engine#render-likec4-state-comparison
+    external: renderLikeC4StateComparison
+    type: concept
+  - native: yarramate-engine#compare-command
+    external: compareCommand
+    type: concept
+  - native: yarramate-engine#state-comparison
+    external: stateComparison
+    type: concept
+  - native: yarramate-engine#state-comparison-schema
+    external: stateComparisonSchema
+    type: concept
+  - native: yarramate-engine#likec4-export-adapter
+    external: likec4ExportAdapter
+    type: concept
+  - native: yarramate-engine#likec4-check-command
+    external: likec4CheckCommand
+    type: concept
+  - native: yarramate-engine#likec4-export-command
+    external: likec4ExportCommand
+    type: concept
+  - native: yarramate-engine#projection-result
+    external: projectionResult
+    type: concept
+  - native: yarramate-engine#likec4-project-definition
+    external: likec4ProjectDefinition
+    type: concept
+  - native: yarramate-engine#likec4-project-schema
+    external: likec4ProjectSchema
+    type: concept
+  - native: yarramate-engine#likec4-generated-project-v2-schema
+    external: likec4GeneratedProjectV2Schema
+    type: concept
+  - native: yarramate-repository#likec4-export-source
+    external: likec4ExportSource
+    type: concept
+  - native: yarramate-repository#likec4-prepare-source
+    external: likec4PrepareSource
+    type: concept
+  - native: yarramate-repository#likec4-project-source
+    external: likec4ProjectSource
+    type: concept
+  - native: yarramate-repository#likec4-project-definition-source
+    external: likec4ProjectDefinitionSource
+    type: concept
+  - native: yarramate-repository#likec4-project-schema-source
+    external: likec4ProjectSchemaSource
+    type: concept
+  - native: yarramate-repository#likec4-generated-project-v2-schema-source
+    external: likec4GeneratedProjectV2SchemaSource
+    type: concept
+  - native: yarramate-repository#architecture-state-source
+    external: architectureStateSource
+    type: concept
+  - native: yarramate-repository#architecture-state-tests
+    external: architectureStateTests
+    type: concept
+  - native: yarramate-repository#state-comparison-schema-source
+    external: stateComparisonSchemaSource
+    type: concept
+  - native: yarramate-repository#evolution-model
+    external: evolutionModel
+    type: concept

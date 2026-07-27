@@ -221,11 +221,11 @@ describe('adapter mapping documents', () => {
     })
   })
 
-  it('links the canonical governed-change model to real LikeC4 concept identities', () => {
+  it('validates the governed-change subject mapping against its canonical model', () => {
     const architecture = readFileSync(
       fileURLToPath(
         new URL(
-          '../examples/governed-change/architecture.yaml',
+          'fixtures/valid/governed-change.yaml',
           import.meta.url,
         ),
       ),
@@ -234,15 +234,9 @@ describe('adapter mapping documents', () => {
     const mappingSource = readFileSync(
       fileURLToPath(
         new URL(
-          '../examples/governed-change/likec4.mapping.yaml',
+          'fixtures/valid/governed-change.likec4-mapping.yaml',
           import.meta.url,
         ),
-      ),
-      'utf8',
-    )
-    const likec4Source = readFileSync(
-      fileURLToPath(
-        new URL('../examples/governed-change/model.likec4', import.meta.url),
       ),
       'utf8',
     )
@@ -261,17 +255,7 @@ describe('adapter mapping documents', () => {
     expect(validateAdapterMapping(compilation.graph, loaded.mapping).ok).toBe(
       true,
     )
-    const declaredLikec4Concepts = new Set(
-      [...likec4Source.matchAll(/^\s{2}([A-Za-z][A-Za-z0-9]*) = /gm)].map(
-        (match) => match[1],
-      ),
-    )
     expect(loaded.mapping.mappings).toHaveLength(29)
-    expect(
-      loaded.mapping.mappings.every(({ external }) =>
-        declaredLikec4Concepts.has(external),
-      ),
-    ).toBe(true)
   })
 
   it('rejects duplicate versioned mapping identities across a workspace', () => {

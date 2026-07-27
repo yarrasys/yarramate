@@ -1,6 +1,21 @@
 export { compileWorkspace } from './compiler.js'
 export { serializeSemanticGraph } from './graph.js'
 export {
+  checkCoreContract,
+  loadCoreContract,
+  type CoreContract,
+  type CoreContractCommand,
+  type CoreContractFormat,
+  type CoreContractLoadResult,
+  type CoreContractSurface,
+} from './core-contract.js'
+export {
+  compareArchitectureStates,
+  type StateComparison,
+  type StateComparisonIssue,
+  type StateComparisonResult,
+} from './architecture-state.js'
+export {
   loadWorkspaceManifest,
   type ResolvedWorkspace,
   type WorkspaceManifest,

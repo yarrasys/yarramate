@@ -186,6 +186,42 @@ describe('workspace manifests', () => {
     }
   })
 
+  it('resolves Core contract manifests as an explicit companion category', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'yarramate-workspace-'))
+    try {
+      mkdirSync(join(directory, 'architecture'))
+      mkdirSync(join(directory, 'contracts'))
+      writeFileSync(
+        join(directory, 'architecture/main.yaml'),
+        'format: yarramate/v1\n',
+        'utf8',
+      )
+      writeFileSync(
+        join(directory, 'contracts/core.yaml'),
+        'format: yarramate/core-contract/v1\n',
+        'utf8',
+      )
+      const result = loadWorkspaceManifest(
+        {
+          path: 'yarramate.workspace.yaml',
+          source:
+            manifest('architecture/*.yaml') +
+            'contracts:\n' +
+            '  - contracts/*.yaml\n',
+        },
+        directory,
+      )
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      expect(result.workspace.contracts).toEqual([
+        'contracts/core.yaml',
+      ])
+    } finally {
+      rmSync(directory, { recursive: true })
+    }
+  })
+
   it('rejects a matched symlink that escapes the manifest directory', () => {
     const directory = mkdtempSync(join(tmpdir(), 'yarramate-workspace-'))
     const outside = join(tmpdir(), `outside-${Date.now()}.yaml`)
@@ -223,9 +259,9 @@ describe('workspace manifests', () => {
     const repositoryRoot = fileURLToPath(new URL('..', import.meta.url))
     const result = loadWorkspaceManifest(
       {
-        path: 'yarramate.workspace.yaml',
+        path: '.yarramate/workspace.yaml',
         source: readFileSync(
-          join(repositoryRoot, 'yarramate.workspace.yaml'),
+          join(repositoryRoot, '.yarramate/workspace.yaml'),
           'utf8',
         ),
       },
@@ -237,22 +273,29 @@ describe('workspace manifests', () => {
     expect(result.workspace).toEqual({
       id: 'yarramate',
       documents: [
-        'architecture/engine.yaml',
-        'architecture/product.yaml',
-        'architecture/repository.yaml',
+        '.yarramate/architecture/engine.yaml',
+        '.yarramate/architecture/evolution.yaml',
+        '.yarramate/architecture/product.yaml',
+        '.yarramate/architecture/repository.yaml',
       ],
-      profiles: ['profiles/yarramate-development.yaml'],
+      profiles: ['.yarramate/profiles/yarramate-development.yaml'],
       projections: [
-        'projections/current-engine.yaml',
-        'projections/implementation-traceability.yaml',
-        'projections/likec4-export-path.yaml',
-        'projections/maintainer-tool-neutral-engine.yaml',
-        'projections/product-context.yaml',
+        '.yarramate/projections/core-contract-foundation.yaml',
+        '.yarramate/projections/current-engine.yaml',
+        '.yarramate/projections/implementation-traceability.yaml',
+        '.yarramate/projections/likec4-export-path.yaml',
+        '.yarramate/projections/maintainer-tool-neutral-engine.yaml',
+        '.yarramate/projections/product-context.yaml',
+        '.yarramate/projections/state-engine-adapter.yaml',
+        '.yarramate/projections/state-engine-change.yaml',
+        '.yarramate/projections/state-engine-target.yaml',
+        '.yarramate/projections/state-foundation.yaml',
       ],
       adapterMappings: [
-        'adapters/likec4-export-path.mapping.yaml',
+        '.yarramate/integrations/likec4/subject-mapping.yaml',
       ],
-      evidence: ['evidence/repository.yaml'],
+      evidence: ['.yarramate/evidence/repository.yaml'],
+      contracts: ['.yarramate/contracts/yarramate-core-0.1.yaml'],
     })
   })
 })

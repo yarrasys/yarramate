@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
+  compareArchitectureStates,
   compileWorkspace,
   evaluateProjection,
   type AdapterMapping,
   type ProjectionDefinition,
 } from '../src/index.js'
 import { exportLikeC4 } from '../src/adapters/likec4-export.js'
+import type { LikeC4KindMapping } from '../src/adapters/likec4-kind-mapping.js'
 
 const source = `format: yarramate/v1
 id: payments
@@ -77,17 +79,20 @@ model {
     description 'Accepts customer orders'
     metadata {
       yarramateId 'payments#checkout'
+      yarramateKind 'yarramate/core@0.1#applicationComponent'
     }
   }
   ledger = applicationComponent 'Ledger' {
     metadata {
       yarramateId 'payments#ledger'
+      yarramateKind 'yarramate/core@0.1#applicationComponent'
     }
   }
 
   ledger -[serving]-> checkout 'serves' {
     metadata {
       yarramateId 'payments#checkout-uses-ledger'
+      yarramateKind 'yarramate/core@0.1#serving'
     }
   }
 }
@@ -120,10 +125,15 @@ views {
       ok: false,
       diagnostics: [
         {
+          severity: 'error',
           code: 'YMLC102',
           message:
             'Projected concept "payments#ledger" has no LikeC4 mapping',
           subject: 'payments#ledger',
+          path: 'payments.yaml',
+          pointer: '/concepts/1/kind',
+          line: 10,
+          column: 11,
         },
       ],
     })
@@ -212,6 +222,7 @@ relationships:
     expect(result.source).toContain(`service = applicationComponent 'Payments service' {
     metadata {
       yarramateId 'metadata#service'
+      yarramateKind 'yarramate/core@0.1#applicationComponent'
       status 'current'
       owner 'metadata#team'
       constraints ['metadata#residency']
@@ -220,8 +231,134 @@ relationships:
     expect(result.source).toContain(`service -[access]-> record 'reads' {
     metadata {
       yarramateId 'metadata#reads-record'
+      yarramateKind 'yarramate/core@0.1#access'
       mode 'read'
     }
   }`)
+  })
+
+  it('applies explicit external kinds while preserving semantic kinds', () => {
+    const compilation = compileWorkspace([
+      { path: 'payments.yaml', source },
+    ])
+    expect(compilation.ok).toBe(true)
+    if (!compilation.ok) return
+    const kinds: LikeC4KindMapping = {
+      format: 'yarramate/likec4-kind-mapping/v1',
+      id: 'collapsed',
+      version: '1.0',
+      conceptKinds: [
+        {
+          native: 'yarramate/core@0.1#applicationComponent',
+          external: 'element',
+        },
+      ],
+      relationshipKinds: [
+        {
+          native: 'yarramate/core@0.1#serving',
+          external: 'association',
+        },
+      ],
+    }
+
+    const result = exportLikeC4(
+      evaluateProjection(compilation.graph, projection),
+      mapping,
+      kinds,
+    )
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.source).toContain(`checkout = element 'Checkout' {
+    description 'Accepts customer orders'
+    metadata {
+      yarramateId 'payments#checkout'
+      yarramateKind 'yarramate/core@0.1#applicationComponent'
+    }
+  }`)
+    expect(result.source).toContain(
+      `ledger -[association]-> checkout 'serves'`,
+    )
+    expect(result.source).toContain(
+      `yarramateKind 'yarramate/core@0.1#serving'`,
+    )
+  })
+
+  it('renders adapter-only comparison metadata and view styles', () => {
+    const compilation = compileWorkspace([
+      {
+        path: 'payments.yaml',
+        source: `format: yarramate/v1
+id: payments
+profile: yarramate/core@0.1
+states:
+  - id: baseline
+    kind: baseline
+    name: Baseline
+  - id: target
+    kind: target
+    name: Target
+concepts:
+  - id: checkout
+    kind: applicationComponent
+    name: Checkout
+  - id: ledger
+    kind: applicationComponent
+    name: Ledger
+    presentIn: [baseline]
+  - id: platform
+    kind: applicationComponent
+    name: Platform
+    presentIn: [target]
+relationships: []
+`,
+      },
+    ])
+    expect(compilation.ok).toBe(true)
+    if (!compilation.ok) return
+    const comparison = compareArchitectureStates(
+      compilation.graph,
+      'payments#baseline',
+      'payments#target',
+    )
+    expect(comparison.ok).toBe(true)
+    if (!comparison.ok) return
+
+    const result = exportLikeC4(
+      evaluateProjection(compilation.graph, {
+        ...projection,
+        query: {
+          states: ['payments#baseline', 'payments#target'],
+        },
+      }),
+      {
+        ...mapping,
+        mappings: [
+          ...mapping.mappings,
+          {
+            native: 'payments#platform',
+            external: 'platform',
+            type: 'concept',
+          },
+        ],
+      },
+      undefined,
+      { comparison: comparison.comparison },
+    )
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.source).toContain(`yarramateChange 'retained'`)
+    expect(result.source).toContain(`yarramateChange 'removed'`)
+    expect(result.source).toContain(`yarramateChange 'added'`)
+    expect(result.source).toContain(
+      `style platform { color green }`,
+    )
+    expect(result.source).toContain(
+      `style ledger { color red; border dashed }`,
+    )
+    expect(result.source).toContain(
+      `style checkout { color gray }`,
+    )
   })
 })

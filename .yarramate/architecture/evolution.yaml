@@ -1,0 +1,25 @@
+format: yarramate/v1
+id: yarramate-evolution
+profile: yarramate/core@0.1
+states:
+  - id: native-foundation
+    kind: baseline
+    name: Native compiler foundation
+    description: Native documents, graph v2, projections, and the repository-native CLI.
+  - id: adapter-foundation
+    kind: transition
+    name: Adapter-backed foundation
+    description: Adds the projection-driven LikeC4 export path and evidence overlays.
+    after: native-foundation
+  - id: state-foundation
+    kind: target
+    name: Architecture-state foundation
+    description: Adds optional architecture states, state projections, and deterministic comparisons.
+    after: adapter-foundation
+  - id: core-contract-foundation
+    kind: target
+    name: Core contract foundation
+    description: Adds an explicit machine-readable Core release boundary and package-surface checking.
+    after: state-foundation
+concepts: []
+relationships: []

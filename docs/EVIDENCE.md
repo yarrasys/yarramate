@@ -51,7 +51,7 @@ normative structure is `schema/yarramate-evidence-report.schema.json`. The
 input semantic graph is not modified.
 
 ```sh
-yarramate evidence evidence/repository.yaml yarramate.workspace.yaml
+yarramate evidence .yarramate/evidence/repository.yaml .yarramate/workspace.yaml
 ```
 
 Exit status is `0` for a valid report even when observations are contradicted,

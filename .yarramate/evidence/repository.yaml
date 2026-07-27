@@ -7,6 +7,18 @@ observations:
     result: confirmed
     evidence:
       uri: repo:src/compiler.ts
+  - subject: yarramate-engine#architecture-state-engine
+    result: confirmed
+    evidence:
+      uri: repo:src/architecture-state.ts
+  - subject: yarramate-engine#core-contract-checker
+    result: confirmed
+    evidence:
+      uri: repo:src/core-contract.ts
+  - subject: yarramate-engine#core-contract-schema
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-core-contract.schema.json
   - subject: yarramate-engine#source-document-loader
     result: confirmed
     evidence:
@@ -35,6 +47,10 @@ observations:
     result: confirmed
     evidence:
       uri: repo:schema/yarramate-projection-result.schema.json
+  - subject: yarramate-engine#state-comparison-schema
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-state-comparison.schema.json
   - subject: yarramate-engine#check-result-schema
     result: confirmed
     evidence:
@@ -46,12 +62,16 @@ observations:
   - subject: yarramate-engine#workspace-manifest
     result: confirmed
     evidence:
-      uri: repo:yarramate.workspace.yaml
+      uri: repo:.yarramate/workspace.yaml
   - subject: yarramate-engine#likec4-export-adapter
     result: confirmed
     evidence:
       uri: repo:src/adapters/likec4-export.ts
   - subject: yarramate-engine#likec4-export-command
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/likec4-cli.ts
+  - subject: yarramate-engine#likec4-check-command
     result: confirmed
     evidence:
       uri: repo:src/adapters/likec4-cli.ts
@@ -63,11 +83,43 @@ observations:
     result: confirmed
     evidence:
       uri: repo:schema/yarramate-likec4-generated-project.schema.json
+  - subject: yarramate-engine#assemble-likec4-project
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/likec4-project.ts
+  - subject: yarramate-engine#likec4-project-definition
+    result: confirmed
+    evidence:
+      uri: repo:.yarramate/integrations/likec4/project.yaml
+  - subject: yarramate-engine#likec4-project-schema
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-likec4-project.schema.json
+  - subject: yarramate-engine#likec4-generated-project-v2-schema
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-likec4-generated-project-v2.schema.json
+  - subject: yarramate-engine#likec4-kind-mapping
+    result: confirmed
+    evidence:
+      uri: repo:.yarramate/integrations/likec4/kind-mapping.yaml
+  - subject: yarramate-engine#likec4-kind-mapping-schema
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-likec4-kind-mapping.schema.json
+  - subject: yarramate-engine#likec4-check-result-schema
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-likec4-check-result.schema.json
+  - claim: yarramate-repository#likec4-prepare-source-realizes-export
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/likec4-prepare.ts
   - claim: yarramate-repository#likec4-projection-source-realizes-definition
     result: confirmed
     evidence:
-      uri: repo:projections/likec4-export-path.yaml
+      uri: repo:.yarramate/projections/likec4-export-path.yaml
   - claim: yarramate-repository#likec4-mapping-source-realizes-mapping
     result: confirmed
     evidence:
-      uri: repo:adapters/likec4-export-path.mapping.yaml
+      uri: repo:.yarramate/integrations/likec4/subject-mapping.yaml

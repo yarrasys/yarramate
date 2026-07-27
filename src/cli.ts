@@ -10,6 +10,7 @@ import { dirname, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { isSeq, parseDocument } from 'yaml'
 import { compileWorkspace } from './compiler.js'
+import { compareArchitectureStates } from './architecture-state.js'
 import { serializeSemanticGraph } from './graph.js'
 import {
   diagnosticJson,
@@ -159,6 +160,63 @@ const runEvidence = (
   }
 }
 
+const runStateComparison = (
+  options: readonly string[],
+  cwd: string,
+): CliResult => {
+  const [from, to, ...paths] = options
+  if (
+    from === undefined ||
+    to === undefined ||
+    paths.length === 0 ||
+    options.some((option) => option.startsWith('-'))
+  ) {
+    return { exitCode: 2, stdout: '', stderr: usage }
+  }
+  try {
+    const resolved = resolveCliWorkspaceSources(paths, cwd)
+    if (!resolved.ok) {
+      return {
+        exitCode: 1,
+        stdout: diagnosticJson(resolved.diagnostics),
+        stderr: '',
+      }
+    }
+    const compilation = compileWorkspace(
+      resolved.paths.map((path) => ({
+        path,
+        source: readFileSync(resolve(cwd, path), 'utf8'),
+      })),
+    )
+    if (!compilation.ok) {
+      return {
+        exitCode: 1,
+        stdout: diagnosticJson(compilation.diagnostics),
+        stderr: '',
+      }
+    }
+    const comparison = compareArchitectureStates(
+      compilation.graph,
+      from,
+      to,
+    )
+    return comparison.ok
+      ? {
+          exitCode: 0,
+          stdout: `${JSON.stringify(comparison.comparison, null, 2)}\n`,
+          stderr: '',
+        }
+      : {
+          exitCode: 2,
+          stdout: '',
+          stderr: `${comparison.issues.map(({ message }) => message).join('\n')}\n`,
+        }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    return { exitCode: 2, stdout: '', stderr: `${message}\n` }
+  }
+}
+
 const runInit = (options: readonly string[], cwd: string): CliResult => {
   const target = options[0]
   if (
@@ -169,8 +227,11 @@ const runInit = (options: readonly string[], cwd: string): CliResult => {
     return { exitCode: 2, stdout: '', stderr: usage }
   }
   const workspaceRoot = resolve(cwd, target)
-  const documentPath = resolve(workspaceRoot, 'architecture/main.yaml')
-  const manifestPath = resolve(workspaceRoot, 'yarramate.workspace.yaml')
+  const documentPath = resolve(
+    workspaceRoot,
+    '.yarramate/architecture/main.yaml',
+  )
+  const manifestPath = resolve(workspaceRoot, '.yarramate/workspace.yaml')
   const displayPath = relative(cwd, documentPath)
   const displayManifestPath = relative(cwd, manifestPath)
   const existing = [
@@ -257,6 +318,7 @@ const hasRepeatedSingletonFlag = (
     ([flag, values]) =>
       flag !== '--source' &&
       flag !== '--constraint' &&
+      flag !== '--present-in' &&
       values.length !== 1,
   )
 
@@ -285,6 +347,7 @@ const runAdd = (options: readonly string[], cwd: string): CliResult => {
     '--description',
     '--owner',
     '--constraint',
+    '--present-in',
     '--source',
   ])
   if (
@@ -331,6 +394,9 @@ const runAdd = (options: readonly string[], cwd: string): CliResult => {
         ? {}
         : { owner: oneFlag(parsed.flags, '--owner') }),
       ...(constraints.length === 0 ? {} : { constraints }),
+      ...(parsed.flags.get('--present-in') === undefined
+        ? {}
+        : { presentIn: parsed.flags.get('--present-in') }),
     })
     const candidate = document.toString({ lineWidth: 0 })
     const companions = resolveCliWorkspaceSources(
@@ -388,6 +454,7 @@ const runConnect = (options: readonly string[], cwd: string): CliResult => {
     '--status',
     '--mode',
     '--content',
+    '--present-in',
     '--source',
   ])
   if (
@@ -429,6 +496,9 @@ const runConnect = (options: readonly string[], cwd: string): CliResult => {
       ...(oneFlag(parsed.flags, '--content') === undefined
         ? {}
         : { content: oneFlag(parsed.flags, '--content') }),
+      ...(parsed.flags.get('--present-in') === undefined
+        ? {}
+        : { presentIn: parsed.flags.get('--present-in') }),
     })
     const candidate = document.toString({ lineWidth: 0 })
     const companions = resolveCliWorkspaceSources(
@@ -533,6 +603,9 @@ export function runCli(
   }
   if (command === 'view') {
     return runProjection(options, cwd, 'markdown')
+  }
+  if (command === 'compare') {
+    return runStateComparison(options, cwd)
   }
   if (command === 'evidence') {
     return runEvidence(options, cwd)

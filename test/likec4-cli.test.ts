@@ -1,8 +1,11 @@
 import {
   copyFileSync,
+  existsSync,
+  linkSync,
   mkdtempSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs'
 import { spawnSync } from 'node:child_process'
@@ -17,13 +20,125 @@ const repositoryRoot = fileURLToPath(new URL('..', import.meta.url))
 const Ajv2020 = Ajv2020Module.default
 
 describe('YarraMate LikeC4 adapter CLI', () => {
+  it('checks a complete adapter export without writing derived output', () => {
+    const result = runLikeC4Cli(
+      [
+        'check',
+        'test/fixtures/valid/governed-change.projection.yaml',
+        'test/fixtures/valid/governed-change.likec4-mapping.yaml',
+        'test/fixtures/valid/governed-change.workspace.yaml',
+      ],
+      repositoryRoot,
+    )
+
+    expect(result).toEqual({
+      exitCode: 0,
+      stdout: 'Checked LikeC4 export governed-change@1.0: no errors\n',
+      stderr: '',
+    })
+  })
+
+  it('emits schema-valid machine results for successful and failing checks', () => {
+    const schema = JSON.parse(
+      readFileSync(
+        join(
+          repositoryRoot,
+          'schema/yarramate-likec4-check-result.schema.json',
+        ),
+        'utf8',
+      ),
+    )
+    const adapterDiagnosticSchema = JSON.parse(
+      readFileSync(
+        join(
+          repositoryRoot,
+          'schema/yarramate-likec4-diagnostic-result.schema.json',
+        ),
+        'utf8',
+      ),
+    )
+    const coreDiagnosticSchema = JSON.parse(
+      readFileSync(
+        join(
+          repositoryRoot,
+          'schema/yarramate-diagnostic-result.schema.json',
+        ),
+        'utf8',
+      ),
+    )
+    const validate = new Ajv2020({ allErrors: true })
+      .addSchema(coreDiagnosticSchema)
+      .addSchema(adapterDiagnosticSchema)
+      .compile(schema)
+    const success = runLikeC4Cli(
+      [
+        'check',
+        'test/fixtures/valid/governed-change.projection.yaml',
+        'test/fixtures/valid/governed-change.likec4-mapping.yaml',
+        '--json',
+        'test/fixtures/valid/governed-change.workspace.yaml',
+      ],
+      repositoryRoot,
+    )
+    const failure = runLikeC4Cli(
+      [
+        'check',
+        '.yarramate/projections/likec4-export-path.yaml',
+        '.yarramate/integrations/likec4/subject-mapping.yaml',
+        '--json',
+        '.yarramate/workspace.yaml',
+      ],
+      repositoryRoot,
+    )
+
+    expect(JSON.parse(success.stdout)).toEqual({
+      format: 'yarramate/likec4-check-result/v1',
+      ok: true,
+      diagnostics: [],
+    })
+    expect(JSON.parse(failure.stdout)).toMatchObject({
+      format: 'yarramate/likec4-check-result/v1',
+      ok: false,
+      diagnostics: expect.arrayContaining([
+        expect.objectContaining({ code: 'YMLC104' }),
+      ]),
+    })
+    expect(validate(JSON.parse(success.stdout))).toBe(true)
+    expect(
+      validate(JSON.parse(failure.stdout)),
+      JSON.stringify(validate.errors ?? []),
+    ).toBe(true)
+  })
+
+  it('checks bundled kind compatibility without creating a project', () => {
+    const result = runLikeC4Cli(
+      [
+        'check',
+        '.yarramate/projections/likec4-export-path.yaml',
+        '.yarramate/integrations/likec4/subject-mapping.yaml',
+        '.yarramate/workspace.yaml',
+      ],
+      repositoryRoot,
+    )
+
+    expect(result.exitCode).toBe(1)
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      diagnostics: expect.arrayContaining([
+        expect.objectContaining({
+          code: 'YMLC104',
+          subject: 'yarramate-repository#likec4-export-source',
+        }),
+      ]),
+    })
+  })
+
   it('exports a native workspace projection to LikeC4 source', () => {
     const result = runLikeC4Cli(
       [
         'export',
-        'examples/governed-change/all.projection.yaml',
-        'examples/governed-change/likec4.mapping.yaml',
-        'examples/governed-change/yarramate.workspace.yaml',
+        'test/fixtures/valid/governed-change.projection.yaml',
+        'test/fixtures/valid/governed-change.likec4-mapping.yaml',
+        'test/fixtures/valid/governed-change.workspace.yaml',
       ],
       repositoryRoot,
     )
@@ -39,12 +154,159 @@ describe('YarraMate LikeC4 adapter CLI', () => {
     expect(result.stdout).toContain(
       "controlPlane -[assignment]-> edgeRuntime 'deployed on'",
     )
-    expect(result.stdout).not.toBe(
-      readFileSync(
-        `${repositoryRoot}/examples/governed-change/model.likec4`,
-        'utf8',
-      ),
-    )
+  })
+
+  it('exports a state comparison without moving presentation into Core', () => {
+    const parent = mkdtempSync(join(tmpdir(), 'yarramate-likec4-compare-'))
+    try {
+      writeFileSync(
+        join(parent, 'architecture.yaml'),
+        `format: yarramate/v1
+id: system
+profile: yarramate/core@0.1
+states:
+  - id: baseline
+    kind: baseline
+    name: Baseline
+  - id: target
+    kind: target
+    name: Target
+concepts:
+  - id: legacy
+    kind: applicationComponent
+    name: Legacy
+    presentIn: [baseline]
+  - id: modern
+    kind: applicationComponent
+    name: Modern
+    presentIn: [target]
+relationships: []
+`,
+      )
+      writeFileSync(
+        join(parent, 'comparison.projection.yaml'),
+        `format: yarramate/projection/v1
+id: system-change
+version: "1.0"
+query:
+  states: [system#baseline, system#target]
+`,
+      )
+      writeFileSync(
+        join(parent, 'likec4.mapping.yaml'),
+        `format: yarramate/adapter-mapping/v1
+id: system-likec4
+version: "1.0"
+adapter: likec4
+mappings:
+  - native: system#legacy
+    external: legacy
+    type: concept
+  - native: system#modern
+    external: modern
+    type: concept
+`,
+      )
+
+      const result = runLikeC4Cli(
+        [
+          'export',
+          'comparison.projection.yaml',
+          'likec4.mapping.yaml',
+          '--compare',
+          'system#baseline',
+          'system#target',
+          'architecture.yaml',
+        ],
+        parent,
+      )
+
+      expect(result.exitCode).toBe(0)
+      expect(result.stderr).toBe('')
+      expect(result.stdout).toContain(`yarramateChange 'removed'`)
+      expect(result.stdout).toContain(`yarramateChange 'added'`)
+      writeFileSync(join(parent, 'model.likec4'), result.stdout)
+      copyFileSync(
+        join(repositoryRoot, '.yarramate/integrations/likec4/prototype/specification.likec4'),
+        join(parent, 'specification.likec4'),
+      )
+      writeFileSync(
+        join(parent, 'likec4.config.json'),
+        JSON.stringify({
+          $schema: 'https://likec4.dev/schemas/config.json',
+          name: 'state-comparison',
+        }),
+      )
+      const validation = spawnSync(
+        join(repositoryRoot, 'node_modules/.bin/likec4'),
+        [
+          'validate',
+          '--json',
+          '--no-layout',
+          '--file',
+          'model.likec4',
+          '.',
+        ],
+        { cwd: parent, encoding: 'utf8' },
+      )
+      expect(
+        validation.status,
+        `${validation.stderr}\n${validation.stdout}`,
+      ).toBe(0)
+      expect(JSON.parse(validation.stdout)).toMatchObject({
+        valid: true,
+        errors: [],
+        stats: { totalErrors: 0 },
+      })
+      const project = join(parent, 'generated')
+      const materialized = runLikeC4Cli(
+        [
+          'export-project',
+          'comparison.projection.yaml',
+          'likec4.mapping.yaml',
+          project,
+          '--compare',
+          'system#baseline',
+          'system#target',
+          'architecture.yaml',
+        ],
+        parent,
+      )
+      expect(materialized.exitCode).toBe(0)
+      expect(
+        JSON.parse(
+          readFileSync(
+            join(project, 'yarramate.generated.json'),
+            'utf8',
+          ),
+        ),
+      ).toMatchObject({
+        comparison: {
+          from: 'system#baseline',
+          to: 'system#target',
+        },
+      })
+      const conflicting = runLikeC4Cli(
+        [
+          'export-project',
+          'comparison.projection.yaml',
+          'likec4.mapping.yaml',
+          project,
+          '--compare',
+          'system#target',
+          'system#baseline',
+          'architecture.yaml',
+        ],
+        parent,
+      )
+      expect(conflicting).toEqual({
+        exitCode: 2,
+        stdout: '',
+        stderr: `Output directory already exists: ${project}\n`,
+      })
+    } finally {
+      rmSync(parent, { recursive: true, force: true })
+    }
   })
 
   it('emits schema-valid diagnostics for adapter command failures', () => {
@@ -66,9 +328,9 @@ describe('YarraMate LikeC4 adapter CLI', () => {
     const result = runLikeC4Cli(
       [
         'export',
-        'examples/governed-change/all.projection.yaml',
+        'test/fixtures/valid/governed-change.projection.yaml',
         'test/fixtures/invalid/adapter-mapping-missing-adapter.yaml',
-        'examples/governed-change/yarramate.workspace.yaml',
+        'test/fixtures/valid/governed-change.workspace.yaml',
       ],
       repositoryRoot,
     )
@@ -84,9 +346,9 @@ describe('YarraMate LikeC4 adapter CLI', () => {
     const result = runLikeC4Cli(
       [
         'export',
-        'examples/governed-change/all.projection.yaml',
-        'examples/governed-change/likec4.mapping.yaml',
-        'examples/governed-change/yarramate.workspace.yaml',
+        'test/fixtures/valid/governed-change.projection.yaml',
+        'test/fixtures/valid/governed-change.likec4-mapping.yaml',
+        'test/fixtures/valid/governed-change.workspace.yaml',
       ],
       repositoryRoot,
     )
@@ -97,7 +359,7 @@ describe('YarraMate LikeC4 adapter CLI', () => {
     try {
       writeFileSync(join(fixtureRoot, 'model.likec4'), result.stdout)
       copyFileSync(
-        join(repositoryRoot, 'profile/specification.likec4'),
+        join(repositoryRoot, '.yarramate/integrations/likec4/prototype/specification.likec4'),
         join(fixtureRoot, 'specification.likec4'),
       )
       writeFileSync(
@@ -141,10 +403,10 @@ describe('YarraMate LikeC4 adapter CLI', () => {
       const result = runLikeC4Cli(
         [
           'export-project',
-          'examples/governed-change/all.projection.yaml',
-          'examples/governed-change/likec4.mapping.yaml',
+          'test/fixtures/valid/governed-change.projection.yaml',
+          'test/fixtures/valid/governed-change.likec4-mapping.yaml',
           project,
-          'examples/governed-change/yarramate.workspace.yaml',
+          'test/fixtures/valid/governed-change.workspace.yaml',
         ],
         repositoryRoot,
       )
@@ -173,7 +435,7 @@ describe('YarraMate LikeC4 adapter CLI', () => {
           'utf8',
         ),
       )
-      expect(marker).toEqual({
+      expect(marker).toMatchObject({
         format: 'yarramate/likec4-generated-project/v1',
         projection: 'governed-change@1.0',
         mapping: 'governed-change-likec4@1.0',
@@ -182,6 +444,11 @@ describe('YarraMate LikeC4 adapter CLI', () => {
           'model.likec4',
           'specification.likec4',
         ],
+      })
+      expect(marker.digests).toEqual({
+        'likec4.config.json': expect.stringMatching(/^[a-f0-9]{64}$/),
+        'model.likec4': expect.stringMatching(/^[a-f0-9]{64}$/),
+        'specification.likec4': expect.stringMatching(/^[a-f0-9]{64}$/),
       })
       const markerSchema = JSON.parse(
         readFileSync(
@@ -218,15 +485,206 @@ describe('YarraMate LikeC4 adapter CLI', () => {
     }
   })
 
+  it('materializes one project with multiple projection views', () => {
+    const parent = mkdtempSync(join(tmpdir(), 'yarramate-likec4-model-'))
+    const project = join(parent, 'generated')
+    try {
+      writeFileSync(
+        join(parent, 'architecture.yaml'),
+        `format: yarramate/v1
+id: system
+profile: yarramate/core@0.1
+states:
+  - id: baseline
+    kind: baseline
+    name: Baseline
+  - id: target
+    kind: target
+    name: Target
+concepts:
+  - id: legacy
+    kind: applicationComponent
+    name: Legacy
+    presentIn: [baseline]
+  - id: modern
+    kind: applicationComponent
+    name: Modern
+    presentIn: [target]
+relationships: []
+`,
+      )
+      writeFileSync(
+        join(parent, 'baseline.projection.yaml'),
+        `format: yarramate/projection/v1
+id: baseline
+version: "1.0"
+query:
+  states: [system#baseline]
+`,
+      )
+      writeFileSync(
+        join(parent, 'target.projection.yaml'),
+        `format: yarramate/projection/v1
+id: target
+version: "1.0"
+query:
+  states: [system#target]
+`,
+      )
+      writeFileSync(
+        join(parent, 'likec4.mapping.yaml'),
+        `format: yarramate/adapter-mapping/v1
+id: system-likec4
+version: "1.0"
+adapter: likec4
+mappings:
+  - native: system#legacy
+    external: legacy
+    type: concept
+  - native: system#modern
+    external: modern
+    type: concept
+`,
+      )
+      writeFileSync(
+        join(parent, 'yarramate.likec4.yaml'),
+        `format: yarramate/likec4-project/v1
+id: system
+version: "1.0"
+title: System architecture
+mapping: likec4.mapping.yaml
+views:
+  - projection: baseline.projection.yaml
+  - projection: target.projection.yaml
+`,
+      )
+
+      const checked = runLikeC4Cli(
+        [
+          'check',
+          'yarramate.likec4.yaml',
+          '--json',
+          'architecture.yaml',
+        ],
+        parent,
+      )
+      expect(checked).toEqual({
+        exitCode: 0,
+        stdout: `${JSON.stringify(
+          {
+            format: 'yarramate/likec4-check-result/v1',
+            ok: true,
+            diagnostics: [],
+          },
+          null,
+          2,
+        )}\n`,
+        stderr: '',
+      })
+
+      const args = [
+        'export-project',
+        'yarramate.likec4.yaml',
+        project,
+        'architecture.yaml',
+      ]
+      const result = runLikeC4Cli(args, parent)
+
+      expect(result).toEqual({
+        exitCode: 0,
+        stdout: `Wrote LikeC4 project to ${project}\n`,
+        stderr: '',
+      })
+      const model = readFileSync(join(project, 'model.likec4'), 'utf8')
+      expect(model.match(/^model \{/gm)).toHaveLength(1)
+      expect(model.match(/^views \{/gm)).toHaveLength(1)
+      expect(model).toContain('view baseline')
+      expect(model).toContain('view target')
+      expect(model).toContain("legacy = applicationComponent 'Legacy'")
+      expect(model).toContain("modern = applicationComponent 'Modern'")
+      expect(
+        JSON.parse(
+          readFileSync(join(project, 'likec4.config.json'), 'utf8'),
+        ),
+      ).toMatchObject({
+        name: 'yarramate-system-1-0',
+        title: 'System architecture',
+      })
+      const marker = JSON.parse(
+        readFileSync(
+          join(project, 'yarramate.generated.json'),
+          'utf8',
+        ),
+      )
+      expect(marker).toMatchObject({
+        format: 'yarramate/likec4-generated-project/v2',
+        project: 'system@1.0',
+        mapping: 'system-likec4@1.0',
+        views: [
+          { projection: 'baseline@1.0' },
+          { projection: 'target@1.0' },
+        ],
+      })
+      const markerSchema = JSON.parse(
+        readFileSync(
+          join(
+            repositoryRoot,
+            'schema/yarramate-likec4-generated-project-v2.schema.json',
+          ),
+          'utf8',
+        ),
+      )
+      const validateMarker = new Ajv2020({ allErrors: true }).compile(
+        markerSchema,
+      )
+      expect(
+        validateMarker(marker),
+        JSON.stringify(validateMarker.errors ?? []),
+      ).toBe(true)
+
+      const validation = spawnSync(
+        join(repositoryRoot, 'node_modules/.bin/likec4'),
+        [
+          'validate',
+          '--json',
+          '--no-layout',
+          '--file',
+          'model.likec4',
+          '.',
+        ],
+        { cwd: project, encoding: 'utf8' },
+      )
+      expect(
+        validation.status,
+        `${validation.stderr}\n${validation.stdout}`,
+      ).toBe(0)
+      expect(JSON.parse(validation.stdout)).toMatchObject({
+        valid: true,
+        errors: [],
+        stats: {
+          filteredErrors: 0,
+          totalErrors: 0,
+        },
+      })
+      expect(runLikeC4Cli(args, parent)).toEqual({
+        exitCode: 0,
+        stdout: `Updated LikeC4 project at ${project}\n`,
+        stderr: '',
+      })
+    } finally {
+      rmSync(parent, { recursive: true, force: true })
+    }
+  })
+
   it('safely regenerates a project carrying its matching marker', () => {
     const parent = mkdtempSync(join(tmpdir(), 'yarramate-likec4-update-'))
     const project = join(parent, 'governed-change')
     const args = [
       'export-project',
-      'examples/governed-change/all.projection.yaml',
-      'examples/governed-change/likec4.mapping.yaml',
+      'test/fixtures/valid/governed-change.projection.yaml',
+      'test/fixtures/valid/governed-change.likec4-mapping.yaml',
       project,
-      'examples/governed-change/yarramate.workspace.yaml',
+      'test/fixtures/valid/governed-change.workspace.yaml',
     ]
     try {
       expect(runLikeC4Cli(args, repositoryRoot).exitCode).toBe(0)
@@ -247,6 +705,172 @@ describe('YarraMate LikeC4 adapter CLI', () => {
     }
   })
 
+  it('atomically replaces each owned file during regeneration', () => {
+    const parent = mkdtempSync(
+      join(tmpdir(), 'yarramate-likec4-atomic-update-'),
+    )
+    const project = join(parent, 'generated')
+    const document = join(parent, 'system.yaml')
+    const projection = join(parent, 'system.projection.yaml')
+    const mapping = join(parent, 'system.mapping.yaml')
+    const args = [
+      'export-project',
+      projection,
+      mapping,
+      project,
+      document,
+    ]
+    const writeDocument = (name: string) =>
+      writeFileSync(
+        document,
+        `format: yarramate/v1
+id: system
+profile: yarramate/core@0.1
+concepts:
+  - id: service
+    kind: applicationComponent
+    name: ${name}
+relationships: []
+`,
+      )
+    try {
+      writeDocument('Original service')
+      writeFileSync(
+        projection,
+        `format: yarramate/projection/v1
+id: system
+version: "1.0"
+query: {}
+`,
+      )
+      writeFileSync(
+        mapping,
+        `format: yarramate/adapter-mapping/v1
+id: system-likec4
+version: "1.0"
+adapter: likec4
+mappings:
+  - native: system#service
+    external: service
+    type: concept
+`,
+      )
+      expect(runLikeC4Cli(args, repositoryRoot).exitCode).toBe(0)
+      const model = join(project, 'model.likec4')
+      const priorModel = join(parent, 'prior-model.likec4')
+      linkSync(model, priorModel)
+      writeDocument('Updated service')
+
+      expect(runLikeC4Cli(args, repositoryRoot).exitCode).toBe(0)
+
+      expect(readFileSync(model, 'utf8')).toContain(
+        "service = applicationComponent 'Updated service'",
+      )
+      expect(readFileSync(priorModel, 'utf8')).toContain(
+        "service = applicationComponent 'Original service'",
+      )
+    } finally {
+      rmSync(parent, { recursive: true, force: true })
+    }
+  })
+
+  it('refuses to overwrite a generated file changed since the marker', () => {
+    const parent = mkdtempSync(
+      join(tmpdir(), 'yarramate-likec4-drift-'),
+    )
+    const project = join(parent, 'governed-change')
+    const args = [
+      'export-project',
+      'test/fixtures/valid/governed-change.projection.yaml',
+      'test/fixtures/valid/governed-change.likec4-mapping.yaml',
+      project,
+      'test/fixtures/valid/governed-change.workspace.yaml',
+    ]
+    try {
+      expect(runLikeC4Cli(args, repositoryRoot).exitCode).toBe(0)
+      const modelPath = join(project, 'model.likec4')
+      writeFileSync(modelPath, `${readFileSync(modelPath, 'utf8')}// edited\n`)
+
+      const result = runLikeC4Cli(args, repositoryRoot)
+
+      expect(result).toEqual({
+        exitCode: 2,
+        stdout: '',
+        stderr: `Generated project file has changed: ${modelPath}\n`,
+      })
+    } finally {
+      rmSync(parent, { recursive: true, force: true })
+    }
+  })
+
+  it('refuses regeneration when the ownership marker is malformed', () => {
+    const parent = mkdtempSync(
+      join(tmpdir(), 'yarramate-likec4-malformed-marker-'),
+    )
+    const project = join(parent, 'governed-change')
+    const args = [
+      'export-project',
+      'test/fixtures/valid/governed-change.projection.yaml',
+      'test/fixtures/valid/governed-change.likec4-mapping.yaml',
+      project,
+      'test/fixtures/valid/governed-change.workspace.yaml',
+    ]
+    try {
+      expect(runLikeC4Cli(args, repositoryRoot).exitCode).toBe(0)
+      writeFileSync(
+        join(project, 'yarramate.generated.json'),
+        JSON.stringify({
+          format: 'yarramate/likec4-generated-project/v1',
+          projection: 'governed-change@1.0',
+          mapping: 'governed-change-likec4@1.0',
+          files: [],
+        }),
+      )
+
+      const result = runLikeC4Cli(args, repositoryRoot)
+
+      expect(result).toEqual({
+        exitCode: 2,
+        stdout: '',
+        stderr: `Output directory already exists: ${project}\n`,
+      })
+    } finally {
+      rmSync(parent, { recursive: true, force: true })
+    }
+  })
+
+  it('refuses regeneration through a symlinked generated file', () => {
+    const parent = mkdtempSync(
+      join(tmpdir(), 'yarramate-likec4-symlink-'),
+    )
+    const project = join(parent, 'governed-change')
+    const outside = join(parent, 'outside.likec4')
+    const args = [
+      'export-project',
+      'test/fixtures/valid/governed-change.projection.yaml',
+      'test/fixtures/valid/governed-change.likec4-mapping.yaml',
+      project,
+      'test/fixtures/valid/governed-change.workspace.yaml',
+    ]
+    try {
+      expect(runLikeC4Cli(args, repositoryRoot).exitCode).toBe(0)
+      writeFileSync(outside, 'do not replace\n')
+      rmSync(join(project, 'model.likec4'))
+      symlinkSync(outside, join(project, 'model.likec4'))
+
+      const result = runLikeC4Cli(args, repositoryRoot)
+
+      expect(result).toEqual({
+        exitCode: 2,
+        stdout: '',
+        stderr: `Generated project contains an unsafe file: ${join(project, 'model.likec4')}\n`,
+      })
+      expect(readFileSync(outside, 'utf8')).toBe('do not replace\n')
+    } finally {
+      rmSync(parent, { recursive: true, force: true })
+    }
+  })
+
   it('refuses to overwrite an existing project directory', () => {
     const project = mkdtempSync(
       join(tmpdir(), 'yarramate-likec4-existing-'),
@@ -255,10 +879,10 @@ describe('YarraMate LikeC4 adapter CLI', () => {
       const result = runLikeC4Cli(
         [
           'export-project',
-          'examples/governed-change/all.projection.yaml',
-          'examples/governed-change/likec4.mapping.yaml',
+          'test/fixtures/valid/governed-change.projection.yaml',
+          'test/fixtures/valid/governed-change.likec4-mapping.yaml',
           project,
-          'examples/governed-change/yarramate.workspace.yaml',
+          'test/fixtures/valid/governed-change.workspace.yaml',
         ],
         repositoryRoot,
       )
@@ -270,6 +894,194 @@ describe('YarraMate LikeC4 adapter CLI', () => {
       })
     } finally {
       rmSync(project, { recursive: true, force: true })
+    }
+  })
+
+  it('materializes extension kinds through an explicit kind mapping', () => {
+    const parent = mkdtempSync(
+      join(tmpdir(), 'yarramate-likec4-profiled-'),
+    )
+    const project = join(parent, 'export-path')
+    try {
+      const result = runLikeC4Cli(
+        [
+          'export-project',
+          '.yarramate/projections/likec4-export-path.yaml',
+          '.yarramate/integrations/likec4/subject-mapping.yaml',
+          project,
+          '--kinds',
+          '.yarramate/integrations/likec4/kind-mapping.yaml',
+          '.yarramate/workspace.yaml',
+        ],
+        repositoryRoot,
+      )
+
+      expect(result.exitCode).toBe(0)
+      const model = readFileSync(join(project, 'model.likec4'), 'utf8')
+      expect(model).toContain(
+        "likec4ExportSource = artifact 'src/adapters/likec4-export.ts'",
+      )
+      expect(model).toContain(
+        "yarramateKind 'yarramate/development@1.0#repository-file'",
+      )
+      expect(
+        JSON.parse(
+          readFileSync(
+            join(project, 'yarramate.generated.json'),
+            'utf8',
+          ),
+        ),
+      ).toMatchObject({
+        kindMapping: 'yarramate-development-likec4@1.0',
+      })
+    } finally {
+      rmSync(parent, { recursive: true, force: true })
+    }
+  })
+
+  it('rejects extension kinds not supported by the bundled specification before writing', () => {
+    const parent = mkdtempSync(
+      join(tmpdir(), 'yarramate-likec4-unsupported-'),
+    )
+    const project = join(parent, 'export-path')
+    try {
+      const result = runLikeC4Cli(
+        [
+          'export-project',
+          '.yarramate/projections/likec4-export-path.yaml',
+          '.yarramate/integrations/likec4/subject-mapping.yaml',
+          project,
+          '.yarramate/workspace.yaml',
+        ],
+        repositoryRoot,
+      )
+
+      expect(result.exitCode).toBe(1)
+      expect(result.stderr).toBe('')
+      expect(JSON.parse(result.stdout)).toEqual({
+        format: 'yarramate/likec4-diagnostic-result/v1',
+        diagnostics: [
+          {
+            severity: 'error',
+            code: 'YMLC104',
+            message:
+              'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
+            subject: 'yarramate-repository#likec4-export-source',
+            path: '.yarramate/architecture/repository.yaml',
+            pointer: '/concepts/12/kind',
+            line: 57,
+            column: 11,
+          },
+          {
+            severity: 'error',
+            code: 'YMLC104',
+            message:
+              'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
+            subject: 'yarramate-repository#likec4-prepare-source',
+            path: '.yarramate/architecture/repository.yaml',
+            pointer: '/concepts/15/kind',
+            line: 69,
+            column: 11,
+          },
+          {
+            severity: 'error',
+            code: 'YMLC104',
+            message:
+              'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
+            subject: 'yarramate-repository#likec4-project-source',
+            path: '.yarramate/architecture/repository.yaml',
+            pointer: '/concepts/16/kind',
+            line: 73,
+            column: 11,
+          },
+          {
+            severity: 'error',
+            code: 'YMLC104',
+            message:
+              'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
+            subject:
+              'yarramate-repository#likec4-project-definition-source',
+            path: '.yarramate/architecture/repository.yaml',
+            pointer: '/concepts/17/kind',
+            line: 77,
+            column: 11,
+          },
+          {
+            severity: 'error',
+            code: 'YMLC104',
+            message:
+              'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
+            subject:
+              'yarramate-repository#likec4-project-schema-source',
+            path: '.yarramate/architecture/repository.yaml',
+            pointer: '/concepts/40/kind',
+            line: 174,
+            column: 11,
+          },
+          {
+            severity: 'error',
+            code: 'YMLC104',
+            message:
+              'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
+            subject:
+              'yarramate-repository#likec4-generated-project-v2-schema-source',
+            path: '.yarramate/architecture/repository.yaml',
+            pointer: '/concepts/41/kind',
+            line: 178,
+            column: 11,
+          },
+        ],
+      })
+      expect(existsSync(project)).toBe(false)
+    } finally {
+      rmSync(parent, { recursive: true, force: true })
+    }
+  })
+
+  it('rejects kind mappings targeting undeclared bundled kinds', () => {
+    const parent = mkdtempSync(
+      join(tmpdir(), 'yarramate-likec4-unknown-kind-'),
+    )
+    const project = join(parent, 'export-path')
+    const kinds = join(parent, 'kinds.yaml')
+    writeFileSync(
+      kinds,
+      `format: yarramate/likec4-kind-mapping/v1
+id: unsupported-target
+version: "1.0"
+conceptKinds:
+  - native: yarramate/development@1.0#repository-file
+    external: customBox
+relationshipKinds: []
+`,
+    )
+    try {
+      const result = runLikeC4Cli(
+        [
+          'export-project',
+          '.yarramate/projections/likec4-export-path.yaml',
+          '.yarramate/integrations/likec4/subject-mapping.yaml',
+          project,
+          '--kinds',
+          kinds,
+          '.yarramate/workspace.yaml',
+        ],
+        repositoryRoot,
+      )
+
+      expect(result.exitCode).toBe(1)
+      expect(JSON.parse(result.stdout)).toMatchObject({
+        diagnostics: expect.arrayContaining([
+          expect.objectContaining({
+            code: 'YMLC104',
+            message:
+              'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "customBox"',
+          }),
+        ]),
+      })
+      expect(existsSync(project)).toBe(false)
+    } finally {
+      rmSync(parent, { recursive: true, force: true })
     }
   })
 })

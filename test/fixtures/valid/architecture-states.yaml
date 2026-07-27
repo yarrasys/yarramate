@@ -1,0 +1,36 @@
+format: yarramate/v1
+id: roadmap
+profile: yarramate/core@0.1
+states:
+  - id: baseline
+    kind: baseline
+    name: Current architecture
+  - id: transition
+    kind: transition
+    name: Migration plateau
+    after: baseline
+  - id: target
+    kind: target
+    name: Target architecture
+    after: transition
+concepts:
+  - id: shared
+    kind: applicationComponent
+    name: Shared service
+  - id: legacy
+    kind: applicationComponent
+    name: Legacy service
+    presentIn: [baseline, transition]
+  - id: modern
+    kind: applicationComponent
+    name: Modern service
+    presentIn: [transition, target]
+relationships:
+  - id: shared-serves-legacy
+    kind: serving
+    from: shared
+    to: legacy
+  - id: shared-serves-modern
+    kind: serving
+    from: shared
+    to: modern

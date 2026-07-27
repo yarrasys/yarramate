@@ -16,6 +16,12 @@
       "type": "string",
       "pattern": "^[a-z][a-z0-9-]*(?:/[a-z][a-z0-9-]*)+@[0-9]+\\.[0-9]+$"
     },
+    "states": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/architectureState"
+      }
+    },
     "concepts": {
       "type": "array",
       "items": {
@@ -41,6 +47,28 @@
     "reference": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:#[a-z][a-z0-9]*(?:-[a-z0-9]+)*)?$"
+    },
+    "architectureState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "name"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "kind": {
+          "enum": ["baseline", "transition", "target"]
+        },
+        "name": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "description": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "after": {
+          "$ref": "#/$defs/reference"
+        }
+      }
     },
     "concept": {
       "type": "object",
@@ -71,6 +99,9 @@
           "items": {
             "$ref": "#/$defs/constraint"
           }
+        },
+        "presentIn": {
+          "$ref": "#/$defs/stateReferences"
         }
       }
     },
@@ -116,7 +147,18 @@
         },
         "status": {
           "$ref": "#/$defs/lifecycleStatus"
+        },
+        "presentIn": {
+          "$ref": "#/$defs/stateReferences"
         }
+      }
+    },
+    "stateReferences": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/reference"
       }
     },
     "lifecycleStatus": {

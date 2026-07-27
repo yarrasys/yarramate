@@ -81,6 +81,34 @@ Concepts and relationships may also declare an operational `status` of
 `yarramate/lifecycle/status` claim. Status describes architecture lifecycle,
 not review or approval; Git remains authoritative for governance.
 
+Documents may optionally declare baseline, transition, and target architecture
+states. Concepts and relationships use concise `presentIn` references to
+compile explicit presence claims:
+
+```yaml
+states:
+  - id: baseline
+    kind: baseline
+    name: Current architecture
+  - id: target
+    kind: target
+    name: Target architecture
+    after: baseline
+concepts:
+  - id: new-service
+    kind: applicationComponent
+    name: New service
+    presentIn: [target]
+```
+
+State IDs share the document-local identity namespace with concepts and
+relationships. State and presence references resolve locally or through
+`document#state`. Ordering must be acyclic, and an explicitly scoped
+relationship cannot be present where either endpoint is absent. Unscoped
+concepts apply to every state; unscoped relationships follow their endpoints.
+Lifecycle status remains independent of planning state. The complete contract
+is in `docs/ARCHITECTURE-STATES.md`.
+
 Two relationship kinds have controlled concise fields:
 
 ```yaml
@@ -104,7 +132,7 @@ Both compile into claims about the relationship subject.
 ## Identity and references
 
 Document IDs and local IDs use lowercase kebab case. A local ID is unique
-across concepts and relationships in one document, and a document ID is unique
+across states, concepts, and relationships in one document, and a document ID is unique
 within the compiled workspace. A compiled subject ID is
 `<document-id>#<local-id>`, so moving a file or reordering a YAML list does not
 change semantic identity.
@@ -151,9 +179,9 @@ and one-based line and column.
 | --- | --- | --- |
 | `YM1xx` | YAML parsing | `YM101` malformed YAML |
 | `YM2xx` | Document structure | `YM201` JSON Schema violation |
-| `YM3xx` | Identity and references | `YM301` duplicate local ID; `YM302` unresolved concept reference; `YM303` duplicate document ID; `YM304` unresolved owner; `YM305` unresolved constraint; `YM306` duplicate constraint ID |
+| `YM3xx` | Identity and references | `YM301` duplicate local ID; `YM302` unresolved concept reference; `YM303` duplicate document ID; `YM304` unresolved owner; `YM305` unresolved constraint; `YM306` duplicate constraint ID; `YM307` unresolved architecture state |
 | `YM4xx` | Profile conformance | `YM401` unknown concept kind; `YM402` unknown relationship kind; `YM403` unavailable profile; `YM404` incompatible endpoint; `YM405` misplaced controlled field; `YM406` unavailable parent profile; `YM407`/`YM408` unavailable semantic parent; `YM409`/`YM410` inherited-name collision; `YM411` duplicate profile; `YM412` broadened constraint |
-| `YM5xx` | Claim consistency | `YM501` competing whole-part claims |
+| `YM5xx` | Claim consistency | `YM501` competing whole-part claims; `YM502` cyclic state ordering; `YM503` relationship present without an endpoint |
 | `YM6xx` | Adapter mapping integrity | `YM601` unknown native subject; `YM602` subject type mismatch; `YM603` duplicate native mapping; `YM604` duplicate external mapping; `YM605` duplicate versioned mapping |
 | `YM7xx` | Workspace resolution | `YM701` unsafe pattern; `YM702` unmatched pattern; `YM703` cross-category file |
 | `YM8xx` | Evidence integrity | `YM801` unknown subject; `YM802` unknown claim; `YM803` duplicate target; `YM804` duplicate evidence document |
@@ -170,8 +198,13 @@ active-structure source, `access` requires a passive-structure target,
 These are native YarraMate policies, not an external relationship matrix.
 
 Declaring both `composition` and `aggregation` over the same ordered endpoints
-is contradictory: one whole-part assertion cannot be both strong and weak.
-This is the first deliberately narrow contradiction rule.
+with overlapping relationship applicability is contradictory: one whole-part
+assertion cannot be both strong and weak in the same architecture state. The
+check is workspace-wide, so separating the assertions into different native
+documents does not avoid it. An unscoped relationship overlaps every state in
+which both endpoints participate. Explicitly disjoint state scopes may use
+different whole-part kinds to describe an architectural transition. This is
+the first deliberately narrow contradiction rule.
 
 ## Check CLI
 
@@ -199,15 +232,16 @@ yarramate connect architecture/main.yaml \
   --from approval-api --to order-approval
 ```
 
-`init` creates `architecture/main.yaml` and `yarramate.workspace.yaml`, and
+`init` creates `.yarramate/architecture/main.yaml` and `.yarramate/workspace.yaml`, and
 refuses to overwrite either. `add` appends a concept; `connect` appends a
 relationship. Both preserve concise block-style YAML, compile the entire
 candidate workspace in memory, and replace the target only when validation
 succeeds. A rejected edit leaves the source byte-for-byte unchanged.
 
 Optional `add` flags are `--status`, `--description`, `--owner <ref>`, and
-repeatable `--constraint <id>=<ref>`. Optional `connect` flags are `--name`,
-`--status`, `--mode`, and `--content`. Extension profiles and documents needed
+repeatable `--constraint <id>=<ref>` and `--present-in <state-ref>`. Optional
+`connect` flags are `--name`, `--status`, `--mode`, `--content`, and repeatable
+`--present-in <state-ref>`. Extension profiles and documents needed
 for qualified references are passed explicitly using a repeatable
 `--source <source.yaml>`:
 

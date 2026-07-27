@@ -37,6 +37,7 @@ type MappingLocation = SourceLocation
 
 interface AdapterMappingLocations {
   readonly id: MappingLocation
+  readonly adapter: MappingLocation
   readonly mappings: readonly Readonly<
     Record<'native' | 'external' | 'type', MappingLocation>
   >[]
@@ -89,6 +90,7 @@ export function loadAdapterMapping(
     )
   mappingLocations.set(mapping, {
     id: locateNode(['id'], '/id'),
+    adapter: locateNode(['adapter'], '/adapter'),
     mappings: mapping.mappings.map((entry) => {
       const authoredIndex = value.mappings.indexOf(entry)
       const locate = (
@@ -106,6 +108,36 @@ export function loadAdapterMapping(
     }),
   })
   return { ok: true, mapping }
+}
+
+export function adapterMappingLocation(
+  mapping: AdapterMapping,
+  field: 'id' | 'adapter',
+): SourceLocation {
+  return (
+    mappingLocations.get(mapping)?.[field] ?? {
+      path: `${mapping.id}.mapping.yaml`,
+      pointer: `/${field}`,
+      line: 1,
+      column: 1,
+    }
+  )
+}
+
+export function adapterMappingEntryLocation(
+  mapping: AdapterMapping,
+  entry: AdapterSubjectMapping,
+  field: 'native' | 'external' | 'type',
+): SourceLocation {
+  const index = mapping.mappings.indexOf(entry)
+  return (
+    mappingLocations.get(mapping)?.mappings[index]?.[field] ?? {
+      path: `${mapping.id}.mapping.yaml`,
+      pointer: `/mappings/${Math.max(index, 0)}/${field}`,
+      line: 1,
+      column: 1,
+    }
+  )
 }
 
 export function validateAdapterMapping(

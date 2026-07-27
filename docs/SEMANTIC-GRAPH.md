@@ -31,6 +31,12 @@ references use `yarramate/constraint/requires`. Both point to globally
 qualified concept subjects and use stable claim IDs derived from authored
 syntax; neither adds fields to graph v2.
 
+Optional architecture states compile as ordinary globally qualified concept
+subjects with Core `plateau` kind. `yarramate/state/type`,
+`yarramate/state/after`, and `yarramate/state/present-in` preserve state kind,
+acyclic ordering, and subject membership using existing graph-v2 claims.
+State-specific claim values are not part of graph v2.
+
 The JSON Schema is structural. Compiler conformance additionally guarantees
 referential integrity, unique semantic IDs, known qualified kinds, and the
 correctness rules documented for native compilation.
@@ -51,7 +57,7 @@ No generated graph file is required in Git. The same native inputs must produce
 byte-identical canonical output regardless of workspace source order.
 
 ```sh
-yarramate compile yarramate.workspace.yaml > graph.json
+yarramate compile .yarramate/workspace.yaml > .yarramate-out/graph.v2.json
 ```
 
 Exit status is `0` with the graph on standard output, `1` with deterministic

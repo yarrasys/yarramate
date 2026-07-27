@@ -10,6 +10,206 @@ const fixture = (path: string): string =>
   )
 
 describe('compileWorkspace', () => {
+  it('compiles architecture states and concise subject presence into claims', () => {
+    const result = compileWorkspace([
+      {
+        path: 'roadmap.yaml',
+        source: `format: yarramate/v1
+id: roadmap
+profile: yarramate/core@0.1
+states:
+  - id: baseline
+    kind: baseline
+    name: Current architecture
+  - id: target
+    kind: target
+    name: Target architecture
+    after: baseline
+concepts:
+  - id: payments
+    kind: applicationComponent
+    name: Payments platform
+    presentIn: [target]
+relationships: []
+`,
+      },
+    ])
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.graph.subjects).toContainEqual({
+      id: 'roadmap#target',
+      type: 'concept',
+    })
+    expect(result.graph.claims).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'roadmap#target~kind',
+          subject: 'roadmap#target',
+          predicate: 'yarramate/concept/kind',
+          object: { value: 'yarramate/core@0.1#plateau' },
+        }),
+        expect.objectContaining({
+          id: 'roadmap#target~state-type',
+          subject: 'roadmap#target',
+          predicate: 'yarramate/state/type',
+          object: { value: 'target' },
+        }),
+        expect.objectContaining({
+          id: 'roadmap#target~after',
+          subject: 'roadmap#target',
+          predicate: 'yarramate/state/after',
+          object: { ref: 'roadmap#baseline' },
+        }),
+        expect.objectContaining({
+          subject: 'roadmap#payments',
+          predicate: 'yarramate/state/present-in',
+          object: { ref: 'roadmap#target' },
+          source: expect.objectContaining({
+            path: 'roadmap.yaml',
+            pointer: '/concepts/0/presentIn/0',
+            line: 16,
+            column: 17,
+          }),
+        }),
+      ]),
+    )
+  })
+
+  it('reports an unresolved architecture-state reference at its authored value', () => {
+    const result = compileWorkspace([
+      {
+        path: 'roadmap.yaml',
+        source: `format: yarramate/v1
+id: roadmap
+profile: yarramate/core@0.1
+concepts:
+  - id: payments
+    kind: applicationComponent
+    name: Payments
+    presentIn:
+      - missing-state
+relationships: []
+`,
+      },
+    ])
+
+    expect(result).toEqual({
+      ok: false,
+      diagnostics: [
+        {
+          severity: 'error',
+          code: 'YM307',
+          message:
+            'Unresolved architecture state reference "missing-state"',
+          path: 'roadmap.yaml',
+          pointer: '/concepts/0/presentIn/0',
+          line: 9,
+          column: 9,
+        },
+      ],
+    })
+  })
+
+  it('rejects cyclic architecture-state ordering', () => {
+    const result = compileWorkspace([
+      {
+        path: 'roadmap.yaml',
+        source: `format: yarramate/v1
+id: roadmap
+profile: yarramate/core@0.1
+states:
+  - id: baseline
+    kind: baseline
+    name: Baseline
+    after: target
+  - id: target
+    kind: target
+    name: Target
+    after: baseline
+concepts: []
+relationships: []
+`,
+      },
+    ])
+
+    expect(result).toEqual({
+      ok: false,
+      diagnostics: [
+        {
+          severity: 'error',
+          code: 'YM502',
+          message:
+            'Architecture state "roadmap#baseline" participates in an ordering cycle',
+          path: 'roadmap.yaml',
+          pointer: '/states/0/after',
+          line: 8,
+          column: 12,
+        },
+        {
+          severity: 'error',
+          code: 'YM502',
+          message:
+            'Architecture state "roadmap#target" participates in an ordering cycle',
+          path: 'roadmap.yaml',
+          pointer: '/states/1/after',
+          line: 12,
+          column: 12,
+        },
+      ],
+    })
+  })
+
+  it('rejects a relationship present where one endpoint is absent', () => {
+    const result = compileWorkspace([
+      {
+        path: 'roadmap.yaml',
+        source: `format: yarramate/v1
+id: roadmap
+profile: yarramate/core@0.1
+states:
+  - id: baseline
+    kind: baseline
+    name: Baseline
+  - id: target
+    kind: target
+    name: Target
+concepts:
+  - id: legacy
+    kind: applicationComponent
+    name: Legacy
+    presentIn: [baseline]
+  - id: modern
+    kind: applicationComponent
+    name: Modern
+    presentIn: [target]
+relationships:
+  - id: legacy-serves-modern
+    kind: serving
+    from: legacy
+    to: modern
+    presentIn: [target]
+`,
+      },
+    ])
+
+    expect(result).toEqual({
+      ok: false,
+      diagnostics: [
+        {
+          severity: 'error',
+          code: 'YM503',
+          message:
+            'Relationship "legacy-serves-modern" is present in "roadmap#target" but endpoint "roadmap#legacy" is absent',
+          path: 'roadmap.yaml',
+          pointer: '/relationships/0/presentIn/0',
+          line: 25,
+          column: 17,
+        },
+      ],
+    })
+  })
+
   it('compiles concise ownership into an explicit stable claim', () => {
     const result = compileWorkspace([
       {
@@ -699,6 +899,115 @@ describe('compileWorkspace', () => {
         },
       ],
     })
+  })
+
+  it('rejects competing whole-part claims declared in different documents', () => {
+    const concepts = `format: yarramate/v1
+id: structure
+profile: yarramate/core@0.1
+concepts:
+  - id: whole
+    kind: applicationComponent
+    name: Whole
+  - id: part
+    kind: applicationComponent
+    name: Part
+relationships: []
+`
+    const strong = `format: yarramate/v1
+id: strong-model
+profile: yarramate/core@0.1
+concepts: []
+relationships:
+  - id: contains
+    kind: composition
+    from: structure#whole
+    to: structure#part
+`
+    const weak = `format: yarramate/v1
+id: weak-model
+profile: yarramate/core@0.1
+concepts: []
+relationships:
+  - id: contains
+    kind: aggregation
+    from: structure#whole
+    to: structure#part
+`
+
+    const sources = [
+      { path: 'weak.yaml', source: weak },
+      { path: 'structure.yaml', source: concepts },
+      { path: 'strong.yaml', source: strong },
+    ] as const
+    const result = compileWorkspace(sources)
+
+    expect(result).toEqual({
+      ok: false,
+      diagnostics: [
+        {
+          severity: 'error',
+          code: 'YM501',
+          message:
+            'Relationship "weak-model#contains" contradicts "strong-model#contains": the same endpoints cannot be both aggregation and composition',
+          path: 'weak.yaml',
+          pointer: '/relationships/0/kind',
+          line: 7,
+          column: 11,
+        },
+      ],
+    })
+    expect(compileWorkspace([...sources].reverse())).toEqual(result)
+  })
+
+  it('allows competing whole-part kinds in disjoint architecture states', () => {
+    const result = compileWorkspace([
+      {
+        path: 'evolution.yaml',
+        source: `format: yarramate/v1
+id: evolution
+profile: yarramate/core@0.1
+states:
+  - id: baseline
+    kind: baseline
+    name: Baseline
+  - id: target
+    kind: target
+    name: Target
+    after: baseline
+concepts:
+  - id: whole
+    kind: applicationComponent
+    name: Whole
+    presentIn: [baseline, target]
+  - id: part
+    kind: applicationComponent
+    name: Part
+    presentIn: [baseline, target]
+relationships:
+  - id: strong-parts
+    kind: composition
+    from: whole
+    to: part
+    presentIn: [baseline]
+  - id: weak-parts
+    kind: aggregation
+    from: whole
+    to: part
+    presentIn: [target]
+`,
+      },
+    ])
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(
+      result.graph.claims.filter(
+        ({ predicate }) =>
+          predicate === 'yarramate/core@0.1#composition' ||
+          predicate === 'yarramate/core@0.1#aggregation',
+      ),
+    ).toHaveLength(2)
   })
 
   it('orders diagnostics independently of workspace source order', () => {

@@ -52,6 +52,121 @@ relationships:
 `
 
 describe('evaluateProjection', () => {
+  it('selects scoped and unscoped subjects in an architecture state', () => {
+    const compilation = compileWorkspace([
+      {
+        path: 'roadmap.yaml',
+        source: `format: yarramate/v1
+id: roadmap
+profile: yarramate/core@0.1
+states:
+  - id: baseline
+    kind: baseline
+    name: Baseline
+  - id: target
+    kind: target
+    name: Target
+    after: baseline
+concepts:
+  - id: shared
+    kind: applicationComponent
+    name: Shared service
+  - id: legacy
+    kind: applicationComponent
+    name: Legacy service
+    presentIn: [baseline]
+  - id: modern
+    kind: applicationComponent
+    name: Modern service
+    presentIn: [target]
+relationships:
+  - id: modern-uses-shared
+    kind: serving
+    from: shared
+    to: modern
+    presentIn: [target]
+`,
+      },
+    ])
+    expect(compilation.ok).toBe(true)
+    if (!compilation.ok) return
+
+    const result = evaluateProjection(compilation.graph, {
+      format: 'yarramate/projection/v1',
+      id: 'target',
+      version: '1.0',
+      query: {
+        states: ['roadmap#target'],
+        relationships: 'between',
+      },
+    })
+
+    expect(result.subjects).toEqual([
+      { id: 'roadmap#modern', type: 'concept' },
+      { id: 'roadmap#modern-uses-shared', type: 'relationship' },
+      { id: 'roadmap#shared', type: 'concept' },
+    ])
+  })
+
+  it('treats an unavailable architecture-state selector as portable', () => {
+    const compilation = compileWorkspace([
+      {
+        path: 'roadmap.yaml',
+        source: `format: yarramate/v1
+id: roadmap
+profile: yarramate/core@0.1
+concepts:
+  - id: shared
+    kind: applicationComponent
+    name: Shared service
+relationships: []
+`,
+      },
+    ])
+    expect(compilation.ok).toBe(true)
+    if (!compilation.ok) return
+
+    const result = evaluateProjection(compilation.graph, {
+      format: 'yarramate/projection/v1',
+      id: 'future-state',
+      version: '1.0',
+      query: {
+        states: ['other-roadmap#target'],
+      },
+    })
+
+    expect(result).toMatchObject({
+      documents: [],
+      subjects: [],
+      claims: [],
+    })
+  })
+
+  it('loads architecture-state selectors through the normative schema', () => {
+    const loaded = loadProjection({
+      path: 'target.projection.yaml',
+      source: `format: yarramate/projection/v1
+id: target
+version: "1.0"
+query:
+  states:
+    - roadmap#target
+`,
+    })
+
+    expect(loaded).toEqual({
+      ok: true,
+      projection: {
+        format: 'yarramate/projection/v1',
+        id: 'target',
+        version: '1.0',
+        query: {
+          states: ['roadmap#target'],
+        },
+      },
+    })
+  })
+
   it('selects an explicit portable set of globally qualified subjects', () => {
     const compilation = compileWorkspace([
       { path: 'projection-model.yaml', source },

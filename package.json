@@ -11,8 +11,8 @@
       "import": "./dist/index.js"
     },
     "./adapter/likec4": {
-      "types": "./dist/adapters/likec4-export.d.ts",
-      "import": "./dist/adapters/likec4-export.js"
+      "types": "./dist/adapters/likec4.d.ts",
+      "import": "./dist/adapters/likec4.js"
     },
     "./schema/document": "./schema/yarramate-document.schema.json",
     "./schema/profile": "./schema/yarramate-profile.schema.json",
@@ -23,10 +23,16 @@
     "./schema/diagnostic-result": "./schema/yarramate-diagnostic-result.schema.json",
     "./schema/likec4-diagnostic-result": "./schema/yarramate-likec4-diagnostic-result.schema.json",
     "./schema/likec4-generated-project": "./schema/yarramate-likec4-generated-project.schema.json",
+    "./schema/likec4-generated-project-v2": "./schema/yarramate-likec4-generated-project-v2.schema.json",
+    "./schema/likec4-project": "./schema/yarramate-likec4-project.schema.json",
+    "./schema/likec4-kind-mapping": "./schema/yarramate-likec4-kind-mapping.schema.json",
+    "./schema/likec4-check-result": "./schema/yarramate-likec4-check-result.schema.json",
+    "./schema/state-comparison": "./schema/yarramate-state-comparison.schema.json",
     "./schema/graph-v2": "./schema/yarramate-graph-v2.schema.json",
     "./schema/workspace": "./schema/yarramate-workspace.schema.json",
     "./schema/evidence": "./schema/yarramate-evidence.schema.json",
-    "./schema/evidence-report": "./schema/yarramate-evidence-report.schema.json"
+    "./schema/evidence-report": "./schema/yarramate-evidence-report.schema.json",
+    "./schema/core-contract": "./schema/yarramate-core-contract.schema.json"
   },
   "bin": {
     "yarramate": "dist/cli.js",
@@ -38,19 +44,21 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "docs:dev": "likec4 serve examples/governed-change",
-    "format": "likec4 format profile examples",
-    "self:check": "pnpm build && node dist/cli.js check yarramate.workspace.yaml",
-    "self:check:json": "pnpm build && node dist/cli.js check yarramate.workspace.yaml --json",
-    "self:compile": "pnpm build && node dist/cli.js compile yarramate.workspace.yaml",
-    "self:context": "pnpm build && node dist/cli.js context projections/current-engine.yaml yarramate.workspace.yaml",
-    "self:view": "pnpm build && node dist/cli.js view projections/current-engine.yaml yarramate.workspace.yaml",
-    "self:evidence": "pnpm build && node dist/cli.js evidence evidence/repository.yaml yarramate.workspace.yaml",
-    "self:export:likec4": "pnpm build && node dist/adapters/likec4-cli.js export-project projections/likec4-export-path.yaml adapters/likec4-export-path.mapping.yaml generated/yarramate-likec4-export yarramate.workspace.yaml",
-    "example:check": "pnpm build && node dist/cli.js check examples/governed-change/yarramate.workspace.yaml",
-    "example:export:likec4": "pnpm build && node dist/adapters/likec4-cli.js export examples/governed-change/all.projection.yaml examples/governed-change/likec4.mapping.yaml examples/governed-change/yarramate.workspace.yaml",
-    "example:export:likec4:project": "pnpm build && node dist/adapters/likec4-cli.js export-project examples/governed-change/all.projection.yaml examples/governed-change/likec4.mapping.yaml generated/governed-change examples/governed-change/yarramate.workspace.yaml",
-    "validate": "likec4 validate --no-layout examples/governed-change",
+    "docs:dev": "pnpm self:export:likec4 && likec4 serve .yarramate-out/likec4",
+    "format": "likec4 format .yarramate/integrations/likec4/prototype",
+    "self:check": "pnpm build && node dist/cli.js check .yarramate/workspace.yaml",
+    "self:check:json": "pnpm build && node dist/cli.js check .yarramate/workspace.yaml --json",
+    "self:compile": "pnpm build && node dist/cli.js compile .yarramate/workspace.yaml",
+    "self:context": "pnpm build && node dist/cli.js context .yarramate/projections/current-engine.yaml .yarramate/workspace.yaml",
+    "self:view": "pnpm build && node dist/cli.js view .yarramate/projections/current-engine.yaml .yarramate/workspace.yaml",
+    "self:compare": "pnpm build && node dist/cli.js compare yarramate-evolution#native-foundation yarramate-evolution#state-foundation .yarramate/workspace.yaml",
+    "self:compare:contract": "pnpm build && node dist/cli.js compare yarramate-evolution#state-foundation yarramate-evolution#core-contract-foundation .yarramate/workspace.yaml",
+    "self:contract": "pnpm build && node dist/cli.js context .yarramate/projections/core-contract-foundation.yaml .yarramate/workspace.yaml",
+    "self:evidence": "pnpm build && node dist/cli.js evidence .yarramate/evidence/repository.yaml .yarramate/workspace.yaml",
+    "self:check:likec4": "pnpm build && node dist/adapters/likec4-cli.js check .yarramate/integrations/likec4/project.yaml .yarramate/workspace.yaml",
+    "self:check:likec4:json": "pnpm build && node dist/adapters/likec4-cli.js check .yarramate/integrations/likec4/project.yaml --json .yarramate/workspace.yaml",
+    "self:export:likec4": "pnpm build && node dist/adapters/likec4-cli.js export-project .yarramate/integrations/likec4/project.yaml .yarramate-out/likec4 .yarramate/workspace.yaml",
+    "validate": "pnpm self:export:likec4 && likec4 validate --no-layout .yarramate-out/likec4",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

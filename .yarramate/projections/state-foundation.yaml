@@ -1,0 +1,13 @@
+format: yarramate/projection/v1
+id: state-foundation
+version: "1.0"
+query:
+  states:
+    - yarramate-evolution#state-foundation
+  documents:
+    - yarramate-engine
+    - yarramate-repository
+  relationships: between
+presentation:
+  title: Architecture-state foundation
+  description: The implemented YarraMate engine and repository subjects present in the state-foundation target.

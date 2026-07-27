@@ -65,10 +65,36 @@ A well-formed projection selector that may have no match in a particular
 workspace without becoming invalid.
 _Avoid_: Broken reference, mandatory workspace dependency
 
+**Architecture state**:
+An identified planning context representing a baseline, transition, or target
+configuration of architecture subjects.
+_Avoid_: Lifecycle status, approval stage, copied model
+
+**Subject presence**:
+A claim that a concept or relationship participates in an architecture state.
+An unscoped concept participates in every state; an unscoped relationship
+participates wherever both endpoints do.
+_Avoid_: State-specific metadata, implementation status
+
+**Relationship applicability**:
+The architecture states in which a relationship assertion participates.
+Unscoped applicability overlaps every state in which both endpoints participate.
+_Avoid_: Diagram visibility, lifecycle status
+
+**State comparison**:
+A deterministic classification of subjects as added, removed, or retained
+between two architecture states.
+_Avoid_: Gap approval, migration plan, architectural assessment
+
 **Conformance rule**:
 A deterministic restriction over documents, claims, kinds, relationships, or
 adapter mappings.
 _Avoid_: Architectural taste, rendering rule
+
+**Core contract manifest**:
+A versioned declaration of the formats, command families, guarantees, and
+explicit exclusions supported by one YarraMate Core release.
+_Avoid_: Certification, architecture score, implementation workflow
 
 **Check result**:
 A versioned machine-readable outcome containing deterministic correctness
@@ -88,6 +114,11 @@ _Avoid_: Core dependency
 A versioned companion document connecting globally qualified native subjects
 to opaque identities owned by one adapter.
 _Avoid_: Native metadata, generated claim, canonical external model
+
+**LikeC4 project definition**:
+An adapter-owned composition of semantic projections into one derived LikeC4
+model containing multiple views.
+_Avoid_: Canonical architecture model, copied native document
 
 **Evidence provider**:
 An adapter that resolves declared claims against observed sources such as

@@ -26,6 +26,7 @@ export interface ProjectionDefinition {
     readonly documents?: readonly string[]
     readonly kinds?: readonly string[]
     readonly statuses?: readonly LifecycleStatus[]
+    readonly states?: readonly string[]
     readonly owners?: readonly string[]
     readonly constraints?: readonly string[]
     readonly relationships?: 'between' | 'none'
@@ -99,6 +100,30 @@ export function evaluateProjection(
   graph: SemanticGraph,
   projection: ProjectionDefinition,
 ): ProjectionResult {
+  const architectureStateIds = new Set(
+    graph.claims
+      .filter(({ predicate }) => predicate === 'yarramate/state/type')
+      .map(({ subject }) => subject),
+  )
+  const selectedStateIds =
+    projection.query.states === undefined
+      ? undefined
+      : projection.query.states.filter((state) =>
+          architectureStateIds.has(state),
+        )
+  const participatesInSelectedState = (subject: string) => {
+    if (selectedStateIds === undefined) return true
+    if (selectedStateIds.length === 0) return false
+    const presence = claimReferences(
+      graph.claims,
+      subject,
+      'yarramate/state/present-in',
+    )
+    return (
+      presence.length === 0 ||
+      presence.some((state) => selectedStateIds.includes(state))
+    )
+  }
   const selectedConceptIds = new Set(
     graph.subjects
       .filter(({ type }) => type === 'concept')
@@ -125,6 +150,9 @@ export function evaluateProjection(
           'yarramate/constraint/requires',
         )
         return (
+          (projection.query.states === undefined ||
+            (!architectureStateIds.has(id) &&
+              participatesInSelectedState(id))) &&
           (projection.query.subjects === undefined ||
             projection.query.subjects.includes(id)) &&
           (projection.query.documents === undefined ||
@@ -156,6 +184,7 @@ export function evaluateProjection(
       if (
         relationship !== undefined &&
         'ref' in relationship.object &&
+        participatesInSelectedState(subject.id) &&
         selectedConceptIds.has(relationship.subject) &&
         selectedConceptIds.has(relationship.object.ref)
       ) {

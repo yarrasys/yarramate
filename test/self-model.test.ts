@@ -2,22 +2,24 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { compileWorkspace } from '../src/compiler.js'
+import { compareArchitectureStates } from '../src/architecture-state.js'
 import { evaluateProjection, loadProjection } from '../src/projection.js'
+import { prepareLikeC4Export } from '../src/adapters/likec4.js'
 
 const model = (name: string) => ({
-  path: `architecture/${name}.yaml`,
+  path: `.yarramate/architecture/${name}.yaml`,
   source: readFileSync(
-    fileURLToPath(new URL(`../architecture/${name}.yaml`, import.meta.url)),
+    fileURLToPath(new URL(`../.yarramate/architecture/${name}.yaml`, import.meta.url)),
     'utf8',
   ),
 })
 
 const developmentProfile = {
-  path: 'profiles/yarramate-development.yaml',
+  path: '.yarramate/profiles/yarramate-development.yaml',
   source: readFileSync(
     fileURLToPath(
       new URL(
-        '../profiles/yarramate-development.yaml',
+        '../.yarramate/profiles/yarramate-development.yaml',
         import.meta.url,
       ),
     ),
@@ -26,10 +28,33 @@ const developmentProfile = {
 }
 
 const currentEngineProjection = {
-  path: 'projections/current-engine.yaml',
+  path: '.yarramate/projections/current-engine.yaml',
   source: readFileSync(
     fileURLToPath(
-      new URL('../projections/current-engine.yaml', import.meta.url),
+      new URL('../.yarramate/projections/current-engine.yaml', import.meta.url),
+    ),
+    'utf8',
+  ),
+}
+
+const stateFoundationProjection = {
+  path: '.yarramate/projections/state-foundation.yaml',
+  source: readFileSync(
+    fileURLToPath(
+      new URL('../.yarramate/projections/state-foundation.yaml', import.meta.url),
+    ),
+    'utf8',
+  ),
+}
+
+const coreContractProjection = {
+  path: '.yarramate/projections/core-contract-foundation.yaml',
+  source: readFileSync(
+    fileURLToPath(
+      new URL(
+        '../.yarramate/projections/core-contract-foundation.yaml',
+        import.meta.url,
+      ),
     ),
     'utf8',
   ),
@@ -42,6 +67,7 @@ describe('YarraMate repository model', () => {
       model('product'),
       model('engine'),
       model('repository'),
+      model('evolution'),
     ])
 
     expect(result.ok).toBe(true)
@@ -97,6 +123,107 @@ describe('YarraMate repository model', () => {
         ).toBe(true)
         expect(context.subjects.length).toBeGreaterThan(0)
       }
+
+      const stateProjection = loadProjection(stateFoundationProjection)
+      expect(stateProjection.ok).toBe(true)
+      if (stateProjection.ok) {
+        const context = evaluateProjection(
+          result.graph,
+          stateProjection.projection,
+        )
+        expect(context.subjects).toContainEqual({
+          id: 'yarramate-engine#architecture-state-engine',
+          type: 'concept',
+        })
+        expect(
+          context.subjects.some(({ id }) =>
+            id.startsWith('yarramate-evolution#'),
+          ),
+        ).toBe(false)
+      }
+
+      const comparison = compareArchitectureStates(
+        result.graph,
+        'yarramate-evolution#native-foundation',
+        'yarramate-evolution#state-foundation',
+      )
+      expect(comparison.ok).toBe(true)
+      if (comparison.ok) {
+        expect(comparison.comparison.added).toContainEqual({
+          id: 'yarramate-engine#architecture-state-engine',
+          type: 'concept',
+        })
+      }
+
+      const coreContract = loadProjection(coreContractProjection)
+      expect(coreContract.ok).toBe(true)
+      if (coreContract.ok) {
+        const context = evaluateProjection(
+          result.graph,
+          coreContract.projection,
+        )
+        expect(context.subjects).toContainEqual({
+          id: 'yarramate-engine#core-contract-checker',
+          type: 'concept',
+        })
+      }
+
+      const contractComparison = compareArchitectureStates(
+        result.graph,
+        'yarramate-evolution#state-foundation',
+        'yarramate-evolution#core-contract-foundation',
+      )
+      expect(contractComparison.ok).toBe(true)
+      if (contractComparison.ok) {
+        expect(contractComparison.comparison.added).toContainEqual({
+          id: 'yarramate-engine#core-contract-checker',
+          type: 'concept',
+        })
+      }
     }
+  })
+
+  it('renders its architecture-state change through the optional LikeC4 adapter', () => {
+    const repositorySource = (path: string) => ({
+      path,
+      source: readFileSync(
+        fileURLToPath(new URL(`../${path}`, import.meta.url)),
+        'utf8',
+      ),
+    })
+    const result = prepareLikeC4Export({
+      sources: [
+        developmentProfile,
+        model('product'),
+        model('engine'),
+        model('repository'),
+        model('evolution'),
+      ],
+      projection: repositorySource(
+        '.yarramate/projections/state-engine-change.yaml',
+      ),
+      subjectMapping: repositorySource(
+        '.yarramate/integrations/likec4/subject-mapping.yaml',
+      ),
+      kindMapping: repositorySource(
+        '.yarramate/integrations/likec4/kind-mapping.yaml',
+      ),
+      comparison: {
+        from: 'yarramate-evolution#adapter-foundation',
+        to: 'yarramate-evolution#state-foundation',
+      },
+      vocabulary: 'bundled',
+    })
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.source).toContain(
+      `architectureStateEngine = applicationComponent 'Architecture state engine'`,
+    )
+    expect(result.source).toContain(`yarramateChange 'added'`)
+    expect(result.source).toContain(
+      `likec4ExportAdapter = applicationComponent 'LikeC4 export adapter'`,
+    )
+    expect(result.source).toContain(`yarramateChange 'retained'`)
   })
 })

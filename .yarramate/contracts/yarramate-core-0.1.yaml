@@ -1,0 +1,86 @@
+format: yarramate/core-contract/v1
+id: yarramate-core
+version: "0.1"
+packageManifest: package.json
+formats:
+  - id: yarramate/core-contract/v1
+    schema: schema/yarramate-core-contract.schema.json
+    packageExport: ./schema/core-contract
+  - id: yarramate/v1
+    schema: schema/yarramate-document.schema.json
+    packageExport: ./schema/document
+  - id: yarramate/profile/v1
+    schema: schema/yarramate-profile.schema.json
+    packageExport: ./schema/profile
+  - id: yarramate/workspace/v1
+    schema: schema/yarramate-workspace.schema.json
+    packageExport: ./schema/workspace
+  - id: yarramate/projection/v1
+    schema: schema/yarramate-projection.schema.json
+    packageExport: ./schema/projection
+  - id: yarramate/projection-result/v1
+    schema: schema/yarramate-projection-result.schema.json
+    packageExport: ./schema/projection-result
+  - id: yarramate/adapter-mapping/v1
+    schema: schema/yarramate-adapter-mapping.schema.json
+    packageExport: ./schema/adapter-mapping
+  - id: yarramate/graph/v2
+    schema: schema/yarramate-graph-v2.schema.json
+    packageExport: ./schema/graph-v2
+  - id: yarramate/check-result/v1
+    schema: schema/yarramate-check-result.schema.json
+    packageExport: ./schema/check-result
+  - id: yarramate/diagnostic-result/v1
+    schema: schema/yarramate-diagnostic-result.schema.json
+    packageExport: ./schema/diagnostic-result
+  - id: yarramate/evidence/v1
+    schema: schema/yarramate-evidence.schema.json
+    packageExport: ./schema/evidence
+  - id: yarramate/evidence-report/v1
+    schema: schema/yarramate-evidence-report.schema.json
+    packageExport: ./schema/evidence-report
+  - id: yarramate/state-comparison/v1
+    schema: schema/yarramate-state-comparison.schema.json
+    packageExport: ./schema/state-comparison
+commands:
+  - name: init
+    binary: yarramate
+  - name: add
+    binary: yarramate
+  - name: connect
+    binary: yarramate
+  - name: check
+    binary: yarramate
+    machineFormat: yarramate/check-result/v1
+  - name: compile
+    binary: yarramate
+    machineFormat: yarramate/graph/v2
+  - name: view
+    binary: yarramate
+  - name: context
+    binary: yarramate
+    machineFormat: yarramate/projection-result/v1
+  - name: compare
+    binary: yarramate
+    machineFormat: yarramate/state-comparison/v1
+  - name: evidence
+    binary: yarramate
+    machineFormat: yarramate/evidence-report/v1
+guarantees:
+  - adapter-independent-core
+  - canonical-graph-serialization
+  - correctness-not-completeness
+  - deterministic-diagnostic-order
+  - git-native-governance
+  - globally-qualified-compiled-identities
+  - no-partial-graph-on-error
+  - portable-projection-selectors
+  - source-located-diagnostics
+exclusions:
+  - adapter-runtime-dependency
+  - approval-workflow
+  - architectural-completeness
+  - architectural-quality
+  - automatic-discovery
+  - external-language-conformance
+  - state-scoped-claim-values

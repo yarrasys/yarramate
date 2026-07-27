@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yarramate.org/schema/likec4-project/v1",
+  "title": "YarraMate LikeC4 project definition",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "id", "version", "title", "mapping", "views"],
+  "properties": {
+    "format": {
+      "const": "yarramate/likec4-project/v1"
+    },
+    "id": {
+      "$ref": "#/$defs/id"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mapping": {
+      "$ref": "#/$defs/path"
+    },
+    "kindMapping": {
+      "$ref": "#/$defs/path"
+    },
+    "views": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/view"
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+    },
+    "path": {
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\).+$"
+    },
+    "subjectIdentity": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*#[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+    },
+    "comparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to"],
+      "properties": {
+        "from": {
+          "$ref": "#/$defs/subjectIdentity"
+        },
+        "to": {
+          "$ref": "#/$defs/subjectIdentity"
+        }
+      }
+    },
+    "view": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["projection"],
+      "properties": {
+        "projection": {
+          "$ref": "#/$defs/path"
+        },
+        "compare": {
+          "$ref": "#/$defs/comparison"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,14 @@
+format: yarramate/likec4-project/v1
+id: yarramate
+version: "1.0"
+title: YarraMate architecture
+mapping: .yarramate/integrations/likec4/subject-mapping.yaml
+kindMapping: .yarramate/integrations/likec4/kind-mapping.yaml
+views:
+  - projection: .yarramate/projections/likec4-export-path.yaml
+  - projection: .yarramate/projections/state-engine-adapter.yaml
+  - projection: .yarramate/projections/state-engine-target.yaml
+  - projection: .yarramate/projections/state-engine-change.yaml
+    compare:
+      from: yarramate-evolution#adapter-foundation
+      to: yarramate-evolution#state-foundation

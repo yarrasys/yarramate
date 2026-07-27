@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yarramate.org/schema/state-comparison/v1",
+  "title": "YarraMate architecture-state comparison",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "from",
+    "to",
+    "added",
+    "removed",
+    "retained"
+  ],
+  "properties": {
+    "format": {
+      "const": "yarramate/state-comparison/v1"
+    },
+    "from": {
+      "$ref": "#/$defs/subjectIdentity"
+    },
+    "to": {
+      "$ref": "#/$defs/subjectIdentity"
+    },
+    "added": {
+      "$ref": "#/$defs/subjects"
+    },
+    "removed": {
+      "$ref": "#/$defs/subjects"
+    },
+    "retained": {
+      "$ref": "#/$defs/subjects"
+    }
+  },
+  "$defs": {
+    "subjectIdentity": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*#[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/subjectIdentity"
+        },
+        "type": {
+          "enum": ["concept", "relationship"]
+        }
+      }
+    },
+    "subjects": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/subject"
+      }
+    }
+  }
+}

@@ -1,0 +1,25 @@
+format: yarramate/projection/v1
+id: likec4-export-path
+version: "1.0"
+query:
+  subjects:
+    - yarramate-engine#adapter-mapping
+    - yarramate-engine#assemble-likec4-project
+    - yarramate-engine#export-likec4
+    - yarramate-engine#likec4-export-adapter
+    - yarramate-engine#likec4-check-command
+    - yarramate-engine#likec4-export-command
+    - yarramate-engine#projection-result
+    - yarramate-engine#likec4-project-definition
+    - yarramate-engine#likec4-project-schema
+    - yarramate-engine#likec4-generated-project-v2-schema
+    - yarramate-repository#likec4-export-source
+    - yarramate-repository#likec4-prepare-source
+    - yarramate-repository#likec4-project-source
+    - yarramate-repository#likec4-project-definition-source
+    - yarramate-repository#likec4-project-schema-source
+    - yarramate-repository#likec4-generated-project-v2-schema-source
+  relationships: between
+presentation:
+  title: YarraMate LikeC4 export path
+  description: The optional adapter path from semantic projection and explicit mapping to derived LikeC4 output.
