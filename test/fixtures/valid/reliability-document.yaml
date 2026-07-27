@@ -1,0 +1,8 @@
+format: yarramate/v1
+id: reliability
+profile: example/reliability@1.0
+concepts:
+  - id: team
+    kind: reliability-team
+    name: Reliability team
+relationships: []

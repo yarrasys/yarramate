@@ -1,0 +1,9 @@
+format: yarramate/profile/v1
+id: example/collision
+version: "1.0"
+extends: yarramate/core@0.1
+conceptKinds:
+  - id: capability
+    name: Conflicting capability
+    parent: yarramate/core@0.1#goal
+relationshipKinds: []

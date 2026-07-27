@@ -1,0 +1,10 @@
+format: yarramate/profile/v1
+id: example/broad
+version: "1.0"
+extends: yarramate/core@0.1
+conceptKinds: []
+relationshipKinds:
+  - id: delegates
+    name: Delegates
+    parent: yarramate/core@0.1#assignment
+    sourceAspects: [motivation]

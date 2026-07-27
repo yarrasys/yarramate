@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yarramate.org/schema/profile/v1",
+  "title": "YarraMate extension profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "id",
+    "version",
+    "extends",
+    "conceptKinds",
+    "relationshipKinds"
+  ],
+  "properties": {
+    "format": {
+      "const": "yarramate/profile/v1"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*(?:/[a-z][a-z0-9-]*)+$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
+    "extends": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*(?:/[a-z][a-z0-9-]*)+@[0-9]+\\.[0-9]+$"
+    },
+    "conceptKinds": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/conceptKind"
+      }
+    },
+    "relationshipKinds": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/relationshipKind"
+      }
+    }
+  },
+  "$defs": {
+    "localKindId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+    },
+    "qualifiedKindId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*(?:/[a-z][a-z0-9-]*)+@[0-9]+\\.[0-9]+#[a-z][A-Za-z0-9-]*$"
+    },
+    "aspect": {
+      "enum": [
+        "motivation",
+        "active-structure",
+        "behavior",
+        "passive-structure",
+        "composite"
+      ]
+    },
+    "conceptKind": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "parent"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/localKindId"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parent": {
+          "$ref": "#/$defs/qualifiedKindId"
+        }
+      }
+    },
+    "relationshipKind": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "parent"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/localKindId"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parent": {
+          "$ref": "#/$defs/qualifiedKindId"
+        },
+        "sourceAspects": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/aspect"
+          }
+        },
+        "targetAspects": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/aspect"
+          }
+        }
+      }
+    }
+  }
+}

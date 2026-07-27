@@ -1,0 +1,8 @@
+format: yarramate/v1
+id: workspace-product
+profile: yarramate/core@0.1
+concepts:
+  - id: native-compilation
+    kind: capability
+    name: Native compilation
+relationships: []

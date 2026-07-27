@@ -3,6 +3,19 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./schema/document": "./schema/yarramate-document.schema.json",
+    "./schema/profile": "./schema/yarramate-profile.schema.json",
+    "./schema/projection": "./schema/yarramate-projection.schema.json",
+    "./schema/adapter-mapping": "./schema/yarramate-adapter-mapping.schema.json",
+    "./schema/graph-v2": "./schema/yarramate-graph-v2.schema.json"
+  },
   "bin": {
     "yarramate": "dist/cli.js"
   },
@@ -14,6 +27,11 @@
     "build": "tsc -p tsconfig.build.json",
     "docs:dev": "likec4 serve examples/governed-change",
     "format": "likec4 format profile examples",
+    "self:check": "pnpm build && node dist/cli.js check profiles/yarramate-development.yaml architecture/product.yaml architecture/engine.yaml architecture/repository.yaml",
+    "self:compile": "pnpm build && node dist/cli.js compile profiles/yarramate-development.yaml architecture/product.yaml architecture/engine.yaml architecture/repository.yaml",
+    "self:context": "pnpm build && node dist/cli.js context projections/current-engine.yaml profiles/yarramate-development.yaml architecture/product.yaml architecture/engine.yaml architecture/repository.yaml",
+    "self:view": "pnpm build && node dist/cli.js view projections/current-engine.yaml profiles/yarramate-development.yaml architecture/product.yaml architecture/engine.yaml architecture/repository.yaml",
+    "example:check": "pnpm build && node dist/cli.js check examples/governed-change/architecture.yaml examples/governed-change/likec4.mapping.yaml",
     "validate": "likec4 validate --no-layout examples/governed-change",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"

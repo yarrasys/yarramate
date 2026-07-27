@@ -1,0 +1,9 @@
+format: yarramate/projection/v1
+id: current-capabilities
+version: "1.0"
+query:
+  kinds: [yarramate/core@0.1#capability]
+  statuses: [current]
+  relationships: between
+presentation:
+  title: Current capabilities

@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yarramate.org/schema/projection/v1",
+  "title": "YarraMate semantic projection",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "id", "version", "query"],
+  "properties": {
+    "format": {
+      "const": "yarramate/projection/v1"
+    },
+    "id": {
+      "$ref": "#/$defs/id"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
+    "query": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "documents": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "kinds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/qualifiedKind"
+          }
+        },
+        "statuses": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": ["planned", "current", "retired"]
+          }
+        },
+        "relationships": {
+          "enum": ["between", "none"]
+        }
+      }
+    },
+    "presentation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "description": {
+          "$ref": "#/$defs/nonEmptyText"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+    },
+    "qualifiedKind": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*(?:/[a-z][a-z0-9-]*)+@[0-9]+\\.[0-9]+#[a-z][A-Za-z0-9-]*$"
+    },
+    "nonEmptyText": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

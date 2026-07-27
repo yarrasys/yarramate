@@ -1,0 +1,9 @@
+format: yarramate/projection/v1
+id: product-context
+version: "1.0"
+query:
+  documents: [yarramate-product]
+  relationships: between
+presentation:
+  title: Product context
+  description: Product goals, requirements, capabilities, and their relationships.

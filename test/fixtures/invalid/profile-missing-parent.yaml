@@ -1,0 +1,9 @@
+format: yarramate/profile/v1
+id: example/broken
+version: "1.0"
+extends: yarramate/core@0.1
+conceptKinds:
+  - id: mystery
+    name: Mystery
+    parent: example/absent@1.0#missing
+relationshipKinds: []

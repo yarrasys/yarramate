@@ -1,0 +1,17 @@
+format: yarramate/v1
+id: lifecycle
+profile: yarramate/core@0.1
+concepts:
+  - id: current-capability
+    kind: capability
+    name: Current capability
+    status: current
+  - id: planned-goal
+    kind: goal
+    name: Planned goal
+relationships:
+  - id: capability-supports-goal
+    kind: realization
+    from: current-capability
+    to: planned-goal
+    status: planned

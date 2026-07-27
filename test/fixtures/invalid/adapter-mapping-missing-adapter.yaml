@@ -1,0 +1,4 @@
+format: yarramate/adapter-mapping/v1
+id: missing-adapter
+version: "1.0"
+mappings: []

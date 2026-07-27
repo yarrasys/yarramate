@@ -31,15 +31,26 @@ projects; their mention does not imply affiliation or endorsement.
 
 ## Current foundation
 
-The repository currently proves the semantic vocabulary through a LikeC4
-adapter while the tool-neutral core is designed:
+The repository now implements and dogfoods the first tool-neutral native
+compiler foundation:
 
 - `profile/specification.likec4` — current adapter vocabulary
 - `profile/SEMANTICS.md` — semantic guidance
 - `src/profile.ts` — machine-readable kind catalogue and relationship policies
 - `schema/yarramate-document.schema.json` — normative native document schema
+- `schema/yarramate-profile.schema.json` — normative extension-profile schema
+- `schema/yarramate-graph-v2.schema.json` — normative graph interchange schema
 - `src/compiler.ts` — native loader and deterministic claim compiler
+- `src/graph.ts` — canonical graph-v2 serialization
 - `docs/NATIVE-DOCUMENT.md` — authoring, identity, graph, and diagnostic rules
+- `docs/PROFILES.md` — profile inheritance and qualified kind identities
+- `docs/PROJECTIONS.md` — semantic query and context-result rules
+- `docs/SEMANTIC-GRAPH.md` — normative graph-v2 interchange contract
+- `docs/ADAPTER-MAPPINGS.md` — optional external subject-identity mappings
+- `architecture/*.yaml` — this repository's canonical native model
+- `profiles/yarramate-development.yaml` — self-hosted development vocabulary
+- `projections/*.yaml` — canonical focused queries over the self-model
+- `docs/DOGFOODING.md` — self-modelling coverage and observed semantic friction
 - `test/profile.test.ts` — catalogue synchronization checks
 - `examples/governed-change` — cross-layer example with a conditional path
 - `docs/PRODUCT-CONTRACT.md` — agreed product and architecture contract
@@ -52,6 +63,10 @@ adapter while the tool-neutral core is designed:
 ```sh
 pnpm install
 pnpm build
+pnpm self:check
+pnpm self:context
+pnpm self:view
+pnpm example:check
 pnpm validate
 pnpm test
 pnpm docs:dev
@@ -61,12 +76,50 @@ Check native documents through the stable CLI:
 
 ```sh
 pnpm build
+node dist/cli.js init .
+node dist/cli.js add architecture/main.yaml --id delivery --kind capability --name "Reliable delivery"
+node dist/cli.js add architecture/main.yaml --id delivery-service --kind applicationService --name "Delivery service"
+node dist/cli.js connect architecture/main.yaml --id service-realizes-delivery --kind realization --from delivery-service --to delivery
 node dist/cli.js check architecture.yaml
 node dist/cli.js check architecture.yaml --json
+node dist/cli.js compile architecture.yaml > graph.json
 ```
+
+`add` and `connect` validate the candidate workspace before replacing the
+target document. Supply extension profiles and cross-document dependencies
+explicitly with repeatable `--source <source.yaml>` options.
+
+YarraMate models its own repository through the same interface:
+
+```sh
+pnpm self:check
+```
+
+The governed-change example keeps native YAML canonical while linking its
+stable subjects to the optional LikeC4 visualization model:
+
+```sh
+pnpm example:check
+pnpm validate
+```
+
+The typed library entrypoint exposes the same compiler seam:
+
+```ts
+import { compileWorkspace } from 'yarramate'
+
+const result = compileWorkspace([
+  { path: 'architecture.yaml', source: yamlSource },
+])
+```
+
+The normative schemas are exported as `yarramate/schema/document` and
+`yarramate/schema/profile`; the projection schema is exported as
+`yarramate/schema/projection`, and the optional mapping schema as
+`yarramate/schema/adapter-mapping`. The normative graph schema is exported as
+`yarramate/schema/graph-v2`.
 
 ## Status
 
-Version `0.1.0` is a validated foundation, not yet the complete YarraMate
-engine. The next step is to define the native document schema and compiler
-contract before implementing conformance.
+Version `0.1.0` is a validated native compiler, projection, and safe-authoring
+foundation, not yet the complete YarraMate engine or adapter suite.

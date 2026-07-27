@@ -2,6 +2,9 @@
 
 Status: accepted
 
+> Graph v1 kind identity is superseded by ADR 0006. The source-document and
+> compiler-seam decisions remain in force.
+
 ## Context
 
 ADR 0002 requires native, claim-centred, tool-neutral YarraMate documents.

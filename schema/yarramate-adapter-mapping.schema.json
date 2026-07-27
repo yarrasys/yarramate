@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yarramate.org/schema/adapter-mapping/v1",
+  "title": "YarraMate adapter mapping",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "id", "version", "adapter", "mappings"],
+  "properties": {
+    "format": {
+      "const": "yarramate/adapter-mapping/v1"
+    },
+    "id": {
+      "$ref": "#/$defs/id"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
+    "adapter": {
+      "$ref": "#/$defs/id"
+    },
+    "mappings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/mapping"
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+    },
+    "qualifiedSubject": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*#[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+    },
+    "nonEmptyText": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["native", "external", "type"],
+      "properties": {
+        "native": {
+          "$ref": "#/$defs/qualifiedSubject"
+        },
+        "external": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "type": {
+          "enum": ["concept", "relationship"]
+        }
+      }
+    }
+  }
+}

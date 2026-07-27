@@ -1,0 +1,15 @@
+format: yarramate/v1
+id: constrained-platform
+profile: example/platform@1.0
+concepts:
+  - id: team
+    kind: platform-team
+    name: Platform team
+  - id: target
+    kind: goal
+    name: Target
+relationships:
+  - id: invalid-ownership
+    kind: owns
+    from: team
+    to: target

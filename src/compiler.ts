@@ -2,22 +2,19 @@ import Ajv2020Module from 'ajv/dist/2020.js'
 import { LineCounter, parseDocument } from 'yaml'
 import {
   conceptKinds,
-  relationshipKinds,
   relationshipPolicies,
 } from './profile.js'
 import documentSchema from '../schema/yarramate-document.schema.json' with {
   type: 'json',
 }
+import profileSchema from '../schema/yarramate-profile.schema.json' with {
+  type: 'json',
+}
 
-const knownConceptKinds = new Set(conceptKinds.map(({ id }) => id))
-const conceptKindById = new Map(conceptKinds.map((kind) => [kind.id, kind]))
-const knownRelationshipKinds = new Set<string>(relationshipKinds)
-const relationshipPolicyById = new Map(
-  relationshipPolicies.map((policy) => [policy.id, policy]),
-)
 const coreProfile = 'yarramate/core@0.1'
 const Ajv2020 = Ajv2020Module.default
 const validateDocument = new Ajv2020({ allErrors: true }).compile(documentSchema)
+const validateProfile = new Ajv2020({ allErrors: true }).compile(profileSchema)
 
 export interface WorkspaceSource {
   readonly path: string
@@ -39,6 +36,7 @@ interface NativeConcept {
   readonly kind: string
   readonly name: string
   readonly description?: string
+  readonly status?: 'planned' | 'current' | 'retired'
 }
 
 interface NativeRelationship {
@@ -49,6 +47,7 @@ interface NativeRelationship {
   readonly name?: string
   readonly mode?: 'read' | 'write' | 'read-write' | 'unspecified'
   readonly content?: string
+  readonly status?: 'planned' | 'current' | 'retired'
 }
 
 interface NativeDocument {
@@ -57,6 +56,44 @@ interface NativeDocument {
   readonly profile: string
   readonly concepts: readonly NativeConcept[]
   readonly relationships: readonly NativeRelationship[]
+}
+
+interface NativeProfileKind {
+  readonly id: string
+  readonly name: string
+  readonly parent: string
+}
+
+interface NativeProfileRelationshipKind extends NativeProfileKind {
+  readonly sourceAspects?: readonly (typeof conceptKinds)[number]['aspect'][]
+  readonly targetAspects?: readonly (typeof conceptKinds)[number]['aspect'][]
+}
+
+interface NativeProfile {
+  readonly format: 'yarramate/profile/v1'
+  readonly id: string
+  readonly version: string
+  readonly extends: string
+  readonly conceptKinds: readonly NativeProfileKind[]
+  readonly relationshipKinds: readonly NativeProfileRelationshipKind[]
+}
+
+interface ResolvedConceptKind {
+  readonly identity: string
+  readonly aspect: (typeof conceptKinds)[number]['aspect']
+}
+
+interface ResolvedRelationshipKind {
+  readonly identity: string
+  readonly sourceAspects?: readonly (typeof conceptKinds)[number]['aspect'][]
+  readonly targetAspects?: readonly (typeof conceptKinds)[number]['aspect'][]
+}
+
+interface ResolvedProfile {
+  readonly identity: string
+  readonly lineage: readonly string[]
+  readonly conceptKinds: ReadonlyMap<string, ResolvedConceptKind>
+  readonly relationshipKinds: ReadonlyMap<string, ResolvedRelationshipKind>
 }
 
 export interface GraphSource {
@@ -77,7 +114,7 @@ export interface GraphClaim {
 }
 
 export interface SemanticGraph {
-  readonly format: 'yarramate/graph/v1'
+  readonly format: 'yarramate/graph/v2'
   readonly profiles: readonly string[]
   readonly documents: ReadonlyArray<{
     readonly id: string
@@ -114,7 +151,288 @@ const diagnosticFailure = (
 export function compileWorkspace(
   sources: readonly WorkspaceSource[],
 ): CompilationResult {
-  const documents = sources.map((input) => {
+  const profileInputs: WorkspaceSource[] = []
+  const documentInputs: WorkspaceSource[] = []
+  for (const source of sources) {
+    const probe = parseDocument(source.source)
+    if (probe.get('format') === 'yarramate/profile/v1') {
+      profileInputs.push(source)
+    } else {
+      documentInputs.push(source)
+    }
+  }
+
+  const profiles = new Map<string, ResolvedProfile>()
+  const conceptKindByIdentity = new Map<string, ResolvedConceptKind>()
+  const relationshipKindByIdentity = new Map<string, ResolvedRelationshipKind>()
+  const coreConceptKinds = new Map<string, ResolvedConceptKind>()
+  for (const kind of conceptKinds) {
+    const resolved = {
+      identity: `${coreProfile}#${kind.id}`,
+      aspect: kind.aspect,
+    } satisfies ResolvedConceptKind
+    coreConceptKinds.set(kind.id, resolved)
+    conceptKindByIdentity.set(resolved.identity, resolved)
+  }
+  const coreRelationshipKinds = new Map<string, ResolvedRelationshipKind>()
+  for (const policy of relationshipPolicies) {
+    const resolved = {
+      identity: `${coreProfile}#${policy.id}`,
+      sourceAspects: policy.sourceAspects,
+      targetAspects: policy.targetAspects,
+    } satisfies ResolvedRelationshipKind
+    coreRelationshipKinds.set(policy.id, resolved)
+    relationshipKindByIdentity.set(resolved.identity, resolved)
+  }
+  profiles.set(coreProfile, {
+    identity: coreProfile,
+    lineage: [coreProfile],
+    conceptKinds: coreConceptKinds,
+    relationshipKinds: coreRelationshipKinds,
+  })
+
+  const profileDiagnostics: Diagnostic[] = []
+  const pendingProfiles: Array<{
+    readonly input: WorkspaceSource
+    readonly value: NativeProfile
+    readonly identity: string
+    readonly positionFor: (
+      yamlPath: readonly (string | number)[],
+    ) => { readonly line: number; readonly col: number }
+  }> = []
+  for (const input of profileInputs) {
+    const lineCounter = new LineCounter()
+    const yaml = parseDocument(input.source, { lineCounter })
+    const value = yaml.toJS() as NativeProfile
+    const positionFor = (yamlPath: readonly (string | number)[]) => {
+      const node = yaml.getIn(yamlPath, true)
+      const offset =
+        typeof node === 'object' &&
+        node !== null &&
+        'range' in node &&
+        Array.isArray(node.range)
+          ? node.range[0]
+          : 0
+      return lineCounter.linePos(offset)
+    }
+    if (yaml.errors.length > 0) {
+      for (const error of yaml.errors) {
+        const position = error.linePos?.[0] ?? { line: 1, col: 1 }
+        profileDiagnostics.push({
+          severity: 'error',
+          code: 'YM101',
+          message: error.message.split(' at line ')[0] ?? error.message,
+          path: input.path,
+          pointer: '/',
+          line: position.line,
+          column: position.col,
+        })
+      }
+      continue
+    }
+    if (!validateProfile(value)) {
+      for (const error of validateProfile.errors ?? []) {
+        const property =
+          error.keyword === 'additionalProperties'
+            ? String(error.params.additionalProperty)
+            : undefined
+        const pointer = property
+          ? `${error.instancePath}/${property}`
+          : error.instancePath || '/'
+        const yamlPath = pointer
+          .split('/')
+          .slice(1)
+          .map((segment) =>
+            /^\d+$/.test(segment) ? Number(segment) : segment,
+          )
+        const position = positionFor(yamlPath)
+        profileDiagnostics.push({
+          severity: 'error',
+          code: 'YM201',
+          message: property
+            ? `Property "${property}" is not allowed`
+            : `Profile schema violation: ${error.message ?? error.keyword}`,
+          path: input.path,
+          pointer,
+          line: position.line,
+          column: position.col,
+        })
+      }
+      continue
+    }
+
+    const identity = `${value.id}@${value.version}`
+    pendingProfiles.push({ input, value, identity, positionFor })
+  }
+
+  let unresolvedProfiles = pendingProfiles.sort((left, right) =>
+    left.identity.localeCompare(right.identity) ||
+    left.input.path.localeCompare(right.input.path),
+  )
+  while (unresolvedProfiles.length > 0) {
+    const next: typeof unresolvedProfiles = []
+    let resolvedAny = false
+
+    for (const entry of unresolvedProfiles) {
+      const { input, value, identity, positionFor } = entry
+      const parentProfile = profiles.get(value.extends)
+      if (parentProfile === undefined) {
+        next.push(entry)
+        continue
+      }
+      if (profiles.has(identity)) {
+        const position = positionFor(['id'])
+        profileDiagnostics.push({
+          severity: 'error',
+          code: 'YM411',
+          message: `Profile "${identity}" is declared more than once`,
+          path: input.path,
+          pointer: '/id',
+          line: position.line,
+          column: position.col,
+        })
+        continue
+      }
+
+      const resolvedConceptKinds = new Map(parentProfile.conceptKinds)
+      for (const [index, kind] of value.conceptKinds.entries()) {
+        if (resolvedConceptKinds.has(kind.id)) {
+          const position = positionFor(['conceptKinds', index, 'id'])
+          profileDiagnostics.push({
+            severity: 'error',
+            code: 'YM409',
+            message: `Concept kind "${kind.id}" conflicts with an inherited kind`,
+            path: input.path,
+            pointer: `/conceptKinds/${index}/id`,
+            line: position.line,
+            column: position.col,
+          })
+          continue
+        }
+        const parent = conceptKindByIdentity.get(kind.parent)
+        if (parent === undefined) {
+          const position = positionFor(['conceptKinds', index, 'parent'])
+          profileDiagnostics.push({
+            severity: 'error',
+            code: 'YM407',
+            message: `Concept parent "${kind.parent}" is not available`,
+            path: input.path,
+            pointer: `/conceptKinds/${index}/parent`,
+            line: position.line,
+            column: position.col,
+          })
+          continue
+        }
+        const resolved = {
+          identity: `${identity}#${kind.id}`,
+          aspect: parent.aspect,
+        } satisfies ResolvedConceptKind
+        resolvedConceptKinds.set(kind.id, resolved)
+        conceptKindByIdentity.set(resolved.identity, resolved)
+      }
+
+      const resolvedRelationshipKinds = new Map(
+        parentProfile.relationshipKinds,
+      )
+      for (const [index, kind] of value.relationshipKinds.entries()) {
+        if (resolvedRelationshipKinds.has(kind.id)) {
+          const position = positionFor(['relationshipKinds', index, 'id'])
+          profileDiagnostics.push({
+            severity: 'error',
+            code: 'YM410',
+            message: `Relationship kind "${kind.id}" conflicts with an inherited kind`,
+            path: input.path,
+            pointer: `/relationshipKinds/${index}/id`,
+            line: position.line,
+            column: position.col,
+          })
+          continue
+        }
+        const parent = relationshipKindByIdentity.get(kind.parent)
+        if (parent === undefined) {
+          const position = positionFor(['relationshipKinds', index, 'parent'])
+          profileDiagnostics.push({
+            severity: 'error',
+            code: 'YM408',
+            message: `Relationship parent "${kind.parent}" is not available`,
+            path: input.path,
+            pointer: `/relationshipKinds/${index}/parent`,
+            line: position.line,
+            column: position.col,
+          })
+          continue
+        }
+        let broadensParent = false
+        for (const endpoint of ['source', 'target'] as const) {
+          const field = `${endpoint}Aspects` as const
+          const declared = kind[field]
+          const inherited = parent[field]
+          if (
+            declared !== undefined &&
+            inherited !== undefined &&
+            declared.some((aspect) => !inherited.includes(aspect))
+          ) {
+            const position = positionFor([
+              'relationshipKinds',
+              index,
+              field,
+            ])
+            profileDiagnostics.push({
+              severity: 'error',
+              code: 'YM412',
+              message: `Relationship kind "${kind.id}" broadens its parent ${endpoint} aspects`,
+              path: input.path,
+              pointer: `/relationshipKinds/${index}/${field}`,
+              line: position.line,
+              column: position.col,
+            })
+            broadensParent = true
+          }
+        }
+        if (broadensParent) {
+          continue
+        }
+        const resolved = {
+          identity: `${identity}#${kind.id}`,
+          sourceAspects: kind.sourceAspects ?? parent.sourceAspects,
+          targetAspects: kind.targetAspects ?? parent.targetAspects,
+        } satisfies ResolvedRelationshipKind
+        resolvedRelationshipKinds.set(kind.id, resolved)
+        relationshipKindByIdentity.set(resolved.identity, resolved)
+      }
+
+      profiles.set(identity, {
+        identity,
+        lineage: [...parentProfile.lineage, identity],
+        conceptKinds: resolvedConceptKinds,
+        relationshipKinds: resolvedRelationshipKinds,
+      })
+      resolvedAny = true
+    }
+
+    if (!resolvedAny) {
+      for (const { input, value, positionFor } of next) {
+        const position = positionFor(['extends'])
+        profileDiagnostics.push({
+          severity: 'error',
+          code: 'YM406',
+          message: `Parent profile "${value.extends}" is not available`,
+          path: input.path,
+          pointer: '/extends',
+          line: position.line,
+          column: position.col,
+        })
+      }
+      break
+    }
+    unresolvedProfiles = next
+  }
+
+  if (profileDiagnostics.length > 0) {
+    return diagnosticFailure(profileDiagnostics)
+  }
+
+  const documents = documentInputs.map((input) => {
     const lineCounter = new LineCounter()
     const yaml = parseDocument(input.source, { lineCounter })
     const value = yaml.toJS() as NativeDocument
@@ -217,8 +535,26 @@ export function compileWorkspace(
     seenDocumentIds.add(value.id)
   }
 
+  const conceptByQualifiedId = new Map<
+    string,
+    { readonly concept: NativeConcept; readonly profile: string }
+  >(
+    documents.flatMap(({ value }) =>
+      value.concepts.map(
+        (concept) =>
+          [
+            `${value.id}#${concept.id}`,
+            { concept, profile: value.profile },
+          ] as const,
+      ),
+    ),
+  )
+  const qualifyReference = (documentId: string, reference: string) =>
+    reference.includes('#') ? reference : `${documentId}#${reference}`
+
   for (const { input, value, location } of documents) {
-    if (value.profile !== coreProfile) {
+    const selectedProfile = profiles.get(value.profile)
+    if (selectedProfile === undefined) {
       const source = location(['profile'], '/profile')
       diagnostics.push({
         severity: 'error',
@@ -261,12 +597,8 @@ export function compileWorkspace(
       seenIds.add(declaration.id)
     }
 
-    const conceptIds = new Set(value.concepts.map(({ id }) => id))
-    const conceptById = new Map(
-      value.concepts.map((concept) => [concept.id, concept]),
-    )
     for (const [index, concept] of value.concepts.entries()) {
-      if (!knownConceptKinds.has(concept.kind)) {
+      if (!selectedProfile.conceptKinds.has(concept.kind)) {
         const pointer = `/concepts/${index}/kind`
         const source = location(['concepts', index, 'kind'], pointer)
         diagnostics.push({
@@ -309,7 +641,7 @@ export function compileWorkspace(
           })
         }
       }
-      if (!knownRelationshipKinds.has(relationship.kind)) {
+      if (!selectedProfile.relationshipKinds.has(relationship.kind)) {
         const pointer = `/relationships/${index}/kind`
         const source = location(['relationships', index, 'kind'], pointer)
         diagnostics.push({
@@ -326,7 +658,7 @@ export function compileWorkspace(
         relationship.kind === 'composition' ||
         relationship.kind === 'aggregation'
       ) {
-        const endpointKey = `${relationship.from}\u0000${relationship.to}`
+        const endpointKey = `${qualifyReference(value.id, relationship.from)}\u0000${qualifyReference(value.id, relationship.to)}`
         const previous = wholePartByEndpoints.get(endpointKey)
         if (previous !== undefined && previous.kind !== relationship.kind) {
           const pointer = `/relationships/${index}/kind`
@@ -349,7 +681,9 @@ export function compileWorkspace(
       }
       for (const endpoint of ['from', 'to'] as const) {
         const reference = relationship[endpoint]
-        if (!conceptIds.has(reference)) {
+        if (
+          !conceptByQualifiedId.has(qualifyReference(value.id, reference))
+        ) {
           const pointer = `/relationships/${index}/${endpoint}`
           const source = location(
             ['relationships', index, endpoint],
@@ -366,16 +700,20 @@ export function compileWorkspace(
           })
         }
       }
-      const policy = relationshipPolicyById.get(
-        relationship.kind as (typeof relationshipKinds)[number],
-      )
+      const policy = selectedProfile.relationshipKinds.get(relationship.kind)
       if (policy !== undefined) {
         for (const endpoint of ['source', 'target'] as const) {
           const reference =
             endpoint === 'source' ? relationship.from : relationship.to
-          const concept = conceptById.get(reference)
+          const resolvedConcept = conceptByQualifiedId.get(
+            qualifyReference(value.id, reference),
+          )
           const kind =
-            concept === undefined ? undefined : conceptKindById.get(concept.kind)
+            resolvedConcept === undefined
+              ? undefined
+              : profiles
+                  .get(resolvedConcept.profile)
+                  ?.conceptKinds.get(resolvedConcept.concept.kind)
           const allowed =
             endpoint === 'source'
               ? policy.sourceAspects
@@ -413,7 +751,11 @@ export function compileWorkspace(
           id: `${subject}~kind`,
           subject,
           predicate: 'yarramate/concept/kind',
-          object: { value: concept.kind },
+          object: {
+            value:
+              selectedProfile.conceptKinds.get(concept.kind)?.identity ??
+              concept.kind,
+          },
           origin: 'declared',
           source: location(
             ['concepts', index, 'kind'],
@@ -445,6 +787,19 @@ export function compileWorkspace(
           ),
         })
       }
+      if (concept.status !== undefined) {
+        claims.push({
+          id: `${subject}~status`,
+          subject,
+          predicate: 'yarramate/lifecycle/status',
+          object: { value: concept.status },
+          origin: 'declared',
+          source: location(
+            ['concepts', index, 'status'],
+            `/concepts/${index}/status`,
+          ),
+        })
+      }
     }
 
     for (const [index, relationship] of value.relationships.entries()) {
@@ -452,9 +807,11 @@ export function compileWorkspace(
       subjects.push({ id, type: 'relationship' })
       claims.push({
         id,
-        subject: `${value.id}#${relationship.from}`,
-        predicate: `yarramate/relationship/${relationship.kind}`,
-        object: { ref: `${value.id}#${relationship.to}` },
+        subject: qualifyReference(value.id, relationship.from),
+        predicate:
+          selectedProfile.relationshipKinds.get(relationship.kind)?.identity ??
+          relationship.kind,
+        object: { ref: qualifyReference(value.id, relationship.to) },
         origin: 'declared',
         source: location(
           ['relationships', index],
@@ -500,6 +857,19 @@ export function compileWorkspace(
           ),
         })
       }
+      if (relationship.status !== undefined) {
+        claims.push({
+          id: `${id}~status`,
+          subject: id,
+          predicate: 'yarramate/lifecycle/status',
+          object: { value: relationship.status },
+          origin: 'declared',
+          source: location(
+            ['relationships', index, 'status'],
+            `/relationships/${index}/status`,
+          ),
+        })
+      }
     }
   }
 
@@ -510,8 +880,14 @@ export function compileWorkspace(
   return {
     ok: true,
     graph: {
-      format: 'yarramate/graph/v1',
-      profiles: [...new Set(documents.map(({ value }) => value.profile))].sort(),
+      format: 'yarramate/graph/v2',
+      profiles: [
+        ...new Set(
+          documents.flatMap(
+            ({ value }) => profiles.get(value.profile)?.lineage ?? [],
+          ),
+        ),
+      ].sort(),
       documents: documents
         .map(({ input, value }) => ({ id: value.id, source: input.path }))
         .sort(compareById),

@@ -1,0 +1,9 @@
+format: yarramate/v1
+id: invalid-lifecycle
+profile: yarramate/core@0.1
+concepts:
+  - id: capability
+    kind: capability
+    name: Capability
+    status: approved
+relationships: []

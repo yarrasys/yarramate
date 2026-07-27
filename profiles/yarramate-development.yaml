@@ -1,0 +1,15 @@
+format: yarramate/profile/v1
+id: yarramate/development
+version: "1.0"
+extends: yarramate/core@0.1
+conceptKinds:
+  - id: compiler-module
+    name: Compiler module
+    parent: yarramate/core@0.1#applicationComponent
+  - id: repository-file
+    name: Repository file
+    parent: yarramate/core@0.1#artifact
+relationshipKinds:
+  - id: implements
+    name: Implements
+    parent: yarramate/core@0.1#realization

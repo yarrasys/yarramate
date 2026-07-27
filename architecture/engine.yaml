@@ -1,0 +1,251 @@
+format: yarramate/v1
+id: yarramate-engine
+profile: yarramate/development@1.0
+concepts:
+  - id: compiler
+    kind: compiler-module
+    name: Native compiler
+    description: Loads native YAML and produces the tool-neutral semantic graph.
+    status: current
+  - id: cli
+    kind: compiler-module
+    name: YarraMate CLI
+    description: Stable repository-native interface over compiler behavior.
+    status: current
+  - id: profile-catalogue
+    kind: compiler-module
+    name: Native profile catalogue
+    description: Supplies known concept kinds and broad relationship policies.
+    status: current
+  - id: parse-document
+    kind: applicationFunction
+    name: Parse native document
+    status: current
+  - id: validate-document-structure
+    kind: applicationFunction
+    name: Validate document structure
+    status: current
+  - id: validate-semantic-claims
+    kind: applicationFunction
+    name: Validate semantic claims
+    status: current
+  - id: validate-adapter-mapping
+    kind: applicationFunction
+    name: Validate adapter mapping
+    description: Checks optional subject mappings without changing the native semantic graph.
+    status: current
+  - id: compile-semantic-graph
+    kind: applicationFunction
+    name: Compile semantic graph
+    status: current
+  - id: serialize-semantic-graph
+    kind: applicationFunction
+    name: Serialize semantic graph
+    description: Emits canonical graph-v2 JSON for adapters, agents, and CI.
+    status: current
+  - id: check-command
+    kind: applicationService
+    name: Check command
+    description: Reports deterministic source-located diagnostics without writing compiled output.
+    status: current
+  - id: init-command
+    kind: applicationService
+    name: Init command
+    description: Creates a minimal native workspace without overwriting an existing document.
+    status: current
+  - id: add-command
+    kind: applicationService
+    name: Add command
+    description: Adds a concept only when the candidate workspace compiles successfully.
+    status: current
+  - id: connect-command
+    kind: applicationService
+    name: Connect command
+    description: Adds a relationship only when the candidate workspace compiles successfully.
+    status: current
+  - id: compile-command
+    kind: applicationService
+    name: Compile command
+    description: Emits the normative graph-v2 interchange document without writing a derived artifact.
+    status: current
+  - id: native-document
+    kind: dataObject
+    name: Native YAML document
+    status: current
+  - id: document-schema
+    kind: dataObject
+    name: Native document JSON Schema
+    status: current
+  - id: kind-catalogue
+    kind: dataObject
+    name: Concept kind catalogue
+    status: current
+  - id: relationship-policy-catalogue
+    kind: dataObject
+    name: Relationship policy catalogue
+    status: current
+  - id: semantic-graph
+    kind: dataObject
+    name: Tool-neutral semantic graph
+    status: current
+  - id: diagnostics
+    kind: dataObject
+    name: Source-located diagnostics
+    status: current
+  - id: adapter-mapping
+    kind: dataObject
+    name: Optional adapter mapping
+    description: Versioned correspondence between globally qualified native subjects and external identities.
+    status: current
+  - id: adapter-mapping-schema
+    kind: dataObject
+    name: Adapter mapping JSON Schema
+    status: current
+  - id: semantic-graph-schema
+    kind: dataObject
+    name: Semantic graph v2 JSON Schema
+    status: current
+relationships:
+  - id: compiler-delivers-compilation
+    kind: implements
+    from: compiler
+    to: yarramate-product#compile-native-architecture
+  - id: compiler-delivers-validation
+    kind: implements
+    from: compiler
+    to: yarramate-product#validate-native-architecture
+  - id: graph-delivers-machine-context
+    kind: realization
+    from: semantic-graph
+    to: yarramate-product#provide-machine-context
+  - id: compiler-parses
+    kind: assignment
+    from: compiler
+    to: parse-document
+  - id: compiler-validates-structure
+    kind: assignment
+    from: compiler
+    to: validate-document-structure
+  - id: compiler-validates-semantics
+    kind: assignment
+    from: compiler
+    to: validate-semantic-claims
+  - id: cli-validates-adapter-mapping
+    kind: assignment
+    from: cli
+    to: validate-adapter-mapping
+  - id: compiler-builds-graph
+    kind: assignment
+    from: compiler
+    to: compile-semantic-graph
+  - id: compiler-serializes-graph
+    kind: assignment
+    from: compiler
+    to: serialize-semantic-graph
+  - id: cli-provides-check
+    kind: implements
+    from: cli
+    to: check-command
+  - id: cli-provides-init
+    kind: implements
+    from: cli
+    to: init-command
+  - id: cli-provides-add
+    kind: implements
+    from: cli
+    to: add-command
+  - id: cli-provides-connect
+    kind: implements
+    from: cli
+    to: connect-command
+  - id: cli-provides-compile
+    kind: implements
+    from: cli
+    to: compile-command
+  - id: parse-reads-native-document
+    kind: access
+    from: parse-document
+    to: native-document
+    mode: read
+  - id: validation-reads-schema
+    kind: access
+    from: validate-document-structure
+    to: document-schema
+    mode: read
+  - id: semantic-validation-reads-kinds
+    kind: access
+    from: validate-semantic-claims
+    to: kind-catalogue
+    mode: read
+  - id: semantic-validation-reads-policies
+    kind: access
+    from: validate-semantic-claims
+    to: relationship-policy-catalogue
+    mode: read
+  - id: parse-triggers-structure-validation
+    kind: triggering
+    from: parse-document
+    to: validate-document-structure
+  - id: structure-triggers-semantic-validation
+    kind: triggering
+    from: validate-document-structure
+    to: validate-semantic-claims
+  - id: semantic-validation-triggers-compilation
+    kind: triggering
+    from: validate-semantic-claims
+    to: compile-semantic-graph
+  - id: parser-flows-document
+    kind: flow
+    from: parse-document
+    to: validate-document-structure
+    content: Parsed document
+  - id: semantic-validation-flows-diagnostics
+    kind: flow
+    from: validate-semantic-claims
+    to: check-command
+    content: Diagnostics
+  - id: compilation-writes-graph
+    kind: access
+    from: compile-semantic-graph
+    to: semantic-graph
+    mode: write
+  - id: serialization-reads-graph
+    kind: access
+    from: serialize-semantic-graph
+    to: semantic-graph
+    mode: read
+  - id: serialization-reads-graph-schema
+    kind: access
+    from: serialize-semantic-graph
+    to: semantic-graph-schema
+    mode: read
+  - id: validation-writes-diagnostics
+    kind: access
+    from: validate-semantic-claims
+    to: diagnostics
+    mode: write
+  - id: adapter-validation-reads-mapping
+    kind: access
+    from: validate-adapter-mapping
+    to: adapter-mapping
+    mode: read
+  - id: adapter-validation-reads-graph
+    kind: access
+    from: validate-adapter-mapping
+    to: semantic-graph
+    mode: read
+  - id: adapter-validation-reads-schema
+    kind: access
+    from: validate-adapter-mapping
+    to: adapter-mapping-schema
+    mode: read
+  - id: profile-supplies-kinds
+    kind: access
+    from: profile-catalogue
+    to: kind-catalogue
+    mode: write
+  - id: profile-supplies-policies
+    kind: access
+    from: profile-catalogue
+    to: relationship-policy-catalogue
+    mode: write

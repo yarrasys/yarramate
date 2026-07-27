@@ -1,0 +1,230 @@
+format: yarramate/v1
+id: governed-change
+profile: yarramate/core@0.1
+concepts:
+  - id: product-owner
+    kind: stakeholder
+    name: Product owner
+  - id: ai-change-risk
+    kind: driver
+    name: Risk from AI-authored change
+  - id: proposal-drift
+    kind: assessment
+    name: Intent can change after execution
+  - id: reviewed-change-integrity
+    kind: goal
+    name: Published change matches reviewed change
+  - id: attributable-approval
+    kind: principle
+    name: Every approval names a decision-maker
+  - id: proposal-intent-match
+    kind: requirement
+    name: Proposal matches current intent
+  - id: no-anonymous-approval
+    kind: constraint
+    name: The system cannot approve without an identity
+  - id: govern-ai-change
+    kind: capability
+    name: Govern AI-authored change
+  - id: explicit-decision-gate
+    kind: courseOfAction
+    name: Use an explicit decision gate
+  - id: safe-change-journey
+    kind: valueStream
+    name: Intent to governed publication
+  - id: board-member
+    kind: businessRole
+    name: Board member
+  - id: decide-proposal
+    kind: businessProcess
+    name: Decide proposal
+  - id: governed-publication
+    kind: businessService
+    name: Governed publication
+  - id: approval-record
+    kind: businessObject
+    name: Approval record
+  - id: control-plane
+    kind: applicationComponent
+    name: Control plane
+  - id: approval-interface
+    kind: applicationInterface
+    name: Approval interface
+  - id: verify-intent
+    kind: applicationFunction
+    name: Verify proposal intent
+  - id: approval-requested
+    kind: applicationEvent
+    name: Approval requested
+  - id: approval-decision
+    kind: applicationService
+    name: Approval decision
+  - id: proposal
+    kind: dataObject
+    name: Proposal
+  - id: intent-digest
+    kind: dataObject
+    name: Intent digest
+  - id: edge-runtime
+    kind: node
+    name: Edge runtime
+  - id: worker-runtime
+    kind: systemSoftware
+    name: Workers runtime
+  - id: execute-request
+    kind: technologyService
+    name: Execute request
+  - id: approval-artifact
+    kind: artifact
+    name: Sealed approval artifact
+  - id: foundation
+    kind: plateau
+    name: Governance foundation
+  - id: structured-traceability
+    kind: gap
+    name: Structured traceability
+  - id: yarramate-adoption
+    kind: workPackage
+    name: Adopt YarraMate profile
+  - id: conformance-suite
+    kind: deliverable
+    name: Profile conformance suite
+relationships:
+  - id: owner-concerned-with-integrity
+    kind: association
+    from: product-owner
+    to: reviewed-change-integrity
+    name: has concern
+  - id: risk-causes-drift
+    kind: influence
+    from: ai-change-risk
+    to: proposal-drift
+    name: causes
+  - id: drift-threatens-integrity
+    kind: influence
+    from: proposal-drift
+    to: reviewed-change-integrity
+    name: threatens
+  - id: intent-match-fulfills-integrity
+    kind: realization
+    from: proposal-intent-match
+    to: reviewed-change-integrity
+    name: fulfills
+  - id: approval-supports-integrity
+    kind: realization
+    from: attributable-approval
+    to: reviewed-change-integrity
+    name: supports
+  - id: constraint-enforces-approval
+    kind: realization
+    from: no-anonymous-approval
+    to: attributable-approval
+    name: enforces
+  - id: decision-gate-realizes-capability
+    kind: realization
+    from: explicit-decision-gate
+    to: govern-ai-change
+    name: implements strategy
+  - id: journey-realizes-capability
+    kind: realization
+    from: safe-change-journey
+    to: govern-ai-change
+    name: delivers
+  - id: publication-serves-member
+    kind: serving
+    from: governed-publication
+    to: board-member
+    name: serves
+  - id: process-realizes-publication
+    kind: realization
+    from: decide-proposal
+    to: governed-publication
+    name: realizes
+  - id: member-performs-process
+    kind: assignment
+    from: board-member
+    to: decide-proposal
+    name: performs
+  - id: process-writes-record
+    kind: access
+    from: decide-proposal
+    to: approval-record
+    name: creates
+    mode: write
+  - id: control-plane-performs-verification
+    kind: assignment
+    from: control-plane
+    to: verify-intent
+    name: performs
+  - id: interface-serves-member
+    kind: serving
+    from: approval-interface
+    to: board-member
+    name: serves
+  - id: request-triggers-verification
+    kind: triggering
+    from: approval-requested
+    to: verify-intent
+    name: starts
+  - id: verification-realizes-decision
+    kind: realization
+    from: verify-intent
+    to: approval-decision
+    name: realizes
+  - id: verification-reads-proposal
+    kind: access
+    from: verify-intent
+    to: proposal
+    name: reads
+    mode: read
+  - id: verification-reads-digest
+    kind: access
+    from: verify-intent
+    to: intent-digest
+    name: reads
+    mode: read
+  - id: decision-serves-process
+    kind: serving
+    from: approval-decision
+    to: decide-proposal
+    name: supports
+  - id: control-plane-realizes-intent-match
+    kind: realization
+    from: control-plane
+    to: proposal-intent-match
+    name: implements
+  - id: edge-composes-runtime
+    kind: composition
+    from: edge-runtime
+    to: worker-runtime
+    name: contains
+  - id: control-plane-assigned-to-edge
+    kind: assignment
+    from: control-plane
+    to: edge-runtime
+    name: deployed on
+  - id: runtime-realizes-execution
+    kind: realization
+    from: worker-runtime
+    to: execute-request
+    name: provides
+  - id: artifact-realizes-record
+    kind: realization
+    from: approval-artifact
+    to: approval-record
+    name: materializes
+  - id: traceability-associated-with-foundation
+    kind: association
+    from: structured-traceability
+    to: foundation
+    name: identified in
+  - id: adoption-realizes-suite
+    kind: realization
+    from: yarramate-adoption
+    to: conformance-suite
+    name: delivers
+  - id: suite-realizes-traceability
+    kind: realization
+    from: conformance-suite
+    to: structured-traceability
+    name: closes

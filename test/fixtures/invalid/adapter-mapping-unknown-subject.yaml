@@ -1,0 +1,8 @@
+format: yarramate/adapter-mapping/v1
+id: likec4-checkout
+version: "1.0"
+adapter: likec4
+mappings:
+  - native: checkout#missing
+    external: checkout.missing
+    type: concept

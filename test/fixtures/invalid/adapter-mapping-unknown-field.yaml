@@ -1,0 +1,6 @@
+format: yarramate/adapter-mapping/v1
+id: unknown-field
+version: "1.0"
+adapter: likec4
+mappings: []
+metadata: {}

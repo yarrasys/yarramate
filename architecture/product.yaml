@@ -1,0 +1,57 @@
+format: yarramate/v1
+id: yarramate-product
+profile: yarramate/core@0.1
+concepts:
+  - id: shared-architecture-context
+    kind: goal
+    name: Shared architecture context
+    description: People and agents work from the same structured architectural meaning.
+  - id: repository-native-operation
+    kind: requirement
+    name: Repository-native operation
+    description: Git supplies authorship, review, history, and approval.
+  - id: tool-neutral-core
+    kind: requirement
+    name: Tool-neutral core
+    description: Core remains independent of authoring, visualization, evidence, and compatibility adapters.
+  - id: native-documents-are-canonical
+    kind: requirement
+    name: Native documents are canonical
+    description: Versioned YarraMate documents are the committed semantic source of truth.
+  - id: deterministic-correctness
+    kind: requirement
+    name: Deterministic correctness
+    description: Core validation checks reproducible correctness rather than taste or completeness.
+  - id: stable-cli
+    kind: requirement
+    name: Stable CLI
+    description: Humans, CI, skills, and agent harnesses share one command interface.
+  - id: compile-native-architecture
+    kind: capability
+    name: Compile native architecture
+    status: current
+  - id: validate-native-architecture
+    kind: capability
+    name: Validate native architecture
+    status: current
+  - id: provide-machine-context
+    kind: capability
+    name: Provide machine-readable context
+    status: current
+relationships:
+  - id: repository-operation-supports-context
+    kind: influence
+    from: repository-native-operation
+    to: shared-architecture-context
+  - id: canonical-documents-support-context
+    kind: influence
+    from: native-documents-are-canonical
+    to: shared-architecture-context
+  - id: correctness-supports-context
+    kind: influence
+    from: deterministic-correctness
+    to: shared-architecture-context
+  - id: cli-supports-context
+    kind: influence
+    from: stable-cli
+    to: shared-architecture-context

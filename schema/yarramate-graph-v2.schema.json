@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yarramate.org/schema/graph/v2",
+  "title": "YarraMate semantic graph v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "profiles", "documents", "subjects", "claims"],
+  "properties": {
+    "format": {
+      "const": "yarramate/graph/v2"
+    },
+    "profiles": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/profileIdentity"
+      }
+    },
+    "documents": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/document"
+      }
+    },
+    "subjects": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/subject"
+      }
+    },
+    "claims": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/claim"
+      }
+    }
+  },
+  "$defs": {
+    "localId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+    },
+    "profileIdentity": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*(?:/[a-z][a-z0-9-]*)+@[0-9]+\\.[0-9]+$"
+    },
+    "subjectIdentity": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*#[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+    },
+    "claimIdentity": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*#[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:~[a-z][a-z0-9-]*)?$"
+    },
+    "document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "source"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/localId"
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/subjectIdentity"
+        },
+        "type": {
+          "enum": ["concept", "relationship"]
+        }
+      }
+    },
+    "claimObject": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ref"],
+          "properties": {
+            "ref": {
+              "$ref": "#/$defs/subjectIdentity"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["value"],
+          "properties": {
+            "value": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["document", "path", "pointer", "line", "column"],
+      "properties": {
+        "document": {
+          "$ref": "#/$defs/localId"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pointer": {
+          "type": "string",
+          "pattern": "^/"
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "column": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "subject",
+        "predicate",
+        "object",
+        "origin",
+        "source"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/claimIdentity"
+        },
+        "subject": {
+          "$ref": "#/$defs/subjectIdentity"
+        },
+        "predicate": {
+          "type": "string",
+          "pattern": "^\\S+$"
+        },
+        "object": {
+          "$ref": "#/$defs/claimObject"
+        },
+        "origin": {
+          "const": "declared"
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        }
+      }
+    }
+  }
+}

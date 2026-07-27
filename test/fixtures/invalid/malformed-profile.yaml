@@ -1,0 +1,6 @@
+format: yarramate/profile/v1
+id: example/malformed
+version: "1.0"
+extends: yarramate/core@0.1
+conceptKinds: [
+relationshipKinds: []

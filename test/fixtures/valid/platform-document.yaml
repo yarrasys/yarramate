@@ -1,0 +1,15 @@
+format: yarramate/v1
+id: platform
+profile: example/platform@1.0
+concepts:
+  - id: team
+    kind: platform-team
+    name: Platform team
+  - id: delivery
+    kind: businessProcess
+    name: Platform delivery
+relationships:
+  - id: team-owns-delivery
+    kind: owns
+    from: team
+    to: delivery

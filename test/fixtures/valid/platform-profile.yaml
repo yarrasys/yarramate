@@ -1,0 +1,13 @@
+format: yarramate/profile/v1
+id: example/platform
+version: "1.0"
+extends: yarramate/core@0.1
+conceptKinds:
+  - id: platform-team
+    name: Platform team
+    parent: yarramate/core@0.1#businessActor
+relationshipKinds:
+  - id: owns
+    name: Owns
+    parent: yarramate/core@0.1#assignment
+    targetAspects: [behavior]

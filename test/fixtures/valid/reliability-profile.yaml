@@ -1,0 +1,9 @@
+format: yarramate/profile/v1
+id: example/reliability
+version: "1.0"
+extends: example/platform@1.0
+conceptKinds:
+  - id: reliability-team
+    name: Reliability team
+    parent: example/platform@1.0#platform-team
+relationshipKinds: []

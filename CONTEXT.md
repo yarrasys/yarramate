@@ -13,7 +13,8 @@ _Avoid_: LikeC4 project, governance server
 
 **Semantic graph**:
 The tool-neutral graph compiled deterministically from native YarraMate
-documents.
+documents. Graph v2 is a normative, canonically serialized interchange
+contract.
 _Avoid_: Diagram, Graphify graph
 
 **Claim**:
@@ -50,6 +51,11 @@ _Avoid_: Architectural taste, rendering rule
 An optional integration that imports, exports, renders, or supplies evidence
 without defining YarraMate Core.
 _Avoid_: Core dependency
+
+**Adapter mapping**:
+A versioned companion document connecting globally qualified native subjects
+to opaque identities owned by one adapter.
+_Avoid_: Native metadata, generated claim, canonical external model
 
 **Evidence provider**:
 An adapter that resolves declared claims against observed sources such as

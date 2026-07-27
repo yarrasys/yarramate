@@ -1,0 +1,10 @@
+format: yarramate/projection/v1
+id: current-engine
+version: "1.0"
+query:
+  documents: [yarramate-engine]
+  statuses: [current]
+  relationships: between
+presentation:
+  title: Current engine
+  description: Currently operative compiler and CLI architecture.

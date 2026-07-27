@@ -1,0 +1,156 @@
+format: yarramate/v1
+id: yarramate-repository
+profile: yarramate/development@1.0
+concepts:
+  - id: product-contract
+    kind: deliverable
+    name: Product contract
+  - id: architecture-decisions
+    kind: deliverable
+    name: Architecture decision records
+  - id: roadmap
+    kind: deliverable
+    name: Product roadmap
+  - id: likec4-adapter-prototype
+    kind: applicationComponent
+    name: LikeC4 adapter prototype
+    description: Optional validated vocabulary and visualization prototype.
+    status: current
+  - id: compiler-source
+    kind: repository-file
+    name: src/compiler.ts
+    status: current
+  - id: cli-source
+    kind: repository-file
+    name: src/cli.ts
+    status: current
+  - id: projection-source
+    kind: repository-file
+    name: src/projection.ts
+    status: current
+  - id: adapter-mapping-source
+    kind: repository-file
+    name: src/adapter-mapping.ts
+    status: current
+  - id: graph-source
+    kind: repository-file
+    name: src/graph.ts
+    status: current
+  - id: document-schema-source
+    kind: repository-file
+    name: schema/yarramate-document.schema.json
+    status: current
+  - id: profile-schema-source
+    kind: repository-file
+    name: schema/yarramate-profile.schema.json
+    status: current
+  - id: projection-schema-source
+    kind: repository-file
+    name: schema/yarramate-projection.schema.json
+    status: current
+  - id: adapter-mapping-schema-source
+    kind: repository-file
+    name: schema/yarramate-adapter-mapping.schema.json
+    status: current
+  - id: graph-schema-source
+    kind: repository-file
+    name: schema/yarramate-graph-v2.schema.json
+    status: current
+  - id: compiler-tests
+    kind: repository-file
+    name: test/compiler.test.ts
+    status: current
+  - id: cli-tests
+    kind: repository-file
+    name: test/cli.test.ts
+    status: current
+  - id: adapter-mapping-tests
+    kind: repository-file
+    name: test/adapter-mapping.test.ts
+    status: current
+  - id: graph-schema-tests
+    kind: repository-file
+    name: test/graph-schema.test.ts
+    status: current
+relationships:
+  - id: contract-realizes-tool-neutral-core
+    kind: realization
+    from: product-contract
+    to: yarramate-product#tool-neutral-core
+  - id: contract-realizes-canonical-documents
+    kind: realization
+    from: product-contract
+    to: yarramate-product#native-documents-are-canonical
+  - id: contract-realizes-stable-cli
+    kind: realization
+    from: product-contract
+    to: yarramate-product#stable-cli
+  - id: decisions-realize-contract
+    kind: realization
+    from: architecture-decisions
+    to: product-contract
+  - id: roadmap-serves-contract
+    kind: serving
+    from: roadmap
+    to: product-contract
+  - id: adapter-specializes-authoring
+    kind: association
+    from: likec4-adapter-prototype
+    to: yarramate-engine#native-document
+    name: Optional authoring path
+  - id: compiler-source-realizes-compiler
+    kind: realization
+    from: compiler-source
+    to: yarramate-engine#compiler
+  - id: cli-source-realizes-cli
+    kind: realization
+    from: cli-source
+    to: yarramate-engine#cli
+  - id: projection-source-realizes-context
+    kind: realization
+    from: projection-source
+    to: yarramate-product#provide-machine-context
+  - id: adapter-source-realizes-validation
+    kind: realization
+    from: adapter-mapping-source
+    to: yarramate-engine#validate-adapter-mapping
+  - id: graph-source-realizes-serialization
+    kind: realization
+    from: graph-source
+    to: yarramate-engine#serialize-semantic-graph
+  - id: document-schema-realizes-schema
+    kind: realization
+    from: document-schema-source
+    to: yarramate-engine#document-schema
+  - id: profile-schema-realizes-catalogue
+    kind: realization
+    from: profile-schema-source
+    to: yarramate-engine#profile-catalogue
+  - id: projection-schema-realizes-context
+    kind: realization
+    from: projection-schema-source
+    to: yarramate-product#provide-machine-context
+  - id: adapter-schema-realizes-mapping-schema
+    kind: realization
+    from: adapter-mapping-schema-source
+    to: yarramate-engine#adapter-mapping-schema
+  - id: graph-schema-realizes-graph-schema
+    kind: realization
+    from: graph-schema-source
+    to: yarramate-engine#semantic-graph-schema
+  - id: tests-validate-compiler
+    kind: association
+    from: compiler-tests
+    to: yarramate-engine#compiler
+  - id: cli-tests-validate-cli
+    kind: association
+    from: cli-tests
+    to: yarramate-engine#cli
+  - id: adapter-tests-validate-mapping
+    kind: association
+    from: adapter-mapping-tests
+    to: yarramate-engine#validate-adapter-mapping
+  - id: graph-tests-validate-interchange
+    kind: association
+    from: graph-schema-tests
+    to: yarramate-engine#serialize-semantic-graph

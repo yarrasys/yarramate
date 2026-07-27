@@ -48,11 +48,19 @@ Routine authoring syntax must remain concise and compile into claims. The first
 release does not introduce an approval lifecycle, identities, signatures, or
 workflow orchestration.
 
+Controlled operational lifecycle status may distinguish `planned`, `current`,
+and `retired` architecture. These values are semantic claims, not approval or
+review states.
+
 The first native format uses closed YAML records for concepts and
 relationships and deliberately has no generic metadata bag. Document-local
 authored IDs compile under a stable document namespace; source file paths and
 list positions are not semantic identity. JSON Schema governs structure while
 the selected versioned profile governs valid vocabulary.
+
+Relationship endpoints may use local concept IDs or explicit
+`document-id#concept-id` references. Resolution occurs only within the
+documents supplied to the workspace compiler and never depends on file paths.
 
 ## Repository-native operation
 
@@ -82,6 +90,7 @@ yarramate init
 yarramate add
 yarramate connect
 yarramate check
+yarramate compile
 yarramate view
 yarramate context
 ```
@@ -122,6 +131,12 @@ and versions; unknown kinds are not silently accepted.
 This mechanism supports organization vocabularies and optional security,
 regulatory, governance, and external-language compatibility profiles.
 
+Profile documents declare one versioned parent profile and globally qualified
+semantic parents for every extension kind. Documents use concise local kind
+names under their selected profile; compiled graphs use
+`profile-id@version#kind-id` for both Core and extension kinds. Relationship
+extensions may narrow inherited endpoint constraints but cannot broaden them.
+
 ## Projections
 
 A projection is a versioned semantic query plus optional presentation hints.
@@ -135,6 +150,16 @@ Its result may be rendered as:
 Generated diagrams are not canonical architecture. Adapter-specific layout and
 rendering hints do not carry semantic authority.
 
+The compiled `yarramate/graph/v2` representation is a normative,
+version-scoped interchange contract with canonical JSON serialization.
+Breaking structural or semantic changes require a new graph format version.
+Compiled files remain derived and need not be committed.
+
+The first projection query filters compiled concepts by document, globally
+qualified kind, and operational lifecycle status. It may include relationships
+whose endpoints are both selected. `yarramate context` renders the closed
+projection result as deterministic JSON for agents and CI.
+
 ## Optional integrations
 
 - LikeC4 is an authoring and visualization adapter.
@@ -142,3 +167,9 @@ rendering hints do not carry semantic authority.
 - ArchiMate is an optional compatibility profile.
 
 YarraMate Core must not depend on any of them.
+
+Optional adapter mappings are versioned companion documents outside Core.
+They map globally qualified compiled native subject identities to opaque
+external identities. Generic validation checks native existence, subject type,
+and one-to-one identity; the named adapter validates its external side.
+Mappings do not become claims and are not required for semantic completeness.

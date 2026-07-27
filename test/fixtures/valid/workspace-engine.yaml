@@ -1,0 +1,12 @@
+format: yarramate/v1
+id: workspace-engine
+profile: yarramate/core@0.1
+concepts:
+  - id: compiler
+    kind: applicationComponent
+    name: Compiler
+relationships:
+  - id: compiler-realizes-compilation
+    kind: realization
+    from: compiler
+    to: workspace-product#native-compilation

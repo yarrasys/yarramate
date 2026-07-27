@@ -1,0 +1,14 @@
+format: yarramate/projection/v1
+id: implementation-traceability
+version: "1.0"
+query:
+  documents: [yarramate-engine, yarramate-repository]
+  kinds:
+    - yarramate/development@1.0#compiler-module
+    - yarramate/development@1.0#repository-file
+    - yarramate/core@0.1#dataObject
+  statuses: [current]
+  relationships: between
+presentation:
+  title: Implementation traceability
+  description: Current engine concepts and the repository files that realize or validate them.

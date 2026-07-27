@@ -1,0 +1,11 @@
+format: yarramate/adapter-mapping/v1
+id: likec4-checkout
+version: "1.0"
+adapter: likec4
+mappings:
+  - native: checkout#approval-api
+    external: checkout.approvalApi
+    type: concept
+  - native: checkout#api-realizes-approval
+    external: checkout.apiRealizesApproval
+    type: relationship

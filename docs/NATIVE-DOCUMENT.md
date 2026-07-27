@@ -32,6 +32,11 @@ adapter configuration.
 Optional concept `description` and relationship `name` fields compile into
 explicit descriptive claims.
 
+Concepts and relationships may also declare an operational `status` of
+`planned`, `current`, or `retired`. It compiles into a
+`yarramate/lifecycle/status` claim. Status describes architecture lifecycle,
+not review or approval; Git remains authoritative for governance.
+
 Two relationship kinds have controlled concise fields:
 
 ```yaml
@@ -60,10 +65,11 @@ within the compiled workspace. A compiled subject ID is
 `<document-id>#<local-id>`, so moving a file or reordering a YAML list does not
 change semantic identity.
 
-Relationship endpoints refer to concepts by local ID. Relationship IDs are
-authored and stable. Cross-document references are not part of version 1; they
-will be designed with workspace/profile loading rather than inferred from file
-paths.
+Relationship endpoints refer to concepts by local ID or by a qualified
+`document-id#concept-id`. Local references resolve in the authored document;
+qualified references resolve across all documents supplied to the workspace
+compiler. File paths never participate in identity or resolution.
+Relationship IDs are authored and stable.
 
 Kind names are supplied by the selected explicit profile. The schema accepts a
 kind string because profiles are extensible; compilation rejects a kind absent
@@ -72,20 +78,25 @@ from the selected catalogue.
 ## Compiled graph
 
 `compileWorkspace(sources)` is the library interface. On success it returns a
-`yarramate/graph/v1` value with:
+`yarramate/graph/v2` value with:
 
 - selected profile identifiers and source-document provenance;
 - stable concept and relationship subjects;
 - declared claims sorted by claim ID.
+
+Graph v2 uses globally qualified kind identities. A Core concept kind compiles
+as `yarramate/core@0.1#capability`; an extension kind uses its selected
+profile identity. Relationship claims use the qualified relationship kind as
+their predicate.
 
 Concept authoring emits kind, name, and optional description claims.
 Relationship authoring emits one semantic relationship claim plus an optional
 name claim about the relationship subject. Every claim records its YAML pointer
 and one-based source location.
 
-Graph ordering is lexical and independent of workspace input order. The graph
-format is a deterministic 0.x compiler result, not yet a promised long-term
-interchange schema.
+Graph ordering is lexical and independent of workspace input order. Graph v2
+is the version-scoped normative interchange contract defined in
+`docs/SEMANTIC-GRAPH.md`; a breaking change requires a new graph format.
 
 ## Diagnostics
 
@@ -97,8 +108,9 @@ and one-based line and column.
 | `YM1xx` | YAML parsing | `YM101` malformed YAML |
 | `YM2xx` | Document structure | `YM201` JSON Schema violation |
 | `YM3xx` | Identity and references | `YM301` duplicate local ID; `YM302` unresolved concept reference; `YM303` duplicate document ID |
-| `YM4xx` | Profile conformance | `YM401` unknown concept kind; `YM402` unknown relationship kind; `YM403` unavailable profile; `YM404` incompatible endpoint; `YM405` misplaced controlled field |
+| `YM4xx` | Profile conformance | `YM401` unknown concept kind; `YM402` unknown relationship kind; `YM403` unavailable profile; `YM404` incompatible endpoint; `YM405` misplaced controlled field; `YM406` unavailable parent profile; `YM407`/`YM408` unavailable semantic parent; `YM409`/`YM410` inherited-name collision; `YM411` duplicate profile; `YM412` broadened constraint |
 | `YM5xx` | Claim consistency | `YM501` competing whole-part claims |
+| `YM6xx` | Adapter mapping integrity | `YM601` unknown native subject; `YM602` subject type mismatch; `YM603` duplicate native mapping; `YM604` duplicate external mapping; `YM605` duplicate versioned mapping |
 
 Compilation returns no partial graph when an error diagnostic exists.
 Diagnostic arrays are ordered by path, line, column, code, and message.
@@ -122,15 +134,48 @@ yarramate check architecture.yaml
 yarramate check architecture/*.yaml --json
 ```
 
-Explicit files are checked as one workspace. Exit status is `0` when valid,
+Explicit files are checked as one workspace, so qualified references may cross
+between them. Exit status is `0` when valid,
 `1` for correctness diagnostics, and `2` for invocation or file errors.
 `--json` emits a deterministic `{ "ok", "diagnostics" }` object. The command
 does not write compiled artifacts.
 
+## Safe authoring CLI
+
+```sh
+yarramate init .
+yarramate add architecture/main.yaml \
+  --id order-approval --kind capability --name "Order approval"
+yarramate connect architecture/main.yaml \
+  --id api-realizes-approval --kind realization \
+  --from approval-api --to order-approval
+```
+
+`init` creates `architecture/main.yaml` and refuses to overwrite an existing
+file. `add` appends a concept; `connect` appends a relationship. Both preserve
+concise block-style YAML, compile the entire candidate workspace in memory,
+and replace the target only when validation succeeds. A rejected edit leaves
+the source byte-for-byte unchanged.
+
+Optional `add` flags are `--status` and `--description`. Optional `connect`
+flags are `--name`, `--status`, `--mode`, and `--content`. Extension profiles
+and documents needed for qualified references are passed explicitly using a
+repeatable `--source <source.yaml>`:
+
+```sh
+yarramate add architecture/engine.yaml \
+  --id compiler-worker --kind repository-file --name "Compiler worker" \
+  --source profiles/yarramate-development.yaml \
+  --source architecture/repository.yaml
+```
+
+This explicit input contract matches `compileWorkspace`; the authoring
+commands do not search parent directories, infer a workspace, or fetch a
+profile registry.
+
 ## Deliberate exclusions
 
-This foundation does not define ownership, status, evidence, arbitrary
-properties, cross-document references, external profile discovery,
-derived claims, projections, adapters, repository file discovery, or
-governance workflow. These require separate semantic decisions or later
-conformance work.
+This foundation does not define ownership, evidence, arbitrary properties,
+automatic profile discovery, derived claims, adapters, repository file
+discovery, or governance workflow. These require separate semantic decisions
+or later conformance work.

@@ -1,0 +1,92 @@
+format: yarramate/adapter-mapping/v1
+id: governed-change-likec4
+version: "1.0"
+adapter: likec4
+mappings:
+  - native: governed-change#product-owner
+    external: productOwner
+    type: concept
+  - native: governed-change#ai-change-risk
+    external: aiChangeRisk
+    type: concept
+  - native: governed-change#proposal-drift
+    external: proposalDrift
+    type: concept
+  - native: governed-change#reviewed-change-integrity
+    external: reviewedChangeIntegrity
+    type: concept
+  - native: governed-change#attributable-approval
+    external: attributableApproval
+    type: concept
+  - native: governed-change#proposal-intent-match
+    external: proposalIntentMatch
+    type: concept
+  - native: governed-change#no-anonymous-approval
+    external: noAnonymousApproval
+    type: concept
+  - native: governed-change#govern-ai-change
+    external: governAiChange
+    type: concept
+  - native: governed-change#explicit-decision-gate
+    external: explicitDecisionGate
+    type: concept
+  - native: governed-change#safe-change-journey
+    external: safeChangeJourney
+    type: concept
+  - native: governed-change#board-member
+    external: boardMember
+    type: concept
+  - native: governed-change#decide-proposal
+    external: decideProposal
+    type: concept
+  - native: governed-change#governed-publication
+    external: governedPublication
+    type: concept
+  - native: governed-change#approval-record
+    external: approvalRecord
+    type: concept
+  - native: governed-change#control-plane
+    external: controlPlane
+    type: concept
+  - native: governed-change#approval-interface
+    external: approvalInterface
+    type: concept
+  - native: governed-change#verify-intent
+    external: verifyIntent
+    type: concept
+  - native: governed-change#approval-requested
+    external: approvalRequested
+    type: concept
+  - native: governed-change#approval-decision
+    external: approvalDecision
+    type: concept
+  - native: governed-change#proposal
+    external: proposal
+    type: concept
+  - native: governed-change#intent-digest
+    external: intentDigest
+    type: concept
+  - native: governed-change#edge-runtime
+    external: edgeRuntime
+    type: concept
+  - native: governed-change#worker-runtime
+    external: workerRuntime
+    type: concept
+  - native: governed-change#execute-request
+    external: executeRequest
+    type: concept
+  - native: governed-change#approval-artifact
+    external: approvalArtifact
+    type: concept
+  - native: governed-change#foundation
+    external: foundation
+    type: concept
+  - native: governed-change#structured-traceability
+    external: structuredTraceability
+    type: concept
+  - native: governed-change#yarramate-adoption
+    external: yarramateAdoption
+    type: concept
+  - native: governed-change#conformance-suite
+    external: conformanceSuite
+    type: concept

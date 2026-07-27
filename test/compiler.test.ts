@@ -21,7 +21,7 @@ describe('compileWorkspace', () => {
     expect(result).toEqual({
       ok: true,
       graph: {
-        format: 'yarramate/graph/v1',
+        format: 'yarramate/graph/v2',
         profiles: ['yarramate/core@0.1'],
         documents: [{ id: 'checkout', source: 'architecture/checkout.yaml' }],
         subjects: [
@@ -33,7 +33,7 @@ describe('compileWorkspace', () => {
           {
             id: 'checkout#api-realizes-approval',
             subject: 'checkout#approval-api',
-            predicate: 'yarramate/relationship/realization',
+            predicate: 'yarramate/core@0.1#realization',
             object: { ref: 'checkout#approve-order' },
             origin: 'declared',
             source: {
@@ -48,7 +48,7 @@ describe('compileWorkspace', () => {
             id: 'checkout#approval-api~kind',
             subject: 'checkout#approval-api',
             predicate: 'yarramate/concept/kind',
-            object: { value: 'applicationService' },
+            object: { value: 'yarramate/core@0.1#applicationService' },
             origin: 'declared',
             source: {
               document: 'checkout',
@@ -76,7 +76,7 @@ describe('compileWorkspace', () => {
             id: 'checkout#approve-order~kind',
             subject: 'checkout#approve-order',
             predicate: 'yarramate/concept/kind',
-            object: { value: 'capability' },
+            object: { value: 'yarramate/core@0.1#capability' },
             origin: 'declared',
             source: {
               document: 'checkout',
@@ -527,5 +527,366 @@ describe('compileWorkspace', () => {
         'z-last.yaml',
       ])
     }
+  })
+
+  it('resolves qualified concept references across documents', () => {
+    const result = compileWorkspace([
+      {
+        path: 'product.yaml',
+        source: fixture('valid/workspace-product.yaml'),
+      },
+      {
+        path: 'engine.yaml',
+        source: fixture('valid/workspace-engine.yaml'),
+      },
+    ])
+
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(
+        result.graph.claims.find(
+          ({ id }) =>
+            id ===
+            'workspace-engine#compiler-realizes-compilation',
+        ),
+      ).toEqual({
+        id: 'workspace-engine#compiler-realizes-compilation',
+        subject: 'workspace-engine#compiler',
+        predicate: 'yarramate/core@0.1#realization',
+        object: { ref: 'workspace-product#native-compilation' },
+        origin: 'declared',
+        source: {
+          document: 'workspace-engine',
+          path: 'engine.yaml',
+          pointer: '/relationships/0',
+          line: 9,
+          column: 5,
+        },
+      })
+    }
+  })
+
+  it('reports an unresolved qualified reference at its authored location', () => {
+    const result = compileWorkspace([
+      {
+        path: 'qualified.yaml',
+        source: fixture('invalid/unresolved-qualified-reference.yaml'),
+      },
+    ])
+
+    expect(result).toEqual({
+      ok: false,
+      diagnostics: [
+        {
+          severity: 'error',
+          code: 'YM302',
+          message:
+            'Unresolved concept reference "absent-document#absent"',
+          path: 'qualified.yaml',
+          pointer: '/relationships/0/to',
+          line: 12,
+          column: 9,
+        },
+      ],
+    })
+  })
+
+  it('compiles extension kinds to globally qualified graph identities', () => {
+    const result = compileWorkspace([
+      {
+        path: 'profiles/platform.yaml',
+        source: fixture('valid/platform-profile.yaml'),
+      },
+      {
+        path: 'architecture/platform.yaml',
+        source: fixture('valid/platform-document.yaml'),
+      },
+    ])
+
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.graph.format).toBe('yarramate/graph/v2')
+      expect(result.graph.profiles).toEqual([
+        'example/platform@1.0',
+        'yarramate/core@0.1',
+      ])
+      expect(
+        result.graph.claims.find(
+          ({ id }) => id === 'platform#team~kind',
+        ),
+      ).toMatchObject({
+        predicate: 'yarramate/concept/kind',
+        object: { value: 'example/platform@1.0#platform-team' },
+      })
+      expect(
+        result.graph.claims.find(
+          ({ id }) => id === 'platform#team-owns-delivery',
+        ),
+      ).toMatchObject({
+        predicate: 'example/platform@1.0#owns',
+        subject: 'platform#team',
+        object: { ref: 'platform#delivery' },
+      })
+    }
+  })
+
+  it('enforces endpoint constraints declared by an extension profile', () => {
+    const result = compileWorkspace([
+      {
+        path: 'profiles/platform.yaml',
+        source: fixture('valid/platform-profile.yaml'),
+      },
+      {
+        path: 'architecture/constrained.yaml',
+        source: fixture('invalid/platform-constraint.yaml'),
+      },
+    ])
+
+    expect(result).toEqual({
+      ok: false,
+      diagnostics: [
+        {
+          severity: 'error',
+          code: 'YM404',
+          message:
+            'Relationship "owns" requires a target with aspect "behavior"; "target" has aspect "motivation"',
+          path: 'architecture/constrained.yaml',
+          pointer: '/relationships/0/to',
+          line: 15,
+          column: 9,
+        },
+      ],
+    })
+  })
+
+  it('rejects an extension kind whose semantic parent is unavailable', () => {
+    const result = compileWorkspace([
+      {
+        path: 'profiles/broken.yaml',
+        source: fixture('invalid/profile-missing-parent.yaml'),
+      },
+    ])
+
+    expect(result).toEqual({
+      ok: false,
+      diagnostics: [
+        {
+          severity: 'error',
+          code: 'YM407',
+          message:
+            'Concept parent "example/absent@1.0#missing" is not available',
+          path: 'profiles/broken.yaml',
+          pointer: '/conceptKinds/0/parent',
+          line: 8,
+          column: 13,
+        },
+      ],
+    })
+  })
+
+  it('rejects an extension kind that shadows an inherited local name', () => {
+    const result = compileWorkspace([
+      {
+        path: 'profiles/collision.yaml',
+        source: fixture('invalid/profile-kind-collision.yaml'),
+      },
+    ])
+
+    expect(result).toEqual({
+      ok: false,
+      diagnostics: [
+        {
+          severity: 'error',
+          code: 'YM409',
+          message:
+            'Concept kind "capability" conflicts with an inherited kind',
+          path: 'profiles/collision.yaml',
+          pointer: '/conceptKinds/0/id',
+          line: 6,
+          column: 9,
+        },
+      ],
+    })
+  })
+
+  it('resolves profile inheritance independently of source order', () => {
+    const parent = {
+      path: 'profiles/platform.yaml',
+      source: fixture('valid/platform-profile.yaml'),
+    }
+    const child = {
+      path: 'profiles/reliability.yaml',
+      source: fixture('valid/reliability-profile.yaml'),
+    }
+    const document = {
+      path: 'architecture/reliability.yaml',
+      source: fixture('valid/reliability-document.yaml'),
+    }
+
+    const childFirst = compileWorkspace([child, document, parent])
+    const parentFirst = compileWorkspace([parent, child, document])
+
+    expect(JSON.stringify(childFirst)).toBe(JSON.stringify(parentFirst))
+    expect(childFirst.ok).toBe(true)
+    if (childFirst.ok) {
+      expect(
+        childFirst.graph.claims.find(
+          ({ id }) => id === 'reliability#team~kind',
+        ),
+      ).toMatchObject({
+        object: {
+          value: 'example/reliability@1.0#reliability-team',
+        },
+      })
+    }
+  })
+
+  it('rejects an extension that broadens a parent endpoint constraint', () => {
+    const result = compileWorkspace([
+      {
+        path: 'profiles/broad.yaml',
+        source: fixture('invalid/profile-broadens-parent.yaml'),
+      },
+    ])
+
+    expect(result).toEqual({
+      ok: false,
+      diagnostics: [
+        {
+          severity: 'error',
+          code: 'YM412',
+          message:
+            'Relationship kind "delegates" broadens its parent source aspects',
+          path: 'profiles/broad.yaml',
+          pointer: '/relationshipKinds/0/sourceAspects',
+          line: 10,
+          column: 20,
+        },
+      ],
+    })
+  })
+
+  it('compiles controlled lifecycle status into claims', () => {
+    const result = compileWorkspace([
+      {
+        path: 'lifecycle.yaml',
+        source: fixture('valid/lifecycle-status.yaml'),
+      },
+    ])
+
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(
+        result.graph.claims.filter(({ id }) =>
+          [
+            'lifecycle#current-capability~status',
+            'lifecycle#capability-supports-goal~status',
+          ].includes(id),
+        ),
+      ).toEqual([
+        {
+          id: 'lifecycle#capability-supports-goal~status',
+          subject: 'lifecycle#capability-supports-goal',
+          predicate: 'yarramate/lifecycle/status',
+          object: { value: 'planned' },
+          origin: 'declared',
+          source: {
+            document: 'lifecycle',
+            path: 'lifecycle.yaml',
+            pointer: '/relationships/0/status',
+            line: 17,
+            column: 13,
+          },
+        },
+        {
+          id: 'lifecycle#current-capability~status',
+          subject: 'lifecycle#current-capability',
+          predicate: 'yarramate/lifecycle/status',
+          object: { value: 'current' },
+          origin: 'declared',
+          source: {
+            document: 'lifecycle',
+            path: 'lifecycle.yaml',
+            pointer: '/concepts/0/status',
+            line: 8,
+            column: 13,
+          },
+        },
+      ])
+    }
+  })
+
+  it('rejects lifecycle values outside the controlled vocabulary', () => {
+    const result = compileWorkspace([
+      {
+        path: 'invalid-lifecycle.yaml',
+        source: fixture('invalid/lifecycle-status.yaml'),
+      },
+    ])
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.diagnostics).toEqual([
+        {
+          severity: 'error',
+          code: 'YM201',
+          message: 'Document schema violation: must be equal to one of the allowed values',
+          path: 'invalid-lifecycle.yaml',
+          pointer: '/concepts/0/status',
+          line: 8,
+          column: 13,
+        },
+      ])
+    }
+  })
+
+  it('reports malformed profile YAML through the parse taxonomy', () => {
+    const result = compileWorkspace([
+      {
+        path: 'profiles/malformed.yaml',
+        source: fixture('invalid/malformed-profile.yaml'),
+      },
+    ])
+
+    expect(result).toEqual({
+      ok: false,
+      diagnostics: [
+        {
+          severity: 'error',
+          code: 'YM101',
+          message:
+            'Flow sequence in block collection must be sufficiently indented and end with a ]',
+          path: 'profiles/malformed.yaml',
+          pointer: '/',
+          line: 6,
+          column: 1,
+        },
+      ],
+    })
+  })
+
+  it('reports duplicate profiles independently of source order', () => {
+    const source = fixture('valid/platform-profile.yaml')
+    const first = { path: 'z-profile.yaml', source }
+    const second = { path: 'a-profile.yaml', source }
+
+    const forward = compileWorkspace([first, second])
+    const reverse = compileWorkspace([second, first])
+
+    expect(JSON.stringify(forward)).toBe(JSON.stringify(reverse))
+    expect(forward).toEqual({
+      ok: false,
+      diagnostics: [
+        {
+          severity: 'error',
+          code: 'YM411',
+          message: 'Profile "example/platform@1.0" is declared more than once',
+          path: 'z-profile.yaml',
+          pointer: '/id',
+          line: 2,
+          column: 5,
+        },
+      ],
+    })
   })
 })
