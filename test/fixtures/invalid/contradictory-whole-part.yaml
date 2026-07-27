@@ -1,0 +1,19 @@
+format: yarramate/v1
+id: contradiction
+profile: yarramate/core@0.1
+concepts:
+  - id: whole
+    kind: applicationComponent
+    name: Whole
+  - id: part
+    kind: applicationComponent
+    name: Part
+relationships:
+  - id: strong-parts
+    kind: composition
+    from: whole
+    to: part
+  - id: weak-parts
+    kind: aggregation
+    from: whole
+    to: part

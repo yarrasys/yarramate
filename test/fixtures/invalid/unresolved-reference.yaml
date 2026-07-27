@@ -1,0 +1,12 @@
+format: yarramate/v1
+id: broken-reference
+profile: yarramate/core@0.1
+concepts:
+  - id: source
+    kind: capability
+    name: Source
+relationships:
+  - id: missing-target
+    kind: realization
+    from: source
+    to: absent

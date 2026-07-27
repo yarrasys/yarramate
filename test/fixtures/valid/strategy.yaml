@@ -1,0 +1,8 @@
+format: yarramate/v1
+id: strategy
+profile: yarramate/core@0.1
+concepts:
+  - id: faster-change
+    kind: goal
+    name: Faster change
+relationships: []

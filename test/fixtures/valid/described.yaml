@@ -1,0 +1,17 @@
+format: yarramate/v1
+id: described
+profile: yarramate/core@0.1
+concepts:
+  - id: goal
+    kind: goal
+    name: Clear goal
+    description: A concise explanation
+  - id: capability
+    kind: capability
+    name: Useful capability
+relationships:
+  - id: realizes
+    kind: realization
+    from: capability
+    to: goal
+    name: Delivers

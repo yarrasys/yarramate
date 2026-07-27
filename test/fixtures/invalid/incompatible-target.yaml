@@ -1,0 +1,15 @@
+format: yarramate/v1
+id: incompatible-target
+profile: yarramate/core@0.1
+concepts:
+  - id: actor
+    kind: businessActor
+    name: Actor
+  - id: intent
+    kind: goal
+    name: Intent
+relationships:
+  - id: bad-access
+    kind: access
+    from: actor
+    to: intent

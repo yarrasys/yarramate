@@ -1,0 +1,479 @@
+// YarraMate semantic profile for LikeC4.
+//
+// This vocabulary is ArchiMate-inspired but independently expressed. The tags
+// encode semantic coordinates; element kinds carry the human-facing notation.
+specification {
+  color motivationColor #E8D7F1
+  color strategyColor #F3E5AB
+  color businessColor #FFF1B8
+  color applicationColor #C9E7FF
+  color technologyColor #D8F0D2
+  color physicalColor #D5E8D4
+  color implementationColor #F5D5CB
+  color compositeColor #E6E6E6
+  color relationColor #5B6470
+
+  tag layerMotivation
+  tag layerStrategy
+  tag layerBusiness
+  tag layerApplication
+  tag layerTechnology
+  tag layerPhysical
+  tag layerImplementation
+  tag layerComposite
+
+  tag aspectActive
+  tag aspectBehavior
+  tag aspectPassive
+
+  // ── Motivation ────────────────────────────────────────────────────────────
+
+  element stakeholder {
+    #layerMotivation
+    notation 'Stakeholder'
+    style { shape person; color motivationColor }
+  }
+
+  element driver {
+    #layerMotivation
+    notation 'Driver'
+    style { color motivationColor }
+  }
+
+  element assessment {
+    #layerMotivation
+    notation 'Assessment'
+    style { color motivationColor }
+  }
+
+  element goal {
+    #layerMotivation
+    notation 'Goal'
+    style { color motivationColor }
+  }
+
+  element outcome {
+    #layerMotivation
+    notation 'Outcome'
+    style { color motivationColor }
+  }
+
+  element principle {
+    #layerMotivation
+    notation 'Principle'
+    style { color motivationColor }
+  }
+
+  element requirement {
+    #layerMotivation
+    notation 'Requirement'
+    style { color motivationColor }
+  }
+
+  element constraint {
+    #layerMotivation
+    notation 'Constraint'
+    style { color motivationColor }
+  }
+
+  element meaning {
+    #layerMotivation
+    notation 'Meaning'
+    style { color motivationColor }
+  }
+
+  element value {
+    #layerMotivation
+    notation 'Value'
+    style { color motivationColor }
+  }
+
+  // ── Strategy ──────────────────────────────────────────────────────────────
+
+  element resource {
+    #layerStrategy #aspectActive
+    notation 'Resource'
+    style { color strategyColor }
+  }
+
+  element capability {
+    #layerStrategy #aspectBehavior
+    notation 'Capability'
+    style { color strategyColor }
+  }
+
+  element valueStream {
+    #layerStrategy #aspectBehavior
+    notation 'Value stream'
+    style { color strategyColor }
+  }
+
+  element courseOfAction {
+    #layerStrategy #aspectBehavior
+    notation 'Course of action'
+    style { color strategyColor }
+  }
+
+  // ── Business layer ────────────────────────────────────────────────────────
+
+  element businessActor {
+    #layerBusiness #aspectActive
+    notation 'Business actor'
+    style { shape person; color businessColor }
+  }
+
+  element businessRole {
+    #layerBusiness #aspectActive
+    notation 'Business role'
+    style { color businessColor }
+  }
+
+  element businessCollaboration {
+    #layerBusiness #aspectActive
+    notation 'Business collaboration'
+    style { color businessColor; multiple true }
+  }
+
+  element businessInterface {
+    #layerBusiness #aspectActive
+    notation 'Business interface'
+    style { color businessColor }
+  }
+
+  element businessProcess {
+    #layerBusiness #aspectBehavior
+    notation 'Business process'
+    style { color businessColor }
+  }
+
+  element businessFunction {
+    #layerBusiness #aspectBehavior
+    notation 'Business function'
+    style { color businessColor }
+  }
+
+  element businessInteraction {
+    #layerBusiness #aspectBehavior
+    notation 'Business interaction'
+    style { color businessColor }
+  }
+
+  element businessEvent {
+    #layerBusiness #aspectBehavior
+    notation 'Business event'
+    style { color businessColor }
+  }
+
+  element businessService {
+    #layerBusiness #aspectBehavior
+    notation 'Business service'
+    style { color businessColor }
+  }
+
+  element businessObject {
+    #layerBusiness #aspectPassive
+    notation 'Business object'
+    style { color businessColor }
+  }
+
+  element contract {
+    #layerBusiness #aspectPassive
+    notation 'Contract'
+    style { color businessColor }
+  }
+
+  element representation {
+    #layerBusiness #aspectPassive
+    notation 'Representation'
+    style { color businessColor }
+  }
+
+  element product {
+    #layerBusiness #aspectPassive
+    notation 'Product'
+    style { color businessColor }
+  }
+
+  // ── Application layer ─────────────────────────────────────────────────────
+
+  element applicationComponent {
+    #layerApplication #aspectActive
+    notation 'Application component'
+    style { shape component; color applicationColor }
+  }
+
+  element applicationCollaboration {
+    #layerApplication #aspectActive
+    notation 'Application collaboration'
+    style { color applicationColor; multiple true }
+  }
+
+  element applicationInterface {
+    #layerApplication #aspectActive
+    notation 'Application interface'
+    style { color applicationColor }
+  }
+
+  element applicationFunction {
+    #layerApplication #aspectBehavior
+    notation 'Application function'
+    style { color applicationColor }
+  }
+
+  element applicationInteraction {
+    #layerApplication #aspectBehavior
+    notation 'Application interaction'
+    style { color applicationColor }
+  }
+
+  element applicationProcess {
+    #layerApplication #aspectBehavior
+    notation 'Application process'
+    style { color applicationColor }
+  }
+
+  element applicationEvent {
+    #layerApplication #aspectBehavior
+    notation 'Application event'
+    style { color applicationColor }
+  }
+
+  element applicationService {
+    #layerApplication #aspectBehavior
+    notation 'Application service'
+    style { color applicationColor }
+  }
+
+  element dataObject {
+    #layerApplication #aspectPassive
+    notation 'Data object'
+    style { shape storage; color applicationColor }
+  }
+
+  // ── Technology layer ──────────────────────────────────────────────────────
+
+  element node {
+    #layerTechnology #aspectActive
+    notation 'Node'
+    style { color technologyColor }
+  }
+
+  element device {
+    #layerTechnology #aspectActive
+    notation 'Device'
+    style { color technologyColor }
+  }
+
+  element systemSoftware {
+    #layerTechnology #aspectActive
+    notation 'System software'
+    style { color technologyColor }
+  }
+
+  element technologyCollaboration {
+    #layerTechnology #aspectActive
+    notation 'Technology collaboration'
+    style { color technologyColor; multiple true }
+  }
+
+  element technologyInterface {
+    #layerTechnology #aspectActive
+    notation 'Technology interface'
+    style { color technologyColor }
+  }
+
+  element path {
+    #layerTechnology #aspectActive
+    notation 'Path'
+    style { color technologyColor }
+  }
+
+  element communicationNetwork {
+    #layerTechnology #aspectActive
+    notation 'Communication network'
+    style { color technologyColor }
+  }
+
+  element technologyFunction {
+    #layerTechnology #aspectBehavior
+    notation 'Technology function'
+    style { color technologyColor }
+  }
+
+  element technologyProcess {
+    #layerTechnology #aspectBehavior
+    notation 'Technology process'
+    style { color technologyColor }
+  }
+
+  element technologyInteraction {
+    #layerTechnology #aspectBehavior
+    notation 'Technology interaction'
+    style { color technologyColor }
+  }
+
+  element technologyEvent {
+    #layerTechnology #aspectBehavior
+    notation 'Technology event'
+    style { color technologyColor }
+  }
+
+  element technologyService {
+    #layerTechnology #aspectBehavior
+    notation 'Technology service'
+    style { color technologyColor }
+  }
+
+  element artifact {
+    #layerTechnology #aspectPassive
+    notation 'Artifact'
+    style { color technologyColor }
+  }
+
+  // ── Physical layer ────────────────────────────────────────────────────────
+
+  element equipment {
+    #layerPhysical #aspectActive
+    notation 'Equipment'
+    style { color physicalColor }
+  }
+
+  element facility {
+    #layerPhysical #aspectActive
+    notation 'Facility'
+    style { color physicalColor }
+  }
+
+  element distributionNetwork {
+    #layerPhysical #aspectActive
+    notation 'Distribution network'
+    style { color physicalColor }
+  }
+
+  element material {
+    #layerPhysical #aspectPassive
+    notation 'Material'
+    style { color physicalColor }
+  }
+
+  // ── Implementation and migration ─────────────────────────────────────────
+
+  element workPackage {
+    #layerImplementation #aspectBehavior
+    notation 'Work package'
+    style { color implementationColor }
+  }
+
+  element deliverable {
+    #layerImplementation #aspectPassive
+    notation 'Deliverable'
+    style { color implementationColor }
+  }
+
+  element implementationEvent {
+    #layerImplementation #aspectBehavior
+    notation 'Implementation event'
+    style { color implementationColor }
+  }
+
+  element plateau {
+    #layerImplementation
+    notation 'Plateau'
+    style { color implementationColor }
+  }
+
+  element gap {
+    #layerImplementation
+    notation 'Gap'
+    style { color implementationColor }
+  }
+
+  // ── Composite and relationship connectors ────────────────────────────────
+
+  element grouping {
+    #layerComposite
+    notation 'Grouping'
+    style { color compositeColor; border dashed }
+  }
+
+  element location {
+    #layerComposite
+    notation 'Location'
+    style { color compositeColor }
+  }
+
+  element andJunction {
+    #layerComposite
+    notation 'AND junction'
+    style { color compositeColor }
+  }
+
+  element orJunction {
+    #layerComposite
+    notation 'OR junction'
+    style { color compositeColor }
+  }
+
+  // ── Relationships ─────────────────────────────────────────────────────────
+
+  relationship composition {
+    description 'Strong whole-part relationship.'
+    color relationColor
+  }
+
+  relationship aggregation {
+    description 'Weak whole-part relationship.'
+    color relationColor
+    line dashed
+  }
+
+  relationship assignment {
+    description 'Allocation of responsibility, execution, or use.'
+    color relationColor
+  }
+
+  relationship realization {
+    description 'Implementation or fulfillment of a more abstract concept.'
+    color relationColor
+    line dashed
+  }
+
+  relationship serving {
+    description 'Functionality made available to another concept.'
+    color relationColor
+  }
+
+  relationship access {
+    description 'Use, creation, modification, or reading of passive structure.'
+    color relationColor
+    line dashed
+  }
+
+  relationship influence {
+    description 'Effect on a motivation concept.'
+    color relationColor
+    line dotted
+  }
+
+  relationship association {
+    description 'Semantically relevant connection not expressed more specifically.'
+    color relationColor
+    line dashed
+  }
+
+  relationship triggering {
+    description 'Temporal or causal precedence between behaviors or events.'
+    color relationColor
+  }
+
+  relationship flow {
+    description 'Transfer of information, value, goods, or another object.'
+    color relationColor
+    line dashed
+  }
+
+  relationship specialization {
+    description 'Concept is a more specific form of another concept.'
+    color relationColor
+  }
+}

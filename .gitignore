@@ -1,0 +1,4 @@
+node_modules/
+dist/
+.likec4/
+coverage/

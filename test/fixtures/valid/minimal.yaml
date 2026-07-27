@@ -1,0 +1,15 @@
+format: yarramate/v1
+id: checkout
+profile: yarramate/core@0.1
+concepts:
+  - id: approve-order
+    kind: capability
+    name: Approve order
+  - id: approval-api
+    kind: applicationService
+    name: Approval API
+relationships:
+  - id: api-realizes-approval
+    kind: realization
+    from: approval-api
+    to: approve-order

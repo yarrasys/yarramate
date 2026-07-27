@@ -1,0 +1,31 @@
+{
+  "name": "yarramate",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "yarramate": "dist/cli.js"
+  },
+  "packageManager": "pnpm@11.7.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "docs:dev": "likec4 serve examples/governed-change",
+    "format": "likec4 format profile examples",
+    "validate": "likec4 validate --no-layout examples/governed-change",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "yaml": "^2.8.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "likec4": "^1.59.2",
+    "typescript": "^5.9.0",
+    "vitest": "^4.1.10"
+  }
+}

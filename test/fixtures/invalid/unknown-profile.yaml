@@ -1,0 +1,8 @@
+format: yarramate/v1
+id: custom
+profile: example/custom@1.0
+concepts:
+  - id: example
+    kind: capability
+    name: Example
+relationships: []

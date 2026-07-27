@@ -1,0 +1,8 @@
+format: yarramate/v1
+id: unknown-concept
+profile: yarramate/core@0.1
+concepts:
+  - id: mystery
+    kind: mysteryKind
+    name: Mystery
+relationships: []

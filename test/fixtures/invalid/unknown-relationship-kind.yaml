@@ -1,0 +1,15 @@
+format: yarramate/v1
+id: unknown-relationship
+profile: yarramate/core@0.1
+concepts:
+  - id: source
+    kind: capability
+    name: Source
+  - id: target
+    kind: goal
+    name: Target
+relationships:
+  - id: mystery
+    kind: dependsOn
+    from: source
+    to: target

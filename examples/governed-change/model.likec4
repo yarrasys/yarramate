@@ -1,0 +1,156 @@
+model {
+  // Motivation
+  productOwner = stakeholder 'Product owner' {
+    metadata {
+      layer 'motivation'
+      status 'accepted'
+    }
+  }
+
+  aiChangeRisk = driver 'Risk from AI-authored change' {
+    metadata {
+      layer 'motivation'
+      status 'accepted'
+    }
+  }
+
+  proposalDrift = assessment 'Intent can change after execution' {
+    metadata {
+      layer 'motivation'
+      status 'accepted'
+    }
+  }
+
+  reviewedChangeIntegrity = goal 'Published change matches reviewed change' {
+    metadata {
+      layer 'motivation'
+      status 'accepted'
+      decisions ['adr-approval-integrity']
+    }
+  }
+
+  attributableApproval = principle 'Every approval names a decision-maker' {
+    metadata {
+      layer 'motivation'
+      status 'accepted'
+    }
+  }
+
+  proposalIntentMatch = requirement 'Proposal matches current intent' {
+    metadata {
+      layer 'motivation'
+      status 'accepted'
+      invariants ['proposal-intent-match']
+    }
+  }
+
+  noAnonymousApproval = constraint 'The system cannot approve without an identity' {
+    metadata {
+      layer 'motivation'
+      status 'accepted'
+    }
+  }
+
+  // Strategy
+  governAiChange = capability 'Govern AI-authored change' {
+    metadata {
+      layer 'strategy'
+      owner 'product-governance'
+    }
+  }
+
+  explicitDecisionGate = courseOfAction 'Use an explicit decision gate' {
+    metadata {
+      layer 'strategy'
+      status 'accepted'
+    }
+  }
+
+  safeChangeJourney = valueStream 'Intent to governed publication' {
+    metadata {
+      layer 'strategy'
+    }
+  }
+
+  // Business
+  boardMember = businessRole 'Board member'
+  decideProposal = businessProcess 'Decide proposal'
+  governedPublication = businessService 'Governed publication'
+  approvalRecord = businessObject 'Approval record'
+
+  // Application
+  controlPlane = applicationComponent 'Control plane' {
+    metadata {
+      layer 'application'
+      owner 'platform'
+      requirements ['proposal-intent-match']
+    }
+  }
+
+  approvalInterface = applicationInterface 'Approval interface'
+  verifyIntent = applicationFunction 'Verify proposal intent'
+  approvalRequested = applicationEvent 'Approval requested'
+  approvalDecision = applicationService 'Approval decision'
+  proposal = dataObject 'Proposal'
+  intentDigest = dataObject 'Intent digest'
+
+  // Technology
+  edgeRuntime = node 'Edge runtime'
+  workerRuntime = systemSoftware 'Workers runtime'
+  executeRequest = technologyService 'Execute request'
+  approvalArtifact = artifact 'Sealed approval artifact'
+
+  // Implementation
+  foundation = plateau 'Governance foundation'
+  structuredTraceability = gap 'Structured traceability'
+  yarramateAdoption = workPackage 'Adopt YarraMate profile'
+  conformanceSuite = deliverable 'Profile conformance suite'
+
+  // Motivation chain
+  productOwner -[association]-> reviewedChangeIntegrity 'has concern'
+  aiChangeRisk -[influence]-> proposalDrift 'causes'
+  proposalDrift -[influence]-> reviewedChangeIntegrity 'threatens' {
+    metadata {
+      strength 'high'
+      direction 'negative'
+    }
+  }
+  proposalIntentMatch -[realization]-> reviewedChangeIntegrity 'fulfills'
+  attributableApproval -[realization]-> reviewedChangeIntegrity 'supports'
+  noAnonymousApproval -[realization]-> attributableApproval 'enforces'
+
+  // Strategy to business
+  explicitDecisionGate -[realization]-> governAiChange 'implements strategy'
+  safeChangeJourney -[realization]-> governAiChange 'delivers'
+  governedPublication -[serving]-> boardMember 'serves'
+  decideProposal -[realization]-> governedPublication 'realizes'
+  boardMember -[assignment]-> decideProposal 'performs'
+  decideProposal -[access]-> approvalRecord 'creates' {
+    metadata { mode 'write' }
+  }
+
+  // Application realization
+  controlPlane -[assignment]-> verifyIntent 'performs'
+  approvalInterface -[serving]-> boardMember 'serves'
+  approvalRequested -[triggering]-> verifyIntent 'starts'
+  verifyIntent -[realization]-> approvalDecision 'realizes'
+  verifyIntent -[access]-> proposal 'reads' {
+    metadata { mode 'read' }
+  }
+  verifyIntent -[access]-> intentDigest 'reads' {
+    metadata { mode 'read' }
+  }
+  approvalDecision -[serving]-> decideProposal 'supports'
+  controlPlane -[realization]-> proposalIntentMatch 'implements'
+
+  // Technology realization
+  edgeRuntime -[composition]-> workerRuntime 'contains'
+  controlPlane -[assignment]-> edgeRuntime 'deployed on'
+  workerRuntime -[realization]-> executeRequest 'provides'
+  approvalArtifact -[realization]-> approvalRecord 'materializes'
+
+  // Migration
+  structuredTraceability -[association]-> foundation 'identified in'
+  yarramateAdoption -[realization]-> conformanceSuite 'delivers'
+  conformanceSuite -[realization]-> structuredTraceability 'closes'
+}

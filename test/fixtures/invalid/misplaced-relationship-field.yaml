@@ -1,0 +1,16 @@
+format: yarramate/v1
+id: misplaced
+profile: yarramate/core@0.1
+concepts:
+  - id: concrete
+    kind: applicationService
+    name: Concrete
+  - id: abstract
+    kind: capability
+    name: Abstract
+relationships:
+  - id: realizes
+    kind: realization
+    from: concrete
+    to: abstract
+    mode: read

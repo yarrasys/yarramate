@@ -1,0 +1,8 @@
+{
+  "$schema": "https://likec4.dev/schemas/config.json",
+  "name": "yarramate-governed-change",
+  "title": "YarraMate · Governed Change",
+  "include": {
+    "paths": ["../../profile"]
+  }
+}

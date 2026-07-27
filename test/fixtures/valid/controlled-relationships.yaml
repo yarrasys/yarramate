@@ -1,0 +1,24 @@
+format: yarramate/v1
+id: controlled
+profile: yarramate/core@0.1
+concepts:
+  - id: process
+    kind: businessProcess
+    name: Process
+  - id: next-process
+    kind: businessProcess
+    name: Next process
+  - id: orders
+    kind: businessObject
+    name: Orders
+relationships:
+  - id: reads-orders
+    kind: access
+    from: process
+    to: orders
+    mode: read
+  - id: sends-orders
+    kind: flow
+    from: process
+    to: next-process
+    content: Orders

@@ -1,0 +1,11 @@
+format: yarramate/v1
+id: duplicate
+profile: yarramate/core@0.1
+concepts:
+  - id: shared
+    kind: capability
+    name: First
+  - id: shared
+    kind: goal
+    name: Second
+relationships: []

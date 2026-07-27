@@ -1,0 +1,15 @@
+format: yarramate/v1
+id: incompatible
+profile: yarramate/core@0.1
+concepts:
+  - id: intent
+    kind: goal
+    name: Intent
+  - id: work
+    kind: businessProcess
+    name: Work
+relationships:
+  - id: bad-assignment
+    kind: assignment
+    from: intent
+    to: work
