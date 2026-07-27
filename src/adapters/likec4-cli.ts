@@ -473,6 +473,7 @@ export function runLikeC4Cli(
             : [],
       )
       const renderedViewIds = new Set<string>()
+      const deploymentIdentities = new Set<string>()
       for (const [index, view] of successfulViews.entries()) {
         const deployment = view.deployment
         if (deployment !== undefined) {
@@ -481,11 +482,16 @@ export function runLikeC4Cli(
             const problem =
               nodeIds.has(node.id)
                 ? `Deployment node "${node.id}" is duplicated`
+                : deploymentIdentities.has(node.id)
+                  ? `Deployment identity "${node.id}" is duplicated`
                 : node.parent === node.id
                   ? `Deployment node "${node.id}" cannot parent itself`
                   : undefined
             if (problem !== undefined) {
-              const field = nodeIds.has(node.id) ? 'id' : 'parent'
+              const field =
+                nodeIds.has(node.id) || deploymentIdentities.has(node.id)
+                  ? 'id'
+                  : 'parent'
               const pointer =
                 `/views/${index}/deployment/nodes/${nodeIndex}/${field}`
               const location = locateSourcePath(
@@ -507,6 +513,7 @@ export function runLikeC4Cli(
               }
             }
             nodeIds.add(node.id)
+            deploymentIdentities.add(node.id)
           }
           for (const [nodeIndex, node] of deployment.nodes.entries()) {
             if (
@@ -591,6 +598,8 @@ export function runLikeC4Cli(
             const problem =
               instanceIds.has(instance.id)
                 ? `Deployment instance "${instance.id}" is duplicated`
+                : deploymentIdentities.has(instance.id)
+                  ? `Deployment identity "${instance.id}" is duplicated`
                 : !nodeIds.has(instance.node)
                   ? `Deployment instance node "${instance.node}" does not exist`
                   : projected?.type !== 'concept'
@@ -598,7 +607,8 @@ export function runLikeC4Cli(
                     : undefined
             if (problem !== undefined) {
               const field =
-                instanceIds.has(instance.id)
+                instanceIds.has(instance.id) ||
+                deploymentIdentities.has(instance.id)
                   ? 'id'
                   : !nodeIds.has(instance.node)
                     ? 'node'
@@ -631,6 +641,7 @@ export function runLikeC4Cli(
               }
             }
             instanceIds.add(instance.id)
+            deploymentIdentities.add(instance.id)
           }
         }
         for (const [stepIndex, step] of (

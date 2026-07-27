@@ -10,5 +10,7 @@ concept.
 
 Deployment topology and instance placement are LikeC4 presentation hints in
 the adapter project. They do not become graph-v2 claims or imply that Core has
-a deployment model. Invalid references, duplicate identities, and parent
-cycles are source-located adapter errors.
+a deployment model. Node and instance identities share one project-wide
+deployment namespace because every project view is emitted into one LikeC4
+model. Invalid references, duplicate identities, and parent cycles are
+source-located adapter errors.

@@ -964,6 +964,75 @@ views:
     }
   })
 
+  it('rejects deployment identities duplicated across project views', () => {
+    const parent = mkdtempSync(
+      join(tmpdir(), 'yarramate-likec4-duplicate-deployment-'),
+    )
+    const definition = join(parent, 'project.yaml')
+    try {
+      writeFileSync(
+        definition,
+        `format: yarramate/likec4-project/v1
+id: duplicate-deployment
+version: "1.0"
+title: Duplicate deployment
+mapping: test/fixtures/valid/governed-change.likec4-mapping.yaml
+views:
+  - id: first
+    projection: test/fixtures/valid/governed-change.projection.yaml
+    deployment:
+      nodes:
+        - id: production
+          kind: environment
+          name: Production
+      instances:
+        - id: governed-change
+          subject: governed-change#product-owner
+          node: production
+  - id: second
+    projection: test/fixtures/valid/governed-change.projection.yaml
+    deployment:
+      nodes:
+        - id: production
+          kind: environment
+          name: Production copy
+      instances:
+        - id: governed-change-copy
+          subject: governed-change#product-owner
+          node: production
+`,
+      )
+
+      const result = runLikeC4Cli(
+        [
+          'check',
+          definition,
+          '--json',
+          'test/fixtures/valid/governed-change.workspace.yaml',
+        ],
+        repositoryRoot,
+      )
+
+      expect(result.exitCode).toBe(1)
+      expect(JSON.parse(result.stdout)).toMatchObject({
+        ok: false,
+        diagnostics: [
+          {
+            severity: 'error',
+            code: 'YMLC109',
+            message: 'Deployment identity "production" is duplicated',
+            path: definition,
+            pointer: '/views/1/deployment/nodes/0/id',
+            line: 22,
+            column: 15,
+          },
+        ],
+      })
+    } finally {
+      rmSync(parent, { recursive: true, force: true })
+    }
+  })
+
   it('safely regenerates a project carrying its matching marker', () => {
     const parent = mkdtempSync(join(tmpdir(), 'yarramate-likec4-update-'))
     const project = join(parent, 'governed-change')
