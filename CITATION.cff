@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use YarraMate in published work, please cite this software."
+title: YarraMate
+abstract: "A tool-neutral semantic architecture engine and guided methodology."
+type: software
+authors:
+  - name: YarraMate contributors
+version: 0.1.1
+date-released: 2026-07-28
+url: "https://github.com/yarrasys/yarramate"
+repository-code: "https://github.com/yarrasys/yarramate"
+license: MIT

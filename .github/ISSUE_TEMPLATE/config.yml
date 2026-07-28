@@ -1,2 +1,5 @@
 blank_issues_enabled: true
-contact_links: []
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/yarrasys/yarramate/security/advisories/new
+    about: Report security vulnerabilities privately, not in a public issue.

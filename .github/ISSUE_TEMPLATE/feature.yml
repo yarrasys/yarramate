@@ -1,0 +1,40 @@
+name: Improvement or feature
+description: Suggest a capability, adoption improvement, or semantic change.
+title: "idea: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: Ideas at any level of detail are welcome. You do not need to arrive with a solution.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to accomplish?
+      description: Describe the user or agent journey and where it currently becomes difficult.
+    validations:
+      required: true
+  - type: textarea
+    id: direction
+    attributes:
+      label: Possible direction
+      description: Optional—share an API, document shape, workflow, or trade-off you have in mind.
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Likely surface
+      options:
+        - Native semantics or profile
+        - Compiler or validation
+        - CLI
+        - Agent journey or skill
+        - Projection or visualization
+        - Evidence or reconciliation
+        - Adapter
+        - Documentation or onboarding
+        - Unsure
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives or workarounds
+      description: Optional—tell us what you do today.

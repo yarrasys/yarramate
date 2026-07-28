@@ -1,0 +1,22 @@
+name: Documentation
+description: Report unclear, missing, or incorrect documentation.
+title: "docs: "
+labels:
+  - documentation
+body:
+  - type: input
+    id: location
+    attributes:
+      label: Where is the problem?
+      placeholder: A URL, file path, command, diagnostic, or topic
+  - type: textarea
+    id: problem
+    attributes:
+      label: What was unclear or missing?
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested improvement
+      description: Optional—plain-language intent is enough; polished wording is not required.
