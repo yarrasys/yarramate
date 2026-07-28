@@ -684,6 +684,9 @@ export function runCli(
   cwd: string = process.cwd(),
 ): CliResult {
   const [command, ...options] = args
+  if (command === '--help' || command === '-h' || command === 'help') {
+    return { exitCode: 0, stdout: usage, stderr: '' }
+  }
   if (command === 'init') {
     return runInit(options, cwd)
   }
