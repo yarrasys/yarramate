@@ -102,9 +102,9 @@
     "yaml": "^2.8.1"
   },
   "devDependencies": {
-    "@types/node": "^24.0.0",
+    "@types/node": "^26.1.2",
     "likec4": "^1.59.2",
-    "typescript": "^5.9.0",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.10"
   }
 }
