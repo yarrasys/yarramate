@@ -128,11 +128,12 @@ describe('agent journeys through the stable CLI', () => {
 
     expect(skill).toContain('## Discover an existing project')
     expect(skill).toContain('## Design a new solution')
+    expect(skill).toContain('## Maintain an existing model')
     expect(skill).toContain('yarramate check')
     expect(skill).toContain('yarramate context')
     expect(skill.match(/yarramate compile/g)).toHaveLength(2)
-    expect(skill.match(/yarramate-likec4 map --sync/g)).toHaveLength(2)
-    expect(skill.match(/yarramate-likec4 export-project/g)).toHaveLength(2)
+    expect(skill.match(/yarramate-likec4 map --sync/g)).toHaveLength(3)
+    expect(skill.match(/yarramate-likec4 export-project/g)).toHaveLength(3)
     expect(skill).toContain('Which concepts appear in no projection?')
     expect(skill).toContain(
       'Which ordered relationship chains have no dynamic view?',
@@ -141,6 +142,33 @@ describe('agent journeys through the stable CLI', () => {
       'Which projections are absent from the LikeC4 project?',
     )
     expect(skill).toContain('views produced')
+    for (const section of [
+      skill.slice(
+        skill.indexOf('## Discover an existing project'),
+        skill.indexOf('## Design a new solution'),
+      ),
+      skill.slice(
+        skill.indexOf('## Design a new solution'),
+        skill.indexOf('## Maintain an existing model'),
+      ),
+      skill.slice(
+        skill.indexOf('## Maintain an existing model'),
+        skill.indexOf('## Correctness and authority'),
+      ),
+    ]) {
+      expect(section).toMatch(
+        /yarramate-likec4 check[\s\S]*yarramate-likec4 map --sync/,
+      )
+    }
+    expect(skill).toContain(
+      'A repair command cannot serve as verification.',
+    )
+    expect(skill).toContain(
+      'The maintained model must pass before handoff.',
+    )
+    expect(skill).toContain(
+      'Discover the repository’s authored paths instead of assuming these examples.',
+    )
     expect(skill).toMatch(
       /Never promote evidence into declared intent\s+automatically\./,
     )

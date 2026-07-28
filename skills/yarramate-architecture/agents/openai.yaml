@@ -1,4 +1,4 @@
 interface:
   display_name: "YarraMate Architecture"
-  short_description: "Discover and design repository architecture"
-  default_prompt: "Use $yarramate-architecture to discover or design this project architecture with native YarraMate documents."
+  short_description: "Discover, design, and maintain architecture"
+  default_prompt: "Use $yarramate-architecture to discover, design, or safely maintain this project architecture."

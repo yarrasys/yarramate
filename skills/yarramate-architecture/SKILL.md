@@ -1,11 +1,11 @@
 ---
 name: yarramate-architecture
-description: Discover architecture in an existing repository or design a new solution before implementation using native YarraMate documents and the stable CLI. Use when an agent needs to map a codebase, propose an evidence-backed architecture model, brainstorm solution alternatives, define current/transition/target architecture, reconcile intent with evidence, or provide bounded architecture context to implementation work.
+description: Discover, design, or maintain repository architecture using native YarraMate documents and the stable CLI. Use when an agent needs to map a codebase, propose an evidence-backed architecture model, brainstorm solution alternatives, evolve a model that already validates, rename or replace semantic subjects safely, define current/transition/target architecture, reconcile intent with evidence, or provide bounded architecture context to implementation work.
 ---
 
 # YarraMate architecture
 
-Use one repository-native lifecycle for discovery and design:
+Use one repository-native lifecycle for discovery, design, and maintenance:
 
 ```text
 evidence or design conversation
@@ -26,7 +26,10 @@ automatically.
   existing project**.
 - Intent and a not-yet-built solution are the starting point: follow **Design
   a new solution**.
-- Declared architecture and implementation both exist: begin with discovery,
+- A validating native model must change: follow **Maintain an existing
+  model**.
+- Declared architecture and implementation both exist but no model change is
+  requested: begin with discovery,
   preserve the declared model, then report supported, contradicted, unknown,
   and unobserved claims without silently rewriting it.
 
@@ -67,6 +70,7 @@ yarramate evidence .yarramate/evidence/<evidence>.yaml .yarramate/workspace.yaml
 yarramate reconcile .yarramate/workspace.yaml
 yarramate context .yarramate/projections/<projection>.yaml .yarramate/workspace.yaml
 yarramate view .yarramate/projections/<projection>.yaml .yarramate/workspace.yaml
+yarramate-likec4 check .yarramate/integrations/likec4/project.yaml --json .yarramate/workspace.yaml
 yarramate-likec4 map --sync .yarramate/integrations/likec4/subject-mapping.yaml .yarramate/workspace.yaml
 yarramate-likec4 export-project .yarramate/integrations/likec4/project.yaml .yarramate-out/likec4 .yarramate/workspace.yaml
 ```
@@ -112,6 +116,7 @@ yarramate context .yarramate/projections/<target>.yaml .yarramate/workspace.yaml
 yarramate view .yarramate/projections/<target>.yaml .yarramate/workspace.yaml
 yarramate view .yarramate/projections/<flow>.yaml .yarramate/workspace.yaml
 yarramate compare <document-id>#<baseline-state> <document-id>#<target-state> .yarramate/workspace.yaml
+yarramate-likec4 check .yarramate/integrations/likec4/project.yaml --json .yarramate/workspace.yaml
 yarramate-likec4 map --sync .yarramate/integrations/likec4/subject-mapping.yaml .yarramate/workspace.yaml
 yarramate-likec4 export-project .yarramate/integrations/likec4/project.yaml .yarramate-out/likec4 .yarramate/workspace.yaml
 ```
@@ -125,10 +130,64 @@ yarramate-likec4 export-project .yarramate/integrations/likec4/project.yaml .yar
    implementation context. Do not generate code until the requested design
    decision is reviewable.
 
+## Maintain an existing model
+
+Use this journey for a deliberate change to a model that already passes its
+checks, including a renamed subject, resolved gap, changed relationship, or
+retired concept.
+
+1. Discover the authored layout before assuming paths:
+   - read the workspace `documents`, `projections`, `adapterMappings`, and
+     `evidence` entries;
+   - locate any `yarramate/likec4-project/v1` document and follow its `mapping`
+     field;
+   - treat paths shown below as examples, not required repository layout.
+   Discover the repository’s authored paths instead of assuming these examples.
+2. Establish a passing baseline with Core and every configured read-only
+   adapter check. If the baseline already fails, separate those pre-existing
+   diagnostics from the requested maintenance change.
+3. Before changing an identity, search its local and globally qualified forms
+   across every workspace input. Account for:
+   - `references[].ref` citations;
+   - relationship `from` and `to` endpoints;
+   - evidence `subject` entries and stable claim targets;
+   - adapter mapping `native` entries;
+   - projection selectors, architecture states, ownership, and constraints.
+4. Make the smallest coherent edit and update all referring authored inputs.
+   Do not rewrite unrelated architectural intent.
+5. Run the read-only checks before any repair command so drift remains
+   observable:
+
+```sh
+yarramate check .yarramate/workspace.yaml --json
+yarramate-likec4 check .yarramate/integrations/likec4/project.yaml --json .yarramate/workspace.yaml
+```
+
+6. If the adapter check reports intended mapping drift, repair it locally,
+   inspect the tracked diff, then verify again. Use `--prune` only after
+   confirming that stale native subjects were intentionally renamed or
+   removed:
+
+```sh
+yarramate-likec4 map --sync --prune .yarramate/integrations/likec4/subject-mapping.yaml .yarramate/workspace.yaml
+git diff -- .yarramate
+yarramate check .yarramate/workspace.yaml --json
+yarramate-likec4 check .yarramate/integrations/likec4/project.yaml --json .yarramate/workspace.yaml
+yarramate-likec4 export-project .yarramate/integrations/likec4/project.yaml .yarramate-out/likec4 .yarramate/workspace.yaml
+```
+
+7. Require both configured read-only checks to exit successfully after the
+   edit. The maintained model must pass before handoff. Report changed
+   identities, updated dependants, mapping repairs, generated output, and any
+   intentionally deferred architecture work.
+
 ## Correctness and authority
 
 - Treat `check` as deterministic correctness, never as architecture approval,
   completeness, or quality scoring.
+- A repair command cannot serve as verification. Run read-only adapter checks
+  before `map --sync`, use sync only while authoring, and never put sync in a
+  CI verification gate.
 - Keep LikeC4 optional. Default to visual output for these guided journeys,
   but respect an explicit request for tool-neutral semantic output only.
 - Keep adapter fields outside native documents.
