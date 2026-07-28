@@ -99,6 +99,17 @@ A named semantic connection between concepts, such as `realization`,
 `assignment`, or `triggering`.
 _Avoid_: Arrow type, edge style
 
+**Required constraint**:
+An identified claim that a concept is bound by or must satisfy a referenced
+rule. It declares applicability, not implementation or proof of satisfaction.
+_Avoid_: Realization, enforcement result
+
+**Realization relationship**:
+A relationship claiming that its source implements or fulfils a more abstract
+target. It does not by itself make the target a required constraint on the
+source.
+_Avoid_: Constraint applicability, automatic compliance
+
 **Profile**:
 A versioned vocabulary and set of semantic constraints that extends YarraMate
 Core.
@@ -175,7 +186,8 @@ _Avoid_: Certification, architecture score, implementation workflow
 
 **Check result**:
 A versioned machine-readable outcome containing deterministic correctness
-diagnostics.
+diagnostics and, on success, counts of the compiled documents, concepts,
+relationships, and architecture states.
 _Avoid_: Approval record, completeness score, human console text
 
 **Diagnostic result**:

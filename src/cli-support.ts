@@ -39,12 +39,22 @@ export const diagnosticJson = (diagnostics: unknown) =>
     2,
   )}\n`
 
-export const checkResultJson = (ok: boolean, diagnostics: unknown) =>
+export const checkResultJson = (
+  ok: boolean,
+  diagnostics: unknown,
+  counted?: {
+    readonly documents: number
+    readonly concepts: number
+    readonly relationships: number
+    readonly states: number
+  },
+) =>
   `${JSON.stringify(
     {
       format: 'yarramate/check-result/v1',
       ok,
       diagnostics,
+      ...(counted === undefined ? {} : { counted }),
     },
     null,
     2,

@@ -41,6 +41,7 @@
     },
     "path": {
       "type": "string",
+      "description": "Repository-relative path resolved from the CLI working directory. Parent traversal, absolute paths, and backslashes are rejected.",
       "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\).+$"
     },
     "subjectIdentity": {

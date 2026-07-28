@@ -248,6 +248,12 @@ evidence:
         format: 'yarramate/check-result/v1',
         ok: true,
         diagnostics: [],
+        counted: {
+          documents: 1,
+          concepts: 3,
+          relationships: 1,
+          states: 2,
+        },
       })
       expect(
         JSON.parse(

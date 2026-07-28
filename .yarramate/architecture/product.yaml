@@ -110,11 +110,23 @@ relationships:
     kind: association
     from: evidence-intent-separation
     to: reconcile-intent-and-evidence
+    description: Reconciliation reports where evidence challenges declared architecture without rewriting the accepted intent.
+    references:
+      - id: governing-decisions
+        ref: yarramate-repository#architecture-decisions
   - id: cli-supports-discovery
     kind: association
     from: stable-cli
     to: discover-project-architecture
+    description: Agent harnesses use the stable CLI to produce reviewable discovery proposals without a privileged agent API.
+    references:
+      - id: implementation-interface
+        ref: yarramate-engine#cli
   - id: cli-supports-design
     kind: association
     from: stable-cli
     to: design-solution-before-build
+    description: Agent harnesses use the same stable CLI to capture design intent before implementation begins.
+    references:
+      - id: implementation-interface
+        ref: yarramate-engine#cli
