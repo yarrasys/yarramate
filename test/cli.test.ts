@@ -57,6 +57,14 @@ describe('YarraMate CLI', () => {
       validate(JSON.parse(success.stdout)),
       JSON.stringify(validate.errors ?? []),
     ).toBe(true)
+    expect(JSON.parse(success.stdout)).toMatchObject({
+      counted: {
+        documents: 1,
+        concepts: 2,
+        relationships: 1,
+        states: 0,
+      },
+    })
     expect(
       validate(JSON.parse(failure.stdout)),
       JSON.stringify(validate.errors ?? []),
@@ -103,7 +111,8 @@ describe('YarraMate CLI', () => {
 
     expect(result).toEqual({
       exitCode: 0,
-      stdout: 'Checked 1 document: no errors\n',
+      stdout:
+        'Checked 1 document (2 concepts, 1 relationship, 0 states): no errors\n',
       stderr: '',
     })
   })
@@ -153,7 +162,8 @@ describe('YarraMate CLI', () => {
 
     expect(result).toEqual({
       exitCode: 0,
-      stdout: 'Checked 1 document and 1 profile: no errors\n',
+      stdout:
+        'Checked 1 document and 1 profile (2 concepts, 1 relationship, 0 states): no errors\n',
       stderr: '',
     })
   })
@@ -170,7 +180,8 @@ describe('YarraMate CLI', () => {
 
     expect(result).toEqual({
       exitCode: 0,
-      stdout: 'Checked 1 document and 1 adapter mapping: no errors\n',
+      stdout:
+        'Checked 1 document and 1 adapter mapping (2 concepts, 1 relationship, 0 states): no errors\n',
       stderr: '',
     })
   })
@@ -522,7 +533,8 @@ describe('YarraMate CLI', () => {
         runCli(['check', '.yarramate/workspace.yaml'], directory),
       ).toEqual({
         exitCode: 0,
-        stdout: 'Checked 1 document: no errors\n',
+        stdout:
+          'Checked 1 document (0 concepts, 0 relationships, 0 states): no errors\n',
         stderr: '',
       })
     } finally {

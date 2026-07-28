@@ -57,7 +57,9 @@ notation.
   workspace-wide with architecture-state applicability; additional
   contradiction coverage remains deliberately incremental.**
 - Emit stable, source-located, machine-readable diagnostics. **Implemented as
-  the normative `yarramate/check-result/v1` contract for `check --json`.**
+  the normative `yarramate/check-result/v1` contract for `check --json`,
+  including additive successful-workspace document, concept, relationship,
+  and architecture-state counts.**
 - Keep completeness and organizational governance opt-in.
 
 ## 0.4 — Profiles and projections
@@ -123,8 +125,10 @@ notation.
   comparison visualization, explicit per-view membership after model union,
   ordered dynamic views over projected relationship subjects, and
   native relationship descriptions on dynamic steps, and regression-fixture
-  and self-dogfooding mappings are implemented. Import, round-tripping and
-  general styling parity remain future adapter work.
+  and self-dogfooding mappings are implemented. Non-destructive deterministic
+  subject-mapping synchronization and source-located project-reference
+  diagnostics are also implemented. Import, round-tripping and general
+  styling parity remain future adapter work.
   Adapter-owned deployment nodes and named instances of projected concepts
   are implemented with regression validation.**
 - Generic evidence-provider interface.

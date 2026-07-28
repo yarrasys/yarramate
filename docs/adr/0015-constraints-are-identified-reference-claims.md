@@ -25,6 +25,12 @@ Core checks reference existence and local constraint-ID uniqueness. It does
 not require a particular target kind, evaluate satisfaction, infer
 enforcement, or define exceptions and waivers.
 
+The constraint claim and a `realization` relationship are not alternate
+spellings. `constraints` says that its subject is bound by or must satisfy the
+referenced rule. `realization` says that its source implements or fulfils a
+more abstract target. Use `constraints` for applicability, `realization` for
+implementation, and both only when both independent statements are intended.
+
 ## Consequences
 
 Multiple constraints remain concise, reorder-safe, and queryable in graph v2.

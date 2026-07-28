@@ -140,7 +140,9 @@ yarramate reconcile
 
 Machine-readable checking uses the versioned
 `yarramate/check-result/v1` contract. It reports deterministic correctness
-diagnostics only; it is not an approval, completeness, or quality score.
+diagnostics and successful-workspace subject counts; it is not an approval,
+completeness, shrink policy, or quality score. Consumers decide whether a
+count change is acceptable.
 Other JSON-producing semantic commands report correctness failures through
 the versioned `yarramate/diagnostic-result/v1` contract.
 

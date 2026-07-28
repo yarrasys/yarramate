@@ -250,15 +250,43 @@ export function runCheckCommand(
       ? optionalDiagnostics
       : result.diagnostics
 
+    const counted = result.ok
+      ? (() => {
+          const states = new Set(
+            result.graph.claims
+              .filter(
+                ({ predicate }) =>
+                  predicate === 'yarramate/state/type',
+              )
+              .map(({ subject }) => subject),
+          )
+          return {
+            documents: result.graph.documents.length,
+            concepts: result.graph.subjects.filter(
+              ({ id, type }) => type === 'concept' && !states.has(id),
+            ).length,
+            relationships: result.graph.subjects.filter(
+              ({ type }) => type === 'relationship',
+            ).length,
+            states: states.size,
+          }
+        })()
+      : undefined
+
     if (json) {
       return {
         exitCode: ok ? 0 : 1,
-        stdout: checkResultJson(ok, ok ? [] : diagnostics),
+        stdout: checkResultJson(
+          ok,
+          ok ? [] : diagnostics,
+          ok ? counted : undefined,
+        ),
         stderr: '',
       }
     }
 
     if (ok && result.ok) {
+      const successfulCounts = counted!
       const documentCount = result.graph.documents.length
       const profileCount = coreSources.length - documentCount
       const mappingCount = mappingSources.length
@@ -295,7 +323,12 @@ export function runCheckCommand(
       ].join(' and ')
       return {
         exitCode: 0,
-        stdout: `Checked ${checked}: no errors\n`,
+        stdout:
+          `Checked ${checked} (` +
+          `${successfulCounts.concepts} ${successfulCounts.concepts === 1 ? 'concept' : 'concepts'}, ` +
+          `${successfulCounts.relationships} ${successfulCounts.relationships === 1 ? 'relationship' : 'relationships'}, ` +
+          `${successfulCounts.states} ${successfulCounts.states === 1 ? 'state' : 'states'}` +
+          '): no errors\n',
         stderr: '',
       }
     }

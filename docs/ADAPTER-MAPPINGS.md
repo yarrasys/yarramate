@@ -51,6 +51,23 @@ agent harnesses.
 Successful loads normalize mapping entry order by native identity, external
 identity, and type.
 
+The LikeC4 adapter can add missing entries without replacing existing external
+identities:
+
+```sh
+yarramate-likec4 map --sync \
+  .yarramate/integrations/likec4/subject-mapping.yaml \
+  .yarramate/workspace.yaml
+```
+
+The command compiles the explicit workspace, validates the existing mapping,
+then appends only unmapped concepts and relationships. Architecture-state
+planning subjects are excluded. External identities use deterministic
+lower-camel local IDs; collisions receive a document prefix and, only when
+still necessary, a numeric suffix. Existing mappings and their authored
+overrides are preserved. The candidate mapping is validated before an atomic
+replacement, and a second sync is a no-op.
+
 The governed-change test fixture has a native document and explicit mapping:
 
 ```sh
@@ -93,6 +110,9 @@ the authored value that can correct the failure:
 | `YMLC105` | A compared architecture state is absent from the graph. | Projection state selector. |
 | `YMLC106` | A compared state is omitted from the projection query. | Projection `states` array. |
 | `YMLC107` | Two project entries resolve to the same LikeC4 view identity. | Duplicate project view `id`, or `projection` when no override is present. |
+| `YMLC108` | A dynamic step does not select a relationship. | Project dynamic-step relationship. |
+| `YMLC109` | A deployment identity, parent, or projected subject is invalid. | The corresponding project deployment field. |
+| `YMLC110` | A project mapping, kind mapping, or projection is missing or unreadable. | The referencing project field. |
 
 Schema and source parsing failures retain their existing Core diagnostic
 codes in the same envelope. Mixed Core and adapter failures use the shared
@@ -177,6 +197,12 @@ yarramate-likec4 export-project \
   .yarramate-out/likec4 \
   .yarramate/workspace.yaml
 ```
+
+Every `mapping`, `kindMapping`, and `views[].projection` path in a LikeC4
+project definition is repository-relative: it resolves from the CLI working
+directory, normally the repository root, not from the project-definition
+file. Absolute paths, backslashes, and `..` traversal are rejected so the
+project cannot escape that explicit root.
 
 The adapter unions mapped subjects and claims into one `model` block, then
 emits one ordinary LikeC4 view per projection. This avoids duplicate

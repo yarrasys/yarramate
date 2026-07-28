@@ -37,6 +37,12 @@ describe('agent journeys through the stable CLI', () => {
       format: 'yarramate/check-result/v1',
       ok: true,
       diagnostics: [],
+      counted: {
+        documents: 1,
+        concepts: 4,
+        relationships: 3,
+        states: 0,
+      },
     })
     expect(JSON.parse(evidence.stdout).summary).toEqual({
       confirmed: 3,

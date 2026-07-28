@@ -20,6 +20,99 @@ const repositoryRoot = fileURLToPath(new URL('..', import.meta.url))
 const Ajv2020 = Ajv2020Module.default
 
 describe('YarraMate LikeC4 adapter CLI', () => {
+  it('syncs missing subject mappings without changing authored overrides', () => {
+    const parent = mkdtempSync(join(tmpdir(), 'yarramate-likec4-map-'))
+    const architecture = join(parent, 'architecture.yaml')
+    const workspace = join(parent, 'workspace.yaml')
+    const mapping = join(parent, 'mapping.yaml')
+    try {
+      writeFileSync(
+        architecture,
+        `format: yarramate/v1
+id: delivery
+profile: yarramate/core@0.1
+states:
+  - id: target
+    kind: target
+    name: Target
+concepts:
+  - id: delivery-api
+    kind: applicationComponent
+    name: Delivery API
+  - id: delivery-store
+    kind: dataObject
+    name: Delivery store
+relationships:
+  - id: api-reads-store
+    kind: access
+    from: delivery-api
+    to: delivery-store
+    mode: read
+`,
+      )
+      writeFileSync(
+        workspace,
+        `format: yarramate/workspace/v1
+id: delivery
+documents: [architecture.yaml]
+profiles: []
+projections: []
+adapterMappings: []
+evidence: []
+`,
+      )
+      writeFileSync(
+        mapping,
+        `format: yarramate/adapter-mapping/v1
+id: delivery-likec4
+version: "1.0"
+adapter: likec4
+mappings:
+  - native: delivery#delivery-api
+    external: customApi
+    type: concept
+`,
+      )
+
+      const first = runLikeC4Cli(
+        ['map', '--sync', 'mapping.yaml', 'workspace.yaml'],
+        parent,
+      )
+      expect(first).toEqual({
+        exitCode: 0,
+        stdout: 'Added 2 LikeC4 mappings to mapping.yaml\n',
+        stderr: '',
+      })
+      expect(readFileSync(mapping, 'utf8')).toContain(
+        'external: customApi',
+      )
+      expect(readFileSync(mapping, 'utf8')).toContain(
+        'native: delivery#delivery-store\n    external: deliveryStore\n    type: concept',
+      )
+      expect(readFileSync(mapping, 'utf8')).toContain(
+        'native: delivery#api-reads-store\n    external: apiReadsStore\n    type: relationship',
+      )
+      expect(readFileSync(mapping, 'utf8')).not.toContain(
+        'native: delivery#target',
+      )
+
+      const before = readFileSync(mapping, 'utf8')
+      expect(
+        runLikeC4Cli(
+          ['map', '--sync', 'mapping.yaml', 'workspace.yaml'],
+          parent,
+        ),
+      ).toEqual({
+        exitCode: 0,
+        stdout: 'LikeC4 mapping mapping.yaml is already synchronized\n',
+        stderr: '',
+      })
+      expect(readFileSync(mapping, 'utf8')).toBe(before)
+    } finally {
+      rmSync(parent, { recursive: true, force: true })
+    }
+  })
+
   it('checks a complete adapter export without writing derived output', () => {
     const result = runLikeC4Cli(
       [
@@ -960,6 +1053,59 @@ views:
             column: 9,
           },
         ],
+      })
+    } finally {
+      rmSync(parent, { recursive: true, force: true })
+    }
+  })
+
+  it('reports a missing project projection at its authored reference', () => {
+    const parent = mkdtempSync(
+      join(tmpdir(), 'yarramate-likec4-missing-projection-'),
+    )
+    const definition = join(parent, 'project.yaml')
+    try {
+      writeFileSync(
+        definition,
+        `format: yarramate/likec4-project/v1
+id: missing-projection
+version: "1.0"
+title: Missing projection
+mapping: test/fixtures/valid/governed-change.likec4-mapping.yaml
+views:
+  - projection: missing-projection.yaml
+`,
+      )
+
+      const result = runLikeC4Cli(
+        [
+          'check',
+          definition,
+          '--json',
+          'test/fixtures/valid/governed-change.workspace.yaml',
+        ],
+        repositoryRoot,
+      )
+
+      expect(result).toEqual({
+        exitCode: 1,
+        stdout:
+          '{\n' +
+          '  "format": "yarramate/likec4-check-result/v1",\n' +
+          '  "ok": false,\n' +
+          '  "diagnostics": [\n' +
+          '    {\n' +
+          '      "severity": "error",\n' +
+          '      "code": "YMLC110",\n' +
+          '      "message": "LikeC4 project projection \\"missing-projection.yaml\\" does not exist",\n' +
+          `      "path": ${JSON.stringify(definition)},\n` +
+          '      "pointer": "/views/0/projection",\n' +
+          '      "line": 7,\n' +
+          '      "column": 17\n' +
+          '    }\n' +
+          '  ]\n' +
+          '}\n',
+        stderr: '',
       })
     } finally {
       rmSync(parent, { recursive: true, force: true })

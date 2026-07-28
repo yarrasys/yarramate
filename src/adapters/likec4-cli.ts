@@ -15,12 +15,18 @@ import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createHash, randomUUID } from 'node:crypto'
 import Ajv2020Module from 'ajv/dist/2020.js'
-import { parseDocument } from 'yaml'
+import { isSeq, parseDocument } from 'yaml'
 import {
   isMainModule,
   resolveCliWorkspaceSources,
   type CliResult,
 } from '../cli-support.js'
+import { compileWorkspace } from '../compiler.js'
+import {
+  adapterMappingLocation,
+  loadAdapterMapping,
+  validateAdapterMapping,
+} from '../adapter-mapping.js'
 import { locateSourcePath } from '../source-document.js'
 import {
   prepareLikeC4Export,
@@ -99,6 +105,7 @@ const publishFiles = (
 
 const usage =
   'Usage:\n' +
+  '  yarramate-likec4 map --sync <mapping.yaml> <workspace-or-source...>\n' +
   '  yarramate-likec4 check <projection.yaml> <mapping.yaml> [--json] [--kinds <kind-mapping.yaml>] [--compare <from-state> <to-state>] <workspace-or-source...>\n' +
   '  yarramate-likec4 check <likec4-project.yaml> [--json] <workspace-or-source...>\n' +
   '  yarramate-likec4 export <projection.yaml> <mapping.yaml> [--kinds <kind-mapping.yaml>] [--compare <from-state> <to-state>] <workspace-or-source...>\n' +
@@ -133,6 +140,175 @@ const checkJson = (
 
 const sameJson = (left: unknown, right: unknown) =>
   JSON.stringify(left) === JSON.stringify(right)
+
+const lowerCamel = (value: string) =>
+  value.replaceAll(/-([a-z0-9])/g, (_, character: string) =>
+    character.toUpperCase(),
+  )
+
+const runLikeC4MapSync = (
+  args: readonly string[],
+  cwd: string,
+): CliResult => {
+  const [sync, mappingPath, ...sourcePaths] = args
+  if (
+    sync !== '--sync' ||
+    mappingPath === undefined ||
+    mappingPath.startsWith('-') ||
+    sourcePaths.length === 0 ||
+    sourcePaths.some((path) => path.startsWith('-'))
+  ) {
+    return { exitCode: 2, stdout: '', stderr: usage }
+  }
+  try {
+    const resolved = resolveCliWorkspaceSources(sourcePaths, cwd)
+    if (!resolved.ok) {
+      return {
+        exitCode: 1,
+        stdout: diagnosticJson(resolved.diagnostics),
+        stderr: '',
+      }
+    }
+    const compilation = compileWorkspace(
+      resolved.paths.map((path) => ({
+        path,
+        source: readFileSync(resolve(cwd, path), 'utf8'),
+      })),
+    )
+    if (!compilation.ok) {
+      return {
+        exitCode: 1,
+        stdout: diagnosticJson(compilation.diagnostics),
+        stderr: '',
+      }
+    }
+    const absoluteMappingPath = resolve(cwd, mappingPath)
+    const original = readFileSync(absoluteMappingPath, 'utf8')
+    const loaded = loadAdapterMapping({
+      path: mappingPath,
+      source: original,
+    })
+    if (!loaded.ok) {
+      return {
+        exitCode: 1,
+        stdout: diagnosticJson(loaded.diagnostics),
+        stderr: '',
+      }
+    }
+    if (loaded.mapping.adapter !== 'likec4') {
+      const location = adapterMappingLocation(loaded.mapping, 'adapter')
+      return {
+        exitCode: 1,
+        stdout: diagnosticJson([{
+          severity: 'error',
+          code: 'YMLC101',
+          message: `Adapter mapping targets "${loaded.mapping.adapter}", not "likec4"`,
+          ...location,
+        }]),
+        stderr: '',
+      }
+    }
+    const validation = validateAdapterMapping(
+      compilation.graph,
+      loaded.mapping,
+    )
+    if (!validation.ok) {
+      return {
+        exitCode: 1,
+        stdout: diagnosticJson(validation.diagnostics),
+        stderr: '',
+      }
+    }
+    const mapped = new Set(
+      loaded.mapping.mappings.map(({ native }) => native),
+    )
+    const claimedExternal = new Set(
+      loaded.mapping.mappings.map(({ external }) => external),
+    )
+    const architectureStates = new Set(
+      compilation.graph.claims
+        .filter(({ predicate }) => predicate === 'yarramate/state/type')
+        .map(({ subject }) => subject),
+    )
+    const additions = compilation.graph.subjects
+      .filter(
+        ({ id }) => !mapped.has(id) && !architectureStates.has(id),
+      )
+      .map((subject) => {
+        const [documentId, localId] = subject.id.split('#') as [
+          string,
+          string,
+        ]
+        const local = lowerCamel(localId)
+        let external = local
+        if (claimedExternal.has(external)) {
+          external = `${lowerCamel(documentId)}_${local}`
+        }
+        let suffix = 2
+        const base = external
+        while (claimedExternal.has(external)) {
+          external = `${base}_${suffix}`
+          suffix += 1
+        }
+        claimedExternal.add(external)
+        return {
+          native: subject.id,
+          external,
+          type: subject.type,
+        }
+      })
+    if (additions.length === 0) {
+      return {
+        exitCode: 0,
+        stdout: `LikeC4 mapping ${mappingPath} is already synchronized\n`,
+        stderr: '',
+      }
+    }
+    const document = parseDocument(original)
+    for (const addition of additions) {
+      document.addIn(['mappings'], addition)
+    }
+    const mappings = document.getIn(['mappings'], true)
+    if (isSeq(mappings)) mappings.flow = false
+    const candidate = document.toString({ lineWidth: 0 })
+    const candidateMapping = loadAdapterMapping({
+      path: mappingPath,
+      source: candidate,
+    })
+    if (!candidateMapping.ok) {
+      return {
+        exitCode: 1,
+        stdout: diagnosticJson(candidateMapping.diagnostics),
+        stderr: '',
+      }
+    }
+    const candidateValidation = validateAdapterMapping(
+      compilation.graph,
+      candidateMapping.mapping,
+    )
+    if (!candidateValidation.ok) {
+      return {
+        exitCode: 1,
+        stdout: diagnosticJson(candidateValidation.diagnostics),
+        stderr: '',
+      }
+    }
+    const staged = stageFile(absoluteMappingPath, candidate)
+    try {
+      staged.publish()
+    } finally {
+      staged.cleanup()
+    }
+    return {
+      exitCode: 0,
+      stdout: `Added ${additions.length} LikeC4 mappings to ${mappingPath}\n`,
+      stderr: '',
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    return { exitCode: 2, stdout: '', stderr: `${message}\n` }
+  }
+}
 
 const publishGeneratedProject = (
   cwd: string,
@@ -278,6 +454,9 @@ export function runLikeC4Cli(
   args: readonly string[],
   cwd: string = process.cwd(),
 ): CliResult {
+  if (args[0] === 'map') {
+    return runLikeC4MapSync(args.slice(1), cwd)
+  }
   const [command, projectionPath, mappingPath, ...options] = args
   let projectDefinitionMode = false
   if (
@@ -404,38 +583,102 @@ export function runLikeC4Cli(
           stderr: '',
         }
       }
+      const referencedSources = new Map<string, {
+        readonly path: string
+        readonly source: string
+      }>()
+      const referenceDiagnostics: LikeC4PreparationDiagnostic[] = []
+      const readProjectReference = (
+        path: string,
+        label: 'mapping' | 'kind mapping' | 'projection',
+        yamlPath: readonly (string | number)[],
+        pointer: string,
+      ) => {
+        const existing = referencedSources.get(path)
+        if (existing !== undefined) return existing
+        try {
+          const source = {
+            path,
+            source: readFileSync(resolve(cwd, path), 'utf8'),
+          }
+          referencedSources.set(path, source)
+          return source
+        } catch (error) {
+          const location = locateSourcePath(
+            projectSource.path,
+            loadedProject.document.yaml,
+            loadedProject.document.lineCounter,
+            yamlPath,
+            pointer,
+          )
+          const absent =
+            error instanceof Error &&
+            'code' in error &&
+            error.code === 'ENOENT'
+          referenceDiagnostics.push({
+            severity: 'error',
+            code: 'YMLC110',
+            message: absent
+              ? `LikeC4 project ${label} "${path}" does not exist`
+              : `LikeC4 project ${label} "${path}" cannot be read`,
+            ...location,
+          })
+          return undefined
+        }
+      }
+      const subjectMapping = readProjectReference(
+        loadedProject.document.value.mapping,
+        'mapping',
+        ['mapping'],
+        '/mapping',
+      )
+      const kindMapping =
+        loadedProject.document.value.kindMapping === undefined
+          ? undefined
+          : readProjectReference(
+              loadedProject.document.value.kindMapping,
+              'kind mapping',
+              ['kindMapping'],
+              '/kindMapping',
+            )
+      const projections = loadedProject.document.value.views.map(
+        (view, index) =>
+          readProjectReference(
+            view.projection,
+            'projection',
+            ['views', index, 'projection'],
+            `/views/${index}/projection`,
+          ),
+      )
+      if (
+        referenceDiagnostics.length > 0 ||
+        subjectMapping === undefined
+      ) {
+        return {
+          exitCode: 1,
+          stdout: diagnosticOutput(
+            referenceDiagnostics.sort((left, right) =>
+              left.path.localeCompare(right.path) ||
+              left.line - right.line ||
+              left.column - right.column ||
+              left.code.localeCompare(right.code) ||
+              left.message.localeCompare(right.message),
+            ),
+          ),
+          stderr: '',
+        }
+      }
       const preparedViews = loadedProject.document.value.views.map(
-        (view) => ({
+        (view, index) => ({
           view,
           prepared: prepareLikeC4Export({
             sources,
-            projection: {
-              path: view.projection,
-              source: readFileSync(
-                resolve(cwd, view.projection),
-                'utf8',
-              ),
-            },
-            subjectMapping: {
-              path: loadedProject.document.value.mapping,
-              source: readFileSync(
-                resolve(cwd, loadedProject.document.value.mapping),
-                'utf8',
-              ),
-            },
+            projection: projections[index]!,
+            subjectMapping,
             ...(loadedProject.document.value.kindMapping === undefined
               ? {}
               : {
-                  kindMapping: {
-                    path: loadedProject.document.value.kindMapping,
-                    source: readFileSync(
-                      resolve(
-                        cwd,
-                        loadedProject.document.value.kindMapping,
-                      ),
-                      'utf8',
-                    ),
-                  },
+                  kindMapping: kindMapping!,
                 }),
             ...(view.compare === undefined
               ? {}

@@ -79,6 +79,13 @@ evaluate the stable generated claim ID and report through an evidence overlay;
 the observation does not mutate declared intent or become a Core validation
 result.
 
+`constraints` and `realization` express different claims. A constraint entry
+means the concept is bound by the referenced rule; a realization relationship
+means its source implements or fulfils its target. A component that must obey a
+rule uses `constraints`. A component that implements the mechanism described
+by a rule may use `realization`. Declare both only when both facts are
+architecturally meaningful; neither implies the other.
+
 Concepts and relationships may cite any other workspace subject through
 explicitly identified references:
 
@@ -183,6 +190,28 @@ Kind names are supplied by the selected explicit profile. The schema accepts a
 kind string because profiles are extensible; compilation rejects a kind absent
 from the selected catalogue.
 
+## Decomposing a model
+
+A native document is a stable semantic identity and review boundary, not a
+required layer, diagram, subsystem, or file-size unit. Split documents when a
+cohesive body of architecture is easier to own and review independently—for
+example by subsystem, bounded responsibility, or kind of knowledge such as
+structure, governance rules, interaction flows, and evolution planning. Keep a
+small model together when splitting would add navigation without clarifying
+ownership or review.
+
+Cross-document endpoints, owners, constraints, identified references,
+architecture-state ordering, and `presentIn` references use globally qualified
+`document#subject` identities and have the same correctness checks as local
+references. Architecture states are workspace planning contexts and may be
+declared in one document and referenced from any other compiled document.
+
+There is no correctness threshold for concepts or relationships per document.
+The practical costs of decomposition are explicit qualification and reviewing
+more files. Moving an existing subject between documents changes its globally
+qualified identity, so choose durable boundaries and treat later moves as
+semantic renames rather than harmless file organization.
+
 ## Compiled graph
 
 `compileWorkspace(sources)` is the library interface. On success it returns a
@@ -253,8 +282,9 @@ yarramate check architecture/*.yaml --json
 Explicit files are checked as one workspace, so qualified references may cross
 between them. Exit status is `0` when valid,
 `1` for correctness diagnostics, and `2` for invocation or file errors.
-`--json` emits a deterministic `yarramate/check-result/v1` object with `ok`
-and `diagnostics`. Its normative structure is
+`--json` emits a deterministic `yarramate/check-result/v1` object with `ok`,
+`diagnostics`, and successful-workspace `counted` totals for documents,
+concepts, relationships, and architecture states. Its normative structure is
 `schema/yarramate-check-result.schema.json`, exported as
 `yarramate/schema/check-result`. The command does not write compiled artifacts.
 

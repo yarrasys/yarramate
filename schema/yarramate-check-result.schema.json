@@ -17,6 +17,9 @@
       "items": {
         "$ref": "#/$defs/diagnostic"
       }
+    },
+    "counted": {
+      "$ref": "#/$defs/counted"
     }
   },
   "allOf": [
@@ -30,6 +33,7 @@
         "required": ["ok"]
       },
       "then": {
+        "required": ["counted"],
         "properties": {
           "diagnostics": {
             "maxItems": 0
@@ -46,6 +50,17 @@
     }
   ],
   "$defs": {
+    "counted": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["documents", "concepts", "relationships", "states"],
+      "properties": {
+        "documents": { "type": "integer", "minimum": 0 },
+        "concepts": { "type": "integer", "minimum": 0 },
+        "relationships": { "type": "integer", "minimum": 0 },
+        "states": { "type": "integer", "minimum": 0 }
+      }
+    },
     "diagnostic": {
       "type": "object",
       "additionalProperties": false,
