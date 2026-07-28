@@ -227,7 +227,7 @@ mappings:
       expect(result.stdout).toContain(`yarramateChange 'added'`)
       writeFileSync(join(parent, 'model.likec4'), result.stdout)
       copyFileSync(
-        join(repositoryRoot, '.yarramate/integrations/likec4/prototype/specification.likec4'),
+        join(repositoryRoot, 'assets/likec4/specification.likec4'),
         join(parent, 'specification.likec4'),
       )
       writeFileSync(
@@ -359,7 +359,7 @@ mappings:
     try {
       writeFileSync(join(fixtureRoot, 'model.likec4'), result.stdout)
       copyFileSync(
-        join(repositoryRoot, '.yarramate/integrations/likec4/prototype/specification.likec4'),
+        join(repositoryRoot, 'assets/likec4/specification.likec4'),
         join(fixtureRoot, 'specification.likec4'),
       )
       writeFileSync(

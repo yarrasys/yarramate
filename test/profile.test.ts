@@ -10,7 +10,7 @@ import {
 } from '../src/profile.js'
 
 const specificationPath = fileURLToPath(
-  new URL('../.yarramate/integrations/likec4/prototype/specification.likec4', import.meta.url),
+  new URL('../assets/likec4/specification.likec4', import.meta.url),
 )
 const specification = readFileSync(specificationPath, 'utf8')
 
