@@ -5,7 +5,7 @@ abstract: "A tool-neutral semantic architecture engine and guided methodology."
 type: software
 authors:
   - name: YarraMate contributors
-version: 0.3.0
+version: 0.3.1
 date-released: 2026-07-28
 url: "https://github.com/yarrasys/yarramate"
 repository-code: "https://github.com/yarrasys/yarramate"
