@@ -1,0 +1,52 @@
+name: Bug report
+description: Tell us about incorrect or unexpected YarraMate behaviour.
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for taking the time to report this. A minimal reproduction is helpful but never required.
+  - type: textarea
+    id: observed
+    attributes:
+      label: What happened?
+      description: Include commands, diagnostics, or relevant document fragments when useful. Remove private information.
+      placeholder: I expected … but YarraMate …
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How can we reproduce it?
+      description: Steps, a small example, or a repository link are all welcome.
+  - type: input
+    id: version
+    attributes:
+      label: YarraMate version
+      placeholder: "0.1.1, a commit SHA, or unknown"
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Affected surface
+      options:
+        - Native documents or compiler
+        - CLI
+        - JSON Schemas or graph interchange
+        - Agent skill
+        - LikeC4 adapter
+        - Graphify adapter
+        - Documentation
+        - Unsure
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, Node.js version, package manager, and agent harness when relevant.
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Public-report check
+      options:
+        - label: I have removed credentials and private repository content.
+          required: true

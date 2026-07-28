@@ -1,0 +1,18 @@
+name: Question
+description: Ask about using, extending, or contributing to YarraMate.
+title: "question: "
+labels:
+  - question
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: What would you like to know?
+      description: Include enough context to understand what you are building or exploring.
+    validations:
+      required: true
+  - type: textarea
+    id: tried
+    attributes:
+      label: What have you tried or read?
+      description: Optional—this helps us find documentation gaps.

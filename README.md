@@ -1,5 +1,10 @@
 # YarraMate
 
+[![npm](https://img.shields.io/npm/v/yarramate)](https://www.npmjs.com/package/yarramate)
+[![CI](https://github.com/yarrasys/yarramate/actions/workflows/ci.yml/badge.svg)](https://github.com/yarrasys/yarramate/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/yarrasys/yarramate/actions/workflows/codeql.yml/badge.svg)](https://github.com/yarrasys/yarramate/actions/workflows/codeql.yml)
+[![license: MIT](https://img.shields.io/github/license/yarrasys/yarramate)](LICENSE)
+
 YarraMate is a tool-neutral semantic architecture engine and guided
 methodology. It turns architectural intent into deterministic, testable
 context shared by people and agents.
@@ -94,8 +99,16 @@ pnpm docs:dev
 
 ## CLI
 
-Build the repository, then invoke the same executable surface intended for
-published use:
+Install the published executable or invoke it directly with `npx`:
+
+```sh
+npm install --global yarramate
+yarramate --help
+
+npx yarramate check .yarramate/workspace.yaml
+```
+
+When developing the repository, build and invoke the same executable surface:
 
 ```sh
 pnpm build
@@ -117,7 +130,7 @@ For a local consumer test, create a package artifact:
 
 ```sh
 pnpm pack --pack-destination /tmp/yarramate-package
-npm install --global /tmp/yarramate-package/yarramate-0.1.0.tgz
+npm install --global /tmp/yarramate-package/yarramate-*.tgz
 yarramate --help
 ```
 
@@ -169,6 +182,8 @@ You do not need to provide a solution, formal proposal, or implementation.
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before proposing changes to native
 semantics or stable interfaces. Report suspected vulnerabilities according to
-[SECURITY.md](SECURITY.md).
+[SECURITY.md](SECURITY.md). Participation is governed by the
+[Code of Conduct](CODE_OF_CONDUCT.md), and help channels are described in
+[SUPPORT.md](SUPPORT.md).
 
 YarraMate is available under the [MIT License](LICENSE).
