@@ -14,6 +14,12 @@ The repository's initial manifest is
 - controlled exclusions that prevent the manifest being read as an
   architecture-quality or external-certification claim.
 
+The initial contract guarantees referential integrity for explicit identified
+references. It excludes formal workflow semantics: authors may model behaviour
+and normal or failure paths with ordinary subjects and relationships, but Core
+does not infer workflow completeness, executable preconditions, or outcome
+logic.
+
 Example:
 
 ```yaml

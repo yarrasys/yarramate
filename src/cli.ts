@@ -416,6 +416,7 @@ const hasRepeatedSingletonFlag = (
     ([flag, values]) =>
       flag !== '--source' &&
       flag !== '--constraint' &&
+      flag !== '--reference' &&
       flag !== '--present-in' &&
       values.length !== 1,
   )
@@ -432,6 +433,23 @@ const appendBlockItem = (
   }
 }
 
+const identifiedReferences = (
+  values: readonly string[],
+): ReadonlyArray<{ readonly id: string; readonly ref: string }> | undefined => {
+  const parsed = values.map((value) => {
+    const separator = value.indexOf('=')
+    return separator <= 0 || separator === value.length - 1
+      ? undefined
+      : {
+          id: value.slice(0, separator),
+          ref: value.slice(separator + 1),
+        }
+  })
+  return parsed.some((reference) => reference === undefined)
+    ? undefined
+    : (parsed as ReadonlyArray<{ readonly id: string; readonly ref: string }>)
+}
+
 const runAdd = (options: readonly string[], cwd: string): CliResult => {
   const parsed = parseFlags(options)
   if (parsed === undefined) {
@@ -445,6 +463,7 @@ const runAdd = (options: readonly string[], cwd: string): CliResult => {
     '--description',
     '--owner',
     '--constraint',
+    '--reference',
     '--present-in',
     '--source',
   ])
@@ -460,18 +479,13 @@ const runAdd = (options: readonly string[], cwd: string): CliResult => {
   if (id === undefined || kind === undefined || name === undefined) {
     return { exitCode: 2, stdout: '', stderr: usage }
   }
-  const constraints = (parsed.flags.get('--constraint') ?? []).map(
-    (value) => {
-      const separator = value.indexOf('=')
-      return separator <= 0 || separator === value.length - 1
-        ? undefined
-        : {
-            id: value.slice(0, separator),
-            ref: value.slice(separator + 1),
-          }
-    },
+  const constraints = identifiedReferences(
+    parsed.flags.get('--constraint') ?? [],
   )
-  if (constraints.some((constraint) => constraint === undefined)) {
+  const references = identifiedReferences(
+    parsed.flags.get('--reference') ?? [],
+  )
+  if (constraints === undefined || references === undefined) {
     return { exitCode: 2, stdout: '', stderr: usage }
   }
 
@@ -492,6 +506,7 @@ const runAdd = (options: readonly string[], cwd: string): CliResult => {
         ? {}
         : { owner: oneFlag(parsed.flags, '--owner') }),
       ...(constraints.length === 0 ? {} : { constraints }),
+      ...(references.length === 0 ? {} : { references }),
       ...(parsed.flags.get('--present-in') === undefined
         ? {}
         : { presentIn: parsed.flags.get('--present-in') }),
@@ -549,9 +564,11 @@ const runConnect = (options: readonly string[], cwd: string): CliResult => {
     '--from',
     '--to',
     '--name',
+    '--description',
     '--status',
     '--mode',
     '--content',
+    '--reference',
     '--present-in',
     '--source',
   ])
@@ -573,6 +590,12 @@ const runConnect = (options: readonly string[], cwd: string): CliResult => {
   ) {
     return { exitCode: 2, stdout: '', stderr: usage }
   }
+  const references = identifiedReferences(
+    parsed.flags.get('--reference') ?? [],
+  )
+  if (references === undefined) {
+    return { exitCode: 2, stdout: '', stderr: usage }
+  }
 
   try {
     const absolutePath = resolve(cwd, parsed.path)
@@ -585,6 +608,9 @@ const runConnect = (options: readonly string[], cwd: string): CliResult => {
       ...(oneFlag(parsed.flags, '--name') === undefined
         ? {}
         : { name: oneFlag(parsed.flags, '--name') }),
+      ...(oneFlag(parsed.flags, '--description') === undefined
+        ? {}
+        : { description: oneFlag(parsed.flags, '--description') }),
       ...(oneFlag(parsed.flags, '--status') === undefined
         ? {}
         : { status: oneFlag(parsed.flags, '--status') }),
@@ -594,6 +620,7 @@ const runConnect = (options: readonly string[], cwd: string): CliResult => {
       ...(oneFlag(parsed.flags, '--content') === undefined
         ? {}
         : { content: oneFlag(parsed.flags, '--content') }),
+      ...(references.length === 0 ? {} : { references }),
       ...(parsed.flags.get('--present-in') === undefined
         ? {}
         : { presentIn: parsed.flags.get('--present-in') }),

@@ -177,7 +177,7 @@ const viewBody = ({
     const claimsById = new Map(
       prepared.projection.claims.map((claim) => [claim.id, claim]),
     )
-    const lines = dynamic.steps.map((step) => {
+    const lines = dynamic.steps.flatMap((step) => {
       const structural = claimsById.get(step.relationship)!
       const source = externalByNative.get(structural.subject)!
       const target =
@@ -195,7 +195,25 @@ const viewBody = ({
         (declaredTitle !== undefined && 'value' in declaredTitle.object
           ? declaredTitle.object.value
           : undefined)
-      return `    ${source} -> ${target}${title === undefined ? '' : ` ${quote(title)}`}`
+      const declaredDescription = prepared.projection.claims.find(
+        (claim) =>
+          claim.subject === step.relationship &&
+          claim.predicate === 'yarramate/relationship/description' &&
+          'value' in claim.object,
+      )
+      const description =
+        declaredDescription !== undefined &&
+        'value' in declaredDescription.object
+          ? declaredDescription.object.value
+          : undefined
+      const statement = `    ${source} -> ${target}${title === undefined ? '' : ` ${quote(title)}`}`
+      return description === undefined
+        ? [statement]
+        : [
+            `${statement} {`,
+            `      description ${quote(description)}`,
+            '    }',
+          ]
     })
     const viewId =
       id ?? prepared.projection.projection.split('@')[0]

@@ -64,6 +64,18 @@ A sourced assertion about a subject, including its kind, relationship,
 classification, constraint, or evidence.
 _Avoid_: Metadata field, unqualified fact
 
+**Description claim**:
+A narrative assertion attached to a concept or relationship subject. It may
+record rationale, conditions, or consequences without making the prose
+executable logic.
+_Avoid_: Comment, adapter label, formal rule
+
+**Identified reference**:
+A stable, authored citation from a concept or relationship to another
+workspace subject. Core checks identity, uniqueness, and resolution but does
+not infer dependency, ownership, constraint, or workflow meaning.
+_Avoid_: Unchecked prose link, relationship substitute, generic metadata
+
 **Owner**:
 The single concept referenced as accountable steward of another concept.
 _Avoid_: Approver, workflow participant, inferred team
@@ -184,6 +196,12 @@ _Avoid_: Native metadata, generated claim, canonical external model
 An adapter-owned composition of semantic projections into one derived LikeC4
 model containing multiple views.
 _Avoid_: Canonical architecture model, copied native document
+
+**Dynamic step**:
+An adapter-owned presentation of one projected native relationship in an
+ordered LikeC4 interaction view. Its description may present the native
+relationship description, but order is not a Core workflow claim.
+_Avoid_: Native workflow step, executable transition, completeness rule
 
 **Evidence provider**:
 An adapter that resolves declared claims against observed sources such as

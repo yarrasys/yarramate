@@ -1,0 +1,11 @@
+format: yarramate/v1
+id: references
+profile: yarramate/core@0.1
+concepts:
+  - id: worker
+    kind: applicationProcess
+    name: Worker
+    references:
+      - id: missing-rule
+        ref: missing-subject
+relationships: []

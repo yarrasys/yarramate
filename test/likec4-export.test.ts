@@ -182,6 +182,9 @@ concepts:
     constraints:
       - id: residency
         ref: residency
+    references:
+      - id: policy-source
+        ref: residency
   - id: record
     kind: dataObject
     name: Payment record
@@ -191,7 +194,11 @@ relationships:
     from: service
     to: record
     name: reads
+    description: Reads the governed record without copying it
     mode: read
+    references:
+      - id: policy-source
+        ref: residency
 `,
       },
     ])
@@ -226,13 +233,16 @@ relationships:
       status 'current'
       owner 'metadata#team'
       constraints ['metadata#residency']
+      references ['metadata#residency']
     }
   }`)
     expect(result.source).toContain(`service -[access]-> record 'reads' {
+    description 'Reads the governed record without copying it'
     metadata {
       yarramateId 'metadata#reads-record'
       yarramateKind 'yarramate/core@0.1#access'
       mode 'read'
+      references ['metadata#residency']
     }
   }`)
   })

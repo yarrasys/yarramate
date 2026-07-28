@@ -431,6 +431,92 @@ relationships:
     })
   })
 
+  it('compiles identified references from concepts and relationships into stable claims', () => {
+    const result = compileWorkspace([
+      {
+        path: 'references.yaml',
+        source: fixture('valid/identified-references.yaml'),
+      },
+    ])
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.graph.claims).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'references#worker~reference-lifecycle-rule',
+          subject: 'references#worker',
+          predicate: 'yarramate/reference/refers-to',
+          object: { ref: 'references#worker-triggers-lifecycle' },
+          source: expect.objectContaining({
+            pointer: '/concepts/1/references/0/ref',
+            line: 13,
+            column: 14,
+          }),
+        }),
+        expect.objectContaining({
+          id: 'references#worker-triggers-lifecycle~reference-governing-subject',
+          subject: 'references#worker-triggers-lifecycle',
+          predicate: 'yarramate/reference/refers-to',
+          object: { ref: 'references#lifecycle' },
+          source: expect.objectContaining({
+            pointer: '/relationships/0/references/0/ref',
+            line: 21,
+            column: 14,
+          }),
+        }),
+      ]),
+    )
+  })
+
+  it('reports an unresolved subject reference at its authored value', () => {
+    const result = compileWorkspace([
+      {
+        path: 'references.yaml',
+        source: fixture('invalid/unresolved-subject-reference.yaml'),
+      },
+    ])
+
+    expect(result).toEqual({
+      ok: false,
+      diagnostics: [
+        {
+          severity: 'error',
+          code: 'YM308',
+          message: 'Unresolved subject reference "missing-subject"',
+          path: 'references.yaml',
+          pointer: '/concepts/0/references/0/ref',
+          line: 10,
+          column: 14,
+        },
+      ],
+    })
+  })
+
+  it('rejects duplicate reference IDs on one subject', () => {
+    const result = compileWorkspace([
+      {
+        path: 'references.yaml',
+        source: fixture('invalid/duplicate-reference-id.yaml'),
+      },
+    ])
+
+    expect(result).toEqual({
+      ok: false,
+      diagnostics: [
+        {
+          severity: 'error',
+          code: 'YM309',
+          message: 'Duplicate reference ID "governing-rule"',
+          path: 'references.yaml',
+          pointer: '/concepts/2/references/1/id',
+          line: 17,
+          column: 13,
+        },
+      ],
+    })
+  })
+
   it('compiles concise authoring syntax into explicit declared claims', () => {
     const result = compileWorkspace([
       {
@@ -701,7 +787,11 @@ relationships:
     if (result.ok) {
       expect(
         result.graph.claims.filter(({ id }) =>
-          ['described#goal~description', 'described#realizes~name'].includes(id),
+          [
+            'described#goal~description',
+            'described#realizes~description',
+            'described#realizes~name',
+          ].includes(id),
         ),
       ).toEqual([
         {
@@ -715,6 +805,22 @@ relationships:
             path: 'described.yaml',
             pointer: '/concepts/0/description',
             line: 8,
+            column: 18,
+          },
+        },
+        {
+          id: 'described#realizes~description',
+          subject: 'described#realizes',
+          predicate: 'yarramate/relationship/description',
+          object: {
+            value: 'This dependency records the chosen delivery rationale',
+          },
+          origin: 'declared',
+          source: {
+            document: 'described',
+            path: 'described.yaml',
+            pointer: '/relationships/0/description',
+            line: 18,
             column: 18,
           },
         },

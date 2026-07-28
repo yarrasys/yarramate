@@ -878,7 +878,9 @@ views:
         "dynamic view discovery-flow {\n" +
           "    title 'Product journeys'\n" +
           "    description 'Existing-project discovery and architecture-first design converge on one native, Git-reviewed lifecycle.'\n" +
-          "    productEvidenceIntentSeparation -> productDiscoverProjectArchitecture 'constrains discovery'\n" +
+          "    productEvidenceIntentSeparation -> productDiscoverProjectArchitecture 'constrains discovery' {\n" +
+          "      description 'Discovery may propose declared architecture from evidence, but evidence never becomes accepted intent without Git review.'\n" +
+          "    }\n" +
           "    productDiscoverProjectArchitecture -> productSharedArchitectureContext 'produces shared context'\n" +
           '  }',
       )

@@ -43,7 +43,11 @@ relationships:
     kind: access
     from: delivery-api
     to: delivery-data
+    description: The API uses the governed record without maintaining a copy.
     mode: read-write
+    references:
+      - id: residency-policy
+        ref: delivery-data
 ```
 
 IDs are document-local and compile to `document-id#subject-id`. Cross-document
@@ -75,6 +79,29 @@ use association when no stronger semantic meaning is justified.
 
 Ownership is one accountable reference, not approval workflow. Constraints are
 identified references, not a policy engine or free-form metadata bag.
+
+## Rationale and citations
+
+Use `description` on either a concept or relationship for decided narrative
+about that exact subject. Use an identified `references` entry when the
+narrative depends on another concept or relationship and the citation must
+remain checkable:
+
+```yaml
+description: Failure releases the lease and retains partial evidence.
+references:
+  - id: failure-destination
+    ref: retry-pool
+```
+
+Core checks the explicit target and local reference ID. It does not scan prose
+for IDs or interpret descriptions as formal preconditions, postconditions, or
+workflow rules.
+
+For interaction flows, model steps that need identity as behavior concepts and
+model normal or failure transitions as native relationships. A LikeC4 dynamic
+view may order those projected relationships and display their descriptions;
+the view does not become the workflow source of truth.
 
 ## Architecture states
 
@@ -153,7 +180,9 @@ yarramate add .yarramate/architecture/main.yaml \
   --id delivery-api --kind applicationComponent --name "Delivery API"
 yarramate connect .yarramate/architecture/main.yaml \
   --id api-realizes-service --kind realization \
-  --from delivery-api --to delivery-service
+  --from delivery-api --to delivery-service \
+  --description "The API implements the agreed delivery boundary" \
+  --reference decision-source=delivery-service
 yarramate check .yarramate/workspace.yaml --json
 yarramate compile .yarramate/workspace.yaml
 yarramate context <projection.yaml> .yarramate/workspace.yaml

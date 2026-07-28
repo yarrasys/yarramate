@@ -56,6 +56,12 @@ Native `access` relationships may declare a controlled `mode` of `read`,
 declare non-empty `content`. These values are semantic claims, not rendering
 metadata.
 
+Native concepts and relationships may carry description claims. A relationship
+description is rendered on the corresponding LikeC4 relationship and, when
+used as a dynamic step, on that step. Identified native references are emitted
+as flat `references` traceability metadata. Neither representation gives the
+adapter authority over the native claim.
+
 A workspace must not claim both `composition` and `aggregation` for the same
 ordered endpoints in overlapping architecture states. Strong and weak
 whole-part membership are competing claims while their relationship

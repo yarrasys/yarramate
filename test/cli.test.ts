@@ -1118,7 +1118,7 @@ relationships: []
     }
   })
 
-  it('adds ownership and identified constraints through the stable CLI', () => {
+  it('adds ownership, constraints, and references through the stable CLI', () => {
     const directory = mkdtempSync(join(tmpdir(), 'yarramate-add-semantics-'))
     try {
       expect(runCli(['init', '.'], directory).exitCode).toBe(0)
@@ -1157,6 +1157,8 @@ relationships: []
           'payments-team',
           '--constraint',
           'residency=australia-only',
+          '--reference',
+          'policy-source=australia-only',
         ],
         directory,
       )
@@ -1168,6 +1170,9 @@ relationships: []
         '    owner: payments-team\n' +
           '    constraints:\n' +
           '      - id: residency\n' +
+          '        ref: australia-only\n' +
+          '    references:\n' +
+          '      - id: policy-source\n' +
           '        ref: australia-only\n',
       )
     } finally {
@@ -1213,6 +1218,10 @@ relationships: []
             'architecture-engine',
             '--to',
             'compiled-graph',
+            '--description',
+            'The engine realizes the canonical compiled representation.',
+            '--reference',
+            'rationale-source=architecture-engine',
             '--status',
             'current',
           ],
@@ -1235,7 +1244,11 @@ relationships: []
           '    kind: realization\n' +
           '    from: architecture-engine\n' +
           '    to: compiled-graph\n' +
-          '    status: current\n',
+          '    description: The engine realizes the canonical compiled representation.\n' +
+          '    status: current\n' +
+          '    references:\n' +
+          '      - id: rationale-source\n' +
+          '        ref: architecture-engine\n',
       )
 
       const beforeRejectedEdit = readFileSync(

@@ -69,7 +69,7 @@ and governed compatibility profiles.
 
 A claim is the fundamental semantic unit. Elements and relationships provide
 stable subjects, while kind, ownership, realization, status, dependency,
-constraint, and evidence are claims.
+constraint, description, identified reference, and evidence are claims.
 
 Claims may originate as:
 
@@ -94,6 +94,13 @@ the selected versioned profile governs valid vocabulary.
 Relationship endpoints may use local concept IDs or explicit
 `document-id#concept-id` references. Resolution occurs only within the
 documents supplied to the workspace compiler and never depends on file paths.
+
+Concept and relationship descriptions are narrative claims about their
+subjects. Identified references provide checkable citations from either
+subject type to any concept, relationship, or architecture-state subject in
+the compiled workspace. Description prose remains opaque: Core checks
+reference records, not strings that happen to resemble IDs, and does not
+interpret prose as executable logic.
 
 ## Repository-native operation
 
@@ -165,6 +172,7 @@ Core `yarramate check` enforces correctness:
 - relationship endpoint compatibility
 - required fields for selected kinds
 - controlled metadata values
+- resolvable identified subject references with subject-local unique IDs
 - absence of contradictory declared claims
 - adapter mapping integrity
 - Core contract schema, reference, normative-schema, declared-format,

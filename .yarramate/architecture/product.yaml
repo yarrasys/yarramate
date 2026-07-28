@@ -34,6 +34,9 @@ concepts:
     kind: requirement
     name: Evidence and intent remain distinct
     description: Observations may support or challenge architecture proposals but cannot silently author declared intent.
+    references:
+      - id: governing-decisions
+        ref: yarramate-repository#architecture-decisions
   - id: compile-native-architecture
     kind: capability
     name: Compile native architecture
@@ -99,6 +102,10 @@ relationships:
     kind: association
     from: evidence-intent-separation
     to: discover-project-architecture
+    description: Discovery may propose declared architecture from evidence, but evidence never becomes accepted intent without Git review.
+    references:
+      - id: shared-context-effect
+        ref: discovery-supports-context
   - id: evidence-separation-supports-reconciliation
     kind: association
     from: evidence-intent-separation

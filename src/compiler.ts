@@ -42,7 +42,13 @@ interface NativeConcept {
     readonly id: string
     readonly ref: string
   }>
+  readonly references?: readonly NativeIdentifiedReference[]
   readonly presentIn?: readonly string[]
+}
+
+interface NativeIdentifiedReference {
+  readonly id: string
+  readonly ref: string
 }
 
 interface NativeRelationship {
@@ -51,9 +57,11 @@ interface NativeRelationship {
   readonly from: string
   readonly to: string
   readonly name?: string
+  readonly description?: string
   readonly mode?: 'read' | 'write' | 'read-write' | 'unspecified'
   readonly content?: string
   readonly status?: 'planned' | 'current' | 'retired'
+  readonly references?: readonly NativeIdentifiedReference[]
   readonly presentIn?: readonly string[]
 }
 
@@ -602,6 +610,15 @@ function compileWorkspaceResolved(
       (value.states ?? []).map((state) => `${value.id}#${state.id}`),
     ),
   )
+  const subjectIds = new Set(
+    documents.flatMap(({ value }) => [
+      ...(value.states ?? []).map((state) => `${value.id}#${state.id}`),
+      ...value.concepts.map((concept) => `${value.id}#${concept.id}`),
+      ...value.relationships.map(
+        (relationship) => `${value.id}#${relationship.id}`,
+      ),
+    ]),
+  )
   const architectureStateAfter = new Map<string, string>(
     documents.flatMap(({ value }) =>
       (value.states ?? []).flatMap((state) =>
@@ -858,6 +875,48 @@ function compileWorkspaceResolved(
           })
         }
       }
+      const seenReferenceIds = new Set<string>()
+      for (const [referenceIndex, reference] of (
+        concept.references ?? []
+      ).entries()) {
+        if (seenReferenceIds.has(reference.id)) {
+          const pointer = `/concepts/${index}/references/${referenceIndex}/id`
+          const source = location(
+            ['concepts', index, 'references', referenceIndex, 'id'],
+            pointer,
+          )
+          diagnostics.push({
+            severity: 'error',
+            code: 'YM309',
+            message: `Duplicate reference ID "${reference.id}"`,
+            path: input.path,
+            pointer,
+            line: source.line,
+            column: source.column,
+          })
+        }
+        seenReferenceIds.add(reference.id)
+        if (
+          !subjectIds.has(
+            qualifyReference(value.id, reference.ref),
+          )
+        ) {
+          const pointer = `/concepts/${index}/references/${referenceIndex}/ref`
+          const source = location(
+            ['concepts', index, 'references', referenceIndex, 'ref'],
+            pointer,
+          )
+          diagnostics.push({
+            severity: 'error',
+            code: 'YM308',
+            message: `Unresolved subject reference "${reference.ref}"`,
+            path: input.path,
+            pointer,
+            line: source.line,
+            column: source.column,
+          })
+        }
+      }
       for (const [stateIndex, state] of (
         concept.presentIn ?? []
       ).entries()) {
@@ -884,6 +943,60 @@ function compileWorkspaceResolved(
       }
     }
     for (const [index, relationship] of value.relationships.entries()) {
+      const seenReferenceIds = new Set<string>()
+      for (const [referenceIndex, reference] of (
+        relationship.references ?? []
+      ).entries()) {
+        if (seenReferenceIds.has(reference.id)) {
+          const pointer = `/relationships/${index}/references/${referenceIndex}/id`
+          const source = location(
+            [
+              'relationships',
+              index,
+              'references',
+              referenceIndex,
+              'id',
+            ],
+            pointer,
+          )
+          diagnostics.push({
+            severity: 'error',
+            code: 'YM309',
+            message: `Duplicate reference ID "${reference.id}"`,
+            path: input.path,
+            pointer,
+            line: source.line,
+            column: source.column,
+          })
+        }
+        seenReferenceIds.add(reference.id)
+        if (
+          !subjectIds.has(
+            qualifyReference(value.id, reference.ref),
+          )
+        ) {
+          const pointer = `/relationships/${index}/references/${referenceIndex}/ref`
+          const source = location(
+            [
+              'relationships',
+              index,
+              'references',
+              referenceIndex,
+              'ref',
+            ],
+            pointer,
+          )
+          diagnostics.push({
+            severity: 'error',
+            code: 'YM308',
+            message: `Unresolved subject reference "${reference.ref}"`,
+            path: input.path,
+            pointer,
+            line: source.line,
+            column: source.column,
+          })
+        }
+      }
       for (const [stateIndex, state] of (
         relationship.presentIn ?? []
       ).entries()) {
@@ -1129,6 +1242,23 @@ function compileWorkspaceResolved(
           ),
         })
       }
+      for (const [referenceIndex, reference] of (
+        concept.references ?? []
+      ).entries()) {
+        claims.push({
+          id: `${subject}~reference-${reference.id}`,
+          subject,
+          predicate: 'yarramate/reference/refers-to',
+          object: {
+            ref: qualifyReference(value.id, reference.ref),
+          },
+          origin: 'declared',
+          source: location(
+            ['concepts', index, 'references', referenceIndex, 'ref'],
+            `/concepts/${index}/references/${referenceIndex}/ref`,
+          ),
+        })
+      }
       for (const [stateIndex, state] of (
         concept.presentIn ?? []
       ).entries()) {
@@ -1176,6 +1306,19 @@ function compileWorkspaceResolved(
           ),
         })
       }
+      if (relationship.description !== undefined) {
+        claims.push({
+          id: `${id}~description`,
+          subject: id,
+          predicate: 'yarramate/relationship/description',
+          object: { value: relationship.description },
+          origin: 'declared',
+          source: location(
+            ['relationships', index, 'description'],
+            `/relationships/${index}/description`,
+          ),
+        })
+      }
       if (relationship.mode !== undefined) {
         claims.push({
           id: `${id}~mode`,
@@ -1212,6 +1355,23 @@ function compileWorkspaceResolved(
           source: location(
             ['relationships', index, 'status'],
             `/relationships/${index}/status`,
+          ),
+        })
+      }
+      for (const [referenceIndex, reference] of (
+        relationship.references ?? []
+      ).entries()) {
+        claims.push({
+          id: `${id}~reference-${reference.id}`,
+          subject: id,
+          predicate: 'yarramate/reference/refers-to',
+          object: {
+            ref: qualifyReference(value.id, reference.ref),
+          },
+          origin: 'declared',
+          source: location(
+            ['relationships', index, 'references', referenceIndex, 'ref'],
+            `/relationships/${index}/references/${referenceIndex}/ref`,
           ),
         })
       }
