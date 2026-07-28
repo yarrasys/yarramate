@@ -25,6 +25,7 @@ describe('consumer package contract', () => {
 
     expect(packageJson.files).toEqual([
       'dist',
+      'assets/likec4',
       'schema',
       'skills/yarramate-architecture',
       'docs/CONSUMING-YARRAMATE.md',
@@ -71,6 +72,7 @@ describe('consumer package contract', () => {
       }).trim().split('\n')
 
       expect(files).toContain('package/dist/cli.js')
+      expect(files).toContain('package/assets/likec4/specification.likec4')
       expect(files).toContain('package/schema/yarramate-document.schema.json')
       expect(files).toContain(
         'package/schema/yarramate-reconciliation-report.schema.json',
@@ -294,6 +296,63 @@ evidence:
           ]),
         ).added,
       ).toHaveLength(3)
+
+      mkdirSync(join(consumer, '.yarramate/integrations/likec4'), {
+        recursive: true,
+      })
+      writeFileSync(
+        join(consumer, '.yarramate/integrations/likec4/mapping.yaml'),
+        `format: yarramate/adapter-mapping/v1
+id: consumer-likec4
+version: "1.0"
+adapter: likec4
+mappings:
+  - native: consumer#delivery-api
+    external: deliveryApi
+    type: concept
+  - native: consumer#delivery-data
+    external: deliveryData
+    type: concept
+  - native: consumer#api-accesses-data
+    external: deliveryAccess
+    type: relationship
+`,
+      )
+      writeFileSync(
+        join(consumer, '.yarramate/integrations/likec4/project.yaml'),
+        `format: yarramate/likec4-project/v1
+id: consumer
+version: "1.0"
+title: Consumer architecture
+mapping: .yarramate/integrations/likec4/mapping.yaml
+views:
+  - projection: .yarramate/projections/target.yaml
+`,
+      )
+      const likec4Project = spawnSync(
+        likec4Cli,
+        [
+          'export-project',
+          '.yarramate/integrations/likec4/project.yaml',
+          '.yarramate-out/likec4',
+          '.yarramate/workspace.yaml',
+        ],
+        {
+          cwd: consumer,
+          encoding: 'utf8',
+        },
+      )
+      expect(likec4Project).toMatchObject({
+        status: 0,
+        stderr: '',
+      })
+      expect(
+        readFileSync(
+          join(consumer, '.yarramate-out/likec4/specification.likec4'),
+          'utf8',
+        ),
+      ).toContain('specification')
+
       const likec4Invocation = spawnSync(likec4Cli, [], {
         cwd: consumer,
         encoding: 'utf8',

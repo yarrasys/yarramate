@@ -23,6 +23,7 @@
   ],
   "files": [
     "dist",
+    "assets/likec4",
     "schema",
     "skills/yarramate-architecture",
     "docs/CONSUMING-YARRAMATE.md"
@@ -78,7 +79,7 @@
     "build": "tsc -p tsconfig.build.json",
     "prepack": "pnpm build",
     "docs:dev": "pnpm self:export:likec4 && likec4 serve .yarramate-out/likec4",
-    "format": "likec4 format .yarramate/integrations/likec4/prototype",
+    "format": "likec4 format assets/likec4",
     "self:check": "pnpm build && node dist/cli.js check .yarramate/workspace.yaml",
     "self:check:json": "pnpm build && node dist/cli.js check .yarramate/workspace.yaml --json",
     "self:compile": "pnpm build && node dist/cli.js compile .yarramate/workspace.yaml",
