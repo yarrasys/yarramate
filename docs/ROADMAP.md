@@ -126,8 +126,9 @@ notation.
   ordered dynamic views over projected relationship subjects, and
   native relationship descriptions on dynamic steps, and regression-fixture
   and self-dogfooding mappings are implemented. Non-destructive deterministic
-  subject-mapping synchronization and source-located project-reference
-  diagnostics are also implemented. Import, round-tripping and general
+  subject-mapping synchronization, explicit stale-entry pruning, and
+  source-located project-reference diagnostics are also implemented. Import,
+  round-tripping and general
   styling parity remain future adapter work.
   Adapter-owned deployment nodes and named instances of projected concepts
   are implemented with regression validation.**

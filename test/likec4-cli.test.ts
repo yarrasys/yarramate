@@ -113,6 +113,133 @@ mappings:
     }
   })
 
+  it('adds missing mappings while retaining and reporting stale entries', () => {
+    const parent = mkdtempSync(join(tmpdir(), 'yarramate-likec4-stale-'))
+    const mapping = join(parent, 'mapping.yaml')
+    try {
+      writeFileSync(
+        join(parent, 'architecture.yaml'),
+        `format: yarramate/v1
+id: delivery
+profile: yarramate/core@0.1
+concepts:
+  - id: current-api
+    kind: applicationComponent
+    name: Current API
+relationships: []
+`,
+      )
+      writeFileSync(
+        join(parent, 'workspace.yaml'),
+        `format: yarramate/workspace/v1
+id: delivery
+documents: [architecture.yaml]
+profiles: []
+projections: []
+adapterMappings: []
+evidence: []
+`,
+      )
+      writeFileSync(
+        mapping,
+        `format: yarramate/adapter-mapping/v1
+id: delivery-likec4
+version: "1.0"
+adapter: likec4
+mappings:
+  # Retained until pruning is explicit.
+  - native: delivery#renamed-api
+    external: renamedApi
+    type: concept
+`,
+      )
+
+      expect(
+        runLikeC4Cli(
+          ['map', '--sync', 'mapping.yaml', 'workspace.yaml'],
+          parent,
+        ),
+      ).toEqual({
+        exitCode: 0,
+        stdout:
+          'Added 1 LikeC4 mapping to mapping.yaml; left 1 stale mapping (use --prune)\n',
+        stderr: '',
+      })
+      const synchronized = readFileSync(mapping, 'utf8')
+      expect(synchronized).toContain(
+        '# Retained until pruning is explicit.',
+      )
+      expect(synchronized).toContain('native: delivery#renamed-api')
+      expect(synchronized).toContain('native: delivery#current-api')
+    } finally {
+      rmSync(parent, { recursive: true, force: true })
+    }
+  })
+
+  it('prunes stale mappings only when explicitly requested', () => {
+    const parent = mkdtempSync(join(tmpdir(), 'yarramate-likec4-prune-'))
+    const mapping = join(parent, 'mapping.yaml')
+    try {
+      writeFileSync(
+        join(parent, 'architecture.yaml'),
+        `format: yarramate/v1
+id: delivery
+profile: yarramate/core@0.1
+concepts:
+  - id: current-api
+    kind: applicationComponent
+    name: Current API
+relationships: []
+`,
+      )
+      writeFileSync(
+        join(parent, 'workspace.yaml'),
+        `format: yarramate/workspace/v1
+id: delivery
+documents: [architecture.yaml]
+profiles: []
+projections: []
+adapterMappings: []
+evidence: []
+`,
+      )
+      writeFileSync(
+        mapping,
+        `format: yarramate/adapter-mapping/v1
+id: delivery-likec4
+version: "1.0"
+adapter: likec4
+mappings:
+  # Removed together with the stale mapping.
+  - native: delivery#renamed-api
+    external: renamedApi
+    type: concept
+`,
+      )
+
+      expect(
+        runLikeC4Cli(
+          ['map', '--sync', '--prune', 'mapping.yaml', 'workspace.yaml'],
+          parent,
+        ),
+      ).toEqual({
+        exitCode: 0,
+        stdout:
+          'Added 1 and pruned 1 stale LikeC4 mapping in mapping.yaml\n',
+        stderr: '',
+      })
+      const synchronized = readFileSync(mapping, 'utf8')
+      expect(synchronized).not.toContain('delivery#renamed-api')
+      expect(synchronized).not.toContain(
+        '# Removed together with the stale mapping.',
+      )
+      expect(synchronized).toContain('native: delivery#current-api')
+      expect(synchronized).toContain('external: currentApi')
+    } finally {
+      rmSync(parent, { recursive: true, force: true })
+    }
+  })
+
   it('checks a complete adapter export without writing derived output', () => {
     const result = runLikeC4Cli(
       [

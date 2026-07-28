@@ -65,8 +65,23 @@ then appends only unmapped concepts and relationships. Architecture-state
 planning subjects are excluded. External identities use deterministic
 lower-camel local IDs; collisions receive a document prefix and, only when
 still necessary, a numeric suffix. Existing mappings and their authored
-overrides are preserved. The candidate mapping is validated before an atomic
-replacement, and a second sync is a no-op.
+overrides are preserved. Mappings whose native subject no longer exists are
+reported as stale but do not prevent missing live subjects from being added.
+The candidate mapping is validated before an atomic replacement, and a second
+sync is a no-op.
+
+Remove stale entries only when that destructive intent is explicit:
+
+```sh
+yarramate-likec4 map --sync --prune \
+  .yarramate/integrations/likec4/subject-mapping.yaml \
+  .yarramate/workspace.yaml
+```
+
+Pruning and adding missing entries happen in one atomic update. This is useful
+after a native subject is renamed: the retired external identity is released,
+so the replacement can receive its deterministic identity without an
+unnecessary collision suffix.
 
 The governed-change test fixture has a native document and explicit mapping:
 

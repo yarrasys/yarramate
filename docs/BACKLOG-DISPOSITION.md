@@ -21,8 +21,8 @@ The current repository implements the agreed foundation for:
 - projection-driven LikeC4 element, comparison, dynamic, and deployment
   views in one generated project, with relationship rationale retained in
   logical and dynamic output;
-- non-destructive LikeC4 mapping synchronization and source-located project
-  reference diagnostics;
+- non-destructive LikeC4 mapping synchronization, opt-in stale-entry pruning,
+  and source-located project reference diagnostics;
 - explicit Graphify node observation producing standard evidence overlays.
 
 There is no remaining concrete, locally actionable item in the agreed Core 0.1

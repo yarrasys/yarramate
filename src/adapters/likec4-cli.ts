@@ -15,7 +15,7 @@ import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createHash, randomUUID } from 'node:crypto'
 import Ajv2020Module from 'ajv/dist/2020.js'
-import { isSeq, parseDocument } from 'yaml'
+import { isMap, isSeq, parseDocument } from 'yaml'
 import {
   isMainModule,
   resolveCliWorkspaceSources,
@@ -105,7 +105,7 @@ const publishFiles = (
 
 const usage =
   'Usage:\n' +
-  '  yarramate-likec4 map --sync <mapping.yaml> <workspace-or-source...>\n' +
+  '  yarramate-likec4 map --sync [--prune] <mapping.yaml> <workspace-or-source...>\n' +
   '  yarramate-likec4 check <projection.yaml> <mapping.yaml> [--json] [--kinds <kind-mapping.yaml>] [--compare <from-state> <to-state>] <workspace-or-source...>\n' +
   '  yarramate-likec4 check <likec4-project.yaml> [--json] <workspace-or-source...>\n' +
   '  yarramate-likec4 export <projection.yaml> <mapping.yaml> [--kinds <kind-mapping.yaml>] [--compare <from-state> <to-state>] <workspace-or-source...>\n' +
@@ -150,7 +150,10 @@ const runLikeC4MapSync = (
   args: readonly string[],
   cwd: string,
 ): CliResult => {
-  const [sync, mappingPath, ...sourcePaths] = args
+  const sync = args[0]
+  const prune = args[1] === '--prune'
+  const mappingPath = args[prune ? 2 : 1]
+  const sourcePaths = args.slice(prune ? 3 : 2)
   if (
     sync !== '--sync' ||
     mappingPath === undefined ||
@@ -208,14 +211,23 @@ const runLikeC4MapSync = (
         stderr: '',
       }
     }
+    const graphSubjects = new Set(
+      compilation.graph.subjects.map(({ id }) => id),
+    )
+    const staleCount = loaded.mapping.mappings.filter(
+      ({ native }) => !graphSubjects.has(native),
+    ).length
     const validation = validateAdapterMapping(
       compilation.graph,
       loaded.mapping,
     )
-    if (!validation.ok) {
+    const blockingDiagnostics = validation.ok
+      ? []
+      : validation.diagnostics.filter(({ code }) => code !== 'YM601')
+    if (blockingDiagnostics.length > 0) {
       return {
         exitCode: 1,
-        stdout: diagnosticJson(validation.diagnostics),
+        stdout: diagnosticJson(blockingDiagnostics),
         stderr: '',
       }
     }
@@ -223,7 +235,9 @@ const runLikeC4MapSync = (
       loaded.mapping.mappings.map(({ native }) => native),
     )
     const claimedExternal = new Set(
-      loaded.mapping.mappings.map(({ external }) => external),
+      loaded.mapping.mappings
+        .filter(({ native }) => !prune || graphSubjects.has(native))
+        .map(({ external }) => external),
     )
     const architectureStates = new Set(
       compilation.graph.claims
@@ -257,18 +271,33 @@ const runLikeC4MapSync = (
           type: subject.type,
         }
       })
-    if (additions.length === 0) {
+    if (additions.length === 0 && (!prune || staleCount === 0)) {
       return {
         exitCode: 0,
-        stdout: `LikeC4 mapping ${mappingPath} is already synchronized\n`,
+        stdout:
+          staleCount === 0
+            ? `LikeC4 mapping ${mappingPath} is already synchronized\n`
+            : `LikeC4 mapping ${mappingPath} has ${staleCount} stale ${staleCount === 1 ? 'mapping' : 'mappings'} (use --prune)\n`,
         stderr: '',
       }
     }
     const document = parseDocument(original)
+    const mappings = document.getIn(['mappings'], true)
+    if (prune && isSeq(mappings)) {
+      const firstMappingWasPruned =
+        mappings.items.length > 0 &&
+        isMap(mappings.items[0]) &&
+        !graphSubjects.has(String(mappings.items[0].get('native')))
+      mappings.items = mappings.items.filter(
+        (item) =>
+          !isMap(item) ||
+          graphSubjects.has(String(item.get('native'))),
+      )
+      if (firstMappingWasPruned) mappings.commentBefore = undefined
+    }
     for (const addition of additions) {
       document.addIn(['mappings'], addition)
     }
-    const mappings = document.getIn(['mappings'], true)
     if (isSeq(mappings)) mappings.flow = false
     const candidate = document.toString({ lineWidth: 0 })
     const candidateMapping = loadAdapterMapping({
@@ -286,10 +315,15 @@ const runLikeC4MapSync = (
       compilation.graph,
       candidateMapping.mapping,
     )
-    if (!candidateValidation.ok) {
+    const candidateBlockingDiagnostics = candidateValidation.ok
+      ? []
+      : candidateValidation.diagnostics.filter(
+          ({ code }) => prune || code !== 'YM601',
+        )
+    if (candidateBlockingDiagnostics.length > 0) {
       return {
         exitCode: 1,
-        stdout: diagnosticJson(candidateValidation.diagnostics),
+        stdout: diagnosticJson(candidateBlockingDiagnostics),
         stderr: '',
       }
     }
@@ -301,7 +335,14 @@ const runLikeC4MapSync = (
     }
     return {
       exitCode: 0,
-      stdout: `Added ${additions.length} LikeC4 mappings to ${mappingPath}\n`,
+      stdout: prune
+        ? additions.length > 0
+          ? `Added ${additions.length} and pruned ${staleCount} stale LikeC4 ${staleCount === 1 ? 'mapping' : 'mappings'} in ${mappingPath}\n`
+          : `Pruned ${staleCount} stale LikeC4 ${staleCount === 1 ? 'mapping' : 'mappings'} from ${mappingPath}\n`
+        : `Added ${additions.length} LikeC4 ${additions.length === 1 ? 'mapping' : 'mappings'} to ${mappingPath}` +
+          (staleCount === 0
+            ? '\n'
+            : `; left ${staleCount} stale ${staleCount === 1 ? 'mapping' : 'mappings'} (use --prune)\n`),
       stderr: '',
     }
   } catch (error) {
