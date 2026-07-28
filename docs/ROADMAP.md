@@ -156,11 +156,13 @@ notation.
 
 ## Decisions still required
 
-- Public product name and trademark review.
-- Repository licence, documentation licence, and contribution provenance.
 - Automatic profile discovery and external registries.
   **Local explicit manifests are implemented; automatic discovery and remote
   registries remain intentionally unresolved.**
+
+Publication preparation uses the YarraMate name at
+`github.com/yarrasys/yarramate`, licenses the repository under MIT, and accepts
+ordinary pull requests without a CLA, DCO, or sign-off requirement.
 
 ## Backlog disposition
 

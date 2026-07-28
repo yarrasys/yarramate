@@ -49,8 +49,10 @@ These items need a new authoritative semantic or product decision:
   stable node IDs but not an equivalent edge identity contract.
 - ArchiMate or another external-language compatibility profile needs licensing
   confirmation and independently governed mappings.
-- Publication needs the public product-name and trademark review, repository
-  and documentation licences, and contribution-provenance policy.
+
+Publication preparation is complete: the repository identity is
+`yarrasys/yarramate`, all repository material uses the MIT licence, and normal
+pull requests require no additional contributor agreement or sign-off.
 
 ## Demand-gated
 

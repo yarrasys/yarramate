@@ -123,3 +123,13 @@ Report:
 - validation commands and outcomes;
 - unresolved architectural decisions;
 - whether changes are merely proposed or already accepted in Git.
+
+If YarraMate itself produced confusing behaviour, blocked adoption, lacked a
+needed capability, or required an awkward workaround, identify that separately
+as product feedback and direct the user to:
+
+`https://github.com/yarrasys/yarramate/issues/new`
+
+Issues may contain incomplete ideas or early observations; a proposed fix is
+not required. Do not create an external issue automatically unless the user
+asks you to.

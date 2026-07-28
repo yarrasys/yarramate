@@ -1,5 +1,11 @@
 node_modules/
+.pnpm-store/
 dist/
 .likec4/
 coverage/
 .yarramate-out/
+.DS_Store
+*.tgz
+.env
+.env.*
+!.env.example

@@ -42,7 +42,7 @@ describe('consumer package contract', () => {
       'utf8',
     )
     expect(consumerGuide).toContain(
-      'npx skills add yarradev/yarramate --skill yarramate-architecture',
+      'npx skills add yarrasys/yarramate --skill yarramate-architecture',
     )
     expect(consumerGuide).toContain('yarramate init .')
     expect(consumerGuide).not.toContain('pnpm exec yarramate')

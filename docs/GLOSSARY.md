@@ -1,8 +1,7 @@
-# YarraMate
+# YarraMate glossary
 
-YarraMate is an open-source semantic architecture engine and guided
-methodology. It turns architectural intent into structured, testable context
-for people and agents.
+This glossary records the product language used throughout YarraMate's native
+formats, CLI, documentation, and architecture decisions.
 
 ## Language
 

@@ -10,7 +10,7 @@ Once the package and public repository are published:
 
 ```sh
 npm install --global yarramate
-npx skills add yarradev/yarramate --skill yarramate-architecture
+npx skills add yarrasys/yarramate --skill yarramate-architecture
 yarramate init .
 yarramate check .yarramate/workspace.yaml --json
 ```
@@ -42,8 +42,8 @@ The remainder of this guide uses the direct executable form.
 
 ## Install a local artifact
 
-YarraMate is currently private and validated through this pre-publication
-path. From the YarraMate repository:
+Before the first npm release, validate consumption through a local package
+artifact. From the YarraMate repository:
 
 ```sh
 pnpm pack --pack-destination /tmp/yarramate-package
@@ -66,7 +66,7 @@ self-model, source, tests, and fixtures.
 After the repository is public, use the agent-skills installer:
 
 ```sh
-npx skills add yarradev/yarramate --skill yarramate-architecture
+npx skills add yarrasys/yarramate --skill yarramate-architecture
 ```
 
 The installed directory is a deployment of the canonical repository skill,

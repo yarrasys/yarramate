@@ -1,7 +1,26 @@
 {
   "name": "yarramate",
   "version": "0.1.0",
-  "private": true,
+  "description": "Tool-neutral semantic architecture engine and guided methodology",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yarrasys/yarramate.git"
+  },
+  "homepage": "https://github.com/yarrasys/yarramate#readme",
+  "bugs": {
+    "url": "https://github.com/yarrasys/yarramate/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "architecture",
+    "architecture-as-code",
+    "semantic-graph",
+    "cli",
+    "likec4"
+  ],
   "files": [
     "dist",
     "schema",
@@ -74,6 +93,7 @@
     "self:check:likec4:json": "pnpm build && node dist/adapters/likec4-cli.js check .yarramate/integrations/likec4/project.yaml --json .yarramate/workspace.yaml",
     "self:export:likec4": "pnpm build && node dist/adapters/likec4-cli.js export-project .yarramate/integrations/likec4/project.yaml .yarramate-out/likec4 .yarramate/workspace.yaml",
     "validate": "pnpm self:export:likec4 && likec4 validate --no-layout .yarramate-out/likec4",
+    "verify": "pnpm typecheck && pnpm test && pnpm self:check && pnpm validate",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
