@@ -17,6 +17,17 @@ const repositoryRoot = fileURLToPath(new URL('..', import.meta.url))
 const Ajv2020 = Ajv2020Module.default
 
 describe('YarraMate CLI', () => {
+  it.each(['--help', '-h', 'help'])(
+    'prints usage successfully for %s',
+    (argument) => {
+      const result = runCli([argument], repositoryRoot)
+
+      expect(result.exitCode).toBe(0)
+      expect(result.stdout).toContain('Usage:')
+      expect(result.stderr).toBe('')
+    },
+  )
+
   it('emits check results conforming to the normative result schema', () => {
     const schema = JSON.parse(
       readFileSync(
