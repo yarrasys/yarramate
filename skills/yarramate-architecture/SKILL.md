@@ -52,19 +52,34 @@ document, projection, evidence, or architecture-state syntax is needed.
    YAML directly when states or several related declarations make that clearer.
 6. Add an evidence overlay only for existing subjects or stable claim IDs.
    Evidence supports or challenges the proposal; it is not a second model.
-7. Add one focused projection that answers the repository-orientation
-   question.
-8. Run:
+7. Add the focused projections needed to answer the
+   repository-orientation question. Add a separate projection for every
+   ordered flow that needs a dynamic view, then include each intended view in
+   `.yarramate/integrations/likec4/project.yaml`.
+8. Unless the user requested semantic-only output, create the optional LikeC4
+   mapping and project described in the authoring reference. Synchronize the
+   project mapping before every export, then run:
 
 ```sh
 yarramate check .yarramate/workspace.yaml --json
+yarramate compile .yarramate/workspace.yaml
 yarramate evidence .yarramate/evidence/<evidence>.yaml .yarramate/workspace.yaml
 yarramate reconcile .yarramate/workspace.yaml
 yarramate context .yarramate/projections/<projection>.yaml .yarramate/workspace.yaml
 yarramate view .yarramate/projections/<projection>.yaml .yarramate/workspace.yaml
+yarramate-likec4 map --sync .yarramate/integrations/likec4/subject-mapping.yaml .yarramate/workspace.yaml
+yarramate-likec4 export-project .yarramate/integrations/likec4/project.yaml .yarramate-out/likec4 .yarramate/workspace.yaml
 ```
 
-9. Present observations, reconciliation findings, interpretive proposals,
+9. Audit rendering coverage before handoff. Answer these as reporting
+   questions, not Core correctness rules:
+   - Which concepts appear in no projection?
+   - Which ordered relationship chains have no dynamic view?
+   - Which projections are absent from the LikeC4 project?
+   Inspect compiled subjects, projection results, and the project definition;
+   state intentional omissions explicitly. A green check does not answer
+   these questions.
+10. Present observations, reconciliation findings, interpretive proposals,
    evidence gaps, and Git diff separately. Do not claim completeness from a
    green check and do not automatically turn findings into edits.
 
@@ -84,17 +99,29 @@ yarramate view .yarramate/projections/<projection>.yaml .yarramate/workspace.yam
 5. Create:
    - an alternatives projection for the decision;
    - a bounded target projection for implementation agents.
-6. Run:
+   - one focused projection per ordered flow that needs a dynamic view.
+   Include every intended view in
+   `.yarramate/integrations/likec4/project.yaml`.
+6. Synchronize the project mapping before every export, then run:
 
 ```sh
 yarramate check .yarramate/workspace.yaml --json
+yarramate compile .yarramate/workspace.yaml
 yarramate context .yarramate/projections/<alternatives>.yaml .yarramate/workspace.yaml
 yarramate context .yarramate/projections/<target>.yaml .yarramate/workspace.yaml
 yarramate view .yarramate/projections/<target>.yaml .yarramate/workspace.yaml
-yarramate compare <baseline-state> <target-state> .yarramate/workspace.yaml
+yarramate view .yarramate/projections/<flow>.yaml .yarramate/workspace.yaml
+yarramate compare <document-id>#<baseline-state> <document-id>#<target-state> .yarramate/workspace.yaml
+yarramate-likec4 map --sync .yarramate/integrations/likec4/subject-mapping.yaml .yarramate/workspace.yaml
+yarramate-likec4 export-project .yarramate/integrations/likec4/project.yaml .yarramate-out/likec4 .yarramate/workspace.yaml
 ```
 
-7. Present alternatives, selected intent, unresolved decisions, and bounded
+   Skip the two adapter commands only when the user requested semantic-only
+   output, and report that no visual project was produced.
+7. Audit rendering coverage using the same three reporting questions from
+   discovery. State which omissions are intentional; do not convert partial
+   coverage into a validation failure.
+8. Present alternatives, selected intent, unresolved decisions, and bounded
    implementation context. Do not generate code until the requested design
    decision is reviewable.
 
@@ -102,6 +129,8 @@ yarramate compare <baseline-state> <target-state> .yarramate/workspace.yaml
 
 - Treat `check` as deterministic correctness, never as architecture approval,
   completeness, or quality scoring.
+- Keep LikeC4 optional. Default to visual output for these guided journeys,
+  but respect an explicit request for tool-neutral semantic output only.
 - Keep adapter fields outside native documents.
 - Use globally qualified identities at CLI and projection boundaries.
 - Preserve source-located diagnostics verbatim when asking the author to fix
@@ -119,7 +148,9 @@ Report:
 - journey used and question answered;
 - canonical files proposed or changed;
 - observations and evidence results;
-- projections produced;
+- projections and views produced, including the LikeC4 project and generated
+  output path;
+- rendering coverage gaps and whether the generated output is current;
 - validation commands and outcomes;
 - unresolved architectural decisions;
 - whether changes are merely proposed or already accepted in Git.

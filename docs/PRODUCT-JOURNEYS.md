@@ -29,6 +29,9 @@ automatically promotes observations into canonical claims.
 - one or more concise native architecture documents;
 - explicit provenance in the Git change and optional evidence overlays;
 - at least one useful projection;
+- when visual output is selected, a current generated LikeC4 project for the
+  intended views;
+- explicit reporting of modelled subjects or flows that the views omit;
 - deterministic `check` and context output;
 - a deterministic reconciliation report when evidence overlays exist;
 - no unreviewed mutation of architectural intent.
@@ -57,6 +60,8 @@ unfashionable design into an error.
 - a coherent target solution boundary and its principal relationships;
 - alternatives or state transitions recorded only where they aid a decision;
 - focused projections suitable for review and agent context;
+- when visual output is selected, a current generated LikeC4 project and an
+  explicit rendering-coverage statement;
 - valid native documents ready to evolve alongside implementation.
 
 ## Shared lifecycle
