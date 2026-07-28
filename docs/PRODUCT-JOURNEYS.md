@@ -64,6 +64,25 @@ unfashionable design into an error.
   explicit rendering-coverage statement;
 - valid native documents ready to evolve alongside implementation.
 
+## Maintain an existing model
+
+An agent harness starts from a model that already validates:
+
+1. discover the repository's authored workspace, evidence, projection, and
+   adapter paths;
+2. establish a passing read-only baseline;
+3. find every reference to the subjects or claims being changed;
+4. update the smallest coherent set of canonical inputs;
+5. verify Core and optional adapters before applying any repair command;
+6. review mapping repairs as ordinary tracked authoring changes;
+7. require the maintained model and configured adapters to pass before
+   handoff.
+
+This journey covers normal evolution such as renames, retired concepts,
+changed relationships, and gaps resolved into decisions. It does not introduce
+an approval workflow. A mutating synchronization command cannot serve as a CI
+verification gate.
+
 ## Shared lifecycle
 
 ```text

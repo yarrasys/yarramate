@@ -60,3 +60,11 @@ Design is minimally useful when:
 - intended projections are rendered through a current LikeC4 project;
 - rendering coverage gaps are stated, including intentional omissions;
 - missing detail is visible without becoming a Core correctness error.
+
+Maintenance is complete only when:
+
+- all references to a changed identity were found before editing;
+- native documents and configured adapters pass their read-only checks;
+- any mapping sync or prune was reviewed as an authored Git change;
+- generated views are current;
+- changed identities and updated dependants are reported at handoff.

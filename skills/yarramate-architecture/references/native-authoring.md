@@ -15,8 +15,10 @@ adapterMappings: []
 evidence: [evidence/*.yaml]
 ```
 
-Paths are relative to the manifest. Keep canonical inputs under `.yarramate/`
-and generated artifacts under `.yarramate-out/`.
+Paths are relative to the manifest. `.yarramate/` for canonical inputs and
+`.yarramate-out/` for generated artifacts are recommended examples, not fixed
+CLI paths. In an existing repository, read its workspace and project documents
+and preserve the authored layout.
 
 ## Native document
 
@@ -196,6 +198,9 @@ Give every ordered flow its own focused projection and dynamic view. A dynamic
 view takes its title and description from its projection; reusing one broad
 projection for several flows makes their rendered identities ambiguous.
 Ensure every intended projection is listed in the project.
+In an existing repository, locate the project by its
+`yarramate/likec4-project/v1` format and follow its `mapping` field instead of
+assuming the example paths below.
 
 Start the referenced mapping as a valid empty mapping, then let sync populate
 it:
@@ -231,6 +236,10 @@ yarramate view <projection.yaml> .yarramate/workspace.yaml
 yarramate compare <from-state> <to-state> .yarramate/workspace.yaml
 yarramate evidence <evidence.yaml> .yarramate/workspace.yaml
 yarramate reconcile .yarramate/workspace.yaml
+yarramate-likec4 check \
+  .yarramate/integrations/likec4/project.yaml \
+  --json \
+  .yarramate/workspace.yaml
 yarramate-likec4 map --sync \
   .yarramate/integrations/likec4/subject-mapping.yaml \
   .yarramate/workspace.yaml
@@ -239,6 +248,12 @@ yarramate-likec4 export-project \
   .yarramate-out/likec4 \
   .yarramate/workspace.yaml
 ```
+
+`yarramate-likec4 check` is read-only verification and belongs in CI.
+Run it before sync when checking an existing mapping so missing or stale
+entries remain observable. `map --sync [--prune]` is an authoring repair: it
+mutates a tracked mapping, so review and commit its diff. Never use a repair
+command as a CI gate.
 
 Sync preserves and reports mappings for native subjects that no longer exist.
 After confirming that those subjects were intentionally removed or renamed,
