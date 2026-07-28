@@ -130,6 +130,17 @@ describe('agent journeys through the stable CLI', () => {
     expect(skill).toContain('## Design a new solution')
     expect(skill).toContain('yarramate check')
     expect(skill).toContain('yarramate context')
+    expect(skill.match(/yarramate compile/g)).toHaveLength(2)
+    expect(skill.match(/yarramate-likec4 map --sync/g)).toHaveLength(2)
+    expect(skill.match(/yarramate-likec4 export-project/g)).toHaveLength(2)
+    expect(skill).toContain('Which concepts appear in no projection?')
+    expect(skill).toContain(
+      'Which ordered relationship chains have no dynamic view?',
+    )
+    expect(skill).toContain(
+      'Which projections are absent from the LikeC4 project?',
+    )
+    expect(skill).toContain('views produced')
     expect(skill).toMatch(
       /Never promote evidence into declared intent\s+automatically\./,
     )

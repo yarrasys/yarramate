@@ -46,6 +46,9 @@ Discovery is minimally useful when:
 - significant proposed subjects have traceable observations or are explicitly
   identified as interpretation;
 - a focused projection gives an agent useful repository context;
+- intended projections are rendered through a current LikeC4 project;
+- concepts outside all projections, ordered flows without dynamic views, and
+  projections absent from the project are reported as coverage gaps;
 - evidence has not been promoted automatically.
 
 Design is minimally useful when:
@@ -54,4 +57,6 @@ Design is minimally useful when:
 - material alternatives remain reviewable;
 - the selected target has explicit boundaries and relationships;
 - a bounded target projection can guide implementation;
+- intended projections are rendered through a current LikeC4 project;
+- rendering coverage gaps are stated, including intentional omissions;
 - missing detail is visible without becoming a Core correctness error.

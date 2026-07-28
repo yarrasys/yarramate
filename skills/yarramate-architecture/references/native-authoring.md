@@ -172,6 +172,47 @@ Evidence evaluates an existing subject or stable claim ID. Results are
 observed subject directly through evidence or mutate declared intent from an
 evidence result.
 
+## LikeC4 project
+
+Keep visualization configuration outside native documents:
+
+```yaml
+format: yarramate/likec4-project/v1
+id: delivery
+version: "1.0"
+title: Delivery architecture
+mapping: .yarramate/integrations/likec4/subject-mapping.yaml
+views:
+  - projection: .yarramate/projections/delivery-target.yaml
+  - id: submit-order
+    projection: .yarramate/projections/submit-order.yaml
+    dynamic:
+      steps:
+        - relationship: delivery#customer-triggers-submit
+        - relationship: delivery#submit-triggers-confirmation
+```
+
+Give every ordered flow its own focused projection and dynamic view. A dynamic
+view takes its title and description from its projection; reusing one broad
+projection for several flows makes their rendered identities ambiguous.
+Ensure every intended projection is listed in the project.
+
+Start the referenced mapping as a valid empty mapping, then let sync populate
+it:
+
+```yaml
+format: yarramate/adapter-mapping/v1
+id: delivery-likec4
+version: "1.0"
+adapter: likec4
+mappings: []
+```
+
+`export-project` writes `.yarramate-out/likec4/yarramate.generated.json` with
+digests for generated files. It refuses to replace a generated file that was
+hand-edited. Treat that refusal as drift to inspect; do not delete the marker
+or overwrite the output manually.
+
 ## Stable commands
 
 ```sh
@@ -192,6 +233,10 @@ yarramate evidence <evidence.yaml> .yarramate/workspace.yaml
 yarramate reconcile .yarramate/workspace.yaml
 yarramate-likec4 map --sync \
   .yarramate/integrations/likec4/subject-mapping.yaml \
+  .yarramate/workspace.yaml
+yarramate-likec4 export-project \
+  .yarramate/integrations/likec4/project.yaml \
+  .yarramate-out/likec4 \
   .yarramate/workspace.yaml
 ```
 
