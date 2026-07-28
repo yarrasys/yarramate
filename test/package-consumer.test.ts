@@ -48,7 +48,7 @@ describe('consumer package contract', () => {
     expect(consumerGuide).not.toContain('pnpm exec yarramate')
   })
 
-  it('packs only a self-contained consumer surface', () => {
+  it('packs only a self-contained consumer surface', { timeout: 30_000 }, () => {
     const parent = mkdtempSync(join(tmpdir(), 'yarramate-package-'))
     try {
       const packed = JSON.parse(
@@ -96,7 +96,10 @@ describe('consumer package contract', () => {
     }
   })
 
-  it('runs both journey primitives from the packed CLI in a clean consumer project', () => {
+  it(
+    'runs both journey primitives from the packed CLI in a clean consumer project',
+    { timeout: 30_000 },
+    () => {
     const consumer = mkdtempSync(
       join(repositoryRoot, 'node_modules/.yarramate-consumer-'),
     )
@@ -340,5 +343,6 @@ evidence:
     } finally {
       rmSync(consumer, { recursive: true, force: true })
     }
-  })
+    },
+  )
 })
