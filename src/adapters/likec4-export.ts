@@ -268,6 +268,14 @@ export function exportLikeC4(
             'yarramate/constraint/requires',
           ),
         ],
+        [
+          'references',
+          referencesFor(
+            projection.claims,
+            concept.id,
+            'yarramate/reference/refers-to',
+          ),
+        ],
       ],
       '    ',
     )
@@ -307,6 +315,11 @@ export function exportLikeC4(
       relationship.id,
       'yarramate/relationship/name',
     )
+    const description = valueFor(
+      projection.claims,
+      relationship.id,
+      'yarramate/relationship/description',
+    )
     const metadata = metadataLines(
       [
         ['yarramateId', relationship.id],
@@ -336,13 +349,26 @@ export function exportLikeC4(
             'yarramate/flow/content',
           ),
         ],
+        [
+          'references',
+          referencesFor(
+            projection.claims,
+            relationship.id,
+            'yarramate/reference/refers-to',
+          ),
+        ],
       ],
       '    ',
     )
     lines.push(
-      `  ${source} -[${externalRelationshipKind.get(structural.predicate) ?? kindId(structural.predicate)}]-> ${target}${name === undefined ? '' : ` ${quote(name)}`}${metadata.length === 0 ? '' : ' {'}`,
+      `  ${source} -[${externalRelationshipKind.get(structural.predicate) ?? kindId(structural.predicate)}]-> ${target}${name === undefined ? '' : ` ${quote(name)}`}${description === undefined && metadata.length === 0 ? '' : ' {'}`,
+      ...(description === undefined
+        ? []
+        : [`    description ${quote(description)}`]),
       ...metadata,
-      ...(metadata.length === 0 ? [] : ['  }']),
+      ...(description === undefined && metadata.length === 0
+        ? []
+        : ['  }']),
     )
   }
 

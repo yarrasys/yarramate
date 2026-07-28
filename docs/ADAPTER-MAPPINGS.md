@@ -116,9 +116,15 @@ identities.
 Generated elements and relationships carry their globally qualified native
 identity and semantic kind as `metadata.yarramateId` and
 `metadata.yarramateKind`. When selected claims exist, the adapter also emits
-flat `status`, `owner`, `constraints`, `mode`, and `content` metadata. These
-values preserve traceability and filtering context; they do not make LikeC4
-canonical. Projection title and description hints become view properties.
+flat `status`, `owner`, `constraints`, `references`, `mode`, and `content`
+metadata. Native descriptions become LikeC4 element or relationship
+descriptions. These values preserve traceability and filtering context; they
+do not make LikeC4 canonical. Projection title and description hints become
+view properties.
+
+When a projected relationship is used as a dynamic step, its native
+description is also presented on that step. Step ordering and any title
+override remain adapter presentation.
 
 Raw projection export emits a flat logical model and one ordinary element
 view. It does not emit deployments, dynamic views, imports, or layout state,

@@ -92,6 +92,7 @@
           "deterministic-diagnostic-order",
           "git-native-governance",
           "globally-qualified-compiled-identities",
+          "identified-reference-integrity",
           "no-partial-graph-on-error",
           "portable-projection-selectors",
           "source-located-diagnostics"
@@ -110,6 +111,7 @@
           "architectural-quality",
           "automatic-discovery",
           "external-language-conformance",
+          "formal-workflow-semantics",
           "state-scoped-claim-values"
         ]
       }

@@ -9,6 +9,8 @@ The current repository implements the agreed foundation for:
 
 - native documents, profiles, globally qualified graph v2, and deterministic
   source-located correctness;
+- narrative claims on concept and relationship subjects plus explicit,
+  checkable subject citations;
 - explicit workspaces, projections, starter views, architecture states, and
   state comparison;
 - existing-project discovery and architecture-first design through one
@@ -16,7 +18,8 @@ The current repository implements the agreed foundation for:
 - evidence evaluation and provider-neutral reconciliation;
 - packed consumer installation and the stable CLI;
 - projection-driven LikeC4 element, comparison, dynamic, and deployment
-  views in one generated project;
+  views in one generated project, with relationship rationale retained in
+  logical and dynamic output;
 - explicit Graphify node observation producing standard evidence overlays.
 
 There is no remaining concrete, locally actionable item in the agreed Core 0.1

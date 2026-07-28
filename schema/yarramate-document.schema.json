@@ -100,6 +100,9 @@
             "$ref": "#/$defs/constraint"
           }
         },
+        "references": {
+          "$ref": "#/$defs/identifiedReferences"
+        },
         "presentIn": {
           "$ref": "#/$defs/stateReferences"
         }
@@ -116,6 +119,26 @@
         "ref": {
           "$ref": "#/$defs/reference"
         }
+      }
+    },
+    "identifiedReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "ref"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "ref": {
+          "$ref": "#/$defs/reference"
+        }
+      }
+    },
+    "identifiedReferences": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/identifiedReference"
       }
     },
     "relationship": {
@@ -139,6 +162,9 @@
         "name": {
           "$ref": "#/$defs/nonEmptyText"
         },
+        "description": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
         "mode": {
           "enum": ["read", "write", "read-write", "unspecified"]
         },
@@ -147,6 +173,9 @@
         },
         "status": {
           "$ref": "#/$defs/lifecycleStatus"
+        },
+        "references": {
+          "$ref": "#/$defs/identifiedReferences"
         },
         "presentIn": {
           "$ref": "#/$defs/stateReferences"

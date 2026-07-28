@@ -29,7 +29,8 @@ notation.
 - Define stable identities and concise claim syntax. **Initial concept and
   relationship syntax implemented.**
 - Compile declared documents into a tool-neutral semantic graph. **Initial
-  kind, descriptive, and relationship claims implemented.**
+  kind, descriptive, relationship, relationship-rationale, and identified
+  reference claims implemented.**
 - Publish a typed library API and deterministic graph serialization.
   **`compileWorkspace` is exported through the typed package entrypoint with
   deterministic graph-v2 serialization.**
@@ -51,10 +52,10 @@ notation.
   implemented.**
 - Validate schema, references, identifiers, kinds, endpoint compatibility,
   controlled fields, contradictions, and adapter mappings. **Core checks
-  and optional subject-mapping integrity are implemented. Whole-part
-  contradictions are checked workspace-wide with architecture-state
-  applicability; additional contradiction coverage remains deliberately
-  incremental.**
+  include native endpoint and identified-reference integrity plus optional
+  subject-mapping integrity. Whole-part contradictions are checked
+  workspace-wide with architecture-state applicability; additional
+  contradiction coverage remains deliberately incremental.**
 - Emit stable, source-located, machine-readable diagnostics. **Implemented as
   the normative `yarramate/check-result/v1` contract for `check --json`.**
 - Keep completeness and organizational governance opt-in.
@@ -121,8 +122,9 @@ notation.
   mapping, one-model multi-view project composition, state-specific and
   comparison visualization, explicit per-view membership after model union,
   ordered dynamic views over projected relationship subjects, and
-  regression-fixture and self-dogfooding mappings are implemented. Import,
-  round-tripping and general styling parity remain future adapter work.
+  native relationship descriptions on dynamic steps, and regression-fixture
+  and self-dogfooding mappings are implemented. Import, round-tripping and
+  general styling parity remain future adapter work.
   Adapter-owned deployment nodes and named instances of projected concepts
   are implemented with regression validation.**
 - Generic evidence-provider interface.

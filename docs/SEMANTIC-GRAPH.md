@@ -31,6 +31,13 @@ references use `yarramate/constraint/requires`. Both point to globally
 qualified concept subjects and use stable claim IDs derived from authored
 syntax; neither adds fields to graph v2.
 
+Concept and relationship descriptions use
+`yarramate/concept/description` and
+`yarramate/relationship/description`. Identified citations use
+`yarramate/reference/refers-to`, point to any globally qualified subject, and
+derive stable claim IDs from their authored reference IDs. These additions use
+the existing claim envelope and do not change graph-v2 structure.
+
 Optional architecture states compile as ordinary globally qualified concept
 subjects with Core `plateau` kind. `yarramate/state/type`,
 `yarramate/state/after`, and `yarramate/state/present-in` preserve state kind,

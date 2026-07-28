@@ -29,8 +29,11 @@ metadata field. A new semantic value must be introduced as defined syntax that
 compiles to a claim, or by a versioned profile; adapter presentation belongs in
 adapter configuration.
 
-Optional concept `description` and relationship `name` fields compile into
-explicit descriptive claims.
+Optional concept and relationship `description` fields compile into explicit
+narrative claims about their respective subjects. Relationship `name` remains
+a concise label. A description may record rationale, conditions, consequences,
+or other decided architecture, but Core treats its text as opaque rather than
+as executable logic.
 
 Concepts may also declare one optional `owner` reference:
 
@@ -75,6 +78,39 @@ Constraint satisfaction is assessed outside Core. Evidence providers may
 evaluate the stable generated claim ID and report through an evidence overlay;
 the observation does not mutate declared intent or become a Core validation
 result.
+
+Concepts and relationships may cite any other workspace subject through
+explicitly identified references:
+
+```yaml
+concepts:
+  - id: lifecycle
+    kind: businessProcess
+    name: Item lifecycle
+  - id: worker
+    kind: applicationProcess
+    name: Worker
+    references:
+      - id: governing-flow
+        ref: worker-triggers-lifecycle
+relationships:
+  - id: worker-triggers-lifecycle
+    kind: triggering
+    from: worker
+    to: lifecycle
+    description: The worker advances the lifecycle only after retaining evidence.
+    references:
+      - id: normative-process
+        ref: lifecycle
+```
+
+Each entry compiles to `<subject>~reference-<id>` with predicate
+`yarramate/reference/refers-to`. Targets may be concepts, architecture states,
+or relationships and may use local or `document#subject` identity. Core rejects
+dangling targets and duplicate reference IDs within one subject. It does not
+infer ownership, dependency, constraint, ordering, or other meaning from a
+reference. ID-like text inside a description is not a reference and is not
+checked.
 
 Concepts and relationships may also declare an operational `status` of
 `planned`, `current`, or `retired`. It compiles into a
@@ -161,10 +197,11 @@ as `yarramate/core@0.1#capability`; an extension kind uses its selected
 profile identity. Relationship claims use the qualified relationship kind as
 their predicate.
 
-Concept authoring emits kind, name, and optional description claims.
-Relationship authoring emits one semantic relationship claim plus an optional
-name claim about the relationship subject. Every claim records its YAML pointer
-and one-based source location.
+Concept authoring emits kind, name, optional description, and optional
+identified-reference claims. Relationship authoring emits one semantic
+relationship claim plus optional name, description, and identified-reference
+claims about the relationship subject. Every claim records its YAML pointer and
+one-based source location.
 
 Graph ordering is lexical and independent of workspace input order. Graph v2
 is the version-scoped normative interchange contract defined in
@@ -179,7 +216,7 @@ and one-based line and column.
 | --- | --- | --- |
 | `YM1xx` | YAML parsing | `YM101` malformed YAML |
 | `YM2xx` | Document structure | `YM201` JSON Schema violation |
-| `YM3xx` | Identity and references | `YM301` duplicate local ID; `YM302` unresolved concept reference; `YM303` duplicate document ID; `YM304` unresolved owner; `YM305` unresolved constraint; `YM306` duplicate constraint ID; `YM307` unresolved architecture state |
+| `YM3xx` | Identity and references | `YM301` duplicate local ID; `YM302` unresolved concept reference; `YM303` duplicate document ID; `YM304` unresolved owner; `YM305` unresolved constraint; `YM306` duplicate constraint ID; `YM307` unresolved architecture state; `YM308` unresolved subject reference; `YM309` duplicate reference ID |
 | `YM4xx` | Profile conformance | `YM401` unknown concept kind; `YM402` unknown relationship kind; `YM403` unavailable profile; `YM404` incompatible endpoint; `YM405` misplaced controlled field; `YM406` unavailable parent profile; `YM407`/`YM408` unavailable semantic parent; `YM409`/`YM410` inherited-name collision; `YM411` duplicate profile; `YM412` broadened constraint |
 | `YM5xx` | Claim consistency | `YM501` competing whole-part claims; `YM502` cyclic state ordering; `YM503` relationship present without an endpoint |
 | `YM6xx` | Adapter mapping integrity | `YM601` unknown native subject; `YM602` subject type mismatch; `YM603` duplicate native mapping; `YM604` duplicate external mapping; `YM605` duplicate versioned mapping |
@@ -239,9 +276,10 @@ candidate workspace in memory, and replace the target only when validation
 succeeds. A rejected edit leaves the source byte-for-byte unchanged.
 
 Optional `add` flags are `--status`, `--description`, `--owner <ref>`, and
-repeatable `--constraint <id>=<ref>` and `--present-in <state-ref>`. Optional
-`connect` flags are `--name`, `--status`, `--mode`, `--content`, and repeatable
-`--present-in <state-ref>`. Extension profiles and documents needed
+repeatable `--constraint <id>=<ref>`, `--reference <id>=<ref>`, and
+`--present-in <state-ref>`. Optional `connect` flags are `--name`,
+`--description`, `--status`, `--mode`, `--content`, and repeatable
+`--reference <id>=<ref>` and `--present-in <state-ref>`. Extension profiles and documents needed
 for qualified references are passed explicitly using a repeatable
 `--source <source.yaml>`:
 

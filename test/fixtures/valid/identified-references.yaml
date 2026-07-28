@@ -1,0 +1,21 @@
+format: yarramate/v1
+id: references
+profile: yarramate/core@0.1
+concepts:
+  - id: lifecycle
+    kind: businessProcess
+    name: Lifecycle
+  - id: worker
+    kind: applicationProcess
+    name: Worker
+    references:
+      - id: lifecycle-rule
+        ref: worker-triggers-lifecycle
+relationships:
+  - id: worker-triggers-lifecycle
+    kind: triggering
+    from: worker
+    to: lifecycle
+    references:
+      - id: governing-subject
+        ref: lifecycle

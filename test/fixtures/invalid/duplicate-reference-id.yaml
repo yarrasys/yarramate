@@ -1,0 +1,19 @@
+format: yarramate/v1
+id: references
+profile: yarramate/core@0.1
+concepts:
+  - id: first-rule
+    kind: requirement
+    name: First rule
+  - id: second-rule
+    kind: requirement
+    name: Second rule
+  - id: worker
+    kind: applicationProcess
+    name: Worker
+    references:
+      - id: governing-rule
+        ref: first-rule
+      - id: governing-rule
+        ref: second-rule
+relationships: []
