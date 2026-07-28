@@ -195,5 +195,15 @@ yarramate-likec4 map --sync \
   .yarramate/workspace.yaml
 ```
 
+Sync preserves and reports mappings for native subjects that no longer exist.
+After confirming that those subjects were intentionally removed or renamed,
+delete the stale entries while adding missing mappings with:
+
+```sh
+yarramate-likec4 map --sync --prune \
+  .yarramate/integrations/likec4/subject-mapping.yaml \
+  .yarramate/workspace.yaml
+```
+
 Treat exit `0` as successful execution, `1` as correctness diagnostics, and
 `2` as invocation or file failure.
