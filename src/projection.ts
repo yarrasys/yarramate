@@ -340,3 +340,150 @@ export function renderProjectionMarkdown(result: ProjectionResult): string {
 
   return `${lines.join('\n')}\n`
 }
+
+const estimateTokens = (text: string): number => Math.ceil(text.length / 4)
+
+export function renderBudgetedContext(
+  result: ProjectionResult,
+  budgetTokens: number,
+): string {
+  const concepts = result.subjects.filter(({ type }) => type === 'concept')
+  const relationships = result.subjects.filter(
+    ({ type }) => type === 'relationship',
+  )
+  const title = result.presentation?.title ?? result.projection
+
+  const header: string[] = [
+    `context ${result.projection} — ${title}`,
+    `subjects: ${concepts.length} concepts, ${relationships.length} relationships`,
+  ]
+  const subjectLines: string[] = []
+  for (const concept of concepts) {
+    const name = claimValue(
+      result.claims,
+      concept.id,
+      'yarramate/concept/name',
+    )
+    const kind =
+      claimValue(result.claims, concept.id, 'yarramate/concept/kind') ??
+      'unknown'
+    const status = claimValue(
+      result.claims,
+      concept.id,
+      'yarramate/lifecycle/status',
+    )
+    subjectLines.push(
+      `- ${concept.id} [${kind.split('#')[1] ?? kind}]` +
+        `${name === undefined ? '' : ` ${name}`}` +
+        `${status === undefined ? '' : ` (${status})`}`,
+    )
+  }
+
+  const relationshipLines: string[] = []
+  for (const relationship of relationships) {
+    const claim = result.claims.find(
+      ({ id, object }) => id === relationship.id && 'ref' in object,
+    )
+    if (claim !== undefined && 'ref' in claim.object) {
+      const kind = claim.predicate.split('#')[1] ?? claim.predicate
+      relationshipLines.push(
+        `- ${claim.subject} -${kind}-> ${claim.object.ref}`,
+      )
+    }
+  }
+
+  const descriptionLines: string[] = []
+  for (const subject of result.subjects) {
+    const description =
+      claimValue(
+        result.claims,
+        subject.id,
+        'yarramate/concept/description',
+      ) ??
+      claimValue(
+        result.claims,
+        subject.id,
+        'yarramate/relationship/description',
+      )
+    if (description !== undefined) {
+      descriptionLines.push(`- ${subject.id}: ${description}`)
+    }
+  }
+
+  const detailPredicates = new Set([
+    'yarramate/ownership/owner',
+    'yarramate/constraint/requires',
+    'yarramate/reference/refers-to',
+    'yarramate/access/mode',
+    'yarramate/state/present-in',
+  ])
+  const detailLines: string[] = []
+  for (const claim of result.claims) {
+    if (!detailPredicates.has(claim.predicate)) continue
+    const value = 'ref' in claim.object ? claim.object.ref : claim.object.value
+    const predicate = claim.predicate.split('/').pop() ?? claim.predicate
+    detailLines.push(`- ${claim.subject} ${predicate}: ${value}`)
+  }
+
+  // Ranked ladder: the two header lines always render; every other line —
+  // including the subject skeleton — competes for the remaining budget in
+  // priority order, and anything dropped is always announced rather than
+  // silently omitted.
+  const sections: ReadonlyArray<{
+    readonly heading: string
+    readonly lines: readonly string[]
+  }> = [
+    { heading: 'relationships:', lines: relationshipLines },
+    { heading: 'descriptions:', lines: descriptionLines },
+    { heading: 'details:', lines: detailLines },
+  ]
+  const rendered: string[] = [...header]
+  const omitted: string[] = []
+  let spent = estimateTokens(rendered.join('\n'))
+  let droppedSubjects = 0
+  for (const line of subjectLines) {
+    const cost = estimateTokens(line)
+    if (spent + cost > budgetTokens) {
+      droppedSubjects += 1
+      continue
+    }
+    rendered.push(line)
+    spent += cost
+  }
+  if (droppedSubjects > 0) {
+    omitted.push(`subjects ${droppedSubjects} omitted`)
+  }
+  for (const section of sections) {
+    if (section.lines.length === 0) continue
+    const kept: string[] = [section.heading]
+    let sectionSpent = estimateTokens(section.heading)
+    let dropped = 0
+    for (const line of section.lines) {
+      const cost = estimateTokens(line)
+      if (spent + sectionSpent + cost > budgetTokens) {
+        dropped += 1
+        continue
+      }
+      kept.push(line)
+      sectionSpent += cost
+    }
+    if (kept.length > 1) {
+      rendered.push('', ...kept)
+      spent += sectionSpent
+    } else {
+      dropped = section.lines.length
+    }
+    if (dropped > 0) {
+      omitted.push(
+        `${section.heading.replace(':', '')} ${dropped} omitted`,
+      )
+    }
+  }
+  if (omitted.length > 0) {
+    rendered.push(
+      '',
+      `[budget ${budgetTokens}: ${omitted.join('; ')} — raise --budget or use JSON mode for the complete slice]`,
+    )
+  }
+  return `${rendered.join('\n')}\n`
+}
