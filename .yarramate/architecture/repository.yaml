@@ -32,6 +32,7 @@ concepts:
     kind: applicationComponent
     name: LikeC4 adapter prototype
     description: Optional validated vocabulary and visualization prototype.
+    owner: yarramate-product#yarramate-maintainers
     status: current
   - id: compiler-source
     kind: repository-file
