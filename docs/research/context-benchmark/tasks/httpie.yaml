@@ -1,0 +1,340 @@
+# Frozen benchmark task suite for httpie (context benchmark H1/H2/H3).
+# Ground truth verified against the source at the pinned commit; the gallery
+# model was used only to select targets, never as the authority.
+type: yarramate/benchmark-suite/v1
+suite: httpie
+headline: true
+repository:
+  name: httpie
+  source: https://github.com/httpie/cli
+  commit: 5b604c37c6c67e18e7c3e9aee6c88a8c22b98345
+  gallery: https://github.com/yarrasys/yarramate-gallery
+  model: showcases/httpie
+
+tasks:
+  # ---------------------------------------------------------------- comprehension
+  - id: ht-comp-download-filename
+    family: comprehension
+    prompt: >-
+      When a response body is saved with --download and no explicit --output
+      file is given, HTTPie picks the target filename automatically. Identify:
+      (1) the module that owns this filename-resolution logic; (2) the function
+      that extracts a filename from the Content-Disposition response header;
+      (3) the function that derives a fallback filename from the URL and the
+      response Content-Type; (4) how collisions with files that already exist
+      on disk are avoided (name the function and describe the scheme); and
+      (5) the method that ties these steps together to open the output file.
+    groundTruth:
+      answer: >-
+        httpie/downloads.py owns all of it. filename_from_content_disposition
+        (downloads.py:85) parses the Content-Disposition header via
+        mailbox.Message.get_filename and sanitises the result (basename,
+        lstrip('.'), strip). filename_from_url (downloads.py:106) falls back to
+        the last URL path segment (or 'index'), appending an extension guessed
+        from the Content-Type via mimetypes.guess_extension (with special
+        cases: text/plain -> .txt, .htm -> .html). get_unique_filename
+        (downloads.py:151) avoids collisions by probing with os.path.exists
+        and appending numeric suffixes -1, -2, ... until an unused name is
+        found, trimming the name first via trim_filename_if_needed so it stays
+        within the filesystem's max filename length. The static method
+        Downloader._get_output_file_from_response (downloads.py:288) ties them
+        together: prefer Content-Disposition, else URL-derived, then uniquify
+        and open the file in mode 'a+b'. It is called from Downloader.start
+        only when no --output file was provided.
+      verifiedAgainst:
+        - httpie/downloads.py:85-103
+        - httpie/downloads.py:106-123
+        - httpie/downloads.py:126-159
+        - httpie/downloads.py:288-304
+        - httpie/downloads.py:226-230
+    scoring:
+      method: ground-truth
+
+  - id: ht-comp-plugin-registry-retire
+    family: comprehension
+    prompt: >-
+      Suppose the file httpie/plugins/registry.py were deleted from this
+      repository with no other changes. State what that file provides, list
+      every module that imports from it, explain what each importer uses it
+      for, and summarise which user-facing capabilities of the http/https
+      command and of the httpie maintenance command would break.
+    groundTruth:
+      answer: >-
+        registry.py instantiates the process-wide singleton
+        plugin_manager = PluginManager() and registers the seven built-in
+        plugins (BasicAuthPlugin, DigestAuthPlugin, BearerAuthPlugin,
+        HeadersFormatter, JSONFormatter, XMLFormatter, ColorFormatter).
+        Importers: httpie/core.py (raw_main calls
+        plugin_manager.load_installed_plugins(env.config.plugins_dir) at
+        startup and --debug prints repr(plugin_manager)); httpie/cli/argparser.py
+        (_process_auth resolves the default auth plugin via
+        get_auth_plugins()[0] and looks up --auth-type via get_auth_plugin);
+        httpie/cli/definition.py (--auth-type lazy choices via
+        getter=plugin_manager.get_auth_plugin_mapping); httpie/client.py
+        (build_requests_session mounts adapters from get_transport_plugins);
+        httpie/output/processing.py (Conversion uses get_converters, Formatting
+        uses get_formatters_grouped); httpie/sessions.py (Session.auth
+        reconstructs stored session auth via get_auth_plugin);
+        httpie/manager/tasks/plugins.py (the httpie plugins list task iterates
+        plugin_manager.iter_entry_points). Breakage: both console commands fail
+        at import time, taking down all authentication (-a/--auth,
+        --auth-type, netrc, session-stored auth), third-party plugin loading,
+        transport adapter mounting, pretty-printing (headers/JSON/XML/colors
+        formatters), mime converters, and httpie plugins list.
+      verifiedAgainst:
+        - httpie/plugins/registry.py
+        - httpie/core.py:24
+        - httpie/core.py:46
+        - httpie/core.py:281
+        - httpie/cli/argparser.py:28
+        - httpie/cli/argparser.py:285
+        - httpie/cli/argparser.py:304
+        - httpie/cli/definition.py:23
+        - httpie/cli/definition.py:689
+        - httpie/client.py:23
+        - httpie/client.py:177
+        - httpie/output/processing.py:5
+        - httpie/output/processing.py:21
+        - httpie/output/processing.py:36
+        - httpie/sessions.py:21
+        - httpie/sessions.py:278
+        - httpie/manager/tasks/plugins.py:197-201
+    scoring:
+      method: ground-truth
+
+  - id: ht-comp-session-lifecycle
+    family: comprehension
+    prompt: >-
+      For an invocation like `http --session=api example.org/endpoint`,
+      explain: (a) which module loads the named session and where on disk the
+      session file lives, including how the path differs when the session name
+      contains a path separator; (b) at which points in the request pipeline
+      the session's stored headers, cookies, and auth are applied to the
+      outgoing request, including the precedence between session headers and
+      command-line headers, and between session auth and -a/--auth given on
+      the command line; and (c) under exactly which conditions the session
+      file is written back to disk at the end of the run.
+    groundTruth:
+      answer: >-
+        (a) httpie/client.py collect_messages calls get_httpie_session
+        (httpie/sessions.py:92) when --session/--session-read-only is set. For
+        a plain name the path is <config_dir>/sessions/<host>/<name>.json
+        (session_hostname_to_dirname, sessions.py:46; ':' in host:port becomes
+        '_'); if the name contains os.path.sep it is an "anonymous" session and
+        is treated as an explicit file path (is_anonymous_session,
+        sessions.py:42, os.path.expanduser at sessions.py:107).
+        (b) All inside collect_messages (httpie/client.py:43-101): session
+        headers are passed as base_headers into make_request_kwargs, where
+        precedence is defaults < session headers < CLI headers
+        (client.py:343-346: make_default_headers, then update(base_headers),
+        then update(args.headers)); cookies are applied by assigning
+        requests_session.cookies = httpie_session.cookies (client.py:76); for
+        auth, CLI auth wins - if args.auth_plugin is set the CLI auth is
+        written INTO the session (client.py:77-82), otherwise stored session
+        auth is applied as request_kwargs['auth'] (client.py:83-85, rebuilt via
+        Session.auth, sessions.py:272-299). In the other direction,
+        update_headers (client.py:75, sessions.py:230) merges request headers
+        back into the session, skipping Content-*/If-* prefixes and the
+        default HTTPie/ User-Agent, and folding a Cookie header into the
+        cookie jar.
+        (c) After the request/response loop (client.py:136-140): saved when
+        the session file is new OR --session (read-write) was used; an
+        existing session opened with --session-read-only is not written.
+        Before saving, cookies are refreshed from the requests session and
+        expired cookies are removed.
+      verifiedAgainst:
+        - httpie/client.py:43-101
+        - httpie/client.py:136-140
+        - httpie/client.py:325-374
+        - httpie/sessions.py:29-57
+        - httpie/sessions.py:92-121
+        - httpie/sessions.py:200-262
+        - httpie/sessions.py:272-304
+    scoring:
+      method: ground-truth
+
+  # ---------------------------------------------------------------------- change
+  - id: ht-change-download-dir
+    family: change
+    prompt: >-
+      Add a --download-dir DIR option to the http/https command. Semantics:
+      it is only meaningful together with --download, and only when the
+      filename is chosen automatically - using it without --download, or
+      combining it with an explicit --output FILE, must be rejected with a
+      clear parser error (like the existing --continue validations). When
+      active, automatically named downloads (name derived from
+      Content-Disposition or from the URL) are created inside DIR instead of
+      the current working directory, and the existing unique-suffix collision
+      avoidance must test for existing files inside DIR. If DIR does not
+      exist, fail with a clear error rather than creating it implicitly.
+      Behaviour when the new flag is absent must be completely unchanged.
+      Include help text consistent with the neighbouring download options.
+    touches:
+      - httpie/cli/definition.py
+      - httpie/cli/argparser.py
+      - httpie/core.py
+      - httpie/downloads.py
+      - httpie#arg-parser
+      - httpie#download-manager
+    scoring:
+      method: rubric
+      rubric:
+        - The option is declared alongside the other download options in
+          httpie/cli/definition.py with help text, and invalid combinations
+          are rejected in the parser (httpie/cli/argparser.py, in or next to
+          _process_download_options) - both --download-dir without --download
+          and --download-dir with --output produce a parser error, not a
+          crash or silent ignore.
+        - The directory is threaded through to the Downloader (constructed in
+          httpie/core.py program) and used in the auto-naming path
+          (_get_output_file_from_response in httpie/downloads.py) - the
+          resolved filename is joined with DIR before the uniqueness probe,
+          so get_unique_filename-style suffixing checks existence within DIR,
+          and the file is opened inside DIR.
+        - A non-existent DIR results in a clear user-facing error (parser
+          error or clean error exit), not an unhandled traceback, and DIR is
+          not silently created.
+        - With the flag absent, behaviour is unchanged - auto-named downloads
+          still land in the current working directory, and no other option's
+          semantics change; unrelated modules (sessions, output formatting,
+          plugin machinery) are not modified.
+
+  - id: ht-change-redact-auth-output
+    family: change
+    prompt: >-
+      HTTPie prints outgoing request headers with --verbose/--print=H,
+      including the Authorization header with its full credential value,
+      which makes shared transcripts leak secrets. Add an opt-in flag
+      (suggested name --redact-auth) to the http/https command: when enabled,
+      any rendered request output replaces the value of the Authorization
+      header with a fixed placeholder (for example <redacted>); the request
+      actually sent on the wire must be unaffected and must carry the real
+      header; response output is untouched. Default behaviour without the
+      flag must be byte-for-byte unchanged. The redaction must apply wherever
+      request headers are rendered (pretty-printed or raw, terminal or
+      redirected), not just in one formatter.
+    touches:
+      - httpie/cli/definition.py
+      - httpie/models.py
+      - httpie/output/models.py
+      - httpie#arg-parser
+      - httpie#output-pipeline
+    scoring:
+      method: rubric
+      rubric:
+        - A new opt-in flag is declared in httpie/cli/definition.py (default
+          off) and reaches the output path via the parsed namespace (for
+          example through ProcessingOptions in httpie/output/models.py or an
+          equivalent explicit mechanism), not via a global variable.
+        - With the flag enabled, the rendered request-header text (produced
+          from HTTPRequest.headers in httpie/models.py) shows the placeholder
+          instead of the Authorization value in every output mode - pretty and
+          non-pretty, tty and redirected - and the real credential string
+          appears nowhere in the rendered output.
+        - The PreparedRequest that is dispatched still carries the genuine
+          Authorization header - redaction is display-only, verified by the
+          fact that the redaction is applied only on the rendering side and
+          never mutates the outgoing requests message.
+        - With the flag absent, output is unchanged, and response rendering is
+          unaffected in both modes.
+
+  - id: ht-change-session-auth-plugin-error
+    family: change
+    prompt: >-
+      A stored session file can carry an auth entry whose type refers to an
+      auth plugin that is no longer installed (for example a session recorded
+      with a third-party auth plugin that was later uninstalled). Today,
+      reusing such a session dies with a bare KeyError raised from the plugin
+      lookup, surfaced to the user as an unhelpful "KeyError: '<type>'"
+      message. Improve this: reusing a session whose auth type has no
+      registered plugin must produce a clear, actionable error that names the
+      unknown auth type, identifies the session (file path or session id),
+      and hints that the corresponding auth plugin needs to be installed. The
+      run must terminate through the normal error path with a non-zero exit
+      status and no traceback (unless --traceback is given). Behaviour for
+      sessions with valid or absent auth must be unchanged, as must the
+      existing --auth-type validation for command-line auth.
+    touches:
+      - httpie/sessions.py
+      - httpie/plugins/manager.py
+      - httpie#session-manager
+      - httpie#plugin-manager
+    scoring:
+      method: rubric
+      rubric:
+        - The unknown-auth-type lookup for session auth (Session.auth in
+          httpie/sessions.py calling plugin_manager.get_auth_plugin) no longer
+          escapes as a raw KeyError - it is caught or replaced by a dedicated,
+          intentional error path (custom exception or explicit membership
+          check in httpie/plugins/manager.py or httpie/sessions.py).
+        - The resulting message names the missing auth type, identifies the
+          session file (path or id), and suggests installing the missing auth
+          plugin - all three elements present.
+        - The failure exits through the existing error handling with a
+          non-zero status and without a traceback by default (traceback still
+          available with --traceback); no unrelated behaviour changes - valid
+          session auth, sessions without auth, and command-line --auth-type
+          validation behave exactly as before.
+
+  # ---------------------------------------------------------- model-maintenance
+  - id: ht-mm-manager-session-store
+    family: model-maintenance
+    prompt: >-
+      The committed .yarramate workspace for this repository
+      (.yarramate/workspace.yaml, with the document under
+      .yarramate/architecture/, evidence under .yarramate/evidence/,
+      projections under .yarramate/projections/, and a LikeC4 adapter mapping
+      under .yarramate/integrations/likec4/) models the maintenance CLI
+      (httpie#manager-cli) as only influencing the plugin manager. The code
+      shows it also touches stored session files: httpie/manager/tasks/sessions.py
+      implements `httpie cli sessions upgrade` and `upgrade-all`, loading each
+      session via get_httpie_session, rewriting it in place with
+      session.save(bump_version=True), and walking the sessions/ directory
+      under the config directory. Update the workspace to capture this
+      responsibility: add the missing relationship(s) between the maintenance
+      CLI and the session-files data object (a read-write access is the
+      natural fit), record supporting evidence observations with repo:
+      locators in the evidence overlay, and update the LikeC4 subject mapping
+      for any new subjects so the adapter export stays complete. When you are
+      done, the native workspace check and the LikeC4 adapter check must both
+      pass, with no contradicted claims and no new open catalogue questions
+      left behind.
+    scoring:
+      method: deterministic
+      deterministic:
+        expect:
+          - check-pass
+          - no-contradicted
+          - catalogue-not-worse
+          - likec4-check-pass
+
+  - id: ht-mm-update-checker
+    family: model-maintenance
+    prompt: >-
+      HTTPie ships a self-update warning subsystem that this repository's
+      committed .yarramate workspace does not yet model:
+      httpie/internal/update_warnings.py is invoked as check_updates from
+      raw_main in httpie/core.py on every run, periodically fetches
+      https://packages.httpie.io/latest.json (spawning a background daemon via
+      httpie/internal/daemons.py and httpie/internal/daemon_runner.py), and
+      persists fetch/warn state to a version_info.json file resolved by
+      Config.version_info_file in httpie/config.py. Extend the workspace
+      (.yarramate/workspace.yaml and the documents it references) to reflect
+      this: declare an update-checker application component composed into the
+      http/https command concept, declare a version-info data object for the
+      persisted state file, and relate the new component to the command that
+      triggers it and to the data object it reads and writes (plus any further
+      relationship you can ground in the cited code, such as the outbound
+      fetch). Add evidence observations with repo: locators for each new
+      claim, and update the LikeC4 subject mapping so every new subject is
+      mapped. Afterwards the native workspace check and the LikeC4 adapter
+      check must both pass, with no contradicted claims and no new open
+      catalogue questions left behind.
+    scoring:
+      method: deterministic
+      deterministic:
+        expect:
+          - check-pass
+          - no-contradicted
+          - catalogue-not-worse
+          - likec4-check-pass

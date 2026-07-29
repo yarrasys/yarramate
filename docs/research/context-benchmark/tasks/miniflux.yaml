@@ -1,0 +1,258 @@
+# Frozen benchmark task suite for miniflux (context benchmark H1/H2/H3).
+# Ground truth verified against the source at the pinned commit; the gallery
+# model was used only to select targets, never as the authority.
+type: yarramate/benchmark-suite/v1
+suite: miniflux
+headline: true
+repository:
+  name: miniflux
+  source: https://github.com/miniflux/v2
+  commit: c4d54f87a81b30aa173fddf05d7ff83ae7da5796
+  gallery: https://github.com/yarrasys/yarramate-gallery
+  model: showcases/miniflux
+
+tasks:
+  # ---------------------------------------------------------------- comprehension
+  - id: mf-comp-integration-dispatch
+    family: comprehension
+    prompt: >-
+      Miniflux can deliver entries to third-party services such as Wallabag,
+      Pinboard, and Telegram. Identify: (1) the Go package that implements this
+      fan-out delivery; (2) the two exported functions that are its only entry
+      points from the rest of the codebase; (3) for each of those functions,
+      every call site that invokes it — one path runs after a feed refresh has
+      persisted new entries, the other when a user saves a single entry from
+      the web UI or from the REST API. Give the package import path, the two
+      function names, and the file containing each call site.
+    groundTruth:
+      answer: >-
+        The package is internal/integration (miniflux.app/v2/internal/integration),
+        implemented in internal/integration/integration.go. Its two entry points
+        are SendEntry (integration.go:41) and PushEntries (integration.go:511).
+        PushEntries is invoked exactly once, as "go integration.PushEntries(...)"
+        from RefreshFeed in internal/reader/handler/handler.go:339, after
+        store.RefreshFeedEntries returns new entries and the user has integrations
+        configured. SendEntry is invoked from two call sites, both as
+        "go integration.SendEntry(...)": the web UI save handler in
+        internal/ui/entry_save.go:36 and the REST API saveEntryHandler in
+        internal/api/entry_handlers.go:273.
+      verifiedAgainst:
+        - internal/integration/integration.go:41
+        - internal/integration/integration.go:511
+        - internal/reader/handler/handler.go:339
+        - internal/ui/entry_save.go:36
+        - internal/api/entry_handlers.go:273
+    scoring:
+      method: ground-truth
+
+  - id: mf-comp-worker-pool-retirement
+    family: comprehension
+    prompt: >-
+      Suppose the background worker pool implemented in internal/worker were
+      deleted and nothing could enqueue refresh jobs any more, while everything
+      else stayed as-is. For each of the following operations, state whether it
+      would break or keep working, and cite the file that decides the answer:
+      (a) the periodic background refresh driven by the polling scheduler;
+      (b) "refresh all feeds" from the web UI;
+      (c) refreshing all feeds of one category from the web UI;
+      (d) PUT /v1/feeds/refresh (REST refresh-all);
+      (e) PUT /v1/categories/{categoryID}/refresh (REST category refresh);
+      (f) refreshing a single feed from the web UI;
+      (g) PUT /v1/feeds/{feedID}/refresh (REST single-feed refresh).
+    groundTruth:
+      answer: >-
+        (a)-(e) break: they all build a job batch and push it onto the pool.
+        (a) internal/cli/scheduler.go feedScheduler calls pool.Push(jobs);
+        (b) internal/ui/feed_refresh.go refreshAllFeeds calls go h.pool.Push(jobs);
+        (c) internal/ui/category_refresh.go refreshCategory calls go h.pool.Push(jobs);
+        (d) internal/api/feed_handlers.go refreshAllFeedsHandler calls go h.pool.Push(jobs) (line 97);
+        (e) internal/api/category_handlers.go calls go h.pool.Push(jobs) (line 191).
+        (f) and (g) keep working: single-feed refresh never touches the pool —
+        both call reader/handler RefreshFeed synchronously inside the HTTP
+        request: internal/ui/feed_refresh.go refreshFeed (line 21) and
+        internal/api/feed_handlers.go refreshFeedHandler (line 66).
+      verifiedAgainst:
+        - internal/cli/scheduler.go:36-49
+        - internal/worker/pool.go
+        - internal/ui/feed_refresh.go:21
+        - internal/ui/feed_refresh.go:61
+        - internal/ui/category_refresh.go:58
+        - internal/api/feed_handlers.go:66
+        - internal/api/feed_handlers.go:97
+        - internal/api/category_handlers.go:191
+    scoring:
+      method: ground-truth
+
+  - id: mf-comp-sql-ownership
+    family: comprehension
+    prompt: >-
+      For the Miniflux server: which Go package concentrates the application's
+      SQL data-access queries, which package owns schema migrations and
+      database connection setup, and which database engine or engines does the
+      server support? Name the database driver dependency from go.mod and the
+      file where the connection pool is opened.
+    groundTruth:
+      answer: >-
+        All SQL data-access queries live in internal/storage (feed.go, entry.go,
+        entry_query_builder.go, user.go, batch.go, integration.go, etc.).
+        Schema migrations and connection setup live in internal/database:
+        migrations.go holds the ordered migrations array (schemaVersion =
+        len(migrations)) applied by Migrate in database.go, and postgresql.go
+        opens the connection pool with sql.Open("postgres", dsn) in
+        NewConnectionPool. PostgreSQL is the only supported engine; the sole
+        driver dependency is github.com/lib/pq (go.mod).
+      verifiedAgainst:
+        - internal/storage/feed.go
+        - internal/storage/entry.go
+        - internal/storage/batch.go
+        - internal/database/database.go
+        - internal/database/migrations.go
+        - internal/database/postgresql.go
+        - go.mod:13
+    scoring:
+      method: ground-truth
+
+  # ---------------------------------------------------------------------- change
+  - id: mf-change-async-single-feed-refresh
+    family: change
+    prompt: >-
+      Single-feed refresh over HTTP currently runs the entire fetch/parse/store
+      cycle synchronously inside the request handler in two places: the web UI
+      (refreshFeed in internal/ui/feed_refresh.go) and the REST API
+      (refreshFeedHandler in internal/api/feed_handlers.go). Change both so the
+      refresh is enqueued onto the existing background worker queue instead of
+      running inline: the UI handler enqueues and redirects immediately as it
+      does today; the API handler validates that the feed exists (404 as today
+      when it does not), enqueues, and returns 204 No Content immediately.
+      The web UI's forceRefresh query parameter must keep working end to end,
+      which requires carrying a force-refresh flag on the queued job and
+      honoring it when the worker executes the job; jobs created by the
+      scheduler and by the existing refresh-all/category paths must keep
+      today's non-forced behavior. Reuse the existing job and pool types rather
+      than introducing a parallel mechanism.
+    touches:
+      - internal/ui/feed_refresh.go
+      - internal/api/feed_handlers.go
+      - internal/model/job.go
+      - internal/worker/worker.go
+      - miniflux#web-ui
+      - miniflux#rest-api
+      - miniflux#worker-pool
+    scoring:
+      method: rubric
+      rubric:
+        - Neither internal/ui/feed_refresh.go refreshFeed nor
+          internal/api/feed_handlers.go refreshFeedHandler calls
+          reader/handler.RefreshFeed inline any more; both enqueue a job for
+          the requested feed through the existing worker pool (Pool.Push).
+        - The force-refresh flag travels with the job (model.Job gains a field
+          or equivalent) and internal/worker/worker.go passes it through to
+          RefreshFeed, so a UI request with forceRefresh=true results in a
+          forced refresh when the worker runs the job.
+        - Scheduler, refresh-all, and category-refresh job producers are either
+          untouched or continue to produce non-forced jobs; no call path gains
+          forced refresh that did not have it.
+        - The API handler still returns 404 for a feed that does not belong to
+          the user, before anything is enqueued, and returns 204 immediately on
+          success; the UI handler still redirects to the feed entries page.
+        - No parallel queue, goroutine pool, or duplicate job type is
+          introduced; the change reuses the existing pool and job list types.
+
+  - id: mf-change-per-feed-integration-optout
+    family: change
+    prompt: >-
+      Add a per-feed setting that stops a feed's newly refreshed entries from
+      being pushed to the user's connected third-party services (Wallabag,
+      Telegram, webhooks, and the rest), while leaving manual "save this entry"
+      delivery untouched. Concretely: introduce a boolean feed option (for
+      example "disable_integrations", default false) that (1) is stored on the
+      feeds table via a new schema migration, (2) is part of the feed domain
+      type and of the feed creation and feed modification request payloads
+      accepted by the REST API, including partial updates, (3) is persisted and
+      loaded by the feed data-access code, and (4) is honored during feed
+      refresh: when set, new entries produced by a refresh of that feed must
+      not be dispatched to the user's third-party services. Saving an
+      individual entry by hand must still deliver it regardless of the new
+      option.
+    touches:
+      - internal/database/migrations.go
+      - internal/model/feed.go
+      - internal/storage/feed.go
+      - internal/reader/handler/handler.go
+      - miniflux#storage
+      - miniflux#feed-pipeline
+      - miniflux#integration-hub
+      - miniflux#rest-api
+    scoring:
+      method: rubric
+      rubric:
+        - A new migration is appended to the migrations array in
+          internal/database/migrations.go adding the column with a false
+          default; no existing migration entry is edited.
+        - internal/model/feed.go carries the field on the Feed struct, on
+          FeedCreationRequest, and on FeedModificationRequest (nullable/pointer
+          so partial updates work), and the modification patch logic applies
+          it.
+        - internal/storage/feed.go includes the new column in both the create
+          and update statements and in the feed row scanning, so the value
+          round-trips.
+        - In internal/reader/handler/handler.go RefreshFeed, when the option is
+          set on the refreshed feed, integration.PushEntries is not invoked for
+          that feed's new entries; when unset, behavior is unchanged.
+        - The manual save paths (internal/ui/entry_save.go and the REST
+          save-entry handler) still call integration.SendEntry unconditionally;
+          the new option does not gate them.
+
+  # ---------------------------------------------------------- model-maintenance
+  - id: mf-mm-add-metrics-component
+    family: model-maintenance
+    prompt: >-
+      The committed .yarramate workspace for this repository
+      (.yarramate/workspace.yaml, with documents under .yarramate/architecture/,
+      evidence under .yarramate/evidence/, projections under
+      .yarramate/projections/, and a LikeC4 adapter mapping under
+      .yarramate/integrations/likec4/) deliberately omitted the Prometheus
+      metrics subsystem. It is now in scope. In the code: internal/metric
+      defines the collectors, the /metrics endpoint is registered in
+      internal/http/server/routes.go behind config.Opts.HasMetricsCollector(),
+      the daemon starts a storage-metrics collector goroutine in
+      internal/cli/daemon.go, and the background workers record refresh
+      durations via internal/metric in internal/worker/worker.go. Update the
+      workspace to declare a metrics collector component: compose it into the
+      miniflux-server concept alongside the other runtime parts, and relate it
+      to at least the worker pool (whose refresh durations it measures) and the
+      storage layer (whose metrics the daemon collector gathers). Keep the
+      whole workspace consistent: extend or add projections as appropriate, and
+      update the LikeC4 subject mapping so both the native check and the LikeC4
+      adapter check pass, with no contradicted claims and no new open catalogue
+      questions left behind.
+    scoring:
+      method: deterministic
+      deterministic:
+        expect:
+          - check-pass
+          - no-contradicted
+          - likec4-check-pass
+          - catalogue-not-worse
+
+  - id: mf-mm-remove-media-proxy
+    family: model-maintenance
+    prompt: >-
+      Miniflux maintainers have decided to drop the built-in media proxy:
+      internal/mediaproxy will be deleted, its rewriting will be removed from
+      the web UI, and browsers will load external media directly. Update this
+      repository's committed .yarramate workspace
+      (.yarramate/workspace.yaml and the documents it references) to reflect
+      that code-level change: remove the media proxy concept and every
+      relationship that references it, prune it from any projection that
+      renders it and from the evidence document's observations, and update the
+      LikeC4 subject mapping and project views under
+      .yarramate/integrations/likec4/ so that no orphaned mapping entries
+      remain. When you are done, the native workspace check and the LikeC4
+      adapter check must both pass.
+    scoring:
+      method: deterministic
+      deterministic:
+        expect:
+          - check-pass
+          - likec4-check-pass

@@ -1,0 +1,266 @@
+# Frozen benchmark task suite: the YarraMate repository itself (self-model).
+# Excluded from pooled headline numbers as self-serving (DESIGN.md, "Task
+# suite"); reported separately. Authored against commit a96f770 before any
+# condition is run; do not edit after freezing.
+type: yarramate/benchmark-suite/v1
+suite: yarramate-self
+headline: false
+repository:
+  name: yarramate-self
+  source: https://github.com/yarrasys/yarramate
+  commit: a96f7703ea8be54912e9ce851fb4d66110dfe544
+  model: .yarramate
+tasks:
+  # ── Comprehension ────────────────────────────────────────────────────
+  - id: ym-mcp-tool-delegation
+    family: comprehension
+    prompt: |
+      This repository ships a Model Context Protocol server that speaks
+      JSON-RPC 2.0 over stdio.
+      (a) List the tools it exposes.
+      (b) Explain how a tools/call request is fulfilled: does the server
+      re-implement any engine behaviour itself, and can any of its tools
+      mutate repository files?
+      (c) How does a failure of the underlying operation surface in the
+      tool response?
+    groundTruth:
+      answer: |
+        (a) Four tools, defined in src/adapters/mcp-cli.ts: yarramate_status,
+        yarramate_check, yarramate_reconcile, and yarramate_context (the last
+        accepts either an authored projection path or globally qualified
+        --subject identities, plus an optional token budget).
+        (b) Each tool definition only maps its JSON input to a CLI argv array
+        (e.g. ['status', <workspace>, '--json']) and calls the exported
+        runCli() from src/cli.ts in-process. The adapter contains no domain
+        logic of its own, and every exposed command is read-only; the
+        initialize response's instructions state the server never mutates the
+        native documents.
+        (c) There is no JSON-RPC error for command failure: the response is a
+        normal result with isError: true and a single text content block
+        carrying the command's stdout (or stderr when stdout is empty),
+        driven by result.exitCode !== 0.
+      verifiedAgainst:
+        - src/adapters/mcp-cli.ts:29
+        - src/adapters/mcp-cli.ts:152
+        - src/cli.ts:885
+        - test/mcp-cli.test.ts:53
+    scoring:
+      method: ground-truth
+
+  - id: ym-status-one-call-orientation
+    family: comprehension
+    prompt: |
+      The CLI's status command prints a one-call orientation summary for a
+      workspace.
+      (a) Which other engine operations does it run internally to assemble
+      that summary?
+      (b) What exactly determines its exit code — in particular, can drift
+      findings reported in the summary alone make the exit code non-zero?
+      (c) What happens when status is pointed at a plain document instead
+      of a workspace manifest?
+    groundTruth:
+      answer: |
+        (a) src/status-command.ts re-runs the check command in JSON mode
+        (runCheckCommand([workspacePath, '--json'])) and embeds its verdict,
+        diagnostics, and counted block. When check passes it additionally
+        compiles the workspace (compileWorkspace) to recover document ids and
+        declared states, loads every projection definition to pick up titles,
+        and — when the manifest lists evidence documents — evaluates them
+        (evaluateEvidenceWorkspace) and embeds the reconciliation summary
+        (observations, confirmed, findings split into contradicted, unknown,
+        notObserved) via reconcileEvidenceReports.
+        (b) The exit code mirrors the check verdict only: result.ok is set
+        from the embedded check payload's ok, and stdout exits 0/1 on that
+        alone. Reconciliation findings (including contradicted claims) are
+        reported in the summary but never change the exit code.
+        (c) It refuses to run: unless the file's format is
+        yarramate/workspace/v1 it exits 2 with "status requires an explicit
+        workspace manifest"; a manifest that fails to load exits 1 with
+        diagnostics.
+      verifiedAgainst:
+        - src/status-command.ts:75
+        - src/status-command.ts:101
+        - src/status-command.ts:160
+        - src/status-command.ts:184
+        - src/status-command.ts:266
+        - src/check-command.ts:30
+        - src/cli-support.ts:42
+    scoring:
+      method: ground-truth
+
+  - id: ym-source-loader-blast-radius
+    family: comprehension
+    prompt: |
+      One module in this codebase centralizes schema-backed YAML loading:
+      parsing, JSON Schema validation, and construction of deterministic
+      source-located diagnostics (path, pointer, line, column).
+      (a) Which file is it, and what are its key exports?
+      (b) Which other modules depend on it, and on which exports?
+      (c) If the file were deleted outright, which CLI capabilities would
+      break?
+    groundTruth:
+      answer: |
+        (a) src/source-document.ts. Key exports: loadSourceDocument (parse +
+        Ajv validation returning a validated document or YM101/YM201
+        diagnostics), locateSourcePath (pointer → line/column),
+        diagnosticOrder (deterministic diagnostic sort key),
+        describeSchemaViolation, and closestCandidate (did-you-mean
+        suggestions).
+        (b) loadSourceDocument is used by the loaders in src/workspace.ts,
+        src/evidence.ts, src/core-contract.ts, src/adapter-mapping.ts,
+        src/projection.ts, and the adapter modules
+        src/adapters/likec4-kind-mapping.ts, src/adapters/likec4-prepare.ts,
+        and src/adapters/likec4-project.ts. src/compiler.ts depends on the
+        helper exports describeSchemaViolation and closestCandidate, and
+        src/adapters/likec4-export.ts on diagnosticOrder.
+        (c) Everything: the compiler and every schema-backed loader import
+        from it, so document/profile compilation and workspace, evidence,
+        contract, mapping, and projection loading all fail — which breaks
+        every CLI command (check, status, compile, context, view, compare,
+        evidence, reconcile, add, connect, new) as well as the bundled
+        adapter commands.
+      verifiedAgainst:
+        - src/source-document.ts:25
+        - src/source-document.ts:118
+        - src/compiler.ts:8
+        - src/workspace.ts:12
+        - src/evidence.ts:12
+        - src/core-contract.ts:8
+        - src/adapter-mapping.ts:12
+        - src/projection.ts:9
+        - src/adapters/likec4-kind-mapping.ts:8
+        - src/adapters/likec4-prepare.ts:22
+        - src/adapters/likec4-project.ts:4
+        - src/adapters/likec4-export.ts:9
+    scoring:
+      method: ground-truth
+
+  # ── Change ───────────────────────────────────────────────────────────
+  - id: ym-mcp-compare-tool
+    family: change
+    prompt: |
+      This repository ships a Model Context Protocol server speaking
+      JSON-RPC 2.0 over stdio that currently exposes four read-only tools.
+      Add a fifth read-only tool that exposes the existing state-comparison
+      CLI command (compare <from-state> <to-state> <workspace-manifest>).
+      Follow the server's existing tool-naming convention, declare a JSON
+      input schema requiring workspace, from, and to, and produce the
+      result by delegating to the CLI exactly the way the existing tools do
+      — do not re-implement comparison logic inside the server. Update the
+      server's test suite so the tool-listing expectation includes the new
+      tool, and add a test that calls it successfully against the
+      repository's own committed workspace using two states declared there.
+    touches:
+      - src/adapters/mcp-cli.ts
+      - test/mcp-cli.test.ts
+      - "yarramate-engine#compare-command"
+      - "yarramate-engine#state-comparison"
+    scoring:
+      method: rubric
+      rubric:
+        - tools/list returns exactly five tools; the new tool follows the
+          existing yarramate_<command> naming convention and its inputSchema
+          requires workspace, from, and to.
+        - The new tool's arguments mapping produces ['compare', <from>,
+          <to>, <workspace>] and the result comes from the exported runCli;
+          no comparison logic is implemented in the adapter and the four
+          existing tool definitions are behaviourally unchanged.
+        - A failing compare surfaces exactly like other tool failures — a
+          result with isError true carrying the command's stdout/stderr
+          text — not a JSON-RPC error.
+        - The updated test suite covers both the five-tool listing and one
+          successful compare call against the committed workspace, and the
+          tests command exits 0.
+      tests: pnpm build && pnpm vitest run test/mcp-cli.test.ts
+
+  - id: ym-check-counted-claims
+    family: change
+    prompt: |
+      The check command's machine-readable JSON result contains a counted
+      block reporting documents, concepts, relationships, and states, and
+      the status command embeds the same block in its own JSON output.
+      Extend the counted block with a claims field reporting the total
+      number of claims in the compiled semantic graph. Update the published
+      JSON Schemas for both result formats so that claims is a required
+      non-negative integer inside counted, keep the check command's
+      human-readable success line unchanged, and make sure the status
+      command's JSON output carries the new field through.
+    touches:
+      - src/check-command.ts
+      - src/cli-support.ts
+      - src/status-command.ts
+      - schema/yarramate-check-result.schema.json
+      - schema/yarramate-status-result.schema.json
+      - "yarramate-engine#check-result-schema"
+      - "yarramate-engine#status-command"
+    scoring:
+      method: rubric
+      rubric:
+        - Running check in JSON mode on the committed workspace emits
+          counted.claims equal to the compiled graph's total claim count
+          alongside the existing four counts, and the human-readable
+          success line is byte-identical to before the change.
+        - Both schema/yarramate-check-result.schema.json and
+          schema/yarramate-status-result.schema.json now require
+          counted.claims as an integer >= 0 with additionalProperties still
+          false, and the emitted JSON outputs validate against them.
+        - The status command's JSON output contains the same counted block
+          including claims, with no independent re-computation added to
+          src/status-command.ts.
+        - The tests command exits 0.
+      tests: pnpm vitest run test/cli.test.ts test/status-command.test.ts
+
+  # ── Model maintenance ────────────────────────────────────────────────
+  - id: ym-model-declare-mcp-adapter
+    family: model-maintenance
+    prompt: |
+      The repository recently gained a read-only MCP adapter
+      (src/adapters/mcp-cli.ts, commit "Add read-only MCP adapter over the
+      stable CLI"): a JSON-RPC-over-stdio server exposing status, check,
+      reconcile, and context as tools, each delegating to the stable CLI's
+      exported runCli rather than re-implementing engine behaviour. The
+      committed .yarramate workspace does not declare this adapter
+      anywhere. Update the .yarramate model to reflect it: declare the
+      adapter in the engine document at the granularity used for comparable
+      adapters (see the Graphify evidence adapter and the LikeC4 export
+      adapter), and relate it to the existing yarramate-engine#cli concept
+      it delegates to and to the command services it exposes
+      (yarramate-engine#status-command, yarramate-engine#check-command,
+      yarramate-engine#reconcile-command). Every workspace check must
+      remain green and reconciliation must report no contradicted findings
+      afterwards.
+    scoring:
+      method: deterministic
+      deterministic:
+        expect:
+          - check-pass
+          - no-contradicted
+
+  - id: ym-model-declare-context-and-new
+    family: model-maintenance
+    prompt: |
+      Two CLI capabilities shipped recently but are absent from the
+      committed .yarramate model, whose engine document declares command
+      services only for check, init, add, connect, compile, evidence,
+      reconcile, status, and compare:
+      (1) the context command (src/cli.ts), which renders a bounded slice
+      from an authored projection or an ad-hoc --subject neighbourhood and
+      supports a --budget flag for a compact token-budgeted rendering
+      (renderBudgetedContext in src/projection.ts);
+      (2) the new command (src/new-command.ts), which scaffolds a
+      projection definition through validated writes.
+      Update the .yarramate workspace so both appear as command services in
+      the engine document with relationships mirroring the granularity of
+      the existing command declarations (the CLI implements them; the
+      context service realizes or serves the machine-context capability in
+      the product document; the new command serves the agent harness).
+      Afterwards the workspace must still check green, reconciliation must
+      report no contradicted findings, and the bundled LikeC4 adapter path
+      must still pass its check.
+    scoring:
+      method: deterministic
+      deterministic:
+        expect:
+          - check-pass
+          - no-contradicted
+          - likec4-check-pass
