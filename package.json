@@ -58,6 +58,7 @@
     "./schema/likec4-kind-mapping": "./schema/yarramate-likec4-kind-mapping.schema.json",
     "./schema/likec4-check-result": "./schema/yarramate-likec4-check-result.schema.json",
     "./schema/state-comparison": "./schema/yarramate-state-comparison.schema.json",
+    "./schema/status-result": "./schema/yarramate-status-result.schema.json",
     "./schema/graph-v2": "./schema/yarramate-graph-v2.schema.json",
     "./schema/workspace": "./schema/yarramate-workspace.schema.json",
     "./schema/evidence": "./schema/yarramate-evidence.schema.json",

@@ -106,6 +106,7 @@ npm install --global yarramate
 yarramate --help
 
 npx yarramate check .yarramate/workspace.yaml
+npx yarramate status .yarramate/workspace.yaml --json
 ```
 
 When developing the repository, build and invoke the same executable surface:

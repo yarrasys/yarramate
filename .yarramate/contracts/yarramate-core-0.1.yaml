@@ -45,6 +45,9 @@ formats:
   - id: yarramate/state-comparison/v1
     schema: schema/yarramate-state-comparison.schema.json
     packageExport: ./schema/state-comparison
+  - id: yarramate/status-result/v1
+    schema: schema/yarramate-status-result.schema.json
+    packageExport: ./schema/status-result
 commands:
   - name: init
     binary: yarramate
@@ -55,6 +58,9 @@ commands:
   - name: check
     binary: yarramate
     machineFormat: yarramate/check-result/v1
+  - name: status
+    binary: yarramate
+    machineFormat: yarramate/status-result/v1
   - name: compile
     binary: yarramate
     machineFormat: yarramate/graph/v2

@@ -1170,3 +1170,9 @@ mappings:
   - native: yarramate-engine#likec4-export-writes-diagnostics
     external: likec4ExportWritesDiagnostics
     type: relationship
+  - native: yarramate-engine#status-command
+    external: statusCommand
+    type: concept
+  - native: yarramate-engine#status-command-serves-agent-harness
+    external: statusCommandServesAgentHarness
+    type: relationship
