@@ -146,6 +146,9 @@ describe('consumer package contract', () => {
         '../yarramate/dist/adapters/graphify-cli.js',
         graphifyCli,
       )
+      const mcpCli = join(binDirectory, 'yarramate-mcp')
+      chmodSync(join(packagePath, 'dist/adapters/mcp-cli.js'), 0o755)
+      symlinkSync('../yarramate/dist/adapters/mcp-cli.js', mcpCli)
       const run = (args: readonly string[]) =>
         execFileSync(cli, args, {
           cwd: consumer,
@@ -375,6 +378,29 @@ views:
       expect(graphifyInvocation.stderr).toContain(
         'yarramate-graphify observe',
       )
+
+      const packedVersion = (
+        JSON.parse(
+          readFileSync(join(packagePath, 'package.json'), 'utf8'),
+        ) as { version: string }
+      ).version
+      expect(run(['--version'])).toBe(`yarramate ${packedVersion}\n`)
+      for (const [binary, name] of [
+        [likec4Cli, 'yarramate-likec4'],
+        [graphifyCli, 'yarramate-graphify'],
+        [mcpCli, 'yarramate-mcp'],
+      ] as const) {
+        expect(
+          spawnSync(binary, ['--version'], {
+            cwd: consumer,
+            encoding: 'utf8',
+          }),
+        ).toMatchObject({
+          status: 0,
+          stdout: `${name} ${packedVersion}\n`,
+          stderr: '',
+        })
+      }
 
       const requireFromConsumer = createRequire(
         join(consumer, 'consumer.js'),

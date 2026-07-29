@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process'
-import { resolve } from 'node:path'
+import { readFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
@@ -7,6 +8,12 @@ const repositoryRoot = resolve(
   fileURLToPath(new URL('.', import.meta.url)),
   '..',
 )
+
+const packageVersion = (
+  JSON.parse(
+    readFileSync(join(repositoryRoot, 'package.json'), 'utf8'),
+  ) as { version: string }
+).version
 
 const exchange = (
   requests: readonly Record<string, unknown>[],
@@ -45,7 +52,9 @@ describe('yarramate-mcp stdio adapter', () => {
     ])
 
     expect(init).toMatchObject({
-      result: { serverInfo: { name: 'yarramate' } },
+      result: {
+        serverInfo: { name: 'yarramate', version: packageVersion },
+      },
     })
     const tools = (
       list as { result: { tools: readonly { name: string }[] } }
@@ -98,6 +107,16 @@ describe('yarramate-mcp stdio adapter', () => {
     expect(result.content[0]!.text).toContain(
       'context ad-hoc-context@0.0',
     )
+  })
+
+  it('prints the package version for --version without reading stdin', () => {
+    const stdout = execFileSync(
+      process.execPath,
+      ['dist/adapters/mcp-cli.js', '--version'],
+      { cwd: repositoryRoot, encoding: 'utf8' },
+    )
+
+    expect(stdout).toBe(`yarramate-mcp ${packageVersion}\n`)
   })
 
   it('reports unknown tools and failed commands distinctly', () => {
