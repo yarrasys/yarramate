@@ -22,6 +22,7 @@ import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CONDITIONS } from './conditions.mjs';
+import { catalogueOpen } from './catalogue.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '..', '..', '..', '..');
@@ -94,6 +95,23 @@ if (!existsSync(cacheDir)) {
   execSync('git checkout -q FETCH_HEAD', { cwd: cacheDir });
 }
 
+// Model-bearing workdirs also get the AGENTS.md pointer that `yarramate init`
+// writes (ADR 0040): an adopted repository advertises its workspace to agent
+// harnesses, and condition B/C should look like an adopted repository. The
+// pointer text is captured once from a fresh init with the pinned toolchain.
+let pointerText = null;
+const agentsPointer = () => {
+  if (pointerText === null) {
+    const probeDir = join(outDir, 'cache', '.agents-probe');
+    if (!existsSync(join(probeDir, 'AGENTS.md'))) {
+      mkdirSync(probeDir, { recursive: true });
+      execFileSync(join(toolchain, 'yarramate'), ['init', '.'], { cwd: probeDir, stdio: 'ignore' });
+    }
+    pointerText = readFileSync(join(probeDir, 'AGENTS.md'), 'utf8');
+  }
+  return pointerText;
+};
+
 const runsPath = join(outDir, 'runs.jsonl');
 for (const [index, { conditionId, condition, task }] of matrix.entries()) {
   const runDir = join(outDir, suite.suite, label, conditionId, task.id);
@@ -104,6 +122,7 @@ for (const [index, { conditionId, condition, task }] of matrix.entries()) {
 
   const workspaceDir = join(workdir, '.yarramate');
   rmSync(workspaceDir, { recursive: true, force: true });
+  let catalogueBaseline = null;
   if (condition.model !== 'none') {
     cpSync(modelSourceDir(), workspaceDir, { recursive: true });
     if (condition.model === 'stale') {
@@ -114,6 +133,10 @@ for (const [index, { conditionId, condition, task }] of matrix.entries()) {
       ], { encoding: 'utf8' });
       writeFileSync(join(runDir, 'inject.json'), injected);
     }
+    const agentsPath = join(workdir, 'AGENTS.md');
+    const existing = existsSync(agentsPath) ? `${readFileSync(agentsPath, 'utf8').replace(/\n*$/, '')}\n\n` : '';
+    writeFileSync(agentsPath, `${existing}${agentsPointer()}`);
+    catalogueBaseline = catalogueOpen(toolchain, workspaceDir, runDir);
   }
   execSync('git add -A && git -c user.email=bench@local -c user.name=bench commit -qm baseline --allow-empty', { cwd: workdir });
 
@@ -156,6 +179,7 @@ for (const [index, { conditionId, condition, task }] of matrix.entries()) {
     exitCode: result.status,
     durationMs,
     metrics,
+    catalogueBaseline,
     runDir,
     finishedAt: new Date().toISOString(),
   })}\n`);

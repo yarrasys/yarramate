@@ -60,7 +60,14 @@ node runner/score.mjs --runs results/2026-07-29/runs.jsonl \
 The harness command receives the composed prompt (condition instruction +
 frozen task text) on stdin and runs with the isolated task workdir as cwd; the
 pinned toolchain is prepended to its PATH so `yarramate` resolves to the
-benchmark version. For the H2 tier sweep, repeat step 3 with a different
+benchmark version. Model-bearing workdirs (B/C) also carry the `AGENTS.md`
+pointer that `yarramate init` writes (ADR 0040) — appended to the repo's
+existing `AGENTS.md` when present — and the run record snapshots the
+workspace's open-catalogue count (`catalogueBaseline`) for the
+`catalogue-not-worse` scorer. Run harness agents from a hermetic path: the
+pilot showed user-level agent config (memory/plugin hooks) leaking into runs
+non-uniformly by tier when workdirs lived under the operator's own project
+tree. For the H2 tier sweep, repeat step 3 with a different
 `--model`/`--label` pair. Model-maintenance tasks are skipped under condition
 A (no workspace to maintain).
 
