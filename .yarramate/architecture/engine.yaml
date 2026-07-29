@@ -202,56 +202,67 @@ concepts:
     kind: applicationService
     name: Check command
     description: Reports deterministic source-located diagnostics without writing compiled output.
+    owner: yarramate-product#yarramate-maintainers
     status: current
   - id: init-command
     kind: applicationService
     name: Init command
     description: Creates a minimal native workspace without overwriting an existing document.
+    owner: yarramate-product#yarramate-maintainers
     status: current
   - id: add-command
     kind: applicationService
     name: Add command
     description: Adds a concept only when the candidate workspace compiles successfully.
+    owner: yarramate-product#yarramate-maintainers
     status: current
   - id: connect-command
     kind: applicationService
     name: Connect command
     description: Adds a relationship only when the candidate workspace compiles successfully.
+    owner: yarramate-product#yarramate-maintainers
     status: current
   - id: compile-command
     kind: applicationService
     name: Compile command
     description: Emits the normative graph-v2 interchange document without writing a derived artifact.
+    owner: yarramate-product#yarramate-maintainers
     status: current
   - id: evidence-command
     kind: applicationService
     name: Evidence command
     description: Evaluates one evidence document over compiled native sources.
+    owner: yarramate-product#yarramate-maintainers
     status: current
   - id: reconcile-command
     kind: applicationService
     name: Reconcile command
     description: Emits provider-neutral workspace reconciliation for review by humans and agents.
+    owner: yarramate-product#yarramate-maintainers
     status: current
   - id: graphify-observe-command
     kind: applicationService
     name: Graphify observe command
     description: Emits a standard evidence overlay from a Graphify graph and explicit adapter mapping.
+    owner: yarramate-product#yarramate-maintainers
     status: current
   - id: likec4-export-command
     kind: applicationService
     name: LikeC4 export command
     description: Emits source or atomically replaces guarded derived LikeC4 project files without changing native documents.
+    owner: yarramate-product#yarramate-maintainers
     status: current
   - id: likec4-check-command
     kind: applicationService
     name: LikeC4 check command
     description: Validates the complete bundled adapter path without writing derived output.
+    owner: yarramate-product#yarramate-maintainers
     status: current
   - id: compare-command
     kind: applicationService
     name: Compare command
     description: Emits a deterministic architecture-state comparison for humans, CI, and agents.
+    owner: yarramate-product#yarramate-maintainers
     status: current
     presentIn:
       - yarramate-evolution#state-foundation
@@ -857,3 +868,45 @@ relationships:
     from: profile-catalogue
     to: relationship-policy-catalogue
     mode: write
+  - id: init-command-serves-agent-harness
+    kind: serving
+    from: init-command
+    to: yarramate-product#agent-harness
+  - id: add-command-serves-agent-harness
+    kind: serving
+    from: add-command
+    to: yarramate-product#agent-harness
+  - id: connect-command-serves-agent-harness
+    kind: serving
+    from: connect-command
+    to: yarramate-product#agent-harness
+  - id: compile-command-serves-agent-harness
+    kind: serving
+    from: compile-command
+    to: yarramate-product#agent-harness
+  - id: evidence-command-serves-agent-harness
+    kind: serving
+    from: evidence-command
+    to: yarramate-product#agent-harness
+  - id: reconcile-command-serves-agent-harness
+    kind: serving
+    from: reconcile-command
+    to: yarramate-product#agent-harness
+  - id: graphify-observe-command-serves-agent-harness
+    kind: serving
+    from: graphify-observe-command
+    to: yarramate-product#agent-harness
+  - id: projection-evaluation-reads-definition-schema
+    kind: access
+    from: evaluate-projection
+    to: projection-schema
+    mode: read
+  - id: likec4-export-reads-kind-mapping-schema
+    kind: access
+    from: export-likec4
+    to: likec4-kind-mapping-schema
+    mode: read
+  - id: projection-result-schema-describes-result
+    kind: realization
+    from: projection-result-schema
+    to: projection-result

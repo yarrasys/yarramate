@@ -1,0 +1,297 @@
+format: yarramate/question-catalogue/v1
+id: core-enrichment
+version: "0.1"
+profile: yarramate/core@0.1
+presentation:
+  title: Core enrichment interview
+  description: >-
+    Seed questions for the enrichment journey. Motivation and business waves,
+    plus cross-cutting hygiene. Each question states the decision its answer
+    changes; a question that cannot is deleted, not softened.
+
+waves:
+  - id: motivation
+    name: Motivation
+    description: Why the system exists and what constrains it.
+  - id: business
+    name: Business
+    description: Who acts, what is served, and what information matters.
+  - id: hygiene
+    name: Model hygiene
+    description: Cross-cutting completeness that keeps every wave honest.
+
+questions:
+  # ---- motivation ----------------------------------------------------------
+  - id: outcome-missing
+    wave: motivation
+    scope: workspace
+    trigger:
+      - condition: no-subject-of-kind
+        kinds:
+          - yarramate/core@0.1#goal
+          - yarramate/core@0.1#outcome
+    question: >-
+      What outcome justifies this system's existence?
+    materiality: >-
+      Without a declared goal or outcome, no alternative can be selected or
+      rejected on grounds anyone can review; every later trade-off becomes
+      taste.
+    authority: human
+    resolution: >-
+      Add at least one goal or outcome concept and relate principal services
+      to it with realization.
+
+  - id: stakeholders-missing
+    wave: motivation
+    scope: workspace
+    trigger:
+      - condition: no-subject-of-kind
+        kinds:
+          - yarramate/core@0.1#stakeholder
+          - yarramate/core@0.1#driver
+    question: >-
+      Which stakeholders and drivers shape this architecture?
+    materiality: >-
+      Drivers decide which qualities dominate when requirements conflict;
+      unstated drivers get re-litigated in every review.
+    authority: human
+    resolution: >-
+      Add stakeholder and driver concepts; use influence relationships toward
+      the goals they shape.
+
+  - id: constraints-missing
+    wave: motivation
+    scope: workspace
+    trigger:
+      - condition: no-subject-of-kind
+        kinds:
+          - yarramate/core@0.1#constraint
+          - yarramate/core@0.1#requirement
+    question: >-
+      Which constraints and requirements are non-negotiable?
+    materiality: >-
+      Non-negotiable constraints eliminate alternatives outright; discovering
+      them after design selection invalidates the selection.
+    authority: human
+    resolution: >-
+      Add constraint or requirement concepts and attach constraint references
+      from the subjects they bind.
+
+  - id: goal-unrealized
+    wave: motivation
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#goal
+        - yarramate/core@0.1#outcome
+    trigger:
+      - condition: missing-relationship
+        kinds:
+          - yarramate/core@0.1#realization
+        direction: incoming
+    question: >-
+      Nothing realizes {subject.name}. What fulfils it — or is it
+      aspirational?
+    materiality: >-
+      An unrealized goal either reprioritizes the roadmap or should be
+      declared aspirational so it stops steering design.
+    authority: either
+    resolution: >-
+      Add realization relationships from the fulfilling capability or
+      service, or record the aspirational status in the goal's description.
+
+  # ---- business ------------------------------------------------------------
+  - id: service-consumer-unknown
+    wave: business
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#businessService
+        - yarramate/core@0.1#applicationService
+        - yarramate/core@0.1#technologyService
+    trigger:
+      - condition: missing-relationship
+        kinds:
+          - yarramate/core@0.1#serving
+        direction: outgoing
+    question: >-
+      Who or what consumes {subject.name}?
+    materiality: >-
+      A service with no consumer is either the system boundary stated
+      implicitly, missing model detail, or scope to delete.
+    authority: either
+    resolution: >-
+      Add serving relationships to the consuming actor, process, or
+      component; if the consumer is external, model it as an actor.
+
+  - id: owner-missing
+    wave: business
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#businessService
+        - yarramate/core@0.1#applicationService
+        - yarramate/core@0.1#applicationComponent
+        - yarramate/core@0.1#capability
+    trigger:
+      - condition: missing-claim
+        predicate: yarramate/ownership/owner
+    question: >-
+      Who is accountable for {subject.name}?
+    materiality: >-
+      Ownership decides who accepts changes, budgets maintenance, and
+      adjudicates constraint conflicts for the subject.
+    authority: either
+    resolution: >-
+      Add an owner reference to an accountable actor (evidence such as
+      CODEOWNERS may propose it; a human confirms accountability).
+
+  - id: actor-unassigned
+    wave: business
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#businessActor
+        - yarramate/core@0.1#businessRole
+    trigger:
+      - condition: missing-relationship
+        kinds:
+          - yarramate/core@0.1#assignment
+        direction: outgoing
+    question: >-
+      What behavior is {subject.name} actually responsible for?
+    materiality: >-
+      An actor with no assignment is either decorative or hiding an
+      undeclared responsibility boundary.
+    authority: either
+    resolution: >-
+      Add assignment relationships to the processes, functions, or services
+      the actor performs, or remove the actor.
+
+  - id: information-unaccessed
+    wave: business
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#businessObject
+        - yarramate/core@0.1#dataObject
+    trigger:
+      - condition: missing-relationship
+        kinds:
+          - yarramate/core@0.1#access
+        direction: incoming
+    question: >-
+      Which behavior creates and maintains {subject.name}?
+    materiality: >-
+      Information nothing accesses cannot be owned, persisted, or exchanged
+      correctly; write responsibility determines consistency boundaries.
+    authority: either
+    resolution: >-
+      Add access relationships (with modes) from the behavior that reads and
+      writes it.
+
+  - id: no-service-declared
+    wave: business
+    scope: workspace
+    trigger:
+      - condition: no-subject-of-kind
+        kinds:
+          - yarramate/core@0.1#businessService
+          - yarramate/core@0.1#applicationService
+          - yarramate/core@0.1#technologyService
+    question: >-
+      What does this system offer its environment, and to whom?
+    materiality: >-
+      Declared services define the solution boundary; without them the model
+      cannot say what is inside versus outside.
+    authority: human
+    resolution: >-
+      Add the externally meaningful services and serve them to their
+      consumers.
+
+  # ---- hygiene -------------------------------------------------------------
+  - id: concept-isolated
+    wave: hygiene
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#capability
+        - yarramate/core@0.1#businessService
+        - yarramate/core@0.1#applicationService
+        - yarramate/core@0.1#applicationComponent
+        - yarramate/core@0.1#businessActor
+        - yarramate/core@0.1#dataObject
+        - yarramate/core@0.1#businessObject
+    trigger:
+      - condition: isolated
+    question: >-
+      {subject.name} relates to nothing. How does it participate in the
+      architecture — or should it be removed?
+    materiality: >-
+      An isolated concept either misses relationships the design depends on
+      or inflates the model with noise that dilutes trust.
+    authority: either
+    resolution: >-
+      Connect it with its real relationships or delete it; do not keep
+      unexplained inventory.
+
+  - id: concept-undescribed
+    wave: hygiene
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#businessService
+        - yarramate/core@0.1#applicationService
+        - yarramate/core@0.1#applicationComponent
+        - yarramate/core@0.1#capability
+        - yarramate/core@0.1#dataObject
+    trigger:
+      - condition: missing-claim
+        predicate: yarramate/concept/description
+    question: >-
+      What does {subject.name} mean — and what does it deliberately not
+      include?
+    materiality: >-
+      Undescribed subjects accumulate contradictory interpretations; the
+      description is where scope disputes are settled once.
+    authority: either
+    resolution: >-
+      Add a description claim stating meaning and explicit exclusions.
+
+  - id: status-missing
+    wave: hygiene
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#businessService
+        - yarramate/core@0.1#applicationService
+        - yarramate/core@0.1#applicationComponent
+        - yarramate/core@0.1#capability
+    trigger:
+      - condition: missing-claim
+        predicate: yarramate/lifecycle/status
+    question: >-
+      Is {subject.name} current, planned, or retired?
+    materiality: >-
+      Lifecycle status separates the architecture that exists from the one
+      that is intended; conflating them corrupts both discovery and design.
+    authority: either
+    resolution: >-
+      Add a lifecycle status claim; planned subjects should also appear in a
+      target architecture state where states are used.
+
+  - id: states-undefined
+    wave: hygiene
+    scope: workspace
+    trigger:
+      - condition: no-state-defined
+    question: >-
+      Does change shape matter here — should baseline, transition, or target
+      states be declared?
+    materiality: >-
+      Without architecture states, current and target intent share one
+      undifferentiated model and comparisons are impossible.
+    authority: human
+    resolution: >-
+      Declare architecture states and mark presence with present-in where the
+      distinction carries decisions; explicitly decline states otherwise.

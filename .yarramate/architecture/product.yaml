@@ -6,6 +6,26 @@ concepts:
     kind: businessActor
     name: YarraMate maintainers
     description: People accountable for stewardship of the YarraMate Core repository.
+  - id: agent-harness
+    kind: businessActor
+    name: Agent harness
+    description: Automated coding or architecture agent that orchestrates the stable CLI and consumes its machine-readable contracts.
+  - id: adopting-team
+    kind: businessActor
+    name: Adopting team
+    description: People applying YarraMate to their own repository and reviewing its proposals through Git.
+  - id: architecture-drift
+    kind: driver
+    name: Architecture drift
+    description: Architecture documentation decays away from implementation when it is not deterministic and checkable.
+  - id: trustworthy-agent-context
+    kind: driver
+    name: Trustworthy agent context
+    description: Agents abandon architecture context they cannot verify as current and correct.
+  - id: repository-stewardship
+    kind: businessFunction
+    name: Repository stewardship
+    description: Review, merge, and ADR governance for the YarraMate repository as described in GOVERNANCE.md.
   - id: shared-architecture-context
     kind: goal
     name: Shared architecture context
@@ -40,34 +60,41 @@ concepts:
   - id: compile-native-architecture
     kind: capability
     name: Compile native architecture
+    owner: yarramate-maintainers
     status: current
   - id: validate-native-architecture
     kind: capability
     name: Validate native architecture
+    owner: yarramate-maintainers
     status: current
   - id: provide-machine-context
     kind: capability
     name: Provide machine-readable context
+    owner: yarramate-maintainers
     status: current
   - id: evaluate-architecture-evidence
     kind: capability
     name: Evaluate architecture evidence
     description: Compare provider observations with existing semantic subjects and claims without changing canonical intent.
+    owner: yarramate-maintainers
     status: current
   - id: discover-project-architecture
     kind: capability
     name: Discover project architecture
     description: Guide an agent harness from existing project evidence to a reviewable native architecture proposal.
+    owner: yarramate-maintainers
     status: current
   - id: design-solution-before-build
     kind: capability
     name: Design solution before build
     description: Guide people and an agent harness from intent and alternatives to a reviewable target solution.
+    owner: yarramate-maintainers
     status: current
   - id: reconcile-intent-and-evidence
     kind: capability
     name: Reconcile intent and evidence
     description: Compare declared architecture with provider observations without allowing evidence to mutate intent.
+    owner: yarramate-maintainers
     status: current
 relationships:
   - id: repository-operation-supports-context
@@ -130,3 +157,31 @@ relationships:
     references:
       - id: implementation-interface
         ref: yarramate-engine#cli
+  - id: maintainers-perform-stewardship
+    kind: assignment
+    from: yarramate-maintainers
+    to: repository-stewardship
+  - id: harness-performs-discovery
+    kind: assignment
+    from: agent-harness
+    to: discover-project-architecture
+  - id: harness-performs-design
+    kind: assignment
+    from: agent-harness
+    to: design-solution-before-build
+  - id: adopting-team-performs-design
+    kind: assignment
+    from: adopting-team
+    to: design-solution-before-build
+  - id: drift-drives-shared-context
+    kind: influence
+    from: architecture-drift
+    to: shared-architecture-context
+  - id: agent-trust-drives-shared-context
+    kind: influence
+    from: trustworthy-agent-context
+    to: shared-architecture-context
+  - id: machine-context-realizes-shared-context
+    kind: realization
+    from: provide-machine-context
+    to: shared-architecture-context
