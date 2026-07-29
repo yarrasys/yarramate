@@ -20,6 +20,17 @@ const repositoryRoot = fileURLToPath(new URL('..', import.meta.url))
 const Ajv2020 = Ajv2020Module.default
 
 describe('YarraMate LikeC4 adapter CLI', () => {
+  it('prints the package version for --version', () => {
+    const { version } = JSON.parse(
+      readFileSync(join(repositoryRoot, 'package.json'), 'utf8'),
+    ) as { version: string }
+    const result = runLikeC4Cli(['--version'], repositoryRoot)
+
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toBe(`yarramate-likec4 ${version}\n`)
+    expect(result.stderr).toBe('')
+  })
+
   it('syncs missing subject mappings without changing authored overrides', () => {
     const parent = mkdtempSync(join(tmpdir(), 'yarramate-likec4-map-'))
     const architecture = join(parent, 'architecture.yaml')

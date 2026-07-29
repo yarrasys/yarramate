@@ -13,6 +13,7 @@ import {
   diagnosticJson,
   isMainModule,
   resolveCliWorkspaceSources,
+  versionResult,
   type CliResult,
 } from '../cli-support.js'
 import {
@@ -57,6 +58,9 @@ export function runGraphifyCli(
   cwd: string = process.cwd(),
 ): CliResult {
   const [command, ...options] = args
+  if (command === '--version') {
+    return versionResult('yarramate-graphify')
+  }
   const parsed = command === 'observe' ? parseOptions(options) : undefined
   if (
     parsed === undefined ||

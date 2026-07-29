@@ -4,6 +4,9 @@ import { fileURLToPath } from 'node:url'
 import { parseDocument } from 'yaml'
 import type { Diagnostic } from './compiler.js'
 import { loadWorkspaceManifest } from './workspace.js'
+import packageManifest from '../package.json' with {
+  type: 'json',
+}
 
 export interface CliResult {
   readonly exitCode: 0 | 1 | 2
@@ -25,6 +28,14 @@ export const isMainModule = (
     return false
   }
 }
+
+export const packageVersion: string = packageManifest.version
+
+export const versionResult = (binary: string): CliResult => ({
+  exitCode: 0,
+  stdout: `${binary} ${packageVersion}\n`,
+  stderr: '',
+})
 
 export const usage =
   'Usage:\n  yarramate init <directory> [--no-pointer]\n  yarramate add <document.yaml> --id <id> --kind <kind> --name <name> [--status <status>] [--description <text>] [--owner <ref>] [--constraint <id>=<ref> ...] [--reference <id>=<ref> ...] [--present-in <state-ref> ...] [--source <source.yaml> ...]\n  yarramate connect <document.yaml> --id <id> --kind <kind> --from <ref> --to <ref> [--name <name>] [--description <text>] [--status <status>] [--mode <mode>] [--content <text>] [--reference <id>=<ref> ...] [--present-in <state-ref> ...] [--source <source.yaml> ...]\n  yarramate check <source.yaml> [source.yaml ...] [--json]\n  yarramate new projection <projection.yaml> --id <id> [--version <v>] [--title <text>] [--description <text>] [--document <id> ...] [--subject <ref> ...] [--kind <qualified-kind> ...] [--relationships <mode>]\n  yarramate status <workspace.yaml> [--json]\n  yarramate compile <source.yaml> [source.yaml ...]\n  yarramate context <projection.yaml> <source.yaml> [source.yaml ...] [--budget <tokens>]\n  yarramate context --subject <document-id>#<local-id> [--subject ...] <source.yaml> [source.yaml ...] [--budget <tokens>]\n  yarramate view <projection.yaml> <source.yaml> [source.yaml ...]\n  yarramate compare <from-state> <to-state> <source.yaml> [source.yaml ...]\n  yarramate evidence <evidence.yaml> <source.yaml> [source.yaml ...]\n  yarramate reconcile <workspace.yaml>\n'

@@ -28,6 +28,20 @@ describe('YarraMate CLI', () => {
     },
   )
 
+  it.each(['--version', '-v'])(
+    'prints the package version for %s',
+    (argument) => {
+      const { version } = JSON.parse(
+        readFileSync(join(repositoryRoot, 'package.json'), 'utf8'),
+      ) as { version: string }
+      const result = runCli([argument], repositoryRoot)
+
+      expect(result.exitCode).toBe(0)
+      expect(result.stdout).toBe(`yarramate ${version}\n`)
+      expect(result.stderr).toBe('')
+    },
+  )
+
   it('emits check results conforming to the normative result schema', () => {
     const schema = JSON.parse(
       readFileSync(

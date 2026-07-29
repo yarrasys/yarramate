@@ -1,10 +1,23 @@
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { runGraphifyCli } from '../src/adapters/graphify-cli.js'
 
 const repositoryRoot = fileURLToPath(new URL('..', import.meta.url))
 
 describe('YarraMate Graphify adapter CLI', () => {
+  it('prints the package version for --version', () => {
+    const { version } = JSON.parse(
+      readFileSync(join(repositoryRoot, 'package.json'), 'utf8'),
+    ) as { version: string }
+    const result = runGraphifyCli(['--version'], repositoryRoot)
+
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toBe(`yarramate-graphify ${version}\n`)
+    expect(result.stderr).toBe('')
+  })
+
   it('emits a standard evidence overlay from explicit Graphify node mappings', () => {
     const result = runGraphifyCli(
       [

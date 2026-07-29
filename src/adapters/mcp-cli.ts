@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 
 import { createInterface } from 'node:readline'
-import { isMainModule } from '../cli-support.js'
+import {
+  isMainModule,
+  packageVersion,
+  versionResult,
+} from '../cli-support.js'
 import { runCli } from '../cli.js'
 
 interface JsonRpcRequest {
@@ -133,7 +137,7 @@ export const handleRequest = (request: JsonRpcRequest): void => {
     respond(id, {
       protocolVersion: '2025-06-18',
       capabilities: { tools: {} },
-      serverInfo: { name: 'yarramate', version: '0.1' },
+      serverInfo: { name: 'yarramate', version: packageVersion },
       instructions:
         'Read-only architecture context for YarraMate workspaces. The native documents in the repository remain canonical; this server never mutates them.',
     })
@@ -182,25 +186,31 @@ export const handleRequest = (request: JsonRpcRequest): void => {
 }
 
 if (isMainModule(import.meta.url, process.argv[1])) {
-  const lines = createInterface({ input: process.stdin })
-  lines.on('line', (line) => {
-    const text = line.trim()
-    if (text.length === 0) return
-    let request: JsonRpcRequest
-    try {
-      request = JSON.parse(text) as JsonRpcRequest
-    } catch {
-      respondError(null, -32700, 'Parse error')
-      return
-    }
-    try {
-      handleRequest(request)
-    } catch (error) {
-      respondError(
-        request.id ?? null,
-        -32603,
-        error instanceof Error ? error.message : String(error),
-      )
-    }
-  })
+  if (process.argv[2] === '--version') {
+    const result = versionResult('yarramate-mcp')
+    process.stdout.write(result.stdout)
+    process.exitCode = result.exitCode
+  } else {
+    const lines = createInterface({ input: process.stdin })
+    lines.on('line', (line) => {
+      const text = line.trim()
+      if (text.length === 0) return
+      let request: JsonRpcRequest
+      try {
+        request = JSON.parse(text) as JsonRpcRequest
+      } catch {
+        respondError(null, -32700, 'Parse error')
+        return
+      }
+      try {
+        handleRequest(request)
+      } catch (error) {
+        respondError(
+          request.id ?? null,
+          -32603,
+          error instanceof Error ? error.message : String(error),
+        )
+      }
+    })
+  }
 }

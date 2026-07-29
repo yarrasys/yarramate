@@ -19,6 +19,7 @@ import { isMap, isSeq, parseDocument } from 'yaml'
 import {
   isMainModule,
   resolveCliWorkspaceSources,
+  versionResult,
   type CliResult,
 } from '../cli-support.js'
 import { compileWorkspace } from '../compiler.js'
@@ -495,6 +496,9 @@ export function runLikeC4Cli(
   args: readonly string[],
   cwd: string = process.cwd(),
 ): CliResult {
+  if (args[0] === '--version') {
+    return versionResult('yarramate-likec4')
+  }
   if (args[0] === 'map') {
     return runLikeC4MapSync(args.slice(1), cwd)
   }

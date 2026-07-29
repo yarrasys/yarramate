@@ -20,6 +20,7 @@ import {
   isMainModule,
   resolveCliWorkspaceSources,
   usage,
+  versionResult,
   type CliResult,
 } from './cli-support.js'
 import { runCheckCommand } from './check-command.js'
@@ -905,6 +906,9 @@ export function runCli(
   const [command, ...options] = args
   if (command === '--help' || command === '-h' || command === 'help') {
     return { exitCode: 0, stdout: usage, stderr: '' }
+  }
+  if (command === '--version' || command === '-v') {
+    return versionResult('yarramate')
   }
   if (command === 'init') {
     return runInit(options, cwd)
