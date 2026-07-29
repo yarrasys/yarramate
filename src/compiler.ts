@@ -4,6 +4,10 @@ import {
   conceptKinds,
   relationshipPolicies,
 } from './profile.js'
+import {
+  closestCandidate,
+  describeSchemaViolation,
+} from './source-document.js'
 import documentSchema from '../schema/yarramate-document.schema.json' with {
   type: 'json',
 }
@@ -295,7 +299,7 @@ function compileWorkspaceResolved(
           code: 'YM201',
           message: property
             ? `Property "${property}" is not allowed`
-            : `Profile schema violation: ${error.message ?? error.keyword}`,
+            : `Profile schema violation: ${describeSchemaViolation(error)}`,
           path: input.path,
           pointer,
           line: position.line,
@@ -543,7 +547,7 @@ function compileWorkspaceResolved(
                 code: 'YM201',
                 message: property
                   ? `Property "${property}" is not allowed`
-                  : `Document schema violation: ${error.message ?? error.keyword}`,
+                  : `Document schema violation: ${describeSchemaViolation(error)}`,
                 path: input.path,
                 pointer,
                 line: source.line,
@@ -808,7 +812,15 @@ function compileWorkspaceResolved(
         diagnostics.push({
           severity: 'error',
           code: 'YM401',
-          message: `Unknown concept kind "${concept.kind}" in profile "${value.profile}"`,
+          message: `Unknown concept kind "${concept.kind}" in profile "${value.profile}"${(() => {
+            const suggestion = closestCandidate(
+              concept.kind,
+              selectedProfile.conceptKinds.keys(),
+            )
+            return suggestion === undefined
+              ? ''
+              : `; did you mean "${suggestion}"?`
+          })()}`,
           path: input.path,
           pointer,
           line: source.line,
@@ -1082,7 +1094,15 @@ function compileWorkspaceResolved(
         diagnostics.push({
           severity: 'error',
           code: 'YM402',
-          message: `Unknown relationship kind "${relationship.kind}" in profile "${value.profile}"`,
+          message: `Unknown relationship kind "${relationship.kind}" in profile "${value.profile}"${(() => {
+            const suggestion = closestCandidate(
+              relationship.kind,
+              selectedProfile.relationshipKinds.keys(),
+            )
+            return suggestion === undefined
+              ? ''
+              : `; did you mean "${suggestion}"?`
+          })()}`,
           path: input.path,
           pointer,
           line: source.line,
