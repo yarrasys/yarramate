@@ -459,9 +459,11 @@ const runStateComparison = (
 }
 
 const runInit = (options: readonly string[], cwd: string): CliResult => {
-  const target = options[0]
+  const positional = options.filter((option) => option !== '--no-pointer')
+  const writePointer = positional.length === options.length
+  const target = positional[0]
   if (
-    options.length !== 1 ||
+    positional.length !== 1 ||
     target === undefined ||
     target.startsWith('-')
   ) {
@@ -508,11 +510,9 @@ const runInit = (options: readonly string[], cwd: string): CliResult => {
       'evidence: []\n',
     'utf8',
   )
-  const agentsPath = resolve(workspaceRoot, 'AGENTS.md')
-  const displayAgentsPath = relative(cwd, agentsPath)
-  const agentsMarker = '## YarraMate architecture'
-  const agentsBlock =
-    `${agentsMarker}\n` +
+  const pointerMarker = '## YarraMate architecture'
+  const pointerBlock =
+    `${pointerMarker}\n` +
     '\n' +
     'This repository declares its architecture as canonical, versioned\n' +
     'YarraMate documents in `.yarramate/`. When prose documentation and the\n' +
@@ -523,27 +523,43 @@ const runInit = (options: readonly string[], cwd: string): CliResult => {
     '- Bounded task context: `yarramate context <projection.yaml> .yarramate/workspace.yaml`\n' +
     '\n' +
     'Author native documents only; never edit generated output.\n'
-  let agentsNote: string
-  if (!existsSync(agentsPath)) {
-    writeFileSync(agentsPath, agentsBlock, 'utf8')
-    agentsNote = `Created ${displayAgentsPath} with the YarraMate pointer\n`
-  } else {
-    const existingAgents = readFileSync(agentsPath, 'utf8')
-    if (existingAgents.includes(agentsMarker)) {
-      agentsNote = `${displayAgentsPath} already declares the YarraMate pointer\n`
-    } else {
-      writeFileSync(
-        agentsPath,
-        `${existingAgents.replace(/\n*$/, '\n\n')}${agentsBlock}`,
-        'utf8',
-      )
-      agentsNote = `Extended ${displayAgentsPath} with the YarraMate pointer\n`
+  // Harnesses look in different files: AGENTS.md is the cross-harness
+  // convention, while Claude Code auto-loads CLAUDE.md only. Delivering to
+  // both is what makes the pointer reach an agent without instruction.
+  const pointerNotes: string[] = []
+  if (writePointer) {
+    for (const pointerFile of ['AGENTS.md', 'CLAUDE.md']) {
+      const pointerPath = resolve(workspaceRoot, pointerFile)
+      const displayPointerPath = relative(cwd, pointerPath)
+      if (!existsSync(pointerPath)) {
+        writeFileSync(pointerPath, pointerBlock, 'utf8')
+        pointerNotes.push(
+          `Created ${displayPointerPath} with the YarraMate pointer\n`,
+        )
+      } else {
+        const existingPointer = readFileSync(pointerPath, 'utf8')
+        if (existingPointer.includes(pointerMarker)) {
+          pointerNotes.push(
+            `${displayPointerPath} already declares the YarraMate pointer\n`,
+          )
+        } else {
+          writeFileSync(
+            pointerPath,
+            `${existingPointer.replace(/\n*$/, '\n\n')}${pointerBlock}`,
+            'utf8',
+          )
+          pointerNotes.push(
+            `Extended ${displayPointerPath} with the YarraMate pointer\n`,
+          )
+        }
+      }
     }
   }
   return {
     exitCode: 0,
     stdout:
-      `Created ${displayPath} and ${displayManifestPath}\n` + agentsNote,
+      `Created ${displayPath} and ${displayManifestPath}\n` +
+      pointerNotes.join(''),
     stderr: '',
   }
 }

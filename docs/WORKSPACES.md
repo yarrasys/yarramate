@@ -68,7 +68,11 @@ The edited target is replaced in memory, so its original manifest entry is not
 compiled twice.
 
 `yarramate init <directory>` creates both `.yarramate/architecture/main.yaml` and
-`.yarramate/workspace.yaml`, and refuses to overwrite either.
+`.yarramate/workspace.yaml`, and refuses to overwrite either. It also delivers
+the agent-harness pointer to both `AGENTS.md` (the cross-harness convention)
+and `CLAUDE.md` (which Claude Code auto-loads), creating or extending each
+without duplicating the pointer; pass `--no-pointer` to skip both, e.g. when
+analyzing a third-party clone.
 
 ## Boundary
 
