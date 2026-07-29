@@ -66,6 +66,21 @@
         "message": { "type": "string", "minLength": 1 }
       }
     },
+    "subjectIdentity": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*#[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+    },
+    "assertedRelationship": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to", "kind"],
+      "properties": {
+        "from": { "$ref": "#/$defs/subjectIdentity" },
+        "to": { "$ref": "#/$defs/subjectIdentity" },
+        "kind": { "type": "string", "pattern": "^\\S+$" },
+        "name": { "type": "string", "minLength": 1 }
+      }
+    },
     "finding": {
       "type": "object",
       "additionalProperties": false,
@@ -78,6 +93,7 @@
       ],
       "properties": {
         "target": { "$ref": "#/$defs/target" },
+        "asserted": { "$ref": "#/$defs/assertedRelationship" },
         "result": {
           "enum": ["contradicted", "unknown", "not-observed"]
         },
