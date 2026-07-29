@@ -60,16 +60,19 @@ concepts:
   - id: compile-native-architecture
     kind: capability
     name: Compile native architecture
+    description: Turn declared native documents into the deterministic tool-neutral semantic graph.
     owner: yarramate-maintainers
     status: current
   - id: validate-native-architecture
     kind: capability
     name: Validate native architecture
+    description: Check deterministic correctness of declared architecture; never completeness or taste.
     owner: yarramate-maintainers
     status: current
   - id: provide-machine-context
     kind: capability
     name: Provide machine-readable context
+    description: Serve bounded, verifiable slices of declared architecture to people, CI, and agent harnesses.
     owner: yarramate-maintainers
     status: current
   - id: evaluate-architecture-evidence

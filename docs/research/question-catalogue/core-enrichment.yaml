@@ -1,6 +1,6 @@
 format: yarramate/question-catalogue/v1
 id: core-enrichment
-version: "0.1"
+version: "0.2"
 profile: yarramate/core@0.1
 presentation:
   title: Core enrichment interview
@@ -179,7 +179,8 @@ questions:
       - condition: missing-relationship
         kinds:
           - yarramate/core@0.1#access
-        direction: incoming
+          - yarramate/core@0.1#realization
+        direction: any
     question: >-
       Which behavior creates and maintains {subject.name}?
     materiality: >-

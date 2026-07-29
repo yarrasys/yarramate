@@ -267,53 +267,75 @@ concepts:
     presentIn:
       - yarramate-evolution#state-foundation
       - yarramate-evolution#core-contract-foundation
+  - id: likec4-check-result
+    kind: dataObject
+    name: LikeC4 adapter check result
+    description: Versioned machine-readable verdict of the bundled adapter path check.
+    status: current
+  - id: likec4-diagnostic-result
+    kind: dataObject
+    name: LikeC4 adapter diagnostic result
+    description: Machine-readable failure payload shared by LikeC4 adapter commands.
+    status: current
   - id: native-document
     kind: dataObject
     name: Native YAML document
+    description: Canonical authored YAML declaring concepts, relationships, and states under one selected profile.
     status: current
   - id: document-schema
     kind: dataObject
     name: Native document JSON Schema
+    description: Normative structure for native yarramate/v1 documents; vocabulary validity belongs to the selected profile.
     status: current
   - id: kind-catalogue
     kind: dataObject
     name: Concept kind catalogue
+    description: Resolved concept kinds with aspects and lineage available to a compilation.
     status: current
   - id: relationship-policy-catalogue
     kind: dataObject
     name: Relationship policy catalogue
+    description: Resolved relationship kinds with endpoint aspect constraints available to a compilation.
     status: current
   - id: semantic-graph
     kind: dataObject
     name: Tool-neutral semantic graph
+    description: Claim-centred tool-neutral compilation output; every fact is a sourced claim.
     status: current
   - id: diagnostics
     kind: dataObject
     name: Source-located diagnostics
+    description: Deterministic source-located errors pointing at authored input; never advice or taste.
     status: current
   - id: check-result
     kind: dataObject
     name: Machine-readable check result
+    description: Versioned machine-readable verdict of a check run, consumed by CI and agent harnesses.
     status: current
   - id: check-result-schema
     kind: dataObject
     name: Check result JSON Schema
+    description: Normative structure for the yarramate/check-result/v1 contract.
     status: current
   - id: diagnostic-result
     kind: dataObject
     name: Semantic command diagnostic result
+    description: Shared machine-readable failure payload emitted by semantic commands that cannot produce their primary output.
     status: current
   - id: diagnostic-result-schema
     kind: dataObject
     name: Diagnostic result JSON Schema
+    description: Normative structure for the yarramate/diagnostic-result/v1 contract.
     status: current
   - id: likec4-diagnostic-result-schema
     kind: dataObject
     name: LikeC4 diagnostic result JSON Schema
+    description: Normative structure for LikeC4 adapter failure payloads.
     status: current
   - id: likec4-generated-project-schema
     kind: dataObject
     name: Generated LikeC4 project marker JSON Schema
+    description: Normative marker structure guarding single-view generated LikeC4 projects.
     status: current
   - id: likec4-project-definition
     kind: dataObject
@@ -323,10 +345,12 @@ concepts:
   - id: likec4-project-schema
     kind: dataObject
     name: LikeC4 project definition JSON Schema
+    description: Normative structure for LikeC4 project definitions composing projections as views.
     status: current
   - id: likec4-generated-project-v2-schema
     kind: dataObject
     name: Multi-view generated LikeC4 project marker JSON Schema
+    description: Normative marker structure guarding multi-view generated LikeC4 projects.
     status: current
   - id: likec4-kind-mapping
     kind: dataObject
@@ -336,10 +360,12 @@ concepts:
   - id: likec4-kind-mapping-schema
     kind: dataObject
     name: LikeC4 kind mapping JSON Schema
+    description: Normative structure for explicit LikeC4 kind compatibility declarations.
     status: current
   - id: likec4-check-result-schema
     kind: dataObject
     name: LikeC4 check result JSON Schema
+    description: Normative structure for the LikeC4 adapter check verdict.
     status: current
   - id: adapter-mapping
     kind: dataObject
@@ -349,26 +375,32 @@ concepts:
   - id: adapter-mapping-schema
     kind: dataObject
     name: Adapter mapping JSON Schema
+    description: Normative structure for optional adapter subject mappings; it does not admit adapter fields into native documents.
     status: current
   - id: semantic-graph-schema
     kind: dataObject
     name: Semantic graph v2 JSON Schema
+    description: Normative structure for the yarramate/graph/v2 interchange contract.
     status: current
   - id: projection-definition
     kind: dataObject
     name: Semantic projection definition
+    description: Portable selector describing one bounded semantic slice; presentation only, never new semantics.
     status: current
   - id: projection-schema
     kind: dataObject
     name: Projection definition JSON Schema
+    description: Normative structure for projection definitions.
     status: current
   - id: projection-result
     kind: dataObject
     name: Deterministic projection result
+    description: Deterministic bounded context produced by evaluating a projection against the compiled graph.
     status: current
   - id: projection-result-schema
     kind: dataObject
     name: Projection result JSON Schema
+    description: Normative structure for the yarramate/projection-result/v1 contract.
     status: current
   - id: starter-view-pack
     kind: dataObject
@@ -386,6 +418,7 @@ concepts:
   - id: state-comparison-schema
     kind: dataObject
     name: Architecture-state comparison JSON Schema
+    description: Normative structure for architecture-state comparison results.
     status: current
     presentIn:
       - yarramate-evolution#state-foundation
@@ -400,32 +433,39 @@ concepts:
   - id: core-contract-schema
     kind: dataObject
     name: Core contract JSON Schema
+    description: Normative structure for Core release contract manifests.
     status: current
     presentIn:
       - yarramate-evolution#core-contract-foundation
   - id: workspace-manifest
     kind: dataObject
     name: Workspace manifest
+    description: Explicit versioned declaration of every workspace input; nothing is discovered implicitly.
     status: current
   - id: workspace-schema
     kind: dataObject
     name: Workspace manifest JSON Schema
+    description: Normative structure for workspace manifests.
     status: current
   - id: evidence-document
     kind: dataObject
     name: Evidence overlay document
+    description: Provider observations about existing subjects and claims; evidence supports or challenges intent and never authors it.
     status: current
   - id: evidence-report
     kind: dataObject
     name: Deterministic evidence report
+    description: Deterministic evaluation of one evidence document against the compiled graph.
     status: current
   - id: evidence-schema
     kind: dataObject
     name: Evidence overlay JSON Schema
+    description: Normative structure for evidence overlay documents.
     status: current
   - id: evidence-report-schema
     kind: dataObject
     name: Evidence report JSON Schema
+    description: Normative structure for the yarramate/evidence-report/v1 contract.
     status: current
   - id: reconciliation-report
     kind: dataObject
@@ -435,6 +475,7 @@ concepts:
   - id: reconciliation-report-schema
     kind: dataObject
     name: Reconciliation report JSON Schema
+    description: Normative structure for workspace reconciliation reports.
     status: current
 relationships:
   - id: core-contract-checker-loads-contract
@@ -910,3 +951,26 @@ relationships:
     kind: realization
     from: projection-result-schema
     to: projection-result
+  - id: likec4-check-result-schema-describes-result
+    kind: realization
+    from: likec4-check-result-schema
+    to: likec4-check-result
+  - id: likec4-diagnostic-result-schema-describes-result
+    kind: realization
+    from: likec4-diagnostic-result-schema
+    to: likec4-diagnostic-result
+  - id: likec4-check-writes-result
+    kind: access
+    from: likec4-check-command
+    to: likec4-check-result
+    mode: write
+  - id: likec4-check-writes-diagnostics
+    kind: access
+    from: likec4-check-command
+    to: likec4-diagnostic-result
+    mode: write
+  - id: likec4-export-writes-diagnostics
+    kind: access
+    from: likec4-export-command
+    to: likec4-diagnostic-result
+    mode: write
