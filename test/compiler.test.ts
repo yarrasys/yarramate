@@ -1466,7 +1466,8 @@ relationships:
         {
           severity: 'error',
           code: 'YM201',
-          message: 'Document schema violation: must be equal to one of the allowed values',
+          message:
+            'Document schema violation: must be equal to one of the allowed values: "planned", "current", "retired"',
           path: 'invalid-lifecycle.yaml',
           pointer: '/concepts/0/status',
           line: 8,

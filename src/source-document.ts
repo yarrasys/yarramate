@@ -1,4 +1,4 @@
-import type { ValidateFunction } from 'ajv'
+import type { ErrorObject, ValidateFunction } from 'ajv'
 import { LineCounter, parseDocument } from 'yaml'
 import type {
   Diagnostic,
@@ -28,6 +28,68 @@ export const diagnosticOrder = (left: Diagnostic, right: Diagnostic) =>
   left.column - right.column ||
   left.code.localeCompare(right.code) ||
   left.message.localeCompare(right.message)
+
+export const describeSchemaViolation = (
+  error: Pick<ErrorObject, 'keyword' | 'message' | 'params'>,
+): string => {
+  const base = error.message ?? error.keyword
+  if (error.keyword === 'const') {
+    return `${base}: expected ${JSON.stringify(error.params.allowedValue)}`
+  }
+  if (
+    error.keyword === 'enum' &&
+    Array.isArray(error.params.allowedValues)
+  ) {
+    const allowed = error.params.allowedValues as readonly unknown[]
+    const shown = allowed
+      .slice(0, 8)
+      .map((value) => JSON.stringify(value))
+      .join(', ')
+    return `${base}: ${shown}${allowed.length > 8 ? ', …' : ''}`
+  }
+  return base
+}
+
+const editDistance = (left: string, right: string): number => {
+  const previous = Array.from(
+    { length: right.length + 1 },
+    (_, index) => index,
+  )
+  for (let i = 1; i <= left.length; i += 1) {
+    let diagonal = previous[0]!
+    previous[0] = i
+    for (let j = 1; j <= right.length; j += 1) {
+      const above = previous[j]!
+      previous[j] = Math.min(
+        above + 1,
+        previous[j - 1]! + 1,
+        diagonal + (left[i - 1] === right[j - 1] ? 0 : 1),
+      )
+      diagonal = above
+    }
+  }
+  return previous[right.length]!
+}
+
+export const closestCandidate = (
+  value: string,
+  candidates: Iterable<string>,
+): string | undefined => {
+  const threshold = Math.max(2, Math.floor(value.length / 4))
+  let best: string | undefined
+  let bestDistance = threshold + 1
+  for (const candidate of [...candidates].sort()) {
+    const distance = editDistance(
+      value.toLowerCase(),
+      candidate.toLowerCase(),
+    )
+    if (distance < bestDistance) {
+      best = candidate
+      bestDistance = distance
+    }
+  }
+  return best
+}
 
 export function locateSourcePath(
   sourcePath: string,
@@ -109,7 +171,7 @@ export function loadSourceDocument<T>(
             code: 'YM201',
             message: property
               ? `Property "${property}" is not allowed`
-              : `${schemaLabel} schema violation: ${error.message ?? error.keyword}`,
+              : `${schemaLabel} schema violation: ${describeSchemaViolation(error)}`,
             ...location,
           }
         })
