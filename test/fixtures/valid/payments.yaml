@@ -1,0 +1,20 @@
+format: yarramate/v1
+id: payments
+profile: yarramate/core@0.1
+concepts:
+  - id: payment-api
+    kind: applicationService
+    name: Payment API
+  - id: ledger
+    kind: dataObject
+    name: Ledger
+  - id: billing
+    kind: applicationService
+    name: Billing
+relationships:
+  - id: payment-api-writes-ledger
+    kind: access
+    from: payment-api
+    to: ledger
+    name: Records payments
+    mode: write

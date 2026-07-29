@@ -109,10 +109,10 @@ runs:
         else
           summary "⚠️ Reconciliation: ${OBSERVATIONS} observations, ${CONFIRMED} confirmed, ${FINDINGS} findings (${CONTRADICTED} contradicted, ${UNKNOWN} unknown, ${NOT_OBSERVED} not observed)"
           summary ''
-          summary '| Result | Target | Provider | Evidence document |'
-          summary '| --- | --- | --- | --- |'
+          summary '| Result | Target | Model asserts | Provider | Evidence document |'
+          summary '| --- | --- | --- | --- | --- |'
           printf '%s' "$RECONCILE_JSON" \
-            | jq -r '.findings[] | "| \(.result) | `\(.target.id)` | \(.provider) | \(.evidenceDocument) |"' \
+            | jq -r '.findings[] | "| \(.result) | `\(.target.id)` | \(if .asserted then "`\(.asserted.from)` -\(.asserted.kind)-> `\(.asserted.to)`" + (if .asserted.name then " (\(.asserted.name))" else "" end) else "" end) | \(.provider) | \(.evidenceDocument) |"' \
             >> "$GITHUB_STEP_SUMMARY"
         fi
 

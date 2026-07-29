@@ -79,6 +79,33 @@ The summary counts all observations. The `findings` array contains only
 provider. Confirmed observations remain summarized rather than repeated so a
 reviewer or agent can focus on unresolved evidence.
 
+When a finding targets the primary claim of a declared relationship, it also
+carries an optional `asserted` object with the declared `from`, `to`, and
+`kind` (and `name` when present), so the disagreement between the model and
+the evidence is visible in the finding itself:
+
+```json
+{
+  "target": { "type": "claim", "id": "payments#payment-api-writes-ledger" },
+  "asserted": {
+    "from": "payments#payment-api",
+    "to": "payments#ledger",
+    "kind": "yarramate/core@0.1#access",
+    "name": "Records payments"
+  },
+  "result": "contradicted",
+  "provider": "repository-inspection",
+  "evidenceDocument": "payments-repository@1.0",
+  "evidence": {
+    "uri": "repo:src/payments.ts",
+    "message": "Payment API writes to the billing store, not the ledger"
+  }
+}
+```
+
+Subject-targeted findings and findings on relationship sub-claims (such as
+`…~name`) do not carry `asserted`.
+
 A finding is advisory evidence, not a proposed replacement claim, validation
 error, CI verdict, or authorization to modify the native model.
 
