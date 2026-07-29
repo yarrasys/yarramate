@@ -91,3 +91,54 @@ the separate evidence overlay described in `docs/EVIDENCE.md`; they do not
 change graph subjects, claims, or provenance.
 
 The v2 schema is exported as `yarramate/schema/graph-v2`.
+
+## Consuming graph v2 from your own tools
+
+Graph v2 is the intended integration surface for renderers, linters, drift
+detectors, and agent harnesses. Consumers need the emitted JSON and the
+exported schema; they never need the compiler, the CLI internals, or the
+authoring format.
+
+Obtain and validate a graph:
+
+```sh
+npx yarramate compile .yarramate/workspace.yaml > graph.v2.json
+```
+
+Validate against the schema exported as `yarramate/schema/graph-v2` with any
+JSON Schema 2020-12 validator.
+
+The complete reading algorithm is: index `claims` by `predicate`, interpret
+predicates by identity, and ignore predicates you do not understand. There is
+no other structure to learn — every fact in the graph is a claim.
+
+Core claim predicates:
+
+| Predicate | Object | Meaning |
+| --- | --- | --- |
+| `yarramate/concept/kind` | value | Globally qualified kind of a concept |
+| `yarramate/concept/name` | value | Display name |
+| `yarramate/concept/description` | value | Narrative meaning claim |
+| `yarramate/relationship/name` | value | Display name |
+| `yarramate/relationship/description` | value | Narrative meaning claim |
+| `yarramate/lifecycle/status` | value | `planned`, `current`, or `retired` |
+| `yarramate/ownership/owner` | ref | Accountable concept subject |
+| `yarramate/constraint/requires` | ref | Binding constraint subject |
+| `yarramate/reference/refers-to` | ref | Identified citation to any subject |
+| `yarramate/access/mode` | value | Access mode of an access relationship |
+| `yarramate/flow/content` | value | Transferred content of a flow |
+| `yarramate/state/type` | value | `baseline`, `transition`, or `target` |
+| `yarramate/state/after` | ref | Predecessor architecture state |
+| `yarramate/state/present-in` | ref | Subject membership in a state |
+
+Relationship claims use their globally qualified relationship kind directly
+as the predicate — for example `yarramate/core@0.1#serving` — with the
+`from` concept as `subject` and the `to` concept as `object.ref`. The claim
+`id` is the relationship's own subject identity, so relationship metadata
+claims attach to it.
+
+Every claim carries its authored source (document, path, pointer, line,
+column), so a consumer can cite or deep-link any fact it reports. Consumers
+must treat the graph as read-only: derived findings belong in your tool's
+own output, or in an evidence overlay if they should flow back into
+reconciliation.
