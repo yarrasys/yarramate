@@ -157,6 +157,11 @@ export interface RelationshipPolicy {
   readonly intent: string
   readonly sourceAspects?: readonly Aspect[]
   readonly targetAspects?: readonly Aspect[]
+  /**
+   * Repair hint appended to endpoint-aspect diagnostics (YM404). A remedy,
+   * never a correction: the compiler still rejects the input.
+   */
+  readonly repair?: string
 }
 
 /**
@@ -171,6 +176,8 @@ export const relationshipPolicies: readonly RelationshipPolicy[] = [
     id: 'assignment',
     intent: 'Allocate an active structure to behavior or responsibility',
     sourceAspects: ['active-structure'],
+    repair:
+      'assign from an active-structure element (an actor, component, or node), or use "association"',
   },
   { id: 'realization', intent: 'Fulfil a more abstract concept' },
   { id: 'serving', intent: 'Make behavior or an interface available' },
@@ -178,11 +185,15 @@ export const relationshipPolicies: readonly RelationshipPolicy[] = [
     id: 'access',
     intent: 'Read, write, create, or use passive structure',
     targetAspects: ['passive-structure'],
+    repair:
+      'point "access" at passive structure (a business object, data object, or artifact), or use "association"',
   },
   {
     id: 'influence',
     intent: 'Affect a motivation concept',
     targetAspects: ['motivation'],
+    repair:
+      'point "influence" at a motivation concept (a goal, requirement, or principle), or use "association"',
   },
   { id: 'association', intent: 'Relevant connection with no stronger meaning' },
   {
@@ -190,6 +201,8 @@ export const relationshipPolicies: readonly RelationshipPolicy[] = [
     intent: 'Express temporal or causal precedence',
     sourceAspects: ['behavior'],
     targetAspects: ['behavior'],
+    repair:
+      'use "flow" between active-structure elements, or introduce a behavior concept and "assignment"',
   },
   { id: 'flow', intent: 'Transfer information, value, goods, or material' },
   { id: 'specialization', intent: 'Express a more specific form' },

@@ -904,7 +904,7 @@ relationships:
           severity: 'error',
           code: 'YM404',
           message:
-            'Relationship "assignment" requires a source with aspect "active-structure"; "intent" has aspect "motivation"',
+            'Relationship "assignment" requires a source with aspect "active-structure"; "intent" has aspect "motivation"; assign from an active-structure element (an actor, component, or node), or use "association"',
           path: 'incompatible.yaml',
           pointer: '/relationships/0/from',
           line: 14,
@@ -929,7 +929,7 @@ relationships:
           severity: 'error',
           code: 'YM404',
           message:
-            'Relationship "access" requires a target with aspect "passive-structure"; "intent" has aspect "motivation"',
+            'Relationship "access" requires a target with aspect "passive-structure"; "intent" has aspect "motivation"; point "access" at passive structure (a business object, data object, or artifact), or use "association"',
           path: 'incompatible-target.yaml',
           pointer: '/relationships/0/to',
           line: 15,

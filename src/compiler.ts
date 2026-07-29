@@ -117,6 +117,7 @@ interface ResolvedRelationshipKind {
   readonly lineage: readonly string[]
   readonly sourceAspects?: readonly (typeof conceptKinds)[number]['aspect'][]
   readonly targetAspects?: readonly (typeof conceptKinds)[number]['aspect'][]
+  readonly repair?: string
 }
 
 interface ResolvedProfile {
@@ -228,6 +229,7 @@ function compileWorkspaceResolved(
       lineage: [`${coreProfile}#${policy.id}`],
       sourceAspects: policy.sourceAspects,
       targetAspects: policy.targetAspects,
+      repair: policy.repair,
     } satisfies ResolvedRelationshipKind
     coreRelationshipKinds.set(policy.id, resolved)
     relationshipKindByIdentity.set(resolved.identity, resolved)
@@ -1162,7 +1164,7 @@ function compileWorkspaceResolved(
             diagnostics.push({
               severity: 'error',
               code: 'YM404',
-              message: `Relationship "${relationship.kind}" requires a ${endpoint} with aspect ${allowed.map((aspect) => `"${aspect}"`).join(' or ')}; "${reference}" has aspect "${kind.aspect}"`,
+              message: `Relationship "${relationship.kind}" requires a ${endpoint} with aspect ${allowed.map((aspect) => `"${aspect}"`).join(' or ')}; "${reference}" has aspect "${kind.aspect}"${policy.repair === undefined ? '' : `; ${policy.repair}`}`,
               path: input.path,
               pointer,
               line: source.line,
