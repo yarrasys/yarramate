@@ -1,0 +1,123 @@
+name: 'YarraMate architecture drift'
+description: >-
+  Check a YarraMate workspace and report intent-vs-evidence drift.
+  Fails on correctness errors and, by default, on contradicted claims.
+branding:
+  icon: 'layers'
+  color: 'blue'
+inputs:
+  workspace:
+    description: 'Path to the explicit workspace manifest'
+    required: false
+    default: '.yarramate/workspace.yaml'
+  version:
+    description: 'yarramate npm version to run'
+    required: false
+    default: 'latest'
+  fail-on-contradiction:
+    description: 'Fail when reconciliation reports contradicted claims'
+    required: false
+    default: 'true'
+outputs:
+  check-ok:
+    description: 'true when yarramate check passed'
+    value: ${{ steps.drift.outputs.check-ok }}
+  contradicted:
+    description: 'Count of contradicted claims from reconciliation'
+    value: ${{ steps.drift.outputs.contradicted }}
+  unknown:
+    description: 'Count of unknown observations from reconciliation'
+    value: ${{ steps.drift.outputs.unknown }}
+  not-observed:
+    description: 'Count of not-observed claims from reconciliation'
+    value: ${{ steps.drift.outputs.not-observed }}
+  findings:
+    description: 'Total reconciliation findings'
+    value: ${{ steps.drift.outputs.findings }}
+runs:
+  using: 'composite'
+  steps:
+    - id: drift
+      shell: bash
+      env:
+        WORKSPACE: ${{ inputs.workspace }}
+        VERSION: ${{ inputs.version }}
+        FAIL_ON_CONTRADICTION: ${{ inputs.fail-on-contradiction }}
+      run: |
+        set -uo pipefail
+
+        summary() { printf '%s\n' "$1" >> "$GITHUB_STEP_SUMMARY"; }
+        output() { printf '%s=%s\n' "$1" "$2" >> "$GITHUB_OUTPUT"; }
+
+        summary '## YarraMate architecture drift'
+        summary ''
+
+        CHECK_JSON=$(npx --yes "yarramate@${VERSION}" check "$WORKSPACE" --json)
+        if [ -z "$CHECK_JSON" ]; then
+          summary "❌ \`yarramate check\` produced no output for \`${WORKSPACE}\` (missing workspace or invocation error)."
+          output 'check-ok' 'false'
+          output 'contradicted' '0'
+          output 'unknown' '0'
+          output 'not-observed' '0'
+          output 'findings' '0'
+          exit 1
+        fi
+        CHECK_OK=$(printf '%s' "$CHECK_JSON" | jq -r '.ok // false')
+        output 'check-ok' "$CHECK_OK"
+
+        if [ "$CHECK_OK" != 'true' ]; then
+          summary '❌ `yarramate check` failed:'
+          summary ''
+          summary '```'
+          printf '%s' "$CHECK_JSON" \
+            | jq -r '.diagnostics[]? | "\(.path):\(.line):\(.column) \(.code) \(.message)"' \
+            >> "$GITHUB_STEP_SUMMARY"
+          summary '```'
+          output 'contradicted' '0'
+          output 'unknown' '0'
+          output 'not-observed' '0'
+          output 'findings' '0'
+          exit 1
+        fi
+
+        COUNTED=$(printf '%s' "$CHECK_JSON" | jq -r \
+          '"\(.counted.concepts) concepts, \(.counted.relationships) relationships, \(.counted.states) states, \(.counted.documents) documents"')
+        summary "✅ Check passed: ${COUNTED}"
+
+        RECONCILE_JSON=$(npx --yes "yarramate@${VERSION}" reconcile "$WORKSPACE")
+        RECONCILE_EXIT=$?
+        if [ "$RECONCILE_EXIT" -ne 0 ]; then
+          summary ''
+          summary '❌ `yarramate reconcile` failed after a passing check.'
+          exit 1
+        fi
+
+        CONTRADICTED=$(printf '%s' "$RECONCILE_JSON" | jq -r '.summary.contradicted // 0')
+        UNKNOWN=$(printf '%s' "$RECONCILE_JSON" | jq -r '.summary.unknown // 0')
+        NOT_OBSERVED=$(printf '%s' "$RECONCILE_JSON" | jq -r '.summary.notObserved // 0')
+        FINDINGS=$(printf '%s' "$RECONCILE_JSON" | jq -r '.summary.findings // 0')
+        OBSERVATIONS=$(printf '%s' "$RECONCILE_JSON" | jq -r '.summary.observations // 0')
+        CONFIRMED=$(printf '%s' "$RECONCILE_JSON" | jq -r '.summary.confirmed // 0')
+        output 'contradicted' "$CONTRADICTED"
+        output 'unknown' "$UNKNOWN"
+        output 'not-observed' "$NOT_OBSERVED"
+        output 'findings' "$FINDINGS"
+
+        summary ''
+        if [ "$FINDINGS" -eq 0 ]; then
+          summary "✅ Reconciliation: ${OBSERVATIONS} observations, ${CONFIRMED} confirmed, no findings"
+        else
+          summary "⚠️ Reconciliation: ${OBSERVATIONS} observations, ${CONFIRMED} confirmed, ${FINDINGS} findings (${CONTRADICTED} contradicted, ${UNKNOWN} unknown, ${NOT_OBSERVED} not observed)"
+          summary ''
+          summary '| Result | Target | Provider | Evidence document |'
+          summary '| --- | --- | --- | --- |'
+          printf '%s' "$RECONCILE_JSON" \
+            | jq -r '.findings[] | "| \(.result) | `\(.target.id)` | \(.provider) | \(.evidenceDocument) |"' \
+            >> "$GITHUB_STEP_SUMMARY"
+        fi
+
+        if [ "$FAIL_ON_CONTRADICTION" = 'true' ] && [ "$CONTRADICTED" -gt 0 ]; then
+          summary ''
+          summary '❌ Failing: declared architecture is contradicted by evidence.'
+          exit 1
+        fi

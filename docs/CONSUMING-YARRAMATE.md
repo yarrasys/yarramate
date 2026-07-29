@@ -143,3 +143,31 @@ yarramate-graphify observe \
 Graphify extraction remains a separate installation and operation. The
 adapter observes only explicitly mapped nodes and never promotes them into
 canonical architecture.
+
+## Continuous drift signal in CI
+
+The repository root ships a composite GitHub Action that checks the
+workspace and reports intent-vs-evidence drift on every pull request:
+
+```yaml
+name: architecture
+on: pull_request
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: yarrasys/yarramate@main
+        with:
+          workspace: .yarramate/workspace.yaml
+```
+
+The job fails on deterministic correctness errors and, by default, when
+reconciliation reports contradicted claims; unknown and not-observed
+findings are reported in the job summary without failing. Set
+`fail-on-contradiction: 'false'` to make the whole signal advisory. The
+action never mutates sources — it runs only the read-only `check` and
+`reconcile` commands, so it is safe as a required check.
