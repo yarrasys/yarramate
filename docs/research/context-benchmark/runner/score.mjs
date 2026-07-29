@@ -16,6 +16,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { catalogueOpen } from './catalogue.mjs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -54,24 +55,7 @@ const cli = (bin, cmdArgs, cwd) => {
     return { out: `${error.stdout ?? ''}${error.stderr ?? ''}`, code: error.status ?? 1 };
   }
 };
-const catalogueOpen = (workspaceDir, cwd) => {
-  const compiled = cli('yarramate', ['compile', join(workspaceDir, 'workspace.yaml')], cwd);
-  if (compiled.code !== 0) return null;
-  const graphPath = join(cwd, 'compiled-graph.json');
-  writeFileSync(graphPath, compiled.out);
-  try {
-    const evaluated = execFileSync('node', [
-      join(repoRoot, 'docs/research/question-catalogue/evaluate-catalogue.mjs'),
-      join(repoRoot, 'docs/research/question-catalogue/yarramate-question-catalogue.schema.json'),
-      cataloguePath,
-      graphPath,
-    ], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
-    const open = evaluated.match(/total open questions[^:]*:\s*(\d+)/i);
-    return open ? Number(open[1]) : null;
-  } catch {
-    return null;
-  }
-};
+const postCatalogueOpen = (workspaceDir, cwd) => catalogueOpen(toolchain, workspaceDir, cwd, cataloguePath);
 
 const records = readFileSync(runsPath, 'utf8').trim().split('\n').filter(Boolean).map((line) => JSON.parse(line));
 for (const record of records) {
@@ -115,7 +99,7 @@ for (const record of records) {
         }
       } else if (expectation === 'catalogue-not-worse') {
         const baseline = record.catalogueBaseline ?? null;
-        const after = catalogueOpen(workspaceDir, workdir);
+        const after = postCatalogueOpen(workspaceDir, workdir);
         results[expectation] = baseline === null || after === null ? null : after <= baseline;
         score.catalogue = { baseline, after };
       }

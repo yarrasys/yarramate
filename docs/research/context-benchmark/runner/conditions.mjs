@@ -4,6 +4,12 @@
 
 const BASE = 'Work in the repository at the current directory.';
 
+// Model-bearing workdirs additionally carry the AGENTS.md pointer that
+// `yarramate init` writes (ADR 0040): an adopted repository advertises its
+// workspace to agent harnesses, so B/C mirror an adopted repository rather
+// than a bare model drop. The pilot (2026-07-29) ran without the pointer and
+// the weak tier never discovered the workspace; the instruction text below is
+// unchanged so prompt neutrality is preserved.
 const MODEL_AVAILABLE =
   `${BASE} It contains a committed .yarramate architecture workspace; the ` +
   'yarramate CLI is installed and can query it (status, context, check).';
