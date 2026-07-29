@@ -34,21 +34,54 @@ import { loadWorkspaceManifest } from './workspace.js'
 import {
   evaluateProjection,
   loadProjection,
+  renderBudgetedContext,
   renderProjectionMarkdown,
 } from './projection.js'
 
 export type { CliResult } from './cli-support.js'
+
+const extractBudget = (
+  options: readonly string[],
+):
+  | { readonly ok: true; readonly budget?: number; readonly rest: readonly string[] }
+  | { readonly ok: false } => {
+  const rest: string[] = []
+  let budget: number | undefined
+  for (let index = 0; index < options.length; index += 1) {
+    const option = options[index]
+    if (option === '--budget') {
+      const value = options[index + 1]
+      if (
+        value === undefined ||
+        budget !== undefined ||
+        !/^[1-9][0-9]*$/.test(value)
+      ) {
+        return { ok: false }
+      }
+      budget = Number(value)
+      index += 1
+      continue
+    }
+    if (option !== undefined) rest.push(option)
+  }
+  return budget === undefined ? { ok: true, rest } : { ok: true, budget, rest }
+}
 
 const runProjection = (
   options: readonly string[],
   cwd: string,
   output: 'json' | 'markdown',
 ): CliResult => {
-  const [projectionPath, ...paths] = options
+  const extracted = output === 'json' ? extractBudget(options) : { ok: true as const, rest: options }
+  if (!extracted.ok) {
+    return { exitCode: 2, stdout: '', stderr: usage }
+  }
+  const budget = 'budget' in extracted ? extracted.budget : undefined
+  const [projectionPath, ...paths] = extracted.rest
   if (
     projectionPath === undefined ||
     paths.length === 0 ||
-    options.some((option) => option.startsWith('-'))
+    extracted.rest.some((option) => option.startsWith('-'))
   ) {
     return { exitCode: 2, stdout: '', stderr: usage }
   }
@@ -95,7 +128,9 @@ const runProjection = (
       exitCode: 0,
       stdout:
         output === 'json'
-          ? `${JSON.stringify(result, null, 2)}\n`
+          ? budget === undefined
+            ? `${JSON.stringify(result, null, 2)}\n`
+            : renderBudgetedContext(result, budget)
           : renderProjectionMarkdown(result),
       stderr: '',
     }
@@ -109,12 +144,17 @@ const runAdHocContext = (
   options: readonly string[],
   cwd: string,
 ): CliResult => {
+  const extracted = extractBudget(options)
+  if (!extracted.ok) {
+    return { exitCode: 2, stdout: '', stderr: usage }
+  }
+  const budget = 'budget' in extracted ? extracted.budget : undefined
   const subjects: string[] = []
   const paths: string[] = []
-  for (let index = 0; index < options.length; index += 1) {
-    const option = options[index]
+  for (let index = 0; index < extracted.rest.length; index += 1) {
+    const option = extracted.rest[index]
     if (option === '--subject') {
-      const value = options[index + 1]
+      const value = extracted.rest[index + 1]
       if (value === undefined || value.startsWith('-')) {
         return { exitCode: 2, stdout: '', stderr: usage }
       }
@@ -194,7 +234,10 @@ const runAdHocContext = (
     )
     return {
       exitCode: 0,
-      stdout: `${JSON.stringify(result, null, 2)}\n`,
+      stdout:
+        budget === undefined
+          ? `${JSON.stringify(result, null, 2)}\n`
+          : renderBudgetedContext(result, budget),
       stderr: '',
     }
   } catch (error) {
