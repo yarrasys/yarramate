@@ -34,7 +34,11 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "schema", "packageExport"],
+        "required": [
+          "id",
+          "schema",
+          "packageExport"
+        ],
         "properties": {
           "id": {
             "$ref": "#/$defs/formatIdentity"
@@ -55,13 +59,17 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["name", "binary"],
+        "required": [
+          "name",
+          "binary"
+        ],
         "properties": {
           "name": {
             "enum": [
               "init",
               "add",
               "connect",
+              "new",
               "check",
               "status",
               "compile",

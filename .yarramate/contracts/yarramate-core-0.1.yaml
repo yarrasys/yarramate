@@ -55,6 +55,8 @@ commands:
     binary: yarramate
   - name: connect
     binary: yarramate
+  - name: new
+    binary: yarramate
   - name: check
     binary: yarramate
     machineFormat: yarramate/check-result/v1

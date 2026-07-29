@@ -23,6 +23,7 @@ import {
   type CliResult,
 } from './cli-support.js'
 import { runCheckCommand } from './check-command.js'
+import { runNewCommand } from './new-command.js'
 import { runStatusCommand } from './status-command.js'
 import {
   evaluateEvidence,
@@ -923,6 +924,9 @@ export function runCli(
   }
   if (command === 'status') {
     return runStatusCommand(options, cwd)
+  }
+  if (command === 'new') {
+    return runNewCommand(options, cwd)
   }
   return { exitCode: 2, stdout: '', stderr: usage }
 }
