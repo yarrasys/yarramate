@@ -277,6 +277,12 @@ concepts:
     name: LikeC4 adapter diagnostic result
     description: Machine-readable failure payload shared by LikeC4 adapter commands.
     status: current
+  - id: status-command
+    kind: applicationService
+    name: Status command
+    description: Emits one machine-readable workspace orientation summary combining check, reconciliation, and inventory.
+    owner: yarramate-product#yarramate-maintainers
+    status: current
   - id: native-document
     kind: dataObject
     name: Native YAML document
@@ -974,3 +980,7 @@ relationships:
     from: likec4-export-command
     to: likec4-diagnostic-result
     mode: write
+  - id: status-command-serves-agent-harness
+    kind: serving
+    from: status-command
+    to: yarramate-product#agent-harness

@@ -22,6 +22,15 @@ automatically.
 
 ## Choose the journey
 
+When a workspace already exists, orient first with one call before choosing:
+
+```sh
+yarramate status <workspace.yaml> --json
+```
+
+It reports the check verdict, the reconciliation summary, and a titled
+inventory of documents, states, projections, evidence, and contracts.
+
 - Existing implementation is the starting point: follow **Discover an
   existing project**.
 - Intent and a not-yet-built solution are the starting point: follow **Design

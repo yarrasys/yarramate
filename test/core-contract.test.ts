@@ -57,6 +57,7 @@ describe('Core contract manifests', () => {
       'add',
       'connect',
       'check',
+      'status',
       'compile',
       'view',
       'context',
