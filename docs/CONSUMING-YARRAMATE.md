@@ -144,6 +144,26 @@ Graphify extraction remains a separate installation and operation. The
 adapter observes only explicitly mapped nodes and never promotes them into
 canonical architecture.
 
+## MCP server for agent harnesses
+
+Harnesses that load MCP servers can connect the bundled read-only adapter:
+
+```json
+{
+  "mcpServers": {
+    "yarramate": {
+      "command": "yarramate-mcp"
+    }
+  }
+}
+```
+
+It exposes `yarramate_status`, `yarramate_check`, `yarramate_reconcile`,
+and `yarramate_context` (projection path or ad-hoc subjects, with an
+optional token budget). Every tool call executes the same stable CLI in
+the server's working directory; nothing mutates native documents, and
+authoring stays with the CLI and Git review.
+
 ## Continuous drift signal in CI
 
 The repository root ships a composite GitHub Action that checks the

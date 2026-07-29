@@ -70,7 +70,8 @@
   "bin": {
     "yarramate": "dist/cli.js",
     "yarramate-likec4": "dist/adapters/likec4-cli.js",
-    "yarramate-graphify": "dist/adapters/graphify-cli.js"
+    "yarramate-graphify": "dist/adapters/graphify-cli.js",
+    "yarramate-mcp": "dist/adapters/mcp-cli.js"
   },
   "packageManager": "pnpm@11.7.0",
   "engines": {
