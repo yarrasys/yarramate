@@ -105,6 +105,104 @@ const runProjection = (
   }
 }
 
+const runAdHocContext = (
+  options: readonly string[],
+  cwd: string,
+): CliResult => {
+  const subjects: string[] = []
+  const paths: string[] = []
+  for (let index = 0; index < options.length; index += 1) {
+    const option = options[index]
+    if (option === '--subject') {
+      const value = options[index + 1]
+      if (value === undefined || value.startsWith('-')) {
+        return { exitCode: 2, stdout: '', stderr: usage }
+      }
+      subjects.push(value)
+      index += 1
+      continue
+    }
+    if (option === undefined || option.startsWith('-')) {
+      return { exitCode: 2, stdout: '', stderr: usage }
+    }
+    paths.push(option)
+  }
+  if (subjects.length === 0 || paths.length === 0) {
+    return { exitCode: 2, stdout: '', stderr: usage }
+  }
+  const unqualified = subjects.filter(
+    (subject) => !subject.includes('#'),
+  )
+  if (unqualified.length > 0) {
+    return {
+      exitCode: 2,
+      stdout: '',
+      stderr:
+        'Ad-hoc context subjects must be globally qualified as ' +
+        `"<document-id>#<local-id>": ${unqualified.join(', ')}\n`,
+    }
+  }
+
+  try {
+    const resolved = resolveCliWorkspaceSources(paths, cwd)
+    if (!resolved.ok) {
+      return {
+        exitCode: 1,
+        stdout: diagnosticJson(resolved.diagnostics),
+        stderr: '',
+      }
+    }
+    const compilation = compileWorkspaceWithProfileContext(
+      resolved.paths.map((path) => ({
+        path,
+        source: readFileSync(resolve(cwd, path), 'utf8'),
+      })),
+    )
+    if (!compilation.ok) {
+      return {
+        exitCode: 1,
+        stdout: diagnosticJson(compilation.diagnostics),
+        stderr: '',
+      }
+    }
+    const known = new Set(
+      compilation.graph.subjects.map(({ id }) => id),
+    )
+    const unknown = subjects.filter((subject) => !known.has(subject))
+    if (unknown.length > 0) {
+      return {
+        exitCode: 1,
+        stdout: '',
+        stderr:
+          `Unknown subject ${unknown.length === 1 ? 'identity' : 'identities'}: ` +
+          `${unknown.join(', ')} (the compiled workspace declares ${known.size} subjects)\n`,
+      }
+    }
+    const result = evaluateProjection(
+      compilation.graph,
+      {
+        format: 'yarramate/projection/v1',
+        id: 'ad-hoc-context',
+        version: '0.0',
+        query: { subjects, relationships: 'connected' },
+        presentation: {
+          title: 'Ad-hoc context',
+          description: `Connected neighbourhood of ${subjects.join(', ')}`,
+        },
+      },
+      compilation.profileContext,
+    )
+    return {
+      exitCode: 0,
+      stdout: `${JSON.stringify(result, null, 2)}\n`,
+      stderr: '',
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    return { exitCode: 2, stdout: '', stderr: `${message}\n` }
+  }
+}
+
 const runEvidence = (
   options: readonly string[],
   cwd: string,
@@ -761,7 +859,9 @@ export function runCli(
     return runCompile(options, cwd)
   }
   if (command === 'context') {
-    return runProjection(options, cwd, 'json')
+    return options.includes('--subject')
+      ? runAdHocContext(options, cwd)
+      : runProjection(options, cwd, 'json')
   }
   if (command === 'view') {
     return runProjection(options, cwd, 'markdown')
