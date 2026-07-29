@@ -67,6 +67,71 @@ Use `mode: read|write|read-write|unspecified` only with `access`. Use
 `content` only with `flow`. Prefer a precise relationship over `association`;
 use association when no stronger semantic meaning is justified.
 
+Every concept kind carries an aspect: `motivation`, `active-structure`
+(actors, roles, components, nodes, interfaces), `behavior` (processes,
+functions, interactions, services, events), `passive-structure` (objects,
+data, artifacts, material), or `composite`. Four relationship kinds constrain
+endpoint aspects, and the compiler rejects violations as `YM404`:
+
+```text
+assignment  source must be active-structure
+access      target must be passive-structure
+influence   target must be motivation
+triggering  source and target must be behavior
+```
+
+The other kinds accept endpoints of any aspect.
+
+## Invocation chains
+
+"User invokes command" and "component invokes component" fail `YM404` when
+written as `triggering` between active-structure elements. Name the invoked
+behavior, assign the performers, and trigger between behaviors:
+
+```yaml
+concepts:
+  - id: user
+    kind: businessActor
+    name: User
+  - id: cli
+    kind: applicationComponent
+    name: CLI
+  - id: run-check
+    kind: applicationProcess
+    name: Run check
+relationships:
+  - id: user-starts-run-check
+    kind: assignment
+    from: user
+    to: run-check
+    name: User invokes the check command
+  - id: cli-performs-run-check
+    kind: assignment
+    from: cli
+    to: run-check
+```
+
+Chain steps with `triggering` only between behavior concepts, for example
+`run-check` triggering a downstream process owned by another component.
+
+## Degrading a blocked kind
+
+When aspect policy blocks the kind you want—`triggering` between two
+components is the common case—keep the edge legal with `kind: flow` and carry
+the invocation semantics on the edge's `name` and `description`:
+
+```sh
+yarramate connect .yarramate/architecture/main.yaml \
+  --id cli-invokes-engine --kind flow \
+  --from cli --to engine \
+  --name "invokes" \
+  --description "The CLI invokes the engine once per check run"
+```
+
+Both fields compile to claims, so evidence can later confirm or contradict
+the recorded invocation semantics; the degradation loses no reviewable
+information.
+
 ## Ownership and constraints
 
 ```yaml
@@ -176,18 +241,21 @@ evidence result.
 
 ## LikeC4 project
 
-Keep visualization configuration outside native documents:
+Keep visualization configuration outside native documents. Project `mapping`,
+`kindMapping`, and `views[].projection` paths resolve from the
+project-definition document's directory, so place the definition at or above
+everything it references — `.yarramate/likec4-project.yaml` in this layout:
 
 ```yaml
 format: yarramate/likec4-project/v1
 id: delivery
 version: "1.0"
 title: Delivery architecture
-mapping: .yarramate/integrations/likec4/subject-mapping.yaml
+mapping: integrations/likec4/subject-mapping.yaml
 views:
-  - projection: .yarramate/projections/delivery-target.yaml
+  - projection: projections/delivery-target.yaml
   - id: submit-order
-    projection: .yarramate/projections/submit-order.yaml
+    projection: projections/submit-order.yaml
     dynamic:
       steps:
         - relationship: delivery#customer-triggers-submit
@@ -237,14 +305,14 @@ yarramate compare <from-state> <to-state> .yarramate/workspace.yaml
 yarramate evidence <evidence.yaml> .yarramate/workspace.yaml
 yarramate reconcile .yarramate/workspace.yaml
 yarramate-likec4 check \
-  .yarramate/integrations/likec4/project.yaml \
+  .yarramate/likec4-project.yaml \
   --json \
   .yarramate/workspace.yaml
 yarramate-likec4 map --sync \
   .yarramate/integrations/likec4/subject-mapping.yaml \
   .yarramate/workspace.yaml
 yarramate-likec4 export-project \
-  .yarramate/integrations/likec4/project.yaml \
+  .yarramate/likec4-project.yaml \
   .yarramate-out/likec4 \
   .yarramate/workspace.yaml
 ```

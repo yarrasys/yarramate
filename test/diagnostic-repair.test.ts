@@ -71,4 +71,29 @@ describe('repair-oriented diagnostics', () => {
       'Document schema violation: must be equal to one of the allowed values: "planned", "current", "retired"',
     )
   })
+
+  it('carries the invocation-chain remedy on triggering aspect violations', () => {
+    const messages = messagesOf([
+      document(
+        'format: yarramate/v1\nid: example\nprofile: yarramate/core@0.1\nconcepts:\n  - id: cli\n    kind: applicationComponent\n    name: CLI\n  - id: engine\n    kind: applicationComponent\n    name: Engine\nrelationships:\n  - id: cli-invokes-engine\n    kind: triggering\n    from: cli\n    to: engine\n',
+      ),
+    ])
+    expect(messages).toContain(
+      'Relationship "triggering" requires a source with aspect "behavior"; "cli" has aspect "active-structure"; use "flow" between active-structure elements, or introduce a behavior concept and "assignment"',
+    )
+    expect(messages).toContain(
+      'Relationship "triggering" requires a target with aspect "behavior"; "engine" has aspect "active-structure"; use "flow" between active-structure elements, or introduce a behavior concept and "assignment"',
+    )
+  })
+
+  it('carries the motivation-target remedy on influence aspect violations', () => {
+    const messages = messagesOf([
+      document(
+        'format: yarramate/v1\nid: example\nprofile: yarramate/core@0.1\nconcepts:\n  - id: cli\n    kind: applicationComponent\n    name: CLI\n  - id: engine\n    kind: applicationComponent\n    name: Engine\nrelationships:\n  - id: cli-influences-engine\n    kind: influence\n    from: cli\n    to: engine\n',
+      ),
+    ])
+    expect(messages).toContain(
+      'Relationship "influence" requires a target with aspect "motivation"; "engine" has aspect "active-structure"; point "influence" at a motivation concept (a goal, requirement, or principle), or use "association"',
+    )
+  })
 })

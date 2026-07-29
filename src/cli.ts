@@ -390,6 +390,7 @@ const runReconciliation = (
         reconcileEvidenceReports(
           loadedWorkspace.workspace.id,
           evaluation.reports,
+          compilation.graph,
         ),
         null,
         2,

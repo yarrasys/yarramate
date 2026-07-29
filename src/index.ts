@@ -39,6 +39,7 @@ export {
 } from './evidence.js'
 export {
   reconcileEvidenceReports,
+  type AssertedRelationship,
   type ReconciliationFinding,
   type ReconciliationReport,
 } from './reconciliation.js'

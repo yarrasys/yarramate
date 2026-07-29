@@ -330,21 +330,21 @@ mappings:
 `,
       )
       writeFileSync(
-        join(consumer, '.yarramate/integrations/likec4/project.yaml'),
+        join(consumer, '.yarramate/likec4-project.yaml'),
         `format: yarramate/likec4-project/v1
 id: consumer
 version: "1.0"
 title: Consumer architecture
-mapping: .yarramate/integrations/likec4/mapping.yaml
+mapping: integrations/likec4/mapping.yaml
 views:
-  - projection: .yarramate/projections/target.yaml
+  - projection: projections/target.yaml
 `,
       )
       const likec4Project = spawnSync(
         likec4Cli,
         [
           'export-project',
-          '.yarramate/integrations/likec4/project.yaml',
+          '.yarramate/likec4-project.yaml',
           '.yarramate-out/likec4',
           '.yarramate/workspace.yaml',
         ],

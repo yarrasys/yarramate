@@ -1,14 +1,23 @@
+import type { SemanticGraph } from './compiler.js'
 import type {
   EvidenceLocator,
   EvidenceReport,
   EvidenceResult,
 } from './evidence.js'
 
+export interface AssertedRelationship {
+  readonly from: string
+  readonly to: string
+  readonly kind: string
+  readonly name?: string
+}
+
 export interface ReconciliationFinding {
   readonly target: {
     readonly type: 'subject' | 'claim'
     readonly id: string
   }
+  readonly asserted?: AssertedRelationship
   readonly result: Exclude<EvidenceResult, 'confirmed'>
   readonly provider: string
   readonly evidenceDocument: string
@@ -30,10 +39,44 @@ export interface ReconciliationReport {
   readonly findings: readonly ReconciliationFinding[]
 }
 
+const assertedRelationshipsByClaim = (
+  graph: SemanticGraph | undefined,
+): ReadonlyMap<string, AssertedRelationship> => {
+  const asserted = new Map<string, AssertedRelationship>()
+  if (graph === undefined) return asserted
+  const relationshipIds = new Set(
+    graph.subjects
+      .filter(({ type }) => type === 'relationship')
+      .map(({ id }) => id),
+  )
+  const names = new Map<string, string>()
+  for (const claim of graph.claims) {
+    if (
+      claim.predicate === 'yarramate/relationship/name' &&
+      'value' in claim.object
+    ) {
+      names.set(claim.subject, claim.object.value)
+    }
+  }
+  for (const claim of graph.claims) {
+    if (!relationshipIds.has(claim.id) || !('ref' in claim.object)) continue
+    const name = names.get(claim.id)
+    asserted.set(claim.id, {
+      from: claim.subject,
+      to: claim.object.ref,
+      kind: claim.predicate,
+      ...(name === undefined ? {} : { name }),
+    })
+  }
+  return asserted
+}
+
 export function reconcileEvidenceReports(
   workspace: string,
   reports: readonly EvidenceReport[],
+  graph?: SemanticGraph,
 ): ReconciliationReport {
+  const assertedByClaim = assertedRelationshipsByClaim(graph)
   const summary = {
     evidenceDocuments: reports.length,
     observations: 0,
@@ -56,10 +99,15 @@ export function reconcileEvidenceReports(
       } else {
         summary[observation.result] += 1
       }
+      const target =
+        'subject' in observation
+          ? ({ type: 'subject', id: observation.subject } as const)
+          : ({ type: 'claim', id: observation.claim } as const)
+      const asserted =
+        target.type === 'claim' ? assertedByClaim.get(target.id) : undefined
       findings.push({
-        target: 'subject' in observation
-          ? { type: 'subject', id: observation.subject }
-          : { type: 'claim', id: observation.claim },
+        target,
+        ...(asserted === undefined ? {} : { asserted }),
         result: observation.result,
         provider: report.provider,
         evidenceDocument: report.evidence,

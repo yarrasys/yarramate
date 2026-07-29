@@ -1,0 +1,9 @@
+format: yarramate/workspace/v1
+id: payments
+documents:
+  - payments.yaml
+profiles: []
+projections: []
+adapterMappings: []
+evidence:
+  - payments-evidence.yaml

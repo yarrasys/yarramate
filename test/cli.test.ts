@@ -482,6 +482,78 @@ describe('YarraMate CLI', () => {
     })
   })
 
+  it('renders the asserted relationship inside contradicted claim findings', () => {
+    const schema = JSON.parse(
+      readFileSync(
+        join(
+          repositoryRoot,
+          'schema/yarramate-reconciliation-report.schema.json',
+        ),
+        'utf8',
+      ),
+    )
+    const validate = new Ajv2020({ allErrors: true }).compile(schema)
+    const result = runCli(
+      ['reconcile', 'test/fixtures/valid/payments.workspace.yaml'],
+      repositoryRoot,
+    )
+
+    expect(result.exitCode).toBe(0)
+    expect(result.stderr).toBe('')
+    const report = JSON.parse(result.stdout)
+    expect(
+      validate(report),
+      JSON.stringify(validate.errors ?? []),
+    ).toBe(true)
+    expect(report).toEqual({
+      format: 'yarramate/reconciliation-report/v1',
+      workspace: 'payments',
+      summary: {
+        evidenceDocuments: 1,
+        observations: 3,
+        confirmed: 1,
+        findings: 2,
+        contradicted: 2,
+        unknown: 0,
+        notObserved: 0,
+      },
+      findings: [
+        {
+          target: {
+            type: 'subject',
+            id: 'payments#billing',
+          },
+          result: 'contradicted',
+          provider: 'repository-inspection',
+          evidenceDocument: 'payments-repository@1.0',
+          evidence: {
+            uri: 'repo:src/billing.ts',
+            message: 'No billing service was observed in the repository',
+          },
+        },
+        {
+          target: {
+            type: 'claim',
+            id: 'payments#payment-api-writes-ledger',
+          },
+          asserted: {
+            from: 'payments#payment-api',
+            to: 'payments#ledger',
+            kind: 'yarramate/core@0.1#access',
+            name: 'Records payments',
+          },
+          result: 'contradicted',
+          provider: 'repository-inspection',
+          evidenceDocument: 'payments-repository@1.0',
+          evidence: {
+            uri: 'repo:src/payments.ts',
+            message: 'Payment API writes to the billing store, not the ledger',
+          },
+        },
+      ],
+    })
+  })
+
   it('initializes a minimal native workspace without overwriting it', () => {
     const directory = mkdtempSync(join(tmpdir(), 'yarramate-init-'))
     try {
