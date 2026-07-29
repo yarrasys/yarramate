@@ -175,6 +175,7 @@ export function runStatusCommand(
             reconciliation = reconcileEvidenceReports(
               workspace.id,
               evaluation.reports,
+              compilation.graph,
             ).summary
           }
         }
