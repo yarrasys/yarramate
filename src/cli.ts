@@ -366,9 +366,42 @@ const runInit = (options: readonly string[], cwd: string): CliResult => {
       'evidence: []\n',
     'utf8',
   )
+  const agentsPath = resolve(workspaceRoot, 'AGENTS.md')
+  const displayAgentsPath = relative(cwd, agentsPath)
+  const agentsMarker = '## YarraMate architecture'
+  const agentsBlock =
+    `${agentsMarker}\n` +
+    '\n' +
+    'This repository declares its architecture as canonical, versioned\n' +
+    'YarraMate documents in `.yarramate/`. When prose documentation and the\n' +
+    'model disagree, the model is authoritative.\n' +
+    '\n' +
+    '- Orient first: `yarramate status .yarramate/workspace.yaml --json`\n' +
+    '- Validate changes: `yarramate check .yarramate/workspace.yaml --json`\n' +
+    '- Bounded task context: `yarramate context <projection.yaml> .yarramate/workspace.yaml`\n' +
+    '\n' +
+    'Author native documents only; never edit generated output.\n'
+  let agentsNote: string
+  if (!existsSync(agentsPath)) {
+    writeFileSync(agentsPath, agentsBlock, 'utf8')
+    agentsNote = `Created ${displayAgentsPath} with the YarraMate pointer\n`
+  } else {
+    const existingAgents = readFileSync(agentsPath, 'utf8')
+    if (existingAgents.includes(agentsMarker)) {
+      agentsNote = `${displayAgentsPath} already declares the YarraMate pointer\n`
+    } else {
+      writeFileSync(
+        agentsPath,
+        `${existingAgents.replace(/\n*$/, '\n\n')}${agentsBlock}`,
+        'utf8',
+      )
+      agentsNote = `Extended ${displayAgentsPath} with the YarraMate pointer\n`
+    }
+  }
   return {
     exitCode: 0,
-    stdout: `Created ${displayPath} and ${displayManifestPath}\n`,
+    stdout:
+      `Created ${displayPath} and ${displayManifestPath}\n` + agentsNote,
     stderr: '',
   }
 }

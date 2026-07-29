@@ -153,7 +153,8 @@ describe('consumer package contract', () => {
         })
 
       expect(run(['init', '.'])).toBe(
-        'Created .yarramate/architecture/main.yaml and .yarramate/workspace.yaml\n',
+        'Created .yarramate/architecture/main.yaml and .yarramate/workspace.yaml\n' +
+          'Created AGENTS.md with the YarraMate pointer\n',
       )
       writeFileSync(
         join(consumer, '.yarramate/architecture/main.yaml'),

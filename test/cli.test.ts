@@ -476,9 +476,13 @@ describe('YarraMate CLI', () => {
       expect(created).toEqual({
         exitCode: 0,
         stdout:
-          'Created .yarramate/architecture/main.yaml and .yarramate/workspace.yaml\n',
+          'Created .yarramate/architecture/main.yaml and .yarramate/workspace.yaml\n' +
+          'Created AGENTS.md with the YarraMate pointer\n',
         stderr: '',
       })
+      expect(readFileSync(join(directory, 'AGENTS.md'), 'utf8')).toContain(
+        '## YarraMate architecture',
+      )
       expect(
         readFileSync(join(directory, '.yarramate/architecture/main.yaml'), 'utf8'),
       ).toBe(
@@ -508,6 +512,40 @@ describe('YarraMate CLI', () => {
         stderr:
           '.yarramate/architecture/main.yaml and .yarramate/workspace.yaml already exist; nothing was changed\n',
       })
+    } finally {
+      rmSync(directory, { recursive: true })
+    }
+  })
+
+  it('extends an existing AGENTS.md once and never duplicates the pointer', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'yarramate-agents-'))
+    try {
+      writeFileSync(
+        join(directory, 'AGENTS.md'),
+        '# Project agents guide\n\nExisting instructions.\n',
+      )
+
+      const created = runCli(['init', '.'], directory)
+      expect(created.exitCode).toBe(0)
+      expect(created.stdout).toContain(
+        'Extended AGENTS.md with the YarraMate pointer',
+      )
+      const extended = readFileSync(join(directory, 'AGENTS.md'), 'utf8')
+      expect(extended.startsWith('# Project agents guide\n')).toBe(true)
+      expect(extended).toContain('Existing instructions.')
+      expect(extended).toContain('## YarraMate architecture')
+
+      rmSync(join(directory, '.yarramate'), { recursive: true })
+      const again = runCli(['init', '.'], directory)
+      expect(again.exitCode).toBe(0)
+      expect(again.stdout).toContain(
+        'AGENTS.md already declares the YarraMate pointer',
+      )
+      expect(
+        readFileSync(join(directory, 'AGENTS.md'), 'utf8').match(
+          /## YarraMate architecture/g,
+        ),
+      ).toHaveLength(1)
     } finally {
       rmSync(directory, { recursive: true })
     }
