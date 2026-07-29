@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yarrasys.github.io/yarramate/research/yarramate-benchmark-suite.schema.json",
+  "title": "yarramate/benchmark-suite/v1 (research draft)",
+  "description": "Frozen task suite for one benchmark repository. Draft research artifact; not a normative contract.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "suite", "headline", "repository", "tasks"],
+  "properties": {
+    "type": { "const": "yarramate/benchmark-suite/v1" },
+    "suite": { "$ref": "#/$defs/slug" },
+    "headline": {
+      "type": "boolean",
+      "description": "false excludes this suite from pooled headline numbers (e.g. the self-serving yarramate self-model suite)."
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "source", "commit", "model"],
+      "properties": {
+        "name": { "$ref": "#/$defs/slug" },
+        "source": { "$ref": "#/$defs/nonEmptyText" },
+        "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "gallery": { "$ref": "#/$defs/nonEmptyText" },
+        "model": {
+          "type": "string",
+          "description": "Path of the committed .yarramate model used for condition B, relative to the gallery repository root (or this repository root when gallery is absent)."
+        }
+      }
+    },
+    "tasks": {
+      "type": "array",
+      "minItems": 6,
+      "items": { "$ref": "#/$defs/task" }
+    }
+  },
+  "$defs": {
+    "slug": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "nonEmptyText": { "type": "string", "minLength": 1 },
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "family", "prompt", "scoring"],
+      "properties": {
+        "id": { "$ref": "#/$defs/slug" },
+        "family": { "enum": ["comprehension", "change", "model-maintenance"] },
+        "prompt": {
+          "$ref": "#/$defs/nonEmptyText",
+          "description": "Frozen task text given verbatim to the agent. Must be condition-neutral: no mention of yarramate, models, projections, or any preferred context source."
+        },
+        "groundTruth": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["answer", "verifiedAgainst"],
+          "properties": {
+            "answer": { "$ref": "#/$defs/nonEmptyText" },
+            "verifiedAgainst": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/nonEmptyText" },
+              "description": "Source-code locations (repo-relative paths, optionally :line) the answer was verified against. Code is the authority, not the model."
+            }
+          }
+        },
+        "touches": {
+          "type": "array",
+          "minItems": 2,
+          "items": { "$ref": "#/$defs/nonEmptyText" },
+          "description": "Change tasks: repo-relative files or declared component ids the correct change is expected to touch; input to the wrong-file/wrong-component metric."
+        },
+        "scoring": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["method"],
+          "properties": {
+            "method": { "enum": ["ground-truth", "rubric", "deterministic"] },
+            "rubric": {
+              "type": "array",
+              "minItems": 2,
+              "items": { "$ref": "#/$defs/nonEmptyText" },
+              "description": "Human-adjudicated pass/fail criteria, one judgement per entry."
+            },
+            "deterministic": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["expect"],
+              "properties": {
+                "expect": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": { "enum": ["check-pass", "no-contradicted", "catalogue-not-worse", "likec4-check-pass"] }
+                }
+              }
+            },
+            "tests": {
+              "$ref": "#/$defs/nonEmptyText",
+              "description": "Optional shell command run in the task workdir; exit 0 counts toward success (change tasks)."
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "family": { "const": "comprehension" } } },
+          "then": {
+            "required": ["groundTruth"],
+            "properties": { "scoring": { "type": "object", "properties": { "method": { "const": "ground-truth" } } } }
+          }
+        },
+        {
+          "if": { "properties": { "family": { "const": "change" } } },
+          "then": {
+            "required": ["touches"],
+            "properties": { "scoring": { "type": "object", "properties": { "method": { "const": "rubric" }, "rubric": { "type": "array", "minItems": 2 } }, "required": ["rubric"] } }
+          }
+        },
+        {
+          "if": { "properties": { "family": { "const": "model-maintenance" } } },
+          "then": {
+            "properties": { "scoring": { "type": "object", "properties": { "method": { "const": "deterministic" } }, "required": ["deterministic"] } }
+          }
+        }
+      ]
+    }
+  }
+}
