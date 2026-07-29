@@ -41,7 +41,7 @@
     },
     "path": {
       "type": "string",
-      "description": "Repository-relative path resolved from the CLI working directory. Parent traversal, absolute paths, and backslashes are rejected.",
+      "description": "Path resolved from the project-definition document's directory, matching workspace-manifest semantics. Parent traversal, absolute paths, and backslashes are rejected, so references stay beneath the project document.",
       "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\).+$"
     },
     "subjectIdentity": {

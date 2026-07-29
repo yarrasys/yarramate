@@ -11,7 +11,7 @@ import {
   unlinkSync,
   writeFileSync,
 } from 'node:fs'
-import { resolve } from 'node:path'
+import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createHash, randomUUID } from 'node:crypto'
 import Ajv2020Module from 'ajv/dist/2020.js'
@@ -137,6 +137,39 @@ const checkJson = (
     null,
     2,
   )}\n`
+
+const unmappedSubjectPreviewLength = 3
+
+const summarizeUnmappedConcepts = (
+  diagnostics: readonly LikeC4PreparationDiagnostic[],
+): readonly LikeC4PreparationDiagnostic[] => {
+  const unmapped = diagnostics.filter(
+    (diagnostic) => diagnostic.code === 'YMLC102',
+  )
+  if (unmapped.length <= unmappedSubjectPreviewLength) return diagnostics
+  const preview = unmapped
+    .slice(0, unmappedSubjectPreviewLength)
+    .map((diagnostic) =>
+      'subject' in diagnostic && diagnostic.subject !== undefined
+        ? `"${diagnostic.subject}"`
+        : `"${diagnostic.path}:${diagnostic.line}"`,
+    )
+    .join(', ')
+  const summary: LikeC4PreparationDiagnostic = {
+    ...unmapped[0]!,
+    message:
+      `${unmapped.length} projected concepts have no LikeC4 mapping ` +
+      `(first: ${preview}); run "yarramate-likec4 map --sync" to add ` +
+      'the missing mappings',
+  }
+  let summarized = false
+  return diagnostics.flatMap((diagnostic) => {
+    if (diagnostic.code !== 'YMLC102') return [diagnostic]
+    if (summarized) return []
+    summarized = true
+    return [summary]
+  })
+}
 
 const sameJson = (left: unknown, right: unknown) =>
   JSON.stringify(left) === JSON.stringify(right)
@@ -596,7 +629,14 @@ export function runLikeC4Cli(
   }
   const diagnosticOutput = (
     diagnostics: Parameters<typeof diagnosticJson>[0],
-  ) => (json ? checkJson(false, diagnostics) : diagnosticJson(diagnostics))
+  ) =>
+    json
+      ? checkJson(false, diagnostics)
+      : diagnosticJson(
+          command === 'check'
+            ? summarizeUnmappedConcepts(diagnostics)
+            : diagnostics,
+        )
 
   try {
     const resolved = resolveCliWorkspaceSources(sourcePaths, cwd)
@@ -624,6 +664,7 @@ export function runLikeC4Cli(
           stderr: '',
         }
       }
+      const projectDirectory = dirname(resolve(cwd, projectionPath))
       const referencedSources = new Map<string, {
         readonly path: string
         readonly source: string
@@ -640,7 +681,7 @@ export function runLikeC4Cli(
         try {
           const source = {
             path,
-            source: readFileSync(resolve(cwd, path), 'utf8'),
+            source: readFileSync(resolve(projectDirectory, path), 'utf8'),
           }
           referencedSources.set(path, source)
           return source

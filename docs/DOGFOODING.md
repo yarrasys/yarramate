@@ -131,7 +131,7 @@ The bounded `state-engine-adapter`, `state-engine-target`, and
 `state-engine-change` projections render the repository before, after, and
 across the architecture-state engine slice. The shared repository LikeC4
 mapping keeps external identities explicit and singular.
-`.yarramate/integrations/likec4/project.yaml` composes these with the export-path
+`.yarramate/likec4-project.yaml` composes these with the export-path
 projection, the focused product-journeys projection, and eight native starter
 projections into one derived model containing fifteen independent views,
 including the compiler pipeline dynamic view.

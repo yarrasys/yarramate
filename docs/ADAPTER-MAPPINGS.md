@@ -194,13 +194,13 @@ format: yarramate/likec4-project/v1
 id: yarramate
 version: "1.0"
 title: YarraMate architecture
-mapping: .yarramate/integrations/likec4/subject-mapping.yaml
-kindMapping: .yarramate/integrations/likec4/kind-mapping.yaml
+mapping: integrations/likec4/subject-mapping.yaml
+kindMapping: integrations/likec4/kind-mapping.yaml
 views:
   - id: index
-    projection: .yarramate/projections/starter-landscape.yaml
-  - projection: .yarramate/projections/likec4-export-path.yaml
-  - projection: .yarramate/projections/state-engine-change.yaml
+    projection: projections/starter-landscape.yaml
+  - projection: projections/likec4-export-path.yaml
+  - projection: projections/state-engine-change.yaml
     compare:
       from: yarramate-evolution#adapter-foundation
       to: yarramate-evolution#state-foundation
@@ -208,16 +208,17 @@ views:
 
 ```sh
 yarramate-likec4 export-project \
-  .yarramate/integrations/likec4/project.yaml \
+  .yarramate/likec4-project.yaml \
   .yarramate-out/likec4 \
   .yarramate/workspace.yaml
 ```
 
 Every `mapping`, `kindMapping`, and `views[].projection` path in a LikeC4
-project definition is repository-relative: it resolves from the CLI working
-directory, normally the repository root, not from the project-definition
-file. Absolute paths, backslashes, and `..` traversal are rejected so the
-project cannot escape that explicit root.
+project definition resolves from the project-definition document's
+directory, matching workspace-manifest semantics, so a checked-in model
+directory keeps working from any CLI working directory. Absolute paths,
+backslashes, and `..` traversal are rejected so the project cannot escape
+the directory that contains its definition.
 
 The adapter unions mapped subjects and claims into one `model` block, then
 emits one ordinary LikeC4 view per projection. This avoids duplicate
@@ -272,6 +273,13 @@ It is the stable CI seam when no derived project should be written.
 With `--json`, both successful and failing checks emit the closed
 `yarramate/likec4-check-result/v1` contract instead of requiring consumers to
 parse prose or switch result shapes.
+
+Before a mapping is synchronized, a check can fail with one `YMLC102` error
+per unmapped projected concept. Without `--json`, more than three of those
+are collapsed into a single summary diagnostic carrying the total count, the
+first three subject identities, and the `map --sync` remediation, located at
+the first unmapped concept. `--json` output always keeps the complete
+per-subject diagnostics.
 
 Raw `export` leaves vocabulary ownership with the consuming LikeC4 project and
 therefore permits custom declaration kinds. `export-project` uses YarraMate's

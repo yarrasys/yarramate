@@ -93,7 +93,7 @@ concepts:
     status: current
   - id: likec4-project-definition-source
     kind: repository-file
-    name: .yarramate/integrations/likec4/project.yaml
+    name: .yarramate/likec4-project.yaml
     status: current
   - id: likec4-export-projection-source
     kind: repository-file
