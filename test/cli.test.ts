@@ -1393,3 +1393,86 @@ relationships: []
     }
   })
 })
+
+describe('ad-hoc bounded context', () => {
+  it('evaluates a connected neighbourhood without an authored projection', () => {
+    const result = runCli(
+      [
+        'context',
+        '--subject',
+        'checkout#approval-api',
+        'test/fixtures/valid/minimal.yaml',
+      ],
+      repositoryRoot,
+    )
+
+    expect(result.exitCode).toBe(0)
+    expect(result.stderr).toBe('')
+    const payload = JSON.parse(result.stdout) as {
+      projection: string
+      subjects: readonly { id: string }[]
+    }
+    expect(payload.projection).toBe('ad-hoc-context@0.0')
+    expect(payload.subjects.map(({ id }) => id)).toEqual([
+      'checkout#api-realizes-approval',
+      'checkout#approval-api',
+      'checkout#approve-order',
+    ])
+    const schema = JSON.parse(
+      readFileSync(
+        join(
+          repositoryRoot,
+          'schema/yarramate-projection-result.schema.json',
+        ),
+        'utf8',
+      ),
+    )
+    const validate = new Ajv2020({ allErrors: true }).compile(schema)
+    expect(
+      validate(JSON.parse(result.stdout)),
+      JSON.stringify(validate.errors ?? []),
+    ).toBe(true)
+  })
+
+  it('rejects subjects that are not globally qualified', () => {
+    const result = runCli(
+      [
+        'context',
+        '--subject',
+        'approval-api',
+        'test/fixtures/valid/minimal.yaml',
+      ],
+      repositoryRoot,
+    )
+
+    expect(result.exitCode).toBe(2)
+    expect(result.stderr).toContain('globally qualified')
+  })
+
+  it('fails loudly on unknown subject identities', () => {
+    const result = runCli(
+      [
+        'context',
+        '--subject',
+        'checkout#does-not-exist',
+        'test/fixtures/valid/minimal.yaml',
+      ],
+      repositoryRoot,
+    )
+
+    expect(result.exitCode).toBe(1)
+    expect(result.stderr).toContain(
+      'Unknown subject identity: checkout#does-not-exist',
+    )
+  })
+
+  it('requires at least one source after the subjects', () => {
+    const result = runCli(
+      ['context', '--subject', 'checkout#approval-api'],
+      repositoryRoot,
+    )
+
+    expect(result.exitCode).toBe(2)
+    expect(result.stderr).toContain('Usage:')
+  })
+})
