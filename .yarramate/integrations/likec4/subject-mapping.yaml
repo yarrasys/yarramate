@@ -1149,3 +1149,24 @@ mappings:
   - native: yarramate-repository#workspace-tests-validate-resolution
     external: workspaceTestsValidateResolution
     type: relationship
+  - native: yarramate-engine#likec4-check-result
+    external: likec4CheckResult
+    type: concept
+  - native: yarramate-engine#likec4-check-result-schema-describes-result
+    external: likec4CheckResultSchemaDescribesResult
+    type: relationship
+  - native: yarramate-engine#likec4-check-writes-diagnostics
+    external: likec4CheckWritesDiagnostics
+    type: relationship
+  - native: yarramate-engine#likec4-check-writes-result
+    external: likec4CheckWritesResult
+    type: relationship
+  - native: yarramate-engine#likec4-diagnostic-result
+    external: likec4DiagnosticResult
+    type: concept
+  - native: yarramate-engine#likec4-diagnostic-result-schema-describes-result
+    external: likec4DiagnosticResultSchemaDescribesResult
+    type: relationship
+  - native: yarramate-engine#likec4-export-writes-diagnostics
+    external: likec4ExportWritesDiagnostics
+    type: relationship

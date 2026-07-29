@@ -61,6 +61,13 @@ undescribed concepts, one unrealized goal (Shared architecture context), and
 no stakeholder/driver concepts at all. The findings are plausible on sight,
 which is the point: the triggers find real gaps without an LLM in the loop.
 
+Two interview sessions later (same day): **0 open questions**. Session one
+closed the motivation and business waves (70 → 39) through four interactive
+decisions and evidence-backed proposals; session two closed the hygiene wave
+(descriptions for every significant concept, two previously unmodeled LikeC4
+result objects) and shipped catalogue 0.2. Interview state was recomputed
+from the graph each session — nothing was stored between them.
+
 ## Open decisions
 
 1. **`kindMatching: descendants`** needs profile lineage; graph v2 carries
@@ -79,9 +86,10 @@ which is the point: the triggers find real gaps without an LLM in the loop.
 3a. **`information-unaccessed` is too narrow** (found while dogfooding the
    first enrichment session, 2026-07-29). Schema dataObjects legitimately
    participate through outgoing `realization` "describes" edges, not incoming
-   access; 3 of 5 residual matches were false positives of this shape. The
-   condition needs an any-relationship variant, or schema-like information
-   deserves its own question.
+   access; 3 of 5 residual matches were false positives of this shape.
+   **Resolved in catalogue 0.2**: the trigger now accepts any access or
+   realization relationship in any direction — no schema change was needed,
+   which is the versioned-catalogue mechanism working as intended.
 4. **Where catalogues live.** Options: workspace manifest entries (like
    evidence), standalone files passed to a future `yarramate interrogate`,
    or shipped with the skill. Draft assumes standalone explicit files,
