@@ -477,10 +477,14 @@ describe('YarraMate CLI', () => {
         exitCode: 0,
         stdout:
           'Created .yarramate/architecture/main.yaml and .yarramate/workspace.yaml\n' +
-          'Created AGENTS.md with the YarraMate pointer\n',
+          'Created AGENTS.md with the YarraMate pointer\n' +
+          'Created CLAUDE.md with the YarraMate pointer\n',
         stderr: '',
       })
       expect(readFileSync(join(directory, 'AGENTS.md'), 'utf8')).toContain(
+        '## YarraMate architecture',
+      )
+      expect(readFileSync(join(directory, 'CLAUDE.md'), 'utf8')).toContain(
         '## YarraMate architecture',
       )
       expect(
@@ -530,6 +534,9 @@ describe('YarraMate CLI', () => {
       expect(created.stdout).toContain(
         'Extended AGENTS.md with the YarraMate pointer',
       )
+      expect(created.stdout).toContain(
+        'Created CLAUDE.md with the YarraMate pointer',
+      )
       const extended = readFileSync(join(directory, 'AGENTS.md'), 'utf8')
       expect(extended.startsWith('# Project agents guide\n')).toBe(true)
       expect(extended).toContain('Existing instructions.')
@@ -541,11 +548,33 @@ describe('YarraMate CLI', () => {
       expect(again.stdout).toContain(
         'AGENTS.md already declares the YarraMate pointer',
       )
-      expect(
-        readFileSync(join(directory, 'AGENTS.md'), 'utf8').match(
-          /## YarraMate architecture/g,
-        ),
-      ).toHaveLength(1)
+      expect(again.stdout).toContain(
+        'CLAUDE.md already declares the YarraMate pointer',
+      )
+      for (const pointerFile of ['AGENTS.md', 'CLAUDE.md']) {
+        expect(
+          readFileSync(join(directory, pointerFile), 'utf8').match(
+            /## YarraMate architecture/g,
+          ),
+        ).toHaveLength(1)
+      }
+    } finally {
+      rmSync(directory, { recursive: true })
+    }
+  })
+
+  it('skips both pointer files when initialized with --no-pointer', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'yarramate-nopointer-'))
+    try {
+      const created = runCli(['init', '.', '--no-pointer'], directory)
+      expect(created).toEqual({
+        exitCode: 0,
+        stdout:
+          'Created .yarramate/architecture/main.yaml and .yarramate/workspace.yaml\n',
+        stderr: '',
+      })
+      expect(existsSync(join(directory, 'AGENTS.md'))).toBe(false)
+      expect(existsSync(join(directory, 'CLAUDE.md'))).toBe(false)
     } finally {
       rmSync(directory, { recursive: true })
     }
