@@ -4,6 +4,7 @@ dist/
 .likec4/
 coverage/
 .yarramate-out/
+graphify-out/
 .DS_Store
 *.tgz
 .env
