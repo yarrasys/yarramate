@@ -2,6 +2,7 @@ import {
   copyFileSync,
   existsSync,
   linkSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
@@ -350,6 +351,160 @@ mappings:
         }),
       ]),
     })
+  })
+
+  it('summarizes many unmapped concepts in human check output only', () => {
+    const parent = mkdtempSync(
+      join(tmpdir(), 'yarramate-likec4-unmapped-'),
+    )
+    const mapping = join(parent, 'likec4.mapping.yaml')
+    const writeMapping = (mappings: string) =>
+      writeFileSync(
+        mapping,
+        `format: yarramate/adapter-mapping/v1
+id: system-likec4
+version: "1.0"
+adapter: likec4
+mappings:
+${mappings}`,
+      )
+    try {
+      writeFileSync(
+        join(parent, 'architecture.yaml'),
+        `format: yarramate/v1
+id: system
+profile: yarramate/core@0.1
+concepts:
+  - id: api
+    kind: applicationComponent
+    name: API
+  - id: worker
+    kind: applicationComponent
+    name: Worker
+  - id: store
+    kind: dataObject
+    name: Store
+  - id: queue
+    kind: applicationComponent
+    name: Queue
+  - id: gateway
+    kind: applicationComponent
+    name: Gateway
+relationships: []
+`,
+      )
+      writeFileSync(
+        join(parent, 'system.projection.yaml'),
+        `format: yarramate/projection/v1
+id: system
+version: "1.0"
+query: {}
+`,
+      )
+      writeMapping(
+        `  - native: system#gateway
+    external: gateway
+    type: concept
+`,
+      )
+      const args = [
+        'check',
+        'system.projection.yaml',
+        'likec4.mapping.yaml',
+        'architecture.yaml',
+      ]
+
+      const human = runLikeC4Cli(args, parent)
+      expect(human.exitCode).toBe(1)
+      expect(human.stderr).toBe('')
+      expect(JSON.parse(human.stdout)).toEqual({
+        format: 'yarramate/likec4-diagnostic-result/v1',
+        diagnostics: [
+          {
+            severity: 'error',
+            code: 'YMLC102',
+            message:
+              '4 projected concepts have no LikeC4 mapping (first: ' +
+              '"system#api", "system#worker", "system#store"); run ' +
+              '"yarramate-likec4 map --sync" to add the missing mappings',
+            subject: 'system#api',
+            path: 'architecture.yaml',
+            pointer: '/concepts/0/kind',
+            line: 6,
+            column: 11,
+          },
+        ],
+      })
+      const schema = JSON.parse(
+        readFileSync(
+          join(
+            repositoryRoot,
+            'schema/yarramate-likec4-diagnostic-result.schema.json',
+          ),
+          'utf8',
+        ),
+      )
+      const diagnosticSchema = JSON.parse(
+        readFileSync(
+          join(
+            repositoryRoot,
+            'schema/yarramate-diagnostic-result.schema.json',
+          ),
+          'utf8',
+        ),
+      )
+      const validate = new Ajv2020({ allErrors: true })
+        .addSchema(diagnosticSchema)
+        .compile(schema)
+      expect(
+        validate(JSON.parse(human.stdout)),
+        JSON.stringify(validate.errors ?? []),
+      ).toBe(true)
+
+      const machine = runLikeC4Cli([...args, '--json'], parent)
+      expect(machine.exitCode).toBe(1)
+      const parsed = JSON.parse(machine.stdout) as {
+        readonly format: string
+        readonly ok: boolean
+        readonly diagnostics: readonly {
+          readonly code: string
+          readonly subject?: string
+        }[]
+      }
+      expect(parsed.format).toBe('yarramate/likec4-check-result/v1')
+      expect(parsed.ok).toBe(false)
+      expect(
+        parsed.diagnostics
+          .filter(({ code }) => code === 'YMLC102')
+          .map(({ subject }) => subject),
+      ).toEqual([
+        'system#api',
+        'system#worker',
+        'system#store',
+        'system#queue',
+      ])
+
+      writeMapping(
+        `  - native: system#gateway
+    external: gateway
+    type: concept
+  - native: system#worker
+    external: worker
+    type: concept
+`,
+      )
+      const boundary = runLikeC4Cli(args, parent)
+      expect(boundary.exitCode).toBe(1)
+      expect(
+        (JSON.parse(boundary.stdout) as {
+          readonly diagnostics: readonly {
+            readonly subject?: string
+          }[]
+        }).diagnostics.map(({ subject }) => subject),
+      ).toEqual(['system#api', 'system#store', 'system#queue'])
+    } finally {
+      rmSync(parent, { recursive: true, force: true })
+    }
   })
 
   it('exports a native workspace projection to LikeC4 source', () => {
@@ -965,6 +1120,122 @@ views:
     }
   })
 
+  it('resolves project references from the project document, not the CWD', () => {
+    const parent = mkdtempSync(
+      join(tmpdir(), 'yarramate-likec4-portable-'),
+    )
+    const model = join(parent, 'model')
+    const foreign = join(parent, 'elsewhere')
+    const project = join(parent, 'generated')
+    try {
+      mkdirSync(join(model, 'projections'), { recursive: true })
+      mkdirSync(join(model, 'integrations'), { recursive: true })
+      mkdirSync(foreign)
+      writeFileSync(
+        join(model, 'architecture.yaml'),
+        `format: yarramate/v1
+id: system
+profile: yarramate/core@0.1
+concepts:
+  - id: service
+    kind: applicationComponent
+    name: Service
+relationships: []
+`,
+      )
+      writeFileSync(
+        join(model, 'workspace.yaml'),
+        `format: yarramate/workspace/v1
+id: system
+documents: [architecture.yaml]
+profiles: []
+projections: []
+adapterMappings: []
+evidence: []
+`,
+      )
+      writeFileSync(
+        join(model, 'projections/system.yaml'),
+        `format: yarramate/projection/v1
+id: system
+version: "1.0"
+query: {}
+`,
+      )
+      writeFileSync(
+        join(model, 'integrations/likec4.mapping.yaml'),
+        `format: yarramate/adapter-mapping/v1
+id: system-likec4
+version: "1.0"
+adapter: likec4
+mappings:
+  - native: system#service
+    external: service
+    type: concept
+`,
+      )
+      writeFileSync(
+        join(model, 'yarramate.likec4.yaml'),
+        `format: yarramate/likec4-project/v1
+id: system
+version: "1.0"
+title: System architecture
+mapping: integrations/likec4.mapping.yaml
+views:
+  - projection: projections/system.yaml
+`,
+      )
+
+      const checked = runLikeC4Cli(
+        [
+          'check',
+          join(model, 'yarramate.likec4.yaml'),
+          join(model, 'workspace.yaml'),
+        ],
+        foreign,
+      )
+      expect(checked).toEqual({
+        exitCode: 0,
+        stdout: 'Checked LikeC4 project system@1.0: no errors\n',
+        stderr: '',
+      })
+      const machine = runLikeC4Cli(
+        [
+          'check',
+          join(model, 'yarramate.likec4.yaml'),
+          '--json',
+          join(model, 'workspace.yaml'),
+        ],
+        foreign,
+      )
+      expect(machine.exitCode).toBe(0)
+      expect(JSON.parse(machine.stdout)).toEqual({
+        format: 'yarramate/likec4-check-result/v1',
+        ok: true,
+        diagnostics: [],
+      })
+      const materialized = runLikeC4Cli(
+        [
+          'export-project',
+          join(model, 'yarramate.likec4.yaml'),
+          project,
+          join(model, 'workspace.yaml'),
+        ],
+        foreign,
+      )
+      expect(materialized).toEqual({
+        exitCode: 0,
+        stdout: `Wrote LikeC4 project to ${project}\n`,
+        stderr: '',
+      })
+      expect(
+        readFileSync(join(project, 'model.likec4'), 'utf8'),
+      ).toContain("service = applicationComponent 'Service'")
+    } finally {
+      rmSync(parent, { recursive: true, force: true })
+    }
+  })
+
   it('materializes the repository starter pack as independent views', () => {
     const parent = mkdtempSync(
       join(tmpdir(), 'yarramate-likec4-starter-pack-'),
@@ -974,7 +1245,7 @@ views:
       const result = runLikeC4Cli(
         [
           'export-project',
-          '.yarramate/integrations/likec4/project.yaml',
+          '.yarramate/likec4-project.yaml',
           project,
           '.yarramate/workspace.yaml',
         ],
@@ -1040,6 +1311,23 @@ views:
     const definition = join(parent, 'project.yaml')
     const project = join(parent, 'generated')
     try {
+      mkdirSync(join(parent, '.yarramate/integrations/likec4'), {
+        recursive: true,
+      })
+      mkdirSync(join(parent, '.yarramate/projections'), {
+        recursive: true,
+      })
+      for (const reference of [
+        '.yarramate/integrations/likec4/subject-mapping.yaml',
+        '.yarramate/integrations/likec4/kind-mapping.yaml',
+        '.yarramate/projections/product-journeys.yaml',
+        '.yarramate/projections/current-engine.yaml',
+      ]) {
+        copyFileSync(
+          join(repositoryRoot, reference),
+          join(parent, reference),
+        )
+      }
       writeFileSync(
         definition,
         `format: yarramate/likec4-project/v1
@@ -1141,18 +1429,32 @@ views:
     )
     const definition = join(parent, 'project.yaml')
     try {
+      copyFileSync(
+        join(
+          repositoryRoot,
+          'test/fixtures/valid/governed-change.likec4-mapping.yaml',
+        ),
+        join(parent, 'governed-change.likec4-mapping.yaml'),
+      )
+      copyFileSync(
+        join(
+          repositoryRoot,
+          'test/fixtures/valid/governed-change.projection.yaml',
+        ),
+        join(parent, 'governed-change.projection.yaml'),
+      )
       writeFileSync(
         definition,
         `format: yarramate/likec4-project/v1
 id: duplicate-view
 version: "1.0"
 title: Duplicate view
-mapping: test/fixtures/valid/governed-change.likec4-mapping.yaml
+mapping: governed-change.likec4-mapping.yaml
 views:
   - id: index
-    projection: test/fixtures/valid/governed-change.projection.yaml
+    projection: governed-change.projection.yaml
   - id: index
-    projection: test/fixtures/valid/governed-change.projection.yaml
+    projection: governed-change.projection.yaml
 `,
       )
 
@@ -1192,13 +1494,20 @@ views:
     )
     const definition = join(parent, 'project.yaml')
     try {
+      copyFileSync(
+        join(
+          repositoryRoot,
+          'test/fixtures/valid/governed-change.likec4-mapping.yaml',
+        ),
+        join(parent, 'governed-change.likec4-mapping.yaml'),
+      )
       writeFileSync(
         definition,
         `format: yarramate/likec4-project/v1
 id: missing-projection
 version: "1.0"
 title: Missing projection
-mapping: test/fixtures/valid/governed-change.likec4-mapping.yaml
+mapping: governed-change.likec4-mapping.yaml
 views:
   - projection: missing-projection.yaml
 `,
@@ -1245,16 +1554,30 @@ views:
     )
     const definition = join(parent, 'project.yaml')
     try {
+      copyFileSync(
+        join(
+          repositoryRoot,
+          'test/fixtures/valid/governed-change.likec4-mapping.yaml',
+        ),
+        join(parent, 'governed-change.likec4-mapping.yaml'),
+      )
+      copyFileSync(
+        join(
+          repositoryRoot,
+          'test/fixtures/valid/governed-change.projection.yaml',
+        ),
+        join(parent, 'governed-change.projection.yaml'),
+      )
       writeFileSync(
         definition,
         `format: yarramate/likec4-project/v1
 id: duplicate-deployment
 version: "1.0"
 title: Duplicate deployment
-mapping: test/fixtures/valid/governed-change.likec4-mapping.yaml
+mapping: governed-change.likec4-mapping.yaml
 views:
   - id: first
-    projection: test/fixtures/valid/governed-change.projection.yaml
+    projection: governed-change.projection.yaml
     deployment:
       nodes:
         - id: production
@@ -1265,7 +1588,7 @@ views:
           subject: governed-change#product-owner
           node: production
   - id: second
-    projection: test/fixtures/valid/governed-change.projection.yaml
+    projection: governed-change.projection.yaml
     deployment:
       nodes:
         - id: production

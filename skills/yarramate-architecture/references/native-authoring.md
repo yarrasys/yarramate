@@ -176,18 +176,21 @@ evidence result.
 
 ## LikeC4 project
 
-Keep visualization configuration outside native documents:
+Keep visualization configuration outside native documents. Project `mapping`,
+`kindMapping`, and `views[].projection` paths resolve from the
+project-definition document's directory, so place the definition at or above
+everything it references — `.yarramate/likec4-project.yaml` in this layout:
 
 ```yaml
 format: yarramate/likec4-project/v1
 id: delivery
 version: "1.0"
 title: Delivery architecture
-mapping: .yarramate/integrations/likec4/subject-mapping.yaml
+mapping: integrations/likec4/subject-mapping.yaml
 views:
-  - projection: .yarramate/projections/delivery-target.yaml
+  - projection: projections/delivery-target.yaml
   - id: submit-order
-    projection: .yarramate/projections/submit-order.yaml
+    projection: projections/submit-order.yaml
     dynamic:
       steps:
         - relationship: delivery#customer-triggers-submit
@@ -237,14 +240,14 @@ yarramate compare <from-state> <to-state> .yarramate/workspace.yaml
 yarramate evidence <evidence.yaml> .yarramate/workspace.yaml
 yarramate reconcile .yarramate/workspace.yaml
 yarramate-likec4 check \
-  .yarramate/integrations/likec4/project.yaml \
+  .yarramate/likec4-project.yaml \
   --json \
   .yarramate/workspace.yaml
 yarramate-likec4 map --sync \
   .yarramate/integrations/likec4/subject-mapping.yaml \
   .yarramate/workspace.yaml
 yarramate-likec4 export-project \
-  .yarramate/integrations/likec4/project.yaml \
+  .yarramate/likec4-project.yaml \
   .yarramate-out/likec4 \
   .yarramate/workspace.yaml
 ```

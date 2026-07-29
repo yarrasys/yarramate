@@ -67,7 +67,7 @@ document, projection, evidence, or architecture-state syntax is needed.
 7. Add the focused projections needed to answer the
    repository-orientation question. Add a separate projection for every
    ordered flow that needs a dynamic view, then include each intended view in
-   `.yarramate/integrations/likec4/project.yaml`.
+   `.yarramate/likec4-project.yaml`.
 8. Unless the user requested semantic-only output, create the optional LikeC4
    mapping and project described in the authoring reference. Synchronize the
    project mapping before every export, then run:
@@ -79,9 +79,9 @@ yarramate evidence .yarramate/evidence/<evidence>.yaml .yarramate/workspace.yaml
 yarramate reconcile .yarramate/workspace.yaml
 yarramate context .yarramate/projections/<projection>.yaml .yarramate/workspace.yaml
 yarramate view .yarramate/projections/<projection>.yaml .yarramate/workspace.yaml
-yarramate-likec4 check .yarramate/integrations/likec4/project.yaml --json .yarramate/workspace.yaml
+yarramate-likec4 check .yarramate/likec4-project.yaml --json .yarramate/workspace.yaml
 yarramate-likec4 map --sync .yarramate/integrations/likec4/subject-mapping.yaml .yarramate/workspace.yaml
-yarramate-likec4 export-project .yarramate/integrations/likec4/project.yaml .yarramate-out/likec4 .yarramate/workspace.yaml
+yarramate-likec4 export-project .yarramate/likec4-project.yaml .yarramate-out/likec4 .yarramate/workspace.yaml
 ```
 
 9. Audit rendering coverage before handoff. Answer these as reporting
@@ -114,7 +114,7 @@ yarramate-likec4 export-project .yarramate/integrations/likec4/project.yaml .yar
    - a bounded target projection for implementation agents.
    - one focused projection per ordered flow that needs a dynamic view.
    Include every intended view in
-   `.yarramate/integrations/likec4/project.yaml`.
+   `.yarramate/likec4-project.yaml`.
 6. Synchronize the project mapping before every export, then run:
 
 ```sh
@@ -125,9 +125,9 @@ yarramate context .yarramate/projections/<target>.yaml .yarramate/workspace.yaml
 yarramate view .yarramate/projections/<target>.yaml .yarramate/workspace.yaml
 yarramate view .yarramate/projections/<flow>.yaml .yarramate/workspace.yaml
 yarramate compare <document-id>#<baseline-state> <document-id>#<target-state> .yarramate/workspace.yaml
-yarramate-likec4 check .yarramate/integrations/likec4/project.yaml --json .yarramate/workspace.yaml
+yarramate-likec4 check .yarramate/likec4-project.yaml --json .yarramate/workspace.yaml
 yarramate-likec4 map --sync .yarramate/integrations/likec4/subject-mapping.yaml .yarramate/workspace.yaml
-yarramate-likec4 export-project .yarramate/integrations/likec4/project.yaml .yarramate-out/likec4 .yarramate/workspace.yaml
+yarramate-likec4 export-project .yarramate/likec4-project.yaml .yarramate-out/likec4 .yarramate/workspace.yaml
 ```
 
    Skip the two adapter commands only when the user requested semantic-only
@@ -169,7 +169,7 @@ retired concept.
 
 ```sh
 yarramate check .yarramate/workspace.yaml --json
-yarramate-likec4 check .yarramate/integrations/likec4/project.yaml --json .yarramate/workspace.yaml
+yarramate-likec4 check .yarramate/likec4-project.yaml --json .yarramate/workspace.yaml
 ```
 
 6. If the adapter check reports intended mapping drift, repair it locally,
@@ -181,8 +181,8 @@ yarramate-likec4 check .yarramate/integrations/likec4/project.yaml --json .yarra
 yarramate-likec4 map --sync --prune .yarramate/integrations/likec4/subject-mapping.yaml .yarramate/workspace.yaml
 git diff -- .yarramate
 yarramate check .yarramate/workspace.yaml --json
-yarramate-likec4 check .yarramate/integrations/likec4/project.yaml --json .yarramate/workspace.yaml
-yarramate-likec4 export-project .yarramate/integrations/likec4/project.yaml .yarramate-out/likec4 .yarramate/workspace.yaml
+yarramate-likec4 check .yarramate/likec4-project.yaml --json .yarramate/workspace.yaml
+yarramate-likec4 export-project .yarramate/likec4-project.yaml .yarramate-out/likec4 .yarramate/workspace.yaml
 ```
 
 7. Require both configured read-only checks to exit successfully after the

@@ -158,7 +158,7 @@ observations:
   - subject: yarramate-engine#likec4-project-definition
     result: confirmed
     evidence:
-      uri: repo:.yarramate/integrations/likec4/project.yaml
+      uri: repo:.yarramate/likec4-project.yaml
   - subject: yarramate-engine#likec4-project-schema
     result: confirmed
     evidence:
