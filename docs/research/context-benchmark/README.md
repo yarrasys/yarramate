@@ -14,7 +14,7 @@ context-benchmark/
     validate-suite.mjs                   # schema + cross-checks (ids, family minimums, prompt leakage)
     conditions.mjs                       # condition A/B/C instructions (B and C verbatim-identical)
     agent-config.mjs                     # subject-repo agent-config quarantine + pointer placement
-    agent-config.test.mjs                # self-test for the two above, ordering included
+    agent-config.test.mjs                # self-test for agent-config.mjs, ordering included
     degenerate.mjs                       # <3-turn change/maintenance runs, flagged for review
     inject-stale.mjs                     # condition C: deterministic contradicted-claim injection
     run-benchmark.mjs                    # tasks x conditions matrix, workdir isolation, transcripts
@@ -141,7 +141,8 @@ for a third-party repository at all.
 ## What stays human
 
 Comprehension and change verdicts: `score.mjs` emits
-`adjudication-queue.jsonl` with the transcript path, ground truth or rubric,
-and the computed wrong-file edits; a human records pass/fail. Pooled deltas
-and confidence intervals are computed only after adjudication — report
-negative results with the same prominence as positive ones.
+`adjudication-queue.jsonl` with the transcript and patch paths, ground truth or
+rubric, the computed wrong-file edits, and the degenerate flag; a human records
+pass/fail. Pooled deltas and confidence intervals are computed only after
+adjudication — report negative results with the same prominence as positive
+ones.
