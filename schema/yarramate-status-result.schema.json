@@ -79,7 +79,8 @@
         "findings",
         "contradicted",
         "unknown",
-        "notObserved"
+        "notObserved",
+        "subjectsWithoutEvidence"
       ],
       "properties": {
         "evidenceDocuments": {
@@ -107,6 +108,10 @@
           "minimum": 0
         },
         "notObserved": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "subjectsWithoutEvidence": {
           "type": "integer",
           "minimum": 0
         }
