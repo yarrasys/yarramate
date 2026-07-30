@@ -10,6 +10,27 @@
 #   `expectedErrors = 94`, so adding a code must move it — `touches` lists it.
 # - ff-model-log-controller: catalogue-density-not-worse, the additive form of
 #   the gate (see ../../runner/score.mjs).
+#
+# v2 additions (comprehension), motivated by issue #56: in the 2026-07-29 sweep
+# the comprehension family saturated at both model tiers on all four repos —
+# every comprehension task was answered correctly by weak and strong models
+# alike — so H1 (does a workspace improve comprehension?) is unmeasurable from
+# it. The three pre-existing comprehension tasks are effectively single-hop.
+# v2 therefore adds 3 harder multi-hop comprehension tasks, each of which
+# requires chaining at least three hops across different subsystems rather than
+# grepping one symbol:
+# - ff-comp-schema-scope-compilation: plugin encapsulation boundary -> schema
+#   controller construction -> deferred compile at avvio preReady -> the
+#   addedSchemas rebuild guard.
+# - ff-comp-error-handler-escalation: setErrorHandler layering into a prototype
+#   chain -> route/404 composition -> the reply cursor that walks it -> the
+#   terminal branch that bypasses the send pipeline.
+# - ff-comp-auto-head-route: route option resolution -> the pre-insertion HEAD
+#   probe -> head-route onSend composition -> kRouteByFastify duplicate
+#   suppression and the order-dependent FST_ERR_DUPLICATED_ROUTE.
+# Ground truth for these three was verified against the pinned commit both by
+# reading the source and by executing the described scenarios against it; line
+# numbers are those of commit 812608e5 (they drift on other commits).
 type: yarramate/benchmark-suite/v2
 suite: fastify
 headline: true
@@ -143,6 +164,309 @@ tasks:
         - fastify.js:577-618
         - lib/plugin-override.js:28-74
         - lib/hooks.js:93-181
+    scoring:
+      method: ground-truth
+
+  - id: ff-comp-schema-scope-compilation
+    family: comprehension
+    prompt: >-
+      A fastify server calls addSchema at the root, then registers two sibling
+      plugins A and B, each in its own encapsulation context. Plugin A also
+      calls addSchema for a schema of its own. Both plugins declare routes
+      carrying validation schemas, and some routes also carry a response
+      schema. Answer precisely, citing files and functions: (a) which file and
+      call create the schema controller for an encapsulated child context, and
+      what that child takes from its parent at construction time —
+      distinguish what is copied, what is taken by reference, and what link
+      back to the parent is kept and what that link is later used for; (b) at
+      which point in the boot sequence a route's validation and serialization
+      functions are actually built — name the file, the deferral mechanism and
+      the event — and state the observable consequence for a schema that is
+      added after a route has been declared but before the server is ready;
+      (c) the guard that decides whether a context reuses an already-built
+      validator compiler or builds a new one: name the flag, give the exact
+      condition, and say what it implies for a context that has called
+      addSchema; also state the two conditions under which the route setup
+      code skips the validator and serializer setup calls entirely; (d) what
+      happens when plugin B declares a route whose schema $refs the schema
+      that plugin A added, including the coded error that surfaces and why.
+    groundTruth:
+      answer: >-
+        (a) lib/plugin-override.js:50 does
+        instance[kSchemaController] =
+        SchemaController.buildSchemaController(old[kSchemaController]), then
+        rebinds getSchema/getSchemas to it (lines 51-52). With a parent
+        present, buildSchemaController returns new SchemaController(parent,
+        opts) (lib/schema-controller.js:11-14). In the parent branch of the
+        constructor (lib/schema-controller.js:41-59): schemaBucket is a NEW
+        bucket seeded with a copy of the parent's schemas
+        (this.opts.bucket(parent.getSchemas())); validatorCompiler and
+        serializerCompiler are copied by value from
+        parent.getValidatorCompiler()/getSerializerCompiler();
+        isCustomValidatorCompiler/isCustomSerializerCompiler are copied;
+        this.opts is aliased from the parent (this.opts = options ||
+        parent?.opts) so compilersFactory is shared by reference; addedSchemas
+        is reset to false (line 43); and this.parent = parent is retained. The
+        parent link is used later by getValidatorCompiler,
+        getSerializerCompiler, getValidatorBuilder and getSerializerBuilder
+        (lines 119-133), which fall back up the chain when the local value is
+        unset. The root controller is built instead at fastify.js:118 with
+        buildSchemaController(null, options.schemaController), which is where
+        the @fastify/ajv-compiler and
+        @fastify/fast-json-stringify-compiler selectors are defaulted in
+        (lib/schema-controller.js:16-28). (b) Nothing is compiled when the
+        route is declared. lib/route.js registers a this.after(...) callback
+        (line 375) and inside it avvio.once('preReady', ...) (line 389); the
+        schema work runs in that preReady callback (lines 409-440):
+        normalizeSchema, then setupValidator, compileSchemasForValidation
+        (lib/validation.js:57-116), then setupSerializer and
+        compileSchemasForSerialization (lib/validation.js:18-55). Observable
+        consequence: order of declaration within a context does not matter —
+        a route declared before addSchema in the same context still compiles,
+        because the bucket is only read at preReady (verified by execution).
+        (c) setupValidator (lib/schema-controller.js:140-146) computes
+        const isReady = this.validatorCompiler !== undefined &&
+        !this.addedSchemas and returns early if isReady. add() sets
+        this.addedSchemas = true (line 63). So a context reuses a compiler
+        only when it already has one AND has never called addSchema; a
+        context that has called addSchema never short-circuits and re-invokes
+        getValidatorBuilder()(this.schemaBucket.getSchemas(),
+        serverOptions.ajv) for every route in that scope. setupSerializer
+        (lines 153-160) has the identical guard on serializerCompiler. The
+        two skip conditions in route.js: setupValidator is called only when
+        !opts.validatorCompiler && hasValidationSchema, where
+        hasValidationSchema is body/headers/querystring/params (lines
+        413-419), and setupSerializer only when opts.schema.response &&
+        !opts.serializerCompiler (line 432) — so a route with only a response
+        schema leaves that controller's validatorCompiler undefined
+        (verified). Note for adjudication: two sibling contexts can still end
+        up holding the same compiler object even though each called the
+        builder, because the @fastify/ajv-compiler selector memoizes on the
+        external-schema set; that identity is not produced by
+        SchemaController inheritance. (d) It fails at preReady, not at
+        declaration. B's bucket was seeded only from the root's schemas when B
+        was created, and A's addSchema went into A's own bucket, which is not
+        on B's parent chain, so the $ref cannot resolve. compile throws inside
+        compileSchemasForValidation and route.js:428-430 catches it and
+        rethrows FST_ERR_SCH_VALIDATION_BUILD (lib/errors.js:336), e.g.
+        "Failed building the validation schema for GET: /b/..., due to error
+        can't resolve reference childSchema# from id #" (verified). The
+        serialization equivalent is FST_ERR_SCH_SERIALIZATION_BUILD
+        (lib/errors.js:340, thrown at route.js:437-439).
+      verifiedAgainst:
+        - lib/plugin-override.js:50-52
+        - lib/schema-controller.js:11-38
+        - lib/schema-controller.js:41-65
+        - lib/schema-controller.js:119-133
+        - lib/schema-controller.js:140-160
+        - lib/route.js:375-441
+        - lib/validation.js:18-116
+        - lib/errors.js:336-343
+        - fastify.js:118
+    scoring:
+      method: ground-truth
+
+  - id: ff-comp-error-handler-escalation
+    family: comprehension
+    prompt: >-
+      A fastify server sets an error handler at the root with
+      setErrorHandler, then registers a plugin that sets its own error handler
+      and also adds an onError hook. A route declared inside that plugin has a
+      handler that throws, and the plugin's own error handler then throws as
+      well. Answer precisely, citing files, functions and symbols: (a) how
+      error handlers coming from nested encapsulation contexts and from a
+      route's errorHandler option are combined into the structure consulted at
+      request time — name the building function, the kind of data structure it
+      produces, and what sits at the root of that structure — and say what
+      happens if setErrorHandler is called twice in the same context under
+      default server options; (b) the exact sequence of error-handler
+      invocations for the request described, and how the framework decides
+      which handler runs after the plugin's handler fails: name the reply
+      symbol carrying that state and the line where it is advanced; (c)
+      whether the plugin's onError hooks run once, twice, or once per handler
+      invocation, and quote the condition in the source that determines it;
+      (d) what terminates the sequence once every handler in the structure has
+      been consumed, and then — the important part — what the framework does
+      differently on the next error after that point, naming which part of the
+      normal reply pipeline is skipped.
+    groundTruth:
+      answer: >-
+        (a) buildErrorHandler(parent = rootErrorHandler, func)
+        (lib/error-handler.js:124-132) returns Object.create(parent) with
+        .func = func, so error handlers form a PROTOTYPE CHAIN, not an array
+        or a list. At the root of the chain is rootErrorHandler
+        (lib/error-handler.js:23-28), whose func is defaultErrorHandler (lines
+        78-83); a fresh instance starts with [kErrorHandler]:
+        buildErrorHandler() (fastify.js:162). setErrorHandler
+        (fastify.js:767-783) layers a link with this[kErrorHandler] =
+        buildErrorHandler(this[kErrorHandler], func.bind(this)) (line 781).
+        Because a child instance prototype-inherits the parent, a plugin's
+        setErrorHandler extends the parent's chain without mutating it, and
+        lib/plugin-override.js:61 resets kErrorHandlerAlreadySet = false on
+        the child so every scope may set one. A route's errorHandler option
+        adds one further link at route setup: buildErrorHandler(this
+        [kErrorHandler], opts.errorHandler) (lib/route.js:377-379); the
+        not-found path composes the same way (lib/four-oh-four.js:157-158).
+        The selected link is stored on the route context as
+        context.errorHandler (lib/context.js:56). Calling setErrorHandler
+        twice in the SAME context does not replace the first handler: under
+        the default allowErrorHandlerOverride: true (fastify.js:912;
+        defaultInitOptions in lib/config-validator.js:1265) fastify only emits
+        warning FSTWRN004 (lib/warnings.js:32-37) and still layers the new
+        handler on top, leaving the earlier one reachable as the escalation
+        target; with allowErrorHandlerOverride: false it throws
+        FST_ERR_ERROR_HANDLER_ALREADY_SET (lib/errors.js:67-72, status 500,
+        TypeError). Both verified by execution. (b) Order actually observed:
+        the onError hook (with the original error), then the plugin's handler
+        (original error), then the root handler (seeing the plugin handler's
+        error), then defaultErrorHandler, which produces
+        {"statusCode":500,"error":"Internal Server Error","message":...}.
+        handleError (lib/error-handler.js:30-76) selects
+        reply[kReplyNextErrorHandler] || context.errorHandler (line 46) and
+        immediately advances the cursor with reply[kReplyNextErrorHandler] =
+        Object.getPrototypeOf(errorHandler) (line 49). A handler that throws,
+        or that sends an Error, re-enters Reply.prototype.send
+        (lib/reply.js:160-164) -> onErrorHook -> handleError, which now picks
+        the prototype, i.e. the next scope outwards. handleError also deletes
+        content-type and content-length from reply[kReplyHeaders] (lines
+        52-53) so the content type can be re-guessed. (c) Once. onErrorHook
+        (lib/reply.js:938-951) runs them only when "reply[kRouteContext]
+        .onError !== null && !reply[kReplyNextErrorHandler]" (line 939). On
+        the first error the cursor is still unset, so the hooks run; on every
+        escalation the cursor is truthy, so they are skipped and control goes
+        straight to handleError (verified: the hook fires exactly once, with
+        the original error). (d) The walk ends at
+        Object.getPrototypeOf(rootErrorHandler), a plain object with no func;
+        handleError detects !func, sets reply[kReplyNextErrorHandler] = false
+        and calls fallbackErrorHandler (lines 55-61 and 85-122), which
+        serializes the error itself — via the matching schema serializer from
+        getSchemaSerializer if there is one, otherwise the hard-coded
+        lib/error-serializer.js — sets content-length, and invokes the
+        callback, which on this path is still onSendHook, so onSend hooks DO
+        run for that response. From then on kReplyNextErrorHandler === false,
+        and if a further error arrives (for example an onSend hook throwing)
+        the first branch of handleError (lines 34-45) calls
+        fallbackErrorHandler with a callback that writes straight to the
+        socket: reply.raw.writeHead(reply.raw.statusCode,
+        reply[kReplyHeaders]) followed by reply.raw.end(payload). That
+        bypasses the whole Reply send pipeline — the onSend hook chain is not
+        run again (verified: an always-throwing onSend hook is invoked exactly
+        once, and the final body is the serialized onSend error) — and a
+        failing writeHead is reported through
+        reply.server[kLogController].writeHeadError before retrying without
+        headers.
+      verifiedAgainst:
+        - lib/error-handler.js:23-28
+        - lib/error-handler.js:30-76
+        - lib/error-handler.js:78-132
+        - lib/reply.js:150-164
+        - lib/reply.js:938-951
+        - lib/route.js:377-379
+        - lib/four-oh-four.js:157-158
+        - lib/context.js:56
+        - lib/plugin-override.js:61
+        - fastify.js:162-163
+        - fastify.js:767-783
+        - fastify.js:912
+        - lib/errors.js:67-72
+        - lib/warnings.js:32-37
+        - lib/config-validator.js:1265
+    scoring:
+      method: ground-truth
+
+  - id: ff-comp-auto-head-route
+    family: comprehension
+    prompt: >-
+      By default fastify registers a HEAD route alongside every GET route an
+      application declares. Answer precisely, citing files, functions and the
+      line-level conditions: (a) the full set of conditions that must all hold
+      for that automatic HEAD route to be created, where the controlling
+      option is read from and what its default is, and how one route can opt
+      out of, or opt in against, the server-wide setting; (b) how the
+      automatic route's options are derived from the GET route's options, what
+      is appended to its onSend chain, and where that appended entry sits
+      relative to onSend hooks the application registered on the instance and
+      on the route itself; (c) what the appended handler does to the response
+      in three cases — a plain serialized object payload, a Node stream
+      payload, and an undefined payload; (d) the framework marks this route as
+      its own: name the symbol, say where it is set and what it suppresses,
+      and describe the observable difference between declaring an explicit
+      HEAD route BEFORE the corresponding GET route and declaring it AFTER,
+      naming the coded error where one is raised.
+    groundTruth:
+      answer: >-
+        (a) The gate is lib/route.js:449: shouldExposeHead && isGetRoute &&
+        !isHeadRoute && !hasHEADHandler — all four must hold. shouldExposeHead
+        = opts.exposeHeadRoute ?? globalExposeHeadRoutes (line 223), so the
+        per-route exposeHeadRoute wins over the server-wide exposeHeadRoutes,
+        which is captured into globalExposeHeadRoutes in the router's setup()
+        at line 107 from options.exposeHeadRoutes and defaults to TRUE
+        (lib/config-validator.js:69-70 and defaultInitOptions at
+        lib/config-validator.js:1265; re-read into options at
+        fastify.js:916-917). isGetRoute is true when the method is 'GET' or
+        the method array includes 'GET' (lines 228-242) — verified: method:
+        ['GET','POST'] does get an automatic HEAD, a POST-only route does not.
+        hasHEADHandler comes from router.findRoute('HEAD', opts.url,
+        constraints) !== null evaluated at lines 356-357, i.e. BEFORE this
+        route is inserted. Per-route opt-out is exposeHeadRoute: false, and
+        exposeHeadRoute: true opts in even when the server sets
+        exposeHeadRoutes: false (both verified). (b) headOpts =
+        shouldExposeHead && isGetRoute ? { ...options } : null (line 245) — a
+        shallow clone of the ORIGINAL options object, taken before opts is
+        mutated with the prefix and url. At lines 450-451 the HEAD route is
+        registered with parseHeadOnSendHandlers(headOpts.onSend) and
+        prepareRoute.call(this, { method: 'HEAD', url: path, options: {
+        ...headOpts, onSend: onSendHandlers }, isFastify: true }).
+        parseHeadOnSendHandlers (lib/head-route.js:36-41) returns
+        headRouteOnSendHandler alone if the GET route had no onSend, otherwise
+        [...existing, headRouteOnSendHandler] — always LAST. At preReady the
+        context's onSend becomes this[kHooks].onSend.concat(opts.onSend || [])
+        (lib/route.js:390-394), so the effective order is: instance-level
+        onSend hooks, then the GET route's own onSend hooks, then
+        headRouteOnSendHandler last (verified: on a HEAD request both the
+        instance hook and the route hook run and both see the full serialized
+        payload). (c) headRouteOnSendHandler (lib/head-route.js:2-34): if
+        payload is undefined it sets content-length to '0' and calls
+        done(null, null); for a Node stream (typeof payload.resume ===
+        'function') it attaches an 'error' listener logging "Error on Stream
+        found for HEAD route", calls payload.resume() to drain it, and
+        done(null, null); for a web stream (typeof payload.getReader ===
+        'function') it calls payload.cancel('Stream cancelled by HEAD route')
+        with a .catch logger and done(null, null); otherwise it sets
+        content-length to '' + Buffer.byteLength(payload) and calls done(null,
+        null). Passing null as the payload is what strips the body while the
+        computed content-length survives — verified: HEAD against a GET
+        returning {hello:'world'} answers 200 with content-length: 17 and an
+        empty body. (d) isFastify: true is threaded into the Context
+        constructor and stored as this[kRouteByFastify] = isFastify
+        (lib/context.js:73; symbol declared at lib/symbols.js:68). In the
+        insertion try/catch (lib/route.js:359-373) a router insertion error is
+        swallowed only when context[kRouteByFastify] is set, so fastify's own
+        duplicate HEAD may silently lose. Observable difference, both
+        verified: an explicit HEAD declared BEFORE the GET makes
+        hasHEADHandler true at line 356, so no automatic HEAD is created and
+        the application's own handler serves HEAD — its body is sent, because
+        headRouteOnSendHandler is not in that chain. An explicit HEAD declared
+        AFTER the GET collides with the automatic HEAD already in the router,
+        and because the application's head() call is not kRouteByFastify the
+        error is rethrown as FST_ERR_DUPLICATED_ROUTE (lib/route.js:364-368;
+        lib/errors.js:364), "Method 'HEAD' already declared for route '/x'",
+        statusCode 500. Declaring the GET with exposeHeadRoute: false removes
+        the conflict, and the same failure occurs when the GET and the
+        explicit HEAD live in different plugins booted in that order.
+      verifiedAgainst:
+        - lib/route.js:107
+        - lib/route.js:223-245
+        - lib/route.js:356-373
+        - lib/route.js:388-395
+        - lib/route.js:446-452
+        - lib/head-route.js:2-45
+        - lib/context.js:73
+        - lib/symbols.js:68
+        - lib/errors.js:364-368
+        - lib/config-validator.js:69-70
+        - lib/config-validator.js:1265
+        - fastify.js:916-917
     scoring:
       method: ground-truth
 
