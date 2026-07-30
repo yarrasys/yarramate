@@ -63,7 +63,19 @@ self-model, source, tests, and fixtures.
 
 ## Install the agent skill
 
-After the repository is public, use the agent-skills installer:
+For Claude Code, the repository is its own plugin marketplace:
+
+```sh
+/plugin marketplace add yarrasys/yarramate
+/plugin install yarramate-architecture@yarramate
+```
+
+The marketplace entry points at `skills/yarramate-architecture` in this
+repository, so the installed plugin is the canonical skill rather than a
+copy. It declares no version, taking its version from the commit it was
+installed from.
+
+For other harnesses, use the agent-skills installer:
 
 ```sh
 npx skills add yarrasys/yarramate --skill yarramate-architecture

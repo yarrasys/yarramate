@@ -1,0 +1,18 @@
+{
+  "name": "yarramate",
+  "description": "The canonical YarraMate architecture skill, distributed from the repository that owns it.",
+  "owner": {
+    "name": "YarraMate contributors",
+    "url": "https://github.com/yarrasys/yarramate"
+  },
+  "plugins": [
+    {
+      "name": "yarramate-architecture",
+      "source": "./skills/yarramate-architecture",
+      "description": "Discover, design, or maintain repository architecture using native YarraMate documents and the stable CLI.",
+      "homepage": "https://github.com/yarrasys/yarramate",
+      "repository": "https://github.com/yarrasys/yarramate",
+      "license": "MIT"
+    }
+  ]
+}
