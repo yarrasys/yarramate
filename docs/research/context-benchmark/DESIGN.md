@@ -38,7 +38,11 @@ the drift signal is load-bearing, not hygiene theatre.
      components — scored by tests passing plus rubric review;
   3. **Model maintenance** — extend the model for a described change —
      scored by check pass, reconciliation results, and catalogue coverage.
-- Tasks are authored before any condition is run and frozen.
+- Tasks are authored before any condition is run and frozen. Errata found
+  after a sweep are corrected as a new suite version (`type:
+  yarramate/benchmark-suite/vN`) beside the old file, never as an edit to a
+  version that has been run: published numbers stay pinned to the text that
+  produced them. Suites at different versions are not pooled.
 
 ### Conditions
 
@@ -51,6 +55,13 @@ the drift signal is load-bearing, not hygiene theatre.
 Same agent harness, same prompts apart from the context instruction, fixed
 model per run. For H2, repeat A and B across ≥ 2 capability tiers.
 
+Prepared workdirs carry no agent configuration except the harness's own. The
+subject repository's `CLAUDE.md`, `AGENTS.md`, `.claude/` and `.mcp.json` are
+moved out of the workdir before the run and the run record lists what was
+moved; only then do model-bearing conditions receive YarraMate's pointer
+(ADR 0045) under those names. Keeping the subject's configuration is available
+as an explicit realism choice and is recorded as such.
+
 ### Metrics
 
 - Task success (primary; binary per task, human-adjudicated rubric for
@@ -59,6 +70,24 @@ model per run. For H2, repeat A and B across ≥ 2 capability tiers.
 - Wrong-file/wrong-component edit rate (a proxy for misorientation);
 - For model-maintenance tasks: check verdict, contradicted count, open
   catalogue questions before/after.
+
+What an agent changed is captured by staging the whole working tree and
+diffing it against the run's pinned baseline commit, so a file the agent
+created and a change the agent committed both appear — in the changed-file
+list and in the saved patch. A working-tree-only diff against `HEAD` sees
+neither, and both are ordinary agent behaviour.
+
+Open catalogue questions are counted once per matching subject, so declaring a
+concept mechanically opens more of them and at least one (`owner-missing`,
+human authority) cannot be answered for a third-party repository at all. Tasks
+that add concepts are therefore gated on open questions *per concept*, not on
+the absolute count; tasks that only remove or restructure keep the absolute
+comparison.
+
+Change and model-maintenance runs that finish in fewer than three turns are
+flagged for review rather than scored on their exit code: a clean exit that
+did no work is invisible to the harness-failure counter and reaches the
+adjudicator looking like an ordinary attempt.
 
 ### Reporting
 
@@ -77,6 +106,11 @@ the roadmap speaking.
   catalogue before freezing.
 - **Prompt leakage.** Condition instructions must not hint that one
   context source is preferred; phrasing review before freezing.
+- **Subject-repository agent configuration.** Coding harnesses auto-load
+  instruction files the subject repository ships, and tiers obey them
+  unequally — uptime-kuma's upstream anti-AI `CLAUDE.md` cost the weak tier
+  four one-turn refusals in the 2026-07-29 sweep and the strong tier none.
+  Left in place it measures instruction-following, not context value.
 - **Small N.** Early runs will be underpowered; report intervals, never
   bare point estimates.
 

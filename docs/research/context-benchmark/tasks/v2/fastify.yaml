@@ -1,0 +1,295 @@
+# Frozen benchmark task suite: fastify (yarramate/benchmark-suite/v2).
+# Authored before any condition run (DESIGN.md "Task suite"); ground truth was
+# verified by reading the source at the pinned commit — the code, not the
+# gallery model, is the authority. Comprehension and change prompts are
+# condition-neutral; model-maintenance prompts necessarily reference the
+# committed workspace and only run under model-present conditions.
+#
+# v2 errata against ../fastify.yaml (frozen; swept 2026-07-29):
+# - ff-ctp-remove-unknown-error: test/internals/errors.test.js pins
+#   `expectedErrors = 94`, so adding a code must move it — `touches` lists it.
+# - ff-model-log-controller: catalogue-density-not-worse, the additive form of
+#   the gate (see ../../runner/score.mjs).
+type: yarramate/benchmark-suite/v2
+suite: fastify
+headline: true
+repository:
+  name: fastify
+  source: https://github.com/fastify/fastify
+  commit: 812608e5c9cb0b643b3eb186c2e9e84bbb7ed8ee
+  gallery: https://github.com/yarrasys/yarramate-gallery
+  model: showcases/fastify
+
+tasks:
+  # --- Comprehension -------------------------------------------------------
+  - id: ff-encapsulation-child-state
+    family: comprehension
+    prompt: >-
+      When fastify.register(plugin) runs a plugin in its own encapsulated
+      context, the framework produces a child instance for that plugin.
+      Answer precisely, citing the relevant source files: (a) which file and
+      function create the child instance, and what is the object relationship
+      between the child and its parent instance; (b) which pieces of
+      per-instance state are freshly rebuilt or copied onto the child at
+      creation time, rather than reached through the parent via the prototype
+      chain; (c) three hook arrays are deliberately reset to empty on the
+      child instead of being copied from the parent — name all three and
+      explain why they must not be copied.
+    groundTruth:
+      answer: >-
+        (a) lib/plugin-override.js exports override(), installed as avvio's
+        override hook in fastify.js (avvio.override = override,
+        fastify.js:377). The child is created with Object.create(old), so it
+        prototype-inherits from the parent, and is pushed onto the parent's
+        kChildren list. (b) Rebuilt/copied onto the child: Reply and Request
+        constructors (Reply.buildReply / Request.buildRequest), the
+        content-type parser (buildContentTypeParser), the hook store
+        (buildHooks, which slices each hook array), the route prefix
+        (buildRoutePrefix with opts.prefix), log level, a new schema
+        controller layered on the parent's (SchemaController.
+        buildSchemaController(old[kSchemaController])) with rebound
+        getSchema/getSchemas, a fresh kChildren array, a rebound ready
+        (kAvvioBoot), a derived registered-plugins tracker and plugin name
+        chain, kErrorHandlerAlreadySet = false, merged log serializers, and —
+        when opts.prefix is set — a re-arranged 404 level
+        (kFourOhFour.arrange404). (c) onReady, onListen and preClose are
+        reset to [] in buildHooks (lib/hooks.js:87-89). Application hooks are
+        executed by walking each instance's kChildren tree
+        (hookRunnerApplication and onListenHookRunner recurse into children),
+        so copying the parent's entries into every child would run those
+        boot/shutdown hooks once per descendant instead of once.
+      verifiedAgainst:
+        - lib/plugin-override.js:28-74
+        - lib/hooks.js:73-91
+        - lib/hooks.js:93-150
+        - lib/hooks.js:183-207
+        - fastify.js:360-381
+    scoring:
+      method: ground-truth
+
+  - id: ff-body-parser-selection
+    family: comprehension
+    prompt: >-
+      Consider a POST route on a fastify server built with default options
+      and no custom content-type parsers registered beyond the built-ins.
+      For each of the following three incoming requests, state which internal
+      module decides what happens to the request body, what the outcome is,
+      and — where the request is rejected — the HTTP status code and the
+      coded error used: (1) the request carries the header "Content-Type:
+      application/vnd.foo+toml" (syntactically valid, but no parser and no
+      catch-all parser is registered for it); (2) the request has no
+      Content-Type header and no body (no content-length or
+      transfer-encoding); (3) the request has no Content-Type header but
+      does carry a non-empty body. Cite the files involved.
+    groundTruth:
+      answer: >-
+        Dispatch happens in lib/handle-request.js handleRequest(). (1) The
+        header is present and valid, so the route context's content-type
+        parser runs (lib/handle-request.js:87). ContentTypeParser.prototype.
+        run (lib/content-type-parser.js:187-199) resolves the parser via
+        getParser (exact match, then media-type, then regexp list, then the
+        '' catch-all); all miss because the defaults only register
+        application/json and text/plain (lib/content-type-parser.js:33-42),
+        so run() sends FST_ERR_CTP_INVALID_MEDIA_TYPE — HTTP 415 Unsupported
+        Media Type (lib/errors.js:111-115). (2) isEmptyBody()
+        (lib/handle-request.js:112-117) is true, so body parsing is skipped
+        entirely and the request proceeds to preValidation/validation/handler
+        with request.body undefined (lib/handle-request.js:66-70). (3) The
+        catch-all parser is attempted via contentTypeParser.run('', ...)
+        (lib/handle-request.js:73); no catch-all is registered by default, so
+        getParser returns undefined and the same 415
+        FST_ERR_CTP_INVALID_MEDIA_TYPE is sent. Special case verified in
+        code: requests dispatched to a 404 context skip parsing and go
+        straight to the handler (lib/content-type-parser.js:191-194).
+      verifiedAgainst:
+        - lib/handle-request.js:25-117
+        - lib/content-type-parser.js:33-42
+        - lib/content-type-parser.js:119-156
+        - lib/content-type-parser.js:187-233
+        - lib/errors.js:111-115
+    scoring:
+      method: ground-truth
+
+  - id: ff-retire-avvio
+    family: comprehension
+    prompt: >-
+      fastify declares a runtime dependency on the third-party package avvio.
+      Suppose avvio were retired from the codebase with no replacement.
+      (a) Which public instance methods would stop working because avvio
+      itself provides or backs them? (b) Beyond those methods, name two
+      framework behaviors that would break because they are wired through
+      avvio callbacks, and cite the file(s) where each is wired in.
+    groundTruth:
+      answer: >-
+        (a) register (avvio's use, exposed under the name register via
+        expose: { use: 'register' }), after, ready (avvio's ready is cached
+        as kAvvioBoot and wrapped by fastify's own ready), onClose, close,
+        and printPlugins (bound to avvio.prettyPrint). fastify.js initializes
+        these to null with the comment "initialized by Avvio"
+        (fastify.js:248-254) and avvio fills them in (fastify.js:360-381).
+        addHook('onClose', fn) also delegates to avvio's onClose
+        (fastify.js:603-604 region: name === 'onClose' branch). (b) Two
+        avvio-callback-wired behaviors: plugin encapsulation — avvio calls
+        the override assigned at fastify.js:377 (lib/plugin-override.js) to
+        create each child instance; and boot/shutdown application-hook
+        ordering — hookRunnerApplication threads onReady and preClose hooks
+        through the avvio boot callback (fastify[kAvvioBoot]) including
+        per-child recursion and AVVIO_ERRORS_MAP/plugin-timeout translation
+        (lib/hooks.js:93-181, fastify.js:368-390). Without avvio neither
+        plugin isolation nor ordered ready/close execution exists.
+      verifiedAgainst:
+        - fastify.js:248-254
+        - fastify.js:360-390
+        - fastify.js:577-618
+        - lib/plugin-override.js:28-74
+        - lib/hooks.js:93-181
+    scoring:
+      method: ground-truth
+
+  # --- Change --------------------------------------------------------------
+  - id: ff-add-has-hook
+    family: change
+    prompt: >-
+      Add a public instance method hasHook(hookName) to fastify. Behavior:
+      it returns true when at least one handler is registered for hookName
+      in the calling instance's own hook store (its encapsulation context,
+      including hooks copied into a child context at registration time), and
+      false otherwise. It must cover the request/reply lifecycle hooks (e.g.
+      onRequest, preHandler, onSend) and the application hooks kept in the
+      instance hook store (e.g. onRoute, onReady, preClose). For a hook name
+      the store does not support (e.g. "onFoo", or onClose, which is managed
+      by the boot orchestrator rather than the store), it must throw the
+      existing coded error FST_ERR_HOOK_NOT_SUPPORTED rather than a plain
+      Error. Derive hook-name support from the canonical hook definitions in
+      lib/hooks.js instead of introducing a second hard-coded list, and
+      update the TypeScript declarations so the method is part of the typed
+      instance surface. Do not change the behavior of addHook.
+    touches:
+      - fastify.js
+      - lib/hooks.js
+      - types/instance.d.ts
+      - hook-system
+      - public-api
+    scoring:
+      method: rubric
+      rubric:
+        - >-
+          hasHook is exposed on the fastify instance and returns correct
+          booleans by consulting the instance's own hook store (kHooks) for
+          both lifecycle hooks and store-kept application hooks; it does not
+          maintain a separate registry.
+        - >-
+          Unsupported hook names (including onClose) throw the existing
+          FST_ERR_HOOK_NOT_SUPPORTED coded error; no new bare Error or new
+          error code is introduced for this case.
+        - >-
+          Hook-name support is derived from lib/hooks.js (the Hooks store
+          and/or its exported hook lists); no duplicated hard-coded hook-name
+          list is added in fastify.js or elsewhere.
+        - >-
+          types/instance.d.ts declares hasHook with hook-name typing
+          consistent with the existing addHook overloads, and addHook
+          behavior is unchanged.
+
+  - id: ff-ctp-remove-unknown-error
+    family: change
+    prompt: >-
+      Today fastify.removeContentTypeParser("application/xml") silently does
+      nothing when no parser is registered for that content type. Change
+      this: removing a content type (string or RegExp) that has no registered
+      parser must fail with a new coded error FST_ERR_CTP_PARSER_NOT_FOUND,
+      created and exported following the framework's existing coded-error
+      conventions (the createError factory in lib/errors.js, FST_ERR_CTP_
+      prefix, an appropriate status code). The array form of
+      removeContentTypeParser must fail the same way if any listed content
+      type has no registered parser. The existing guard that throws
+      FST_ERR_CTP_INSTANCE_ALREADY_STARTED when the instance has already
+      started must keep taking precedence. Document the new error code in
+      docs/Reference/Errors.md and add it to the error-code union in
+      types/errors.d.ts. Successful removals of registered parsers must keep
+      working exactly as before.
+    touches:
+      - lib/content-type-parser.js
+      - lib/errors.js
+      - docs/Reference/Errors.md
+      - types/errors.d.ts
+      - test/internals/errors.test.js
+      - content-type-parser
+      - error-handling
+    scoring:
+      method: rubric
+      rubric:
+        - >-
+          FST_ERR_CTP_PARSER_NOT_FOUND is defined in lib/errors.js via the
+          existing createError factory with the FST_ERR_CTP_ prefix and is
+          exported alongside the other codes.
+        - >-
+          removeContentTypeParser throws the new error for unregistered
+          content types in both the single and array forms, while removal of
+          registered parsers (string and RegExp) still succeeds and actually
+          deregisters the parser.
+        - >-
+          The FST_ERR_CTP_INSTANCE_ALREADY_STARTED guard still fires first
+          when the instance has started, and no silent no-op path remains
+          reachable through the public removeContentTypeParser API for
+          unknown types.
+        - >-
+          The new code is documented in docs/Reference/Errors.md and added to
+          the error-code union in types/errors.d.ts.
+
+  # --- Model maintenance ---------------------------------------------------
+  - id: ff-model-log-controller
+    family: model-maintenance
+    prompt: >-
+      A code-level change has landed in fastify that the committed .yarramate
+      workspace predates: per-request logging is now mediated by an internal
+      LogController. The class lives in lib/log-controller.js,
+      createLogController builds it from the server options (re-exported
+      through lib/logger-factory.js and wired into the instance in
+      fastify.js), it gates per-request log lines via disableRequestLogging /
+      isLogDisabled and carries requestIdLogLabel, and the 404 path reports
+      route-not-found through it (basic404 in lib/four-oh-four.js calls
+      routeNotFound on it). The workspace's logging concept still cites only
+      lib/logger-factory.js and lib/logger-pino.js. Update the .yarramate
+      workspace so the logging subsystem accurately reflects the
+      LogController: amend the logging concept (or add a dedicated concept
+      under the framework grouping) with descriptions and evidence pointing
+      at the files above, and add or adjust relationships where the code
+      shows them (for example the 404/not-found path consuming the
+      LogController for its route-not-found log line). The workspace must
+      still pass its checks and must not contradict the code as it stands.
+    scoring:
+      method: deterministic
+      deterministic:
+        expect:
+          - check-pass
+          - no-contradicted
+          - catalogue-density-not-worse
+
+  - id: ff-model-schema-split-target
+    family: model-maintenance
+    prompt: >-
+      The fastify maintainers plan to split the schema subsystem that
+      lib/schema-controller.js currently owns end-to-end: request-side
+      validation (the shared schema bucket plus validator compilation backed
+      by @fastify/ajv-compiler, applied in lib/validation.js) will remain
+      with the schema controller, while response-side serialization
+      (serializer compilation backed by
+      @fastify/fast-json-stringify-compiler and the reply's serializer
+      resolution) will move to a new dedicated serializer controller module.
+      Update the .yarramate workspace to represent this as a planned target
+      state without misrepresenting the present: introduce a serialization
+      concept, move the serving relationship from the
+      "@fastify/fast-json-stringify-compiler (external)" dependency (dep-fjs)
+      and the serving relationship toward the Request/Reply layer
+      (schema-serves-reply) to that concept in the target structure, and keep
+      the currently observed single schema-engine arrangement accurate for
+      the as-is state (the split does not exist in the code today, so no
+      claim may assert it as observed). The workspace must still pass its
+      checks and the generated LikeC4 export must remain valid.
+    scoring:
+      method: deterministic
+      deterministic:
+        expect:
+          - check-pass
+          - likec4-check-pass

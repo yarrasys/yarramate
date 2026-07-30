@@ -11,7 +11,8 @@
 //   node run-benchmark.mjs --suite tasks/<name>.yaml --gallery <gallery-repo-dir> \
 //     --toolchain <dir with yarramate bins> --out <results-dir> \
 //     [--conditions A,B,C] [--tasks id,id] [--label tier-name] \
-//     [--harness 'claude -p --output-format json'] [--dry-run]
+//     [--harness 'claude -p --output-format json'] [--keep-subject-agent-config] \
+//     [--dry-run]
 //
 // The harness command receives the composed prompt on stdin and runs with the
 // task workdir as cwd. Anything printed to stdout is captured as the transcript.
@@ -22,7 +23,9 @@ import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CONDITIONS } from './conditions.mjs';
-import { catalogueOpen } from './catalogue.mjs';
+import { catalogueSnapshot } from './catalogue.mjs';
+import { placePointerFiles, quarantineAgentConfig, readPointerFiles } from './agent-config.mjs';
+import { isDegenerateRun } from './degenerate.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '..', '..', '..', '..');
@@ -39,7 +42,7 @@ const flag = (name) => args.includes(`--${name}`);
 const suitePath = opt('suite');
 const outDir = opt('out');
 if (!suitePath || !outDir) {
-  console.error('usage: run-benchmark.mjs --suite <suite.yaml> --out <dir> [--gallery <dir>] [--toolchain <bin-dir>] [--conditions A,B,C] [--tasks id,id] [--label tier] [--harness <cmd>] [--dry-run]');
+  console.error('usage: run-benchmark.mjs --suite <suite.yaml> --out <dir> [--gallery <dir>] [--toolchain <bin-dir>] [--conditions A,B,C] [--tasks id,id] [--label tier] [--harness <cmd>] [--keep-subject-agent-config] [--dry-run]');
   process.exit(2);
 }
 const suite = YAML.parse(readFileSync(suitePath, 'utf8'));
@@ -50,6 +53,7 @@ const label = opt('label', 'default');
 const conditionIds = opt('conditions', 'A,B,C').split(',');
 const onlyTasks = opt('tasks') ? new Set(opt('tasks').split(',')) : null;
 const dryRun = flag('dry-run');
+const agentConfigPolicy = flag('keep-subject-agent-config') ? 'keep' : 'neutralize';
 
 const modelSourceDir = () => {
   if (suite.repository.gallery && !galleryDir) {
@@ -76,7 +80,7 @@ for (const conditionId of conditionIds) {
 }
 
 if (dryRun) {
-  console.log(`suite=${suite.suite} label=${label} harness=${JSON.stringify(harness)} runs=${matrix.length}`);
+  console.log(`suite=${suite.suite} type=${suite.type} label=${label} harness=${JSON.stringify(harness)} agent-config=${agentConfigPolicy} runs=${matrix.length}`);
   for (const { conditionId, task } of matrix) console.log(`  ${conditionId} ${task.family.padEnd(17)} ${task.id}`);
   process.exit(0);
 }
@@ -95,21 +99,23 @@ if (!existsSync(cacheDir)) {
   execSync('git checkout -q FETCH_HEAD', { cwd: cacheDir });
 }
 
-// Model-bearing workdirs also get the AGENTS.md pointer that `yarramate init`
-// writes (ADR 0040): an adopted repository advertises its workspace to agent
-// harnesses, and condition B/C should look like an adopted repository. The
-// pointer text is captured once from a fresh init with the pinned toolchain.
-let pointerText = null;
-const agentsPointer = () => {
-  if (pointerText === null) {
+// Model-bearing workdirs also get the pointer that `yarramate init` writes
+// (ADR 0040, delivered per ADR 0045): an adopted repository advertises its
+// workspace to agent harnesses, and condition B/C should look like an adopted
+// repository. Both the delivery list and the text are captured once from a
+// fresh init with the pinned toolchain, so the runner places what that
+// toolchain places and nothing else.
+let pointers = null;
+const pointerFiles = () => {
+  if (pointers === null) {
     const probeDir = join(outDir, 'cache', '.agents-probe');
     if (!existsSync(join(probeDir, 'AGENTS.md'))) {
       mkdirSync(probeDir, { recursive: true });
       execFileSync(join(toolchain, 'yarramate'), ['init', '.'], { cwd: probeDir, stdio: 'ignore' });
     }
-    pointerText = readFileSync(join(probeDir, 'AGENTS.md'), 'utf8');
+    pointers = readPointerFiles(probeDir);
   }
-  return pointerText;
+  return pointers;
 };
 
 const runsPath = join(outDir, 'runs.jsonl');
@@ -119,6 +125,14 @@ for (const [index, { conditionId, condition, task }] of matrix.entries()) {
   rmSync(runDir, { recursive: true, force: true });
   mkdirSync(runDir, { recursive: true });
   cpSync(cacheDir, workdir, { recursive: true });
+
+  // Before anything the harness places: the subject's own agent config is a
+  // tier-dependent confound (agent-config.mjs). Quarantined outside the
+  // workdir so the agent cannot read it either, and always before the pointer
+  // is written into the same file names.
+  const neutralized = agentConfigPolicy === 'keep'
+    ? null
+    : quarantineAgentConfig(workdir, join(runDir, '.benchmark-quarantined'));
 
   const workspaceDir = join(workdir, '.yarramate');
   rmSync(workspaceDir, { recursive: true, force: true });
@@ -133,12 +147,11 @@ for (const [index, { conditionId, condition, task }] of matrix.entries()) {
       ], { encoding: 'utf8' });
       writeFileSync(join(runDir, 'inject.json'), injected);
     }
-    const agentsPath = join(workdir, 'AGENTS.md');
-    const existing = existsSync(agentsPath) ? `${readFileSync(agentsPath, 'utf8').replace(/\n*$/, '')}\n\n` : '';
-    writeFileSync(agentsPath, `${existing}${agentsPointer()}`);
-    catalogueBaseline = catalogueOpen(toolchain, workspaceDir, runDir);
+    placePointerFiles(workdir, pointerFiles());
+    catalogueBaseline = catalogueSnapshot(toolchain, workspaceDir, runDir);
   }
   execSync('git add -A && git -c user.email=bench@local -c user.name=bench commit -qm baseline --allow-empty', { cwd: workdir });
+  const baselineCommit = execSync('git rev-parse HEAD', { cwd: workdir, encoding: 'utf8' }).trim();
 
   const prompt = `${condition.instruction}\n\n${task.prompt}`;
   writeFileSync(join(runDir, 'prompt.txt'), prompt);
@@ -171,6 +184,7 @@ for (const [index, { conditionId, condition, task }] of matrix.entries()) {
 
   appendFileSync(runsPath, `${JSON.stringify({
     suite: suite.suite,
+    suiteType: suite.type,
     headline: suite.headline,
     label,
     condition: conditionId,
@@ -179,7 +193,10 @@ for (const [index, { conditionId, condition, task }] of matrix.entries()) {
     exitCode: result.status,
     durationMs,
     metrics,
+    degenerate: isDegenerateRun(task.family, metrics),
+    agentConfig: { policy: agentConfigPolicy, neutralized },
     catalogueBaseline,
+    baselineCommit,
     runDir,
     finishedAt: new Date().toISOString(),
   })}\n`);

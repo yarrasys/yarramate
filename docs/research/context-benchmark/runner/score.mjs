@@ -4,11 +4,13 @@
 // free-form agent output.
 //
 // Per run record from runs.jsonl:
+// - every run with a workdir: stage the working tree and write diff.patch
+//   against the pinned baseline commit;
 // - model-maintenance: run the pinned CLI against the post-run workspace and
 //   evaluate the task's `expect` list (check-pass, no-contradicted,
-//   catalogue-not-worse, likec4-check-pass);
+//   catalogue-not-worse, catalogue-density-not-worse, likec4-check-pass);
 // - change: compute the wrong-file edit rate (files changed vs the task's
-//   `touches` paths) from the workdir's git diff against the baseline commit;
+//   `touches` paths) from the same staged diff;
 // - comprehension/change verdicts: append to adjudication-queue.jsonl with the
 //   ground truth or rubric attached.
 //
@@ -16,7 +18,8 @@
 
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { catalogueOpen } from './catalogue.mjs';
+import { catalogueSnapshot } from './catalogue.mjs';
+import { DEGENERATE_MIN_TURNS, isDegenerateRun } from './degenerate.mjs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -55,25 +58,65 @@ const cli = (bin, cmdArgs, cwd) => {
     return { out: `${error.stdout ?? ''}${error.stderr ?? ''}`, code: error.status ?? 1 };
   }
 };
-const postCatalogueOpen = (workspaceDir, cwd) => catalogueOpen(toolchain, workspaceDir, cwd, cataloguePath);
+const postCatalogueSnapshot = (workspaceDir, cwd) => catalogueSnapshot(toolchain, workspaceDir, cwd, cataloguePath);
+const git = (cmdArgs, cwd) => execFileSync('git', cmdArgs, { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+
+// `git diff HEAD` saw neither the files an agent added (add-provider tasks
+// create whole modules) nor the work it committed. Staging everything and
+// diffing the index against the run's pinned baseline commit captures both.
+const baselineOf = (record, workdir) => {
+  if (record.baselineCommit) return record.baselineCommit;
+  // Sweeps that predate the recorded sha: "baseline" is the only commit the
+  // runner authors, so its message identifies it.
+  return git(['rev-list', '-1', '--grep=^baseline$', 'HEAD'], workdir).trim() || 'HEAD';
+};
+
+// Sweeps that predate the concept count store a bare open-question number.
+const asSnapshot = (value) => (typeof value === 'number' ? { open: value, concepts: null } : value ?? null);
+
+const catalogueVerdict = (expectation, baseline, after) => {
+  if (baseline === null || after === null) return null;
+  if (expectation === 'catalogue-not-worse') return after.open <= baseline.open;
+  if (baseline.concepts === null || after.concepts === null) return null;
+  // Open questions are counted once per matching subject, so declaring the
+  // concept an additive task asks for mechanically opens more of them — and
+  // owner-missing (authority: human) cannot honestly be closed for a
+  // third-party repository at all. Density keeps the intent, that new
+  // inventory is enriched to the standard of the model it joins, without
+  // punishing the requested behaviour. Cross-multiplied to stay in integers.
+  return after.open * baseline.concepts <= baseline.open * after.concepts;
+};
 
 const records = readFileSync(runsPath, 'utf8').trim().split('\n').filter(Boolean).map((line) => JSON.parse(line));
+const degenerate = [];
 for (const record of records) {
   const task = tasksById.get(record.task);
   if (!task) continue;
   const workdir = join(record.runDir, 'repo');
   const workspaceDir = join(workdir, '.yarramate');
-  const score = { ...record, deterministic: null, wrongFiles: null, adjudication: false };
+  const score = {
+    ...record,
+    degenerate: record.degenerate ?? isDegenerateRun(record.family, record.metrics),
+    deterministic: null,
+    wrongFiles: null,
+    adjudication: false,
+  };
 
-  if (task.family === 'change' && existsSync(workdir)) {
-    const changed = execFileSync('git', ['diff', '--name-only', 'HEAD'], { cwd: workdir, encoding: 'utf8' })
-      .trim().split('\n').filter(Boolean).filter((f) => !f.startsWith('.yarramate'));
-    const expected = task.touches.filter((t) => t.includes('/') || t.includes('.'));
-    score.wrongFiles = {
-      changed,
-      expected,
-      unexpected: changed.filter((f) => !expected.some((e) => f === e || f.startsWith(e))),
-    };
+  if (existsSync(join(workdir, '.git'))) {
+    const baseline = baselineOf(record, workdir);
+    git(['add', '-A'], workdir);
+    writeFileSync(join(record.runDir, 'diff.patch'), git(['diff', '--cached', baseline], workdir));
+
+    if (task.family === 'change') {
+      const changed = git(['diff', '--cached', '--name-only', baseline], workdir)
+        .trim().split('\n').filter(Boolean).filter((f) => !f.startsWith('.yarramate'));
+      const expected = task.touches.filter((t) => t.includes('/') || t.includes('.'));
+      score.wrongFiles = {
+        changed,
+        expected,
+        unexpected: changed.filter((f) => !expected.some((e) => f === e || f.startsWith(e))),
+      };
+    }
   }
 
   if (task.family === 'model-maintenance' && existsSync(workspaceDir)) {
@@ -97,10 +140,10 @@ for (const record of records) {
         } else {
           results[expectation] = null;
         }
-      } else if (expectation === 'catalogue-not-worse') {
-        const baseline = record.catalogueBaseline ?? null;
-        const after = postCatalogueOpen(workspaceDir, workdir);
-        results[expectation] = baseline === null || after === null ? null : after <= baseline;
+      } else if (expectation === 'catalogue-not-worse' || expectation === 'catalogue-density-not-worse') {
+        const baseline = asSnapshot(record.catalogueBaseline);
+        const after = postCatalogueSnapshot(workspaceDir, workdir);
+        results[expectation] = catalogueVerdict(expectation, baseline, after);
         score.catalogue = { baseline, after };
       }
     }
@@ -119,11 +162,17 @@ for (const record of records) {
       groundTruth: task.groundTruth ?? null,
       rubric: task.scoring.rubric ?? null,
       transcript: join(record.runDir, 'transcript.json'),
+      diff: join(record.runDir, 'diff.patch'),
       wrongFiles: score.wrongFiles,
+      degenerate: score.degenerate,
     })}\n`);
   }
 
   appendFileSync(scoresPath, `${JSON.stringify(score)}\n`);
+  if (score.degenerate) degenerate.push(`${record.label}/${record.condition}/${record.task}`);
 }
 
 console.log(`scored ${records.length} runs -> ${scoresPath}; adjudication queue -> ${queuePath}`);
+if (degenerate.length > 0) {
+  console.log(`degenerate (< ${DEGENERATE_MIN_TURNS} turns, review before scoring): ${degenerate.join(', ')}`);
+}
