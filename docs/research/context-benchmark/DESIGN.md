@@ -132,7 +132,8 @@ priority with evidence. Either outcome pays for the work.
 
 This design tests finished repositories, where the code is present and the
 agent can simply read it — the setting in which the 2026-07-29 sweep found
-comprehension saturated. A proposed follow-up tests the opposite case,
-finishing a feature that is only half built, and is drafted in
-[DESIGN-HANDOFF-FAMILY.md](DESIGN-HANDOFF-FAMILY.md). Draft only: no tasks, no
-runner support, no results.
+comprehension saturated. A proposed follow-up tests the opposite case, building
+a new application from an external published specification, and is drafted in
+[DESIGN-HANDOFF-FAMILY.md](DESIGN-HANDOFF-FAMILY.md). It scores convergence and
+promise-keeping rather than correctness, because a greenfield build has no
+right answer. Draft only: no tasks, no runner support, no results.
