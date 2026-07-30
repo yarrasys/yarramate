@@ -238,6 +238,9 @@ export function runStatusCommand(
             ? ` (${result.reconciliation.contradicted} contradicted, ` +
               `${result.reconciliation.unknown} unknown, ` +
               `${result.reconciliation.notObserved} not observed)`
+            : '') +
+          (result.reconciliation.subjectsWithoutEvidence > 0
+            ? `, ${plural(result.reconciliation.subjectsWithoutEvidence, 'current subject')} without evidence`
             : ''),
       )
     }

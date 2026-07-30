@@ -18,7 +18,8 @@
         "findings",
         "contradicted",
         "unknown",
-        "notObserved"
+        "notObserved",
+        "subjectsWithoutEvidence"
       ],
       "properties": {
         "evidenceDocuments": { "type": "integer", "minimum": 0 },
@@ -27,12 +28,17 @@
         "findings": { "type": "integer", "minimum": 0 },
         "contradicted": { "type": "integer", "minimum": 0 },
         "unknown": { "type": "integer", "minimum": 0 },
-        "notObserved": { "type": "integer", "minimum": 0 }
+        "notObserved": { "type": "integer", "minimum": 0 },
+        "subjectsWithoutEvidence": { "type": "integer", "minimum": 0 }
       }
     },
     "findings": {
       "type": "array",
       "items": { "$ref": "#/$defs/finding" }
+    },
+    "unobservedSubjects": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/subjectIdentity" }
     }
   },
   "$defs": {
