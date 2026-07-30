@@ -7,6 +7,7 @@ directory adds the task suites and the runner that make it executable.
 ```text
 context-benchmark/
   DESIGN.md                              # frozen protocol: hypotheses, conditions, metrics
+  DESIGN-HANDOFF-FAMILY.md               # DRAFT successor: designed-but-unbuilt work (H4-H6)
   yarramate-benchmark-suite.schema.json  # draft schema for yarramate/benchmark-suite v1-v2
   tasks/                                 # frozen task suites, one per repository
     v2/                                  # errata-corrected suites (see "Suite versions")
