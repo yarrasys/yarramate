@@ -63,6 +63,22 @@ concepts:
     kind: repository-file
     name: src/cli-support.ts
     status: current
+  - id: status-command-source
+    kind: repository-file
+    name: src/status-command.ts
+    status: current
+  - id: next-command-source
+    kind: repository-file
+    name: src/next-command.ts
+    status: current
+  - id: new-command-source
+    kind: repository-file
+    name: src/new-command.ts
+    status: current
+  - id: mcp-cli-source
+    kind: repository-file
+    name: src/adapters/mcp-cli.ts
+    status: current
   - id: projection-source
     kind: repository-file
     name: src/projection.ts
@@ -428,6 +444,22 @@ relationships:
     kind: realization
     from: cli-support-source
     to: yarramate-engine#cli
+  - id: status-command-source-realizes-command
+    kind: realization
+    from: status-command-source
+    to: yarramate-engine#status-command
+  - id: next-command-source-realizes-command
+    kind: realization
+    from: next-command-source
+    to: yarramate-engine#next-command
+  - id: new-command-source-realizes-command
+    kind: realization
+    from: new-command-source
+    to: yarramate-engine#new-command
+  - id: mcp-cli-source-realizes-adapter
+    kind: realization
+    from: mcp-cli-source
+    to: yarramate-engine#mcp-adapter
   - id: projection-source-realizes-context
     kind: realization
     from: projection-source

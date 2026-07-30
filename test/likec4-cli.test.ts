@@ -2405,8 +2405,8 @@ mappings:
               'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
             subject: 'yarramate-repository#likec4-export-source',
             path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/16/kind',
-            line: 75,
+            pointer: '/concepts/20/kind',
+            line: 91,
             column: 11,
           },
           {
@@ -2416,8 +2416,8 @@ mappings:
               'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
             subject: 'yarramate-repository#likec4-prepare-source',
             path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/19/kind',
-            line: 87,
+            pointer: '/concepts/23/kind',
+            line: 103,
             column: 11,
           },
           {
@@ -2427,8 +2427,8 @@ mappings:
               'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
             subject: 'yarramate-repository#likec4-project-source',
             path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/20/kind',
-            line: 91,
+            pointer: '/concepts/24/kind',
+            line: 107,
             column: 11,
           },
           {
@@ -2439,8 +2439,8 @@ mappings:
             subject:
               'yarramate-repository#likec4-project-definition-source',
             path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/21/kind',
-            line: 95,
+            pointer: '/concepts/25/kind',
+            line: 111,
             column: 11,
           },
           {
@@ -2451,8 +2451,8 @@ mappings:
             subject:
               'yarramate-repository#likec4-project-schema-source',
             path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/48/kind',
-            line: 208,
+            pointer: '/concepts/52/kind',
+            line: 224,
             column: 11,
           },
           {
@@ -2463,8 +2463,8 @@ mappings:
             subject:
               'yarramate-repository#likec4-generated-project-v2-schema-source',
             path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/49/kind',
-            line: 212,
+            pointer: '/concepts/53/kind',
+            line: 228,
             column: 11,
           },
         ],
