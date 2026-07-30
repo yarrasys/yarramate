@@ -35,8 +35,10 @@ export interface ReconciliationReport {
     readonly contradicted: number
     readonly unknown: number
     readonly notObserved: number
+    readonly subjectsWithoutEvidence: number
   }
   readonly findings: readonly ReconciliationFinding[]
+  readonly unobservedSubjects?: readonly string[]
 }
 
 const assertedRelationshipsByClaim = (
@@ -71,12 +73,57 @@ const assertedRelationshipsByClaim = (
   return asserted
 }
 
+const unobservedCurrentConcepts = (
+  graph: SemanticGraph | undefined,
+  reports: readonly EvidenceReport[],
+): readonly string[] => {
+  if (graph === undefined) return []
+  const relationshipIds = new Set(
+    graph.subjects
+      .filter(({ type }) => type === 'relationship')
+      .map(({ id }) => id),
+  )
+  const claimsById = new Map(graph.claims.map((claim) => [claim.id, claim]))
+  const observed = new Set<string>()
+  for (const report of reports) {
+    for (const observation of report.observations) {
+      if ('subject' in observation) {
+        observed.add(observation.subject)
+        continue
+      }
+      const claim = claimsById.get(observation.claim)
+      if (claim === undefined) continue
+      observed.add(claim.subject)
+      if (relationshipIds.has(claim.id) && 'ref' in claim.object) {
+        observed.add(claim.object.ref)
+      }
+    }
+  }
+  const conceptIds = new Set(
+    graph.subjects
+      .filter(({ type }) => type === 'concept')
+      .map(({ id }) => id),
+  )
+  return graph.claims
+    .filter(
+      (claim) =>
+        claim.predicate === 'yarramate/lifecycle/status' &&
+        'value' in claim.object &&
+        claim.object.value === 'current' &&
+        conceptIds.has(claim.subject) &&
+        !observed.has(claim.subject),
+    )
+    .map(({ subject }) => subject)
+    .sort((left, right) => left.localeCompare(right))
+}
+
 export function reconcileEvidenceReports(
   workspace: string,
   reports: readonly EvidenceReport[],
   graph?: SemanticGraph,
 ): ReconciliationReport {
   const assertedByClaim = assertedRelationshipsByClaim(graph)
+  const unobservedSubjects = unobservedCurrentConcepts(graph, reports)
   const summary = {
     evidenceDocuments: reports.length,
     observations: 0,
@@ -85,6 +132,7 @@ export function reconcileEvidenceReports(
     contradicted: 0,
     unknown: 0,
     notObserved: 0,
+    subjectsWithoutEvidence: unobservedSubjects.length,
   }
   const findings: ReconciliationFinding[] = []
   for (const report of reports) {
@@ -127,5 +175,6 @@ export function reconcileEvidenceReports(
     workspace,
     summary,
     findings,
+    ...(unobservedSubjects.length === 0 ? {} : { unobservedSubjects }),
   }
 }

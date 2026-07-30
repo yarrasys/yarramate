@@ -463,7 +463,9 @@ describe('YarraMate CLI', () => {
         contradicted: 1,
         unknown: 0,
         notObserved: 0,
+        subjectsWithoutEvidence: 1,
       },
+      unobservedSubjects: ['orders-project#order-service'],
       findings: [
         {
           target: {
@@ -516,6 +518,7 @@ describe('YarraMate CLI', () => {
         contradicted: 2,
         unknown: 0,
         notObserved: 0,
+        subjectsWithoutEvidence: 0,
       },
       findings: [
         {

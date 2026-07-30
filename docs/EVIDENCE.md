@@ -64,6 +64,13 @@ The typed API exposes `loadEvidence`, `evaluateEvidence`, and
 optional `evidence` category of a workspace manifest, in which case
 `yarramate check` validates them against the compiled graph.
 
+`yarramate check --strict` additionally fails the check (exit `1`) when any
+evidence observation is `contradicted`, rendering each contradiction as a
+source-located `YM901` diagnostic anchored at the declared claim. `unknown`
+and `not-observed` results stay advisory. A strict pass reports how many
+observations it evaluated, so a gate over zero evidence is visible rather
+than silently vacuous (ADR 0047).
+
 ## Reconciliation
 
 ```sh
@@ -105,6 +112,14 @@ the evidence is visible in the finding itself:
 
 Subject-targeted findings and findings on relationship sub-claims (such as
 `…~name`) do not carry `asserted`.
+
+The summary also counts `current` concepts that appear in no observation at
+all — neither targeted directly, nor through a claim they own, nor as an
+endpoint of an observed relationship claim — as `subjectsWithoutEvidence`.
+When the count is positive the report lists them in a top-level
+`unobservedSubjects` array, sorted lexicographically. This is not a finding:
+no provider looked and disagreed; reconciliation simply has no opinion, and
+the report says so instead of letting the gap pass as verified.
 
 A finding is advisory evidence, not a proposed replacement claim, validation
 error, CI verdict, or authorization to modify the native model.
