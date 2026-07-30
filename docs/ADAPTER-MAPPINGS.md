@@ -168,23 +168,43 @@ Project export may add adapter-owned dynamic views as described below.
 
 `export-project` writes `model.likec4`, `specification.likec4`, and
 `likec4.config.json` into a project directory, plus a versioned
-`yarramate.generated.json` marker. A matching marker permits deterministic
+`yarramate.generated.json` marker. The marker permits deterministic
 regeneration of only those three declared files and preserves unrelated
-files. The complete marker is validated against its normative schema before
-ownership is trusted; unmarked, malformed, or differently owned directories
-are refused. The project directory, marker, and three owned files must also be
-physical directories/files rather than symbolic links or substituted file
-types, preventing regeneration from writing outside the marked project. The
-marker records SHA-256 digests for all three owned files. Once digests are
-present, any edit, deletion, or interrupted partial update is refused instead
-of silently overwritten; deleting the derived project and exporting it again
-is the recovery path. Regeneration stages every owned file in the destination
-directory, atomically replaces each complete file, and replaces the ownership
-marker last. A process interruption can therefore leave old and new complete
-files, but never a partially written file; the still-current marker digests
-make that mixed state detectable on the next run. Legacy v1 markers without
-digests are accepted once and upgraded on regeneration. Single-view marker v1
-is defined by `schema/yarramate-likec4-generated-project.schema.json`.
+files. The complete marker is validated against its normative schemas before
+regeneration is trusted: a directory carrying a valid marker of either format
+version whose recorded output digests are intact is entirely
+machine-generated, so it is updated in place even when the project, mapping,
+views, or comparison have since changed — the ownership fields document
+provenance without gating updates (ADR 0050). Unmarked or malformed
+directories are refused as not YarraMate-generated, and a hand-edited,
+deleted, or interrupted partially updated owned file is refused by name
+instead of silently overwritten; deleting the derived project and exporting
+it again is the recovery path for hand edits. The project directory, marker,
+and three owned files must also be physical directories/files rather than
+symbolic links or substituted file types, preventing regeneration from
+writing outside the marked project. Regeneration stages every owned file in
+the destination directory, atomically replaces each complete file, and
+replaces the ownership marker last. A process interruption can therefore
+leave old and new complete files, but never a partially written file; the
+still-current marker digests make that mixed state detectable on the next
+run. Legacy markers without digests are accepted once and upgraded on
+regeneration. Single-view marker v1 is defined by
+`schema/yarramate-likec4-generated-project.schema.json`.
+
+The marker also records `inputDigests`: the SHA-256 of every resolved input
+that fed the export — the project definition or projection, the subject
+mapping, the kind mapping when present, each referenced projection, and every
+workspace source document — keyed by the path used to reference it.
+`export-project --check` uses them to report generated-output freshness
+without writing anything: it recomputes the would-be export in memory and
+compares digests, printing `Generated LikeC4 output: fresh` (exit 0), or
+`stale` with one `Reason:` line per changed, added, or removed input plus
+`model source changed` when the rendered model differs, followed by
+`Safe to regenerate: yes` (exit 1). An absent output directory reports
+`absent` (exit 1), a hand-edited generated file reports `modified` with
+`Safe to regenerate: no` (exit 1), and markers written before input digests
+existed report stale with reason `marker predates input digests`. Freshness
+is a pure digest comparison, never a semantic judgement.
 
 For a multi-view project, pass an adapter-owned project definition in place of
 the projection and mapping arguments:
@@ -313,9 +333,9 @@ metadata without inventing LikeC4 relationship identities.
 Both comparison states must occur in the projection's `query.states`.
 `YMLC105` identifies a selected comparison state missing from the compiled
 workspace, and `YMLC106` identifies a compared state omitted from the
-projection. A generated project marker owns the ordered comparison in addition
-to its projection and mappings, preventing a directory from silently changing
-comparison meaning on regeneration.
+projection. A generated project marker records the ordered comparison in
+addition to its projection and mappings, so a regenerated directory documents
+which comparison produced it.
 
 In a multi-view project, direct comparison styles remain local to the selected
 view and marker v2 records its ordered comparison. Because model elements are

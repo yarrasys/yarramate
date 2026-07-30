@@ -110,8 +110,8 @@ const usage =
   '  yarramate-likec4 check <projection.yaml> <mapping.yaml> [--json] [--kinds <kind-mapping.yaml>] [--compare <from-state> <to-state>] <workspace-or-source...>\n' +
   '  yarramate-likec4 check <likec4-project.yaml> [--json] <workspace-or-source...>\n' +
   '  yarramate-likec4 export <projection.yaml> <mapping.yaml> [--kinds <kind-mapping.yaml>] [--compare <from-state> <to-state>] <workspace-or-source...>\n' +
-  '  yarramate-likec4 export-project <projection.yaml> <mapping.yaml> <output-dir> [--kinds <kind-mapping.yaml>] [--compare <from-state> <to-state>] <workspace-or-source...>\n' +
-  '  yarramate-likec4 export-project <likec4-project.yaml> <output-dir> <workspace-or-source...>\n'
+  '  yarramate-likec4 export-project [--check] <projection.yaml> <mapping.yaml> <output-dir> [--kinds <kind-mapping.yaml>] [--compare <from-state> <to-state>] <workspace-or-source...>\n' +
+  '  yarramate-likec4 export-project [--check] <likec4-project.yaml> <output-dir> <workspace-or-source...>\n'
 
 const diagnosticJson = (
   diagnostics: readonly LikeC4PreparationDiagnostic[],
@@ -171,9 +171,6 @@ const summarizeUnmappedConcepts = (
     return [summary]
   })
 }
-
-const sameJson = (left: unknown, right: unknown) =>
-  JSON.stringify(left) === JSON.stringify(right)
 
 const lowerCamel = (value: string) =>
   value.replaceAll(/-([a-z0-9])/g, (_, character: string) =>
@@ -385,6 +382,40 @@ const runLikeC4MapSync = (
   }
 }
 
+// Ownership fields never gate updates: a marker of either format version
+// plus intact output digests proves the directory is entirely
+// machine-generated, so regenerating after the inputs changed loses nothing.
+const readGeneratedProjectMarker = (
+  markerPath: string,
+): Readonly<Record<string, unknown>> | undefined => {
+  let marker: unknown
+  try {
+    marker = JSON.parse(readFileSync(markerPath, 'utf8'))
+  } catch {
+    return undefined
+  }
+  return validateGeneratedProjectMarker(marker) ||
+    validateGeneratedProjectV2Marker(marker)
+    ? (marker as Readonly<Record<string, unknown>>)
+    : undefined
+}
+
+const changedGeneratedFile = (
+  projectPath: string,
+  marker: Readonly<Record<string, unknown>>,
+): string | undefined => {
+  // Markers written before output digests existed are accepted once and
+  // upgraded on regeneration.
+  if (marker['digests'] === undefined) return undefined
+  const digests = marker['digests'] as Readonly<Record<string, string>>
+  return generatedFileNames.find((file) => {
+    const path = resolve(projectPath, file)
+    return (
+      !existsSync(path) || sha256(readFileSync(path)) !== digests[file]
+    )
+  })
+}
+
 const publishGeneratedProject = (
   cwd: string,
   outputDirectory: string,
@@ -393,7 +424,7 @@ const publishGeneratedProject = (
     readonly title: string
     readonly modelSource: string
     readonly ownership: Readonly<Record<string, unknown>>
-    readonly validateMarker: (value: unknown) => boolean
+    readonly inputDigests: Readonly<Record<string, string>>
   },
 ): CliResult => {
   const projectPath = resolve(cwd, outputDirectory)
@@ -423,45 +454,20 @@ const publishGeneratedProject = (
         stderr: `Generated project contains an unsafe file: ${unsafeFile}\n`,
       }
     }
-    let marker: unknown
-    try {
-      marker = JSON.parse(readFileSync(markerPath, 'utf8'))
-    } catch {
-      marker = undefined
-    }
-    if (
-      !input.validateMarker(marker) ||
-      typeof marker !== 'object' ||
-      marker === null ||
-      Object.entries(input.ownership).some(
-        ([key, value]) =>
-          !sameJson(
-            (marker as Record<string, unknown>)[key],
-            value,
-          ),
-      )
-    ) {
+    const marker = readGeneratedProjectMarker(markerPath)
+    if (marker === undefined) {
       return {
         exitCode: 2,
         stdout: '',
-        stderr: `Output directory already exists: ${projectPath}\n`,
+        stderr: `Output directory exists but is not a YarraMate-generated project: ${projectPath}\n`,
       }
     }
-    if ('digests' in marker && marker.digests !== undefined) {
-      const digests = marker.digests as Record<string, string>
-      const changedFile = generatedFileNames.find((file) => {
-        const path = resolve(projectPath, file)
-        return (
-          !existsSync(path) ||
-          sha256(readFileSync(path)) !== digests[file]
-        )
-      })
-      if (changedFile !== undefined) {
-        return {
-          exitCode: 2,
-          stdout: '',
-          stderr: `Generated project file has changed: ${resolve(projectPath, changedFile)}\n`,
-        }
+    const changedFile = changedGeneratedFile(projectPath, marker)
+    if (changedFile !== undefined) {
+      return {
+        exitCode: 2,
+        stdout: '',
+        stderr: `Generated project file has changed: ${resolve(projectPath, changedFile)}\n`,
       }
     }
   } else {
@@ -497,6 +503,7 @@ const publishGeneratedProject = (
         'model.likec4': sha256(input.modelSource),
         'specification.likec4': sha256(specificationSource),
       },
+      inputDigests: input.inputDigests,
     },
     null,
     2,
@@ -525,6 +532,106 @@ const publishGeneratedProject = (
   }
 }
 
+// Freshness is a pure digest comparison between the marker and the would-be
+// export; nothing on disk is written or semantically judged.
+const checkGeneratedProject = (
+  cwd: string,
+  outputDirectory: string,
+  input: {
+    readonly modelSource: string
+    readonly inputDigests: Readonly<Record<string, string>>
+  },
+): CliResult => {
+  const projectPath = resolve(cwd, outputDirectory)
+  if (!existsSync(projectPath)) {
+    return {
+      exitCode: 1,
+      stdout: 'Generated LikeC4 output: absent\n',
+      stderr: '',
+    }
+  }
+  const marker = readGeneratedProjectMarker(
+    resolve(projectPath, 'yarramate.generated.json'),
+  )
+  if (marker === undefined) {
+    return {
+      exitCode: 2,
+      stdout: '',
+      stderr: `Output directory exists but is not a YarraMate-generated project: ${projectPath}\n`,
+    }
+  }
+  const changedFile = changedGeneratedFile(projectPath, marker)
+  if (changedFile !== undefined) {
+    return {
+      exitCode: 1,
+      stdout:
+        'Generated LikeC4 output: modified\n' +
+        'Reason:\n' +
+        `- generated file changed: ${resolve(projectPath, changedFile)}\n` +
+        'Safe to regenerate: no\n',
+      stderr: '',
+    }
+  }
+  const recordedInputs = marker['inputDigests'] as
+    | Readonly<Record<string, string>>
+    | undefined
+  const reasons: string[] = []
+  if (recordedInputs === undefined) {
+    reasons.push('marker predates input digests')
+  } else {
+    const inputPaths = [
+      ...new Set([
+        ...Object.keys(recordedInputs),
+        ...Object.keys(input.inputDigests),
+      ]),
+    ].sort()
+    for (const path of inputPaths) {
+      const recorded = recordedInputs[path]
+      const current = input.inputDigests[path]
+      if (recorded === undefined) reasons.push(`input added: ${path}`)
+      else if (current === undefined) {
+        reasons.push(`input removed: ${path}`)
+      } else if (recorded !== current) {
+        reasons.push(`input changed: ${path}`)
+      }
+    }
+  }
+  const digests = marker['digests'] as
+    | Readonly<Record<string, string>>
+    | undefined
+  if (
+    digests !== undefined &&
+    sha256(input.modelSource) !== digests['model.likec4']
+  ) {
+    reasons.push('model source changed')
+  }
+  if (reasons.length === 0) {
+    return {
+      exitCode: 0,
+      stdout: 'Generated LikeC4 output: fresh\n',
+      stderr: '',
+    }
+  }
+  return {
+    exitCode: 1,
+    stdout:
+      'Generated LikeC4 output: stale\n' +
+      'Reason:\n' +
+      reasons.map((reason) => `- ${reason}\n`).join('') +
+      'Safe to regenerate: yes\n',
+    stderr: '',
+  }
+}
+
+const inputDigestsOf = (
+  inputs: readonly { readonly path: string; readonly source: string }[],
+): Readonly<Record<string, string>> =>
+  Object.fromEntries(
+    inputs
+      .map(({ path, source }) => [path, sha256(source)] as const)
+      .sort(([left], [right]) => left.localeCompare(right)),
+  )
+
 export function runLikeC4Cli(
   args: readonly string[],
   cwd: string = process.cwd(),
@@ -535,7 +642,11 @@ export function runLikeC4Cli(
   if (args[0] === 'map') {
     return runLikeC4MapSync(args.slice(1), cwd)
   }
-  const [command, projectionPath, mappingPath, ...options] = args
+  const checkFreshness =
+    args[0] === 'export-project' && args.includes('--check')
+  const [command, projectionPath, mappingPath, ...options] = checkFreshness
+    ? args.filter((argument) => argument !== '--check')
+    : args
   let projectDefinitionMode = false
   if (
     (command === 'check' || command === 'export-project') &&
@@ -1065,6 +1176,17 @@ export function runLikeC4Cli(
           ? undefined
           : `${first.prepared.kindMapping.id}@${first.prepared.kindMapping.version}`
       const projectIdentity = `${loadedProject.document.value.id}@${loadedProject.document.value.version}`
+      const inputDigests = inputDigestsOf([
+        projectSource,
+        ...sources,
+        ...referencedSources.values(),
+      ])
+      if (checkFreshness) {
+        return checkGeneratedProject(cwd, outputDirectory!, {
+          modelSource: exported.source,
+          inputDigests,
+        })
+      }
       return publishGeneratedProject(cwd, outputDirectory!, {
         projectName: `yarramate-${projectIdentity}`.replaceAll(
           /[^A-Za-z0-9_-]/g,
@@ -1087,31 +1209,31 @@ export function runLikeC4Cli(
               : { comparison }),
           })),
         },
-        validateMarker: (value) =>
-          validateGeneratedProjectV2Marker(value),
+        inputDigests,
       })
     }
+    const projectionSource = {
+      path: projectionPath,
+      source: readFileSync(resolve(cwd, projectionPath), 'utf8'),
+    }
+    const mappingSource = {
+      path: mappingPath!,
+      source: readFileSync(resolve(cwd, mappingPath!), 'utf8'),
+    }
+    const kindMappingSource =
+      kindMappingPath === undefined
+        ? undefined
+        : {
+            path: kindMappingPath,
+            source: readFileSync(resolve(cwd, kindMappingPath), 'utf8'),
+          }
     const prepared = prepareLikeC4Export({
       sources,
-      projection: {
-        path: projectionPath,
-        source: readFileSync(resolve(cwd, projectionPath), 'utf8'),
-      },
-      subjectMapping: {
-        path: mappingPath!,
-        source: readFileSync(resolve(cwd, mappingPath!), 'utf8'),
-      },
-      ...(kindMappingPath === undefined
+      projection: projectionSource,
+      subjectMapping: mappingSource,
+      ...(kindMappingSource === undefined
         ? {}
-        : {
-            kindMapping: {
-              path: kindMappingPath,
-              source: readFileSync(
-                resolve(cwd, kindMappingPath),
-                'utf8',
-              ),
-            },
-          }),
+        : { kindMapping: kindMappingSource }),
       ...(comparison === undefined ? {} : { comparison }),
       vocabulary: command === 'export' ? 'consumer' : 'bundled',
     })
@@ -1142,6 +1264,18 @@ export function runLikeC4Cli(
         ? undefined
         : `${prepared.kindMapping.id}@${prepared.kindMapping.version}`
     const comparisonIdentity = comparison
+    const inputDigests = inputDigestsOf([
+      projectionSource,
+      mappingSource,
+      ...(kindMappingSource === undefined ? [] : [kindMappingSource]),
+      ...sources,
+    ])
+    if (checkFreshness) {
+      return checkGeneratedProject(cwd, outputDirectory!, {
+        modelSource: prepared.source,
+        inputDigests,
+      })
+    }
     return publishGeneratedProject(cwd, outputDirectory!, {
       projectName: ['yarramate', projectionIdentity]
         .join('-')
@@ -1161,7 +1295,7 @@ export function runLikeC4Cli(
           ? {}
           : { comparison: comparisonIdentity }),
       },
-      validateMarker: (value) => validateGeneratedProjectMarker(value),
+      inputDigests,
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
