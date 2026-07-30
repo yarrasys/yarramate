@@ -125,7 +125,8 @@ node dist/cli.js reconcile .yarramate/workspace.yaml
 
 `init` creates `.yarramate/architecture/main.yaml` and
 `.yarramate/workspace.yaml`. Commands accept explicit source documents or one
-explicit workspace manifest.
+explicit workspace manifest. `check --strict` additionally fails when any
+evidence observation contradicts the model, for gates that want one knob.
 
 For a local consumer test, create a package artifact:
 

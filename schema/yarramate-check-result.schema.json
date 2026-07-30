@@ -20,6 +20,9 @@
     },
     "counted": {
       "$ref": "#/$defs/counted"
+    },
+    "strict": {
+      "$ref": "#/$defs/strict"
     }
   },
   "allOf": [
@@ -50,6 +53,15 @@
     }
   ],
   "$defs": {
+    "strict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observations", "contradicted"],
+      "properties": {
+        "observations": { "type": "integer", "minimum": 0 },
+        "contradicted": { "type": "integer", "minimum": 0 }
+      }
+    },
     "counted": {
       "type": "object",
       "additionalProperties": false,
