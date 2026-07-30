@@ -6,6 +6,16 @@
 # - ht-mm-manager-session-store, ht-mm-update-checker:
 #   catalogue-density-not-worse, the additive form of the gate (see
 #   ../../runner/score.mjs). No task text changes.
+# - v2 adds three harder multi-hop comprehension tasks:
+#   ht-comp-download-output-pipeline, ht-comp-request-body-pipeline,
+#   ht-comp-offline-short-circuit. The 2026-07-29 sweep saturated the
+#   comprehension family at both model tiers on all four repositories, so H1
+#   is unmeasurable from it (issue #56). The three inherited comprehension
+#   tasks are single-hop - find the module, name the functions, list the call
+#   sites - and are answerable from one module. Each added task requires
+#   chaining at least three components and pins down an ordering, an
+#   interaction between two mechanisms, or a branch that is conditional or
+#   absent. Ground truth was verified by reading the pinned commit.
 type: yarramate/benchmark-suite/v2
 suite: httpie
 headline: true
@@ -155,6 +165,371 @@ tasks:
         - httpie/sessions.py:92-121
         - httpie/sessions.py:200-262
         - httpie/sessions.py:272-304
+    scoring:
+      method: ground-truth
+
+  - id: ht-comp-download-output-pipeline
+    family: comprehension
+    prompt: >-
+      With --download, HTTPie saves the response body to a file while the rest
+      of the exchange still goes to the console. Trace that split end to end
+      and answer precisely, naming files, functions and line-level ordering:
+      (a) name the two HTTPieArgumentParser methods that reshape output for
+      --download, in the order they run, and state exactly what each one
+      assigns to args.output_file, args.output_file_specified, env.stdout,
+      env.stdout_isatty and args.output_options; (b) explain why that order
+      matters, using `http --download example.org/f > out.bin` run from a
+      terminal - say which default print options are chosen and which would be
+      chosen instead if the two methods ran in the opposite order; (c) describe
+      how the body actually reaches the file: the call in httpie/core.py, the
+      stream class used, why the normal write_message stream-selection path is
+      bypassed so that --pretty never applies to it, and the request header the
+      downloader forces so the saved bytes match the wire; (d) the exit-status
+      interaction - which other flag --download switches on, how that changes
+      the mapping for a 3xx response, and the exact condition under which no
+      response body is written to disk at all even though a response arrived;
+      (e) for `http --download --all example.org/redirect`, which print options
+      are applied to the intermediary messages, and what effect the
+      --history-print/-P option has at this commit.
+    groundTruth:
+      answer: >-
+        (a) HTTPieArgumentParser.parse_args calls, in order,
+        _process_download_options (argparser.py:171, defined 542),
+        _setup_standard_streams (argparser.py:172, defined 227) and
+        _process_output_options (argparser.py:173, defined 492); the two that
+        reshape output are the latter pair. _setup_standard_streams first sets
+        args.output_file_specified = bool(args.output_file) (argparser.py:233)
+        - computed before anything else, so an auto-assigned output file is
+        never "specified" - then, in the --download branch, assigns
+        args.output_file = env.stdout when no --output was given and stdout is
+        not a tty (argparser.py:236-238), and unconditionally swaps
+        env.stdout = env.stderr and env.stdout_isatty = env.stderr_isatty
+        (argparser.py:243-244). It leaves args.output_options alone.
+        _process_output_options then picks the print defaults, reading the
+        already-swapped env.stdout_isatty (argparser.py:514), and finally, when
+        downloading, removes the response body from them:
+        args.output_options = str(set(args.output_options) - set(OUT_RESP_BODY))
+        (argparser.py:525-529). Note the value becomes the str() of a Python
+        set, e.g. the literal "{'h'}"; the single-character membership tests
+        used downstream still work, so the quirk is invisible.
+        (b) For `http --download example.org/f > out.bin` from a terminal,
+        stdout is a pipe and stderr is a tty. _setup_standard_streams sets
+        output_file_specified=False, assigns args.output_file = env.stdout (the
+        redirect target), then makes env.stdout stderr with
+        env.stdout_isatty = True. _process_output_options therefore sees a tty
+        and picks OUTPUT_OPTIONS_DEFAULT = OUT_RESP_HEAD + OUT_RESP_BODY = 'hb'
+        (constants.py:126), from which 'b' is stripped, so the response headers
+        are printed to the terminal via env.stdout, which is now stderr (see
+        the NOTE at output/writer.py:44-45). If the two ran in the opposite
+        order, _process_output_options would still see the real, redirected
+        stdout and choose OUTPUT_OPTIONS_DEFAULT_STDOUT_REDIRECTED =
+        OUT_RESP_BODY = 'b' (constants.py:127); stripping 'b' would then leave
+        nothing at all to print. _process_pretty_options (argparser.py:174,
+        defined 531-534) is likewise evaluated after the swap, so prettify
+        resolves to PRETTY_MAP['all'] from stderr being a tty and the headers
+        are colourised even though real stdout is a pipe.
+        (c) core.program constructs Downloader(env,
+        output_file=args.output_file, resume=args.download_resume) and calls
+        downloader.pre_request(args.headers) (core.py:203-206), which forces
+        Accept-Encoding: identity (downloads.py:193) - and adds a Range header
+        when resuming (downloads.py:194-200). After the message loop,
+        core.py:247-253 calls downloader.start(...), which builds a RawStream
+        itself with on_body_chunk_downloaded=self.chunk_downloaded
+        (downloads.py:248-252), and then calls write_stream(stream=..., outfile=
+        download_to, flush=False) directly (core.py:253; writer.py:61-77).
+        Because the stream is instantiated in downloads.py and write_stream is
+        called directly, the body never passes through write_message ->
+        build_output_stream_for_message -> get_stream_type_and_kwargs
+        (writer.py:27, 122, 153), so EncodedStream/PrettyStream/
+        BufferedPrettyStream and the Conversion/Formatting machinery
+        (output/streams.py:105, 170, 228) never see it, whatever --pretty or
+        --stream say.
+        (d) core.program sets args.follow = True for --download
+        (core.py:203-204). For each response, `if args.check_status or
+        downloader` computes exit_status = http_status_to_exit_status(
+        status_code, follow=args.follow) (core.py:230-231); with follow now
+        True the 3xx branch of status.py:30-32 cannot fire, so a redirect never
+        yields ERROR_HTTP_3XX (3). The body is fetched only under
+        `if downloader and exit_status == ExitStatus.SUCCESS` (core.py:247), so
+        a 4xx/5xx final response means nothing is written to the file at all -
+        downloader.failed() runs in the finally block (core.py:263-265) and the
+        process exits 4 or 5 (status.py:33-38). The same finally closes
+        args.output_file only when args.output_file_specified (core.py:266-267),
+        so an auto-assigned stdout target is not closed there.
+        (e) core.program derives per-message options with
+        OutputOptions.from_message(message, args.output_options) (core.py:214)
+        for every message, intermediary ones included, from the single
+        args.output_options computed above (already stripped of OUT_RESP_BODY).
+        --history-print/-P writes to args.output_options_history
+        (definition.py:496-502, declared with help=Qualifiers.SUPPRESS);
+        _process_output_options defaults it to args.output_options and
+        validates it (argparser.py:519-523), but no other module reads it -
+        those are its only references in the package - so at this commit -P has
+        no effect on what is printed. --all itself matters only in
+        collect_messages (client.py:128-132), where intermediary responses are
+        yielded inside the `if args.follow:` branch, and --download has already
+        forced --follow on.
+      verifiedAgainst:
+        - httpie/cli/argparser.py:169-180
+        - httpie/cli/argparser.py:227-267
+        - httpie/cli/argparser.py:492-529
+        - httpie/cli/argparser.py:531-534
+        - httpie/cli/argparser.py:542-552
+        - httpie/cli/constants.py:126-128
+        - httpie/cli/definition.py:496-502
+        - httpie/cli/definition.py:538-563
+        - httpie/core.py:203-206
+        - httpie/core.py:213-242
+        - httpie/core.py:247-267
+        - httpie/downloads.py:186-200
+        - httpie/downloads.py:202-260
+        - httpie/output/writer.py:27-58
+        - httpie/output/writer.py:61-77
+        - httpie/output/writer.py:122-204
+        - httpie/output/streams.py:88-99
+        - httpie/status.py:23-40
+        - httpie/client.py:125-133
+    scoring:
+      method: ground-truth
+
+  - id: ht-comp-request-body-pipeline
+    family: comprehension
+    prompt: >-
+      Two invocations end up with very different request bodies:
+      (X) `http --form POST example.org name=value photo@/tmp/p.png` and
+      (Y) `http POST example.org @/tmp/body.xml`. Trace both through the code
+      and answer: (1) which class turns the raw request items into typed
+      collections, what tuple the `@` item becomes, and which second collection
+      the `@` and `=` items are additionally recorded in and why; (2) for Y,
+      what the parser does when file items are present but --form is not - the
+      validations it applies, the rewrite it performs on args.data and
+      args.files, the header it may set - and which later merge lets that
+      header beat the default JSON Content-Type; (3) for X, name the collection
+      actually handed to the multipart encoder and say why it is neither
+      args.data nor args.files, name the module and function that build the
+      encoder, and explain how an explicit `Content-Type:` given on the command
+      line is reconciled with the generated boundary; (4) where a --form
+      request without file fields gets URL-encoded - name the module and
+      function, which is not httpie/client.py; (5) what -x/--compress does: at
+      which point of collect_messages it runs relative to preparing the
+      request, the exact condition under which the deflated body is thrown
+      away, how to force it anyway, what it does to a file-like body before
+      that decision is taken, and the two flags it may not be combined with
+      plus where that is enforced.
+    groundTruth:
+      answer: >-
+        (1) RequestItems.from_args (httpie/cli/requestitems.py:36-120), called
+        from HTTPieArgumentParser._parse_items (argparser.py:448-468), routes
+        each KeyValueArg through a separator -> (processor, target dict) table.
+        `@` maps to process_file_upload_arg (requestitems.py:150-162), which
+        opens the path in 'rb' and yields the tuple (os.path.basename(filename),
+        file_object, mime_type or get_content_type(filename)) into
+        instance.files; `=` maps to process_data_item_arg into instance.data.
+        Items whose separator is in SEPARATORS_GROUP_MULTIPART - `=`, `=@`, `@`
+        (constants.py:38-42) - are additionally stored in
+        instance.multipart_data (requestitems.py:112-113), a
+        MultipartRequestDataDict (dicts.py:89), expressly to preserve the
+        command-line ordering of fields for multipart requests. Which data dict
+        is used depends on the mode: RequestJSONDataDict in JSON mode,
+        RequestDataDict otherwise (requestitems.py:29-30; dicts.py:49, 85), and
+        _process_request_type (argparser.py:196-203) derives args.json,
+        args.multipart and args.form from the single request_type dest shared
+        by --json, --form and --multipart (definition.py:153-192), with
+        args.form true for MULTIPART as well.
+        (2) In Y args.files is non-empty while args.form is false, so
+        argparser.py:470-490 treats the file as the raw body. It errors with
+        'Invalid file fields (perhaps you meant --form?)' if any file item has a
+        non-empty field name and with "Can't read request from multiple files"
+        for more than one; then it clears args.files = {} and calls
+        _body_from_file(fd) (argparser.py:382-389), which - after
+        _ensure_one_data_source - assigns the file object itself to args.data.
+        If the request items did not already set one, it adds a Content-Type
+        guessed from the filename via get_content_type (utils.py:133-140,
+        mimetypes.guess_type). make_default_headers (client.py:263-278) would
+        otherwise set Content-Type: application/json here, because
+        auto_json = args.data and not args.form is true, but make_request_kwargs
+        merges defaults, then session base_headers, then CLI headers
+        (client.py:343-346), so the guessed header wins.
+        (3) For X, make_request_kwargs takes the multipart branch when
+        `(args.form and files) or args.multipart` (client.py:353) and passes
+        data=args.multipart_data - not args.data or args.files - because only
+        that dict preserves the interleaved order of value and file fields. It
+        calls get_multipart_data_and_content_type (httpie/uploads.py:230-249),
+        which builds a requests_toolbelt MultipartEncoder with
+        fields=data.items() and boundary=args.boundary (--boundary,
+        definition.py:193-199). If a Content-Type was supplied on the command
+        line it is stripped and, unless it already contains 'boundary=',
+        '; boundary={encoder.boundary_value}' is appended; otherwise
+        encoder.content_type is used. The result is written back to
+        headers['Content-Type'] (client.py:354).
+        (4) In prepare_request_body, httpie/uploads.py:202-203:
+        `elif isinstance(raw_body, RequestDataDict): body = as_bytes(
+        urlencode(raw_body, doseq=True))`. So --form data is URL-encoded in
+        httpie/uploads.py, not in httpie/client.py; client.py only JSON-
+        serialises, via json_dict_to_request_body (client.py:314-322) applied
+        at client.py:339-340 while the data is still a dict.
+        (5) --compress/-x is action='count' (definition.py:227-241). In
+        collect_messages it runs after preparation, not before:
+        requests_session.prepare_request(request) (client.py:92),
+        transform_headers (client.py:93), the --path-as-is fixup
+        (client.py:94-98), and only then `if args.compress and
+        prepared_request.body: compress_request(request=prepared_request,
+        always=args.compress > 1)` (client.py:99-103) - so it mutates the
+        PreparedRequest rather than the request kwargs. compress_request
+        (uploads.py:252-269) deflates with zlib.compressobj, computes
+        is_economical = len(deflated_data) < len(body_bytes), and assigns
+        request.body, Content-Encoding: deflate and a recomputed Content-Length
+        only `if is_economical or always`; otherwise the deflated bytes are
+        discarded. always comes from repeating the flag (-xx). If the body is
+        file-like the function consumes it with request.body.read()
+        (uploads.py:259-260) before that decision and reassigns request.body
+        only in the applying branch. --compress may not be combined with
+        --chunked or --multipart: HTTPieArgumentParser.parse_args errors with
+        'cannot combine --compress and --chunked' and 'cannot combine
+        --compress and --multipart' at argparser.py:187-192, after every
+        _process_* step has already run.
+      verifiedAgainst:
+        - httpie/cli/requestitems.py:24-120
+        - httpie/cli/requestitems.py:150-186
+        - httpie/cli/constants.py:14-72
+        - httpie/cli/dicts.py:49-95
+        - httpie/cli/argparser.py:182-203
+        - httpie/cli/argparser.py:382-398
+        - httpie/cli/argparser.py:448-490
+        - httpie/cli/definition.py:153-199
+        - httpie/cli/definition.py:227-241
+        - httpie/client.py:91-103
+        - httpie/client.py:263-278
+        - httpie/client.py:314-322
+        - httpie/client.py:325-374
+        - httpie/uploads.py:191-227
+        - httpie/uploads.py:230-249
+        - httpie/uploads.py:252-269
+        - httpie/utils.py:133-140
+    scoring:
+      method: ground-truth
+
+  - id: ht-comp-offline-short-circuit
+    family: comprehension
+    prompt: >-
+      --offline builds a request and prints it without sending it. For
+      `http --offline --chunked --continue --download --session=api
+      --check-status POST example.org @/tmp/body.json`, state exactly what
+      --offline changes and what it leaves alone: (a) which parser method
+      disables --download and --continue, at what point inside that method, and
+      which validation is consequently never reached, so that the invocation is
+      accepted rather than rejected; (b) the default print options when neither
+      --print nor --verbose is given, the constant that supplies them and its
+      value, and which branches still take precedence over it; (c) the one
+      request header httpie/client.py sets by hand only in offline mode, the
+      full condition, and the reason the code gives; (d) how the request body
+      is prepared differently offline when it comes from a file, and which
+      upload machinery is therefore never reached; (e) where in collect_messages
+      the send is short-circuited, how many messages are yielded, at least
+      three behaviours that consequently never run, and what all that means for
+      --check-status and the process exit status; (f) name two things that
+      still happen despite --offline - one involving the named session and one
+      involving a network call made outside the request pipeline - and say why
+      neither is suppressed.
+    groundTruth:
+      answer: >-
+        (a) HTTPieArgumentParser._process_download_options (argparser.py:542,
+        called third from parse_args at argparser.py:171). Its very first
+        statement is the offline guard: args.download = False,
+        args.download_resume = False, then an early return
+        (argparser.py:543-546). Because it returns there, the two --continue
+        validations below it - '--continue only works with --download'
+        (argparser.py:547-549) and '--continue requires --output to be
+        specified' (argparser.py:550-552) - are never reached, so the
+        invocation is accepted and both flags are dropped silently, with no
+        warning. With args.download now False, _setup_standard_streams does not
+        redirect env.stdout to env.stderr (argparser.py:234-244),
+        _process_output_options does not strip OUT_RESP_BODY
+        (argparser.py:525-529), and core.program never constructs a Downloader
+        (core.py:203-205).
+        (b) _process_output_options (argparser.py:507-517): when
+        args.output_options is None, the offline branch (argparser.py:512-513)
+        picks OUTPUT_OPTIONS_DEFAULT_OFFLINE, defined at
+        httpie/cli/constants.py:128 as OUT_REQ_HEAD + OUT_REQ_BODY = 'HB', i.e.
+        request headers and request body. It is an elif after the verbose
+        branches, so -vv (''.join(OUTPUT_OPTIONS)) and -v
+        (''.join(BASE_OUTPUT_OPTIONS)) still win (argparser.py:508-511), and an
+        explicit --print/-h/-b/-m wins over all of them because the whole block
+        is guarded by `if self.args.output_options is None`.
+        (c) make_request_kwargs, httpie/client.py:347-350: `if args.offline and
+        args.chunked and 'Transfer-Encoding' not in headers:
+        headers['Transfer-Encoding'] = 'chunked'`. The stated reason is that
+        when online HTTPie lets requests set the header instead, so that
+        chunking can be verified more easily; offline there is no requests
+        send, so the header is fabricated purely for the printed request.
+        (d) prepare_request_body (httpie/uploads.py:191-227) short-circuits at
+        uploads.py:207-211: offline, a file-like body is fully read with
+        as_bytes(raw_body.read()) and anything else is returned as is.
+        _prepare_file_for_upload (uploads.py:146-188) is therefore never
+        called, so none of ChunkedUploadStream / ChunkedMultipartUploadStream
+        (uploads.py:25, 44), the file.read wrapper
+        _wrap_function_with_callback (uploads.py:75-84) or the stdin
+        read-warning thread observe_stdin_for_data_thread (uploads.py:99-127)
+        is reached - --chunked produces no stream object offline, only the
+        fabricated header from (c). Since the body is plain bytes,
+        core.program's streamed-upload branch does not fire (is_streamed_upload
+        = not isinstance(message.body, (str, bytes)), core.py:225-227) and
+        request_body_read_callback (core.py:185-200) never runs.
+        (e) collect_messages, httpie/client.py:106-134: the loop yields
+        prepared_request and then guards everything after it with `if not
+        args.offline:` (client.py:108), reaching the unconditional break at
+        client.py:134 - so exactly one message is yielded and no response is
+        ever produced. Never run: requests_session.merge_environment_settings
+        (client.py:109-112), so --proxy/--verify/--cert environment merging is
+        skipped; the max_headers context manager (client.py:113, 144-153);
+        requests_session.send (client.py:114-118); the
+        _httpie_headers_parsed_at stamp (client.py:119) that
+        HTTPResponse.metadata depends on (models.py:88-101);
+        get_expired_cookies (client.py:120-122); and redirect following with
+        the requests.TooManyRedirects check (client.py:125-132). In
+        core.program the RESPONSE branch (core.py:228-233) never executes, so
+        final_response stays None, --check-status has no effect whatsoever, and
+        exit_status keeps its initial ExitStatus.SUCCESS (core.py:176, 261).
+        (f) First, the session is still written: the `if httpie_session:` save
+        block sits after the while loop, outside the offline guard
+        (client.py:136-140), so httpie_session.save() still runs whenever the
+        session is new or --session (read-write) was used, and
+        httpie_session.update_headers(request_kwargs['headers'])
+        (client.py:75) has already merged the outgoing headers into it. Second,
+        the self-update check still runs and may still hit the network:
+        raw_main calls check_updates(env) after a successful parse and before
+        the main program (core.py:98), and httpie/internal/update_warnings.py
+        (check_updates -> maybe_fetch_updates -> fetch_updates ->
+        spawn_daemon('fetch_updates'), update_warnings.py:55-75, 140-149) never
+        consults args.offline. Neither is suppressed because args.offline is
+        read in only four places in the package - cli/argparser.py:512 and 543,
+        client.py:108 and 347 (plus the pass-through at client.py:369 into the
+        offline parameter of uploads.py:195/207) - and none of them is in
+        httpie/internal/ or httpie/sessions.py. The update fetch is throttled
+        only by FETCH_INTERVAL and disabled only by the disable_update_warnings
+        config key (update_warnings.py:18, 62-75, 142-143).
+      verifiedAgainst:
+        - httpie/cli/argparser.py:168-194
+        - httpie/cli/argparser.py:227-267
+        - httpie/cli/argparser.py:492-529
+        - httpie/cli/argparser.py:542-552
+        - httpie/cli/constants.py:81-91
+        - httpie/cli/constants.py:126-128
+        - httpie/cli/definition.py:708-713
+        - httpie/cli/definition.py:796-804
+        - httpie/client.py:43-140
+        - httpie/client.py:144-153
+        - httpie/client.py:325-374
+        - httpie/core.py:98
+        - httpie/core.py:170-206
+        - httpie/core.py:213-242
+        - httpie/models.py:88-101
+        - httpie/uploads.py:25-63
+        - httpie/uploads.py:75-127
+        - httpie/uploads.py:146-227
+        - httpie/internal/update_warnings.py:16-19
+        - httpie/internal/update_warnings.py:55-75
+        - httpie/internal/update_warnings.py:140-149
     scoring:
       method: ground-truth
 
