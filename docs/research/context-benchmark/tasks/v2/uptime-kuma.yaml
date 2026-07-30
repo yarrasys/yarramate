@@ -1,0 +1,342 @@
+# Frozen benchmark task suite — uptime-kuma (headline repository).
+# Authored against commit ca5323c2dd1ed85c8b36b5227d2da6f6c28eeebc; every
+# groundTruth.answer was verified by reading the cited source files in that
+# commit. Code is the authority; the gallery model was used only to select
+# declared components worth targeting.
+#
+# v2 errata against ../uptime-kuma.yaml (frozen; swept 2026-07-29):
+# - uk-mm-notification-worker-split: catalogue-density-not-worse, the additive
+#   form of the gate (see ../../runner/score.mjs). uk-mm-metrics-endpoint-removed
+#   keeps the absolute gate — it only removes concepts, so the count is the
+#   right comparison there.
+# - The four excluded weak-tier refusals came from this repository's upstream
+#   anti-AI CLAUDE.md; the runner now quarantines subject-repo agent config
+#   (runner/agent-config.mjs), so no task text changes for it.
+type: yarramate/benchmark-suite/v2
+suite: uptime-kuma
+headline: true
+repository:
+  name: uptime-kuma
+  source: https://github.com/louislam/uptime-kuma
+  commit: ca5323c2dd1ed85c8b36b5227d2da6f6c28eeebc
+  gallery: https://github.com/yarrasys/yarramate-gallery
+  model: showcases/uptime-kuma
+
+tasks:
+  # ------------------------------------------------------------------
+  # Comprehension
+  # ------------------------------------------------------------------
+  - id: uk-comp-alert-decision-dispatch
+    family: comprehension
+    prompt: >-
+      In this repository, when an actively checked monitor transitions from UP
+      to DOWN, an alert is delivered to the operator's configured channels
+      (Telegram, Slack, email, and so on). Explain the code path with
+      repo-relative file paths: (a) which file and function decide that the
+      heartbeat warrants sending notifications, (b) which file and function
+      resolve the concrete provider implementation that formats and delivers
+      the message for a given channel type, and (c) where the individual
+      per-channel provider implementations live and what contract they
+      implement.
+    groundTruth:
+      answer: >-
+        (a) The per-monitor check loop in server/model/monitor.js decides:
+        after each beat, Monitor.isImportantBeat marks the transition and
+        Monitor.isImportantForNotification (server/model/monitor.js:1420,
+        called at line 968) determines that UP->DOWN warrants notifications;
+        Monitor.sendNotification (server/model/monitor.js:1452) then builds
+        the message and iterates the monitor's configured notification list
+        (re-sends while still DOWN are driven by resendInterval at lines
+        989-1002). (b) Notification.send in server/notification.js (line 238)
+        resolves the provider by looking up notification.type in the
+        providerList registry that Notification.init (line 112) builds at
+        startup. (c) Each channel is a module under
+        server/notification-providers/ (99 modules) whose class extends
+        NotificationProvider (server/notification-providers/notification-provider.js),
+        sets a unique name, and implements send(notification, msg,
+        monitorJSON, heartbeatJSON), returning a success message or throwing
+        on failure.
+      verifiedAgainst:
+        - server/model/monitor.js:961
+        - server/model/monitor.js:1420
+        - server/model/monitor.js:1452
+        - server/notification.js:112
+        - server/notification.js:238
+        - server/notification-providers/notification-provider.js
+    scoring:
+      method: ground-truth
+
+  - id: uk-comp-push-vs-active
+    family: comprehension
+    prompt: >-
+      Push monitors in this repository are passive: an external system calls
+      an HTTP endpoint to report its own liveness instead of being probed.
+      Identify, with repo-relative file paths: (a) the exact route and the
+      file that implements it, (b) how the handler decides whether the
+      resulting heartbeat is UP, PENDING, or DOWN when retries are configured,
+      and (c) whether the handler reuses the periodic check loop that active
+      monitors run through or implements its own path — and, in the latter
+      case, what state it updates before responding (persistence, live
+      dashboard updates, statistics, alerting).
+    groundTruth:
+      answer: >-
+        (a) router.all("/api/push/:pushToken") in server/routers/api-router.js
+        (line 47). (b) A local determineStatus() helper in the same file
+        (lines 576-619) applies upside-down flipping and the
+        maxretries/PENDING escalation against the previous heartbeat.
+        (c) It does not go through the active check loop in
+        server/model/monitor.js — the route handler itself dispenses a
+        heartbeat bean, checks maintenance via Monitor.isUnderMaintenance
+        (forcing MAINTENANCE status), updates the per-monitor UptimeCalculator
+        (line 92), calls Monitor.sendNotification on important transitions and
+        re-sends while DOWN per resendInterval (lines 102-123), stores the
+        heartbeat row (line 125), emits the "heartbeat" Socket.IO event to the
+        owning user's room and pushes aggregate stats via Monitor.sendStats
+        (lines 127-129), and updates Prometheus metrics (line 132) before
+        responding with { ok: true }.
+      verifiedAgainst:
+        - server/routers/api-router.js:47
+        - server/routers/api-router.js:576
+        - server/routers/api-router.js:92
+        - server/routers/api-router.js:125
+        - server/model/monitor.js:1596
+    scoring:
+      method: ground-truth
+
+  - id: uk-comp-uptime-calc-retired
+    family: comprehension
+    prompt: >-
+      Suppose the module server/uptime-calculator.js were retired from this
+      repository without a replacement. Based on what actually imports and
+      calls it, list the user-facing capabilities that would break, naming the
+      consuming file (repo-relative path) responsible for each.
+    groundTruth:
+      answer: >-
+        Breakages by consumer: (1) server/model/monitor.js — the check loop's
+        uptime/response aggregation (uptimeCalculator.update at line 1053) and
+        the live dashboard statistics Monitor.sendStats emits (avgPing and
+        uptime Socket.IO events, lines 1315-1340); (2)
+        server/routers/api-router.js — the public SVG uptime and ping badges
+        (getDataByDuration at lines 257 and 317) and the push endpoint's
+        heartbeat end-time/uptime update (line 92); (3)
+        server/routers/status-page-router.js — the public status page's 24h
+        uptime figures (get24Hour at line 99); (4)
+        server/socket-handlers/chart-socket-handler.js — dashboard chart data
+        (getUptimeCalculator at line 16); (5) server/server.js — the
+        clear-statistics operations (UptimeCalculator.clearStatistics /
+        clearAllStatistics at lines 1683 and 1711); (6) server/database.js —
+        the aggregate-stats migration during database setup (new
+        UptimeCalculator at line 932). server/prometheus.js only references
+        the module's typedef in a comment, so metric export itself does not
+        depend on it at runtime.
+      verifiedAgainst:
+        - server/uptime-calculator.js:72
+        - server/model/monitor.js:1053
+        - server/model/monitor.js:1315
+        - server/routers/api-router.js:257
+        - server/routers/api-router.js:317
+        - server/routers/status-page-router.js:99
+        - server/socket-handlers/chart-socket-handler.js:16
+        - server/server.js:1683
+        - server/database.js:932
+        - server/prometheus.js:147
+    scoring:
+      method: ground-truth
+
+  # ------------------------------------------------------------------
+  # Change
+  # ------------------------------------------------------------------
+  - id: uk-change-add-notification-provider
+    family: change
+    prompt: >-
+      Add a new notification channel named "SimplePost" to this repository.
+      Behaviour: it performs an HTTP POST of the JSON body {"title", "msg",
+      "status"} to a user-configured URL, with an optional user-configured
+      token sent as an Authorization bearer header. Requirements: (1)
+      implement the server-side provider following the existing provider
+      conventions so both alert (DOWN) and recovery (UP) messages are
+      delivered through it; (2) register it so the server can dispatch to it
+      by notification type; (3) add the settings form to the web UI so an
+      operator can create a SimplePost notification from the notification
+      dialog (URL required, token optional). Follow the existing patterns in
+      the codebase and do not modify unrelated providers.
+    touches:
+      - notification-hub
+      - web-app
+      - server/notification.js
+      - server/notification-providers/
+      - src/components/notifications/index.js
+      - src/components/notifications/
+    scoring:
+      method: rubric
+      rubric:
+        - >-
+          A new module under server/notification-providers/ exports a class
+          extending NotificationProvider, sets a unique name, and implements
+          send() performing the POST with the JSON body and the optional
+          Authorization header, following the existing okMsg-on-success /
+          throw-on-failure convention.
+        - >-
+          The provider is imported and instantiated in the provider list
+          inside Notification.init() in server/notification.js, so
+          Notification.send() resolves it by type.
+        - >-
+          A form component is added under src/components/notifications/ and
+          registered in NotificationFormList in
+          src/components/notifications/index.js under a key matching the
+          server-side provider name, making the type selectable in the
+          notification dialog with a required URL input and an optional token
+          input.
+        - >-
+          No unrelated notification providers or monitor code paths are
+          modified.
+
+  - id: uk-change-add-monitor-type
+    family: change
+    prompt: >-
+      Add a new active check type "tcp-banner" to this repository. Behaviour:
+      it opens a TCP connection to a configured hostname and port, reads the
+      first line the remote end sends (the banner), and reports the check as
+      up only if the banner contains a configured keyword; otherwise the check
+      fails with a descriptive error message. Requirements: (1) implement the
+      check following the repository's pluggable check-type conventions; (2)
+      register the type so per-monitor checks of this type are dispatched to
+      your implementation; (3) expose the new type in the monitor edit form,
+      reusing the existing hostname, port, and keyword inputs. Follow the
+      existing patterns and do not modify other check types.
+    touches:
+      - monitor-engine
+      - server-core
+      - web-app
+      - server/monitor-types/
+      - server/uptime-kuma-server.js
+      - src/pages/EditMonitor.vue
+    scoring:
+      method: rubric
+      rubric:
+        - >-
+          A new module under server/monitor-types/ exports a class extending
+          MonitorType with name "tcp-banner" and an async check(monitor,
+          heartbeat, server) that sets heartbeat.status to UP with a message
+          on success and throws a descriptive Error on failure, per the
+          contract in server/monitor-types/monitor-type.js.
+        - >-
+          The type is registered as
+          UptimeKumaServer.monitorTypeList["tcp-banner"] in initMonitorTypes()
+          in server/uptime-kuma-server.js — the dispatch table the check loop
+          consults (server/model/monitor.js line ~871).
+        - >-
+          src/pages/EditMonitor.vue offers "tcp-banner" as a selectable
+          monitor type and shows the hostname, port, and keyword inputs for
+          it; the forms of other types are unchanged.
+        - >-
+          No existing check-type modules are modified.
+
+  - id: uk-change-skip-recovery-notification
+    family: change
+    prompt: >-
+      Add a per-monitor setting "Skip recovery notifications" to this
+      repository. When enabled for a monitor, DOWN alerts are still sent, but
+      the recovery (DOWN to UP) notification is suppressed for that monitor —
+      for both actively checked monitors and passive push monitors.
+      Requirements: (1) persist the setting on the monitor record with a
+      schema migration following the repository's migration conventions,
+      defaulting to off; (2) enforce the suppression wherever up/down
+      notifications are dispatched, without affecting DOWN alerts or the
+      still-down re-send behaviour; (3) expose a checkbox for the setting in
+      the monitor edit form; (4) ensure the setting round-trips through
+      monitor create and edit.
+    touches:
+      - monitor-engine
+      - server-core
+      - web-app
+      - monitor-config
+      - db/knex_migrations/
+      - server/model/monitor.js
+      - server/server.js
+      - src/pages/EditMonitor.vue
+    scoring:
+      method: rubric
+      rubric:
+        - >-
+          A new migration file under db/knex_migrations/ adds a boolean column
+          (defaulting to false/0) to the monitor table, matching the naming
+          and up/down structure of the existing migrations (e.g.
+          2025-09-02-0000-add-domain-expiry.js).
+        - >-
+          The guard is enforced on the shared dispatch path (e.g. in
+          Monitor.sendNotification or at its call sites in
+          server/model/monitor.js) such that UP-recovery notifications are
+          skipped when the flag is set while UP->DOWN alerts and
+          resendInterval re-sends still fire; because the push route in
+          server/routers/api-router.js also calls Monitor.sendNotification,
+          push monitors honour the same behaviour.
+        - >-
+          The field is included in Monitor.toJSON in server/model/monitor.js
+          and copied from the client payload in both the "add" and
+          "editMonitor" socket handlers in server/server.js, so it round-trips
+          through create and edit.
+        - >-
+          src/pages/EditMonitor.vue renders the checkbox, defaulting to
+          unchecked, and no unrelated monitor settings change behaviour.
+
+  # ------------------------------------------------------------------
+  # Model maintenance
+  # ------------------------------------------------------------------
+  - id: uk-mm-metrics-endpoint-removed
+    family: model-maintenance
+    prompt: >-
+      Scenario — assume this change has landed in the repository: the
+      Prometheus integration has been removed entirely. The
+      app.get("/metrics", apiAuth, ...) route is gone from server/server.js,
+      server/prometheus.js is deleted, and the prometheus-api-metrics
+      dependency has been dropped; no metrics endpoint exists any more.
+      Update the repository's committed .yarramate workspace
+      (.yarramate/workspace.yaml and the documents it references: the
+      architecture document, the evidence document, and the LikeC4 integration
+      mapping under .yarramate/integrations/likec4/) so it accurately reflects
+      the repository after this change. In particular, the metrics-scraper
+      concept and the core-serves-scraper relationship no longer describe
+      anything real, and evidence observations citing the /metrics endpoint
+      must not survive unchanged. Deliver an updated workspace that passes
+      `yarramate check` with no contradicted evidence results, and keep the
+      LikeC4 mapping consistent with the model so `yarramate-likec4 check`
+      passes.
+    scoring:
+      method: deterministic
+      deterministic:
+        expect:
+          - check-pass
+          - no-contradicted
+          - likec4-check-pass
+          - catalogue-not-worse
+
+  - id: uk-mm-notification-worker-split
+    family: model-maintenance
+    prompt: >-
+      Scenario — assume this change has landed in the repository: notification
+      dispatch has been extracted out of the main server process. A new
+      entrypoint server/notification-worker.js runs as a second Node.js
+      process inside the same container, started by the container command
+      alongside server/server.js. The monitor engine no longer calls
+      Notification.send in-process; instead it enqueues dispatch requests into
+      a new notification_queue table in the application database, which the
+      worker polls and delivers through the existing provider modules under
+      server/notification-providers/. Update the repository's committed
+      .yarramate workspace (.yarramate/workspace.yaml and the documents it
+      references) to reflect this: the notification hub's process/deployment
+      placement inside the Docker runtime, the engine-to-hub interaction
+      becoming queue-mediated through the application database, and the new
+      queued dispatch-request data. Adjust evidence observations that the
+      scenario invalidates and keep the LikeC4 mapping in sync with the
+      revised concepts and relationships. Deliver an updated workspace that
+      passes `yarramate check` with no contradicted evidence results and a
+      passing `yarramate-likec4 check`.
+    scoring:
+      method: deterministic
+      deterministic:
+        expect:
+          - check-pass
+          - no-contradicted
+          - likec4-check-pass
+          - catalogue-density-not-worse
