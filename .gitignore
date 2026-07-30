@@ -10,3 +10,6 @@ graphify-out/
 .env
 .env.*
 !.env.example
+
+# Agent worktrees are ephemeral checkouts of this repository
+.claude/worktrees/

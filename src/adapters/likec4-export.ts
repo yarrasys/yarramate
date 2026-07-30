@@ -21,6 +21,7 @@ export interface LikeC4ExportDiagnostic {
     | 'YMLC107'
     | 'YMLC108'
     | 'YMLC109'
+    | 'YMLC111'
   readonly message: string
   readonly subject?: string
   readonly path: string

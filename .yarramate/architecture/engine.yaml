@@ -61,6 +61,12 @@ concepts:
     description: Converts explicitly mapped Graphify nodes into provider-neutral evidence without inferring architectural intent.
     status: current
     owner: yarramate-product#yarramate-maintainers
+  - id: mcp-adapter
+    kind: applicationComponent
+    name: MCP adapter
+    description: Exposes the read-only stable CLI surface over stdio Model Context Protocol without adding semantics of its own.
+    status: current
+    owner: yarramate-product#yarramate-maintainers
   - id: architecture-state-engine
     kind: compiler-module
     name: Architecture state engine
@@ -287,6 +293,18 @@ concepts:
     kind: applicationService
     name: Next command
     description: Reports planned subjects in a projection in declared dependency order with per-subject evidence coverage.
+    owner: yarramate-product#yarramate-maintainers
+    status: current
+  - id: context-command
+    kind: applicationService
+    name: Context command
+    description: Renders an authored or ad-hoc projection slice as agent-ready context within an optional token budget.
+    owner: yarramate-product#yarramate-maintainers
+    status: current
+  - id: new-command
+    kind: applicationService
+    name: New command
+    description: Scaffolds a projection document through a validated write that refuses to persist an invalid candidate.
     owner: yarramate-product#yarramate-maintainers
     status: current
   - id: native-document
@@ -994,3 +1012,19 @@ relationships:
     kind: serving
     from: next-command
     to: yarramate-product#agent-harness
+  - id: context-command-serves-agent-harness
+    kind: serving
+    from: context-command
+    to: yarramate-product#agent-harness
+  - id: new-command-serves-agent-harness
+    kind: serving
+    from: new-command
+    to: yarramate-product#agent-harness
+  - id: mcp-adapter-serves-agent-harness
+    kind: serving
+    from: mcp-adapter
+    to: yarramate-product#agent-harness
+  - id: mcp-adapter-uses-cli
+    kind: serving
+    from: cli
+    to: mcp-adapter

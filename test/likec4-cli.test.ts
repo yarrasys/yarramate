@@ -270,6 +270,116 @@ mappings:
     })
   })
 
+  it('fails the check when a projected relationship has no mapping', () => {
+    const parent = mkdtempSync(join(tmpdir(), 'yarramate-likec4-gate-'))
+    try {
+      const mapping = readFileSync(
+        join(
+          repositoryRoot,
+          'test/fixtures/valid/governed-change.likec4-mapping.yaml',
+        ),
+        'utf8',
+      )
+      const conceptOnly = mapping
+        .split('  - native: ')
+        .filter((entry, index) => index === 0 || !entry.includes('type: relationship'))
+        .join('  - native: ')
+      writeFileSync(join(parent, 'concept-only.mapping.yaml'), conceptOnly)
+
+      const gated = runLikeC4Cli(
+        [
+          'check',
+          join(
+            repositoryRoot,
+            'test/fixtures/valid/governed-change.projection.yaml',
+          ),
+          join(parent, 'concept-only.mapping.yaml'),
+          join(
+            repositoryRoot,
+            'test/fixtures/valid/governed-change.workspace.yaml',
+          ),
+        ],
+        repositoryRoot,
+      )
+
+      expect(gated.exitCode).toBe(1)
+      expect(gated.stdout).toContain('YMLC111')
+      expect(gated.stdout).toContain('no LikeC4 mapping')
+
+      // The same incomplete mapping still renders: a view selects a
+      // relationship by metadata, not by external identity.
+      const exported = runLikeC4Cli(
+        [
+          'export',
+          join(
+            repositoryRoot,
+            'test/fixtures/valid/governed-change.projection.yaml',
+          ),
+          join(parent, 'concept-only.mapping.yaml'),
+          join(
+            repositoryRoot,
+            'test/fixtures/valid/governed-change.workspace.yaml',
+          ),
+        ],
+        repositoryRoot,
+      )
+
+      expect(exported.exitCode).toBe(0)
+    } finally {
+      rmSync(parent, { recursive: true, force: true })
+    }
+  })
+
+  it('summarizes a flood of unmapped relationships for the check gate', () => {
+    const parent = mkdtempSync(join(tmpdir(), 'yarramate-likec4-flood-'))
+    try {
+      const mapping = readFileSync(
+        join(
+          repositoryRoot,
+          'test/fixtures/valid/governed-change.likec4-mapping.yaml',
+        ),
+        'utf8',
+      )
+      const conceptOnly = mapping
+        .split('  - native: ')
+        .filter((entry, index) => index === 0 || !entry.includes('type: relationship'))
+        .join('  - native: ')
+      writeFileSync(join(parent, 'concept-only.mapping.yaml'), conceptOnly)
+
+      const gated = runLikeC4Cli(
+        [
+          'check',
+          join(
+            repositoryRoot,
+            'test/fixtures/valid/governed-change.projection.yaml',
+          ),
+          join(parent, 'concept-only.mapping.yaml'),
+          join(
+            repositoryRoot,
+            'test/fixtures/valid/governed-change.workspace.yaml',
+          ),
+        ],
+        repositoryRoot,
+      )
+
+      const payload = JSON.parse(gated.stdout) as {
+        diagnostics: readonly { code: string; message: string }[]
+      }
+      const relationshipDiagnostics = payload.diagnostics.filter(
+        ({ code }) => code === 'YMLC111',
+      )
+      expect(relationshipDiagnostics).toHaveLength(1)
+      expect(relationshipDiagnostics[0]!.message).toMatch(
+        /^\d+ projected relationships have no LikeC4 mapping \(first: /,
+      )
+      expect(relationshipDiagnostics[0]!.message).toContain(
+        'yarramate-likec4 map --sync',
+      )
+    } finally {
+      rmSync(parent, { recursive: true, force: true })
+    }
+  })
+
   it('emits schema-valid machine results for successful and failing checks', () => {
     const schema = JSON.parse(
       readFileSync(
@@ -977,6 +1087,12 @@ mappings:
   - native: system#shared
     external: shared
     type: concept
+  - native: system#legacy-uses-shared
+    external: legacyUsesShared
+    type: relationship
+  - native: system#modern-uses-shared
+    external: modernUsesShared
+    type: relationship
 `,
       )
       writeFileSync(
@@ -2289,8 +2405,8 @@ mappings:
               'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
             subject: 'yarramate-repository#likec4-export-source',
             path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/16/kind',
-            line: 75,
+            pointer: '/concepts/20/kind',
+            line: 91,
             column: 11,
           },
           {
@@ -2300,8 +2416,8 @@ mappings:
               'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
             subject: 'yarramate-repository#likec4-prepare-source',
             path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/19/kind',
-            line: 87,
+            pointer: '/concepts/23/kind',
+            line: 103,
             column: 11,
           },
           {
@@ -2311,8 +2427,8 @@ mappings:
               'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
             subject: 'yarramate-repository#likec4-project-source',
             path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/20/kind',
-            line: 91,
+            pointer: '/concepts/24/kind',
+            line: 107,
             column: 11,
           },
           {
@@ -2323,8 +2439,8 @@ mappings:
             subject:
               'yarramate-repository#likec4-project-definition-source',
             path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/21/kind',
-            line: 95,
+            pointer: '/concepts/25/kind',
+            line: 111,
             column: 11,
           },
           {
@@ -2335,8 +2451,8 @@ mappings:
             subject:
               'yarramate-repository#likec4-project-schema-source',
             path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/48/kind',
-            line: 208,
+            pointer: '/concepts/52/kind',
+            line: 224,
             column: 11,
           },
           {
@@ -2347,8 +2463,8 @@ mappings:
             subject:
               'yarramate-repository#likec4-generated-project-v2-schema-source',
             path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/49/kind',
-            line: 212,
+            pointer: '/concepts/53/kind',
+            line: 228,
             column: 11,
           },
         ],

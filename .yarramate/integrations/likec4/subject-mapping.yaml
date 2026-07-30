@@ -1182,3 +1182,48 @@ mappings:
   - native: yarramate-engine#next-command-serves-agent-harness
     external: nextCommandServesAgentHarness
     type: relationship
+  - native: yarramate-engine#context-command
+    external: contextCommand
+    type: concept
+  - native: yarramate-engine#context-command-serves-agent-harness
+    external: contextCommandServesAgentHarness
+    type: relationship
+  - native: yarramate-engine#mcp-adapter
+    external: mcpAdapter
+    type: concept
+  - native: yarramate-engine#mcp-adapter-serves-agent-harness
+    external: mcpAdapterServesAgentHarness
+    type: relationship
+  - native: yarramate-engine#mcp-adapter-uses-cli
+    external: mcpAdapterUsesCli
+    type: relationship
+  - native: yarramate-engine#new-command
+    external: newCommand
+    type: concept
+  - native: yarramate-engine#new-command-serves-agent-harness
+    external: newCommandServesAgentHarness
+    type: relationship
+  - native: yarramate-repository#mcp-cli-source
+    external: mcpCliSource
+    type: concept
+  - native: yarramate-repository#mcp-cli-source-realizes-adapter
+    external: mcpCliSourceRealizesAdapter
+    type: relationship
+  - native: yarramate-repository#new-command-source
+    external: newCommandSource
+    type: concept
+  - native: yarramate-repository#new-command-source-realizes-command
+    external: newCommandSourceRealizesCommand
+    type: relationship
+  - native: yarramate-repository#next-command-source
+    external: nextCommandSource
+    type: concept
+  - native: yarramate-repository#next-command-source-realizes-command
+    external: nextCommandSourceRealizesCommand
+    type: relationship
+  - native: yarramate-repository#status-command-source
+    external: statusCommandSource
+    type: concept
+  - native: yarramate-repository#status-command-source-realizes-command
+    external: statusCommandSourceRealizesCommand
+    type: relationship
