@@ -90,3 +90,84 @@ mappings:
   - native: governed-change#conformance-suite
     external: conformanceSuite
     type: concept
+  - native: governed-change#adoption-realizes-suite
+    external: adoptionRealizesSuite
+    type: relationship
+  - native: governed-change#approval-supports-integrity
+    external: approvalSupportsIntegrity
+    type: relationship
+  - native: governed-change#artifact-realizes-record
+    external: artifactRealizesRecord
+    type: relationship
+  - native: governed-change#constraint-enforces-approval
+    external: constraintEnforcesApproval
+    type: relationship
+  - native: governed-change#control-plane-assigned-to-edge
+    external: controlPlaneAssignedToEdge
+    type: relationship
+  - native: governed-change#control-plane-performs-verification
+    external: controlPlanePerformsVerification
+    type: relationship
+  - native: governed-change#control-plane-realizes-intent-match
+    external: controlPlaneRealizesIntentMatch
+    type: relationship
+  - native: governed-change#decision-gate-realizes-capability
+    external: decisionGateRealizesCapability
+    type: relationship
+  - native: governed-change#decision-serves-process
+    external: decisionServesProcess
+    type: relationship
+  - native: governed-change#drift-threatens-integrity
+    external: driftThreatensIntegrity
+    type: relationship
+  - native: governed-change#edge-composes-runtime
+    external: edgeComposesRuntime
+    type: relationship
+  - native: governed-change#intent-match-fulfills-integrity
+    external: intentMatchFulfillsIntegrity
+    type: relationship
+  - native: governed-change#interface-serves-member
+    external: interfaceServesMember
+    type: relationship
+  - native: governed-change#journey-realizes-capability
+    external: journeyRealizesCapability
+    type: relationship
+  - native: governed-change#member-performs-process
+    external: memberPerformsProcess
+    type: relationship
+  - native: governed-change#owner-concerned-with-integrity
+    external: ownerConcernedWithIntegrity
+    type: relationship
+  - native: governed-change#process-realizes-publication
+    external: processRealizesPublication
+    type: relationship
+  - native: governed-change#process-writes-record
+    external: processWritesRecord
+    type: relationship
+  - native: governed-change#publication-serves-member
+    external: publicationServesMember
+    type: relationship
+  - native: governed-change#request-triggers-verification
+    external: requestTriggersVerification
+    type: relationship
+  - native: governed-change#risk-causes-drift
+    external: riskCausesDrift
+    type: relationship
+  - native: governed-change#runtime-realizes-execution
+    external: runtimeRealizesExecution
+    type: relationship
+  - native: governed-change#suite-realizes-traceability
+    external: suiteRealizesTraceability
+    type: relationship
+  - native: governed-change#traceability-associated-with-foundation
+    external: traceabilityAssociatedWithFoundation
+    type: relationship
+  - native: governed-change#verification-reads-digest
+    external: verificationReadsDigest
+    type: relationship
+  - native: governed-change#verification-reads-proposal
+    external: verificationReadsProposal
+    type: relationship
+  - native: governed-change#verification-realizes-decision
+    external: verificationRealizesDecision
+    type: relationship

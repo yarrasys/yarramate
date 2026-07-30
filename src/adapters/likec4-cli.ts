@@ -141,36 +141,45 @@ const checkJson = (
 
 const unmappedSubjectPreviewLength = 3
 
-const summarizeUnmappedConcepts = (
+const summarizeUnmappedSubjects = (
   diagnostics: readonly LikeC4PreparationDiagnostic[],
-): readonly LikeC4PreparationDiagnostic[] => {
-  const unmapped = diagnostics.filter(
-    (diagnostic) => diagnostic.code === 'YMLC102',
+): readonly LikeC4PreparationDiagnostic[] =>
+  (
+    [
+      ['YMLC102', 'concepts'],
+      ['YMLC111', 'relationships'],
+    ] as const
+  ).reduce<readonly LikeC4PreparationDiagnostic[]>(
+    (current, [code, noun]) => {
+      const unmapped = current.filter(
+        (diagnostic) => diagnostic.code === code,
+      )
+      if (unmapped.length <= unmappedSubjectPreviewLength) return current
+      const preview = unmapped
+        .slice(0, unmappedSubjectPreviewLength)
+        .map((diagnostic) =>
+          'subject' in diagnostic && diagnostic.subject !== undefined
+            ? `"${diagnostic.subject}"`
+            : `"${diagnostic.path}:${diagnostic.line}"`,
+        )
+        .join(', ')
+      const summary: LikeC4PreparationDiagnostic = {
+        ...unmapped[0]!,
+        message:
+          `${unmapped.length} projected ${noun} have no LikeC4 mapping ` +
+          `(first: ${preview}); run "yarramate-likec4 map --sync" to add ` +
+          'the missing mappings',
+      }
+      let summarized = false
+      return current.flatMap((diagnostic) => {
+        if (diagnostic.code !== code) return [diagnostic]
+        if (summarized) return []
+        summarized = true
+        return [summary]
+      })
+    },
+    diagnostics,
   )
-  if (unmapped.length <= unmappedSubjectPreviewLength) return diagnostics
-  const preview = unmapped
-    .slice(0, unmappedSubjectPreviewLength)
-    .map((diagnostic) =>
-      'subject' in diagnostic && diagnostic.subject !== undefined
-        ? `"${diagnostic.subject}"`
-        : `"${diagnostic.path}:${diagnostic.line}"`,
-    )
-    .join(', ')
-  const summary: LikeC4PreparationDiagnostic = {
-    ...unmapped[0]!,
-    message:
-      `${unmapped.length} projected concepts have no LikeC4 mapping ` +
-      `(first: ${preview}); run "yarramate-likec4 map --sync" to add ` +
-      'the missing mappings',
-  }
-  let summarized = false
-  return diagnostics.flatMap((diagnostic) => {
-    if (diagnostic.code !== 'YMLC102') return [diagnostic]
-    if (summarized) return []
-    summarized = true
-    return [summary]
-  })
-}
 
 const lowerCamel = (value: string) =>
   value.replaceAll(/-([a-z0-9])/g, (_, character: string) =>
@@ -749,7 +758,7 @@ export function runLikeC4Cli(
       ? checkJson(false, diagnostics)
       : diagnosticJson(
           command === 'check'
-            ? summarizeUnmappedConcepts(diagnostics)
+            ? summarizeUnmappedSubjects(diagnostics)
             : diagnostics,
         )
 
@@ -881,6 +890,7 @@ export function runLikeC4Cli(
               ? {}
               : { comparison: view.compare }),
             vocabulary: 'bundled',
+            requireMappedRelationships: command === 'check',
           }),
         }),
       )
@@ -1236,6 +1246,7 @@ export function runLikeC4Cli(
         : { kindMapping: kindMappingSource }),
       ...(comparison === undefined ? {} : { comparison }),
       vocabulary: command === 'export' ? 'consumer' : 'bundled',
+      requireMappedRelationships: command === 'check',
     })
     if (!prepared.ok) {
       return {

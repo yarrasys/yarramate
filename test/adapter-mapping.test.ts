@@ -255,7 +255,13 @@ describe('adapter mapping documents', () => {
     expect(validateAdapterMapping(compilation.graph, loaded.mapping).ok).toBe(
       true,
     )
-    expect(loaded.mapping.mappings).toHaveLength(29)
+    expect(loaded.mapping.mappings).toHaveLength(56)
+    expect(
+      loaded.mapping.mappings.filter(({ type }) => type === 'concept'),
+    ).toHaveLength(29)
+    expect(
+      loaded.mapping.mappings.filter(({ type }) => type === 'relationship'),
+    ).toHaveLength(27)
   })
 
   it('rejects duplicate versioned mapping identities across a workspace', () => {

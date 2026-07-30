@@ -551,4 +551,133 @@ mappings:
       ),
     ).toEqual(['system#zeta', 'system#alpha'])
   })
+  const relationshipSources = [
+    {
+      path: 'system.yaml',
+      source: `format: yarramate/v1
+id: system
+profile: yarramate/core@0.1
+concepts:
+  - id: service
+    kind: applicationComponent
+    name: Service
+  - id: gateway
+    kind: applicationComponent
+    name: Gateway
+relationships:
+  - id: gateway-serves-service
+    kind: serving
+    from: gateway
+    to: service
+`,
+    },
+  ]
+  const relationshipProjection = {
+    path: 'system.projection.yaml',
+    source: `format: yarramate/projection/v1
+id: system
+version: "1.0"
+query: {}
+`,
+  }
+  const conceptOnlyMapping = {
+    path: 'system.mapping.yaml',
+    source: `format: yarramate/adapter-mapping/v1
+id: system-likec4
+version: "1.0"
+adapter: likec4
+mappings:
+  - native: system#service
+    external: service
+    type: concept
+  - native: system#gateway
+    external: gateway
+    type: concept
+`,
+  }
+
+  it('renders a projected relationship that carries no mapping entry', () => {
+    const result = prepareLikeC4Export({
+      sources: relationshipSources,
+      projection: relationshipProjection,
+      subjectMapping: conceptOnlyMapping,
+      vocabulary: 'bundled',
+    })
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.source).toContain('gateway -[serving]-> service')
+  })
+
+  it('gates a projected relationship that carries no mapping entry', () => {
+    const result = prepareLikeC4Export({
+      sources: relationshipSources,
+      projection: relationshipProjection,
+      subjectMapping: conceptOnlyMapping,
+      vocabulary: 'bundled',
+      requireMappedRelationships: true,
+    })
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.diagnostics).toEqual([
+      {
+        severity: 'error',
+        code: 'YMLC111',
+        message:
+          'Projected relationship "system#gateway-serves-service" has no LikeC4 mapping',
+        subject: 'system#gateway-serves-service',
+        path: 'system.yaml',
+        pointer: '/relationships/0',
+        line: 12,
+        column: 5,
+      },
+    ])
+  })
+
+  it('accepts a gated projection once the relationship is mapped', () => {
+    const result = prepareLikeC4Export({
+      sources: relationshipSources,
+      projection: relationshipProjection,
+      subjectMapping: {
+        path: conceptOnlyMapping.path,
+        source: `${conceptOnlyMapping.source}  - native: system#gateway-serves-service
+    external: gatewayServesService
+    type: relationship
+`,
+      },
+      vocabulary: 'bundled',
+      requireMappedRelationships: true,
+    })
+
+    expect(result.ok).toBe(true)
+  })
+
+  it('reports unmapped concepts and relationships together when gated', () => {
+    const result = prepareLikeC4Export({
+      sources: relationshipSources,
+      projection: relationshipProjection,
+      subjectMapping: {
+        path: conceptOnlyMapping.path,
+        source: `format: yarramate/adapter-mapping/v1
+id: system-likec4
+version: "1.0"
+adapter: likec4
+mappings:
+  - native: system#service
+    external: service
+    type: concept
+`,
+      },
+      vocabulary: 'bundled',
+      requireMappedRelationships: true,
+    })
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.diagnostics.map(({ code }) => code)).toEqual([
+      'YMLC102',
+      'YMLC111',
+    ])
+  })
 })
