@@ -83,6 +83,14 @@ after a native subject is renamed: the retired external identity is released,
 so the replacement can receive its deterministic identity without an
 unnecessary collision suffix.
 
+Because `map --sync` writes, it is an authoring command; the read-only
+`check` is the gate. The two agree on coverage: `check` reports every
+projected subject without a mapping entry, relationships (`YMLC111`)
+as well as concepts (`YMLC102`), so a green check means a later sync would
+add nothing. Rendering is deliberately more permissive — a view selects a
+relationship by metadata, not by external identity, so `export` and
+`export-project` still succeed on a concept-only mapping (ADR 0051).
+
 The governed-change test fixture has a native document and explicit mapping:
 
 ```sh
@@ -128,6 +136,7 @@ the authored value that can correct the failure:
 | `YMLC108` | A dynamic step does not select a relationship. | Project dynamic-step relationship. |
 | `YMLC109` | A deployment identity, parent, or projected subject is invalid. | The corresponding project deployment field. |
 | `YMLC110` | A project mapping, kind mapping, or projection is missing or unreadable. | The referencing project field. |
+| `YMLC111` | A projected relationship has no LikeC4 mapping. Reported by `check` only. | The relationship in its native document. |
 
 Schema and source parsing failures retain their existing Core diagnostic
 codes in the same envelope. Mixed Core and adapter failures use the shared

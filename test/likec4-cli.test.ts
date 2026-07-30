@@ -270,6 +270,116 @@ mappings:
     })
   })
 
+  it('fails the check when a projected relationship has no mapping', () => {
+    const parent = mkdtempSync(join(tmpdir(), 'yarramate-likec4-gate-'))
+    try {
+      const mapping = readFileSync(
+        join(
+          repositoryRoot,
+          'test/fixtures/valid/governed-change.likec4-mapping.yaml',
+        ),
+        'utf8',
+      )
+      const conceptOnly = mapping
+        .split('  - native: ')
+        .filter((entry, index) => index === 0 || !entry.includes('type: relationship'))
+        .join('  - native: ')
+      writeFileSync(join(parent, 'concept-only.mapping.yaml'), conceptOnly)
+
+      const gated = runLikeC4Cli(
+        [
+          'check',
+          join(
+            repositoryRoot,
+            'test/fixtures/valid/governed-change.projection.yaml',
+          ),
+          join(parent, 'concept-only.mapping.yaml'),
+          join(
+            repositoryRoot,
+            'test/fixtures/valid/governed-change.workspace.yaml',
+          ),
+        ],
+        repositoryRoot,
+      )
+
+      expect(gated.exitCode).toBe(1)
+      expect(gated.stdout).toContain('YMLC111')
+      expect(gated.stdout).toContain('no LikeC4 mapping')
+
+      // The same incomplete mapping still renders: a view selects a
+      // relationship by metadata, not by external identity.
+      const exported = runLikeC4Cli(
+        [
+          'export',
+          join(
+            repositoryRoot,
+            'test/fixtures/valid/governed-change.projection.yaml',
+          ),
+          join(parent, 'concept-only.mapping.yaml'),
+          join(
+            repositoryRoot,
+            'test/fixtures/valid/governed-change.workspace.yaml',
+          ),
+        ],
+        repositoryRoot,
+      )
+
+      expect(exported.exitCode).toBe(0)
+    } finally {
+      rmSync(parent, { recursive: true, force: true })
+    }
+  })
+
+  it('summarizes a flood of unmapped relationships for the check gate', () => {
+    const parent = mkdtempSync(join(tmpdir(), 'yarramate-likec4-flood-'))
+    try {
+      const mapping = readFileSync(
+        join(
+          repositoryRoot,
+          'test/fixtures/valid/governed-change.likec4-mapping.yaml',
+        ),
+        'utf8',
+      )
+      const conceptOnly = mapping
+        .split('  - native: ')
+        .filter((entry, index) => index === 0 || !entry.includes('type: relationship'))
+        .join('  - native: ')
+      writeFileSync(join(parent, 'concept-only.mapping.yaml'), conceptOnly)
+
+      const gated = runLikeC4Cli(
+        [
+          'check',
+          join(
+            repositoryRoot,
+            'test/fixtures/valid/governed-change.projection.yaml',
+          ),
+          join(parent, 'concept-only.mapping.yaml'),
+          join(
+            repositoryRoot,
+            'test/fixtures/valid/governed-change.workspace.yaml',
+          ),
+        ],
+        repositoryRoot,
+      )
+
+      const payload = JSON.parse(gated.stdout) as {
+        diagnostics: readonly { code: string; message: string }[]
+      }
+      const relationshipDiagnostics = payload.diagnostics.filter(
+        ({ code }) => code === 'YMLC111',
+      )
+      expect(relationshipDiagnostics).toHaveLength(1)
+      expect(relationshipDiagnostics[0]!.message).toMatch(
+        /^\d+ projected relationships have no LikeC4 mapping \(first: /,
+      )
+      expect(relationshipDiagnostics[0]!.message).toContain(
+        'yarramate-likec4 map --sync',
+      )
+    } finally {
+      rmSync(parent, { recursive: true, force: true })
+    }
+  })
+
   it('emits schema-valid machine results for successful and failing checks', () => {
     const schema = JSON.parse(
       readFileSync(
@@ -977,6 +1087,12 @@ mappings:
   - native: system#shared
     external: shared
     type: concept
+  - native: system#legacy-uses-shared
+    external: legacyUsesShared
+    type: relationship
+  - native: system#modern-uses-shared
+    external: modernUsesShared
+    type: relationship
 `,
       )
       writeFileSync(

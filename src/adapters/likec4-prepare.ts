@@ -40,6 +40,12 @@ export interface LikeC4PreparationInput {
     readonly to: string
   }
   readonly vocabulary: 'bundled' | 'consumer'
+  /**
+   * Gate mode. Rendering a relationship needs no external identity — views
+   * select it by metadata — but `map --sync` still writes one, so only a
+   * check answering "would sync change anything" requires the entry.
+   */
+  readonly requireMappedRelationships?: boolean
 }
 
 export type LikeC4PreparationDiagnostic =
@@ -149,6 +155,39 @@ const unsupportedBundledKinds = (
   return diagnostics.sort(diagnosticOrder)
 }
 
+const unmappedProjectedRelationships = (
+  projection: ProjectionResult,
+  mapping: AdapterMapping,
+): readonly LikeC4ExportDiagnostic[] => {
+  const mapped = new Set(
+    mapping.mappings
+      .filter(({ type }) => type === 'relationship')
+      .map(({ native }) => native),
+  )
+  return projection.subjects
+    .filter(({ type, id }) => type === 'relationship' && !mapped.has(id))
+    .flatMap(({ id }) => {
+      const source = projection.claims.find(
+        (claim) => claim.id === id,
+      )?.source
+      return source === undefined
+        ? []
+        : [
+            {
+              severity: 'error' as const,
+              code: 'YMLC111' as const,
+              message: `Projected relationship "${id}" has no LikeC4 mapping`,
+              subject: id,
+              path: source.path,
+              pointer: source.pointer,
+              line: source.line,
+              column: source.column,
+            },
+          ]
+    })
+    .sort(diagnosticOrder)
+}
+
 export function prepareLikeC4Export(
   input: LikeC4PreparationInput,
 ): LikeC4PreparationResult {
@@ -235,6 +274,13 @@ export function prepareLikeC4Export(
     )
     if (diagnostics.length > 0) return { ok: false, diagnostics }
   }
+  const unmappedRelationships =
+    input.requireMappedRelationships === true
+      ? unmappedProjectedRelationships(
+          projectionResult,
+          subjectMapping.mapping,
+        )
+      : []
   const exported = exportLikeC4(
     projectionResult,
     subjectMapping.mapping,
@@ -243,7 +289,18 @@ export function prepareLikeC4Export(
       ? undefined
       : { comparison: comparison.comparison },
   )
-  if (!exported.ok) return exported
+  if (!exported.ok) {
+    return {
+      ok: false,
+      diagnostics: [
+        ...exported.diagnostics,
+        ...unmappedRelationships,
+      ].sort(diagnosticOrder),
+    }
+  }
+  if (unmappedRelationships.length > 0) {
+    return { ok: false, diagnostics: unmappedRelationships }
+  }
   return {
     ok: true,
     source: exported.source,
