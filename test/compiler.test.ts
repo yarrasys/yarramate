@@ -904,7 +904,7 @@ relationships:
           severity: 'error',
           code: 'YM404',
           message:
-            'Relationship "assignment" requires a source with aspect "active-structure"; "intent" has aspect "motivation"; assign from an active-structure element (an actor, component, or node), or use "association"',
+            'Relationship "assignment" requires a source with aspect "active-structure"; "intent" has aspect "motivation"; assign from an active-structure element (an actor, component, or node), or use "association"; source is motivation and target is behavior; valid candidates: composition, aggregation, realization, serving, association, flow, specialization',
           path: 'incompatible.yaml',
           pointer: '/relationships/0/from',
           line: 14,
@@ -929,7 +929,7 @@ relationships:
           severity: 'error',
           code: 'YM404',
           message:
-            'Relationship "access" requires a target with aspect "passive-structure"; "intent" has aspect "motivation"; point "access" at passive structure (a business object, data object, or artifact), or use "association"',
+            'Relationship "access" requires a target with aspect "passive-structure"; "intent" has aspect "motivation"; point "access" at passive structure (a business object, data object, or artifact), or use "association"; source is active structure and target is motivation; valid candidates: composition, aggregation, assignment, realization, serving, influence, association, flow, specialization',
           path: 'incompatible-target.yaml',
           pointer: '/relationships/0/to',
           line: 15,
@@ -1285,7 +1285,7 @@ relationships:
           severity: 'error',
           code: 'YM404',
           message:
-            'Relationship "owns" requires a target with aspect "behavior"; "target" has aspect "motivation"',
+            'Relationship "owns" requires a target with aspect "behavior"; "target" has aspect "motivation"; source is active structure and target is motivation; valid candidates: composition, aggregation, assignment, realization, serving, influence, association, flow, specialization',
           path: 'architecture/constrained.yaml',
           pointer: '/relationships/0/to',
           line: 15,
