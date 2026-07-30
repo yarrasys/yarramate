@@ -9,6 +9,24 @@
 #   internal/storage/feed_query_builder.go, so `touches` must list it.
 # - mf-mm-add-metrics-component: catalogue-density-not-worse, the additive form
 #   of the gate (see ../../runner/score.mjs).
+#
+# v2 additions (2026-07-30): the 2026-07-29 sweep (164 runs) saturated the
+# comprehension family at both model tiers on all four repos — every
+# comprehension task was answered correctly by the weak and the strong model
+# alike, so H1 ("does a workspace improve comprehension?") is unmeasurable from
+# it. Issue #56. The three original comprehension tasks are single-hop: find the
+# package, name the functions, list the call sites. v2 therefore adds three
+# harder comprehension tasks whose answers require chaining at least three hops
+# across different packages, so they cannot be reached by grepping one symbol:
+# - mf-comp-entry-tombstone-lifecycle: deletion bookkeeping across
+#   internal/cli cleanup -> internal/storage -> internal/reader/processor ->
+#   internal/reader/handler -> internal/api, plus an absent retention job.
+# - mf-comp-web-session-rotation: cookie -> the ui middleware chain ->
+#   internal/model -> internal/storage, plus the session-fixation rotation,
+#   which columns it writes, and the state it leaves unchanged.
+# - mf-comp-search-ranking-divergence: two HTTP entry points and two query
+#   builders that order the same full-text matches differently, decided by the
+#   order in which builder methods are called.
 type: yarramate/benchmark-suite/v2
 suite: miniflux
 headline: true
@@ -123,6 +141,360 @@ tasks:
         - internal/database/migrations.go
         - internal/database/postgresql.go
         - go.mod:13
+    scoring:
+      method: ground-truth
+
+  - id: mf-comp-entry-tombstone-lifecycle
+    family: comprehension
+    prompt: >-
+      A Miniflux user flushes their read-entry history, and an hour later the
+      same feed is refreshed again. The flushed entries do not come back.
+      Explain the mechanism that guarantees this, end to end: (1) the database
+      table that records the deletion, the columns of its primary key, and the
+      two storage functions that write rows into it, naming the caller of each;
+      (2) the two independent places that consult that table during a feed
+      refresh — one that short-circuits expensive per-entry work before the
+      entry is ever handed to the database, and one that lives inside the
+      INSERT statement itself — naming the function and the SQL construct used
+      at each, and explaining why the second one is written the way it is
+      rather than as a separate lookup; (3) how the feed-refresh loop reacts to
+      the sentinel error that the INSERT path returns, and what consequence
+      that has for delivery to the user's third-party integrations; (4) what
+      the REST API responds when a client tries to inject an entry whose
+      deletion is recorded; and (5) whether any Go code ever removes rows from
+      that table, and if not, the only way such rows can disappear. Give
+      repository-relative file paths and function names.
+    groundTruth:
+      answer: >-
+        The table is entry_tombstones (feed_id, hash, deleted_at), created by
+        the migration at internal/database/migrations.go:1472 with primary key
+        (feed_id, hash) and feed_id declared "references feeds(id) on delete
+        cascade". The same migration backfilled it from entries whose status
+        was 'removed' (migrations.go:1486) and then deleted those rows
+        (migrations.go:1493); the 'removed' entry status is retired, and
+        internal/model/entry.go:12-13 now declares only EntryStatusUnread and
+        EntryStatusRead. (1) Two storage functions insert tombstones.
+        Storage.ArchiveEntries (internal/storage/entry.go:368) deletes aged
+        entries in a CTE and feeds the RETURNING rows into "INSERT INTO
+        entry_tombstones ... ON CONFLICT DO NOTHING" (entry.go:391); it is
+        called twice by runCleanupTasks, for read entries at
+        internal/cli/cleanup_tasks.go:26 and for unread entries at
+        cleanup_tasks.go:39, and runCleanupTasks itself runs from
+        cleanupScheduler (internal/cli/scheduler.go:55) and from the
+        cleanup-tasks CLI flag (internal/cli/cli.go:244). Storage.FlushHistory
+        (internal/storage/entry.go:487) does the same for the user's read,
+        non-starred, non-shared entries (INSERT at entry.go:494); it is called
+        from the web UI at internal/ui/history_flush.go:14 and from the REST
+        API as "go h.store.FlushHistory(loggedUserID)" at
+        internal/api/entry_handlers.go:556. (2) The first read point is
+        Storage.IsNewEntry (internal/storage/entry.go:283), whose query is
+        "EXISTS(... entries ...) OR EXISTS(SELECT 1 FROM entry_tombstones WHERE
+        feed_id=$1 AND hash=$2)" (entry.go:292); it is called from
+        processor.ProcessFeedEntries at
+        internal/reader/processor/processor.go:95, and a tombstoned hash makes
+        entryIsNew false so the "feed.Crawler && (entryIsNew || forceRefresh)"
+        branch does not run and the scraper is skipped. The second is
+        Storage.createEntry (internal/storage/entry.go:81), an INSERT ...
+        SELECT guarded by "WHERE NOT EXISTS (SELECT 1 FROM entry_tombstones
+        WHERE feed_id=$9 AND hash=$2)" (entry.go:120); when the guard
+        suppresses the row, QueryRow(...).Scan returns sql.ErrNoRows and
+        createEntry returns ErrEntryTombstoned (entry.go:148, declared at
+        entry.go:21). The comment at entry.go:83-85 gives the reason for
+        folding the check into the statement: it makes the tombstone check
+        atomic with the insert, so an archive committing between a separate
+        existence check and the insert cannot bring a deleted entry back as
+        unread. (3) Storage.RefreshFeedEntries (internal/storage/entry.go:320)
+        swallows the sentinel with "case errors.Is(err, ErrEntryTombstoned): err
+        = nil" (entry.go:345) and does not append the entry to newEntries.
+        Because RefreshFeed only dispatches when newEntries is non-empty
+        (internal/reader/handler/handler.go:325 feeding the "go
+        integration.PushEntries(...)" at handler.go:339), a tombstoned entry is
+        never delivered to the user's third-party integrations. (4) The REST
+        API insert path Storage.InsertEntryForFeed
+        (internal/storage/entry.go:252) surfaces the same error, and the
+        handler maps it to HTTP 400 via response.JSONBadRequest at
+        internal/api/entry_handlers.go:417-420. (5) No Go code ever deletes
+        from entry_tombstones: there is no retention or pruning job, and the
+        deleted_at column is never read by Go — it is only written by the
+        migration backfill (migrations.go:1486) and otherwise defaults to
+        now(), and the entry_tombstones_deleted_at_idx index created at
+        migrations.go:1479 has no application-code consumer. Rows disappear
+        only via the "on delete cascade" foreign key on feed_id, i.e. when the
+        feed itself is deleted.
+      verifiedAgainst:
+        - internal/database/migrations.go:1472
+        - internal/database/migrations.go:1479
+        - internal/database/migrations.go:1486
+        - internal/database/migrations.go:1493
+        - internal/model/entry.go:12-13
+        - internal/storage/entry.go:21
+        - internal/storage/entry.go:81
+        - internal/storage/entry.go:120
+        - internal/storage/entry.go:148
+        - internal/storage/entry.go:252
+        - internal/storage/entry.go:283
+        - internal/storage/entry.go:292
+        - internal/storage/entry.go:320
+        - internal/storage/entry.go:345
+        - internal/storage/entry.go:368
+        - internal/storage/entry.go:391
+        - internal/storage/entry.go:487
+        - internal/storage/entry.go:494
+        - internal/cli/cleanup_tasks.go:26
+        - internal/cli/cleanup_tasks.go:39
+        - internal/cli/scheduler.go:55
+        - internal/cli/cli.go:244
+        - internal/reader/processor/processor.go:95
+        - internal/reader/handler/handler.go:325
+        - internal/reader/handler/handler.go:339
+        - internal/ui/history_flush.go:14
+        - internal/api/entry_handlers.go:417-420
+        - internal/api/entry_handlers.go:556
+    scoring:
+      method: ground-truth
+
+  - id: mf-comp-web-session-rotation
+    family: comprehension
+    prompt: >-
+      Trace what happens to Miniflux's browser-session state when a visitor who
+      arrives with no cookie at all successfully submits the web UI login form.
+      Cover: (1) the two web UI middlewares that wrap every request, the order
+      in which they run, and why that order is required; (2) what the
+      outermost middleware does on a request carrying no valid session cookie —
+      the cookie name, the exact structure of the cookie value, which routes
+      are exempt from this entirely, and what is written to the database at
+      that moment, including whether the stored row is tied to a user; (3) how
+      a later request's cookie is validated: the lookup key, how the remainder
+      of the cookie value is checked, and what is actually stored server-side
+      for it; (4) what the login path does to the session row and the cookie on
+      success — name the model method and the storage method, and state exactly
+      which columns that storage method writes; (5) which piece of session
+      state survives step (4) unchanged; and (6) why a second, different
+      storage method exists for ordinary session writes, and exactly when the
+      middleware calls it. Give repository-relative file paths, function names,
+      and the column list.
+    groundTruth:
+      answer: >-
+        (1) internal/ui/ui.go:184 returns
+        "webSessionMiddleware.handle(csrfMiddleware.handle(mux))", so the web
+        session middleware is outermost and runs first and the CSRF middleware
+        runs inside it. The order is required because csrfMiddleware.validate
+        reads request.WebSession(r).CSRF() (internal/ui/csrf_middleware.go:42),
+        which only resolves because the session middleware placed the session
+        into the request context under request.WebSessionContextKey
+        (internal/ui/web_session_middleware.go:49, accessor at
+        internal/http/request/context.go:28); the middleware's own comment at
+        csrf_middleware.go:24-26 states it must be chained inside the session
+        middleware. (2) webSessionMiddleware.handle
+        (internal/ui/web_session_middleware.go:27) returns early for static
+        asset routes without touching the session at all
+        (web_session_middleware.go:29, helper isStaticAssetRoute at
+        internal/ui/routes.go:14, covering /favicon.ico, /robots.txt and the
+        /stylesheets/, /js/, /icon/ and /feed-icon/ prefixes). Otherwise
+        loadWebSessionFromCookie returns nil
+        (web_session_middleware.go:34 and :70) and model.NewWebSession
+        (web_session_middleware.go:41, defined at
+        internal/model/web_session.go:56) mints an ID and a secret with
+        rand.Text() and seeds state.CSRF with a third rand.Text()
+        (web_session.go:64). store.CreateWebSession
+        (web_session_middleware.go:42, internal/storage/web_session.go:16)
+        INSERTs into web_sessions the columns id, secret_hash, user_agent, ip
+        and state only — user_id is not in the INSERT, so the row is anonymous
+        with a NULL user_id. setSessionCookie
+        (web_session_middleware.go:46, defined internal/ui/auth.go:38) writes
+        the cookie named MinifluxSessionID (internal/ui/auth.go:18) whose value
+        is session.ID + "." + secret (auth.go:46), HttpOnly, SameSite=Lax,
+        Secure only when config.Opts.HTTPS(), and Expires set to now plus
+        config.Opts.CleanupRemoveSessionsInterval() (auth.go:44-52). (3) On a
+        later request loadWebSessionFromCookie
+        (internal/ui/web_session_middleware.go:70) reads the cookie, splits it
+        on the first "." with strings.Cut (web_session_middleware.go:76), looks
+        the row up by the identifier half through store.WebSessionByID
+        (web_session_middleware.go:81, internal/storage/web_session.go:97), and
+        checks the secret half with session.VerifySecret
+        (web_session_middleware.go:86, internal/model/web_session.go:79), which
+        SHA-256-hashes the presented secret and compares with
+        subtle.ConstantTimeCompare. Only the SHA-256 digest is stored, in the
+        secret_hash column; the raw secret exists only in the cookie. A failed
+        lookup or comparison yields nil, so the visitor silently gets a fresh
+        anonymous session. (4) checkLogin calls authenticateWebSession at
+        internal/ui/login_check.go:83 (defined internal/ui/auth.go:22). It calls
+        session.SetUser(user) (auth.go:24, internal/model/web_session.go:244),
+        which binds the user ID and copies the user's Language and Theme into
+        the session state and marks it dirty; then session.Rotate()
+        (auth.go:26, internal/model/web_session.go:70), which replaces ID and
+        SecretHash in place and returns the old ID plus the new raw secret;
+        then store.RotateWebSession(oldID, session) (auth.go:27,
+        internal/storage/web_session.go:130), an UPDATE keyed by the old id
+        that writes exactly id, secret_hash, user_id, state and
+        created_at=now(); then setSessionCookie again with the new identifier
+        and secret (auth.go:31). The row is reused rather than replaced, and
+        the comment at internal/model/web_session.go:68-69 states that rotating
+        on authentication is what prevents session fixation. Because
+        created_at is reset, the expiry clock restarts for
+        CleanOldWebSessions (internal/storage/web_session.go:230, called from
+        internal/cli/cleanup_tasks.go:17), which deletes by created_at. (5) The
+        CSRF token survives unchanged: Rotate
+        (internal/model/web_session.go:70-76) touches only ID and SecretHash,
+        and state.CSRF is assigned once at creation
+        (internal/model/web_session.go:64) and is never reassigned anywhere
+        else, so the token minted for the anonymous session carries over to the
+        authenticated one. (6) Storage.UpdateWebSession
+        (internal/storage/web_session.go:174) writes only user_id and state and
+        is keyed by the current id, so it cannot change the identity columns —
+        that is why rotation needs the separate RotateWebSession. The
+        middleware calls UpdateWebSession after the inner handler has already
+        run and only when session.IsDirty() reports true
+        (internal/ui/web_session_middleware.go:59-60); the dirty flag is set by
+        the state mutators such as SetUser, SetLanguage, SetTheme,
+        SetSuccessMessage and ConsumeMessages
+        (internal/model/web_session.go:191-273).
+      verifiedAgainst:
+        - internal/ui/ui.go:163
+        - internal/ui/ui.go:184
+        - internal/ui/routes.go:14
+        - internal/ui/routes.go:31
+        - internal/ui/web_session_middleware.go:27
+        - internal/ui/web_session_middleware.go:29
+        - internal/ui/web_session_middleware.go:41
+        - internal/ui/web_session_middleware.go:42
+        - internal/ui/web_session_middleware.go:46
+        - internal/ui/web_session_middleware.go:49
+        - internal/ui/web_session_middleware.go:59-60
+        - internal/ui/web_session_middleware.go:70
+        - internal/ui/web_session_middleware.go:76
+        - internal/ui/web_session_middleware.go:81
+        - internal/ui/web_session_middleware.go:86
+        - internal/ui/csrf_middleware.go:24-26
+        - internal/ui/csrf_middleware.go:42
+        - internal/ui/auth.go:18
+        - internal/ui/auth.go:22-33
+        - internal/ui/auth.go:38-53
+        - internal/ui/login_check.go:83
+        - internal/model/web_session.go:56
+        - internal/model/web_session.go:64
+        - internal/model/web_session.go:68-76
+        - internal/model/web_session.go:79-85
+        - internal/model/web_session.go:191-273
+        - internal/model/web_session.go:244
+        - internal/storage/web_session.go:16
+        - internal/storage/web_session.go:97
+        - internal/storage/web_session.go:130
+        - internal/storage/web_session.go:174
+        - internal/storage/web_session.go:230
+        - internal/http/request/context.go:28
+        - internal/http/request/context.go:48
+        - internal/cli/cleanup_tasks.go:17
+    scoring:
+      method: ground-truth
+
+  - id: mf-comp-search-ranking-divergence
+    family: comprehension
+    prompt: >-
+      In Miniflux the same full-text search term can return the same matching
+      entries in a different order depending on whether the search was issued
+      from the web UI search page or from the REST API entries endpoint, for
+      the same user. Explain exactly why: (1) the single builder method that
+      adds the full-text predicate, and what it appends to the query besides a
+      WHERE condition; (2) how that builder assembles its ORDER BY clause, and
+      why the order in which builder methods are called changes the result;
+      (3) for each of the two entry points, which builder methods are invoked
+      and in what order, and what the resulting ORDER BY therefore looks like;
+      (4) the third search-capable code path, used for previous/next navigation
+      from within a search result — which builder type it uses and how its
+      handling of the search term differs from the first; and (5) on the write
+      side, the three functions that populate the searchable column, the
+      relative weights given to title and to content, and the byte limits
+      applied before indexing. Give repository-relative file paths, function
+      names, and the ranking expression.
+    groundTruth:
+      answer: >-
+        (1) EntryQueryBuilder.WithSearchQuery
+        (internal/storage/entry_query_builder.go:46). Besides appending the
+        condition "e.document_vectors @@ websearch_to_tsquery($n)"
+        (entry_query_builder.go:49) it also appends a sort expression
+        (entry_query_builder.go:54-56): "ts_rank(document_vectors,
+        websearch_to_tsquery($n)) - extract (epoch from now() -
+        published_at)::float * 0.0000001 DESC", i.e. relevance with a recency
+        decay the comment at entry_query_builder.go:52 documents as 0.1 per
+        day. (2) buildSorting (entry_query_builder.go:526) emits "ORDER BY"
+        followed by strings.Join(e.sortExpressions, ", ")
+        (entry_query_builder.go:530), then LIMIT and OFFSET; sortExpressions is
+        a plain slice and both WithSearchQuery
+        (entry_query_builder.go:54) and WithSorting
+        (entry_query_builder.go:191, appending
+        pq.QuoteIdentifier(column)+" ASC"/" DESC" at lines 194 and 196) append
+        to it. Whichever is called first therefore becomes the primary sort key
+        and the other becomes a tie-breaker. (3) The web UI page
+        showSearchPage (internal/ui/search.go:15) builds
+        NewEntryQueryBuilder(user.ID).WithSearchQuery(searchQuery).WithoutContent().WithOffset(offset).WithLimit(user.EntriesPerPage)
+        at internal/ui/search.go:30-34 and never calls WithSorting, so the
+        ts_rank expression is the only ORDER BY term and results come back
+        purely relevance-ranked with recency decay, ignoring the user's
+        EntryOrder/EntryDirection preference. The REST API GET /v1/entries
+        handler calls WithSorting(order, direction) first, at
+        internal/api/entry_handlers.go:168, and only afterwards calls
+        configureFilters (entry_handlers.go:182, defined at
+        entry_handlers.go:560), which is where WithSearchQuery is invoked
+        (entry_handlers.go:601). The resulting clause is therefore "ORDER BY
+        <quoted column> <direction>, ts_rank(...) - ... DESC": the client's
+        requested column wins and relevance is demoted to a tie-breaker. That
+        difference in call order is the whole explanation. (4)
+        showSearchEntryPage (internal/ui/entry_search.go:15) uses the other
+        builder for previous/next:
+        NewEntryPaginationBuilder(user.ID, entry.ID, user.EntryOrder,
+        user.EntryDirection).WithSearchQuery(searchQuery) at
+        internal/ui/entry_search.go:55-56.
+        entryPaginationBuilder.WithSearchQuery
+        (internal/storage/entry_pagination_builder.go:28) adds the same
+        "e.document_vectors @@ websearch_to_tsquery($n)" condition
+        (entry_pagination_builder.go:30) but appends no sort expression at all
+        — that builder has no sortExpressions slice, only the order and
+        direction fields taken from the user's preferences
+        (entry_pagination_builder.go:17-25). So previous/next steps through the
+        matches in the user's entry order, not in the relevance order the
+        search page displayed. (5) document_vectors is populated in three
+        functions in internal/storage/entry.go:
+        UpdateEntryTitleAndContent (entry.go:51, expression at entry.go:60),
+        createEntry (entry.go:81, column listed at entry.go:100 and expression
+        at entry.go:116) and updateEntry (entry.go:169, expression at
+        entry.go:181). All three use "setweight(to_tsvector(title), 'A') ||
+        setweight(to_tsvector(content), 'B')", so title matches carry weight A
+        and content matches weight B. All three first call
+        truncateTitleAndContentForTSVectorField (entry.go:678), which caps the
+        title at 200000 bytes and the content at 500000 bytes (entry.go:681)
+        through truncateStringForTSVectorField (entry.go:685), a
+        UTF-8-boundary-safe truncation; anything beyond those limits is never
+        indexed. The backing index is the GIN index document_vectors_idx, which
+        the migration at internal/database/migrations.go:1498-1500 recreated
+        over the whole column with no partial predicate.
+      verifiedAgainst:
+        - internal/storage/entry_query_builder.go:46
+        - internal/storage/entry_query_builder.go:49
+        - internal/storage/entry_query_builder.go:52
+        - internal/storage/entry_query_builder.go:54-56
+        - internal/storage/entry_query_builder.go:191
+        - internal/storage/entry_query_builder.go:526-531
+        - internal/storage/entry_pagination_builder.go:17-25
+        - internal/storage/entry_pagination_builder.go:28
+        - internal/storage/entry_pagination_builder.go:30
+        - internal/ui/search.go:15
+        - internal/ui/search.go:30-34
+        - internal/ui/entry_search.go:15
+        - internal/ui/entry_search.go:55-56
+        - internal/api/entry_handlers.go:168
+        - internal/api/entry_handlers.go:182
+        - internal/api/entry_handlers.go:560
+        - internal/api/entry_handlers.go:601
+        - internal/storage/entry.go:51
+        - internal/storage/entry.go:60
+        - internal/storage/entry.go:100
+        - internal/storage/entry.go:116
+        - internal/storage/entry.go:169
+        - internal/storage/entry.go:181
+        - internal/storage/entry.go:678-681
+        - internal/storage/entry.go:685
+        - internal/database/migrations.go:1498-1500
     scoring:
       method: ground-truth
 
