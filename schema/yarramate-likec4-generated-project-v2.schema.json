@@ -45,6 +45,12 @@
         }
       }
     },
+    "inputDigests": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/sha256"
+      }
+    },
     "files": {
       "const": [
         "likec4.config.json",

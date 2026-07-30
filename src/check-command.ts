@@ -24,15 +24,38 @@ import {
   loadEvidence,
 } from './evidence.js'
 import { loadProjection } from './projection.js'
+import {
+  reconcileEvidenceReports,
+  type ReconciliationFinding,
+} from './reconciliation.js'
 
 const Ajv2020 = Ajv2020Module.default
+
+const strictFindingMessage = (finding: ReconciliationFinding): string => {
+  const observed =
+    finding.evidence.message === undefined
+      ? finding.evidence.uri
+      : `${finding.evidence.uri}: ${finding.evidence.message}`
+  const assertion =
+    finding.asserted === undefined
+      ? `Evidence contradicts ${finding.target.type} "${finding.target.id}"`
+      : `Evidence contradicts claim "${finding.target.id}": the model asserts ` +
+        `${finding.asserted.from} -> ${finding.asserted.to} (${finding.asserted.kind})`
+  return (
+    `${assertion}, but provider "${finding.provider}" observed otherwise ` +
+    `(${observed}); align the model or the evidence to pass --strict`
+  )
+}
 
 export function runCheckCommand(
   options: readonly string[],
   cwd: string,
 ): CliResult {
   const json = options.includes('--json')
-  const paths = options.filter((option) => option !== '--json')
+  const strict = options.includes('--strict')
+  const paths = options.filter(
+    (option) => option !== '--json' && option !== '--strict',
+  )
   const unknownOption = paths.find((path) => path.startsWith('-'))
   if (unknownOption !== undefined || paths.length === 0) {
     return { exitCode: 2, stdout: '', stderr: usage }
@@ -250,6 +273,65 @@ export function runCheckCommand(
       ? optionalDiagnostics
       : result.diagnostics
 
+    // Strict only tightens a passing check: base diagnostics already fail
+    // the gate, so contradictions are folded in only once everything else
+    // holds, and each one is anchored at the claim the model declares.
+    const strictEvaluation =
+      strict && result.ok && ok
+        ? (() => {
+            const reports =
+              evidenceEvaluation !== undefined && evidenceEvaluation.ok
+                ? evidenceEvaluation.reports
+                : []
+            const graph = result.graph
+            const contradicted = reconcileEvidenceReports(
+              'strict',
+              reports,
+              graph,
+            ).findings.filter(({ result: outcome }) => outcome === 'contradicted')
+            return {
+              observations: reports.reduce(
+                (total, report) => total + report.observations.length,
+                0,
+              ),
+              diagnostics: sortDiagnostics(
+                contradicted.map((finding) => {
+                  const anchor =
+                    graph.claims.find(({ id }) => id === finding.target.id) ??
+                    graph.claims.find(
+                      ({ subject, predicate }) =>
+                        subject === finding.target.id &&
+                        predicate === 'yarramate/concept/kind',
+                    ) ??
+                    graph.claims.find(
+                      ({ subject }) => subject === finding.target.id,
+                    )
+                  return {
+                    severity: 'error' as const,
+                    code: 'YM901',
+                    message: strictFindingMessage(finding),
+                    path: anchor?.source.path ?? finding.evidenceDocument,
+                    pointer: anchor?.source.pointer ?? '/',
+                    line: anchor?.source.line ?? 1,
+                    column: anchor?.source.column ?? 1,
+                  }
+                }),
+              ),
+            }
+          })()
+        : undefined
+    const strictSummary =
+      strictEvaluation === undefined
+        ? undefined
+        : {
+            observations: strictEvaluation.observations,
+            contradicted: strictEvaluation.diagnostics.length,
+          }
+    const strictOk = strictEvaluation === undefined
+      ? true
+      : strictEvaluation.diagnostics.length === 0
+    const finalOk = ok && strictOk
+
     const counted = result.ok
       ? (() => {
           const states = new Set(
@@ -275,12 +357,21 @@ export function runCheckCommand(
 
     if (json) {
       return {
-        exitCode: ok ? 0 : 1,
+        exitCode: finalOk ? 0 : 1,
         stdout: checkResultJson(
-          ok,
-          ok ? [] : diagnostics,
-          ok ? counted : undefined,
+          finalOk,
+          finalOk ? [] : ok ? strictEvaluation!.diagnostics : diagnostics,
+          finalOk ? counted : undefined,
+          strictSummary,
         ),
+        stderr: '',
+      }
+    }
+
+    if (ok && !strictOk) {
+      return {
+        exitCode: 1,
+        stdout: humanDiagnostics(strictEvaluation!.diagnostics),
         stderr: '',
       }
     }
@@ -321,6 +412,12 @@ export function runCheckCommand(
             ]
           : []),
       ].join(' and ')
+      const strictLine =
+        strictSummary === undefined
+          ? ''
+          : strictSummary.observations === 0
+            ? 'Strict: no evidence observations to evaluate\n'
+            : `Strict: ${strictSummary.observations} ${strictSummary.observations === 1 ? 'observation' : 'observations'}, 0 contradicted\n`
       return {
         exitCode: 0,
         stdout:
@@ -328,7 +425,8 @@ export function runCheckCommand(
           `${successfulCounts.concepts} ${successfulCounts.concepts === 1 ? 'concept' : 'concepts'}, ` +
           `${successfulCounts.relationships} ${successfulCounts.relationships === 1 ? 'relationship' : 'relationships'}, ` +
           `${successfulCounts.states} ${successfulCounts.states === 1 ? 'state' : 'states'}` +
-          '): no errors\n',
+          '): no errors\n' +
+          strictLine,
         stderr: '',
       }
     }

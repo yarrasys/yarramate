@@ -181,6 +181,35 @@ const compareById = <T extends { readonly id: string }>(left: T, right: T) =>
 const presenceClaimId = (subject: string, state: string) =>
   `${subject}~present-in-${Buffer.from(state, 'utf8').toString('hex')}`
 
+const describeAspect = (aspect: (typeof conceptKinds)[number]['aspect']) =>
+  aspect.replace('-', ' ')
+
+// Candidate order is the policy-matrix declaration order: the resolved kind
+// map inserts core policies first, then extension kinds as declared.
+const candidateKindHint = (
+  kinds: ReadonlyMap<string, ResolvedRelationshipKind>,
+  rejected: string,
+  sourceAspect: (typeof conceptKinds)[number]['aspect'],
+  targetAspect: (typeof conceptKinds)[number]['aspect'],
+) => {
+  const candidates = [...kinds]
+    .filter(
+      ([id, kind]) =>
+        id !== rejected &&
+        (kind.sourceAspects?.includes(sourceAspect) ?? true) &&
+        (kind.targetAspects?.includes(targetAspect) ?? true),
+    )
+    .map(([id]) => id)
+  if (candidates.length === 0) {
+    return ''
+  }
+  const observed =
+    sourceAspect === targetAspect
+      ? `both endpoints are ${describeAspect(sourceAspect)}`
+      : `source is ${describeAspect(sourceAspect)} and target is ${describeAspect(targetAspect)}`
+  return `; ${observed}; valid candidates: ${candidates.join(', ')}`
+}
+
 const diagnosticFailure = (
   diagnostics: readonly Diagnostic[],
 ): Extract<CompilationResult, { readonly ok: false }> => ({
@@ -1134,26 +1163,40 @@ function compileWorkspaceResolved(
       }
       const policy = selectedProfile.relationshipKinds.get(relationship.kind)
       if (policy !== undefined) {
-        for (const endpoint of ['source', 'target'] as const) {
-          const reference =
-            endpoint === 'source' ? relationship.from : relationship.to
+        const aspectOf = (reference: string) => {
           const resolvedConcept = conceptByQualifiedId.get(
             qualifyReference(value.id, reference),
           )
-          const kind =
-            resolvedConcept === undefined
-              ? undefined
-              : profiles
-                  .get(resolvedConcept.profile)
-                  ?.conceptKinds.get(resolvedConcept.concept.kind)
+          return resolvedConcept === undefined
+            ? undefined
+            : profiles
+                .get(resolvedConcept.profile)
+                ?.conceptKinds.get(resolvedConcept.concept.kind)?.aspect
+        }
+        const sourceAspect = aspectOf(relationship.from)
+        const targetAspect = aspectOf(relationship.to)
+        const candidates =
+          sourceAspect === undefined || targetAspect === undefined
+            ? ''
+            : candidateKindHint(
+                selectedProfile.relationshipKinds,
+                relationship.kind,
+                sourceAspect,
+                targetAspect,
+              )
+        for (const endpoint of ['source', 'target'] as const) {
+          const reference =
+            endpoint === 'source' ? relationship.from : relationship.to
+          const aspect =
+            endpoint === 'source' ? sourceAspect : targetAspect
           const allowed =
             endpoint === 'source'
               ? policy.sourceAspects
               : policy.targetAspects
           if (
-            kind !== undefined &&
+            aspect !== undefined &&
             allowed !== undefined &&
-            !allowed.includes(kind.aspect)
+            !allowed.includes(aspect)
           ) {
             const field = endpoint === 'source' ? 'from' : 'to'
             const pointer = `/relationships/${index}/${field}`
@@ -1164,7 +1207,7 @@ function compileWorkspaceResolved(
             diagnostics.push({
               severity: 'error',
               code: 'YM404',
-              message: `Relationship "${relationship.kind}" requires a ${endpoint} with aspect ${allowed.map((aspect) => `"${aspect}"`).join(' or ')}; "${reference}" has aspect "${kind.aspect}"${policy.repair === undefined ? '' : `; ${policy.repair}`}`,
+              message: `Relationship "${relationship.kind}" requires a ${endpoint} with aspect ${allowed.map((entry) => `"${entry}"`).join(' or ')}; "${reference}" has aspect "${aspect}"${policy.repair === undefined ? '' : `; ${policy.repair}`}${candidates}`,
               path: input.path,
               pointer,
               line: source.line,

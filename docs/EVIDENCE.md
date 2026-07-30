@@ -64,6 +64,13 @@ The typed API exposes `loadEvidence`, `evaluateEvidence`, and
 optional `evidence` category of a workspace manifest, in which case
 `yarramate check` validates them against the compiled graph.
 
+`yarramate check --strict` additionally fails the check (exit `1`) when any
+evidence observation is `contradicted`, rendering each contradiction as a
+source-located `YM901` diagnostic anchored at the declared claim. `unknown`
+and `not-observed` results stay advisory. A strict pass reports how many
+observations it evaluated, so a gate over zero evidence is visible rather
+than silently vacuous (ADR 0047).
+
 ## Reconciliation
 
 ```sh
