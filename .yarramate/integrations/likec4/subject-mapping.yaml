@@ -1176,3 +1176,9 @@ mappings:
   - native: yarramate-engine#status-command-serves-agent-harness
     external: statusCommandServesAgentHarness
     type: relationship
+  - native: yarramate-engine#next-command
+    external: nextCommand
+    type: concept
+  - native: yarramate-engine#next-command-serves-agent-harness
+    external: nextCommandServesAgentHarness
+    type: relationship

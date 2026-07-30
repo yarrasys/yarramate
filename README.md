@@ -119,6 +119,7 @@ node dist/cli.js check .yarramate/workspace.yaml --json
 node dist/cli.js compile .yarramate/workspace.yaml
 node dist/cli.js context .yarramate/projections/context.yaml .yarramate/workspace.yaml
 node dist/cli.js view .yarramate/projections/context.yaml .yarramate/workspace.yaml
+node dist/cli.js next .yarramate/projections/context.yaml .yarramate/workspace.yaml
 node dist/cli.js evidence .yarramate/evidence/repository.yaml .yarramate/workspace.yaml
 node dist/cli.js reconcile .yarramate/workspace.yaml
 ```
