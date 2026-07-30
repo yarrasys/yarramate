@@ -130,6 +130,26 @@ not a second source of architectural truth.
 Projection documents are canonical queries, not canonical diagrams. Layout,
 colors, coordinates, and renderer configuration belong to optional adapters.
 
+## Next slice
+
+During implementation, the same projection answers "which planned seam comes
+first":
+
+```sh
+yarramate next .yarramate/projections/current-engine.yaml \
+  .yarramate/workspace.yaml
+```
+
+The report lists the projection's `planned` subjects in dependency order —
+prerequisites first, derived from the declared relationships between planned
+subjects and each core kind's intent (ADR 0048) — with who requires each
+subject and its evidence coverage, including `no evidence`. Dependency
+cycles are appended sorted and marked instead of silently arranged. `--json`
+emits deterministic `yarramate/next-result/v1`
+(`schema/yarramate-next-result.schema.json`). The exit status stays `0`
+regardless of content: the next slice is a reading of declared intent, not a
+gate.
+
 ## Native starter views
 
 The dogfooding workspace supplies eight optional projection templates:

@@ -25,6 +25,7 @@ import {
 } from './cli-support.js'
 import { runCheckCommand } from './check-command.js'
 import { runNewCommand } from './new-command.js'
+import { runNextCommand } from './next-command.js'
 import { runStatusCommand } from './status-command.js'
 import {
   evaluateEvidence,
@@ -948,6 +949,9 @@ export function runCli(
   }
   if (command === 'new') {
     return runNewCommand(options, cwd)
+  }
+  if (command === 'next') {
+    return runNextCommand(options, cwd)
   }
   return { exitCode: 2, stdout: '', stderr: usage }
 }

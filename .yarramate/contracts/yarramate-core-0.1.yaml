@@ -48,6 +48,9 @@ formats:
   - id: yarramate/status-result/v1
     schema: schema/yarramate-status-result.schema.json
     packageExport: ./schema/status-result
+  - id: yarramate/next-result/v1
+    schema: schema/yarramate-next-result.schema.json
+    packageExport: ./schema/next-result
 commands:
   - name: init
     binary: yarramate
@@ -63,6 +66,9 @@ commands:
   - name: status
     binary: yarramate
     machineFormat: yarramate/status-result/v1
+  - name: next
+    binary: yarramate
+    machineFormat: yarramate/next-result/v1
   - name: compile
     binary: yarramate
     machineFormat: yarramate/graph/v2
