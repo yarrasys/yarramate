@@ -57,6 +57,7 @@ src/                 compiler, CLI, graph, and adapter sources
 schema/              normative JSON Schemas
 test/                tests and acceptance fixtures
 skills/              portable architecture workflow for agent harnesses
+.claude-plugin/      plugin marketplace manifest offering that skill
 docs/                contracts, guides, and decisions
 .yarramate/          canonical dogfooded architecture
 .yarramate-out/      reproducible generated output (ignored)
@@ -139,6 +140,13 @@ yarramate --help
 
 See [Consuming YarraMate](docs/CONSUMING-YARRAMATE.md) for the packaged CLI,
 schemas, agent skill, and optional adapters.
+
+In Claude Code, this repository is its own plugin marketplace:
+
+```sh
+/plugin marketplace add yarrasys/yarramate
+/plugin install yarramate-architecture@yarramate
+```
 
 ## Library API
 
