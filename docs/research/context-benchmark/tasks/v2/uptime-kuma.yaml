@@ -12,6 +12,28 @@
 # - The four excluded weak-tier refusals came from this repository's upstream
 #   anti-AI CLAUDE.md; the runner now quarantines subject-repo agent config
 #   (runner/agent-config.mjs), so no task text changes for it.
+#
+# v2 additions (issue #56):
+# - v2 adds 3 harder comprehension tasks (uk-comp-check-type-dispatch-split,
+#   uk-comp-cert-expiry-gate, uk-comp-group-active-cascade). The 2026-07-29
+#   sweep (164 runs) found the comprehension family saturated at both model
+#   tiers on all four repositories: every existing comprehension task was
+#   answered correctly by weak and strong models alike, so H1 (does a
+#   YarraMate workspace improve comprehension?) is unmeasurable from it. The
+#   three existing tasks are single-hop — find the module, name the functions,
+#   list the call sites. Each added task instead requires chaining at least
+#   three hops across different components, so no single grep can answer it:
+#   the legacy-inline versus registry-dispatched check-type split, the
+#   multi-gate TLS certificate-expiry notification path, and the group
+#   aggregation / parent-active / maintenance-inheritance cascade.
+# - Counts re-verified at the pinned commit while authoring those tasks:
+#   server/monitor-types/ holds 26 .js files but only 25 concrete check types
+#   (monitor-type.js is the abstract base class), matching the 25 registry
+#   assignments. Note for graders of uk-change-add-monitor-type: its second
+#   rubric line names initMonitorTypes(); at this commit no such method
+#   exists — the assignments live inline in the UptimeKumaServer constructor
+#   (server/uptime-kuma-server.js:78, lines 113-137). The task text is frozen;
+#   grade the registration, not the method name.
 type: yarramate/benchmark-suite/v2
 suite: uptime-kuma
 headline: true
@@ -140,6 +162,284 @@ tasks:
         - server/server.js:1683
         - server/database.js:932
         - server/prometheus.js:147
+    scoring:
+      method: ground-truth
+
+  - id: uk-comp-check-type-dispatch-split
+    family: comprehension
+    prompt: >-
+      This repository supports many monitor check types, but they are not all
+      implemented the same way: some are inline branches in the per-beat check
+      code and others are looked up in a registry of pluggable type objects.
+      Answer with repo-relative file paths, function names and source ordering:
+      (a) name the function that contains the per-beat type dispatch and list,
+      in source order, every top-level branch of that dispatch, including the
+      guard that precedes all type branches and the final fallback; (b) say
+      where the registry is declared and where it is populated, how many
+      entries it gets, and how that count relates to the number of files under
+      server/monitor-types/; (c) name every check type still handled by an
+      inline branch, state which of those inline branches sits after the
+      registry lookup in the chain, and say what that ordering implies if the
+      same type name were also added to the registry; (d) name two behaviours
+      the beat loop enforces only on types resolved through the registry and
+      not on the inline ones, and one capability offered in the monitor edit
+      form that is therefore structurally unavailable to inline types — naming
+      the server function that publishes it, the event it is published on, and
+      the client files that consume it.
+    groundTruth:
+      answer: >-
+        (a) The dispatch is the `beat` closure defined inside Monitor.start
+        (server/model/monitor.js:426), in the try block opened at line 469.
+        Top-level branches in source order: Monitor.isUnderMaintenance(this.id)
+        -> MAINTENANCE, which precedes and short-circuits every type branch
+        (line 470); http | keyword | json-query (473); ping (728); push (740);
+        docker (778); radius (842); `this.type in
+        UptimeKumaServer.monitorTypeList` (869); kafka-producer (883); else
+        throw new Error("Unknown Monitor Type") (901-902). (b) The registry is
+        the static field UptimeKumaServer.monitorTypeList
+        (server/uptime-kuma-server.js:55). It is populated inline in the
+        UptimeKumaServer constructor (line 78) at lines 113-137 — 25
+        assignments; there is no separate init method at this commit.
+        server/monitor-types/ contains 26 .js files, of which 25 are concrete
+        classes extending MonitorType and the 26th, monitor-type.js, is the
+        abstract base whose check() throws "You need to override check()" — so
+        25 modules and 25 registered keys. Keys do not always match filenames:
+        "port" -> tcp.js, "sqlserver" -> mssql.js, "grpc-keyword" -> grpc.js,
+        "real-browser" -> real-browser-monitor-type.js. (c) Inline types: http,
+        keyword, json-query, ping, push, docker, radius, kafka-producer. Only
+        kafka-producer (883) sits after the registry lookup (869), so
+        registering a "kafka-producer" entry would shadow its inline branch;
+        the other seven precede the lookup and would win over a registry entry
+        of the same name. (d) Registry-only behaviour: (1) the contract
+        assertion at server/model/monitor.js:874 — if
+        (!monitorType.allowCustomStatus && bean.status !== UP) throw new
+        Error("The monitor implementation is incorrect, non-UP error must throw
+        error inside check()") — where only 2 of the 25 types set
+        allowCustomStatus = true (server/monitor-types/group.js:7 and
+        server/monitor-types/manual.js:11); (2) the response-time fallback at
+        lines 880-882, which fills bean.ping with the elapsed milliseconds when
+        check() left it undefined or null. The structurally unavailable
+        capability is monitor conditions: supportsConditions and
+        conditionVariables are fields on the MonitorType instance
+        (server/monitor-types/monitor-type.js:8 and :15; 5 of the 25 set
+        supportsConditions = true — dns, mqtt, mssql, mysql, oracledb),
+        published by sendMonitorTypeList (server/client.js:214) on the
+        "monitorTypeList" Socket.IO event, stored by src/mixins/socket.js:165
+        and read by the supportsConditions / conditionVariables computeds in
+        src/pages/EditMonitor.vue:3651-3657. An inline type has no registry
+        entry, so the lookup yields undefined and the conditions UI is never
+        offered for it.
+      verifiedAgainst:
+        - server/model/monitor.js:426
+        - server/model/monitor.js:470
+        - server/model/monitor.js:473
+        - server/model/monitor.js:869
+        - server/model/monitor.js:874
+        - server/model/monitor.js:880
+        - server/model/monitor.js:883
+        - server/model/monitor.js:902
+        - server/uptime-kuma-server.js:55
+        - server/uptime-kuma-server.js:113
+        - server/monitor-types/monitor-type.js:8
+        - server/monitor-types/group.js:7
+        - server/monitor-types/manual.js:11
+        - server/client.js:214
+        - src/mixins/socket.js:165
+        - src/pages/EditMonitor.vue:3651
+    scoring:
+      method: ground-truth
+
+  - id: uk-comp-cert-expiry-gate
+    family: comprehension
+    prompt: >-
+      This repository can warn an operator that a TLS certificate is about to
+      expire. That warning is deliberately narrow — several independent
+      conditions must all hold, spread over different layers. Trace the whole
+      path with repo-relative file paths and function names: (a) which check
+      paths can produce the certificate information at all, and what each of
+      them additionally requires before doing so; (b) the gate in the shared
+      helper that decides whether to proceed to the expiry check; (c) inside
+      the expiry check, every reason it can return without warning anyone,
+      where the day thresholds come from and what they default to, and how the
+      certificate chain is walked including which certificates are skipped and
+      why; (d) how a repeated warning for the same deadline is suppressed and
+      what event re-arms it; (e) whether this path reuses the same dispatch
+      that delivers UP/DOWN alerts — and if not, what that implies about how
+      the monitor's current up/down state affects it.
+    groundTruth:
+      answer: >-
+        (a) Three producers. (1) http/keyword/json-query, and only over https:
+        server/model/monitor.js attaches a keylog/secureConnect listener to the
+        https agent and calls this.handleTlsInfo(tlsInfo) at line 641, with a
+        fallback at line 672 that runs checkCertificate on
+        res.request.res.socket when this.getUrl()?.protocol === "https:" and
+        tlsInfo.valid is still undefined (for example when the request went
+        through a proxy). (2) The "port" type, TCPMonitorType in
+        server/monitor-types/tcp.js: in checkTcp only when ["secure",
+        "starttls"].includes(monitor.smtpSecurity) &&
+        monitor.isEnabledExpiryNotification() (line 138), which reaches
+        monitor.handleTlsInfo via checkTlsCertificate (line 267); and in
+        checkTlsAlert, the monitor.expected_tls_alert path, only when
+        result.tlsInfo && monitor.isEnabledExpiryNotification() (lines
+        314-315). (3) server/monitor-types/globalping.js does not use
+        handleTlsInfo at all — it stores the certificate itself and calls
+        checkCertExpiryNotifications directly at line 502 behind its own inline
+        gate !monitor.ignoreTls && monitor.expiryNotification (line 501). (b)
+        Monitor.handleTlsInfo (server/model/monitor.js:2072) always persists
+        the certificate and updates Prometheus, but only calls
+        checkCertExpiryNotifications when !this.getIgnoreTls() &&
+        this.isEnabledExpiryNotification() (line 2076) — the monitor's ignore
+        TLS errors option must be off and its certificate expiry notification
+        on. (c) checkCertExpiryNotifications (server/util-server.js:924)
+        returns without notifying when tlsInfoObject, tlsInfoObject.certInfo or
+        certInfo.daysRemaining is missing (lines 925-927), and when the monitor
+        has no notifications attached — it selects them by joining notification
+        and monitor_notification on monitor_id and bails on an empty list
+        (lines 929-938). Thresholds come from the "tlsExpiryNotifyDays"
+        Settings row (line 940); when it is null or not an array the default
+        [7, 14, 21] is written back and used (lines 941-945). For each
+        targetDays it walks the chain from certInfo along
+        certInfo.issuerCertificate (line 975), breaking out of the walk as soon
+        as it reaches a certificate whose fingerprint256 is in
+        monitor.rootCertificates (line 951) — the Set of SHA-256 fingerprints
+        of Node's tls.rootCertificates built once by
+        rootCertificatesFingerprints (server/util-server.js:805), imported at
+        server/model/monitor.js:66 and attached to the monitor in start() at
+        line 418 — and skipping any certificate whose daysRemaining is greater
+        than targetDays (line 957). (d) Monitor.sendCertNotificationByTargetDays
+        (server/model/monitor.js:1544) first selects from
+        notification_sent_history where type = 'certificate' and monitor_id = ?
+        and days <= targetDays (line 1546) and returns if a row exists; once at
+        least one provider succeeded it inserts (type, monitor_id, days) at
+        line 1574. Those rows are deleted — re-arming the warnings — by
+        Monitor.updateTlsInfo (server/model/monitor.js:1258) when the stored
+        certInfo.fingerprint256 differs from the newly observed one (DELETE at
+        line 1276); server/monitor-types/globalping.js:473 does the same for
+        its own path. (e) No. sendCertNotificationByTargetDays calls
+        Notification.send (server/notification.js) directly with each row's
+        parsed config; it never goes through Monitor.sendNotification or
+        Monitor.isImportantForNotification. The monitor's UP/DOWN state, beat
+        importance and resendInterval therefore have no bearing on
+        certificate-expiry warnings: they are driven purely by a successful TLS
+        handshake on any beat that produced certificate information.
+      verifiedAgainst:
+        - server/model/monitor.js:641
+        - server/model/monitor.js:672
+        - server/model/monitor.js:2072
+        - server/model/monitor.js:2076
+        - server/model/monitor.js:1258
+        - server/model/monitor.js:1276
+        - server/model/monitor.js:1544
+        - server/model/monitor.js:1574
+        - server/model/monitor.js:66
+        - server/model/monitor.js:418
+        - server/util-server.js:805
+        - server/util-server.js:924
+        - server/util-server.js:940
+        - server/util-server.js:951
+        - server/util-server.js:975
+        - server/monitor-types/tcp.js:138
+        - server/monitor-types/tcp.js:267
+        - server/monitor-types/tcp.js:314
+        - server/monitor-types/globalping.js:473
+        - server/monitor-types/globalping.js:501
+    scoring:
+      method: ground-truth
+
+  - id: uk-comp-group-active-cascade
+    family: comprehension
+    prompt: >-
+      Group monitors in this repository aggregate the state of their children,
+      and pausing or putting a group under maintenance is supposed to mean
+      something for those children. Explain, with repo-relative file paths and
+      function names: (a) how a group's own heartbeat status is computed —
+      what it reads for each child, which children it skips and whether it uses
+      the raw database column or a derived helper to decide that, what happens
+      when the group has no children, and how a DOWN outcome is signalled back
+      to the beat loop rather than assigned directly; (b) what property on the
+      group's implementation makes its non-UP statuses legal, given the check
+      the beat loop applies to whatever that implementation produces; (c) what
+      pausing the parent group actually does to the children — name the
+      recursive helpers that compute effective activity, every place in the
+      server that consults them, the two fields the client is sent and what the
+      UI does with them, and state whether pausing a group stops the children's
+      own check loops or prevents them from being started at process start; (d)
+      whether a maintenance window attached to the group covers its children,
+      through what code, and at what point in the beat it takes effect.
+    groundTruth:
+      answer: >-
+        (a) server/monitor-types/group.js — GroupMonitorType.check (line 12)
+        loads children with Monitor.getChildren(monitor.id) (line 13), which is
+        a raw SELECT * FROM monitor WHERE parent = ? (server/model/monitor.js:
+        1919). It skips a child on the raw child.active column (line 27), not
+        on the recursive Monitor.isActive helper. For each remaining child it
+        reads only the latest heartbeat via
+        Monitor.getPreviousHeartbeat(child.id) (line 33 ->
+        server/model/monitor.js:1587, id = (select MAX(id) from heartbeat where
+        monitor_id = ?)); a child with no heartbeat at all counts as PENDING.
+        An empty group short-circuits to PENDING with msg "Group empty" (lines
+        15-20). Worst status wins: all children UP gives UP with "All children
+        up and running" (lines 54-58); any PENDING gives PENDING with "Pending
+        child monitors: ..." (lines 60-64); a DOWN child is not assigned at all
+        — check() throws new Error("Child monitors down: ...") (line 73) so the
+        generic catch in the beat loop applies the normal retries/PENDING
+        escalation and the normal notification flow. (b) allowCustomStatus =
+        true on the class (server/monitor-types/group.js:7). Without it the
+        assertion at server/model/monitor.js:874 would throw "The monitor
+        implementation is incorrect, non-UP error must throw error inside
+        check()" for the PENDING outcomes; among the 25 registered types only
+        group.js and server/monitor-types/manual.js:11 set it. (c) The
+        recursive helpers are Monitor.isParentActive
+        (server/model/monitor.js:2030), which walks up via Monitor.getParent
+        (line 1902) and returns parent.active === 1 && parentActive, and
+        Monitor.isActive (line 1302), which is active === 1 && await
+        Monitor.isParentActive(monitorID). They are consulted in exactly two
+        places: server/server.js:974, where an edited monitor is restarted only
+        if it is effectively active, and Monitor.preparePreloadData
+        (server/model/monitor.js:1838 and 1841), which builds activeStatus from
+        isActive and forceInactive = !isParentActive (line 1878). Monitor.
+        toJSON then sends active as that effective value rather than the raw
+        column (line 144) plus forceInactive (line 145), and
+        src/pages/Details.vue:127 uses forceInactive to disable the Resume
+        button. Pausing does not cascade: pauseMonitor
+        (server/server.js:1934) sets active = 0 on that one row and stops that
+        one monitor's loop only, and startMonitors (server/server.js:1951)
+        selects rows with active = 1 and starts every one of them without
+        consulting isActive or isParentActive — neither Monitor.start
+        (server/model/monitor.js:414) nor its beat closure re-checks ancestors.
+        So a child row with active = 1 keeps its own beat loop while an
+        ancestor group is paused, and is started again at process start; the
+        cascade exists only in what the API reports and what the UI allows. (d)
+        Yes. Monitor.isUnderMaintenance (server/model/monitor.js:1596) checks
+        the monitor's own monitor_maintenance rows and then recurses into the
+        parent (lines 1612-1615), so a window on the group covers descendants.
+        It takes effect as the very first branch of the beat dispatch (line
+        470), before any type branch, writing a MAINTENANCE heartbeat with msg
+        "Monitor under maintenance" and skipping the check entirely.
+      verifiedAgainst:
+        - server/monitor-types/group.js:7
+        - server/monitor-types/group.js:13
+        - server/monitor-types/group.js:27
+        - server/monitor-types/group.js:33
+        - server/monitor-types/group.js:73
+        - server/monitor-types/manual.js:11
+        - server/model/monitor.js:144
+        - server/model/monitor.js:414
+        - server/model/monitor.js:470
+        - server/model/monitor.js:874
+        - server/model/monitor.js:1302
+        - server/model/monitor.js:1587
+        - server/model/monitor.js:1596
+        - server/model/monitor.js:1612
+        - server/model/monitor.js:1838
+        - server/model/monitor.js:1878
+        - server/model/monitor.js:1902
+        - server/model/monitor.js:1919
+        - server/model/monitor.js:2030
+        - server/server.js:974
+        - server/server.js:1934
+        - server/server.js:1951
+        - src/pages/Details.vue:127
     scoring:
       method: ground-truth
 
