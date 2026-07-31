@@ -25,6 +25,7 @@
     "dist",
     "assets/likec4",
     "schema",
+    "catalogues",
     "skills/yarramate-architecture",
     "docs/CONSUMING-YARRAMATE.md"
   ],
@@ -60,6 +61,8 @@
     "./schema/state-comparison": "./schema/yarramate-state-comparison.schema.json",
     "./schema/status-result": "./schema/yarramate-status-result.schema.json",
     "./schema/next-result": "./schema/yarramate-next-result.schema.json",
+    "./schema/question-catalogue": "./schema/yarramate-question-catalogue.schema.json",
+    "./schema/interrogation-report": "./schema/yarramate-interrogation-report.schema.json",
     "./schema/graph-v2": "./schema/yarramate-graph-v2.schema.json",
     "./schema/workspace": "./schema/yarramate-workspace.schema.json",
     "./schema/evidence": "./schema/yarramate-evidence.schema.json",

@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yarramate.org/schema/interrogation-report/v1",
+  "title": "YarraMate interrogation report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "workspace", "catalogue", "summary", "waves"],
+  "properties": {
+    "format": {
+      "const": "yarramate/interrogation-report/v1"
+    },
+    "workspace": {
+      "type": "string",
+      "minLength": 1
+    },
+    "catalogue": {
+      "type": "string",
+      "minLength": 1
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["questions", "openQuestions", "open"],
+      "properties": {
+        "questions": { "type": "integer", "minimum": 0 },
+        "openQuestions": { "type": "integer", "minimum": 0 },
+        "open": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "waves": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/wave"
+      }
+    }
+  },
+  "$defs": {
+    "wave": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "questions"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "questions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/question" }
+        }
+      }
+    },
+    "question": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "scope",
+        "authority",
+        "open",
+        "question",
+        "materiality",
+        "resolution"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "scope": { "enum": ["workspace", "subject"] },
+        "authority": { "enum": ["human", "agent", "either"] },
+        "open": { "type": "boolean" },
+        "question": { "type": "string", "minLength": 1 },
+        "materiality": { "type": "string", "minLength": 1 },
+        "resolution": { "type": "string", "minLength": 1 },
+        "subjects": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/openSubject" }
+        }
+      }
+    },
+    "openSubject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "question"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "question": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}
