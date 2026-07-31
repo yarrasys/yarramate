@@ -41,6 +41,7 @@ import {
   renderBudgetedContext,
   renderProjectionMarkdown,
 } from './projection.js'
+import { renderBrief } from './brief.js'
 
 export type { CliResult } from './cli-support.js'
 
@@ -71,12 +72,26 @@ const extractBudget = (
   return budget === undefined ? { ok: true, rest } : { ok: true, budget, rest }
 }
 
+const extractBrief = (
+  options: readonly string[],
+): { readonly brief: boolean; readonly rest: readonly string[] } => ({
+  brief: options.includes('--brief'),
+  rest: options.filter((option) => option !== '--brief'),
+})
+
 const runProjection = (
   options: readonly string[],
   cwd: string,
   output: 'json' | 'markdown',
 ): CliResult => {
-  const extracted = output === 'json' ? extractBudget(options) : { ok: true as const, rest: options }
+  const { brief, rest: withoutBrief } =
+    output === 'json'
+      ? extractBrief(options)
+      : { brief: false, rest: options }
+  const extracted =
+    output === 'json'
+      ? extractBudget(withoutBrief)
+      : { ok: true as const, rest: withoutBrief }
   if (!extracted.ok) {
     return { exitCode: 2, stdout: '', stderr: usage }
   }
@@ -132,9 +147,11 @@ const runProjection = (
       exitCode: 0,
       stdout:
         output === 'json'
-          ? budget === undefined
-            ? `${JSON.stringify(result, null, 2)}\n`
-            : renderBudgetedContext(result, budget)
+          ? brief
+            ? renderBrief(result, compilation.profileContext, budget)
+            : budget === undefined
+              ? `${JSON.stringify(result, null, 2)}\n`
+              : renderBudgetedContext(result, budget)
           : renderProjectionMarkdown(result),
       stderr: '',
     }
@@ -148,7 +165,8 @@ const runAdHocContext = (
   options: readonly string[],
   cwd: string,
 ): CliResult => {
-  const extracted = extractBudget(options)
+  const { brief, rest: withoutBrief } = extractBrief(options)
+  const extracted = extractBudget(withoutBrief)
   if (!extracted.ok) {
     return { exitCode: 2, stdout: '', stderr: usage }
   }
@@ -238,8 +256,9 @@ const runAdHocContext = (
     )
     return {
       exitCode: 0,
-      stdout:
-        budget === undefined
+      stdout: brief
+        ? renderBrief(result, compilation.profileContext, budget)
+        : budget === undefined
           ? `${JSON.stringify(result, null, 2)}\n`
           : renderBudgetedContext(result, budget),
       stderr: '',
