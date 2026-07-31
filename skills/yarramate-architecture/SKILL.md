@@ -109,6 +109,19 @@ yarramate-likec4 export-project .yarramate/likec4-project.yaml .yarramate-out/li
    presence matters; do not misuse lifecycle status as a decision verdict.
 4. Add the principal services, components, information, responsibilities, and
    dependencies required to begin implementation. Partial detail is valid.
+   After structuring what is stated, interrogate the model for what is not:
+
+```sh
+yarramate interrogate catalogues/core-enrichment.yaml .yarramate/workspace.yaml
+```
+
+   (Resolve the shipped catalogue from the installed package when the
+   consuming repository has no catalogue of its own.) Work the open questions
+   wave by wave — motivation before business before hygiene. Answer questions
+   the evidence can answer; ask the human the ones marked `human`, quoting the
+   question and its materiality. Re-run after every batch of answers: a
+   question closes when its trigger no longer matches, so the still-open list
+   is always current and nothing needs session state.
 5. Create:
    - an alternatives projection for the decision;
    - a bounded target projection for implementation agents.

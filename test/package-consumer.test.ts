@@ -27,6 +27,7 @@ describe('consumer package contract', () => {
       'dist',
       'assets/likec4',
       'schema',
+      'catalogues',
       'skills/yarramate-architecture',
       'docs/CONSUMING-YARRAMATE.md',
     ])

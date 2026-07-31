@@ -37,7 +37,7 @@ const opt = (name, fallback) => {
 const runsPath = opt('runs');
 const suitePath = opt('suite');
 const toolchain = opt('toolchain');
-const cataloguePath = opt('catalogue', join(repoRoot, 'docs/research/question-catalogue/core-enrichment.yaml'));
+const cataloguePath = opt('catalogue', join(repoRoot, 'catalogues/core-enrichment.yaml'));
 if (!runsPath || !suitePath || !toolchain) {
   console.error('usage: score.mjs --runs <runs.jsonl> --suite <suite.yaml> --toolchain <bin-dir> [--catalogue <catalogue.yaml>]');
   process.exit(2);

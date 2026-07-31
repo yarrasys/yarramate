@@ -51,6 +51,12 @@ formats:
   - id: yarramate/next-result/v1
     schema: schema/yarramate-next-result.schema.json
     packageExport: ./schema/next-result
+  - id: yarramate/question-catalogue/v1
+    schema: schema/yarramate-question-catalogue.schema.json
+    packageExport: ./schema/question-catalogue
+  - id: yarramate/interrogation-report/v1
+    schema: schema/yarramate-interrogation-report.schema.json
+    packageExport: ./schema/interrogation-report
 commands:
   - name: init
     binary: yarramate
@@ -86,6 +92,9 @@ commands:
   - name: reconcile
     binary: yarramate
     machineFormat: yarramate/reconciliation-report/v1
+  - name: interrogate
+    binary: yarramate
+    machineFormat: yarramate/interrogation-report/v1
 guarantees:
   - adapter-independent-core
   - canonical-graph-serialization

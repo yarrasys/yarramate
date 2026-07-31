@@ -1227,3 +1227,15 @@ mappings:
   - native: yarramate-repository#status-command-source-realizes-command
     external: statusCommandSourceRealizesCommand
     type: relationship
+  - native: yarramate-engine#interrogate-command
+    external: interrogateCommand
+    type: concept
+  - native: yarramate-engine#interrogate-command-serves-agent-harness
+    external: interrogateCommandServesAgentHarness
+    type: relationship
+  - native: yarramate-repository#interrogate-command-source
+    external: interrogateCommandSource
+    type: concept
+  - native: yarramate-repository#interrogate-command-source-realizes-command
+    external: interrogateCommandSourceRealizesCommand
+    type: relationship

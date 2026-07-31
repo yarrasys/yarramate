@@ -25,6 +25,7 @@ import {
 } from './cli-support.js'
 import { runCheckCommand } from './check-command.js'
 import { runNewCommand } from './new-command.js'
+import { runInterrogateCommand } from './interrogate-command.js'
 import { runNextCommand } from './next-command.js'
 import { runStatusCommand } from './status-command.js'
 import {
@@ -952,6 +953,9 @@ export function runCli(
   }
   if (command === 'next') {
     return runNextCommand(options, cwd)
+  }
+  if (command === 'interrogate') {
+    return runInterrogateCommand(options, cwd)
   }
   return { exitCode: 2, stdout: '', stderr: usage }
 }

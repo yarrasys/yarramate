@@ -26,6 +26,7 @@ concepts:
     kind: compiler-module
     name: Native profile catalogue
     description: Supplies known concept kinds and broad relationship policies.
+    owner: yarramate-product#yarramate-maintainers
     status: current
   - id: workspace-loader
     kind: compiler-module
@@ -293,6 +294,12 @@ concepts:
     kind: applicationService
     name: Next command
     description: Reports planned subjects in a projection in declared dependency order with per-subject evidence coverage.
+    owner: yarramate-product#yarramate-maintainers
+    status: current
+  - id: interrogate-command
+    kind: applicationService
+    name: Interrogate command
+    description: Evaluates a versioned question catalogue against the compiled graph and reports the still-open design questions, recomputed statelessly on every run.
     owner: yarramate-product#yarramate-maintainers
     status: current
   - id: context-command
@@ -1011,6 +1018,10 @@ relationships:
   - id: next-command-serves-agent-harness
     kind: serving
     from: next-command
+    to: yarramate-product#agent-harness
+  - id: interrogate-command-serves-agent-harness
+    kind: serving
+    from: interrogate-command
     to: yarramate-product#agent-harness
   - id: context-command-serves-agent-harness
     kind: serving

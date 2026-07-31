@@ -1,0 +1,349 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yarramate.org/schema/question-catalogue/v1",
+  "title": "YarraMate question catalogue",
+  "description": "A versioned, opinionated catalogue of enrichment questions. Each question binds a deterministic trigger evaluated against a compiled graph-v2 workspace: the question is open wherever its trigger matches and closed when it no longer matches. Interview state is recomputed, never stored.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "id",
+    "version",
+    "profile",
+    "waves",
+    "questions"
+  ],
+  "properties": {
+    "format": {
+      "const": "yarramate/question-catalogue/v1"
+    },
+    "id": {
+      "$ref": "#/$defs/id"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
+    "profile": {
+      "description": "Profile identity whose vocabulary the triggers are expressed against.",
+      "$ref": "#/$defs/profileIdentity"
+    },
+    "presentation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title"
+      ],
+      "properties": {
+        "title": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "description": {
+          "$ref": "#/$defs/nonEmptyText"
+        }
+      }
+    },
+    "waves": {
+      "description": "Ordered interview phases. Array order is interview order. The wave taxonomy is catalogue opinion, not engine semantics.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/id"
+          },
+          "name": {
+            "$ref": "#/$defs/nonEmptyText"
+          },
+          "description": {
+            "$ref": "#/$defs/nonEmptyText"
+          }
+        }
+      }
+    },
+    "questions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/question"
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "nonEmptyText": {
+      "type": "string",
+      "minLength": 1
+    },
+    "profileIdentity": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9/-]*@[0-9][0-9A-Za-z.-]*$"
+    },
+    "catalogueIdentity": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9/-]*@[0-9][0-9A-Za-z.-]*$"
+    },
+    "qualifiedKind": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9/-]*@[0-9][0-9A-Za-z.-]*#[A-Za-z][A-Za-z0-9-]*$"
+    },
+    "claimPredicate": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9/@.#-]*$"
+    },
+    "subjectSelector": {
+      "description": "Which subjects a subject-scope question applies to. Field vocabulary mirrors the projection query selector (ADR 0017).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kinds"
+      ],
+      "properties": {
+        "kinds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/qualifiedKind"
+          }
+        },
+        "kindMatching": {
+          "enum": [
+            "exact",
+            "descendants"
+          ],
+          "default": "descendants"
+        },
+        "statuses": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "planned",
+              "current",
+              "retired"
+            ]
+          }
+        },
+        "documents": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        }
+      }
+    },
+    "condition": {
+      "description": "One deterministic trigger condition. All conditions in a trigger must hold (AND) for the question to be open.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "condition",
+            "predicate"
+          ],
+          "properties": {
+            "condition": {
+              "const": "missing-claim"
+            },
+            "predicate": {
+              "$ref": "#/$defs/claimPredicate"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "condition",
+            "kinds",
+            "direction"
+          ],
+          "properties": {
+            "condition": {
+              "const": "missing-relationship"
+            },
+            "kinds": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/qualifiedKind"
+              }
+            },
+            "direction": {
+              "enum": [
+                "incoming",
+                "outgoing",
+                "any"
+              ]
+            },
+            "kindMatching": {
+              "enum": [
+                "exact",
+                "descendants"
+              ],
+              "default": "descendants"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "condition"
+          ],
+          "properties": {
+            "condition": {
+              "const": "isolated"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "condition",
+            "kinds"
+          ],
+          "properties": {
+            "condition": {
+              "const": "no-subject-of-kind"
+            },
+            "kinds": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/qualifiedKind"
+              }
+            },
+            "kindMatching": {
+              "enum": [
+                "exact",
+                "descendants"
+              ],
+              "default": "descendants"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "condition"
+          ],
+          "properties": {
+            "condition": {
+              "const": "no-state-defined"
+            }
+          }
+        }
+      ]
+    },
+    "question": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "wave",
+        "scope",
+        "trigger",
+        "question",
+        "materiality",
+        "authority"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "wave": {
+          "description": "Wave id declared in this catalogue (or an extended one).",
+          "$ref": "#/$defs/id"
+        },
+        "scope": {
+          "description": "subject: evaluated once per matching subject. workspace: evaluated once per workspace.",
+          "enum": [
+            "subject",
+            "workspace"
+          ]
+        },
+        "subjects": {
+          "$ref": "#/$defs/subjectSelector"
+        },
+        "trigger": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/condition"
+          }
+        },
+        "question": {
+          "description": "Human-facing phrasing. Subject-scope questions may interpolate {subject.id} and {subject.name}.",
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "materiality": {
+          "description": "Which architectural decision the answer changes. A question that cannot state this does not belong in the catalogue.",
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "authority": {
+          "description": "Who may answer. evidence: an agent may propose the answer from repository evidence (still lands as a reviewable diff). human: a genuine design decision that must be escalated. either: evidence may propose, human confirms.",
+          "enum": [
+            "evidence",
+            "human",
+            "either"
+          ]
+        },
+        "resolution": {
+          "description": "Guidance for how an accepted answer should land as native authoring (which claim, relationship, or state to add).",
+          "$ref": "#/$defs/nonEmptyText"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "scope": {
+                "const": "subject"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "subjects"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "scope": {
+                "const": "workspace"
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [
+                "subjects"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}

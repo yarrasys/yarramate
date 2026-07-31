@@ -1,0 +1,68 @@
+# Interrogation
+
+`yarramate interrogate` evaluates a versioned question catalogue against the
+compiled workspace and reports which design questions are still open. It is
+the gap engine behind the enrichment interview: deterministic detection of
+what the model has not yet answered, with the answering left to people and
+agents.
+
+```sh
+yarramate interrogate catalogues/core-enrichment.yaml .yarramate/workspace.yaml
+yarramate interrogate catalogues/core-enrichment.yaml .yarramate/workspace.yaml --json
+```
+
+The command requires an explicit workspace manifest. `--json` emits
+deterministic `yarramate/interrogation-report/v1`
+(`schema/yarramate-interrogation-report.schema.json`). Exit status is `0` for
+a valid report regardless of how many questions are open — an open question
+is work, not an error; status `1` means the catalogue or workspace failed
+deterministic correctness, and `2` means the invocation failed.
+
+## Catalogues
+
+A catalogue is a versioned YAML document
+(`yarramate/question-catalogue/v1`, normative schema
+`schema/yarramate-question-catalogue.schema.json`) declaring waves and
+questions. Each question binds:
+
+- a **trigger** — one or more deterministic conditions over the compiled
+  graph (all must hold): `missing-claim`, `missing-relationship`,
+  `isolated`, `no-subject-of-kind`, or `no-state-defined`;
+- a **scope** — `workspace` (asked once) or `subject` (asked per matching
+  subject, selected by kinds, statuses, and documents, with `descendants`
+  kind matching by default so profile-derived kinds satisfy a catalogue
+  written against their parents);
+- a **materiality** statement — the decision its answer changes. A question
+  that cannot state one is deleted, not softened;
+- an **authority** — `human`, `agent`, or `either` — declaring who may
+  answer;
+- a **resolution** hint — how an answer is typically modelled.
+
+The package ships `catalogues/core-enrichment.yaml`, thirteen seed questions
+across motivation, business, and hygiene waves for `yarramate/core@0.1`.
+Catalogues are ordinary versioned data: swap them, extend the shipped one
+under a new identity, or write one per organisation. Composition via
+`extends` is deferred from v1 (ADR 0053).
+
+## Evaluation model
+
+A question is **open** iff its trigger matches, and **closed** the moment it
+no longer does. Interview state is recomputed from model plus catalogue on
+every run and never stored: no session files, no second canonical store,
+nothing to resume. Editing the model and re-running yields exactly the
+still-open questions.
+
+Open questions are not findings against anyone. `check` answers "is this
+model well-formed", `reconcile` answers "does reality agree", and
+`interrogate` answers "what has nobody decided yet". Only the first two can
+fail a gate; the third produces the agenda for the next design conversation.
+
+## The interview loop
+
+The intended use is agent-mediated: an agent structures what a prompt or
+conversation states, runs `interrogate`, and works the open questions wave
+by wave — answering what evidence can answer and escalating questions marked
+`human` with their materiality attached, so the person always knows what
+decision their answer changes. Answers are captured back into the model
+through the normal authoring surface and Git review; closure is then
+automatic on the next run.
