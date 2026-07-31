@@ -116,7 +116,10 @@ yarramate interrogate catalogues/core-enrichment.yaml .yarramate/workspace.yaml
 ```
 
    (Resolve the shipped catalogue from the installed package when the
-   consuming repository has no catalogue of its own.) Work the open questions
+   consuming repository has no catalogue of its own.) Do not open the
+   catalogue file itself: the interrogation report is self-contained —
+   question text, materiality, and authority all appear in the output, so
+   reading the catalogue only spends context. Work the open questions
    wave by wave — motivation before business before hygiene. Answer questions
    the evidence can answer; ask the human the ones marked `human`, quoting the
    question and its materiality. Re-run after every batch of answers: a
