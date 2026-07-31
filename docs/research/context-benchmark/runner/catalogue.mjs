@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
 const catalogueDir = join(repoRoot, 'docs/research/question-catalogue');
+const productCatalogueDir = join(repoRoot, 'catalogues');
 
 // Enrichment targets, as evaluate-catalogue.mjs defines them: concept subjects
 // minus the architecture-state subjects, which carry no catalogue questions.
@@ -25,7 +26,7 @@ const conceptCount = (graph) => {
   return (graph.subjects ?? []).filter((subject) => subject.type === 'concept' && !states.has(subject.id)).length;
 };
 
-export const catalogueSnapshot = (toolchainDir, workspaceDir, scratchDir, cataloguePath = join(catalogueDir, 'core-enrichment.yaml')) => {
+export const catalogueSnapshot = (toolchainDir, workspaceDir, scratchDir, cataloguePath = join(productCatalogueDir, 'core-enrichment.yaml')) => {
   try {
     const compiled = execFileSync(join(toolchainDir, 'yarramate'), ['compile', join(workspaceDir, 'workspace.yaml')], {
       encoding: 'utf8',

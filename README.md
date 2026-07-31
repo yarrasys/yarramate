@@ -123,6 +123,7 @@ node dist/cli.js view .yarramate/projections/context.yaml .yarramate/workspace.y
 node dist/cli.js next .yarramate/projections/context.yaml .yarramate/workspace.yaml
 node dist/cli.js evidence .yarramate/evidence/repository.yaml .yarramate/workspace.yaml
 node dist/cli.js reconcile .yarramate/workspace.yaml
+node dist/cli.js interrogate catalogues/core-enrichment.yaml .yarramate/workspace.yaml
 ```
 
 `init` creates `.yarramate/architecture/main.yaml` and

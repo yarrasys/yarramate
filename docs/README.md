@@ -18,6 +18,7 @@
 - [Projections](PROJECTIONS.md)
 - [Architecture states](ARCHITECTURE-STATES.md)
 - [Evidence](EVIDENCE.md)
+- [Interrogation](INTERROGATION.md)
 - [Core contract](CORE-CONTRACT.md)
 
 ## Optional adapters

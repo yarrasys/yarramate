@@ -78,7 +78,8 @@
               "context",
               "compare",
               "evidence",
-              "reconcile"
+              "reconcile",
+              "interrogate"
             ]
           },
           "binary": {

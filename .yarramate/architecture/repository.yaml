@@ -71,6 +71,10 @@ concepts:
     kind: repository-file
     name: src/next-command.ts
     status: current
+  - id: interrogate-command-source
+    kind: repository-file
+    name: src/interrogate-command.ts
+    status: current
   - id: new-command-source
     kind: repository-file
     name: src/new-command.ts
@@ -452,6 +456,10 @@ relationships:
     kind: realization
     from: next-command-source
     to: yarramate-engine#next-command
+  - id: interrogate-command-source-realizes-command
+    kind: realization
+    from: interrogate-command-source
+    to: yarramate-engine#interrogate-command
   - id: new-command-source-realizes-command
     kind: realization
     from: new-command-source

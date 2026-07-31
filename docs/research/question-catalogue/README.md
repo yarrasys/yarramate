@@ -8,12 +8,17 @@ proposed enrichment journey: after `init` and initial discovery, an agent
 interviews the workspace — answering what evidence can answer and escalating
 genuine design decisions to a human. This directory contains:
 
-- `yarramate-question-catalogue.schema.json` — draft JSON Schema for
-  `yarramate/question-catalogue/v1`;
-- `core-enrichment.yaml` — seed catalogue: 13 questions across motivation,
-  business, and hygiene waves against `yarramate/core@0.1`;
+- `yarramate-question-catalogue.schema.json` — the research draft of the
+  schema. The normative copy now ships as
+  `schema/yarramate-question-catalogue.schema.json` (it omits `extends`,
+  which v1 defers — ADR 0053);
 - `evaluate-catalogue.mjs` — reference evaluator demonstrating that every
   trigger is deterministic against a compiled graph-v2 workspace.
+
+The seed catalogue graduated to the product: it ships as
+`catalogues/core-enrichment.yaml`, and the gap engine is the stable
+`yarramate interrogate` command (ADR 0053). This directory remains the
+design record and the standalone reference implementation.
 
 ## Evaluation model
 
@@ -48,10 +53,16 @@ genuine design decisions to a human. This directory contains:
 Run against this repository's compiled workspace:
 
 ```sh
+yarramate interrogate catalogues/core-enrichment.yaml .yarramate/workspace.yaml
+```
+
+Or through the standalone reference evaluator:
+
+```sh
 yarramate compile .yarramate/workspace.yaml > /tmp/graph.json
 node docs/research/question-catalogue/evaluate-catalogue.mjs \
   docs/research/question-catalogue/yarramate-question-catalogue.schema.json \
-  docs/research/question-catalogue/core-enrichment.yaml \
+  catalogues/core-enrichment.yaml \
   /tmp/graph.json
 ```
 
