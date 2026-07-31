@@ -1239,3 +1239,54 @@ mappings:
   - native: yarramate-repository#interrogate-command-source-realizes-command
     external: interrogateCommandSourceRealizesCommand
     type: relationship
+  - native: yarramate-engine#cli-provides-compare
+    external: cliProvidesCompare
+    type: relationship
+  - native: yarramate-engine#cli-provides-context
+    external: cliProvidesContext
+    type: relationship
+  - native: yarramate-engine#cli-provides-interrogate
+    external: cliProvidesInterrogate
+    type: relationship
+  - native: yarramate-engine#cli-provides-new
+    external: cliProvidesNew
+    type: relationship
+  - native: yarramate-engine#cli-provides-next
+    external: cliProvidesNext
+    type: relationship
+  - native: yarramate-engine#cli-provides-status
+    external: cliProvidesStatus
+    type: relationship
+  - native: yarramate-engine#likec4-adapter-provides-check
+    external: likec4AdapterProvidesCheck
+    type: relationship
+  - native: yarramate-engine#likec4-adapter-provides-export
+    external: likec4AdapterProvidesExport
+    type: relationship
+  - native: yarramate-engine#mcp-adapter-implements-machine-context
+    external: mcpAdapterImplementsMachineContext
+    type: relationship
+  - native: yarramate-engine#profile-catalogue-implements-tool-neutrality
+    external: profileCatalogueImplementsToolNeutrality
+    type: relationship
+  - native: yarramate-product#compilation-realizes-canonical-documents
+    external: compilationRealizesCanonicalDocuments
+    type: relationship
+  - native: yarramate-product#design-realizes-shared-context
+    external: designRealizesSharedContext
+    type: relationship
+  - native: yarramate-product#discovery-realizes-shared-context
+    external: discoveryRealizesSharedContext
+    type: relationship
+  - native: yarramate-product#evidence-evaluation-realizes-separation
+    external: evidenceEvaluationRealizesSeparation
+    type: relationship
+  - native: yarramate-product#reconciliation-realizes-separation
+    external: reconciliationRealizesSeparation
+    type: relationship
+  - native: yarramate-product#stewardship-realizes-repository-operation
+    external: stewardshipRealizesRepositoryOperation
+    type: relationship
+  - native: yarramate-product#validation-realizes-correctness
+    external: validationRealizesCorrectness
+    type: relationship

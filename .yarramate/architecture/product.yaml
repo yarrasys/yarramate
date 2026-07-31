@@ -28,30 +28,58 @@ concepts:
     description: Review, merge, and ADR governance for the YarraMate repository as described in GOVERNANCE.md.
   - id: shared-architecture-context
     kind: goal
+    attestations:
+      - topic: adequacy
+        by: claude-fable-5
+        on: "2026-08-01"
     name: Shared architecture context
     description: People and agents work from the same structured architectural meaning.
   - id: repository-native-operation
     kind: requirement
+    attestations:
+      - topic: adequacy
+        by: claude-fable-5
+        on: "2026-08-01"
     name: Repository-native operation
     description: Git supplies authorship, review, history, and approval.
   - id: tool-neutral-core
     kind: requirement
+    attestations:
+      - topic: adequacy
+        by: claude-fable-5
+        on: "2026-08-01"
     name: Tool-neutral core
     description: Core remains independent of authoring, visualization, evidence, and compatibility adapters.
   - id: native-documents-are-canonical
     kind: requirement
+    attestations:
+      - topic: adequacy
+        by: claude-fable-5
+        on: "2026-08-01"
     name: Native documents are canonical
     description: Versioned YarraMate documents are the committed semantic source of truth.
   - id: deterministic-correctness
     kind: requirement
+    attestations:
+      - topic: adequacy
+        by: claude-fable-5
+        on: "2026-08-01"
     name: Deterministic correctness
     description: Core validation checks reproducible correctness rather than taste or completeness.
   - id: stable-cli
     kind: requirement
+    attestations:
+      - topic: adequacy
+        by: claude-fable-5
+        on: "2026-08-01"
     name: Stable CLI
     description: Humans, CI, skills, and agent harnesses share one command interface.
   - id: evidence-intent-separation
     kind: requirement
+    attestations:
+      - topic: adequacy
+        by: claude-fable-5
+        on: "2026-08-01"
     name: Evidence and intent remain distinct
     description: Observations may support or challenge architecture proposals but cannot silently author declared intent.
     references:
@@ -188,3 +216,31 @@ relationships:
     kind: realization
     from: provide-machine-context
     to: shared-architecture-context
+  - id: validation-realizes-correctness
+    kind: realization
+    from: validate-native-architecture
+    to: deterministic-correctness
+  - id: evidence-evaluation-realizes-separation
+    kind: realization
+    from: evaluate-architecture-evidence
+    to: evidence-intent-separation
+  - id: reconciliation-realizes-separation
+    kind: realization
+    from: reconcile-intent-and-evidence
+    to: evidence-intent-separation
+  - id: compilation-realizes-canonical-documents
+    kind: realization
+    from: compile-native-architecture
+    to: native-documents-are-canonical
+  - id: discovery-realizes-shared-context
+    kind: realization
+    from: discover-project-architecture
+    to: shared-architecture-context
+  - id: design-realizes-shared-context
+    kind: realization
+    from: design-solution-before-build
+    to: shared-architecture-context
+  - id: stewardship-realizes-repository-operation
+    kind: realization
+    from: repository-stewardship
+    to: repository-native-operation

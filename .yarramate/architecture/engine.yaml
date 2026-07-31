@@ -276,11 +276,13 @@ concepts:
       - yarramate-evolution#core-contract-foundation
   - id: likec4-check-result
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: LikeC4 adapter check result
     description: Versioned machine-readable verdict of the bundled adapter path check.
     status: current
   - id: likec4-diagnostic-result
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: LikeC4 adapter diagnostic result
     description: Machine-readable failure payload shared by LikeC4 adapter commands.
     status: current
@@ -316,136 +318,163 @@ concepts:
     status: current
   - id: native-document
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: Native YAML document
     description: Canonical authored YAML declaring concepts, relationships, and states under one selected profile.
     status: current
   - id: document-schema
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: Native document JSON Schema
     description: Normative structure for native yarramate/v1 documents; vocabulary validity belongs to the selected profile.
     status: current
   - id: kind-catalogue
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: Concept kind catalogue
     description: Resolved concept kinds with aspects and lineage available to a compilation.
     status: current
   - id: relationship-policy-catalogue
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: Relationship policy catalogue
     description: Resolved relationship kinds with endpoint aspect constraints available to a compilation.
     status: current
   - id: semantic-graph
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: Tool-neutral semantic graph
     description: Claim-centred tool-neutral compilation output; every fact is a sourced claim.
     status: current
   - id: diagnostics
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: Source-located diagnostics
     description: Deterministic source-located errors pointing at authored input; never advice or taste.
     status: current
   - id: check-result
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: Machine-readable check result
     description: Versioned machine-readable verdict of a check run, consumed by CI and agent harnesses.
     status: current
   - id: check-result-schema
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: Check result JSON Schema
     description: Normative structure for the yarramate/check-result/v1 contract.
     status: current
   - id: diagnostic-result
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: Semantic command diagnostic result
     description: Shared machine-readable failure payload emitted by semantic commands that cannot produce their primary output.
     status: current
   - id: diagnostic-result-schema
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: Diagnostic result JSON Schema
     description: Normative structure for the yarramate/diagnostic-result/v1 contract.
     status: current
   - id: likec4-diagnostic-result-schema
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: LikeC4 diagnostic result JSON Schema
     description: Normative structure for LikeC4 adapter failure payloads.
     status: current
   - id: likec4-generated-project-schema
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: Generated LikeC4 project marker JSON Schema
     description: Normative marker structure guarding single-view generated LikeC4 projects.
     status: current
   - id: likec4-project-definition
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: LikeC4 project definition
     description: Adapter-owned composition of semantic projections into one derived multi-view project, with optional renderer view identities that preserve native projection identity.
     status: current
   - id: likec4-project-schema
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: LikeC4 project definition JSON Schema
     description: Normative structure for LikeC4 project definitions composing projections as views.
     status: current
   - id: likec4-generated-project-v2-schema
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: Multi-view generated LikeC4 project marker JSON Schema
     description: Normative marker structure guarding multi-view generated LikeC4 projects.
     status: current
   - id: likec4-kind-mapping
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: LikeC4 kind compatibility mapping
     description: Versioned adapter-owned mapping from qualified semantic kinds to LikeC4 declaration kinds.
     status: current
   - id: likec4-kind-mapping-schema
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: LikeC4 kind mapping JSON Schema
     description: Normative structure for explicit LikeC4 kind compatibility declarations.
     status: current
   - id: likec4-check-result-schema
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: LikeC4 check result JSON Schema
     description: Normative structure for the LikeC4 adapter check verdict.
     status: current
   - id: adapter-mapping
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: Optional adapter mapping
     description: Versioned correspondence between globally qualified native subjects and external identities.
     status: current
   - id: adapter-mapping-schema
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: Adapter mapping JSON Schema
     description: Normative structure for optional adapter subject mappings; it does not admit adapter fields into native documents.
     status: current
   - id: semantic-graph-schema
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: Semantic graph v2 JSON Schema
     description: Normative structure for the yarramate/graph/v2 interchange contract.
     status: current
   - id: projection-definition
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: Semantic projection definition
     description: Portable selector describing one bounded semantic slice; presentation only, never new semantics.
     status: current
   - id: projection-schema
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: Projection definition JSON Schema
     description: Normative structure for projection definitions.
     status: current
   - id: projection-result
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: Deterministic projection result
     description: Deterministic bounded context produced by evaluating a projection against the compiled graph.
     status: current
   - id: projection-result-schema
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: Projection result JSON Schema
     description: Normative structure for the yarramate/projection-result/v1 contract.
     status: current
   - id: starter-view-pack
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: Native starter view pack
     description: Eight optional projection templates for landscape, motivation, strategy, business, application, information, technology, and implementation concerns, with selective isolated-concept suppression for broad views.
     status: current
   - id: state-comparison
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: Architecture-state comparison
     description: Versioned deterministic added, removed, and retained subject classification.
     status: current
@@ -454,6 +483,7 @@ concepts:
       - yarramate-evolution#core-contract-foundation
   - id: state-comparison-schema
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: Architecture-state comparison JSON Schema
     description: Normative structure for architecture-state comparison results.
     status: current
@@ -462,6 +492,7 @@ concepts:
       - yarramate-evolution#core-contract-foundation
   - id: core-contract-manifest
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: Core contract manifest
     description: Versioned declaration of one tool-neutral Core release boundary.
     status: current
@@ -469,6 +500,7 @@ concepts:
       - yarramate-evolution#core-contract-foundation
   - id: core-contract-schema
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: Core contract JSON Schema
     description: Normative structure for Core release contract manifests.
     status: current
@@ -476,41 +508,49 @@ concepts:
       - yarramate-evolution#core-contract-foundation
   - id: workspace-manifest
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: Workspace manifest
     description: Explicit versioned declaration of every workspace input; nothing is discovered implicitly.
     status: current
   - id: workspace-schema
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: Workspace manifest JSON Schema
     description: Normative structure for workspace manifests.
     status: current
   - id: evidence-document
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: Evidence overlay document
     description: Provider observations about existing subjects and claims; evidence supports or challenges intent and never authors it.
     status: current
   - id: evidence-report
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: Deterministic evidence report
     description: Deterministic evaluation of one evidence document against the compiled graph.
     status: current
   - id: evidence-schema
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: Evidence overlay JSON Schema
     description: Normative structure for evidence overlay documents.
     status: current
   - id: evidence-report-schema
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: Evidence report JSON Schema
     description: Normative structure for the yarramate/evidence-report/v1 contract.
     status: current
   - id: reconciliation-report
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: Reconciliation report
     description: Deterministic unresolved evidence findings with provider provenance.
     status: current
   - id: reconciliation-report-schema
     kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
     name: Reconciliation report JSON Schema
     description: Normative structure for workspace reconciliation reports.
     status: current
@@ -1039,3 +1079,45 @@ relationships:
     kind: serving
     from: cli
     to: mcp-adapter
+  - id: cli-provides-status
+    kind: implements
+    from: cli
+    to: status-command
+  - id: cli-provides-next
+    kind: implements
+    from: cli
+    to: next-command
+  - id: cli-provides-compare
+    kind: implements
+    from: cli
+    to: compare-command
+  - id: cli-provides-context
+    kind: implements
+    from: cli
+    to: context-command
+  - id: cli-provides-new
+    kind: implements
+    from: cli
+    to: new-command
+  - id: cli-provides-interrogate
+    kind: implements
+    from: cli
+    to: interrogate-command
+  - id: likec4-adapter-provides-export
+    kind: implements
+    from: likec4-export-adapter
+    to: likec4-export-command
+  - id: likec4-adapter-provides-check
+    kind: implements
+    from: likec4-export-adapter
+    to: likec4-check-command
+  - id: mcp-adapter-implements-machine-context
+    kind: implements
+    from: mcp-adapter
+    to: yarramate-product#provide-machine-context
+    description: The MCP affordance re-exposes the stable read surface as tools, per ADR 0044.
+  - id: profile-catalogue-implements-tool-neutrality
+    kind: implements
+    from: profile-catalogue
+    to: yarramate-product#tool-neutral-core
+    description: Core-owned kind semantics are what keep meaning independent of adapters.

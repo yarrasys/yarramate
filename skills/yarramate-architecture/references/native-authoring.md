@@ -147,6 +147,25 @@ information.
 Ownership is one accountable reference, not approval workflow. Constraints are
 identified references, not a policy engine or free-form metadata bag.
 
+## Attestations
+
+```yaml
+- id: shared-context
+  kind: goal
+  name: Shared architecture context
+  attestations:
+    - topic: adequacy
+      by: reviewer-name
+      on: "2026-08-01"
+```
+
+An attestation records that an authority accepted the subject as adequate
+for a topic (the interrogation catalogue asks for `adequacy` on motivation
+subjects and `design-review` on planned elements). The judgment stays
+outside the engine — only the claim's existence is checked. Revoke by
+deleting the entry; both signing and revoking are reviewed at the Git
+boundary (ADR 0056).
+
 ## Rationale and citations
 
 Use `description` on either a concept or relationship for decided narrative

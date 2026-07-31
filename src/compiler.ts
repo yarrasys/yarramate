@@ -48,6 +48,11 @@ interface NativeConcept {
   }>
   readonly references?: readonly NativeIdentifiedReference[]
   readonly presentIn?: readonly string[]
+  readonly attestations?: ReadonlyArray<{
+    readonly topic: string
+    readonly by: string
+    readonly on: string
+  }>
 }
 
 interface NativeIdentifiedReference {
@@ -1321,6 +1326,24 @@ function compileWorkspaceResolved(
           source: location(
             ['concepts', index, 'references', referenceIndex, 'ref'],
             `/concepts/${index}/references/${referenceIndex}/ref`,
+          ),
+        })
+      }
+      // An attestation is a recorded judgment, not content the engine
+      // evaluates: the claim's existence is what triggers can see, and
+      // revocation is deletion, reviewed at the Git boundary.
+      for (const [attestationIndex, attestation] of (
+        concept.attestations ?? []
+      ).entries()) {
+        claims.push({
+          id: `${subject}~attestation-${attestation.topic}`,
+          subject,
+          predicate: `yarramate/attestation/${attestation.topic}`,
+          object: { value: `${attestation.by} ${attestation.on}` },
+          origin: 'declared',
+          source: location(
+            ['concepts', index, 'attestations', attestationIndex, 'topic'],
+            `/concepts/${index}/attestations/${attestationIndex}/topic`,
           ),
         })
       }

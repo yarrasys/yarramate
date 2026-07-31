@@ -43,6 +43,7 @@ type CatalogueCondition =
       readonly condition: 'missing-relationship'
       readonly kinds: readonly string[]
       readonly direction: 'incoming' | 'outgoing' | 'any'
+      readonly kindMatching?: 'exact' | 'descendants'
     }
   | { readonly condition: 'isolated' }
   | {
@@ -50,6 +51,19 @@ type CatalogueCondition =
       readonly kinds: readonly string[]
     }
   | { readonly condition: 'no-state-defined' }
+  | {
+      readonly condition: 'missing-linkage'
+      readonly kinds: readonly string[]
+      readonly direction: 'incoming' | 'outgoing'
+      readonly counterpartKinds: readonly string[]
+      readonly kindMatching?: 'exact' | 'descendants'
+    }
+  | {
+      readonly condition: 'missing-reference'
+      readonly predicate: string
+      readonly direction: 'incoming' | 'outgoing'
+    }
+  | { readonly condition: 'missing-attestation'; readonly topic: string }
 
 interface CatalogueQuestion {
   readonly id: string
@@ -227,10 +241,26 @@ const selectSubjects = (
   return ids.sort((left, right) => left.localeCompare(right))
 }
 
+const relationshipKindMatches = (
+  predicate: string,
+  selectedKinds: readonly string[],
+  matching: 'exact' | 'descendants',
+  profileContext: ResolvedProfileContext | undefined,
+): boolean =>
+  selectedKinds.some(
+    (selected) =>
+      selected === predicate ||
+      (matching === 'descendants' &&
+        profileContext?.relationshipKindLineages
+          .get(predicate)
+          ?.includes(selected) === true),
+  )
+
 const conditionHolds = (
   index: GraphIndex,
   condition: CatalogueCondition,
   subjectId: string | undefined,
+  profileContext: ResolvedProfileContext | undefined,
 ): boolean => {
   switch (condition.condition) {
     case 'missing-claim':
@@ -238,9 +268,17 @@ const conditionHolds = (
         ({ predicate }) => predicate === condition.predicate,
       )
     case 'missing-relationship': {
-      const kinds = new Set(condition.kinds)
+      // Relationship kinds resolve through profile lineage by default, the
+      // same rule as selectors: a catalogue written against core kinds must
+      // see a profile-derived kind such as implements (realization child).
+      const matching = condition.kindMatching ?? 'descendants'
       const touching = index.relationshipClaims.filter(({ predicate }) =>
-        kinds.has(predicate),
+        relationshipKindMatches(
+          predicate,
+          condition.kinds,
+          matching,
+          profileContext,
+        ),
       )
       const outgoing = touching.some(({ subject }) => subject === subjectId)
       const incoming = touching.some(
@@ -269,6 +307,57 @@ const conditionHolds = (
       )
     case 'no-state-defined':
       return !index.hasStates
+    case 'missing-linkage': {
+      // The linkage-depth primitive: the subject lacks a relationship of
+      // these kinds, in this direction, whose counterpart is of one of
+      // these kinds. Both relationship and counterpart kinds resolve
+      // through profile lineage by default, matching the selector rule.
+      const matching = condition.kindMatching ?? 'descendants'
+      return !index.relationshipClaims.some((claim) => {
+        if (!('ref' in claim.object)) return false
+        if (
+          !relationshipKindMatches(
+            claim.predicate,
+            condition.kinds,
+            matching,
+            profileContext,
+          )
+        ) {
+          return false
+        }
+        const counterpart =
+          condition.direction === 'outgoing'
+            ? claim.subject === subjectId
+              ? claim.object.ref
+              : undefined
+            : claim.object.ref === subjectId
+              ? claim.subject
+              : undefined
+        return (
+          counterpart !== undefined &&
+          kindMatches(
+            index.kindOf.get(counterpart),
+            condition.counterpartKinds,
+            matching,
+            profileContext,
+          )
+        )
+      })
+    }
+    case 'missing-reference':
+      return !index.referenceClaims.some(
+        (claim) =>
+          claim.predicate === condition.predicate &&
+          'ref' in claim.object &&
+          (condition.direction === 'outgoing'
+            ? claim.subject === subjectId
+            : claim.object.ref === subjectId),
+      )
+    case 'missing-attestation':
+      return !(index.claimsBySubject.get(subjectId!) ?? []).some(
+        ({ predicate }) =>
+          predicate === `yarramate/attestation/${condition.topic}`,
+      )
   }
 }
 
@@ -306,7 +395,7 @@ export function evaluateCatalogue(
         }
         if (question.scope === 'workspace') {
           const isOpen = question.trigger.every((condition) =>
-            conditionHolds(index, condition, undefined),
+            conditionHolds(index, condition, undefined, profileContext),
           )
           if (isOpen) {
             open += 1
@@ -320,7 +409,7 @@ export function evaluateCatalogue(
           profileContext,
         ).filter((id) =>
           question.trigger.every((condition) =>
-            conditionHolds(index, condition, id),
+            conditionHolds(index, condition, id, profileContext),
           ),
         )
         if (matches.length === 0) {

@@ -2402,7 +2402,29 @@ mappings:
             severity: 'error',
             code: 'YMLC104',
             message:
-              'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
+              'Semantic relationship kind \"yarramate/development@1.0#implements\" resolves to unsupported bundled LikeC4 kind \"implements\"',
+            subject: 'yarramate-engine#likec4-adapter-provides-export',
+            path: '.yarramate/architecture/engine.yaml',
+            pointer: '/relationships/124',
+            line: 1106,
+            column: 5,
+          },
+          {
+            severity: 'error',
+            code: 'YMLC104',
+            message:
+              'Semantic relationship kind \"yarramate/development@1.0#implements\" resolves to unsupported bundled LikeC4 kind \"implements\"',
+            subject: 'yarramate-engine#likec4-adapter-provides-check',
+            path: '.yarramate/architecture/engine.yaml',
+            pointer: '/relationships/125',
+            line: 1110,
+            column: 5,
+          },
+          {
+            severity: 'error',
+            code: 'YMLC104',
+            message:
+              'Semantic concept kind \"yarramate/development@1.0#repository-file\" resolves to unsupported bundled LikeC4 kind \"repository-file\"',
             subject: 'yarramate-repository#likec4-export-source',
             path: '.yarramate/architecture/repository.yaml',
             pointer: '/concepts/21/kind',
@@ -2413,7 +2435,7 @@ mappings:
             severity: 'error',
             code: 'YMLC104',
             message:
-              'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
+              'Semantic concept kind \"yarramate/development@1.0#repository-file\" resolves to unsupported bundled LikeC4 kind \"repository-file\"',
             subject: 'yarramate-repository#likec4-prepare-source',
             path: '.yarramate/architecture/repository.yaml',
             pointer: '/concepts/24/kind',
@@ -2424,7 +2446,7 @@ mappings:
             severity: 'error',
             code: 'YMLC104',
             message:
-              'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
+              'Semantic concept kind \"yarramate/development@1.0#repository-file\" resolves to unsupported bundled LikeC4 kind \"repository-file\"',
             subject: 'yarramate-repository#likec4-project-source',
             path: '.yarramate/architecture/repository.yaml',
             pointer: '/concepts/25/kind',
@@ -2435,9 +2457,8 @@ mappings:
             severity: 'error',
             code: 'YMLC104',
             message:
-              'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
-            subject:
-              'yarramate-repository#likec4-project-definition-source',
+              'Semantic concept kind \"yarramate/development@1.0#repository-file\" resolves to unsupported bundled LikeC4 kind \"repository-file\"',
+            subject: 'yarramate-repository#likec4-project-definition-source',
             path: '.yarramate/architecture/repository.yaml',
             pointer: '/concepts/26/kind',
             line: 115,
@@ -2447,9 +2468,8 @@ mappings:
             severity: 'error',
             code: 'YMLC104',
             message:
-              'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
-            subject:
-              'yarramate-repository#likec4-project-schema-source',
+              'Semantic concept kind \"yarramate/development@1.0#repository-file\" resolves to unsupported bundled LikeC4 kind \"repository-file\"',
+            subject: 'yarramate-repository#likec4-project-schema-source',
             path: '.yarramate/architecture/repository.yaml',
             pointer: '/concepts/53/kind',
             line: 228,
@@ -2459,9 +2479,8 @@ mappings:
             severity: 'error',
             code: 'YMLC104',
             message:
-              'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
-            subject:
-              'yarramate-repository#likec4-generated-project-v2-schema-source',
+              'Semantic concept kind \"yarramate/development@1.0#repository-file\" resolves to unsupported bundled LikeC4 kind \"repository-file\"',
+            subject: 'yarramate-repository#likec4-generated-project-v2-schema-source',
             path: '.yarramate/architecture/repository.yaml',
             pointer: '/concepts/54/kind',
             line: 232,
