@@ -1,13 +1,15 @@
 format: yarramate/question-catalogue/v1
 id: core-enrichment
-version: "0.2"
+version: "0.3"
 profile: yarramate/core@0.1
 presentation:
   title: Core enrichment interview
   description: >-
-    Seed questions for the enrichment journey. Motivation and business waves,
-    plus cross-cutting hygiene. Each question states the decision its answer
-    changes; a question that cannot is deleted, not softened.
+    The guided design path: motivation, business, and application waves plus
+    cross-cutting hygiene (technology and implementation follow in a later
+    version). Each question states the decision its answer changes; a
+    question that cannot is deleted, not softened. Adequacy is enforced by
+    linkage depth and attestation, never by reading words.
 
 waves:
   - id: motivation
@@ -16,6 +18,11 @@ waves:
   - id: business
     name: Business
     description: Who acts, what is served, and what information matters.
+  - id: application
+    name: Application
+    description: >-
+      How declared services are realized, performed, and fed with
+      information.
   - id: hygiene
     name: Model hygiene
     description: Cross-cutting completeness that keeps every wave honest.
@@ -99,6 +106,164 @@ questions:
     resolution: >-
       Add realization relationships from the fulfilling capability or
       service, or record the aspirational status in the goal's description.
+
+
+  - id: goal-no-driver
+    wave: motivation
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#goal
+        - yarramate/core@0.1#outcome
+    trigger:
+      - condition: missing-linkage
+        kinds:
+          - yarramate/core@0.1#influence
+        direction: incoming
+        counterpartKinds:
+          - yarramate/core@0.1#driver
+          - yarramate/core@0.1#assessment
+          - yarramate/core@0.1#stakeholder
+    question: >-
+      What pressure produces {subject.name}?
+    materiality: >-
+      A goal with no driver behind it cannot be reprioritized when the
+      environment changes; it floats free of the forces that would retire
+      or sharpen it.
+    authority: human
+    resolution: >-
+      Add the driver, assessment, or stakeholder that motivates the goal
+      and connect it with an influence relationship.
+
+  - id: driver-influences-nothing
+    wave: motivation
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#driver
+    trigger:
+      - condition: missing-relationship
+        kinds:
+          - yarramate/core@0.1#influence
+        direction: outgoing
+    question: >-
+      What does {subject.name} actually push on?
+    materiality: >-
+      A driver that influences nothing cannot participate in any trade-off;
+      it is context theatre until it points at a goal or principle.
+    authority: either
+    resolution: >-
+      Add influence relationships toward the goals, principles, or
+      assessments the driver shapes, or remove it.
+
+  - id: stakeholder-unconcerned
+    wave: motivation
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#stakeholder
+    trigger:
+      - condition: missing-relationship
+        kinds:
+          - yarramate/core@0.1#influence
+          - yarramate/core@0.1#association
+        direction: any
+    question: >-
+      What does {subject.name} care about here?
+    materiality: >-
+      A stakeholder with no stated concern cannot veto or endorse anything;
+      their objections will arrive as surprises at review time.
+    authority: human
+    resolution: >-
+      Relate the stakeholder to the goals or drivers they care about, or
+      remove them from the model.
+
+  - id: requirement-unrealized
+    wave: motivation
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#requirement
+    trigger:
+      - condition: missing-relationship
+        kinds:
+          - yarramate/core@0.1#realization
+        direction: incoming
+    question: >-
+      Nothing realizes {subject.name}. What will fulfil it — or is it
+      out of scope?
+    materiality: >-
+      An unrealized requirement is either unplanned work hiding in plain
+      sight or scope that should be explicitly declined; both change the
+      roadmap.
+    authority: either
+    resolution: >-
+      Add realization from the fulfilling service, component, or behavior,
+      or record the descoping decision and remove the requirement.
+
+  - id: principle-unapplied
+    wave: motivation
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#principle
+    trigger:
+      - condition: missing-relationship
+        kinds:
+          - yarramate/core@0.1#influence
+          - yarramate/core@0.1#realization
+        direction: any
+    question: >-
+      Where does {subject.name} bite?
+    materiality: >-
+      A principle applied nowhere constrains nothing; naming what it
+      influences is what makes it enforceable in review.
+    authority: either
+    resolution: >-
+      Add influence relationships to the decisions the principle governs,
+      or realization from the elements that embody it.
+
+  - id: assessment-unlinked
+    wave: motivation
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#assessment
+    trigger:
+      - condition: isolated
+    question: >-
+      What does the finding {subject.name} bear on?
+    materiality: >-
+      An assessment that touches nothing changes no decision; link it to
+      the driver or goal it evaluates or drop it.
+    authority: either
+    resolution: >-
+      Relate the assessment to its driver or goal with influence or
+      association.
+
+  - id: motivation-unattested
+    wave: motivation
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#goal
+        - yarramate/core@0.1#outcome
+        - yarramate/core@0.1#requirement
+    trigger:
+      - condition: missing-attestation
+        topic: adequacy
+    question: >-
+      Has an accountable reviewer accepted {subject.name} as adequately
+      stated?
+    materiality: >-
+      Linkage proves the wiring exists; only a recorded judgment says the
+      words are right. Without an attestation, adequacy is nobody's
+      decision on record.
+    authority: human
+    resolution: >-
+      Review the subject's description and linkage, then record an
+      attestation with topic "adequacy" (revoke by deleting it; Git
+      reviews both).
 
   # ---- business ------------------------------------------------------------
   - id: service-consumer-unknown
@@ -209,6 +374,243 @@ questions:
     resolution: >-
       Add the externally meaningful services and serve them to their
       consumers.
+
+
+  - id: service-realizes-no-motivation
+    wave: business
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#businessService
+        - yarramate/core@0.1#capability
+    trigger:
+      - condition: missing-linkage
+        kinds:
+          - yarramate/core@0.1#realization
+        direction: outgoing
+        counterpartKinds:
+          - yarramate/core@0.1#requirement
+          - yarramate/core@0.1#goal
+          - yarramate/core@0.1#outcome
+    question: >-
+      Which requirement or goal does {subject.name} exist to satisfy?
+    materiality: >-
+      A service with no motivation link cannot be traded off against
+      anything; when budgets tighten nobody can say what breaks if it
+      goes.
+    authority: either
+    resolution: >-
+      Add realization from the service or capability to the requirement,
+      goal, or outcome it satisfies.
+
+  - id: process-untriggered
+    wave: business
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#businessProcess
+    trigger:
+      - condition: missing-relationship
+        kinds:
+          - yarramate/core@0.1#triggering
+          - yarramate/core@0.1#assignment
+        direction: incoming
+    question: >-
+      What starts {subject.name}?
+    materiality: >-
+      A process nothing triggers or performs either runs on an undeclared
+      schedule or does not actually happen; both are design facts worth
+      stating.
+    authority: either
+    resolution: >-
+      Add the triggering event or the assignment from its performer.
+
+  - id: business-service-unrealized
+    wave: business
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#businessService
+      statuses:
+        - planned
+        - current
+    trigger:
+      - condition: missing-linkage
+        kinds:
+          - yarramate/core@0.1#realization
+        direction: incoming
+        counterpartKinds:
+          - yarramate/core@0.1#businessProcess
+          - yarramate/core@0.1#businessFunction
+          - yarramate/core@0.1#applicationService
+          - yarramate/core@0.1#applicationComponent
+          - yarramate/core@0.1#capability
+    question: >-
+      What actually delivers {subject.name}?
+    materiality: >-
+      A business service with no realizing behavior or application is a
+      promise with no mechanism; the gap is where delivery estimates go
+      wrong.
+    authority: either
+    resolution: >-
+      Add realization from the process, function, or application element
+      that delivers it.
+
+
+  # ---- application ---------------------------------------------------------
+  - id: app-service-unrealized
+    wave: application
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#applicationService
+      statuses:
+        - planned
+        - current
+    trigger:
+      - condition: missing-linkage
+        kinds:
+          - yarramate/core@0.1#realization
+        direction: incoming
+        counterpartKinds:
+          - yarramate/core@0.1#applicationComponent
+          - yarramate/core@0.1#applicationFunction
+          - yarramate/core@0.1#applicationProcess
+          - yarramate/core@0.1#applicationCollaboration
+    question: >-
+      Which component or behavior realizes {subject.name}?
+    materiality: >-
+      An application service with no realizer is interface without
+      implementation; implementers cannot be handed a slice that names no
+      mechanism.
+    authority: either
+    resolution: >-
+      Add realization from the component, function, or process that
+      implements the service.
+
+  - id: component-realizes-nothing
+    wave: application
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#applicationComponent
+      statuses:
+        - planned
+        - current
+    trigger:
+      - condition: missing-relationship
+        kinds:
+          - yarramate/core@0.1#realization
+          - yarramate/core@0.1#assignment
+        direction: outgoing
+    question: >-
+      What does {subject.name} contribute?
+    materiality: >-
+      A component that realizes and performs nothing is either missing its
+      purpose links or is inventory the build does not need.
+    authority: either
+    resolution: >-
+      Add realization to the services it implements or assignment to the
+      behavior it performs, or remove it.
+
+  - id: behavior-unassigned
+    wave: application
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#applicationFunction
+        - yarramate/core@0.1#applicationProcess
+      statuses:
+        - planned
+        - current
+    trigger:
+      - condition: missing-linkage
+        kinds:
+          - yarramate/core@0.1#assignment
+        direction: incoming
+        counterpartKinds:
+          - yarramate/core@0.1#applicationComponent
+          - yarramate/core@0.1#applicationCollaboration
+          - yarramate/core@0.1#businessActor
+          - yarramate/core@0.1#businessRole
+    question: >-
+      Who or what performs {subject.name}?
+    materiality: >-
+      Behavior with no performer cannot be placed in any component
+      boundary; it will be implemented wherever the first builder happens
+      to put it.
+    authority: either
+    resolution: >-
+      Add assignment from the component, collaboration, or actor that
+      performs the behavior.
+
+  - id: event-triggers-nothing
+    wave: application
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#applicationEvent
+        - yarramate/core@0.1#businessEvent
+    trigger:
+      - condition: missing-relationship
+        kinds:
+          - yarramate/core@0.1#triggering
+        direction: outgoing
+    question: >-
+      What responds to {subject.name}?
+    materiality: >-
+      An event that triggers nothing is either an unhandled condition —
+      a real design gap — or noise; deciding which changes the build.
+    authority: either
+    resolution: >-
+      Add triggering to the responding process or function, or remove the
+      event.
+
+  - id: information-unowned
+    wave: application
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#dataObject
+        - yarramate/core@0.1#businessObject
+    trigger:
+      - condition: missing-claim
+        predicate: yarramate/ownership/owner
+    question: >-
+      Who is accountable for {subject.name} — its meaning, retention, and
+      access?
+    materiality: >-
+      Unowned information has no one to adjudicate schema changes,
+      retention, or access disputes; ownership is where data governance
+      starts.
+    authority: human
+    resolution: >-
+      Add an owner reference to the accountable actor.
+
+  - id: planned-design-unattested
+    wave: application
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#businessService
+        - yarramate/core@0.1#applicationService
+        - yarramate/core@0.1#applicationComponent
+      statuses:
+        - planned
+    trigger:
+      - condition: missing-attestation
+        topic: design-review
+    question: >-
+      Has the design of {subject.name} been reviewed before it is built?
+    materiality: >-
+      A planned element carries every unbuilt decision; a recorded
+      design-review attestation is the difference between a reviewed
+      intention and a hopeful one.
+    authority: human
+    resolution: >-
+      Review the planned element's slice, then record an attestation with
+      topic "design-review" (revoke by deleting it when the design
+      changes).
 
   # ---- hygiene -------------------------------------------------------------
   - id: concept-isolated

@@ -31,9 +31,9 @@ concepts:
   - id: likec4-adapter-prototype
     kind: applicationComponent
     name: LikeC4 adapter prototype
-    description: Optional validated vocabulary and visualization prototype.
+    description: Optional validated vocabulary and visualization prototype, superseded by the shipped LikeC4 adapter.
     owner: yarramate-product#yarramate-maintainers
-    status: current
+    status: retired
   - id: compiler-source
     kind: repository-file
     name: src/compiler.ts

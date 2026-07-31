@@ -27,7 +27,14 @@ questions. Each question binds:
 
 - a **trigger** — one or more deterministic conditions over the compiled
   graph (all must hold): `missing-claim`, `missing-relationship`,
-  `isolated`, `no-subject-of-kind`, or `no-state-defined`;
+  `isolated`, `no-subject-of-kind`, `no-state-defined`,
+  `missing-linkage` (no relationship of given kinds, in a given
+  direction, whose counterpart is of a given kind — the linkage-depth
+  primitive), `missing-reference` (no reference-bearing claim such as a
+  constraint binding, by direction), or `missing-attestation` (no
+  recorded `yarramate/attestation/<topic>` claim; see ADR 0056).
+  Relationship kinds in conditions resolve through profile lineage by
+  default, the same rule as subject selectors;
 - a **scope** — `workspace` (asked once) or `subject` (asked per matching
   subject, selected by kinds, statuses, and documents, with `descendants`
   kind matching by default so profile-derived kinds satisfy a catalogue

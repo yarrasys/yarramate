@@ -4,7 +4,13 @@
   "title": "YarraMate native document",
   "type": "object",
   "additionalProperties": false,
-  "required": ["format", "id", "profile", "concepts", "relationships"],
+  "required": [
+    "format",
+    "id",
+    "profile",
+    "concepts",
+    "relationships"
+  ],
   "properties": {
     "format": {
       "const": "yarramate/v1"
@@ -51,13 +57,21 @@
     "architectureState": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "kind", "name"],
+      "required": [
+        "id",
+        "kind",
+        "name"
+      ],
       "properties": {
         "id": {
           "$ref": "#/$defs/id"
         },
         "kind": {
-          "enum": ["baseline", "transition", "target"]
+          "enum": [
+            "baseline",
+            "transition",
+            "target"
+          ]
         },
         "name": {
           "$ref": "#/$defs/nonEmptyText"
@@ -73,7 +87,11 @@
     "concept": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "kind", "name"],
+      "required": [
+        "id",
+        "kind",
+        "name"
+      ],
       "properties": {
         "id": {
           "$ref": "#/$defs/id"
@@ -105,13 +123,23 @@
         },
         "presentIn": {
           "$ref": "#/$defs/stateReferences"
+        },
+        "attestations": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/attestation"
+          }
         }
       }
     },
     "constraint": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "ref"],
+      "required": [
+        "id",
+        "ref"
+      ],
       "properties": {
         "id": {
           "$ref": "#/$defs/id"
@@ -124,7 +152,10 @@
     "identifiedReference": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "ref"],
+      "required": [
+        "id",
+        "ref"
+      ],
       "properties": {
         "id": {
           "$ref": "#/$defs/id"
@@ -144,7 +175,12 @@
     "relationship": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "kind", "from", "to"],
+      "required": [
+        "id",
+        "kind",
+        "from",
+        "to"
+      ],
       "properties": {
         "id": {
           "$ref": "#/$defs/id"
@@ -166,7 +202,12 @@
           "$ref": "#/$defs/nonEmptyText"
         },
         "mode": {
-          "enum": ["read", "write", "read-write", "unspecified"]
+          "enum": [
+            "read",
+            "write",
+            "read-write",
+            "unspecified"
+          ]
         },
         "content": {
           "$ref": "#/$defs/nonEmptyText"
@@ -191,7 +232,33 @@
       }
     },
     "lifecycleStatus": {
-      "enum": ["planned", "current", "retired"]
+      "enum": [
+        "planned",
+        "current",
+        "retired"
+      ]
+    },
+    "attestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "topic",
+        "by",
+        "on"
+      ],
+      "properties": {
+        "topic": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "by": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "on": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        }
+      }
     }
   }
 }

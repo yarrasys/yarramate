@@ -262,6 +262,130 @@ describe('interrogate command', () => {
     expect(result.stderr).toContain('Usage:')
   })
 
+  it('evaluates linkage, reference, and attestation conditions with lineage', () => {
+    const adequacy =
+      'format: yarramate/question-catalogue/v1\n' +
+      'id: adequacy-fixture\n' +
+      'version: "1.0"\n' +
+      'profile: yarramate/core@0.1\n' +
+      'waves:\n' +
+      '  - id: depth\n' +
+      '    name: Depth\n' +
+      'questions:\n' +
+      '  - id: goal-no-driver\n' +
+      '    wave: depth\n' +
+      '    scope: subject\n' +
+      '    subjects:\n' +
+      '      kinds: ["yarramate/core@0.1#goal"]\n' +
+      '    trigger:\n' +
+      '      - condition: missing-linkage\n' +
+      '        kinds: ["yarramate/core@0.1#influence"]\n' +
+      '        direction: incoming\n' +
+      '        counterpartKinds: ["yarramate/core@0.1#businessActor"]\n' +
+      '    question: What pressure produces {subject.name}?\n' +
+      '    materiality: Goals with no driver cannot be reprioritized.\n' +
+      '    authority: human\n' +
+      '    resolution: Link the driver.\n' +
+      '  - id: constraint-unenforced\n' +
+      '    wave: depth\n' +
+      '    scope: subject\n' +
+      '    subjects:\n' +
+      '      kinds: ["yarramate/core@0.1#constraint"]\n' +
+      '    trigger:\n' +
+      '      - condition: missing-reference\n' +
+      '        predicate: yarramate/constraint/requires\n' +
+      '        direction: incoming\n' +
+      '    question: Nothing binds itself to {subject.name}. Enforced where?\n' +
+      '    materiality: A constraint nothing cites constrains nothing.\n' +
+      '    authority: either\n' +
+      '    resolution: Attach constraint references from bound subjects.\n' +
+      '  - id: goal-unattested\n' +
+      '    wave: depth\n' +
+      '    scope: subject\n' +
+      '    subjects:\n' +
+      '      kinds: ["yarramate/core@0.1#goal"]\n' +
+      '    trigger:\n' +
+      '      - condition: missing-attestation\n' +
+      '        topic: adequacy\n' +
+      '    question: Has {subject.name} been accepted as adequately stated?\n' +
+      '    materiality: Without attestation adequacy is nobody\'s decision.\n' +
+      '    authority: human\n' +
+      '    resolution: Record an adequacy attestation.\n'
+    const enriched =
+      'format: yarramate/v1\n' +
+      'id: main\n' +
+      'profile: example/platform@1.0\n' +
+      'concepts:\n' +
+      '  - id: engagement\n' +
+      '    kind: goal\n' +
+      '    name: Engagement\n' +
+      '  - id: platform\n' +
+      '    kind: platform-team\n' +
+      '    name: Platform team\n' +
+      '  - id: budget-cap\n' +
+      '    kind: constraint\n' +
+      '    name: Budget cap\n' +
+      'relationships: []\n'
+    writeFileSync(join(workspace, 'catalogue.yaml'), adequacy, 'utf8')
+    writeFileSync(join(workspace, 'architecture/main.yaml'), enriched, 'utf8')
+
+    const before = runCli(
+      ['interrogate', 'catalogue.yaml', 'workspace.yaml', '--json'],
+      workspace,
+    )
+    expect(before.exitCode).toBe(0)
+    expect(JSON.parse(before.stdout).summary).toEqual({
+      questions: 3,
+      openQuestions: 3,
+      open: 3,
+    })
+
+    // Close all three: an influence from a profile-derived actor (lineage
+    // reaches businessActor), a constraint reference, and an attestation.
+    writeFileSync(
+      join(workspace, 'architecture/main.yaml'),
+      'format: yarramate/v1\n' +
+        'id: main\n' +
+        'profile: example/platform@1.0\n' +
+        'concepts:\n' +
+        '  - id: engagement\n' +
+        '    kind: goal\n' +
+        '    name: Engagement\n' +
+        '    attestations:\n' +
+        '      - topic: adequacy\n' +
+        '        by: reviewer\n' +
+        '        on: "2026-08-01"\n' +
+        '  - id: platform\n' +
+        '    kind: platform-team\n' +
+        '    name: Platform team\n' +
+        '  - id: budget-cap\n' +
+        '    kind: constraint\n' +
+        '    name: Budget cap\n' +
+        '  - id: rollout\n' +
+        '    kind: businessProcess\n' +
+        '    name: Rollout\n' +
+        '    constraints:\n' +
+        '      - id: cap\n' +
+        '        ref: budget-cap\n' +
+        'relationships:\n' +
+        '  - id: platform-drives-engagement\n' +
+        '    kind: influence\n' +
+        '    from: platform\n' +
+        '    to: engagement\n',
+      'utf8',
+    )
+    const after = runCli(
+      ['interrogate', 'catalogue.yaml', 'workspace.yaml', '--json'],
+      workspace,
+    )
+    expect(after.exitCode).toBe(0)
+    expect(JSON.parse(after.stdout).summary).toEqual({
+      questions: 3,
+      openQuestions: 0,
+      open: 0,
+    })
+  })
+
   it('keeps the shipped catalogue fully closed on the repository self-model', () => {
     const result = runCli(
       [
