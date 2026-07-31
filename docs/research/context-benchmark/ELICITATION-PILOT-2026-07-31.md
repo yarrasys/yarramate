@@ -198,12 +198,76 @@ relationships:
 - Haiku: the above plus `constraints-missing` (the dropped constraint and
   requirements) and `concept-undescribed` ×3 — 10 open, 7 questions.
 
+## Addendum: the combined arm (same day)
+
+The pilot above tested each half alone. The product configuration —
+catalogue drives the waves, the model's own judgment enriches within
+them — had zero runs. Immediately after `context --brief` shipped
+(#88, ADR 0055), one combined-arm run per tier (Sonnet 5, Haiku 4.5):
+same stimulus, fresh isolated workdirs, packed CLI, instructed to model
+faithfully, get `check` passing, run `interrogate`, then compose a
+six-question agenda drawing from **both** the engine's open questions
+(quoting materiality) and their own judgment about what the request
+wording leaves unspecified — every item labelled `engine:<id>` or
+`agent` — closing by rendering the planned component's `--brief`.
+
+| Tier | Rank 1 | Agenda mix | Open items | CLI errors | Brief | Tokens |
+| --- | --- | --- | --- | --- | --- | --- |
+| Sonnet | **agent: reminder channel** | 3 agent + 3 engine | 6 | 0 | ✅ first try | 67k |
+| Haiku | **agent: reminder channel** | 2 agent + 4 engine | **10** | 2 (recovered) | ✅ first try | 44k |
+
+Findings:
+
+1. **No composition collapse at either tier.** The predicted failure
+   mode — the weak tier leaning entirely on the engine and contributing
+   nothing — did not occur. Haiku contributed two content questions
+   (channel; retry/frequency), Sonnet three (channel; single- vs
+   multi-user; fire timing/escalation). The engine items appear beneath
+   them essentially in wave order, materiality quoted.
+
+2. **Both tiers independently ranked their own channel question above
+   `outcome-missing`.** The registered prediction (engine question stays
+   Q1) was wrong at both tiers. The honest reading: the engine's agenda
+   is a floor, not a ceiling — its contribution is that the motivation
+   questions are *present* at every tier (freehand managed this in zero
+   of twenty-four attempts), while ranking stays a judgment the agent
+   still exercises. The combined agenda is the union the pilot's
+   composition finding predicted: freehand's best "how" questions and
+   the engine's "why" questions, in one list, at both tiers.
+
+3. **Coverage-expands-to-weakness replicated.** Haiku 10 open vs
+   Sonnet 6, and the same silent omissions as the pilot were caught
+   (no requirement/constraint concepts, no declared service, statuses
+   omitted). Haiku's failure *shifted* — the pilot's false
+   `status: current` became omitted status — and the catalogue caught
+   both variants. Notably Sonnet also left `constraints-missing` open by
+   modelling Cloudflare as a deployment `node` rather than a constraint
+   concept; a defensible style the catalogue nudges toward explicitness.
+
+4. **The brief is a taste-inspection surface.** Both rendered first-try,
+   and the tier gap is audible in prose without reading YAML: Sonnet's
+   brief opens "You are building \"Todo Application\"…" with a coherent
+   behaviour chain, while Haiku's reads "\"Todo Application\" *is* an
+   application component" (no status declared) and "It flows to
+   \"Reminder Service\"" (component-to-component flow). Renderer
+   friction noted for later: `assignment` reads as "is assigned to" in
+   both directions, which is faithful but stilted for node-hosts-component.
+
+5. **Sonnet articulated the division of labour unprompted** — each of
+   its agent-sourced rationales explains *why the structural check
+   cannot see the gap* ("the model already compiles cleanly with a
+   single unqualified `triggering` edge"). The `flow` vs `serving`
+   ambiguity for "sends a reminder" was its only reported friction.
+
 ## Relationship to the roadmap
 
 Findings 1–3 are the operational core of the capability-flattening story
 (H2) on the cheapest substrate yet measured; finding 4 is the taste
 boundary behaving as predicted; finding 5 closes the loop on the YM404
-arc and motivates #89. The real experiment — repeats, blinded stimulus
-variants, coverage-by-wave scoring — belongs to the elicitation family in
-the spec-build design (PR #85), which should treat this document as its
-pilot and its protocol template.
+arc and motivates #89. The combined-arm addendum demonstrates the
+configuration PR #85's conditions assume: interrogate supplying the
+floor, agent judgment the ranking, `--brief` (#88, now shipped) the
+outbound artifact. The real experiment — repeats, blinded stimulus
+variants, coverage-by-wave scoring — belongs to the elicitation family
+in the spec-build design (PR #85), which should treat this document as
+its pilot and its protocol template.
