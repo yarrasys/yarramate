@@ -84,19 +84,36 @@ up your work.
 
 ## The comparison
 
-Same spec, same harness, three setups:
+Every implementer receives **prose** — that is what ADR 0054 says the
+interface is, and it removes the confound the earlier draft carried: handing
+one arm YAML and another a document would have varied the format and the
+guarantee at once, so a loss could blame either. Here the format is constant
+and the only variable is what stands behind the words.
 
-| | What it gets |
-| --- | --- |
-| **A** | the spec plus a normal design document |
-| **B** | the spec plus a YarraMate model and the CLI |
-| **C** | the spec plus a model containing deliberate lies |
+Each arm has a design phase and a build phase, run by separate agents:
 
-**A gets a design document, not nothing.** If A got nothing, B would win
-automatically and prove nothing. A design document is what teams write today,
-so it is the real competition. To keep it fair the document is written *from*
-the model, by someone not running the test, and both are published so anyone
-can check we did not hand A a deliberately weak brief.
+| | Design phase | What the implementers receive |
+| --- | --- | --- |
+| **A** | a designer agent writes a design document from the spec | that document |
+| **B** | a designer agent authors a checked YarraMate model from the spec (interrogated until the catalogue is clean) | briefs rendered from the model |
+| **C** | B's model with deliberate lies injected | briefs rendered from the lying model |
+
+**A gets a real design document, not nothing.** If A got nothing, B would win
+automatically and prove nothing. A designer writing a document is what teams
+do today, so it is the real competition. Both arms get the same design-phase
+budget, and both artifacts — A's document and B's model plus rendered briefs
+— are published so anyone can check we did not hand A a deliberately weak
+designer.
+
+An optional fourth arm hands implementers B's raw model and the CLI instead
+of rendered briefs. It measures the cost of the format alone — whether agents
+should ever see the YAML directly — and is worth running only if B and A
+separate.
+
+⚠️ Dependency: rendered briefs at the quality this design assumes do not
+exist yet — `context` emits a digest today. The brief renderer (#88) is a
+prerequisite for running this family, which is the thesis making its own
+experiment honest: testing "prose backed by structure" requires the prose.
 
 ## What we expect, written down before any results
 
@@ -135,15 +152,19 @@ story.
 
 ## Decisions I need from you
 
-1. **Is "model vs design document" the comparison you want?** It is honest and
-   we might lose it. Model-versus-nothing would look better and mean nothing.
-2. **Is RealWorld/Conduit complex enough**, or do you want a larger published
+The comparison itself is settled by ADR 0054: prose everywhere, the guarantee
+as the only variable. Remaining:
+
+1. **Is RealWorld/Conduit complex enough**, or do you want a larger published
    spec? Conduit is bounded — good for an experiment, possibly thin for a
    headline.
-3. **Is the demo a separate bespoke app**, as written here, or the same spec
+2. **Is the demo a separate bespoke app**, as written here, or the same spec
    app filmed?
-4. **This before re-running the old sweep?** My view: yes. Re-running the old
+3. **This before re-running the old sweep?** My view: yes. Re-running the old
    suite buys a tighter number on a question that does not sell the product.
+4. **Sequencing**: the brief renderer (#88) gates this family. Build it
+   first, or run a pilot with hand-assembled briefs to de-risk the design
+   while the renderer lands?
 
 ## If it works, and if it does not
 
