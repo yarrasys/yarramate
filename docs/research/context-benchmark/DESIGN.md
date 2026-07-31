@@ -127,3 +127,13 @@ task authoring → runner → tier sweep.
 The benchmark is the keystone adoption artifact: if the deltas are real
 they convince harness vendors; if they are not, they redirect product
 priority with evidence. Either outcome pays for the work.
+
+## Successor design
+
+This design tests finished repositories, where the code is present and the
+agent can simply read it — the setting in which the 2026-07-29 sweep found
+comprehension saturated. A proposed follow-up tests the opposite case, building
+a new application from an external published specification, and is drafted in
+[DESIGN-HANDOFF-FAMILY.md](DESIGN-HANDOFF-FAMILY.md). It scores convergence and
+promise-keeping rather than correctness, because a greenfield build has no
+right answer. Draft only: no tasks, no runner support, no results.
