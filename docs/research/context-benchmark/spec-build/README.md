@@ -12,6 +12,7 @@ spec-build/
   delta-hurl/          # FROZEN: their acceptance tests (upstream Hurl conventions)
   prompts/             # FROZEN: designer-A/B, implementer, extension prompts
   RUNBOOK.md           # how to execute a run matrix
+  PILOT-2026-07-31.md  # first live run: all arms green, lie self-consistency finding
   runner/
     lib.mjs            # shared plumbing (spec cache, harness, records)
     run-design.mjs     # design phase, arms A and B
