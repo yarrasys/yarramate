@@ -15,13 +15,15 @@ const args = process.argv.slice(2);
 const runN = opt(args, 'run');
 const outDir = opt(args, 'out');
 const toolchain = opt(args, 'toolchain');
+const armLabel = opt(args, 'arm', 'C');
+const kinds = opt(args, 'kinds');
 if (!runN || !outDir || !toolchain) {
   console.error('usage: derive-arm-c.mjs --run <n> --out <dir> --toolchain <bins>');
   process.exit(2);
 }
 
 const sourceWork = join(outDir, 'design', 'B', `run-${runN}`, 'work');
-const runDir = join(outDir, 'design', 'C', `run-${runN}`);
+const runDir = join(outDir, 'design', armLabel, `run-${runN}`);
 const workdir = join(runDir, 'work');
 rmSync(runDir, { recursive: true, force: true });
 mkdirSync(runDir, { recursive: true });
@@ -31,6 +33,7 @@ const lieRecord = execFileSync('node', [
   join(here, 'inject-lies.mjs'),
   '--workdir', workdir,
   '--toolchain', toolchain,
+  ...(kinds ? ['--kinds', kinds] : []),
 ], { encoding: 'utf8' });
 writeFileSync(join(runDir, 'lies.json'), lieRecord);
 
@@ -42,9 +45,9 @@ const briefs = JSON.parse(execFileSync('node', [
 ], { encoding: 'utf8' })).rendered;
 
 record(outDir, {
-  phase: 'design', arm: 'C', run: Number(runN), derivedFrom: `B/run-${runN}`,
+  phase: 'design', arm: armLabel, run: Number(runN), derivedFrom: `B/run-${runN}`,
   exitCode: 0, durationMs: 0, metrics: null,
   deliverable: { kind: 'workspace', ok: briefs.length > 0, lies: JSON.parse(lieRecord).lies.length, briefs },
   runDir,
 });
-console.log(JSON.stringify({ arm: 'C', run: Number(runN), lies: JSON.parse(lieRecord).lies, briefs }, null, 2));
+console.log(JSON.stringify({ arm: armLabel, run: Number(runN), lies: JSON.parse(lieRecord).lies, briefs }, null, 2));
