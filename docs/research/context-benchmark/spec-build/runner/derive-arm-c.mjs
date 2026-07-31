@@ -17,6 +17,7 @@ const outDir = opt(args, 'out');
 const toolchain = opt(args, 'toolchain');
 const armLabel = opt(args, 'arm', 'C');
 const kinds = opt(args, 'kinds');
+const consistent = args.includes('--consistent');
 if (!runN || !outDir || !toolchain) {
   console.error('usage: derive-arm-c.mjs --run <n> --out <dir> --toolchain <bins>');
   process.exit(2);
@@ -34,6 +35,7 @@ const lieRecord = execFileSync('node', [
   '--workdir', workdir,
   '--toolchain', toolchain,
   ...(kinds ? ['--kinds', kinds] : []),
+  ...(consistent ? ['--consistent'] : []),
 ], { encoding: 'utf8' });
 writeFileSync(join(runDir, 'lies.json'), lieRecord);
 
