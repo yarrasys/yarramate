@@ -1,6 +1,7 @@
 # Testing YarraMate on building something new (draft)
 
-Status: **draft. Nothing built yet — this is a proposal to argue with.**
+Status: **settled design (decisions recorded 2026-07-31). Nothing built
+yet — the harness is the next step.**
 
 ## Two deliverables, deliberately kept apart
 
@@ -110,10 +111,12 @@ of rendered briefs. It measures the cost of the format alone — whether agents
 should ever see the YAML directly — and is worth running only if B and A
 separate.
 
-⚠️ Dependency: rendered briefs at the quality this design assumes do not
-exist yet — `context` emits a digest today. The brief renderer (#88) is a
-prerequisite for running this family, which is the thesis making its own
-experiment honest: testing "prose backed by structure" requires the prose.
+The brief renderer this design assumes shipped on 2026-07-31 as
+`context --brief` (#88, ADR 0055): deterministic prose composed from the
+checked model, byte-identical per model+projection. The elicitation
+pilot's combined-arm addendum shows it operating first-try in Sonnet and
+Haiku agent hands, so the design-phase half of this family is de-risked;
+the build phase is what remains untested.
 
 ## What we expect, written down before any results
 
@@ -150,21 +153,29 @@ n = 1, no statistics, no comparison, no claims of measurement. Its job is to
 show what the workflow feels like. Its honesty depends on being labelled a
 story.
 
-## Decisions I need from you
+## Decisions (settled 2026-07-31)
 
 The comparison itself is settled by ADR 0054: prose everywhere, the guarantee
-as the only variable. Remaining:
+as the only variable. The remaining calls, as decided:
 
-1. **Is RealWorld/Conduit complex enough**, or do you want a larger published
-   spec? Conduit is bounded — good for an experiment, possibly thin for a
-   headline.
-2. **Is the demo a separate bespoke app**, as written here, or the same spec
-   app filmed?
-3. **This before re-running the old sweep?** My view: yes. Re-running the old
-   suite buys a tighter number on a question that does not sell the product.
-4. **Sequencing**: the brief renderer (#88) gates this family. Build it
-   first, or run a pilot with hand-assembled briefs to de-risk the design
-   while the renderer lands?
+1. **Spec: Conduit plus a published novel delta.** The experiment's validity
+   comes from repeats, not spec size. To neutralize the recall confound
+   (hundreds of public Conduit implementations), the spec used is Conduit
+   **plus 2–3 requirements no public implementation has** (candidates:
+   per-user rate limiting on mutations, an audit log, a denormalized-count
+   consistency rule). The delta is committed to this repository **before any
+   run**, and promise-keeping is scored with extra weight where the delta
+   lands — recalled code cannot cover requirements that did not exist.
+2. **Demo: a separate bespoke app.** Filming the spec app would make the
+   demo an unblinded extra run of condition B and couple the story to the
+   experiment's outcome. The demo stays its own artifact, free to be
+   genuinely complex.
+3. **This family runs before any re-run of the old sweep.** The re-sweep
+   tightens a number on the case where a model is least useful; this tests
+   the adopted thesis on the case the product claims. The re-sweep is parked
+   until results here create a reason to revisit it.
+4. ~~Brief-renderer sequencing~~ — moot: #88 shipped as `context --brief`
+   (ADR 0055) before any run of this family.
 
 ## If it works, and if it does not
 
