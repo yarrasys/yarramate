@@ -116,7 +116,10 @@ yarramate interrogate catalogues/core-enrichment.yaml .yarramate/workspace.yaml
 ```
 
    (Resolve the shipped catalogue from the installed package when the
-   consuming repository has no catalogue of its own.) Work the open questions
+   consuming repository has no catalogue of its own.) Do not open the
+   catalogue file itself: the interrogation report is self-contained —
+   question text, materiality, and authority all appear in the output, so
+   reading the catalogue only spends context. Work the open questions
    wave by wave — motivation before business before hygiene. Answer questions
    the evidence can answer; ask the human the ones marked `human`, quoting the
    question and its materiality. Re-run after every batch of answers: a
@@ -135,6 +138,7 @@ yarramate check .yarramate/workspace.yaml --json
 yarramate compile .yarramate/workspace.yaml
 yarramate context .yarramate/projections/<alternatives>.yaml .yarramate/workspace.yaml
 yarramate context .yarramate/projections/<target>.yaml .yarramate/workspace.yaml
+yarramate context .yarramate/projections/<target>.yaml .yarramate/workspace.yaml --brief
 yarramate view .yarramate/projections/<target>.yaml .yarramate/workspace.yaml
 yarramate view .yarramate/projections/<flow>.yaml .yarramate/workspace.yaml
 yarramate compare <document-id>#<baseline-state> <document-id>#<target-state> .yarramate/workspace.yaml
@@ -149,8 +153,10 @@ yarramate-likec4 export-project .yarramate/likec4-project.yaml .yarramate-out/li
    discovery. State which omissions are intentional; do not convert partial
    coverage into a validation failure.
 8. Present alternatives, selected intent, unresolved decisions, and bounded
-   implementation context. Do not generate code until the requested design
-   decision is reviewable.
+   implementation context. Hand implementation work the `--brief` rendering
+   of its target projection — deterministic prose composed from the checked
+   model — rather than raw YAML. Do not generate code until the requested
+   design decision is reviewable.
 
 ## Maintain an existing model
 
