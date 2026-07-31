@@ -18,6 +18,7 @@
 - [Projections](PROJECTIONS.md)
 - [Architecture states](ARCHITECTURE-STATES.md)
 - [Evidence](EVIDENCE.md)
+- [Agent-harness interface](AGENT-INTERFACE.md)
 - [Interrogation](INTERROGATION.md)
 - [Core contract](CORE-CONTRACT.md)
 
