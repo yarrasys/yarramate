@@ -27,8 +27,8 @@ const toolchain = opt(args, 'toolchain');
 const harness = opt(args, 'harness', 'claude -p --output-format json');
 const port = opt(args, 'port', '3199');
 const dryRun = flag(args, 'dry-run');
-if (!['A', 'B', 'C', 'Cs'].includes(arm) || !runN || !outDir) {
-  console.error('usage: run-build.mjs --arm A|B|C|Cs --run <n> --out <dir> [--design-run <n>] [--harness <cmd>] [--toolchain <bins>] [--port <p>] [--no-gate] [--dry-run]');
+if (!/^(A|B|C[a-z]*)$/.test(arm ?? '') || !runN || !outDir) {
+  console.error('usage: run-build.mjs --arm A|B|C[<variant>] --run <n> --out <dir> [--design-run <n>] [--harness <cmd>] [--toolchain <bins>] [--port <p>] [--no-gate] [--dry-run]');
   process.exit(2);
 }
 
