@@ -85,13 +85,24 @@ for (const key of [...byKind.keys()].sort()) {
   if (lies.length >= 3) break;
   const group = byKind.get(key).filter((entry) => entry.item.get('to') !== undefined);
   const kind = group[0]?.kind;
-  const targets = group.map((entry) => entry.item.get('to'));
-  if (new Set(targets).size < 2) continue;
-  // Rotate every target in the group one position: each relationship now
-  // points where its same-kind neighbour pointed. A rotation that changes
-  // nothing, or that would point a relationship at its own source (a
-  // self-loop no designer would write), stays truthful instead.
-  group.forEach((entry, index) => {
+  // Rotate across DIFFERENT sources only (one edge per source): rotating
+  // targets between edges that share a source permutes that source's own
+  // target set, and grouped brief sentences render sets — the lie comes
+  // out word-for-word identical to the truth (pilot injector artifact #2).
+  // One edge per distinct source guarantees every affected source's
+  // declared set visibly changes.
+  const seenSources = new Set();
+  const roots = group.filter((entry) => {
+    const from = entry.item.get('from');
+    if (seenSources.has(from)) return false;
+    seenSources.add(from);
+    return true;
+  });
+  const targets = roots.map((entry) => entry.item.get('to'));
+  if (roots.length < 2 || new Set(targets).size < 2) continue;
+  // A rotation that changes nothing, or that would point a relationship at
+  // its own source (a self-loop no designer would write), stays truthful.
+  roots.forEach((entry, index) => {
     const lyingTo = targets[(index + 1) % targets.length];
     if (lyingTo === targets[index] || lyingTo === entry.item.get('from')) return;
     entry.item.set('to', lyingTo);
