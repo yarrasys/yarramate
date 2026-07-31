@@ -8,7 +8,19 @@
 // gate is not the failure mode under test.
 //
 // Usage:
-//   node inject-lies.mjs --workdir <arm-C-workdir> --toolchain <bins>
+//   node inject-lies.mjs --workdir <arm-C-workdir> --toolchain <bins> \
+//     [--kinds access,serving] [--consistent]
+// --kinds restricts which relationship kinds may be rotated (default: any),
+// so a variant can target structural wiring (access/serving) rather than
+// whatever group sorts first.
+// --consistent makes every lie self-consistent: the pilot showed a rotated
+// edge dragging its original description along contradicts itself in one
+// brief sentence and gets caught by the reader, while a lie that asserts
+// nothing extra is absorbed silently. A deterministic injector cannot
+// rewrite prose for the new endpoint (that would take generation), so
+// consistency here means stripping the lied edge's free text — description,
+// name, flow content — and recording the originals in the lie record for
+// the adjudicator. The lie becomes a confident bare structural claim.
 // Prints the lie record (JSON) to stdout; the caller persists it.
 
 import { execFileSync } from 'node:child_process';
@@ -23,8 +35,10 @@ const YAML = require('yaml');
 const args = process.argv.slice(2);
 const workdir = opt(args, 'workdir');
 const toolchain = opt(args, 'toolchain');
+const allowedKinds = opt(args, 'kinds') ? new Set(opt(args, 'kinds').split(',')) : null;
+const consistent = args.includes('--consistent');
 if (!workdir || !toolchain) {
-  console.error('usage: inject-lies.mjs --workdir <arm-C-workdir> --toolchain <bins>');
+  console.error('usage: inject-lies.mjs --workdir <arm-C-workdir> --toolchain <bins> [--kinds a,b] [--consistent]');
   process.exit(2);
 }
 
@@ -58,8 +72,10 @@ for (const { path, doc } of documents) {
   const relationships = doc.get('relationships');
   if (!relationships || !relationships.items) continue;
   for (const item of relationships.items) {
-    const key = `${path}::${item.get('kind')}`;
-    const entry = { path, doc, item, kind: item.get('kind') };
+    const kind = item.get('kind');
+    if (allowedKinds !== null && !allowedKinds.has(kind)) continue;
+    const key = `${path}::${kind}`;
+    const entry = { path, doc, item, kind };
     byKind.set(key, [...(byKind.get(key) ?? []), entry]);
   }
 }
@@ -79,12 +95,23 @@ for (const key of [...byKind.keys()].sort()) {
     const lyingTo = targets[(index + 1) % targets.length];
     if (lyingTo === targets[index] || lyingTo === entry.item.get('from')) return;
     entry.item.set('to', lyingTo);
+    const stripped = {};
+    if (consistent) {
+      for (const field of ['description', 'name', 'content']) {
+        const value = entry.item.get(field);
+        if (value !== undefined) {
+          stripped[field] = value;
+          entry.item.delete(field);
+        }
+      }
+    }
     lies.push({
       relationship: entry.item.get('id'),
       kind,
       from: entry.item.get('from'),
       originalTo: targets[index],
       lyingTo,
+      ...(Object.keys(stripped).length > 0 ? { stripped } : {}),
     });
   });
 }

@@ -38,7 +38,8 @@ OUT=<results-dir>; TC=<toolchain-bins>; TIER='claude -p --model <model> --output
 # 1. Design phase (A and B are agent runs; C is derived, no agent)
 node run-design.mjs --arm A --run N --out $OUT --harness "$TIER"
 node run-design.mjs --arm B --run N --out $OUT --toolchain $TC --harness "$TIER"
-node derive-arm-c.mjs   --run N --out $OUT --toolchain $TC
+node derive-arm-c.mjs   --run N --out $OUT --toolchain $TC \
+  --kinds access,serving --consistent
 
 # 2. Build phase (fresh implementer agents; C's run N builds from B's
 #    lie-injected run N — the pre-registered mapping)
@@ -83,6 +84,12 @@ prints the plan without materializing or spending anything.
   prompts never mention YarraMate, arms, or the experiment.
 - Arm C derives from arm B **after** B's design run completes and before
   any build run of either; `lies.json` records the injected rotations.
+- **Lie injection for the full family is structural AND self-consistent**
+  (`--kinds access,serving --consistent`), pre-registered from the
+  pilot's finding 5: self-contradictory lies get caught by the reader
+  (an injector artifact, not a fair H6 test), while self-consistent
+  ones are the danger case. `--consistent` strips the lied edge's free
+  text and records the originals in `lies.json`.
 - Pilot before the full family: run N=1 across all three arms
   (~$20–30) and inspect every artifact before committing to N=2,3.
 
