@@ -8,8 +8,11 @@
 // gate is not the failure mode under test.
 //
 // Usage:
-//   node inject-lies.mjs --workdir <arm-C-workdir> --toolchain <bins>
-// Prints the lie record (JSON) to stdout; the caller persists it.
+//   node inject-lies.mjs --workdir <arm-C-workdir> --toolchain <bins> [--kinds access,serving]
+// --kinds restricts which relationship kinds may be rotated (default: any),
+// so a variant can target structural wiring (access/serving) rather than
+// whatever group sorts first. Prints the lie record (JSON) to stdout; the
+// caller persists it.
 
 import { execFileSync } from 'node:child_process';
 import { globSync, readFileSync, writeFileSync } from 'node:fs';
@@ -23,8 +26,9 @@ const YAML = require('yaml');
 const args = process.argv.slice(2);
 const workdir = opt(args, 'workdir');
 const toolchain = opt(args, 'toolchain');
+const allowedKinds = opt(args, 'kinds') ? new Set(opt(args, 'kinds').split(',')) : null;
 if (!workdir || !toolchain) {
-  console.error('usage: inject-lies.mjs --workdir <arm-C-workdir> --toolchain <bins>');
+  console.error('usage: inject-lies.mjs --workdir <arm-C-workdir> --toolchain <bins> [--kinds a,b]');
   process.exit(2);
 }
 
@@ -58,8 +62,10 @@ for (const { path, doc } of documents) {
   const relationships = doc.get('relationships');
   if (!relationships || !relationships.items) continue;
   for (const item of relationships.items) {
-    const key = `${path}::${item.get('kind')}`;
-    const entry = { path, doc, item, kind: item.get('kind') };
+    const kind = item.get('kind');
+    if (allowedKinds !== null && !allowedKinds.has(kind)) continue;
+    const key = `${path}::${kind}`;
+    const entry = { path, doc, item, kind };
     byKind.set(key, [...(byKind.get(key) ?? []), entry]);
   }
 }
