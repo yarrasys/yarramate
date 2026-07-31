@@ -5,9 +5,14 @@
 [![CodeQL](https://github.com/yarrasys/yarramate/actions/workflows/codeql.yml/badge.svg)](https://github.com/yarrasys/yarramate/actions/workflows/codeql.yml)
 [![license: MIT](https://img.shields.io/github/license/yarrasys/yarramate)](LICENSE)
 
-YarraMate is a tool-neutral semantic architecture engine and guided
-methodology. It turns architectural intent into deterministic, testable
-context shared by people and agents.
+YarraMate keeps your coding agents' architecture context correct. Declare
+the design once, as a checked model in git; agents receive prose rendered
+from it — bounded briefs and open design questions — and the CLI
+mechanically proves the model still matches the code as changes land.
+
+Prose is the interface; structure is the guarantee: every sentence an agent
+reads stands on a graph whose names resolve, whose drift is detected, and
+whose gaps are found deterministically.
 
 > YarraMate is pre-release software. Interfaces may evolve before the first
 > stable release.
