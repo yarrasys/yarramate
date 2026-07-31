@@ -51,21 +51,24 @@ const documents = manifest.documents
     const absolute = join(workdir, '.yarramate', path);
     return { path: absolute, doc: YAML.parseDocument(readFileSync(absolute, 'utf8')) };
   });
+// Group by document AND kind: references are document-local, so a target
+// rotated across documents would dangle (YM302) instead of lying.
 const byKind = new Map();
 for (const { path, doc } of documents) {
   const relationships = doc.get('relationships');
   if (!relationships || !relationships.items) continue;
   for (const item of relationships.items) {
-    const kind = item.get('kind');
-    const entry = { path, doc, item };
-    byKind.set(kind, [...(byKind.get(kind) ?? []), entry]);
+    const key = `${path}::${item.get('kind')}`;
+    const entry = { path, doc, item, kind: item.get('kind') };
+    byKind.set(key, [...(byKind.get(key) ?? []), entry]);
   }
 }
 
 const lies = [];
-for (const kind of [...byKind.keys()].sort()) {
+for (const key of [...byKind.keys()].sort()) {
   if (lies.length >= 3) break;
-  const group = byKind.get(kind).filter((entry) => entry.item.get('to') !== undefined);
+  const group = byKind.get(key).filter((entry) => entry.item.get('to') !== undefined);
+  const kind = group[0]?.kind;
   const targets = group.map((entry) => entry.item.get('to'));
   if (new Set(targets).size < 2) continue;
   // Rotate every target in the group one position: each relationship now
