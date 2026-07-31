@@ -1,7 +1,9 @@
 # Testing YarraMate on building something new (draft)
 
-Status: **settled design (decisions recorded 2026-07-31). Nothing built
-yet — the harness is the next step.**
+Status: **settled design (decisions recorded 2026-07-31), harness
+built.** The frozen spec delta, its acceptance tests, the arm prompts,
+and the runner live in [`spec-build/`](spec-build/); execution starts
+from [`spec-build/RUNBOOK.md`](spec-build/RUNBOOK.md).
 
 ## Two deliverables, deliberately kept apart
 
