@@ -25,6 +25,7 @@ import {
 } from './cli-support.js'
 import { runAskCommand } from './ask-command.js'
 import { runCheckCommand } from './check-command.js'
+import { runExportCommand } from './export-command.js'
 import { runNewCommand } from './new-command.js'
 import { runApplyCommand } from './apply-command.js'
 import { runDesignCommand } from './design-command.js'
@@ -987,6 +988,9 @@ export function runCli(
   }
   if (command === 'ask') {
     return runAskCommand(options, cwd)
+  }
+  if (command === 'export') {
+    return runExportCommand(options, cwd)
   }
   return { exitCode: 2, stdout: '', stderr: usage }
 }

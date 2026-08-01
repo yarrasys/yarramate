@@ -1,0 +1,313 @@
+import { spawnSync } from 'node:child_process'
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { parseDocument } from 'yaml'
+import { renderBrief } from './brief.js'
+import { humanDiagnostics, usage, type CliResult } from './cli-support.js'
+import {
+  compileWorkspaceWithProfileContext,
+  type Diagnostic,
+  type GraphClaim,
+} from './compiler.js'
+import { serializeSemanticGraph } from './graph.js'
+import {
+  evaluateProjection,
+  loadProjection,
+  renderProjectionMarkdown,
+  type ProjectionResult,
+} from './projection.js'
+import { loadWorkspaceManifest } from './workspace.js'
+
+// The adapter stays a separate process behind the verb: the core never
+// imports adapter code (the adapter-runtime-dependency exclusion), it
+// hands the invocation to the sibling binary shipped in the same package.
+const here = dirname(fileURLToPath(import.meta.url))
+const likec4AdapterEntry = join(here, 'adapters', 'likec4-cli.js')
+
+const claimValue = (
+  claims: readonly GraphClaim[],
+  subject: string,
+  predicate: string,
+): string | undefined => {
+  const object = claims.find(
+    (claim) => claim.subject === subject && claim.predicate === predicate,
+  )?.object
+  return object !== undefined && 'value' in object ? object.value : undefined
+}
+
+const briefFileName = (id: string): string =>
+  `${id.replaceAll('#', '--')}.md`
+
+interface ParsedExport {
+  readonly positionals: readonly string[]
+  readonly out?: string
+  readonly budget?: number
+  readonly json: boolean
+}
+
+const parseExportOptions = (
+  options: readonly string[],
+): ParsedExport | undefined => {
+  const positionals: string[] = []
+  let out: string | undefined
+  let budget: number | undefined
+  let json = false
+  for (let index = 0; index < options.length; index += 1) {
+    const option = options[index]
+    if (option === '--json') {
+      json = true
+      continue
+    }
+    if (option === '--out' || option === '--budget') {
+      const value = options[index + 1]
+      if (value === undefined || value.startsWith('-')) return undefined
+      if (option === '--out') {
+        if (out !== undefined) return undefined
+        out = value
+      } else {
+        if (budget !== undefined || !/^[1-9][0-9]*$/.test(value)) {
+          return undefined
+        }
+        budget = Number(value)
+      }
+      index += 1
+      continue
+    }
+    if (option === undefined || option.startsWith('-')) return undefined
+    positionals.push(option)
+  }
+  return {
+    positionals,
+    ...(out === undefined ? {} : { out }),
+    ...(budget === undefined ? {} : { budget }),
+    json,
+  }
+}
+
+export function runExportCommand(
+  options: readonly string[],
+  cwd: string,
+): CliResult {
+  const [kind, ...rest] = options
+  if (
+    kind === undefined ||
+    !['graph', 'markdown', 'briefs', 'likec4'].includes(kind)
+  ) {
+    return { exitCode: 2, stdout: '', stderr: usage }
+  }
+  const parsed = parseExportOptions(rest)
+  if (parsed === undefined) {
+    return { exitCode: 2, stdout: '', stderr: usage }
+  }
+
+  // likec4 delegates whole: <likec4-project.yaml> <output-dir> <workspace>.
+  if (kind === 'likec4') {
+    const [projectDefinition, outputDirectory, workspacePath] =
+      parsed.positionals
+    if (
+      parsed.positionals.length !== 3 ||
+      projectDefinition === undefined ||
+      outputDirectory === undefined ||
+      workspacePath === undefined ||
+      parsed.out !== undefined ||
+      parsed.budget !== undefined ||
+      parsed.json
+    ) {
+      return { exitCode: 2, stdout: '', stderr: usage }
+    }
+    if (!existsSync(likec4AdapterEntry)) {
+      return {
+        exitCode: 2,
+        stdout: '',
+        stderr:
+          `LikeC4 adapter entry not found at ${likec4AdapterEntry}; ` +
+          'run from the installed package or use the yarramate-likec4 binary directly\n',
+      }
+    }
+    const delegated = spawnSync(
+      process.execPath,
+      [
+        likec4AdapterEntry,
+        'export-project',
+        projectDefinition,
+        outputDirectory,
+        workspacePath,
+      ],
+      { cwd, encoding: 'utf8' },
+    )
+    const exitCode = delegated.status === 0 ? 0 : delegated.status === 1 ? 1 : 2
+    return {
+      exitCode,
+      stdout: delegated.stdout ?? '',
+      stderr: delegated.stderr ?? '',
+    }
+  }
+
+  const expectedPositionals = kind === 'graph' ? 1 : 2
+  const workspacePath =
+    parsed.positionals[expectedPositionals - 1]
+  const projectionPath = kind === 'graph' ? undefined : parsed.positionals[0]
+  if (
+    parsed.positionals.length !== expectedPositionals ||
+    workspacePath === undefined ||
+    parsed.json ||
+    (parsed.budget !== undefined && kind !== 'briefs') ||
+    (kind === 'briefs' && parsed.out === undefined)
+  ) {
+    return { exitCode: 2, stdout: '', stderr: usage }
+  }
+
+  try {
+    const manifestSource = readFileSync(resolve(cwd, workspacePath), 'utf8')
+    if (
+      parseDocument(manifestSource).get('format') !== 'yarramate/workspace/v1'
+    ) {
+      return {
+        exitCode: 2,
+        stdout: '',
+        stderr:
+          'export requires an explicit workspace manifest (yarramate/workspace/v1)\n',
+      }
+    }
+    const failed = (diagnostics: readonly Diagnostic[]): CliResult => ({
+      exitCode: 1,
+      stdout: humanDiagnostics(diagnostics),
+      stderr: '',
+    })
+    const loadedWorkspace = loadWorkspaceManifest(
+      { path: workspacePath, source: manifestSource },
+      cwd,
+    )
+    if (!loadedWorkspace.ok) return failed(loadedWorkspace.diagnostics)
+    const workspace = loadedWorkspace.workspace
+
+    const compilation = compileWorkspaceWithProfileContext(
+      [...workspace.profiles, ...workspace.documents].map((path) => ({
+        path,
+        source: readFileSync(resolve(cwd, path), 'utf8'),
+      })),
+    )
+    if (!compilation.ok) return failed(compilation.diagnostics)
+
+    if (kind === 'graph') {
+      const serialized = serializeSemanticGraph(compilation.graph)
+      if (parsed.out === undefined) {
+        return { exitCode: 0, stdout: serialized, stderr: '' }
+      }
+      const outPath = resolve(cwd, parsed.out)
+      mkdirSync(dirname(outPath), { recursive: true })
+      writeFileSync(outPath, serialized, 'utf8')
+      return {
+        exitCode: 0,
+        stdout: `Wrote graph to ${parsed.out}\n`,
+        stderr: '',
+      }
+    }
+
+    const loadedProjection = loadProjection({
+      path: projectionPath!,
+      source: readFileSync(resolve(cwd, projectionPath!), 'utf8'),
+    })
+    if (!loadedProjection.ok) return failed(loadedProjection.diagnostics)
+    const result = evaluateProjection(
+      compilation.graph,
+      loadedProjection.projection,
+      compilation.profileContext,
+    )
+
+    if (kind === 'markdown') {
+      const rendered = renderProjectionMarkdown(result)
+      if (parsed.out === undefined) {
+        return { exitCode: 0, stdout: rendered, stderr: '' }
+      }
+      const outPath = resolve(cwd, parsed.out)
+      mkdirSync(dirname(outPath), { recursive: true })
+      writeFileSync(outPath, rendered, 'utf8')
+      return {
+        exitCode: 0,
+        stdout: `Wrote markdown to ${parsed.out}\n`,
+        stderr: '',
+      }
+    }
+
+    // briefs: the handoff bundle — one brief per projected concept, each
+    // the concept's one-hop neighbourhood (ADR 0055), plus an index so N
+    // implementers can each pick up one slice.
+    const stateIds = new Set(
+      result.claims
+        .filter(({ predicate }) => predicate === 'yarramate/state/type')
+        .map(({ subject }) => subject),
+    )
+    const concepts = result.subjects
+      .filter(({ id, type }) => type === 'concept' && !stateIds.has(id))
+      .map(({ id }) => id)
+      .sort((left, right) => left.localeCompare(right))
+    const outDirectory = resolve(cwd, parsed.out!)
+    mkdirSync(outDirectory, { recursive: true })
+    const indexLines: string[] = [
+      `# Briefs — ${result.presentation?.title ?? result.projection}`,
+      '',
+      `Derived from projection ${result.projection}; one brief per concept,`,
+      'each the concept\'s connected neighbourhood as declared today.',
+      '',
+    ]
+    for (const id of concepts) {
+      const slice: ProjectionResult = evaluateProjection(
+        compilation.graph,
+        {
+          format: 'yarramate/projection/v1',
+          id: 'export-brief',
+          version: '0.0',
+          query: { subjects: [id], relationships: 'connected' },
+          presentation: {
+            title:
+              claimValue(result.claims, id, 'yarramate/concept/name') ?? id,
+            description: `The neighbourhood of ${id} as declared today.`,
+          },
+        },
+        compilation.profileContext,
+      )
+      const brief = renderBrief(
+        slice,
+        compilation.profileContext,
+        parsed.budget,
+      )
+      writeFileSync(join(outDirectory, briefFileName(id)), brief, 'utf8')
+      const name = claimValue(result.claims, id, 'yarramate/concept/name')
+      const conceptKind =
+        claimValue(result.claims, id, 'yarramate/concept/kind') ?? 'unknown'
+      const status = claimValue(
+        result.claims,
+        id,
+        'yarramate/lifecycle/status',
+      )
+      indexLines.push(
+        `- [${name ?? id}](${briefFileName(id)}) — ` +
+          `${conceptKind.split('#')[1] ?? conceptKind}` +
+          `${status === undefined ? '' : ` (${status})`} — \`${id}\``,
+      )
+    }
+    if (concepts.length === 0) {
+      indexLines.push('No concepts selected by this projection.')
+    }
+    writeFileSync(
+      join(outDirectory, 'INDEX.md'),
+      `${indexLines.join('\n')}\n`,
+      'utf8',
+    )
+    return {
+      exitCode: 0,
+      stdout: `Wrote ${concepts.length} brief${concepts.length === 1 ? '' : 's'} and INDEX.md to ${parsed.out}\n`,
+      stderr: '',
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    return { exitCode: 2, stdout: '', stderr: `${message}\n` }
+  }
+}

@@ -82,7 +82,8 @@
               "interrogate",
               "apply",
               "design",
-              "ask"
+              "ask",
+              "export"
             ]
           },
           "binary": {

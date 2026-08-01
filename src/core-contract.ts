@@ -40,6 +40,7 @@ export interface CoreContractCommand {
     | 'apply'
     | 'design'
     | 'ask'
+    | 'export'
   readonly binary: 'yarramate'
   readonly machineFormat?: string
 }

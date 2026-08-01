@@ -2406,7 +2406,7 @@ mappings:
             subject: 'yarramate-engine#likec4-adapter-provides-export',
             path: '.yarramate/architecture/engine.yaml',
             pointer: '/relationships/124',
-            line: 1164,
+            line: 1170,
             column: 5,
           },
           {
@@ -2417,7 +2417,7 @@ mappings:
             subject: 'yarramate-engine#likec4-adapter-provides-check',
             path: '.yarramate/architecture/engine.yaml',
             pointer: '/relationships/125',
-            line: 1168,
+            line: 1174,
             column: 5,
           },
           {
