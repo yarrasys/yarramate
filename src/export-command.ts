@@ -132,6 +132,8 @@ export function runExportCommand(
     ) {
       return { exitCode: 2, stdout: '', stderr: usage }
     }
+    const changedArguments =
+      parsed.changed === undefined ? [] : ['--changed', parsed.changed]
     if (!existsSync(likec4AdapterEntry)) {
       return {
         exitCode: 2,
@@ -149,6 +151,7 @@ export function runExportCommand(
         projectDefinition,
         outputDirectory,
         workspacePath,
+        ...changedArguments,
       ],
       { cwd, encoding: 'utf8' },
     )

@@ -22,6 +22,7 @@ import {
   versionResult,
   type CliResult,
 } from '../cli-support.js'
+import { deriveChangedSubjects } from '../changed.js'
 import { compileWorkspace } from '../compiler.js'
 import {
   adapterMappingLocation,
@@ -111,7 +112,7 @@ const usage =
   '  yarramate-likec4 check <likec4-project.yaml> [--json] <workspace-or-source...>\n' +
   '  yarramate-likec4 export <projection.yaml> <mapping.yaml> [--kinds <kind-mapping.yaml>] [--compare <from-state> <to-state>] <workspace-or-source...>\n' +
   '  yarramate-likec4 export-project [--check] <projection.yaml> <mapping.yaml> <output-dir> [--kinds <kind-mapping.yaml>] [--compare <from-state> <to-state>] <workspace-or-source...>\n' +
-  '  yarramate-likec4 export-project [--check] <likec4-project.yaml> <output-dir> <workspace-or-source...>\n'
+  '  yarramate-likec4 export-project [--check] <likec4-project.yaml> <output-dir> [--changed <git-range>] <workspace-or-source...>\n'
 
 const diagnosticJson = (
   diagnostics: readonly LikeC4PreparationDiagnostic[],
@@ -692,6 +693,7 @@ export function runLikeC4Cli(
   let comparison:
     | { readonly from: string; readonly to: string }
     | undefined
+  let changedRange: string | undefined
   const sourcePaths: string[] = []
   for (let index = 0; index < sourceOptions.length; index += 1) {
     const option = sourceOptions[index]!
@@ -709,6 +711,20 @@ export function runLikeC4Cli(
         invalidOptions = true
       } else {
         kindMappingPath = value
+        index += 1
+      }
+      continue
+    }
+    if (option === '--changed') {
+      const value = sourceOptions[index + 1]
+      if (
+        value === undefined ||
+        value.startsWith('-') ||
+        changedRange !== undefined
+      ) {
+        invalidOptions = true
+      } else {
+        changedRange = value
         index += 1
       }
       continue
@@ -745,6 +761,8 @@ export function runLikeC4Cli(
     (command === 'export-project' && outputDirectory === undefined) ||
     (projectDefinitionMode &&
       (kindMappingPath !== undefined || comparison !== undefined)) ||
+    (changedRange !== undefined &&
+      !(projectDefinitionMode && command === 'export-project')) ||
     invalidOptions ||
     sourcePaths.length === 0 ||
     sourcePaths.some((argument) => argument.startsWith('-'))
@@ -1158,9 +1176,40 @@ export function runLikeC4Cli(
         }
         renderedViewIds.add(renderedId)
       }
+      let gitChange
+      if (changedRange !== undefined) {
+        const modelDocuments = sources.flatMap((candidate) => {
+          const parsed = parseDocument(candidate.source)
+          if (parsed.get('format') !== 'yarramate/v1') return []
+          const documentId = parsed.get('id')
+          return typeof documentId === 'string'
+            ? [{ ...candidate, documentId }]
+            : []
+        })
+        const derived = deriveChangedSubjects(
+          cwd,
+          changedRange,
+          modelDocuments,
+        )
+        if (!derived.ok) {
+          return { exitCode: 2, stdout: '', stderr: `${derived.message}\n` }
+        }
+        const all = [
+          ...derived.changed.concepts,
+          ...derived.changed.relationships,
+        ]
+        gitChange = {
+          range: derived.changed.range,
+          added: derived.changed.added,
+          modified: all.filter(
+            (id) => !derived.changed.added.includes(id),
+          ),
+        }
+      }
       const exported = exportLikeC4Project(
         loadedProject.document.value,
         successfulViews,
+        gitChange === undefined ? {} : { gitChange },
       )
       if (!exported.ok) {
         return {

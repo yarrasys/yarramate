@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url'
 import Ajv2020Module from 'ajv/dist/2020.js'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { runCli } from '../src/cli.js'
+import { runLikeC4Cli } from '../src/adapters/likec4-cli.js'
 
 const Ajv2020 = Ajv2020Module.default
 
@@ -223,6 +224,88 @@ describe('git-derived review slices', () => {
     )
     expect(result.exitCode).toBe(2)
     expect(result.stderr).toContain('git repository')
+  })
+
+  it('overlays the git range onto the LikeC4 export with a review view', () => {
+    writeFileSync(
+      join(workspace, 'mapping.yaml'),
+      `format: yarramate/adapter-mapping/v1
+id: changed-likec4
+version: "1.0"
+adapter: likec4
+mappings:
+  - native: main#user
+    external: user
+    type: concept
+  - native: main#todo-service
+    external: todoService
+    type: concept
+  - native: main#todo-store
+    external: todoStore
+    type: concept
+  - native: main#service-serves-user
+    external: serviceServesUser
+    type: relationship
+  - native: main#service-accesses-store
+    external: serviceAccessesStore
+    type: relationship
+`,
+      'utf8',
+    )
+    writeFileSync(
+      join(workspace, 'all.projection.yaml'),
+      `format: yarramate/projection/v1
+id: everything
+version: "1.0"
+query:
+  documents: [main]
+presentation:
+  title: Everything
+`,
+      'utf8',
+    )
+    writeFileSync(
+      join(workspace, 'likec4-project.yaml'),
+      `format: yarramate/likec4-project/v1
+id: changed-fixture
+version: "1.0"
+title: Changed fixture
+mapping: mapping.yaml
+views:
+  - id: index
+    projection: all.projection.yaml
+`,
+      'utf8',
+    )
+    const result = runLikeC4Cli(
+      [
+        'export-project',
+        'likec4-project.yaml',
+        'viz',
+        'workspace.yaml',
+        '--changed',
+        'HEAD',
+      ],
+      workspace,
+    )
+    expect(result.exitCode, result.stdout + result.stderr).toBe(0)
+    const model = readFileSync(join(workspace, 'viz/model.likec4'), 'utf8')
+    // Metadata classifies new vs changed, derived from git.
+    expect(model).toMatch(
+      /todoStore[^]*?yarramateGitChange 'new'/,
+    )
+    expect(model).toMatch(
+      /todoService[^]*?yarramateGitChange 'changed'/,
+    )
+    // Every ordinary view carries the highlight for its own members.
+    expect(model).toContain('    style todoStore { color green }')
+    expect(model).toContain('    style todoService { color amber }')
+    // And the synthetic review view carries the legend.
+    expect(model).toContain('view review-changes {')
+    expect(model).toContain('Legend: green = new, amber = changed')
+    expect(model).toContain(
+      "include * -> * where metadata.yarramateId is 'main#service-accesses-store'",
+    )
   })
 
   it('rejects --changed combined with other modes', () => {

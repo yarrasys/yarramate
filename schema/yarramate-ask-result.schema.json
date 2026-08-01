@@ -231,6 +231,13 @@
                 "type": "string",
                 "minLength": 1
               }
+            },
+            "added": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
             }
           },
           "additionalProperties": false

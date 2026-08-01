@@ -10,6 +10,9 @@ export interface ChangedSubjects {
   readonly range: string
   readonly concepts: readonly string[]
   readonly relationships: readonly string[]
+  /** Subjects whose entire declaration is new in the range (subset of
+   *  concepts + relationships); the rest changed in place. */
+  readonly added: readonly string[]
 }
 
 export type ChangedResult =
@@ -78,19 +81,31 @@ const itemSpans = (source: string): readonly ItemSpan[] => {
 }
 
 // New-side line ranges from `git diff --unified=0`. A pure deletion has a
-// zero count; it still touches the position it collapsed onto.
-const changedLineRanges = (
-  diff: string,
-): ReadonlyArray<readonly [number, number]> => {
-  const ranges: Array<readonly [number, number]> = []
-  for (const match of diff.matchAll(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/gm)) {
-    const start = Number(match[1])
-    const count = match[2] === undefined ? 1 : Number(match[2])
-    ranges.push(
-      count === 0 ? [Math.max(start, 1), Math.max(start, 1)] : [start, start + count - 1],
-    )
+// zero count; it still touches the position it collapsed onto. Ranges
+// whose old side is empty are pure insertions - a subject living wholly
+// inside them is new, not changed.
+interface DiffRanges {
+  readonly touched: ReadonlyArray<readonly [number, number]>
+  readonly inserted: ReadonlyArray<readonly [number, number]>
+}
+
+const changedLineRanges = (diff: string): DiffRanges => {
+  const touched: Array<readonly [number, number]> = []
+  const inserted: Array<readonly [number, number]> = []
+  for (const match of diff.matchAll(
+    /^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/gm,
+  )) {
+    const oldCount = match[1] === undefined ? 1 : Number(match[1])
+    const start = Number(match[2])
+    const count = match[3] === undefined ? 1 : Number(match[3])
+    const range: readonly [number, number] =
+      count === 0
+        ? [Math.max(start, 1), Math.max(start, 1)]
+        : [start, start + count - 1]
+    touched.push(range)
+    if (oldCount === 0 && count > 0) inserted.push(range)
   }
-  return ranges
+  return { touched, inserted }
 }
 
 export function deriveChangedSubjects(
@@ -114,6 +129,7 @@ export function deriveChangedSubjects(
   }
   const concepts = new Set<string>()
   const relationships = new Set<string>()
+  const added = new Set<string>()
   for (const document of documents) {
     const diffed = spawnSync(
       'git',
@@ -127,17 +143,21 @@ export function deriveChangedSubjects(
       }
     }
     const ranges = changedLineRanges(diffed.stdout ?? '')
-    if (ranges.length === 0) continue
+    if (ranges.touched.length === 0) continue
     const spans = itemSpans(document.source)
     for (const span of spans) {
       if (span.collection === 'states') continue
-      const touched = ranges.some(
+      const touched = ranges.touched.some(
         ([from, to]) => from <= span.endLine && to >= span.startLine,
       )
       if (!touched) continue
       const qualified = `${document.documentId}#${span.id}`
       if (span.collection === 'concepts') concepts.add(qualified)
       else relationships.add(qualified)
+      const whollyInserted = ranges.inserted.some(
+        ([from, to]) => from <= span.startLine && to >= span.endLine,
+      )
+      if (whollyInserted) added.add(qualified)
     }
   }
   return {
@@ -146,6 +166,7 @@ export function deriveChangedSubjects(
       range,
       concepts: [...concepts].sort(),
       relationships: [...relationships].sort(),
+      added: [...added].sort(),
     },
   }
 }
