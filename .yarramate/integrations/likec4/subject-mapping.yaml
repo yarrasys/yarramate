@@ -1290,3 +1290,36 @@ mappings:
   - native: yarramate-product#validation-realizes-correctness
     external: validationRealizesCorrectness
     type: relationship
+  - native: yarramate-engine#apply-command
+    external: applyCommand
+    type: concept
+  - native: yarramate-engine#apply-command-reads-operations
+    external: applyCommandReadsOperations
+    type: relationship
+  - native: yarramate-engine#apply-command-reads-operations-schema
+    external: applyCommandReadsOperationsSchema
+    type: relationship
+  - native: yarramate-engine#apply-command-reads-result-schema
+    external: applyCommandReadsResultSchema
+    type: relationship
+  - native: yarramate-engine#apply-command-serves-agent-harness
+    external: applyCommandServesAgentHarness
+    type: relationship
+  - native: yarramate-engine#apply-command-writes-result
+    external: applyCommandWritesResult
+    type: relationship
+  - native: yarramate-engine#apply-operations
+    external: applyOperations
+    type: concept
+  - native: yarramate-engine#apply-operations-schema
+    external: applyOperationsSchema
+    type: concept
+  - native: yarramate-engine#apply-result
+    external: applyResult
+    type: concept
+  - native: yarramate-engine#apply-result-schema
+    external: applyResultSchema
+    type: concept
+  - native: yarramate-engine#cli-provides-apply
+    external: cliProvidesApply
+    type: relationship

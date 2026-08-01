@@ -69,7 +69,9 @@
     "./schema/evidence-report": "./schema/yarramate-evidence-report.schema.json",
     "./schema/reconciliation-report": "./schema/yarramate-reconciliation-report.schema.json",
     "./schema/core-contract": "./schema/yarramate-core-contract.schema.json",
-    "./skill/yarramate-architecture": "./skills/yarramate-architecture/SKILL.md"
+    "./skill/yarramate-architecture": "./skills/yarramate-architecture/SKILL.md",
+    "./schema/operations": "./schema/yarramate-operations.schema.json",
+    "./schema/apply-result": "./schema/yarramate-apply-result.schema.json"
   },
   "bin": {
     "yarramate": "dist/cli.js",

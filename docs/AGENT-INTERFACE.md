@@ -55,7 +55,7 @@ translates it into `apply` operations → re-invoke `design`.
 
 ### `yarramate apply` — write, validated
 
-[new; add/connect built] All model writes: single operations and
+[built — ADR 0057] All model writes: single operations and
 **atomic batches** (an operations document; any invalid op rejects the
 whole batch, preserving no-partial-graph). Structurally incapable of
 emitting YM404s — the weak tier's proven bridge, now cheap enough for
@@ -73,8 +73,13 @@ read; graphify analogues: `query` / `explain` / `path`.
 - `ask` (bare) — orientation: the status verdict, drift summary,
   inventory (today's `status`; the known backlog-orientation gap
   belongs here).
-- `ask <subject|projection>` — the slice as a brief (ADR 0055) or
-  digest/JSON (`--budget`, `--json`).
+- `ask "<free text>"` — the default addressing mode (decided
+  2026-08-01): terms match concept names, ids, and descriptions to find
+  seed subjects, then the existing one-hop connected-neighbourhood
+  machinery renders the slice — graphify's query model, deterministic,
+  no LLM in the engine.
+- `ask <subject|projection>` — precise addressing: the slice as a brief
+  (ADR 0055) or digest/JSON (`--budget`, `--json`).
 - `ask --advise <topic>` — the expert composition: slice + open
   questions + drift state assembled deterministically into one context
   block the LLM answers *as* the architect. The engine composes ground
@@ -183,8 +188,8 @@ removed, and the release notes carry the map above.
 
 ## Build order (the 0.7.0 arc)
 
-1. Deep catalogue + adequacy condition types (engine side of `design`)
-2. `apply` (#93 shape) — the loop's write half
+1. Deep catalogue + adequacy condition types [done, ADR 0056]
+2. `apply` (#93 shape) — the loop's write half [done, ADR 0057]
 3. `design` (#103) — the loop's ask half, catalogue internal
 4. `ask` — consolidation of status/context/next/compare + `--advise`
    (#105) + `--open`
@@ -198,8 +203,6 @@ removed, and the release notes carry the map above.
   whether revocation is deletion or a counter-claim.
 - `design` argument surface: scoping the interview (workspace vs wave
   vs subject).
-- `ask --advise` topic addressing: subject id, projection, or free
-  question routed to a slice.
 - Where the standalone `evidence` evaluation lands: `check` machinery,
   `reconcile` mode, or gone as a public surface.
 - Whether `ask` bare output grows the backlog-oriented section the

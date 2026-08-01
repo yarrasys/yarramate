@@ -57,6 +57,12 @@ formats:
   - id: yarramate/interrogation-report/v1
     schema: schema/yarramate-interrogation-report.schema.json
     packageExport: ./schema/interrogation-report
+  - id: yarramate/operations/v1
+    schema: schema/yarramate-operations.schema.json
+    packageExport: ./schema/operations
+  - id: yarramate/apply-result/v1
+    schema: schema/yarramate-apply-result.schema.json
+    packageExport: ./schema/apply-result
 commands:
   - name: init
     binary: yarramate
@@ -95,6 +101,9 @@ commands:
   - name: interrogate
     binary: yarramate
     machineFormat: yarramate/interrogation-report/v1
+  - name: apply
+    binary: yarramate
+    machineFormat: yarramate/apply-result/v1
 guarantees:
   - adapter-independent-core
   - canonical-graph-serialization

@@ -1,0 +1,303 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yarrasys.dev/schema/yarramate-operations.schema.json",
+  "title": "YarraMate operations document",
+  "description": "An atomic batch of validated writes: every operation applies or none does. Documents are addressed by their workspace-manifest paths.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "operations"
+  ],
+  "properties": {
+    "format": {
+      "const": "yarramate/operations/v1"
+    },
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/operation"
+      }
+    }
+  },
+  "$defs": {
+    "nonEmptyText": {
+      "type": "string",
+      "minLength": 1
+    },
+    "identifiedReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "ref"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "ref": {
+          "$ref": "#/$defs/nonEmptyText"
+        }
+      }
+    },
+    "attestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "topic",
+        "by",
+        "on"
+      ],
+      "properties": {
+        "topic": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "by": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "on": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        }
+      }
+    },
+    "conceptFields": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "kind": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "name": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "description": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "status": {
+          "enum": [
+            "planned",
+            "current",
+            "retired"
+          ]
+        },
+        "owner": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/identifiedReference"
+          }
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/identifiedReference"
+          }
+        },
+        "presentIn": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/nonEmptyText"
+          }
+        },
+        "attestations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/attestation"
+          }
+        }
+      }
+    },
+    "relationshipFields": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "kind": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "from": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "to": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "name": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "description": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "status": {
+          "enum": [
+            "planned",
+            "current",
+            "retired"
+          ]
+        },
+        "mode": {
+          "enum": [
+            "read",
+            "write",
+            "read-write",
+            "unspecified"
+          ]
+        },
+        "content": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/identifiedReference"
+          }
+        },
+        "presentIn": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/nonEmptyText"
+          }
+        }
+      }
+    },
+    "operation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "document",
+            "concept"
+          ],
+          "properties": {
+            "op": {
+              "const": "add-concept"
+            },
+            "document": {
+              "$ref": "#/$defs/nonEmptyText"
+            },
+            "concept": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/conceptFields"
+                },
+                {
+                  "required": [
+                    "id",
+                    "kind",
+                    "name"
+                  ],
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "document",
+            "relationship"
+          ],
+          "properties": {
+            "op": {
+              "const": "add-relationship"
+            },
+            "document": {
+              "$ref": "#/$defs/nonEmptyText"
+            },
+            "relationship": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/relationshipFields"
+                },
+                {
+                  "required": [
+                    "id",
+                    "kind",
+                    "from",
+                    "to"
+                  ],
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "document",
+            "concept"
+          ],
+          "properties": {
+            "op": {
+              "const": "update-concept"
+            },
+            "document": {
+              "$ref": "#/$defs/nonEmptyText"
+            },
+            "concept": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/conceptFields"
+                },
+                {
+                  "required": [
+                    "id"
+                  ],
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "document",
+            "relationship"
+          ],
+          "properties": {
+            "op": {
+              "const": "update-relationship"
+            },
+            "document": {
+              "$ref": "#/$defs/nonEmptyText"
+            },
+            "relationship": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/relationshipFields"
+                },
+                {
+                  "required": [
+                    "id"
+                  ],
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}
