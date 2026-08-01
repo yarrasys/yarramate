@@ -132,6 +132,35 @@ Both fields compile to claims, so evidence can later confirm or contradict
 the recorded invocation semantics; the degradation loses no reviewable
 information.
 
+## Batched writes
+
+Prefer `yarramate apply` when an answer or enrichment touches several
+subjects: one atomic validated batch instead of repeated single calls.
+
+```yaml
+format: yarramate/operations/v1
+operations:
+  - op: add-concept
+    document: architecture/main.yaml
+    concept: {id: audit-log, kind: applicationService, name: Audit log, status: planned}
+  - op: add-relationship
+    document: architecture/main.yaml
+    relationship: {id: api-serves-audit, kind: serving, from: audit-log, to: user}
+  - op: update-concept
+    document: architecture/main.yaml
+    concept:
+      id: user
+      description: The person whose actions are audited.
+```
+
+```sh
+yarramate apply operations.yaml workspace.yaml
+```
+
+The whole candidate workspace must compile or nothing is written.
+Update operations enrich only — scalars replace, lists append; removals
+stay Git edits.
+
 ## Ownership and constraints
 
 ```yaml

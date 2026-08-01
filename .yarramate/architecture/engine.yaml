@@ -554,6 +554,32 @@ concepts:
     name: Reconciliation report JSON Schema
     description: Normative structure for workspace reconciliation reports.
     status: current
+  - id: apply-command
+    kind: applicationService
+    name: Apply command
+    description: Applies an atomic batch of validated writes; the whole candidate workspace must compile before a single byte lands.
+    owner: yarramate-product#yarramate-maintainers
+    status: current
+  - id: apply-operations
+    kind: dataObject
+    name: Operations document
+    description: The yarramate/operations/v1 batch of add and update operations addressed by workspace-manifest document paths.
+    owner: yarramate-product#yarramate-maintainers
+  - id: apply-operations-schema
+    kind: dataObject
+    name: Operations schema
+    description: Normative JSON Schema for yarramate/operations/v1.
+    owner: yarramate-product#yarramate-maintainers
+  - id: apply-result
+    kind: dataObject
+    name: Apply result
+    description: The yarramate/apply-result/v1 machine summary of an applied batch.
+    owner: yarramate-product#yarramate-maintainers
+  - id: apply-result-schema
+    kind: dataObject
+    name: Apply result schema
+    description: Normative JSON Schema for yarramate/apply-result/v1.
+    owner: yarramate-product#yarramate-maintainers
 relationships:
   - id: core-contract-checker-loads-contract
     kind: assignment
@@ -1121,3 +1147,31 @@ relationships:
     from: profile-catalogue
     to: yarramate-product#tool-neutral-core
     description: Core-owned kind semantics are what keep meaning independent of adapters.
+  - id: cli-provides-apply
+    kind: implements
+    from: cli
+    to: apply-command
+  - id: apply-command-serves-agent-harness
+    kind: serving
+    from: apply-command
+    to: yarramate-product#agent-harness
+  - id: apply-command-reads-operations
+    kind: access
+    from: apply-command
+    to: apply-operations
+    mode: read
+  - id: apply-command-reads-operations-schema
+    kind: access
+    from: apply-command
+    to: apply-operations-schema
+    mode: read
+  - id: apply-command-writes-result
+    kind: access
+    from: apply-command
+    to: apply-result
+    mode: write
+  - id: apply-command-reads-result-schema
+    kind: access
+    from: apply-command
+    to: apply-result-schema
+    mode: read

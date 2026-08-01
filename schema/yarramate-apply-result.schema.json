@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yarrasys.dev/schema/yarramate-apply-result.schema.json",
+  "title": "YarraMate apply result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "workspace", "applied", "documents"],
+  "properties": {
+    "format": { "const": "yarramate/apply-result/v1" },
+    "workspace": { "type": "string", "minLength": 1 },
+    "applied": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "addedConcepts",
+        "addedRelationships",
+        "updatedConcepts",
+        "updatedRelationships"
+      ],
+      "properties": {
+        "addedConcepts": { "type": "integer", "minimum": 0 },
+        "addedRelationships": { "type": "integer", "minimum": 0 },
+        "updatedConcepts": { "type": "integer", "minimum": 0 },
+        "updatedRelationships": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "documents": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}
