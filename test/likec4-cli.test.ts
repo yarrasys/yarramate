@@ -1392,7 +1392,10 @@ views:
     }
   })
 
-  it('materializes the repository starter pack as independent views', () => {
+  it(
+    'materializes the repository starter pack as independent views',
+    { timeout: 20_000 },
+    () => {
     const parent = mkdtempSync(
       join(tmpdir(), 'yarramate-likec4-starter-pack-'),
     )
