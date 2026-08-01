@@ -55,12 +55,14 @@ translates it into `apply` operations → re-invoke `design`.
 
 ### `yarramate apply` — write, validated
 
-[built — ADR 0057] All model writes: single operations and
-**atomic batches** (an operations document; any invalid op rejects the
-whole batch, preserving no-partial-graph). Structurally incapable of
-emitting YM404s — the weak tier's proven bridge, now cheap enough for
-the strong tier (one answer = one call). Swallows `add`, `connect`,
-and `new projection` scaffolding.
+[built — ADR 0057, write path ADR 0062] All model writes: single
+operations and **atomic batches** (an operations document; any invalid
+op rejects the whole batch, preserving no-partial-graph). Structurally
+incapable of emitting YM404s — the weak tier's proven bridge, now cheap
+enough for the strong tier (one answer = one call). Writes are spliced,
+never re-serialized: an apply diff is exactly the answer it landed.
+Updates enrich by default and retract explicitly (`remove`), so the
+assert → catch → retract loop closes through one audited surface.
 
 - Harness use: landing a design answer; discovery-journey authoring;
   maintenance edits.

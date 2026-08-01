@@ -264,6 +264,22 @@
                   "type": "object"
                 }
               ]
+            },
+            "remove": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "enum": [
+                  "name",
+                  "description",
+                  "status",
+                  "owner",
+                  "constraints",
+                  "references",
+                  "presentIn",
+                  "attestations"
+                ]
+              }
             }
           }
         },
@@ -294,6 +310,21 @@
                   "type": "object"
                 }
               ]
+            },
+            "remove": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "enum": [
+                  "name",
+                  "description",
+                  "status",
+                  "mode",
+                  "content",
+                  "references",
+                  "presentIn"
+                ]
+              }
             }
           }
         }
