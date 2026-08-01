@@ -129,7 +129,11 @@ yarramate design .yarramate/workspace.yaml
    .yarramate/workspace.yaml`), then re-run `design` — the next question is
    recomputed from the model, so the loop is resumable across sessions and
    agents with no handover. Use `--subject <id>` to focus the interview on
-   one element. The interview is complete when `design` says so.
+   one element. When a step reports many `openSubjects` sharing one
+   question (ownership is the classic case), do not interview N times:
+   collect the policy answer once — "who owns what, by area" — and land it
+   across every listed subject as one apply batch. The interview is
+   complete when `design` says so.
 5. Create:
    - an alternatives projection for the decision;
    - a bounded target projection for implementation agents.
