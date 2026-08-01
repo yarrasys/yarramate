@@ -27,6 +27,7 @@ export interface LikeC4ProjectDefinition {
   readonly views: ReadonlyArray<{
     readonly id?: string
     readonly projection: string
+    readonly folder?: string
     readonly compare?: {
       readonly from: string
       readonly to: string
@@ -64,6 +65,7 @@ export const loadLikeC4ProjectDefinition = (source: WorkspaceSource) =>
 
 export interface PreparedLikeC4ProjectView {
   readonly id?: string
+  readonly folder?: string
   readonly prepared: Extract<LikeC4PreparationResult, { readonly ok: true }>
   readonly comparison?: {
     readonly from: string
@@ -80,6 +82,21 @@ export interface PreparedLikeC4ProjectView {
 
 const quote = (value: string): string =>
   `'${value.replaceAll('\\', '\\\\').replaceAll("'", "\\'").replaceAll('\n', '\\n')}'`
+
+// A folder files the view in LikeC4's sidebar tree: the title becomes a
+// path ('Folder / Title') whose last segment is the displayed title (ADR
+// 0067). A view without a declared title still needs a title line to
+// carry the path, so the view id stands in as the leaf.
+const titleLines = (
+  folder: string | undefined,
+  title: string | undefined,
+  viewId: string,
+): readonly string[] =>
+  folder === undefined
+    ? title === undefined
+      ? []
+      : [`    title ${quote(title)}`]
+    : [`    title ${quote(`${folder} / ${title ?? viewId}`)}`]
 
 const unionProjection = (
   project: LikeC4ProjectDefinition,
@@ -120,6 +137,7 @@ const unionProjection = (
 const viewBody = (
   {
     id,
+    folder,
     prepared,
     dynamic,
     deployment,
@@ -159,12 +177,14 @@ const viewBody = (
       .map(({ id }) => `${id}.**`)
       .sort()
     const viewId =
-      id ?? prepared.projection.projection.split('@')[0]
+      id ?? prepared.projection.projection.split('@')[0]!
     return [
       `  deployment view ${viewId} {`,
-      ...(prepared.projection.presentation?.title === undefined
-        ? []
-        : [`    title ${quote(prepared.projection.presentation.title)}`]),
+      ...titleLines(
+        folder,
+        prepared.projection.presentation?.title,
+        viewId,
+      ),
       ...(prepared.projection.presentation?.description === undefined
         ? []
         : [
@@ -220,12 +240,14 @@ const viewBody = (
           ]
     })
     const viewId =
-      id ?? prepared.projection.projection.split('@')[0]
+      id ?? prepared.projection.projection.split('@')[0]!
     return [
       `  dynamic view ${viewId} {`,
-      ...(prepared.projection.presentation?.title === undefined
-        ? []
-        : [`    title ${quote(prepared.projection.presentation.title)}`]),
+      ...titleLines(
+        folder,
+        prepared.projection.presentation?.title,
+        viewId,
+      ),
       ...(prepared.projection.presentation?.description === undefined
         ? []
         : [
@@ -260,13 +282,25 @@ const viewBody = (
     ...relationshipRules,
     ...overlayRules,
   ].join('\n')
-  return source
+  const viewId = id ?? prepared.projection.projection.split('@')[0]!
+  const body = source
     .slice(start + startToken.length, end)
     .replace(
       /^  view [A-Za-z_][A-Za-z0-9_-]* \{/,
-      `  view ${id ?? prepared.projection.projection.split('@')[0]} {`,
+      `  view ${viewId} {`,
     )
     .replace('    include *', membershipRules)
+  if (folder === undefined) return body
+  const title = prepared.projection.presentation?.title
+  return title === undefined
+    ? body.replace(
+        `  view ${viewId} {`,
+        `  view ${viewId} {\n${titleLines(folder, undefined, viewId).join('\n')}`,
+      )
+    : body.replace(
+        `    title ${quote(title)}`,
+        titleLines(folder, title, viewId).join('\n'),
+      )
 }
 
 const deploymentBody = ({

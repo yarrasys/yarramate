@@ -1276,6 +1276,167 @@ views:
     }
   })
 
+  it('files project views into sidebar folders via title paths', () => {
+    const parent = mkdtempSync(join(tmpdir(), 'yarramate-likec4-folders-'))
+    const project = join(parent, 'generated')
+    try {
+      writeFileSync(
+        join(parent, 'architecture.yaml'),
+        `format: yarramate/v1
+id: system
+profile: yarramate/core@0.1
+concepts:
+  - id: service
+    kind: applicationComponent
+    name: Service
+  - id: store
+    kind: dataObject
+    name: Store
+relationships:
+  - id: service-uses-store
+    kind: access
+    from: service
+    to: store
+`,
+      )
+      writeFileSync(
+        join(parent, 'overview.projection.yaml'),
+        `format: yarramate/projection/v1
+id: overview
+version: "1.0"
+query:
+  documents: [system]
+presentation:
+  title: Overview
+`,
+      )
+      writeFileSync(
+        join(parent, 'bare.projection.yaml'),
+        `format: yarramate/projection/v1
+id: bare
+version: "1.0"
+query:
+  documents: [system]
+`,
+      )
+      writeFileSync(
+        join(parent, 'likec4.mapping.yaml'),
+        `format: yarramate/adapter-mapping/v1
+id: system-likec4
+version: "1.0"
+adapter: likec4
+mappings:
+  - native: system#service
+    external: service
+    type: concept
+  - native: system#store
+    external: store
+    type: concept
+  - native: system#service-uses-store
+    external: serviceUsesStore
+    type: relationship
+`,
+      )
+      writeFileSync(
+        join(parent, 'yarramate.likec4.yaml'),
+        `format: yarramate/likec4-project/v1
+id: system
+version: "1.0"
+title: System architecture
+mapping: likec4.mapping.yaml
+views:
+  - id: index
+    projection: overview.projection.yaml
+    folder: Platform
+  - id: edge
+    projection: bare.projection.yaml
+    folder: Platform / Edge
+  - id: deployed
+    projection: bare.projection.yaml
+    folder: Runtime
+    deployment:
+      nodes:
+        - id: prod
+          kind: environment
+          name: Production
+      instances:
+        - id: prod-service
+          subject: system#service
+          node: prod
+`,
+      )
+
+      const result = runLikeC4Cli(
+        [
+          'export-project',
+          'yarramate.likec4.yaml',
+          project,
+          'architecture.yaml',
+        ],
+        parent,
+      )
+      expect(result).toEqual({
+        exitCode: 0,
+        stdout: `Wrote LikeC4 project to ${project}\n`,
+        stderr: '',
+      })
+      const model = readFileSync(join(project, 'model.likec4'), 'utf8')
+      // A declared presentation title becomes the path's leaf.
+      expect(model).toContain(
+        "  view index {\n    title 'Platform / Overview'\n",
+      )
+      // A view without a presentation title still carries the folder,
+      // with the view id standing in as the leaf.
+      expect(model).toContain(
+        "  view edge {\n    title 'Platform / Edge / edge'\n",
+      )
+      // The deployment branch files the same way.
+      expect(model).toContain(
+        "  deployment view deployed {\n    title 'Runtime / deployed'\n",
+      )
+
+      const validation = spawnSync(
+        join(repositoryRoot, 'node_modules/.bin/likec4'),
+        [
+          'validate',
+          '--json',
+          '--no-layout',
+          '--file',
+          'model.likec4',
+          '.',
+        ],
+        { cwd: project, encoding: 'utf8' },
+      )
+      expect(
+        validation.status,
+        `${validation.stderr}\n${validation.stdout}`,
+      ).toBe(0)
+
+      writeFileSync(
+        join(parent, 'yarramate.likec4.yaml'),
+        `format: yarramate/likec4-project/v1
+id: system
+version: "1.0"
+title: System architecture
+mapping: likec4.mapping.yaml
+views:
+  - id: index
+    projection: overview.projection.yaml
+    folder: "Platform /"
+`,
+      )
+      const rejected = runLikeC4Cli(
+        ['check', 'yarramate.likec4.yaml', 'architecture.yaml'],
+        parent,
+      )
+      expect(rejected.exitCode).toBe(1)
+      expect(rejected.stdout).toContain('YM201')
+      expect(rejected.stdout).toContain('/views/0/folder')
+    } finally {
+      rmSync(parent, { recursive: true, force: true })
+    }
+  })
+
   it('resolves project references from the project document, not the CWD', () => {
     const parent = mkdtempSync(
       join(tmpdir(), 'yarramate-likec4-portable-'),
@@ -1431,8 +1592,14 @@ views:
       expect(model).toContain('view state-foundation')
       expect(model).toContain('dynamic view compiler-pipeline')
       expect(model).toContain(
+        "  view index {\n    title '1 · Orientation / Architecture landscape'\n",
+      )
+      expect(model).toContain(
+        "  dynamic view compiler-pipeline {\n    title '3 · Engine internals / Current engine'\n",
+      )
+      expect(model).toContain(
         "view starter-technology-deployment {\n" +
-          "    title 'Technology and deployment'\n" +
+          "    title '4 · ArchiMate viewpoints / Technology and deployment'\n" +
           "    description 'Technology structure, behavior, services, networks, and deployed artifacts.'\n" +
           '    include consumerHost, consumerPackage, engineCli, engineGraphifyEvidenceAdapter, likec4ExportAdapter, mcpAdapter, nodejsRuntime, npmPackage, packageConsumerTests, productDesignSolutionBeforeBuild, productDiscoverProjectArchitecture, productStableCli',
       )

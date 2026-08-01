@@ -926,6 +926,9 @@ export function runLikeC4Cli(
             ? [
                 {
                   ...(view.id === undefined ? {} : { id: view.id }),
+                  ...(view.folder === undefined
+                    ? {}
+                    : { folder: view.folder }),
                   prepared,
                   ...(view.compare === undefined
                     ? {}
