@@ -1,0 +1,184 @@
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import Ajv2020Module from 'ajv/dist/2020.js'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { runCli } from '../src/cli.js'
+
+const Ajv2020 = Ajv2020Module.default
+
+const repositoryRoot = resolve(
+  fileURLToPath(new URL('.', import.meta.url)),
+  '..',
+)
+
+const stepSchema = JSON.parse(
+  readFileSync(
+    join(repositoryRoot, 'schema/yarramate-design-step.schema.json'),
+    'utf8',
+  ),
+) as object
+
+// A deliberately thin greenfield model: the shipped catalogue must open
+// its motivation wave on it without any catalogue path being passed.
+const document = `format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts:
+  - id: user
+    kind: businessActor
+    name: User
+  - id: todo-service
+    kind: applicationService
+    name: Todo service
+    status: planned
+relationships:
+  - id: service-serves-user
+    kind: serving
+    from: todo-service
+    to: user
+`
+
+const manifest = `format: yarramate/workspace/v1
+id: design-fixture
+documents:
+  - architecture/main.yaml
+profiles: []
+projections: []
+adapterMappings: []
+evidence: []
+`
+
+describe('design command', () => {
+  let workspace: string
+
+  beforeEach(() => {
+    workspace = mkdtempSync(join(tmpdir(), 'yarramate-design-'))
+    mkdirSync(join(workspace, 'architecture'))
+    writeFileSync(join(workspace, 'architecture/main.yaml'), document, 'utf8')
+    writeFileSync(join(workspace, 'workspace.yaml'), manifest, 'utf8')
+  })
+
+  afterEach(() => {
+    rmSync(workspace, { recursive: true, force: true })
+  })
+
+  it('serves the shipped catalogue top question with no catalogue argument', () => {
+    const result = runCli(['design', 'workspace.yaml'], workspace)
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toContain('catalogue core-enrichment@')
+    expect(result.stdout).toContain('Q [motivation · outcome-missing]')
+    expect(result.stdout).toContain('yarramate apply')
+  })
+
+  it('narrows to one subject and includes its brief slice', () => {
+    const result = runCli(
+      ['design', 'workspace.yaml', '--subject', 'main#todo-service'],
+      workspace,
+    )
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toContain('Todo service')
+    expect(result.stdout).toContain('Subject slice:')
+    expect(result.stdout).toContain('You are building "Todo service"')
+    expect(result.stdout).not.toContain('outcome-missing')
+  })
+
+  it('fails loudly on an unknown subject', () => {
+    const result = runCli(
+      ['design', 'workspace.yaml', '--subject', 'main#nope'],
+      workspace,
+    )
+    expect(result.exitCode).toBe(1)
+    expect(result.stderr).toContain('Unknown subject identity: main#nope')
+  })
+
+  it('emits a deterministic, schema-valid machine step', () => {
+    const first = runCli(['design', 'workspace.yaml', '--json'], workspace)
+    const second = runCli(['design', 'workspace.yaml', '--json'], workspace)
+    expect(first.exitCode).toBe(0)
+    expect(second.stdout).toBe(first.stdout)
+    const payload = JSON.parse(first.stdout) as {
+      format: string
+      step: { questionId: string; wave: string } | null
+      progress: { waves: readonly { id: string; open: number }[] }
+    }
+    expect(payload.format).toBe('yarramate/design-step/v1')
+    expect(payload.step?.questionId).toBe('outcome-missing')
+    expect(payload.step?.wave).toBe('motivation')
+    expect(payload.progress.waves.map(({ id }) => id)).toEqual([
+      'motivation',
+      'business',
+      'application',
+      'hygiene',
+    ])
+    const validate = new Ajv2020({ allErrors: true }).compile(stepSchema)
+    expect(validate(payload), JSON.stringify(validate.errors)).toBe(true)
+  })
+
+  it('reports completion on the enriched repository self-model', () => {
+    const result = runCli(
+      ['design', '.yarramate/workspace.yaml', '--json'],
+      repositoryRoot,
+    )
+    expect(result.exitCode).toBe(0)
+    const payload = JSON.parse(result.stdout) as {
+      step: unknown
+      progress: { open: number }
+    }
+    expect(payload.step).toBeNull()
+    expect(payload.progress.open).toBe(0)
+  })
+
+  it('honours a catalogue override', () => {
+    writeFileSync(
+      join(workspace, 'tiny.yaml'),
+      `format: yarramate/question-catalogue/v1
+id: tiny
+version: "1.0"
+profile: yarramate/core@0.1
+waves:
+  - id: only
+    name: Only
+questions:
+  - id: states-question
+    wave: only
+    scope: workspace
+    trigger:
+      - condition: no-state-defined
+    question: Should states be declared?
+    materiality: States separate current from target intent.
+    authority: human
+    resolution: Declare states or decline them.
+`,
+      'utf8',
+    )
+    const result = runCli(
+      ['design', 'workspace.yaml', '--catalogue', 'tiny.yaml'],
+      workspace,
+    )
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toContain('catalogue tiny@1.0')
+    expect(result.stdout).toContain('states-question')
+  })
+
+  it('requires an explicit workspace manifest', () => {
+    const result = runCli(
+      ['design', 'architecture/main.yaml'],
+      workspace,
+    )
+    expect(result.exitCode).toBe(2)
+    expect(result.stderr).toContain(
+      'design requires an explicit workspace manifest',
+    )
+  })
+
+  it('rejects unknown options with usage', () => {
+    const result = runCli(
+      ['design', 'workspace.yaml', '--wave', 'motivation'],
+      workspace,
+    )
+    expect(result.exitCode).toBe(2)
+    expect(result.stderr).toContain('Usage:')
+  })
+})

@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yarrasys.dev/schema/yarramate-design-step.schema.json",
+  "title": "YarraMate design step",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "workspace",
+    "catalogue",
+    "progress",
+    "step"
+  ],
+  "properties": {
+    "format": {
+      "const": "yarramate/design-step/v1"
+    },
+    "workspace": {
+      "type": "string",
+      "minLength": 1
+    },
+    "catalogue": {
+      "type": "string",
+      "minLength": 1
+    },
+    "progress": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "questions",
+        "openQuestions",
+        "open",
+        "waves"
+      ],
+      "properties": {
+        "questions": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "openQuestions": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "open": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "waves": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "open"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "open": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    "step": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "questionId",
+            "wave",
+            "scope",
+            "authority",
+            "question",
+            "materiality",
+            "resolution"
+          ],
+          "properties": {
+            "questionId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "wave": {
+              "type": "string",
+              "minLength": 1
+            },
+            "scope": {
+              "enum": [
+                "workspace",
+                "subject"
+              ]
+            },
+            "authority": {
+              "enum": [
+                "human",
+                "agent",
+                "either"
+              ]
+            },
+            "question": {
+              "type": "string",
+              "minLength": 1
+            },
+            "materiality": {
+              "type": "string",
+              "minLength": 1
+            },
+            "resolution": {
+              "type": "string",
+              "minLength": 1
+            },
+            "subject": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "remainingSubjects": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        }
+      ]
+    },
+    "slice": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

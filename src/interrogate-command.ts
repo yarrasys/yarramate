@@ -65,7 +65,7 @@ type CatalogueCondition =
     }
   | { readonly condition: 'missing-attestation'; readonly topic: string }
 
-interface CatalogueQuestion {
+export interface CatalogueQuestion {
   readonly id: string
   readonly wave: string
   readonly scope: 'workspace' | 'subject'
@@ -77,7 +77,7 @@ interface CatalogueQuestion {
   readonly authority: 'human' | 'agent' | 'either'
 }
 
-interface QuestionCatalogue {
+export interface QuestionCatalogue {
   readonly format: 'yarramate/question-catalogue/v1'
   readonly id: string
   readonly version: string
@@ -443,6 +443,50 @@ export function evaluateCatalogue(
   }
 }
 
+export type CatalogueLoadResult =
+  | { readonly ok: true; readonly catalogue: QuestionCatalogue }
+  | { readonly ok: false; readonly diagnostics: readonly Diagnostic[] }
+
+// Shared by interrogate and design: schema validation plus the YM911
+// undeclared-wave check, both source-located against the catalogue file.
+export function loadQuestionCatalogue(
+  catalogueSource: WorkspaceSource,
+): CatalogueLoadResult {
+  const loadedCatalogue = loadSourceDocument<QuestionCatalogue>(
+    catalogueSource,
+    validateCatalogue,
+    'Question catalogue',
+  )
+  if (!loadedCatalogue.ok) {
+    return { ok: false, diagnostics: loadedCatalogue.diagnostics }
+  }
+  const catalogue = loadedCatalogue.document.value
+  const waveIds = new Set(catalogue.waves.map(({ id }) => id))
+  const waveDiagnostics = catalogue.questions.flatMap(
+    (question, questionIndex): readonly Diagnostic[] =>
+      waveIds.has(question.wave)
+        ? []
+        : [
+            {
+              severity: 'error',
+              code: 'YM911',
+              message: `Question "${question.id}" references undeclared wave "${question.wave}"`,
+              ...locateSourcePath(
+                catalogueSource.path,
+                loadedCatalogue.document.yaml,
+                loadedCatalogue.document.lineCounter,
+                ['questions', questionIndex, 'wave'],
+                `/questions/${questionIndex}/wave`,
+              ),
+            },
+          ],
+  )
+  if (waveDiagnostics.length > 0) {
+    return { ok: false, diagnostics: waveDiagnostics }
+  }
+  return { ok: true, catalogue }
+}
+
 export function runInterrogateCommand(
   options: readonly string[],
   cwd: string,
@@ -478,38 +522,12 @@ export function runInterrogateCommand(
         : humanDiagnostics(diagnostics),
       stderr: '',
     })
-    const catalogueSource: WorkspaceSource = {
+    const loadedCatalogue = loadQuestionCatalogue({
       path: cataloguePath,
       source: readFileSync(resolve(cwd, cataloguePath), 'utf8'),
-    }
-    const loadedCatalogue = loadSourceDocument<QuestionCatalogue>(
-      catalogueSource,
-      validateCatalogue,
-      'Question catalogue',
-    )
+    })
     if (!loadedCatalogue.ok) return failed(loadedCatalogue.diagnostics)
-    const catalogue = loadedCatalogue.document.value
-    const waveIds = new Set(catalogue.waves.map(({ id }) => id))
-    const waveDiagnostics = catalogue.questions.flatMap(
-      (question, questionIndex): readonly Diagnostic[] =>
-        waveIds.has(question.wave)
-          ? []
-          : [
-              {
-                severity: 'error',
-                code: 'YM911',
-                message: `Question "${question.id}" references undeclared wave "${question.wave}"`,
-                ...locateSourcePath(
-                  catalogueSource.path,
-                  loadedCatalogue.document.yaml,
-                  loadedCatalogue.document.lineCounter,
-                  ['questions', questionIndex, 'wave'],
-                  `/questions/${questionIndex}/wave`,
-                ),
-              },
-            ],
-    )
-    if (waveDiagnostics.length > 0) return failed(waveDiagnostics)
+    const catalogue = loadedCatalogue.catalogue
 
     const loadedWorkspace = loadWorkspaceManifest(
       { path: workspacePath, source: manifestSource },

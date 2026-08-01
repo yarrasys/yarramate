@@ -580,6 +580,22 @@ concepts:
     name: Apply result schema
     description: Normative JSON Schema for yarramate/apply-result/v1.
     owner: yarramate-product#yarramate-maintainers
+  - id: design-command
+    kind: applicationService
+    name: Design command
+    description: Serves exactly the top open catalogue question with its subject slice, recomputed statelessly from the model; the internal catalogue never crosses the harness boundary.
+    owner: yarramate-product#yarramate-maintainers
+    status: current
+  - id: design-step
+    kind: dataObject
+    name: Design step
+    description: The yarramate/design-step/v1 machine form of one interview step.
+    owner: yarramate-product#yarramate-maintainers
+  - id: design-step-schema
+    kind: dataObject
+    name: Design step schema
+    description: Normative JSON Schema for yarramate/design-step/v1.
+    owner: yarramate-product#yarramate-maintainers
 relationships:
   - id: core-contract-checker-loads-contract
     kind: assignment
@@ -1175,3 +1191,26 @@ relationships:
     from: apply-command
     to: apply-result-schema
     mode: read
+  - id: cli-provides-design
+    kind: implements
+    from: cli
+    to: design-command
+  - id: design-command-serves-agent-harness
+    kind: serving
+    from: design-command
+    to: yarramate-product#agent-harness
+  - id: design-command-writes-step
+    kind: access
+    from: design-command
+    to: design-step
+    mode: write
+  - id: design-command-reads-step-schema
+    kind: access
+    from: design-command
+    to: design-step-schema
+    mode: read
+  - id: design-command-reads-profile-catalogue
+    kind: association
+    from: design-command
+    to: profile-catalogue
+    description: The shipped question catalogue is internal data resolved from the installed package, never a harness argument.

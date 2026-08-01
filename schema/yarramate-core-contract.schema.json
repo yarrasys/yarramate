@@ -80,7 +80,8 @@
               "evidence",
               "reconcile",
               "interrogate",
-              "apply"
+              "apply",
+              "design"
             ]
           },
           "binary": {
