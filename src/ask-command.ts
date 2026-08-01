@@ -7,6 +7,7 @@ import {
   type StateComparison,
 } from './architecture-state.js'
 import { renderBrief } from './brief.js'
+import { deriveChangedSubjects } from './changed.js'
 import { runCheckCommand } from './check-command.js'
 import {
   diagnosticJson,
@@ -113,10 +114,19 @@ type AskResult = AskResultBase &
       }
     | {
         readonly mode: 'slice'
-        readonly addressing: 'free-text' | 'subjects' | 'projection'
+        readonly addressing: 'free-text' | 'subjects' | 'projection' | 'changed'
         readonly topic?: string
         readonly seeds?: readonly string[]
         readonly matched?: number
+        readonly changed?: {
+          readonly range: string
+          readonly concepts: readonly string[]
+          readonly relationships: readonly string[]
+        }
+        readonly coverage?: {
+          readonly projections: number
+          readonly uncovered: readonly string[]
+        }
         readonly result: ProjectionResult
       }
     | {
@@ -308,6 +318,7 @@ export function runAskCommand(
   let kinds = false
   let advise = false
   let compare: readonly [string, string] | undefined
+  let changed: string | undefined
   let budget: number | undefined
   let kindFilter: string | undefined
   let statusFilter: string | undefined
@@ -359,7 +370,8 @@ export function runAskCommand(
       option === '--budget' ||
       option === '--kind' ||
       option === '--status' ||
-      option === '--catalogue'
+      option === '--catalogue' ||
+      option === '--changed'
     ) {
       const value = options[index + 1]
       if (value === undefined || value.startsWith('-')) {
@@ -370,6 +382,11 @@ export function runAskCommand(
           return { exitCode: 2, stdout: '', stderr: usage }
         }
         budget = Number(value)
+      } else if (option === '--changed') {
+        if (changed !== undefined) {
+          return { exitCode: 2, stdout: '', stderr: usage }
+        }
+        changed = value
       } else if (option === '--kind') {
         if (kindFilter !== undefined) {
           return { exitCode: 2, stdout: '', stderr: usage }
@@ -412,9 +429,12 @@ export function runAskCommand(
     (advise && exclusiveModes > 0) ||
     (advise && query.length === 0) ||
     (query.length > 0 && exclusiveModes > 0) ||
+    (changed !== undefined &&
+      (query.length > 0 || exclusiveModes > 0 || advise)) ||
     ((kindFilter !== undefined || statusFilter !== undefined) && !subjects) ||
     (cataloguePath !== undefined && !open && !advise) ||
-    (budget !== undefined && (json || (query.length === 0 && !advise)))
+    (budget !== undefined &&
+      (json || (query.length === 0 && !advise && changed === undefined)))
   ) {
     return { exitCode: 2, stdout: '', stderr: usage }
   }
@@ -463,7 +483,8 @@ export function runAskCommand(
       !open &&
       !kinds &&
       !advise &&
-      compare === undefined
+      compare === undefined &&
+      changed === undefined
     ) {
       const checked = runCheckCommand([workspacePath, '--json'], cwd)
       const checkPayload = JSON.parse(checked.stdout) as {
@@ -840,6 +861,107 @@ export function runAskCommand(
         report: ordered,
       }
       return emit(result, renderInterrogationReport(ordered))
+    }
+
+    // --changed: the review slice (ADR 0065). Git says what changed; the
+    // engine maps changed lines to subjects and renders their connected
+    // neighbourhood, plus a coverage note when a changed subject appears
+    // in no authored projection.
+    if (changed !== undefined) {
+      const documentIdByPath = new Map(
+        graph.documents.map(({ id, source }) => [source, id]),
+      )
+      const derived = deriveChangedSubjects(
+        cwd,
+        changed,
+        workspace.documents.map((path) => ({
+          path,
+          source: readFileSync(resolve(cwd, path), 'utf8'),
+          documentId: documentIdByPath.get(path) ?? path,
+        })),
+      )
+      if (!derived.ok) {
+        return { exitCode: 2, stdout: '', stderr: `${derived.message}\n` }
+      }
+      const endpoints = new Set<string>()
+      for (const relationshipId of derived.changed.relationships) {
+        const claim = graph.claims.find(
+          (candidate) =>
+            candidate.id === relationshipId && 'ref' in candidate.object,
+        )
+        if (claim !== undefined && 'ref' in claim.object) {
+          endpoints.add(claim.subject)
+          endpoints.add(claim.object.ref)
+        }
+      }
+      const seeds = [
+        ...new Set([...derived.changed.concepts, ...endpoints]),
+      ].sort()
+      const changedIds = [
+        ...derived.changed.concepts,
+        ...derived.changed.relationships,
+      ]
+
+      const covered = new Set<string>()
+      for (const projectionPath of workspace.projections) {
+        const loaded = loadProjection({
+          path: projectionPath,
+          source: readFileSync(resolve(cwd, projectionPath), 'utf8'),
+        })
+        if (!loaded.ok) continue
+        const membership = evaluateProjection(
+          graph,
+          loaded.projection,
+          compilation.profileContext,
+        )
+        for (const subject of membership.subjects) {
+          covered.add(subject.id)
+        }
+      }
+      const uncovered = changedIds.filter((id) => !covered.has(id))
+      const coverage = {
+        projections: workspace.projections.length,
+        uncovered,
+      }
+
+      const evaluated = sliceProjection(
+        graph,
+        seeds,
+        `Review slice ${changed}`,
+        compilation.profileContext,
+      )
+      const result: AskResult = {
+        format: 'yarramate/ask-result/v1',
+        workspace: workspace.id,
+        mode: 'slice',
+        addressing: 'changed',
+        seeds,
+        changed: derived.changed,
+        coverage,
+        result: evaluated,
+      }
+      if (changedIds.length === 0) {
+        return emit(
+          result,
+          `No model subjects changed in ${changed}.\n`,
+        )
+      }
+      const rendered =
+        budget === undefined
+          ? renderBrief(evaluated, compilation.profileContext)
+          : renderBudgetedContext(evaluated, budget)
+      const lines = [
+        `Review slice ${changed} — ${plural(derived.changed.concepts.length, 'concept')}, ` +
+          `${plural(derived.changed.relationships.length, 'relationship')} changed (workspace ${workspace.id})`,
+        '',
+        rendered.trimEnd(),
+        '',
+        uncovered.length === 0
+          ? `Review coverage: every changed subject appears in at least one of the ${coverage.projections} authored projections.`
+          : `Review coverage: ${uncovered.length} of ${changedIds.length} changed subjects appear in no authored projection:` +
+            `\n${uncovered.map((id) => `  ${id}`).join('\n')}`,
+      ]
+      return emit(result, `${lines.join('\n')}\n`)
     }
 
     // Slice and advice both start from seeds. A single query term that
