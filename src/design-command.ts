@@ -43,6 +43,7 @@ interface DesignStep {
   readonly subject?: { readonly id: string; readonly name?: string }
   readonly remainingSubjects?: number
   readonly openSubjects?: readonly string[]
+  readonly since?: string
 }
 
 interface DesignStepResult {
@@ -80,6 +81,7 @@ const selectStep = (
           question: question.question,
           materiality: question.materiality,
           resolution: question.resolution,
+          ...(question.since === undefined ? {} : { since: question.since }),
         }
       }
       const subjects =
@@ -96,6 +98,7 @@ const selectStep = (
         question: first.question,
         materiality: question.materiality,
         resolution: question.resolution,
+        ...(question.since === undefined ? {} : { since: question.since }),
         subject: {
           id: first.id,
           ...(first.name === undefined ? {} : { name: first.name }),

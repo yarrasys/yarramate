@@ -110,6 +110,8 @@ describe('design command', () => {
       'motivation',
       'business',
       'application',
+      'technology',
+      'implementation',
       'hygiene',
     ])
     const validate = new Ajv2020({ allErrors: true }).compile(stepSchema)
