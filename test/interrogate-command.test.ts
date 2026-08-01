@@ -223,6 +223,31 @@ describe('ask --open interrogation', () => {
     expect(validate(payload), JSON.stringify(validate.errors)).toBe(true)
   })
 
+  it('never interrogates retired subjects (ADR 0064)', () => {
+    writeFileSync(
+      join(workspace, 'architecture/main.yaml'),
+      document.replace(
+        '  - id: customer\n' +
+          '    kind: businessActor\n' +
+          '    name: Customer\n',
+        '  - id: customer\n' +
+          '    kind: businessActor\n' +
+          '    name: Customer\n' +
+          '    status: retired\n',
+      ),
+      'utf8',
+    )
+    const result = runCli(
+      ['ask', 'workspace.yaml', '--open', '--catalogue', 'catalogue.yaml'],
+      workspace,
+    )
+    expect(result.exitCode).toBe(0)
+    // Retirement is the recorded descoping decision: the retired actor
+    // leaves the interview entirely; the live one is still asked.
+    expect(result.stdout).not.toContain('Customer?')
+    expect(result.stdout).toContain('Platform team?')
+  })
+
   it('locates a question referencing an undeclared wave', () => {
     writeFileSync(
       join(workspace, 'catalogue.yaml'),

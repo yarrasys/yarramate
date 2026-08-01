@@ -1,6 +1,6 @@
 format: yarramate/question-catalogue/v1
 id: core-enrichment
-version: "0.4"
+version: "0.5"
 profile: yarramate/core@0.1
 presentation:
   title: Core enrichment interview
@@ -122,7 +122,9 @@ questions:
     authority: either
     resolution: >-
       Add realization relationships from the fulfilling capability or
-      service, or record the aspirational status in the goal's description.
+      service, record the aspirational status in the goal's description,
+      or retire the goal (status: retired) to record that it no longer
+      steers design.
 
 
   - id: goal-no-driver
@@ -219,8 +221,11 @@ questions:
       roadmap.
     authority: either
     resolution: >-
-      Add realization from the fulfilling service, component, or behavior,
-      or record the descoping decision and remove the requirement.
+      Add realization from the fulfilling service, component, or
+      behavior; to descope instead, retire the requirement (status:
+      retired) — retirement preserves the decision on record and closes
+      the question (ADR 0064). Delete only when the history itself is
+      noise.
 
   - id: principle-unapplied
     wave: motivation
