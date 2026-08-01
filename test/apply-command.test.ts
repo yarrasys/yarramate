@@ -194,4 +194,208 @@ operations:
     expect(result.exitCode).toBe(2)
     expect(result.stderr).toContain('Usage:')
   })
+  it('leaves untouched bytes byte-identical: folded scalars and comments survive', () => {
+    // The #114 regression: a status update must not reflow prose the
+    // batch never touched.
+    const folded = `format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+# The commerce slice.
+concepts:
+  - id: catalogue
+    kind: applicationService
+    name: Catalogue
+    description: >-
+      Serves the product catalogue to every storefront;
+      the authoritative price source, deliberately wrapped
+      across three authored lines.
+  - id: checkout
+    kind: applicationService
+    name: Checkout
+relationships: []
+`
+    writeFileSync(join(workspace, 'architecture/main.yaml'), folded, 'utf8')
+    writeFileSync(
+      join(workspace, 'operations.yaml'),
+      `format: yarramate/operations/v1
+operations:
+  - op: update-concept
+    document: architecture/main.yaml
+    concept:
+      id: checkout
+      status: planned
+`,
+      'utf8',
+    )
+    const result = runCli(
+      ['apply', 'operations.yaml', 'workspace.yaml'],
+      workspace,
+    )
+    expect(result.exitCode).toBe(0)
+    const after = readFileSync(join(workspace, 'architecture/main.yaml'), 'utf8')
+    expect(after).toBe(
+      folded.replace(
+        '    name: Checkout\n',
+        '    name: Checkout\n    status: planned\n',
+      ),
+    )
+  })
+
+  it('retracts a field with remove and restores the exact prior bytes', () => {
+    const before = readFileSync(
+      join(workspace, 'architecture/main.yaml'),
+      'utf8',
+    )
+    writeFileSync(
+      join(workspace, 'operations.yaml'),
+      `format: yarramate/operations/v1
+operations:
+  - op: update-concept
+    document: architecture/main.yaml
+    concept:
+      id: user
+      status: current
+`,
+      'utf8',
+    )
+    expect(
+      runCli(['apply', 'operations.yaml', 'workspace.yaml'], workspace)
+        .exitCode,
+    ).toBe(0)
+    expect(
+      readFileSync(join(workspace, 'architecture/main.yaml'), 'utf8'),
+    ).toBe(
+      before.replace('    name: User\n', '    name: User\n    status: current\n'),
+    )
+    writeFileSync(
+      join(workspace, 'operations.yaml'),
+      `format: yarramate/operations/v1
+operations:
+  - op: update-concept
+    document: architecture/main.yaml
+    concept:
+      id: user
+    remove: [status]
+`,
+      'utf8',
+    )
+    const retracted = runCli(
+      ['apply', 'operations.yaml', 'workspace.yaml'],
+      workspace,
+    )
+    expect(retracted.exitCode).toBe(0)
+    // Assert -> retract restores the exact prior bytes: the whole loop
+    // (apply sets, reconcile catches, apply removes) leaves no residue.
+    const after = readFileSync(join(workspace, 'architecture/main.yaml'), 'utf8')
+    expect(after).toBe(before)
+  })
+
+  it('rejects removing a field that is not set, leaving files untouched', () => {
+    const before = readFileSync(
+      join(workspace, 'architecture/main.yaml'),
+      'utf8',
+    )
+    writeFileSync(
+      join(workspace, 'operations.yaml'),
+      `format: yarramate/operations/v1
+operations:
+  - op: update-concept
+    document: architecture/main.yaml
+    concept:
+      id: user
+    remove: [owner]
+`,
+      'utf8',
+    )
+    const result = runCli(
+      ['apply', 'operations.yaml', 'workspace.yaml'],
+      workspace,
+    )
+    expect(result.exitCode).toBe(1)
+    expect(result.stdout).toContain('removes "owner", which is not set')
+    expect(
+      readFileSync(join(workspace, 'architecture/main.yaml'), 'utf8'),
+    ).toBe(before)
+  })
+
+  it('rejects an operation that both sets and removes one field', () => {
+    writeFileSync(
+      join(workspace, 'operations.yaml'),
+      `format: yarramate/operations/v1
+operations:
+  - op: update-concept
+    document: architecture/main.yaml
+    concept:
+      id: todo-service
+      status: current
+    remove: [status]
+`,
+      'utf8',
+    )
+    const result = runCli(
+      ['apply', 'operations.yaml', 'workspace.yaml'],
+      workspace,
+    )
+    expect(result.exitCode).toBe(1)
+    expect(result.stdout).toContain('both sets and removes "status"')
+  })
+
+  it('rejects removing identity fields at the schema gate', () => {
+    writeFileSync(
+      join(workspace, 'operations.yaml'),
+      `format: yarramate/operations/v1
+operations:
+  - op: update-concept
+    document: architecture/main.yaml
+    concept:
+      id: todo-service
+    remove: [kind]
+`,
+      'utf8',
+    )
+    const result = runCli(
+      ['apply', 'operations.yaml', 'workspace.yaml'],
+      workspace,
+    )
+    expect(result.exitCode).toBe(1)
+    expect(result.stdout).toContain('YM201')
+  })
+
+  it('converts an empty flow collection when appending the first concept', () => {
+    const empty = `format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts: []
+relationships: []
+`
+    writeFileSync(join(workspace, 'architecture/main.yaml'), empty, 'utf8')
+    writeFileSync(
+      join(workspace, 'operations.yaml'),
+      `format: yarramate/operations/v1
+operations:
+  - op: add-concept
+    document: architecture/main.yaml
+    concept:
+      id: first
+      kind: goal
+      name: First goal
+`,
+      'utf8',
+    )
+    expect(
+      runCli(['apply', 'operations.yaml', 'workspace.yaml'], workspace)
+        .exitCode,
+    ).toBe(0)
+    expect(
+      readFileSync(join(workspace, 'architecture/main.yaml'), 'utf8'),
+    ).toBe(`format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts:
+  - id: first
+    kind: goal
+    name: First goal
+relationships: []
+`)
+  })
 })
