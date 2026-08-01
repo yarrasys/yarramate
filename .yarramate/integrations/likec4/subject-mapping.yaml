@@ -1347,3 +1347,27 @@ mappings:
   - native: yarramate-engine#design-step-schema
     external: designStepSchema
     type: concept
+  - native: yarramate-engine#ask-command
+    external: askCommand
+    type: concept
+  - native: yarramate-engine#ask-command-reads-profile-catalogue
+    external: askCommandReadsProfileCatalogue
+    type: relationship
+  - native: yarramate-engine#ask-command-reads-result-schema
+    external: askCommandReadsResultSchema
+    type: relationship
+  - native: yarramate-engine#ask-command-serves-agent-harness
+    external: askCommandServesAgentHarness
+    type: relationship
+  - native: yarramate-engine#ask-command-writes-result
+    external: askCommandWritesResult
+    type: relationship
+  - native: yarramate-engine#ask-result
+    external: askResult
+    type: concept
+  - native: yarramate-engine#ask-result-schema
+    external: askResultSchema
+    type: concept
+  - native: yarramate-engine#cli-provides-ask
+    external: cliProvidesAsk
+    type: relationship

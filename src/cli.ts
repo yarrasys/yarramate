@@ -23,6 +23,7 @@ import {
   versionResult,
   type CliResult,
 } from './cli-support.js'
+import { runAskCommand } from './ask-command.js'
 import { runCheckCommand } from './check-command.js'
 import { runNewCommand } from './new-command.js'
 import { runApplyCommand } from './apply-command.js'
@@ -983,6 +984,9 @@ export function runCli(
   }
   if (command === 'design') {
     return runDesignCommand(options, cwd)
+  }
+  if (command === 'ask') {
+    return runAskCommand(options, cwd)
   }
   return { exitCode: 2, stdout: '', stderr: usage }
 }

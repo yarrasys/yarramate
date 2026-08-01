@@ -1,0 +1,328 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yarrasys.dev/schema/yarramate-ask-result.schema.json",
+  "title": "YarraMate ask result",
+  "description": "One envelope for every consumed-now read: orientation, roster, slice, advice, next, open questions, and state comparison, discriminated by mode.",
+  "type": "object",
+  "required": ["format", "workspace", "mode"],
+  "properties": {
+    "format": {
+      "const": "yarramate/ask-result/v1"
+    },
+    "workspace": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mode": {
+      "enum": [
+        "orientation",
+        "roster",
+        "slice",
+        "advice",
+        "next",
+        "open",
+        "compare"
+      ]
+    }
+  },
+  "oneOf": [
+    {
+      "type": "object",
+      "required": ["mode", "ok", "check", "backlog"],
+      "properties": {
+        "format": true,
+        "workspace": true,
+        "mode": { "const": "orientation" },
+        "ok": { "type": "boolean" },
+        "check": {
+          "type": "object",
+          "required": ["ok", "diagnostics"],
+          "properties": {
+            "ok": { "type": "boolean" },
+            "diagnostics": { "type": "array" },
+            "counted": {
+              "type": "object",
+              "required": [
+                "documents",
+                "concepts",
+                "relationships",
+                "states"
+              ],
+              "properties": {
+                "documents": { "type": "integer" },
+                "concepts": { "type": "integer" },
+                "relationships": { "type": "integer" },
+                "states": { "type": "integer" }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "reconciliation": {
+          "$ref": "#/$defs/reconciliationSummary"
+        },
+        "design": {
+          "type": "object",
+          "required": ["catalogue", "open"],
+          "properties": {
+            "catalogue": { "type": "string", "minLength": 1 },
+            "open": { "type": "integer", "minimum": 0 }
+          },
+          "additionalProperties": false
+        },
+        "backlog": {
+          "type": "object",
+          "required": ["planned", "current", "retired"],
+          "properties": {
+            "planned": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/nextSubject" }
+            },
+            "current": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/conceptEntry" }
+            },
+            "retired": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/conceptEntry" }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": ["mode", "total", "subjects"],
+      "properties": {
+        "format": true,
+        "workspace": true,
+        "mode": { "const": "roster" },
+        "total": { "type": "integer", "minimum": 0 },
+        "subjects": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/conceptEntry" }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": ["mode", "addressing", "result"],
+      "properties": {
+        "format": true,
+        "workspace": true,
+        "mode": { "const": "slice" },
+        "addressing": {
+          "enum": ["free-text", "subjects", "projection"]
+        },
+        "topic": { "type": "string", "minLength": 1 },
+        "seeds": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "matched": { "type": "integer", "minimum": 0 },
+        "result": { "$ref": "#/$defs/projectionResult" }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "mode",
+        "topic",
+        "seeds",
+        "matched",
+        "slice",
+        "openQuestions"
+      ],
+      "properties": {
+        "format": true,
+        "workspace": true,
+        "mode": { "const": "advice" },
+        "topic": { "type": "string", "minLength": 1 },
+        "seeds": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "matched": { "type": "integer", "minimum": 0 },
+        "slice": { "type": "string", "minLength": 1 },
+        "openQuestions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["wave", "id", "authority", "question", "materiality"],
+            "properties": {
+              "wave": { "type": "string", "minLength": 1 },
+              "id": { "type": "string", "minLength": 1 },
+              "authority": { "enum": ["human", "agent", "either"] },
+              "question": { "type": "string", "minLength": 1 },
+              "materiality": { "type": "string", "minLength": 1 },
+              "subject": { "type": "string", "minLength": 1 }
+            },
+            "additionalProperties": false
+          }
+        },
+        "reconciliation": {
+          "type": "object",
+          "required": ["summary", "findings"],
+          "properties": {
+            "summary": { "$ref": "#/$defs/reconciliationSummary" },
+            "findings": { "type": "array" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": ["mode", "subjects"],
+      "properties": {
+        "format": true,
+        "workspace": true,
+        "mode": { "const": "next" },
+        "subjects": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nextSubject" }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": ["mode", "report"],
+      "properties": {
+        "format": true,
+        "workspace": true,
+        "mode": { "const": "open" },
+        "report": {
+          "type": "object",
+          "required": ["format", "workspace", "catalogue", "summary", "waves"],
+          "properties": {
+            "format": { "const": "yarramate/interrogation-report/v1" },
+            "workspace": { "type": "string" },
+            "catalogue": { "type": "string" },
+            "summary": { "type": "object" },
+            "waves": { "type": "array" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": ["mode", "comparison"],
+      "properties": {
+        "format": true,
+        "workspace": true,
+        "mode": { "const": "compare" },
+        "comparison": {
+          "type": "object",
+          "required": ["format", "from", "to", "added", "removed", "retained"],
+          "properties": {
+            "format": { "const": "yarramate/state-comparison/v1" },
+            "from": { "type": "string" },
+            "to": { "type": "string" },
+            "added": { "type": "array" },
+            "removed": { "type": "array" },
+            "retained": { "type": "array" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "$defs": {
+    "conceptEntry": {
+      "type": "object",
+      "required": ["id", "kind"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "minLength": 1 },
+        "name": { "type": "string" },
+        "status": { "enum": ["planned", "current", "retired"] },
+        "description": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "nextSubject": {
+      "type": "object",
+      "required": ["id", "kind", "dependsOn", "requiredBy", "evidence"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "minLength": 1 },
+        "name": { "type": "string" },
+        "dependsOn": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "requiredBy": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "evidence": {
+          "type": "object",
+          "required": [
+            "observations",
+            "confirmed",
+            "contradicted",
+            "unknown",
+            "notObserved"
+          ],
+          "properties": {
+            "observations": { "type": "integer" },
+            "confirmed": { "type": "integer" },
+            "contradicted": { "type": "integer" },
+            "unknown": { "type": "integer" },
+            "notObserved": { "type": "integer" }
+          },
+          "additionalProperties": false
+        },
+        "cycle": { "const": true }
+      },
+      "additionalProperties": false
+    },
+    "projectionResult": {
+      "type": "object",
+      "required": ["format", "projection", "documents", "subjects", "claims"],
+      "properties": {
+        "format": { "const": "yarramate/projection-result/v1" },
+        "projection": { "type": "string" },
+        "presentation": { "type": "object" },
+        "documents": { "type": "array" },
+        "subjects": { "type": "array" },
+        "claims": { "type": "array" }
+      },
+      "additionalProperties": false
+    },
+    "reconciliationSummary": {
+      "type": "object",
+      "required": [
+        "evidenceDocuments",
+        "observations",
+        "confirmed",
+        "findings",
+        "contradicted",
+        "unknown",
+        "notObserved",
+        "subjectsWithoutEvidence"
+      ],
+      "properties": {
+        "evidenceDocuments": { "type": "integer" },
+        "observations": { "type": "integer" },
+        "confirmed": { "type": "integer" },
+        "findings": { "type": "integer" },
+        "contradicted": { "type": "integer" },
+        "unknown": { "type": "integer" },
+        "notObserved": { "type": "integer" },
+        "subjectsWithoutEvidence": { "type": "integer" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

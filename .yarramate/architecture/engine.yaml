@@ -596,6 +596,22 @@ concepts:
     name: Design step schema
     description: Normative JSON Schema for yarramate/design-step/v1.
     owner: yarramate-product#yarramate-maintainers
+  - id: ask-command
+    kind: applicationService
+    name: Ask command
+    description: One entry point for every consumed-now read - orientation with the backlog-shaped verdict, the filterable roster, free-text-seeded slices, the advise composition, build order, open questions, and state comparison.
+    owner: yarramate-product#yarramate-maintainers
+    status: current
+  - id: ask-result
+    kind: dataObject
+    name: Ask result
+    description: The yarramate/ask-result/v1 machine envelope, discriminated by mode.
+    owner: yarramate-product#yarramate-maintainers
+  - id: ask-result-schema
+    kind: dataObject
+    name: Ask result schema
+    description: Normative JSON Schema for yarramate/ask-result/v1.
+    owner: yarramate-product#yarramate-maintainers
 relationships:
   - id: core-contract-checker-loads-contract
     kind: assignment
@@ -1214,3 +1230,26 @@ relationships:
     from: design-command
     to: profile-catalogue
     description: The shipped question catalogue is internal data resolved from the installed package, never a harness argument.
+  - id: cli-provides-ask
+    kind: implements
+    from: cli
+    to: ask-command
+  - id: ask-command-serves-agent-harness
+    kind: serving
+    from: ask-command
+    to: yarramate-product#agent-harness
+  - id: ask-command-writes-result
+    kind: access
+    from: ask-command
+    to: ask-result
+    mode: write
+  - id: ask-command-reads-result-schema
+    kind: access
+    from: ask-command
+    to: ask-result-schema
+    mode: read
+  - id: ask-command-reads-profile-catalogue
+    kind: association
+    from: ask-command
+    to: profile-catalogue
+    description: The same internal question catalogue design interviews from - ask reads what design asks, so orientation counts, --open, and --advise see identical open questions.
