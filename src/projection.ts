@@ -27,6 +27,7 @@ export interface ProjectionDefinition {
     readonly documents?: readonly string[]
     readonly kinds?: readonly string[]
     readonly statuses?: readonly LifecycleStatus[]
+    readonly excludeStatuses?: readonly LifecycleStatus[]
     readonly states?: readonly string[]
     readonly owners?: readonly string[]
     readonly constraints?: readonly string[]
@@ -175,6 +176,11 @@ export function evaluateProjection(
           (projection.query.statuses === undefined ||
             (status !== undefined &&
               projection.query.statuses.includes(status as LifecycleStatus))) &&
+          (projection.query.excludeStatuses === undefined ||
+            status === undefined ||
+            !projection.query.excludeStatuses.includes(
+              status as LifecycleStatus,
+            )) &&
           (projection.query.owners === undefined ||
             (owner !== undefined &&
               projection.query.owners.includes(owner))) &&
@@ -196,9 +202,19 @@ export function evaluateProjection(
       const relationship = graph.claims.find(
         (claim) => claim.id === subject.id,
       )
+      const relationshipStatus = claimValue(
+        graph.claims,
+        subject.id,
+        'yarramate/lifecycle/status',
+      )
       if (
         relationship === undefined ||
         !('ref' in relationship.object) ||
+        (projection.query.excludeStatuses !== undefined &&
+          relationshipStatus !== undefined &&
+          projection.query.excludeStatuses.includes(
+            relationshipStatus as LifecycleStatus,
+          )) ||
         (projection.query.relationshipKinds !== undefined &&
           !projection.query.relationshipKinds.some(
             (selectedKind) =>
@@ -218,6 +234,29 @@ export function evaluateProjection(
       const targetSelected = initiallySelectedConceptIds.has(
         relationship.object.ref,
       )
+      // excludeStatuses also vetoes connected expansion: an excluded
+      // concept is never pulled in as a neighbour, and edges touching
+      // one are dropped rather than left dangling.
+      const endpointExcluded = (id: string): boolean => {
+        if (projection.query.excludeStatuses === undefined) return false
+        const endpointStatus = claimValue(
+          graph.claims,
+          id,
+          'yarramate/lifecycle/status',
+        )
+        return (
+          endpointStatus !== undefined &&
+          projection.query.excludeStatuses.includes(
+            endpointStatus as LifecycleStatus,
+          )
+        )
+      }
+      if (
+        endpointExcluded(relationship.subject) ||
+        endpointExcluded(relationship.object.ref)
+      ) {
+        continue
+      }
       if (
         (relationshipMode === 'between' &&
           sourceSelected &&

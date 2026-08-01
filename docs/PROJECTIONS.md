@@ -37,6 +37,12 @@ Query fields combine with logical AND:
 - `relationshipKinds` filters relationships by globally qualified semantic
   kind identity without changing concept selection;
 - `statuses` filters controlled lifecycle status;
+- `excludeStatuses` drops concepts carrying one of the listed statuses while
+  keeping concepts that declare no status at all — the viewpoint form of
+  status filtering (`excludeStatuses: [retired]` shows the living
+  architecture without dropping unstatused actors and motivation elements);
+  it also vetoes `connected` expansion, so an excluded concept is never
+  pulled in as a neighbour and edges touching one are dropped;
 - `states` filters subject presence in globally qualified architecture states;
 - `relationships` is `between`, `connected`, or `none` and defaults to
   `between`.

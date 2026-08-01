@@ -1,0 +1,21 @@
+format: yarramate/projection/v1
+id: seven-verb-surface
+version: "1.0"
+query:
+  subjects:
+    - yarramate-engine#cli
+    - yarramate-engine#init-command
+    - yarramate-engine#design-command
+    - yarramate-engine#apply-command
+    - yarramate-engine#ask-command
+    - yarramate-engine#check-command
+    - yarramate-engine#reconcile-command
+    - yarramate-engine#export-command
+    - yarramate-product#agent-harness
+  relationships: between
+presentation:
+  title: The seven-verb surface
+  description: >-
+    The agent-harness contract, one verb per lifecycle stage: init creates,
+    design fills, apply writes, ask reads, check gates, reconcile reports
+    drift, export derives artifacts (ADR 0059-0061).

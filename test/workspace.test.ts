@@ -288,6 +288,7 @@ describe('workspace manifests', () => {
         '.yarramate/projections/maintainer-tool-neutral-engine.yaml',
         '.yarramate/projections/product-context.yaml',
         '.yarramate/projections/product-journeys.yaml',
+        '.yarramate/projections/seven-verb-surface.yaml',
         '.yarramate/projections/starter-application-cooperation.yaml',
         '.yarramate/projections/starter-business-operation.yaml',
         '.yarramate/projections/starter-implementation-roadmap.yaml',

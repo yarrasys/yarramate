@@ -2,6 +2,7 @@ format: yarramate/projection/v1
 id: starter-application-cooperation
 version: "1.0"
 query:
+  excludeStatuses: [retired]
   kinds:
     - yarramate/core@0.1#applicationComponent
     - yarramate/core@0.1#applicationCollaboration
