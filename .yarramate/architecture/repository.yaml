@@ -9,10 +9,11 @@ concepts:
     kind: deliverable
     name: Architecture decision records
   - id: roadmap
-    kind: deliverable
+    kind: representation
     name: Product roadmap
+    description: The staged product plan as a reviewable document. A representation, not a deliverable - it describes the evolution; the merged work realizes it.
   - id: backlog-disposition
-    kind: deliverable
+    kind: representation
     name: Backlog disposition
     description: Distinguishes completed local scope from decision-gated, externally blocked, and demand-gated future work.
   - id: product-journeys-guide

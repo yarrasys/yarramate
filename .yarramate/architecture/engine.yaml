@@ -618,6 +618,24 @@ concepts:
     description: Derives every persisted artifact - the canonical graph, projection markdown, the per-concept briefs handoff bundle, and the LikeC4 visualization project delegated to the sibling adapter binary in a separate process.
     owner: yarramate-product#yarramate-maintainers
     status: current
+  - id: consumer-host
+    kind: node
+    name: Consumer host
+    description: The machine a consuming repository runs YarraMate on - a developer workstation or CI runner. YarraMate ships no server; every binary executes here.
+    owner: yarramate-product#yarramate-maintainers
+    status: current
+  - id: nodejs-runtime
+    kind: systemSoftware
+    name: Node.js runtime
+    description: The Node.js 22+ runtime that executes every shipped binary on the consumer host.
+    owner: yarramate-product#yarramate-maintainers
+    status: current
+  - id: npm-package
+    kind: artifact
+    name: npm package
+    description: The published yarramate package - compiled binaries, normative schemas, the internal catalogue, and the agent skill.
+    owner: yarramate-product#yarramate-maintainers
+    status: current
 relationships:
   - id: core-contract-checker-loads-contract
     kind: assignment
@@ -1299,3 +1317,32 @@ relationships:
     to: projection-definition
     mode: read
     description: markdown and briefs exports scope their artifacts by a projection.
+  - id: consumer-host-composes-runtime
+    kind: composition
+    from: consumer-host
+    to: nodejs-runtime
+  - id: consumer-host-deploys-package
+    kind: assignment
+    from: consumer-host
+    to: npm-package
+    description: The package is installed and executed on the consumer host; no other deployment target exists.
+  - id: npm-package-realizes-cli
+    kind: realization
+    from: npm-package
+    to: cli
+  - id: runtime-serves-cli
+    kind: serving
+    from: nodejs-runtime
+    to: cli
+  - id: runtime-serves-graphify-adapter
+    kind: serving
+    from: nodejs-runtime
+    to: graphify-evidence-adapter
+  - id: runtime-serves-likec4-adapter
+    kind: serving
+    from: nodejs-runtime
+    to: likec4-export-adapter
+  - id: runtime-serves-mcp-adapter
+    kind: serving
+    from: nodejs-runtime
+    to: mcp-adapter

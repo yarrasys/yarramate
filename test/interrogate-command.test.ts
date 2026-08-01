@@ -43,6 +43,7 @@ const catalogue =
   '    resolution: Add a goal concept.\n' +
   '  - id: actor-owner-missing\n' +
   '    wave: hygiene\n' +
+  '    since: "1.1"\n' +
   '    scope: subject\n' +
   '    subjects:\n' +
   '      kinds: ["yarramate/core@0.1#businessActor"]\n' +
@@ -139,7 +140,9 @@ describe('ask --open interrogation', () => {
       workspace,
     )
     expect(result.exitCode).toBe(0)
-    expect(result.stdout).toContain('actor-owner-missing (2 subjects)')
+    expect(result.stdout).toContain(
+      'actor-owner-missing [since 1.1] (2 subjects)',
+    )
     expect(result.stdout).toContain(
       'ask: "Who is accountable for Customer?" [authority: either]',
     )
@@ -163,7 +166,9 @@ describe('ask --open interrogation', () => {
       workspace,
     )
     expect(result.exitCode).toBe(0)
-    expect(result.stdout).toContain('actor-owner-missing (1 subject)')
+    expect(result.stdout).toContain(
+      'actor-owner-missing [since 1.1] (1 subject)',
+    )
     expect(result.stdout).not.toContain('Platform team?')
   })
 
@@ -211,6 +216,9 @@ describe('ask --open interrogation', () => {
       'main#customer',
       'main#platform',
     ])
+    // The delta annotation (ADR 0063) rides the report so consumers can
+    // tell 'the catalogue deepened' from 'the model regressed'.
+    expect((owners as { since?: string }).since).toBe('1.1')
     const validate = new Ajv2020({ allErrors: true }).compile(reportSchema)
     expect(validate(payload), JSON.stringify(validate.errors)).toBe(true)
   })
