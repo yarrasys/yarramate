@@ -67,7 +67,7 @@ and `new projection` scaffolding.
 
 ### `yarramate ask` — read, interactive
 
-[new verb; renderers built] One entry point for every consumed-now
+[built — ADR 0059] One entry point for every consumed-now
 read; graphify analogues: `query` / `explain` / `path`.
 
 - `ask` (bare) — orientation: the status verdict, drift summary, and
@@ -187,16 +187,17 @@ removed, and the release notes carry the map above.
 | Lies absorbed silently pre-code (family run 1 C) | `reconcile` once code exists; adequacy raises the witness count before | partial by design |
 | Strong tiers never use add/connect | `apply` batch | planned |
 | Agents read src/profile.ts to learn kinds | agent card #89 (entry) | planned |
-| `status` not backlog-oriented | `ask` (bare) | open |
+| `status` not backlog-oriented | `ask` (bare) | fixed (ADR 0059) |
 | Brief reads "is assigned to" both directions | brief renderer phrase table (`ask`/`export`) | small fix open |
 
 ## Build order (the 0.7.0 arc)
 
 1. Deep catalogue + adequacy condition types [done, ADR 0056]
 2. `apply` (#93 shape) — the loop's write half [done, ADR 0057]
-3. `design` (#103) — the loop's ask half, catalogue internal
+3. `design` (#103) — the loop's ask half, catalogue internal [done,
+   ADR 0058]
 4. `ask` — consolidation of status/context/next/compare + `--advise`
-   (#105) + `--open`
+   (#105) + `--open` [done, ADR 0059]
 5. `export` — consolidation of compile/view/likec4/briefs
 6. Contract/skill/MCP/docs rewrite; release 0.7.0
 7. Agent card (#89) folds into the skill/entry surfaces along the way

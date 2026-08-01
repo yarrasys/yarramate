@@ -66,6 +66,9 @@ formats:
   - id: yarramate/design-step/v1
     schema: schema/yarramate-design-step.schema.json
     packageExport: ./schema/design-step
+  - id: yarramate/ask-result/v1
+    schema: schema/yarramate-ask-result.schema.json
+    packageExport: ./schema/ask-result
 commands:
   - name: init
     binary: yarramate
@@ -110,6 +113,9 @@ commands:
   - name: design
     binary: yarramate
     machineFormat: yarramate/design-step/v1
+  - name: ask
+    binary: yarramate
+    machineFormat: yarramate/ask-result/v1
 guarantees:
   - adapter-independent-core
   - canonical-graph-serialization

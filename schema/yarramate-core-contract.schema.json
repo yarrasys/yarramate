@@ -81,7 +81,8 @@
               "reconcile",
               "interrogate",
               "apply",
-              "design"
+              "design",
+              "ask"
             ]
           },
           "binary": {

@@ -487,6 +487,40 @@ export function loadQuestionCatalogue(
   return { ok: true, catalogue }
 }
 
+// Shared by interrogate and `ask --open`: the wave-by-wave human report.
+export function renderInterrogationReport(
+  report: InterrogationReport,
+): string {
+  const lines: string[] = [
+    `Catalogue ${report.catalogue} on workspace ${report.workspace}: ` +
+      `${report.summary.open} open ` +
+      `(${report.summary.openQuestions} of ${report.summary.questions} questions)`,
+  ]
+  for (const wave of report.waves) {
+    lines.push('', `== ${wave.name} ==`)
+    for (const question of wave.questions) {
+      if (!question.open) {
+        lines.push(`  closed ${question.id}`)
+        continue
+      }
+      if (question.subjects === undefined) {
+        lines.push(`  OPEN   ${question.id} — ${question.question}`)
+        lines.push(`         why: ${question.materiality}`)
+        continue
+      }
+      lines.push(
+        `  OPEN   ${question.id} (${question.subjects.length} ${question.subjects.length === 1 ? 'subject' : 'subjects'})`,
+      )
+      for (const subject of question.subjects) {
+        lines.push(
+          `         ask: "${subject.question}" [authority: ${question.authority}]`,
+        )
+      }
+    }
+  }
+  return `${lines.join('\n')}\n`
+}
+
 export function runInterrogateCommand(
   options: readonly string[],
   cwd: string,
@@ -568,34 +602,11 @@ export function runInterrogateCommand(
       }
     }
 
-    const lines: string[] = [
-      `Catalogue ${ordered.catalogue} on workspace ${ordered.workspace}: ` +
-        `${ordered.summary.open} open ` +
-        `(${ordered.summary.openQuestions} of ${ordered.summary.questions} questions)`,
-    ]
-    for (const wave of ordered.waves) {
-      lines.push('', `== ${wave.name} ==`)
-      for (const question of wave.questions) {
-        if (!question.open) {
-          lines.push(`  closed ${question.id}`)
-          continue
-        }
-        if (question.subjects === undefined) {
-          lines.push(`  OPEN   ${question.id} — ${question.question}`)
-          lines.push(`         why: ${question.materiality}`)
-          continue
-        }
-        lines.push(
-          `  OPEN   ${question.id} (${question.subjects.length} ${question.subjects.length === 1 ? 'subject' : 'subjects'})`,
-        )
-        for (const subject of question.subjects) {
-          lines.push(
-            `         ask: "${subject.question}" [authority: ${question.authority}]`,
-          )
-        }
-      }
+    return {
+      exitCode: 0,
+      stdout: renderInterrogationReport(ordered),
+      stderr: '',
     }
-    return { exitCode: 0, stdout: `${lines.join('\n')}\n`, stderr: '' }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     return { exitCode: 2, stdout: '', stderr: `${message}\n` }
