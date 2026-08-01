@@ -398,4 +398,80 @@ concepts:
 relationships: []
 `)
   })
+  it('rewrites a flow-style item as block when adding fields', () => {
+    // Codex dogfood finding: block field lines spliced after a
+    // `- { ... }` item corrupt the sequence.
+    const flow = `format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts:
+  - { id: flow-item, kind: applicationService, name: Flow item }
+  - id: neighbour
+    kind: businessActor
+    name: Neighbour
+relationships: []
+`
+    writeFileSync(join(workspace, 'architecture/main.yaml'), flow, 'utf8')
+    writeFileSync(
+      join(workspace, 'operations.yaml'),
+      `format: yarramate/operations/v1
+operations:
+  - op: update-concept
+    document: architecture/main.yaml
+    concept:
+      id: flow-item
+      status: planned
+      description: "Handles ingestion: parsing and storage."
+`,
+      'utf8',
+    )
+    const result = runCli(
+      ['apply', 'operations.yaml', 'workspace.yaml'],
+      workspace,
+    )
+    expect(result.exitCode).toBe(0)
+    const after = readFileSync(join(workspace, 'architecture/main.yaml'), 'utf8')
+    expect(after).toContain(
+      '  - id: flow-item\n' +
+        '    kind: applicationService\n' +
+        '    name: Flow item\n' +
+        '    description: "Handles ingestion: parsing and storage."\n' +
+        '    status: planned\n',
+    )
+    // The neighbouring block item and everything else stay byte-identical.
+    expect(after).toContain('  - id: neighbour\n    kind: businessActor\n    name: Neighbour\n')
+    expect(after.split('flow-item').length).toBe(2)
+  })
+
+  it('removing a field from a flow-style item never deletes the item', () => {
+    const flow = `format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts:
+  - { id: flow-item, kind: applicationService, name: Flow item, status: planned }
+relationships: []
+`
+    writeFileSync(join(workspace, 'architecture/main.yaml'), flow, 'utf8')
+    writeFileSync(
+      join(workspace, 'operations.yaml'),
+      `format: yarramate/operations/v1
+operations:
+  - op: update-concept
+    document: architecture/main.yaml
+    concept:
+      id: flow-item
+    remove: [status]
+`,
+      'utf8',
+    )
+    const result = runCli(
+      ['apply', 'operations.yaml', 'workspace.yaml'],
+      workspace,
+    )
+    expect(result.exitCode).toBe(0)
+    const after = readFileSync(join(workspace, 'architecture/main.yaml'), 'utf8')
+    expect(after).toContain('id: flow-item')
+    expect(after).toContain('name: Flow item')
+    expect(after).not.toContain('status: planned')
+  })
 })

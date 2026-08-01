@@ -140,16 +140,6 @@ const indexGraph = (graph: SemanticGraph): GraphIndex => {
       .filter(({ predicate }) => predicate === 'yarramate/state/type')
       .map(({ subject }) => subject),
   )
-  // Architecture states carry concept subjects in the graph but are not
-  // enrichment targets; the catalogue interrogates the model, not the
-  // planning overlay.
-  const concepts = new Set(
-    graph.subjects
-      .filter(
-        ({ id, type }) => type === 'concept' && !stateSubjects.has(id),
-      )
-      .map(({ id }) => id),
-  )
   const claimsBySubject = new Map<string, GraphClaim[]>()
   const kindOf = new Map<string, string>()
   const nameOf = new Map<string, string>()
@@ -178,6 +168,21 @@ const indexGraph = (graph: SemanticGraph): GraphIndex => {
       }
     }
   }
+  // Architecture states carry concept subjects in the graph but are not
+  // enrichment targets; the catalogue interrogates the model, not the
+  // planning overlay. Retired concepts are excluded for the same reason
+  // (ADR 0064): retirement is the recorded decision that a subject left
+  // the design conversation, so no question stays open against it.
+  const concepts = new Set(
+    graph.subjects
+      .filter(
+        ({ id, type }) =>
+          type === 'concept' &&
+          !stateSubjects.has(id) &&
+          statusOf.get(id) !== 'retired',
+      )
+      .map(({ id }) => id),
+  )
   return {
     concepts,
     claimsBySubject,
