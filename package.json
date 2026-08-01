@@ -71,7 +71,8 @@
     "./schema/core-contract": "./schema/yarramate-core-contract.schema.json",
     "./skill/yarramate-architecture": "./skills/yarramate-architecture/SKILL.md",
     "./schema/operations": "./schema/yarramate-operations.schema.json",
-    "./schema/apply-result": "./schema/yarramate-apply-result.schema.json"
+    "./schema/apply-result": "./schema/yarramate-apply-result.schema.json",
+    "./schema/design-step": "./schema/yarramate-design-step.schema.json"
   },
   "bin": {
     "yarramate": "dist/cli.js",

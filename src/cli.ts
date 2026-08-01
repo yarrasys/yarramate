@@ -26,6 +26,7 @@ import {
 import { runCheckCommand } from './check-command.js'
 import { runNewCommand } from './new-command.js'
 import { runApplyCommand } from './apply-command.js'
+import { runDesignCommand } from './design-command.js'
 import { runInterrogateCommand } from './interrogate-command.js'
 import { runNextCommand } from './next-command.js'
 import { runStatusCommand } from './status-command.js'
@@ -979,6 +980,9 @@ export function runCli(
   }
   if (command === 'apply') {
     return runApplyCommand(options, cwd)
+  }
+  if (command === 'design') {
+    return runDesignCommand(options, cwd)
   }
   return { exitCode: 2, stdout: '', stderr: usage }
 }

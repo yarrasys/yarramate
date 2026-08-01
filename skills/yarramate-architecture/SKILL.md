@@ -109,22 +109,22 @@ yarramate-likec4 export-project .yarramate/likec4-project.yaml .yarramate-out/li
    presence matters; do not misuse lifecycle status as a decision verdict.
 4. Add the principal services, components, information, responsibilities, and
    dependencies required to begin implementation. Partial detail is valid.
-   After structuring what is stated, interrogate the model for what is not:
+   After structuring what is stated, run the interview loop for what is not:
 
 ```sh
-yarramate interrogate catalogues/core-enrichment.yaml .yarramate/workspace.yaml
+yarramate design .yarramate/workspace.yaml
 ```
 
-   (Resolve the shipped catalogue from the installed package when the
-   consuming repository has no catalogue of its own.) Do not open the
-   catalogue file itself: the interrogation report is self-contained —
-   question text, materiality, and authority all appear in the output, so
-   reading the catalogue only spends context. Work the open questions
-   wave by wave — motivation before business before hygiene. Answer questions
-   the evidence can answer; ask the human the ones marked `human`, quoting the
-   question and its materiality. Re-run after every batch of answers: a
-   question closes when its trigger no longer matches, so the still-open list
-   is always current and nothing needs session state.
+   Each invocation serves exactly the top open question with its subject
+   slice, materiality, and progress — the catalogue is internal; never pass
+   or read catalogue files. Answer one question at a time: questions the
+   model or evidence can answer, answer from your authority; questions
+   marked `human`, relay verbatim with their materiality. Land each answer
+   as one atomic batch (`yarramate apply <operations.yaml>
+   .yarramate/workspace.yaml`), then re-run `design` — the next question is
+   recomputed from the model, so the loop is resumable across sessions and
+   agents with no handover. Use `--subject <id>` to focus the interview on
+   one element. The interview is complete when `design` says so.
 5. Create:
    - an alternatives projection for the decision;
    - a bounded target projection for implementation agents.

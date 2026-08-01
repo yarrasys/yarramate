@@ -1323,3 +1323,27 @@ mappings:
   - native: yarramate-engine#cli-provides-apply
     external: cliProvidesApply
     type: relationship
+  - native: yarramate-engine#cli-provides-design
+    external: cliProvidesDesign
+    type: relationship
+  - native: yarramate-engine#design-command
+    external: designCommand
+    type: concept
+  - native: yarramate-engine#design-command-reads-profile-catalogue
+    external: designCommandReadsProfileCatalogue
+    type: relationship
+  - native: yarramate-engine#design-command-reads-step-schema
+    external: designCommandReadsStepSchema
+    type: relationship
+  - native: yarramate-engine#design-command-serves-agent-harness
+    external: designCommandServesAgentHarness
+    type: relationship
+  - native: yarramate-engine#design-command-writes-step
+    external: designCommandWritesStep
+    type: relationship
+  - native: yarramate-engine#design-step
+    external: designStep
+    type: concept
+  - native: yarramate-engine#design-step-schema
+    external: designStepSchema
+    type: concept

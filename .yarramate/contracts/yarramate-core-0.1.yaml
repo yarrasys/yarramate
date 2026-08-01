@@ -63,6 +63,9 @@ formats:
   - id: yarramate/apply-result/v1
     schema: schema/yarramate-apply-result.schema.json
     packageExport: ./schema/apply-result
+  - id: yarramate/design-step/v1
+    schema: schema/yarramate-design-step.schema.json
+    packageExport: ./schema/design-step
 commands:
   - name: init
     binary: yarramate
@@ -104,6 +107,9 @@ commands:
   - name: apply
     binary: yarramate
     machineFormat: yarramate/apply-result/v1
+  - name: design
+    binary: yarramate
+    machineFormat: yarramate/design-step/v1
 guarantees:
   - adapter-independent-core
   - canonical-graph-serialization

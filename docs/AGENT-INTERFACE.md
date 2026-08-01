@@ -35,7 +35,7 @@ two intents.
 
 ### `yarramate design` — fill, guided
 
-[new; machinery built] The conception loop's ask-half. Each invocation
+[built — ADR 0058; `--subject` narrows, no wave override] The conception loop's ask-half. Each invocation
 is stateless (ADR 0053) and emits exactly the **top open question** —
 materiality-ordered — plus the model slice it concerns plus answering
 guidance; the harness/LLM loops: answer arrives as prose → agent
@@ -70,9 +70,13 @@ and `new projection` scaffolding.
 [new verb; renderers built] One entry point for every consumed-now
 read; graphify analogues: `query` / `explain` / `path`.
 
-- `ask` (bare) — orientation: the status verdict, drift summary,
-  inventory (today's `status`; the known backlog-orientation gap
-  belongs here).
+- `ask` (bare) — orientation: the status verdict, drift summary, and
+  the backlog-shaped roster slice, planned items first (decided
+  2026-08-01; closes the status backlog gap).
+- `ask --subjects` — the full filterable roster: id, kind, name,
+  one-line description, status (decided 2026-08-01) — the discovery
+  surface `--subject` flags depend on, and the same index free-text
+  seeding matches against.
 - `ask "<free text>"` — the default addressing mode (decided
   2026-08-01): terms match concept names, ids, and descriptions to find
   seed subjects, then the existing one-hop connected-neighbourhood
@@ -201,11 +205,7 @@ removed, and the release notes carry the map above.
 
 - Attestation claim shape: predicate namespace, who-may-attest, and
   whether revocation is deletion or a counter-claim.
-- `design` argument surface: scoping the interview (workspace vs wave
-  vs subject).
 - Where the standalone `evidence` evaluation lands: `check` machinery,
   `reconcile` mode, or gone as a public surface.
-- Whether `ask` bare output grows the backlog-oriented section the
-  status gap calls for, and its shape.
 - Catalogue versioning as the path deepens (the pinned-baseline lesson
   from the benchmark applies).
