@@ -162,6 +162,58 @@ questions:
     expect(result.stdout).toContain('states-question')
   })
 
+  it('carries the full open-subject roster for shared questions', () => {
+    writeFileSync(
+      join(workspace, 'owners.yaml'),
+      `format: yarramate/question-catalogue/v1
+id: owners
+version: "1.0"
+profile: yarramate/core@0.1
+waves:
+  - id: business
+    name: Business
+questions:
+  - id: owner-missing
+    wave: business
+    scope: subject
+    subjects:
+      kinds:
+        - "yarramate/core@0.1#businessActor"
+        - "yarramate/core@0.1#applicationService"
+    trigger:
+      - condition: missing-claim
+        predicate: yarramate/ownership/owner
+    question: Who is accountable for {subject.name}?
+    materiality: Ownership decides who accepts changes.
+    authority: either
+    resolution: Add an owner reference.
+`,
+      'utf8',
+    )
+    const result = runCli(
+      ['design', 'workspace.yaml', '--catalogue', 'owners.yaml', '--json'],
+      workspace,
+    )
+    expect(result.exitCode).toBe(0)
+    const payload = JSON.parse(result.stdout) as {
+      step: {
+        subject: { id: string }
+        remainingSubjects?: number
+        openSubjects?: readonly string[]
+      }
+    }
+    // One policy answer covers both: the roster lets the harness land it
+    // as one apply batch instead of interviewing twice.
+    expect(payload.step.subject.id).toBe('main#todo-service')
+    expect(payload.step.remainingSubjects).toBe(1)
+    expect(payload.step.openSubjects).toEqual([
+      'main#todo-service',
+      'main#user',
+    ])
+    const validate = new Ajv2020({ allErrors: true }).compile(stepSchema)
+    expect(validate(payload), JSON.stringify(validate.errors)).toBe(true)
+  })
+
   it('requires an explicit workspace manifest', () => {
     const result = runCli(
       ['design', 'architecture/main.yaml'],

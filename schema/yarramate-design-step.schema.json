@@ -139,6 +139,14 @@
             "remainingSubjects": {
               "type": "integer",
               "minimum": 1
+            },
+            "openSubjects": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
             }
           }
         }
