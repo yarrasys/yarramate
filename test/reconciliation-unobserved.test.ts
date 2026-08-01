@@ -180,10 +180,10 @@ describe('reconciliation of current subjects without evidence', () => {
     }
   })
 
-  it('surfaces the count on the human status line', () => {
+  it('surfaces the count on the ask orientation line', () => {
     const parent = writeFixture()
     try {
-      const result = runCli(['status', 'workspace.yaml'], parent)
+      const result = runCli(['ask', 'workspace.yaml'], parent)
 
       expect(result.exitCode).toBe(0)
       expect(result.stdout).toContain(

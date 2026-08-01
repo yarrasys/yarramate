@@ -93,8 +93,8 @@ The typed `compareArchitectureStates(graph, from, to)` API and CLI classify
 subjects as added, removed, or retained:
 
 ```sh
-yarramate compare roadmap#baseline roadmap#target \
-  .yarramate/workspace.yaml
+yarramate ask .yarramate/workspace.yaml \
+  --compare roadmap#baseline roadmap#target
 ```
 
 ## Optional LikeC4 views
@@ -133,11 +133,12 @@ architecture completeness or approval rules.
 Colors and borders remain disposable LikeC4 presentation. Native documents,
 graph v2, and the state-comparison result contain no renderer styling.
 
-Successful output conforms to
+The comparison result conforms to
 `schema/yarramate-state-comparison.schema.json` and uses format
-`yarramate/state-comparison/v1`. The result is a deterministic structural
-comparison, not an assessment, migration plan, approval, or completeness
-claim.
+`yarramate/state-comparison/v1`; `yarramate ask --compare --json` nests it
+under a `comparison` key inside the `yarramate/ask-result/v1` envelope.
+The result is a deterministic structural comparison, not an assessment,
+migration plan, approval, or completeness claim.
 
 ## Deliberate boundary
 

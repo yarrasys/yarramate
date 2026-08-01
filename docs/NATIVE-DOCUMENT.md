@@ -292,37 +292,50 @@ concepts, relationships, and architecture states. Its normative structure is
 
 ```sh
 yarramate init .
-yarramate add architecture/main.yaml \
-  --id order-approval --kind capability --name "Order approval"
-yarramate connect architecture/main.yaml \
-  --id api-realizes-approval --kind realization \
-  --from approval-api --to order-approval
 ```
 
 `init` creates `.yarramate/architecture/main.yaml` and `.yarramate/workspace.yaml`, and
-refuses to overwrite either. `add` appends a concept; `connect` appends a
-relationship. Both preserve concise block-style YAML, compile the entire
-candidate workspace in memory, and replace the target only when validation
-succeeds. A rejected edit leaves the source byte-for-byte unchanged.
+refuses to overwrite either. Writes then land as one atomic validated batch:
+a `yarramate/operations/v1` document lists operations addressed to
+manifest-declared documents, and `yarramate apply` executes it against the
+explicit workspace manifest:
 
-Optional `add` flags are `--status`, `--description`, `--owner <ref>`, and
-repeatable `--constraint <id>=<ref>`, `--reference <id>=<ref>`, and
-`--present-in <state-ref>`. Optional `connect` flags are `--name`,
-`--description`, `--status`, `--mode`, `--content`, and repeatable
-`--reference <id>=<ref>` and `--present-in <state-ref>`. Extension profiles and documents needed
-for qualified references are passed explicitly using a repeatable
-`--source <source.yaml>`:
-
-```sh
-yarramate add architecture/engine.yaml \
-  --id compiler-worker --kind repository-file --name "Compiler worker" \
-  --source profiles/yarramate-development.yaml \
-  --source architecture/repository.yaml
+```yaml
+format: yarramate/operations/v1
+operations:
+  - op: add-concept
+    document: .yarramate/architecture/main.yaml
+    concept:
+      id: order-approval
+      kind: capability
+      name: Order approval
+  - op: add-relationship
+    document: .yarramate/architecture/main.yaml
+    relationship:
+      id: api-realizes-approval
+      kind: realization
+      from: approval-api
+      to: order-approval
 ```
 
-This explicit input contract matches `compileWorkspace`; the authoring
-commands do not search parent directories, infer a workspace, or fetch a
-profile registry.
+```sh
+yarramate apply operations.yaml .yarramate/workspace.yaml
+```
+
+The operations are `add-concept`, `add-relationship`, `update-concept`, and
+`update-relationship`. Concept and relationship records accept the same
+optional fields as the authoring format — for example `status`,
+`description`, `owner`, `constraints`, `references`, `presentIn`, and the
+controlled `mode` and `content` fields. `apply` preserves concise
+block-style YAML, compiles the entire candidate workspace in memory, and
+replaces the targets only when validation succeeds. A rejected batch leaves
+every source byte-for-byte unchanged. Update operations enrich only: scalar
+fields replace, list fields append, and removals stay ordinary Git edits.
+
+The workspace manifest supplies the extension profiles and documents needed
+for qualified references. This explicit input contract matches
+`compileWorkspace`; `apply` does not search parent directories, infer a
+workspace, or fetch a profile registry.
 
 ## Deliberate exclusions
 

@@ -264,25 +264,17 @@ evidence:
       expect(
         JSON.parse(
           run([
-            'context',
-            '.yarramate/projections/target.yaml',
+            'ask',
             '.yarramate/workspace.yaml',
+            '.yarramate/projections/target.yaml',
+            '--json',
           ]),
-        ).subjects,
+        ).result.subjects,
       ).toEqual([
         { id: 'consumer#api-accesses-data', type: 'relationship' },
         { id: 'consumer#delivery-api', type: 'concept' },
         { id: 'consumer#delivery-data', type: 'concept' },
       ])
-      expect(
-        JSON.parse(
-          run([
-            'evidence',
-            '.yarramate/evidence/repository.yaml',
-            '.yarramate/workspace.yaml',
-          ]),
-        ).summary.confirmed,
-      ).toBe(1)
       expect(
         JSON.parse(
           run(['reconcile', '.yarramate/workspace.yaml']),
@@ -301,12 +293,14 @@ evidence:
       expect(
         JSON.parse(
           run([
-            'compare',
+            'ask',
+            '.yarramate/workspace.yaml',
+            '--compare',
             'consumer#baseline',
             'consumer#target',
-            '.yarramate/workspace.yaml',
+            '--json',
           ]),
-        ).added,
+        ).comparison.added,
       ).toHaveLength(3)
 
       mkdirSync(join(consumer, '.yarramate/integrations/likec4'), {

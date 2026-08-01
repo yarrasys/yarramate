@@ -340,7 +340,7 @@ export function renderBrief(
   if (omitted > 0) {
     lines.push(
       '',
-      `[budget ${budgetTokens}: ${omitted} of ${total} paragraphs omitted — raise --budget or drop --brief for the digest]`,
+      `[budget ${budgetTokens}: ${omitted} of ${total} paragraphs omitted — raise --budget or use --json for the complete slice]`,
     )
   }
   return `${lines.join('\n')}\n`

@@ -12,9 +12,56 @@ import { fileURLToPath } from 'node:url'
 import Ajv2020Module from 'ajv/dist/2020.js'
 import { describe, expect, it } from 'vitest'
 import { runCli } from '../src/cli.js'
+import { compileWorkspace } from '../src/compiler.js'
+import { serializeSemanticGraph } from '../src/graph.js'
 
 const repositoryRoot = fileURLToPath(new URL('..', import.meta.url))
 const Ajv2020 = Ajv2020Module.default
+
+// Several read tests wrap loose fixture documents in a workspace
+// manifest because every 0.7.0 read verb requires one.
+const fixtureWorkspace = (
+  documents: readonly string[],
+  profiles: readonly string[] = [],
+): string => {
+  const directory = mkdtempSync(join(tmpdir(), 'yarramate-fixture-ws-'))
+  mkdirSync(join(directory, 'architecture'))
+  if (profiles.length > 0) mkdirSync(join(directory, 'profiles'))
+  const list = (paths: readonly string[]) =>
+    paths.map((path) => `  - ${path}`).join('\n')
+  const documentPaths = documents.map((source, index) => {
+    const target = `architecture/document-${index}.yaml`
+    writeFileSync(
+      join(directory, target),
+      readFileSync(join(repositoryRoot, source), 'utf8'),
+      'utf8',
+    )
+    return target
+  })
+  const profilePaths = profiles.map((source, index) => {
+    const target = `profiles/profile-${index}.yaml`
+    writeFileSync(
+      join(directory, target),
+      readFileSync(join(repositoryRoot, source), 'utf8'),
+      'utf8',
+    )
+    return target
+  })
+  writeFileSync(
+    join(directory, 'workspace.yaml'),
+    'format: yarramate/workspace/v1\n' +
+      'id: fixture\n' +
+      `documents:\n${list(documentPaths)}\n` +
+      (profilePaths.length === 0
+        ? 'profiles: []\n'
+        : `profiles:\n${list(profilePaths)}\n`) +
+      'projections: []\n' +
+      'adapterMappings: []\n' +
+      'evidence: []\n',
+    'utf8',
+  )
+  return directory
+}
 
 describe('YarraMate CLI', () => {
   it.each(['--help', '-h', 'help'])(
@@ -132,36 +179,50 @@ describe('YarraMate CLI', () => {
   })
 
   it('emits the normative graph v2 interchange document', () => {
-    const result = runCli(
-      ['compile', 'test/fixtures/valid/minimal.yaml'],
-      repositoryRoot,
-    )
+    const directory = fixtureWorkspace(['test/fixtures/valid/minimal.yaml'])
+    try {
+      const result = runCli(['export', 'graph', 'workspace.yaml'], directory)
 
-    expect(result.exitCode).toBe(0)
-    expect(result.stderr).toBe('')
-    expect(result.stdout.startsWith('{\n  "format": "yarramate/graph/v2"')).toBe(
-      true,
-    )
-    expect(result.stdout.endsWith('}\n')).toBe(true)
-    expect(JSON.parse(result.stdout)).toMatchObject({
-      profiles: ['yarramate/core@0.1'],
-      claims: expect.arrayContaining([
-        expect.objectContaining({
-          predicate: 'yarramate/concept/kind',
-          object: { value: 'yarramate/core@0.1#capability' },
-        }),
-      ]),
-    })
+      expect(result.exitCode).toBe(0)
+      expect(result.stderr).toBe('')
+      expect(
+        result.stdout.startsWith('{\n  "format": "yarramate/graph/v2"'),
+      ).toBe(true)
+      expect(result.stdout.endsWith('}\n')).toBe(true)
+      expect(JSON.parse(result.stdout)).toMatchObject({
+        profiles: ['yarramate/core@0.1'],
+        claims: expect.arrayContaining([
+          expect.objectContaining({
+            predicate: 'yarramate/concept/kind',
+            object: { value: 'yarramate/core@0.1#capability' },
+          }),
+        ]),
+      })
+    } finally {
+      rmSync(directory, { recursive: true, force: true })
+    }
   })
 
-  it('emits byte-identical graph JSON regardless of source order', () => {
-    const first = 'test/fixtures/valid/minimal.yaml'
-    const second = 'test/fixtures/valid/strategy.yaml'
-    const forward = runCli(['compile', first, second], repositoryRoot)
-    const reverse = runCli(['compile', second, first], repositoryRoot)
+  it('serializes byte-identical graph JSON regardless of source order', () => {
+    // Canonical-graph-serialization is a library guarantee; the CLI
+    // surface orders documents by the workspace manifest.
+    const sources = [
+      'test/fixtures/valid/minimal.yaml',
+      'test/fixtures/valid/strategy.yaml',
+    ].map((path) => ({
+      path,
+      source: readFileSync(join(repositoryRoot, path), 'utf8'),
+    }))
+    const forward = compileWorkspace(sources)
+    const reverse = compileWorkspace([...sources].reverse())
 
-    expect(forward.exitCode).toBe(0)
-    expect(reverse).toEqual(forward)
+    expect(forward.ok).toBe(true)
+    expect(reverse.ok).toBe(true)
+    if (forward.ok && reverse.ok) {
+      expect(serializeSemanticGraph(reverse.graph)).toBe(
+        serializeSemanticGraph(forward.graph),
+      )
+    }
   })
 
   it('loads explicit profile files with documents in one check', () => {
@@ -241,123 +302,138 @@ describe('YarraMate CLI', () => {
     expect(reverse).toEqual(forward)
   })
 
-  it('renders semantic projection context as deterministic JSON', () => {
-    const result = runCli(
-      [
-        'context',
-        'test/fixtures/valid/current-capabilities.projection.yaml',
-        'test/fixtures/valid/lifecycle-status.yaml',
-      ],
-      repositoryRoot,
-    )
+  it('renders a projection slice as deterministic JSON through ask', () => {
+    const directory = fixtureWorkspace([
+      'test/fixtures/valid/lifecycle-status.yaml',
+    ])
+    try {
+      writeFileSync(
+        join(directory, 'capabilities.projection.yaml'),
+        readFileSync(
+          join(
+            repositoryRoot,
+            'test/fixtures/valid/current-capabilities.projection.yaml',
+          ),
+          'utf8',
+        ),
+        'utf8',
+      )
+      const result = runCli(
+        [
+          'ask',
+          'workspace.yaml',
+          'capabilities.projection.yaml',
+          '--json',
+        ],
+        directory,
+      )
 
-    expect(result.exitCode).toBe(0)
-    expect(result.stderr).toBe('')
-    expect(JSON.parse(result.stdout)).toMatchObject({
-      format: 'yarramate/projection-result/v1',
-      projection: 'current-capabilities@1.0',
-      subjects: [
-        {
-          id: 'lifecycle#current-capability',
-          type: 'concept',
+      expect(result.exitCode).toBe(0)
+      expect(result.stderr).toBe('')
+      expect(JSON.parse(result.stdout)).toMatchObject({
+        format: 'yarramate/ask-result/v1',
+        mode: 'slice',
+        addressing: 'projection',
+        result: {
+          format: 'yarramate/projection-result/v1',
+          projection: 'current-capabilities@1.0',
+          subjects: [
+            {
+              id: 'lifecycle#current-capability',
+              type: 'concept',
+            },
+          ],
         },
-      ],
-    })
+      })
+    } finally {
+      rmSync(directory, { recursive: true, force: true })
+    }
   })
 
   it('renders extension kinds through their semantic parents', () => {
-    const result = runCli(
-      [
-        'context',
-        'test/fixtures/valid/platform-actors.projection.yaml',
-        'test/fixtures/valid/platform-profile.yaml',
-        'test/fixtures/valid/platform-document.yaml',
-      ],
-      repositoryRoot,
+    const directory = fixtureWorkspace(
+      ['test/fixtures/valid/platform-document.yaml'],
+      ['test/fixtures/valid/platform-profile.yaml'],
     )
+    try {
+      writeFileSync(
+        join(directory, 'actors.projection.yaml'),
+        readFileSync(
+          join(
+            repositoryRoot,
+            'test/fixtures/valid/platform-actors.projection.yaml',
+          ),
+          'utf8',
+        ),
+        'utf8',
+      )
+      const result = runCli(
+        ['ask', 'workspace.yaml', 'actors.projection.yaml', '--json'],
+        directory,
+      )
 
-    expect(result.exitCode).toBe(0)
-    expect(JSON.parse(result.stdout).subjects).toEqual([
-      { id: 'platform#delivery', type: 'concept' },
-      { id: 'platform#team', type: 'concept' },
-      {
-        id: 'platform#team-owns-delivery',
-        type: 'relationship',
-      },
+      expect(result.exitCode).toBe(0)
+      expect(JSON.parse(result.stdout).result.subjects).toEqual([
+        { id: 'platform#delivery', type: 'concept' },
+        { id: 'platform#team', type: 'concept' },
+        {
+          id: 'platform#team-owns-delivery',
+          type: 'relationship',
+        },
+      ])
+    } finally {
+      rmSync(directory, { recursive: true, force: true })
+    }
+  })
+
+  it('compares two architecture states through ask', () => {
+    const directory = fixtureWorkspace([
+      'test/fixtures/valid/architecture-states.yaml',
     ])
+    try {
+      const result = runCli(
+        [
+          'ask',
+          'workspace.yaml',
+          '--compare',
+          'roadmap#baseline',
+          'roadmap#target',
+          '--json',
+        ],
+        directory,
+      )
+
+      expect(result.exitCode).toBe(0)
+      expect(JSON.parse(result.stdout)).toMatchObject({
+        format: 'yarramate/ask-result/v1',
+        mode: 'compare',
+        comparison: {
+          format: 'yarramate/state-comparison/v1',
+          from: 'roadmap#baseline',
+          to: 'roadmap#target',
+          added: [
+            { id: 'roadmap#modern', type: 'concept' },
+            {
+              id: 'roadmap#shared-serves-modern',
+              type: 'relationship',
+            },
+          ],
+          removed: [
+            { id: 'roadmap#legacy', type: 'concept' },
+            {
+              id: 'roadmap#shared-serves-legacy',
+              type: 'relationship',
+            },
+          ],
+          retained: [{ id: 'roadmap#shared', type: 'concept' }],
+        },
+      })
+    } finally {
+      rmSync(directory, { recursive: true, force: true })
+    }
   })
 
-  it('compares two architecture states as deterministic JSON', () => {
-    const result = runCli(
-      [
-        'compare',
-        'roadmap#baseline',
-        'roadmap#target',
-        'test/fixtures/valid/architecture-states.yaml',
-      ],
-      repositoryRoot,
-    )
-
-    expect(result).toEqual({
-      exitCode: 0,
-      stdout:
-        `${JSON.stringify(
-          {
-            format: 'yarramate/state-comparison/v1',
-            from: 'roadmap#baseline',
-            to: 'roadmap#target',
-            added: [
-              { id: 'roadmap#modern', type: 'concept' },
-              {
-                id: 'roadmap#shared-serves-modern',
-                type: 'relationship',
-              },
-            ],
-            removed: [
-              { id: 'roadmap#legacy', type: 'concept' },
-              {
-                id: 'roadmap#shared-serves-legacy',
-                type: 'relationship',
-              },
-            ],
-            retained: [
-              { id: 'roadmap#shared', type: 'concept' },
-            ],
-          },
-          null,
-          2,
-        )}\n`,
-      stderr: '',
-    })
-  })
-
-  it('versions machine-readable diagnostics for semantic commands', () => {
-    const projectionFailure = runCli(
-      [
-        'context',
-        'test/fixtures/valid/current-capabilities.projection.yaml',
-        'test/fixtures/invalid/unknown-concept-kind.yaml',
-      ],
-      repositoryRoot,
-    )
-    const evidenceFailure = runCli(
-      [
-        'evidence',
-        'test/fixtures/valid/repository-evidence.yaml',
-        'test/fixtures/invalid/unknown-concept-kind.yaml',
-      ],
-      repositoryRoot,
-    )
-
-    expect(JSON.parse(projectionFailure.stdout).format).toBe(
-      'yarramate/diagnostic-result/v1',
-    )
-    expect(JSON.parse(evidenceFailure.stdout).format).toBe(
-      'yarramate/diagnostic-result/v1',
-    )
-  })
-
-  it('emits semantic command failures conforming to the diagnostic schema', () => {
+  it('emits read failures conforming to the diagnostic schema', () => {
     const schema = JSON.parse(
       readFileSync(
         join(
@@ -368,62 +444,64 @@ describe('YarraMate CLI', () => {
       ),
     )
     const validate = new Ajv2020({ allErrors: true }).compile(schema)
-    const result = runCli(
-      [
-        'context',
-        'test/fixtures/valid/current-capabilities.projection.yaml',
-        'test/fixtures/invalid/unknown-concept-kind.yaml',
-      ],
-      repositoryRoot,
-    )
+    const directory = fixtureWorkspace([
+      'test/fixtures/invalid/unknown-concept-kind.yaml',
+    ])
+    try {
+      const result = runCli(
+        ['ask', 'workspace.yaml', '--subjects', '--json'],
+        directory,
+      )
 
-    expect(
-      validate(JSON.parse(result.stdout)),
-      JSON.stringify(validate.errors ?? []),
-    ).toBe(true)
+      expect(result.exitCode).toBe(1)
+      expect(JSON.parse(result.stdout).format).toBe(
+        'yarramate/diagnostic-result/v1',
+      )
+      expect(
+        validate(JSON.parse(result.stdout)),
+        JSON.stringify(validate.errors ?? []),
+      ).toBe(true)
+    } finally {
+      rmSync(directory, { recursive: true, force: true })
+    }
   })
 
   it('renders the same semantic projection as Markdown for reviewers', () => {
-    const result = runCli(
-      [
-        'view',
-        'test/fixtures/valid/current-capabilities.projection.yaml',
-        'test/fixtures/valid/lifecycle-status.yaml',
-      ],
-      repositoryRoot,
-    )
+    const directory = fixtureWorkspace([
+      'test/fixtures/valid/lifecycle-status.yaml',
+    ])
+    try {
+      writeFileSync(
+        join(directory, 'capabilities.projection.yaml'),
+        readFileSync(
+          join(
+            repositoryRoot,
+            'test/fixtures/valid/current-capabilities.projection.yaml',
+          ),
+          'utf8',
+        ),
+        'utf8',
+      )
+      const result = runCli(
+        [
+          'export',
+          'markdown',
+          'capabilities.projection.yaml',
+          'workspace.yaml',
+        ],
+        directory,
+      )
 
-    expect(result.exitCode).toBe(0)
-    expect(result.stderr).toBe('')
-    expect(result.stdout).toContain('# Current capabilities\n')
-    expect(result.stdout).toContain(
-      '- Current capability (`lifecycle#current-capability`)',
-    )
-    expect(result.stdout).not.toContain('Planned goal')
-  })
-
-  it('renders a deterministic evidence report over compiled sources', () => {
-    const result = runCli(
-      [
-        'evidence',
-        'test/fixtures/valid/repository-evidence.yaml',
-        'test/fixtures/valid/minimal.yaml',
-      ],
-      repositoryRoot,
-    )
-
-    expect(result.exitCode).toBe(0)
-    expect(result.stderr).toBe('')
-    expect(JSON.parse(result.stdout)).toMatchObject({
-      format: 'yarramate/evidence-report/v1',
-      evidence: 'checkout-repository@1.0',
-      summary: {
-        confirmed: 1,
-        contradicted: 1,
-        unknown: 0,
-        notObserved: 0,
-      },
-    })
+      expect(result.exitCode).toBe(0)
+      expect(result.stderr).toBe('')
+      expect(result.stdout).toContain('# Current capabilities\n')
+      expect(result.stdout).toContain(
+        '- Current capability (`lifecycle#current-capability`)',
+      )
+      expect(result.stdout).not.toContain('Planned goal')
+    } finally {
+      rmSync(directory, { recursive: true, force: true })
+    }
   })
 
   it('reconciles workspace evidence into deterministic unresolved findings', () => {
@@ -715,7 +793,7 @@ describe('YarraMate CLI', () => {
       )
 
       const result = runCli(
-        ['compile', '.yarramate/workspace.yaml'],
+        ['export', 'graph', '.yarramate/workspace.yaml'],
         directory,
       )
       expect(result.exitCode).toBe(0)
@@ -769,14 +847,15 @@ describe('YarraMate CLI', () => {
 
       const result = runCli(
         [
-          'context',
-          '.yarramate/projections/current.yaml',
+          'ask',
           '.yarramate/workspace.yaml',
+          '.yarramate/projections/current.yaml',
+          '--json',
         ],
         directory,
       )
       expect(result.exitCode).toBe(0)
-      expect(JSON.parse(result.stdout).subjects).toEqual([
+      expect(JSON.parse(result.stdout).result.subjects).toEqual([
         expect.objectContaining({ id: 'lifecycle#current-capability' }),
       ])
     } finally {
@@ -1146,451 +1225,5 @@ exclusions: [architectural-quality]
     }
   })
 
-  it('adds a validated concept to a native document', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'yarramate-add-'))
-    try {
-      expect(runCli(['init', '.'], directory).exitCode).toBe(0)
-
-      expect(
-        runCli(
-          [
-            'add',
-            '.yarramate/architecture/main.yaml',
-            '--id',
-            'native-compilation',
-            '--kind',
-            'capability',
-            '--name',
-            'Native compilation',
-            '--status',
-            'current',
-          ],
-          directory,
-        ),
-      ).toEqual({
-        exitCode: 0,
-        stdout:
-          'Added concept "native-compilation" to .yarramate/architecture/main.yaml\n',
-        stderr: '',
-      })
-
-      expect(
-        runCli(['check', '.yarramate/architecture/main.yaml'], directory).exitCode,
-      ).toBe(0)
-      expect(
-        readFileSync(join(directory, '.yarramate/architecture/main.yaml'), 'utf8'),
-      ).toContain(
-        'concepts:\n' +
-          '  - id: native-compilation\n' +
-          '    kind: capability\n' +
-          '    name: Native compilation\n' +
-          '    status: current\n',
-      )
-      const beforeRejectedEdit = readFileSync(
-        join(directory, '.yarramate/architecture/main.yaml'),
-        'utf8',
-      )
-      expect(
-        runCli(
-          [
-            'add',
-            '.yarramate/architecture/main.yaml',
-            '--id',
-            'native-compilation',
-            '--kind',
-            'goal',
-            '--name',
-            'Duplicate',
-          ],
-          directory,
-        ).exitCode,
-      ).toBe(1)
-      expect(
-        readFileSync(join(directory, '.yarramate/architecture/main.yaml'), 'utf8'),
-      ).toBe(beforeRejectedEdit)
-    } finally {
-      rmSync(directory, { recursive: true })
-    }
-  })
-
-  it('authors state presence for concepts and relationships', () => {
-    const directory = mkdtempSync(
-      join(tmpdir(), 'yarramate-state-authoring-'),
-    )
-    try {
-      mkdirSync(join(directory, '.yarramate/architecture'), { recursive: true })
-      const documentPath = join(directory, '.yarramate/architecture/roadmap.yaml')
-      writeFileSync(
-        documentPath,
-        `format: yarramate/v1
-id: roadmap
-profile: yarramate/core@0.1
-states:
-  - id: target
-    kind: target
-    name: Target
-concepts:
-  - id: shared
-    kind: applicationComponent
-    name: Shared
-relationships: []
-`,
-      )
-
-      expect(
-        runCli(
-          [
-            'add',
-            '.yarramate/architecture/roadmap.yaml',
-            '--id',
-            'modern',
-            '--kind',
-            'applicationComponent',
-            '--name',
-            'Modern',
-            '--present-in',
-            'target',
-          ],
-          directory,
-        ).exitCode,
-      ).toBe(0)
-      expect(
-        runCli(
-          [
-            'connect',
-            '.yarramate/architecture/roadmap.yaml',
-            '--id',
-            'shared-serves-modern',
-            '--kind',
-            'serving',
-            '--from',
-            'shared',
-            '--to',
-            'modern',
-            '--present-in',
-            'target',
-          ],
-          directory,
-        ).exitCode,
-      ).toBe(0)
-
-      const authored = readFileSync(documentPath, 'utf8')
-      expect(authored).toContain(
-        '    presentIn:\n' +
-          '      - target\n',
-      )
-      expect(runCli(['check', '.yarramate/architecture/roadmap.yaml'], directory))
-        .toMatchObject({ exitCode: 0 })
-    } finally {
-      rmSync(directory, { recursive: true })
-    }
-  })
-
-  it('adds ownership, constraints, and references through the stable CLI', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'yarramate-add-semantics-'))
-    try {
-      expect(runCli(['init', '.'], directory).exitCode).toBe(0)
-      for (const [id, kind, name] of [
-        ['payments-team', 'businessActor', 'Payments team'],
-        ['australia-only', 'constraint', 'Australia only'],
-      ] as const) {
-        expect(
-          runCli(
-            [
-              'add',
-              '.yarramate/architecture/main.yaml',
-              '--id',
-              id,
-              '--kind',
-              kind,
-              '--name',
-              name,
-            ],
-            directory,
-          ).exitCode,
-        ).toBe(0)
-      }
-
-      const result = runCli(
-        [
-          'add',
-          '.yarramate/architecture/main.yaml',
-          '--id',
-          'customer-data',
-          '--kind',
-          'dataObject',
-          '--name',
-          'Customer data',
-          '--owner',
-          'payments-team',
-          '--constraint',
-          'residency=australia-only',
-          '--reference',
-          'policy-source=australia-only',
-        ],
-        directory,
-      )
-
-      expect(result.exitCode).toBe(0)
-      expect(
-        readFileSync(join(directory, '.yarramate/architecture/main.yaml'), 'utf8'),
-      ).toContain(
-        '    owner: payments-team\n' +
-          '    constraints:\n' +
-          '      - id: residency\n' +
-          '        ref: australia-only\n' +
-          '    references:\n' +
-          '      - id: policy-source\n' +
-          '        ref: australia-only\n',
-      )
-    } finally {
-      rmSync(directory, { recursive: true })
-    }
-  })
-
-  it('connects concepts only when the resulting document is valid', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'yarramate-connect-'))
-    try {
-      expect(runCli(['init', '.'], directory).exitCode).toBe(0)
-      for (const [id, name] of [
-        ['architecture-engine', 'Architecture engine'],
-        ['compiled-graph', 'Compiled graph'],
-      ] as const) {
-        expect(
-          runCli(
-            [
-              'add',
-              '.yarramate/architecture/main.yaml',
-              '--id',
-              id,
-              '--kind',
-              id === 'compiled-graph' ? 'artifact' : 'applicationComponent',
-              '--name',
-              name,
-            ],
-            directory,
-          ).exitCode,
-        ).toBe(0)
-      }
-
-      expect(
-        runCli(
-          [
-            'connect',
-            '.yarramate/architecture/main.yaml',
-            '--id',
-            'engine-produces-graph',
-            '--kind',
-            'realization',
-            '--from',
-            'architecture-engine',
-            '--to',
-            'compiled-graph',
-            '--description',
-            'The engine realizes the canonical compiled representation.',
-            '--reference',
-            'rationale-source=architecture-engine',
-            '--status',
-            'current',
-          ],
-          directory,
-        ),
-      ).toEqual({
-        exitCode: 0,
-        stdout:
-          'Added relationship "engine-produces-graph" to .yarramate/architecture/main.yaml\n',
-        stderr: '',
-      })
-      expect(
-        runCli(['check', '.yarramate/architecture/main.yaml'], directory).exitCode,
-      ).toBe(0)
-      expect(
-        readFileSync(join(directory, '.yarramate/architecture/main.yaml'), 'utf8'),
-      ).toContain(
-        'relationships:\n' +
-          '  - id: engine-produces-graph\n' +
-          '    kind: realization\n' +
-          '    from: architecture-engine\n' +
-          '    to: compiled-graph\n' +
-          '    description: The engine realizes the canonical compiled representation.\n' +
-          '    status: current\n' +
-          '    references:\n' +
-          '      - id: rationale-source\n' +
-          '        ref: architecture-engine\n',
-      )
-
-      const beforeRejectedEdit = readFileSync(
-        join(directory, '.yarramate/architecture/main.yaml'),
-        'utf8',
-      )
-      const rejected = runCli(
-        [
-          'connect',
-          '.yarramate/architecture/main.yaml',
-          '--id',
-          'invalid-reference',
-          '--kind',
-          'association',
-          '--from',
-          'missing',
-          '--to',
-          'compiled-graph',
-        ],
-        directory,
-      )
-      expect(rejected.exitCode).toBe(1)
-      expect(rejected.stdout).toContain('YM302')
-      expect(
-        readFileSync(join(directory, '.yarramate/architecture/main.yaml'), 'utf8'),
-      ).toBe(beforeRejectedEdit)
-    } finally {
-      rmSync(directory, { recursive: true })
-    }
-  })
-
-  it('validates edits with explicit profile sources', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'yarramate-profile-add-'))
-    try {
-      const profileSource = readFileSync(
-        join(repositoryRoot, 'test/fixtures/valid/platform-profile.yaml'),
-        'utf8',
-      )
-      const documentSource = readFileSync(
-        join(repositoryRoot, 'test/fixtures/valid/platform-document.yaml'),
-        'utf8',
-      )
-      const profilePath = join(
-        directory,
-        '.yarramate/profiles/platform.yaml',
-      )
-      const documentPath = join(
-        directory,
-        '.yarramate/architecture/platform.yaml',
-      )
-      mkdirSync(join(directory, '.yarramate/profiles'), { recursive: true })
-      mkdirSync(join(directory, '.yarramate/architecture'), {
-        recursive: true,
-      })
-      writeFileSync(profilePath, profileSource, 'utf8')
-      writeFileSync(documentPath, documentSource, 'utf8')
-      writeFileSync(
-        join(directory, '.yarramate/workspace.yaml'),
-        'format: yarramate/workspace/v1\n' +
-          'id: platform\n' +
-          'documents:\n' +
-          '  - architecture/platform.yaml\n' +
-          'profiles:\n' +
-          '  - profiles/platform.yaml\n' +
-          'projections: []\n' +
-          'adapterMappings: []\n',
-        'utf8',
-      )
-
-      const result = runCli(
-        [
-          'add',
-          '.yarramate/architecture/platform.yaml',
-          '--id',
-          'secondary-team',
-          '--kind',
-          'platform-team',
-          '--name',
-          'Secondary team',
-          '--source',
-          '.yarramate/workspace.yaml',
-        ],
-        directory,
-      )
-
-      expect(result.exitCode).toBe(0)
-      expect(readFileSync(documentPath, 'utf8')).toContain(
-        'kind: platform-team',
-      )
-    } finally {
-      rmSync(directory, { recursive: true })
-    }
-  })
 })
 
-describe('ad-hoc bounded context', () => {
-  it('evaluates a connected neighbourhood without an authored projection', () => {
-    const result = runCli(
-      [
-        'context',
-        '--subject',
-        'checkout#approval-api',
-        'test/fixtures/valid/minimal.yaml',
-      ],
-      repositoryRoot,
-    )
-
-    expect(result.exitCode).toBe(0)
-    expect(result.stderr).toBe('')
-    const payload = JSON.parse(result.stdout) as {
-      projection: string
-      subjects: readonly { id: string }[]
-    }
-    expect(payload.projection).toBe('ad-hoc-context@0.0')
-    expect(payload.subjects.map(({ id }) => id)).toEqual([
-      'checkout#api-realizes-approval',
-      'checkout#approval-api',
-      'checkout#approve-order',
-    ])
-    const schema = JSON.parse(
-      readFileSync(
-        join(
-          repositoryRoot,
-          'schema/yarramate-projection-result.schema.json',
-        ),
-        'utf8',
-      ),
-    )
-    const validate = new Ajv2020({ allErrors: true }).compile(schema)
-    expect(
-      validate(JSON.parse(result.stdout)),
-      JSON.stringify(validate.errors ?? []),
-    ).toBe(true)
-  })
-
-  it('rejects subjects that are not globally qualified', () => {
-    const result = runCli(
-      [
-        'context',
-        '--subject',
-        'approval-api',
-        'test/fixtures/valid/minimal.yaml',
-      ],
-      repositoryRoot,
-    )
-
-    expect(result.exitCode).toBe(2)
-    expect(result.stderr).toContain('globally qualified')
-  })
-
-  it('fails loudly on unknown subject identities', () => {
-    const result = runCli(
-      [
-        'context',
-        '--subject',
-        'checkout#does-not-exist',
-        'test/fixtures/valid/minimal.yaml',
-      ],
-      repositoryRoot,
-    )
-
-    expect(result.exitCode).toBe(1)
-    expect(result.stderr).toContain(
-      'Unknown subject identity: checkout#does-not-exist',
-    )
-  })
-
-  it('requires at least one source after the subjects', () => {
-    const result = runCli(
-      ['context', '--subject', 'checkout#approval-api'],
-      repositoryRoot,
-    )
-
-    expect(result.exitCode).toBe(2)
-    expect(result.stderr).toContain('Usage:')
-  })
-})

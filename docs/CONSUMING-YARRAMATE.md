@@ -103,15 +103,13 @@ The skill will inspect repository evidence, propose native documents, and run:
 
 ```sh
 yarramate check .yarramate/workspace.yaml --json
-yarramate evidence \
-  .yarramate/evidence/<evidence>.yaml \
-  .yarramate/workspace.yaml
 yarramate reconcile .yarramate/workspace.yaml
-yarramate context \
-  .yarramate/projections/<projection>.yaml \
-  .yarramate/workspace.yaml
+yarramate ask .yarramate/workspace.yaml \
+  .yarramate/projections/<projection>.yaml
 ```
 
+Evidence overlays declared in the manifest are evaluated by `reconcile`
+(and gated by `check --strict`) rather than through a separate command.
 Evidence remains distinct from declared intent. A generated proposal becomes
 canonical only through the consuming repository's normal Git review.
 
@@ -123,15 +121,12 @@ implementation context, then runs:
 
 ```sh
 yarramate check .yarramate/workspace.yaml --json
-yarramate context \
-  .yarramate/projections/<alternatives>.yaml \
-  .yarramate/workspace.yaml
-yarramate context \
-  .yarramate/projections/<target>.yaml \
-  .yarramate/workspace.yaml
-yarramate compare \
-  <baseline-state> <target-state> \
-  .yarramate/workspace.yaml
+yarramate ask .yarramate/workspace.yaml \
+  .yarramate/projections/<alternatives>.yaml
+yarramate ask .yarramate/workspace.yaml \
+  .yarramate/projections/<target>.yaml
+yarramate ask .yarramate/workspace.yaml \
+  --compare <baseline-state> <target-state>
 ```
 
 The CLI verifies deterministic correctness. It does not approve the design or
@@ -170,11 +165,11 @@ Harnesses that load MCP servers can connect the bundled read-only adapter:
 }
 ```
 
-It exposes `yarramate_status`, `yarramate_check`, `yarramate_reconcile`,
-and `yarramate_context` (projection path or ad-hoc subjects, with an
-optional token budget). Every tool call executes the same stable CLI in
-the server's working directory; nothing mutates native documents, and
-authoring stays with the CLI and Git review.
+It exposes `yarramate_ask` (orientation, free text, subject ids, or a
+projection path, with an optional token budget), `yarramate_design`,
+`yarramate_check`, and `yarramate_reconcile`. Every tool call executes the
+same stable CLI in the server's working directory; nothing mutates native
+documents, and authoring stays with the CLI and Git review.
 
 ## Continuous drift signal in CI
 

@@ -222,25 +222,25 @@ concepts:
     name: Add command
     description: Adds a concept only when the candidate workspace compiles successfully.
     owner: yarramate-product#yarramate-maintainers
-    status: current
+    status: retired
   - id: connect-command
     kind: applicationService
     name: Connect command
     description: Adds a relationship only when the candidate workspace compiles successfully.
     owner: yarramate-product#yarramate-maintainers
-    status: current
+    status: retired
   - id: compile-command
     kind: applicationService
     name: Compile command
     description: Emits the normative graph-v2 interchange document without writing a derived artifact.
     owner: yarramate-product#yarramate-maintainers
-    status: current
+    status: retired
   - id: evidence-command
     kind: applicationService
     name: Evidence command
     description: Evaluates one evidence document over compiled native sources.
     owner: yarramate-product#yarramate-maintainers
-    status: current
+    status: retired
   - id: reconcile-command
     kind: applicationService
     name: Reconcile command
@@ -270,7 +270,7 @@ concepts:
     name: Compare command
     description: Emits a deterministic architecture-state comparison for humans, CI, and agents.
     owner: yarramate-product#yarramate-maintainers
-    status: current
+    status: retired
     presentIn:
       - yarramate-evolution#state-foundation
       - yarramate-evolution#core-contract-foundation
@@ -291,31 +291,31 @@ concepts:
     name: Status command
     description: Emits one machine-readable workspace orientation summary combining check, reconciliation, and inventory.
     owner: yarramate-product#yarramate-maintainers
-    status: current
+    status: retired
   - id: next-command
     kind: applicationService
     name: Next command
     description: Reports planned subjects in a projection in declared dependency order with per-subject evidence coverage.
     owner: yarramate-product#yarramate-maintainers
-    status: current
+    status: retired
   - id: interrogate-command
     kind: applicationService
     name: Interrogate command
     description: Evaluates a versioned question catalogue against the compiled graph and reports the still-open design questions, recomputed statelessly on every run.
     owner: yarramate-product#yarramate-maintainers
-    status: current
+    status: retired
   - id: context-command
     kind: applicationService
     name: Context command
     description: Renders an authored or ad-hoc projection slice as agent-ready context within an optional token budget.
     owner: yarramate-product#yarramate-maintainers
-    status: current
+    status: retired
   - id: new-command
     kind: applicationService
     name: New command
     description: Scaffolds a projection document through a validated write that refuses to persist an invalid candidate.
     owner: yarramate-product#yarramate-maintainers
-    status: current
+    status: retired
   - id: native-document
     kind: dataObject
     owner: yarramate-product#yarramate-maintainers
@@ -658,6 +658,7 @@ relationships:
     kind: serving
     from: compare-command
     to: compare-architecture-states
+    status: retired
   - id: comparison-produces-result
     kind: realization
     from: compare-architecture-states
@@ -823,18 +824,22 @@ relationships:
     kind: implements
     from: cli
     to: add-command
+    status: retired
   - id: cli-provides-connect
     kind: implements
     from: cli
     to: connect-command
+    status: retired
   - id: cli-provides-compile
     kind: implements
     from: cli
     to: compile-command
+    status: retired
   - id: cli-provides-evidence
     kind: implements
     from: cli
     to: evidence-command
+    status: retired
   - id: cli-provides-reconciliation
     kind: implements
     from: cli
@@ -1058,18 +1063,22 @@ relationships:
     kind: serving
     from: add-command
     to: yarramate-product#agent-harness
+    status: retired
   - id: connect-command-serves-agent-harness
     kind: serving
     from: connect-command
     to: yarramate-product#agent-harness
+    status: retired
   - id: compile-command-serves-agent-harness
     kind: serving
     from: compile-command
     to: yarramate-product#agent-harness
+    status: retired
   - id: evidence-command-serves-agent-harness
     kind: serving
     from: evidence-command
     to: yarramate-product#agent-harness
+    status: retired
   - id: reconcile-command-serves-agent-harness
     kind: serving
     from: reconcile-command
@@ -1119,22 +1128,27 @@ relationships:
     kind: serving
     from: status-command
     to: yarramate-product#agent-harness
+    status: retired
   - id: next-command-serves-agent-harness
     kind: serving
     from: next-command
     to: yarramate-product#agent-harness
+    status: retired
   - id: interrogate-command-serves-agent-harness
     kind: serving
     from: interrogate-command
     to: yarramate-product#agent-harness
+    status: retired
   - id: context-command-serves-agent-harness
     kind: serving
     from: context-command
     to: yarramate-product#agent-harness
+    status: retired
   - id: new-command-serves-agent-harness
     kind: serving
     from: new-command
     to: yarramate-product#agent-harness
+    status: retired
   - id: mcp-adapter-serves-agent-harness
     kind: serving
     from: mcp-adapter
@@ -1147,26 +1161,32 @@ relationships:
     kind: implements
     from: cli
     to: status-command
+    status: retired
   - id: cli-provides-next
     kind: implements
     from: cli
     to: next-command
+    status: retired
   - id: cli-provides-compare
     kind: implements
     from: cli
     to: compare-command
+    status: retired
   - id: cli-provides-context
     kind: implements
     from: cli
     to: context-command
+    status: retired
   - id: cli-provides-new
     kind: implements
     from: cli
     to: new-command
+    status: retired
   - id: cli-provides-interrogate
     kind: implements
     from: cli
     to: interrogate-command
+    status: retired
   - id: likec4-adapter-provides-export
     kind: implements
     from: likec4-export-adapter

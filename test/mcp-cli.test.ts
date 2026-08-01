@@ -36,8 +36,8 @@ const exchange = (
 }
 
 describe('yarramate-mcp stdio adapter', () => {
-  it('initializes, lists read-only tools, and serves status', () => {
-    const [init, list, status] = exchange([
+  it('initializes, lists read-only verbs, and serves orientation', () => {
+    const [init, list, orientation] = exchange([
       { jsonrpc: '2.0', id: 1, method: 'initialize', params: {} },
       { jsonrpc: '2.0', id: 2, method: 'tools/list' },
       {
@@ -45,7 +45,7 @@ describe('yarramate-mcp stdio adapter', () => {
         id: 3,
         method: 'tools/call',
         params: {
-          name: 'yarramate_status',
+          name: 'yarramate_ask',
           arguments: { workspace: '.yarramate/workspace.yaml' },
         },
       },
@@ -60,12 +60,12 @@ describe('yarramate-mcp stdio adapter', () => {
       list as { result: { tools: readonly { name: string }[] } }
     ).result.tools.map(({ name }) => name)
     expect(tools).toEqual([
-      'yarramate_status',
+      'yarramate_ask',
+      'yarramate_design',
       'yarramate_check',
       'yarramate_reconcile',
-      'yarramate_context',
     ])
-    const call = status as {
+    const call = orientation as {
       result: {
         isError: boolean
         content: readonly { text: string }[]
@@ -73,40 +73,60 @@ describe('yarramate-mcp stdio adapter', () => {
     }
     expect(call.result.isError).toBe(false)
     expect(JSON.parse(call.result.content[0]!.text)).toMatchObject({
-      format: 'yarramate/status-result/v1',
+      format: 'yarramate/ask-result/v1',
+      mode: 'orientation',
       workspace: 'yarramate',
     })
   })
 
-  it('serves budgeted ad-hoc context through the context tool', () => {
-    const [call] = exchange([
+  it('serves budgeted slices and design steps', () => {
+    const [slice, design] = exchange([
       {
         jsonrpc: '2.0',
         id: 1,
         method: 'tools/call',
         params: {
-          name: 'yarramate_context',
+          name: 'yarramate_ask',
           arguments: {
-            workspace: 'test/fixtures/valid/minimal.yaml',
-            subjects: ['checkout#approval-api'],
+            workspace: '.yarramate/workspace.yaml',
+            query: 'yarramate-engine#cli',
             budget: 300,
           },
         },
       },
+      {
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'tools/call',
+        params: {
+          name: 'yarramate_design',
+          arguments: { workspace: '.yarramate/workspace.yaml' },
+        },
+      },
     ])
 
-    const result = (
-      call as {
+    const sliceResult = (
+      slice as {
         result: {
           isError: boolean
           content: readonly { text: string }[]
         }
       }
     ).result
-    expect(result.isError).toBe(false)
-    expect(result.content[0]!.text).toContain(
-      'context ad-hoc-context@0.0',
-    )
+    expect(sliceResult.isError).toBe(false)
+    expect(sliceResult.content[0]!.text).toContain('context ask-slice@0.0')
+    const designResult = (
+      design as {
+        result: {
+          isError: boolean
+          content: readonly { text: string }[]
+        }
+      }
+    ).result
+    expect(designResult.isError).toBe(false)
+    expect(JSON.parse(designResult.content[0]!.text)).toMatchObject({
+      format: 'yarramate/design-step/v1',
+    })
   })
 
   it('prints the package version for --version without reading stdin', () => {

@@ -1,19 +1,22 @@
 # Interrogation
 
-`yarramate interrogate` evaluates a versioned question catalogue against the
+`yarramate ask --open` evaluates a versioned question catalogue against the
 compiled workspace and reports which design questions are still open. It is
 the gap engine behind the enrichment interview: deterministic detection of
 what the model has not yet answered, with the answering left to people and
 agents.
 
 ```sh
-yarramate interrogate catalogues/core-enrichment.yaml .yarramate/workspace.yaml
-yarramate interrogate catalogues/core-enrichment.yaml .yarramate/workspace.yaml --json
+yarramate ask .yarramate/workspace.yaml --open
+yarramate ask .yarramate/workspace.yaml --open --json
+yarramate ask .yarramate/workspace.yaml --open --catalogue catalogues/custom.yaml
 ```
 
-The command requires an explicit workspace manifest. `--json` emits
-deterministic `yarramate/interrogation-report/v1`
-(`schema/yarramate-interrogation-report.schema.json`). Exit status is `0` for
+The command requires an explicit workspace manifest and evaluates the shipped
+catalogue by default; `--catalogue` substitutes a custom one. `--json` emits
+the deterministic `yarramate/interrogation-report/v1` report
+(`schema/yarramate-interrogation-report.schema.json`) nested under a `report`
+key inside the `yarramate/ask-result/v1` envelope. Exit status is `0` for
 a valid report regardless of how many questions are open — an open question
 is work, not an error; status `1` means the catalogue or workspace failed
 deterministic correctness, and `2` means the invocation failed.
@@ -45,11 +48,12 @@ questions. Each question binds:
   answer;
 - a **resolution** hint — how an answer is typically modelled.
 
-The package ships `catalogues/core-enrichment.yaml`, thirteen seed questions
-across motivation, business, and hygiene waves for `yarramate/core@0.1`.
-Catalogues are ordinary versioned data: swap them, extend the shipped one
-under a new identity, or write one per organisation. Composition via
-`extends` is deferred from v1 (ADR 0053).
+The engine ships an internal core-enrichment catalogue, seed questions
+across motivation, business, application, and hygiene waves for
+`yarramate/core@0.1`, evaluated when no `--catalogue` is given.
+Catalogues are ordinary versioned data: extend the shipped one under a new
+identity or write one per organisation, then pass it with `--catalogue`.
+Composition via `extends` is deferred from v1 (ADR 0053).
 
 ## Evaluation model
 
@@ -61,13 +65,13 @@ still-open questions.
 
 Open questions are not findings against anyone. `check` answers "is this
 model well-formed", `reconcile` answers "does reality agree", and
-`interrogate` answers "what has nobody decided yet". Only the first two can
+`ask --open` answers "what has nobody decided yet". Only the first two can
 fail a gate; the third produces the agenda for the next design conversation.
 
 ## The interview loop
 
 The intended use is agent-mediated: an agent structures what a prompt or
-conversation states, runs `interrogate`, and works the open questions wave
+conversation states, runs `ask --open`, and works the open questions wave
 by wave — answering what evidence can answer and escalating questions marked
 `human` with their materiality attached, so the person always knows what
 decision their answer changes. Answers are captured back into the model

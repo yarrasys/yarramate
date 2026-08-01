@@ -127,15 +127,12 @@ The intended command families are:
 
 ```text
 yarramate init
-yarramate add
-yarramate connect
+yarramate design
+yarramate apply
+yarramate ask
 yarramate check
-yarramate compile
-yarramate view
-yarramate context
-yarramate compare
-yarramate evidence
 yarramate reconcile
+yarramate export
 ```
 
 Machine-readable checking uses the versioned
@@ -228,7 +225,7 @@ Compiled files remain derived and need not be committed.
 
 The first projection query filters compiled concepts by document, globally
 qualified kind, and operational lifecycle status. It may include relationships
-whose endpoints are both selected. `yarramate context` renders the closed
+whose endpoints are both selected. `yarramate ask --json` renders the closed
 projection result as deterministic JSON for agents and CI.
 Queries may also name an explicit portable set of globally qualified concept
 subjects when a deliberately bounded context is required.

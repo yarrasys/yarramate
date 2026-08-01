@@ -67,22 +67,11 @@
           "name": {
             "enum": [
               "init",
-              "add",
-              "connect",
-              "new",
-              "next",
-              "check",
-              "status",
-              "compile",
-              "view",
-              "context",
-              "compare",
-              "evidence",
-              "reconcile",
-              "interrogate",
-              "apply",
               "design",
+              "apply",
               "ask",
+              "check",
+              "reconcile",
               "export"
             ]
           },

@@ -33,6 +33,12 @@ import {
   type NextSubject,
 } from './next-command.js'
 import {
+  conceptKinds,
+  relationshipPolicies,
+  type ConceptKind,
+  type RelationshipPolicy,
+} from './profile.js'
+import {
   evaluateProjection,
   loadProjection,
   renderBudgetedContext,
@@ -128,6 +134,16 @@ type AskResult = AskResultBase &
     | { readonly mode: 'next'; readonly subjects: readonly NextSubject[] }
     | { readonly mode: 'open'; readonly report: InterrogationReport }
     | { readonly mode: 'compare'; readonly comparison: StateComparison }
+    | {
+        readonly mode: 'kinds'
+        readonly conceptKinds: readonly ConceptKind[]
+        readonly relationshipKinds: readonly RelationshipPolicy[]
+        readonly extensions: readonly {
+          readonly id: string
+          readonly type: 'concept' | 'relationship'
+          readonly lineage: readonly string[]
+        }[]
+      }
   )
 
 const claimValue = (
@@ -289,6 +305,7 @@ export function runAskCommand(
   let subjects = false
   let next = false
   let open = false
+  let kinds = false
   let advise = false
   let compare: readonly [string, string] | undefined
   let budget: number | undefined
@@ -312,6 +329,10 @@ export function runAskCommand(
     }
     if (option === '--open') {
       open = true
+      continue
+    }
+    if (option === '--kinds') {
+      kinds = true
       continue
     }
     if (option === '--advise') {
@@ -378,9 +399,13 @@ export function runAskCommand(
   }
 
   const [workspacePath, ...query] = positionals
-  const exclusiveModes = [subjects, next, open, compare !== undefined].filter(
-    Boolean,
-  ).length
+  const exclusiveModes = [
+    subjects,
+    next,
+    open,
+    kinds,
+    compare !== undefined,
+  ].filter(Boolean).length
   if (
     workspacePath === undefined ||
     exclusiveModes > 1 ||
@@ -436,6 +461,7 @@ export function runAskCommand(
       !subjects &&
       !next &&
       !open &&
+      !kinds &&
       !advise &&
       compare === undefined
     ) {
@@ -623,6 +649,83 @@ export function runAskCommand(
               `${entry.name ?? entry.id}` +
               `${entry.status === undefined ? '' : ` (${entry.status})`}` +
               description,
+          )
+        }
+      }
+      return emit(result, `${lines.join('\n')}\n`)
+    }
+
+    // --kinds: the declarable vocabulary (#89) — what agents previously
+    // learned by reading src/profile.ts. Core kinds ship with the engine;
+    // extensions come from the workspace's resolved profiles.
+    if (kinds) {
+      const coreConceptIds = new Set<string>(conceptKinds.map(({ id }) => id))
+      const coreRelationshipIds = new Set<string>(
+        relationshipPolicies.map(({ id }) => id),
+      )
+      const extensions: {
+        readonly id: string
+        readonly type: 'concept' | 'relationship'
+        readonly lineage: readonly string[]
+      }[] = []
+      const lineagePairs: ReadonlyArray<
+        readonly ['concept' | 'relationship', ReadonlyMap<string, readonly string[]>]
+      > = [
+        ['concept', compilation.profileContext.conceptKindLineages],
+        ['relationship', compilation.profileContext.relationshipKindLineages],
+      ]
+      for (const [type, lineages] of lineagePairs) {
+        for (const [id, lineage] of [...lineages.entries()].sort(([a], [b]) =>
+          a.localeCompare(b),
+        )) {
+          const local = id.slice(id.indexOf('#') + 1)
+          const isCore =
+            id.startsWith('yarramate/core@') &&
+            (type === 'concept'
+              ? coreConceptIds.has(local)
+              : coreRelationshipIds.has(local))
+          if (!isCore) extensions.push({ id, type, lineage })
+        }
+      }
+      const result: AskResult = {
+        format: 'yarramate/ask-result/v1',
+        workspace: workspace.id,
+        mode: 'kinds',
+        conceptKinds,
+        relationshipKinds: relationshipPolicies,
+        extensions,
+      }
+      const lines: string[] = [
+        `Declarable kinds — core profile yarramate/core@0.1`,
+        '',
+        'Concept kinds (by layer):',
+      ]
+      const layers = [...new Set(conceptKinds.map(({ layer }) => layer))]
+      for (const layer of layers) {
+        const inLayer = conceptKinds.filter(
+          (candidate) => candidate.layer === layer,
+        )
+        lines.push(
+          `  ${layer}: ${inLayer.map(({ id }) => id).join(', ')}`,
+        )
+      }
+      lines.push('', 'Relationship kinds:')
+      for (const policy of relationshipPolicies) {
+        const constraint =
+          policy.sourceAspects !== undefined ||
+          policy.targetAspects !== undefined
+            ? ` [${policy.sourceAspects?.join('|') ?? 'any'} -> ${policy.targetAspects?.join('|') ?? 'any'}]`
+            : ''
+        lines.push(`  ${policy.id} — ${policy.intent}${constraint}`)
+      }
+      if (extensions.length > 0) {
+        lines.push('', 'Profile extensions in this workspace:')
+        for (const extension of extensions) {
+          lines.push(
+            `  ${extension.id} (${extension.type})` +
+              (extension.lineage.length > 0
+                ? ` -> ${extension.lineage.join(' -> ')}`
+                : ''),
           )
         }
       }

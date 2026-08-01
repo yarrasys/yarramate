@@ -106,17 +106,19 @@ resolved profile context for descendant-aware evaluation. The stable
 `compileWorkspace` result and serialized graph v2 remain unchanged. If
 `evaluateProjection` receives no profile context, matching remains exact even
 when descendant matching is requested. The CLI supplies the resolved context
-automatically and produces agent-ready JSON:
+automatically. `yarramate ask` renders the human brief by default, a compact
+digest under `--budget`, and the projection result inside the deterministic
+`yarramate/ask-result/v1` envelope under `--json`:
 
 ```sh
-yarramate context .yarramate/projections/current-engine.yaml \
-  .yarramate/workspace.yaml
+yarramate ask .yarramate/workspace.yaml \
+  .yarramate/projections/current-engine.yaml --json
 ```
 
 The same result renders as deterministic Markdown for reviewers:
 
 ```sh
-yarramate view .yarramate/projections/current-engine.yaml \
+yarramate export markdown .yarramate/projections/current-engine.yaml \
   .yarramate/workspace.yaml
 ```
 
@@ -132,21 +134,20 @@ colors, coordinates, and renderer configuration belong to optional adapters.
 
 ## Next slice
 
-During implementation, the same projection answers "which planned seam comes
+During implementation, the whole workspace answers "which planned seam comes
 first":
 
 ```sh
-yarramate next .yarramate/projections/current-engine.yaml \
-  .yarramate/workspace.yaml
+yarramate ask .yarramate/workspace.yaml --next
 ```
 
-The report lists the projection's `planned` subjects in dependency order —
+The report lists the workspace's `planned` subjects in dependency order —
 prerequisites first, derived from the declared relationships between planned
 subjects and each core kind's intent (ADR 0048) — with who requires each
 subject and its evidence coverage, including `no evidence`. Dependency
 cycles are appended sorted and marked instead of silently arranged. `--json`
-emits deterministic `yarramate/next-result/v1`
-(`schema/yarramate-next-result.schema.json`). The exit status stays `0`
+emits the ordered subjects inside the deterministic
+`yarramate/ask-result/v1` envelope. The exit status stays `0`
 regardless of content: the next slice is a reading of declared intent, not a
 gate.
 

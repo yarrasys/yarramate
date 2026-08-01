@@ -1,15 +1,5 @@
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
-import { parseDocument } from 'yaml'
 import Ajv2020Module from 'ajv/dist/2020.js'
 import {
-  diagnosticJson,
-  humanDiagnostics,
-  usage,
-  type CliResult,
-} from './cli-support.js'
-import {
-  compileWorkspaceWithProfileContext,
   type Diagnostic,
   type GraphClaim,
   type ResolvedProfileContext,
@@ -20,7 +10,6 @@ import {
   loadSourceDocument,
   locateSourcePath,
 } from './source-document.js'
-import { loadWorkspaceManifest } from './workspace.js'
 import catalogueSchema from '../schema/yarramate-question-catalogue.schema.json' with {
   type: 'json',
 }
@@ -521,94 +510,3 @@ export function renderInterrogationReport(
   return `${lines.join('\n')}\n`
 }
 
-export function runInterrogateCommand(
-  options: readonly string[],
-  cwd: string,
-): CliResult {
-  const json = options.includes('--json')
-  const rest = options.filter((option) => option !== '--json')
-  const [cataloguePath, workspacePath] = rest
-  if (
-    rest.length !== 2 ||
-    cataloguePath === undefined ||
-    workspacePath === undefined ||
-    rest.some((option) => option.startsWith('-'))
-  ) {
-    return { exitCode: 2, stdout: '', stderr: usage }
-  }
-
-  try {
-    const manifestSource = readFileSync(resolve(cwd, workspacePath), 'utf8')
-    if (
-      parseDocument(manifestSource).get('format') !== 'yarramate/workspace/v1'
-    ) {
-      return {
-        exitCode: 2,
-        stdout: '',
-        stderr:
-          'interrogate requires an explicit workspace manifest (yarramate/workspace/v1)\n',
-      }
-    }
-    const failed = (diagnostics: readonly Diagnostic[]): CliResult => ({
-      exitCode: 1,
-      stdout: json
-        ? diagnosticJson(diagnostics)
-        : humanDiagnostics(diagnostics),
-      stderr: '',
-    })
-    const loadedCatalogue = loadQuestionCatalogue({
-      path: cataloguePath,
-      source: readFileSync(resolve(cwd, cataloguePath), 'utf8'),
-    })
-    if (!loadedCatalogue.ok) return failed(loadedCatalogue.diagnostics)
-    const catalogue = loadedCatalogue.catalogue
-
-    const loadedWorkspace = loadWorkspaceManifest(
-      { path: workspacePath, source: manifestSource },
-      cwd,
-    )
-    if (!loadedWorkspace.ok) return failed(loadedWorkspace.diagnostics)
-    const workspace = loadedWorkspace.workspace
-    const compilation = compileWorkspaceWithProfileContext(
-      [...workspace.profiles, ...workspace.documents].map((path) => ({
-        path,
-        source: readFileSync(resolve(cwd, path), 'utf8'),
-      })),
-    )
-    if (!compilation.ok) return failed(compilation.diagnostics)
-
-    const report: InterrogationReport = {
-      ...evaluateCatalogue(
-        catalogue,
-        compilation.graph,
-        compilation.profileContext,
-      ),
-      workspace: workspace.id,
-    }
-    // Keep the declared key order stable for consumers reading the raw JSON.
-    const ordered: InterrogationReport = {
-      format: report.format,
-      workspace: report.workspace,
-      catalogue: report.catalogue,
-      summary: report.summary,
-      waves: report.waves,
-    }
-
-    if (json) {
-      return {
-        exitCode: 0,
-        stdout: `${JSON.stringify(ordered, null, 2)}\n`,
-        stderr: '',
-      }
-    }
-
-    return {
-      exitCode: 0,
-      stdout: renderInterrogationReport(ordered),
-      stderr: '',
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    return { exitCode: 2, stdout: '', stderr: `${message}\n` }
-  }
-}

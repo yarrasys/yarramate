@@ -66,7 +66,7 @@ concepts:
   - id: status-command-source
     kind: repository-file
     name: src/status-command.ts
-    status: current
+    status: retired
   - id: next-command-source
     kind: repository-file
     name: src/next-command.ts
@@ -78,7 +78,7 @@ concepts:
   - id: new-command-source
     kind: repository-file
     name: src/new-command.ts
-    status: current
+    status: retired
   - id: mcp-cli-source
     kind: repository-file
     name: src/adapters/mcp-cli.ts
@@ -452,6 +452,7 @@ relationships:
     kind: realization
     from: status-command-source
     to: yarramate-engine#status-command
+    status: retired
   - id: next-command-source-realizes-command
     kind: realization
     from: next-command-source
@@ -464,6 +465,7 @@ relationships:
     kind: realization
     from: new-command-source
     to: yarramate-engine#new-command
+    status: retired
   - id: mcp-cli-source-realizes-adapter
     kind: realization
     from: mcp-cli-source

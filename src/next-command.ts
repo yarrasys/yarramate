@@ -1,31 +1,13 @@
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
-import { parseDocument } from 'yaml'
 import {
-  diagnosticJson,
-  humanDiagnostics,
-  usage,
-  type CliResult,
-} from './cli-support.js'
-import {
-  compileWorkspaceWithProfileContext,
-  type Diagnostic,
   type GraphClaim,
   type ResolvedProfileContext,
   type SemanticGraph,
 } from './compiler.js'
 import {
-  evaluateEvidenceWorkspace,
-  loadEvidence,
   type EvidenceObservation,
   type EvidenceReport,
 } from './evidence.js'
-import {
-  evaluateProjection,
-  loadProjection,
-  type ProjectionResult,
-} from './projection.js'
-import { loadWorkspaceManifest } from './workspace.js'
+import { type ProjectionResult } from './projection.js'
 
 interface EvidenceCoverage {
   readonly observations: number
@@ -43,13 +25,6 @@ export interface NextSubject {
   readonly requiredBy: readonly string[]
   readonly evidence: EvidenceCoverage
   readonly cycle?: true
-}
-
-export interface NextResult {
-  readonly format: 'yarramate/next-result/v1'
-  readonly workspace: string
-  readonly projection: string
-  readonly subjects: readonly NextSubject[]
 }
 
 // Which endpoint of a declared relationship must exist before the other,
@@ -272,129 +247,3 @@ export function buildNextSubjects(
   })
 }
 
-export function runNextCommand(
-  options: readonly string[],
-  cwd: string,
-): CliResult {
-  const json = options.includes('--json')
-  const rest = options.filter((option) => option !== '--json')
-  const [projectionPath, workspacePath] = rest
-  if (
-    rest.length !== 2 ||
-    projectionPath === undefined ||
-    workspacePath === undefined ||
-    rest.some((option) => option.startsWith('-'))
-  ) {
-    return { exitCode: 2, stdout: '', stderr: usage }
-  }
-
-  try {
-    const manifestSource = readFileSync(resolve(cwd, workspacePath), 'utf8')
-    if (
-      parseDocument(manifestSource).get('format') !== 'yarramate/workspace/v1'
-    ) {
-      return {
-        exitCode: 2,
-        stdout: '',
-        stderr:
-          'next requires an explicit workspace manifest (yarramate/workspace/v1)\n',
-      }
-    }
-    const failed = (diagnostics: readonly Diagnostic[]): CliResult => ({
-      exitCode: 1,
-      stdout: json ? diagnosticJson(diagnostics) : humanDiagnostics(diagnostics),
-      stderr: '',
-    })
-    const loadedWorkspace = loadWorkspaceManifest(
-      { path: workspacePath, source: manifestSource },
-      cwd,
-    )
-    if (!loadedWorkspace.ok) return failed(loadedWorkspace.diagnostics)
-    const workspace = loadedWorkspace.workspace
-
-    const loadedProjection = loadProjection({
-      path: projectionPath,
-      source: readFileSync(resolve(cwd, projectionPath), 'utf8'),
-    })
-    if (!loadedProjection.ok) return failed(loadedProjection.diagnostics)
-
-    const compilation = compileWorkspaceWithProfileContext(
-      [...workspace.profiles, ...workspace.documents].map((path) => ({
-        path,
-        source: readFileSync(resolve(cwd, path), 'utf8'),
-      })),
-    )
-    if (!compilation.ok) return failed(compilation.diagnostics)
-    const graph = compilation.graph
-
-    const evidenceDocuments = []
-    for (const path of workspace.evidence) {
-      const loaded = loadEvidence({
-        path,
-        source: readFileSync(resolve(cwd, path), 'utf8'),
-      })
-      if (!loaded.ok) return failed(loaded.diagnostics)
-      evidenceDocuments.push(loaded.evidence)
-    }
-    const evaluation = evaluateEvidenceWorkspace(graph, evidenceDocuments)
-    if (!evaluation.ok) return failed(evaluation.diagnostics)
-
-    const result = evaluateProjection(
-      graph,
-      loadedProjection.projection,
-      compilation.profileContext,
-    )
-
-    const subjects = buildNextSubjects(
-      result,
-      graph,
-      compilation.profileContext,
-      evaluation.reports,
-    )
-
-    const projectionLabel = `${loadedProjection.projection.id}@${loadedProjection.projection.version}`
-    if (json) {
-      const payload: NextResult = {
-        format: 'yarramate/next-result/v1',
-        workspace: workspace.id,
-        projection: projectionLabel,
-        subjects,
-      }
-      return {
-        exitCode: 0,
-        stdout: `${JSON.stringify(payload, null, 2)}\n`,
-        stderr: '',
-      }
-    }
-
-    if (subjects.length === 0) {
-      return {
-        exitCode: 0,
-        stdout: `No planned subjects in projection ${projectionLabel}.\n`,
-        stderr: '',
-      }
-    }
-    const width = Math.max(...subjects.map(({ id }) => id.length))
-    const lines = [
-      `Planned subjects in projection ${projectionLabel} (dependency order):`,
-      ...subjects.map((subject) => {
-        const clauses = [
-          ...(subject.requiredBy.length > 0
-            ? [`<- required by ${subject.requiredBy.join(', ')}`]
-            : []),
-          coverageClause(subject.evidence),
-          ...(subject.cycle === true ? ['dependency cycle'] : []),
-        ]
-        return `  ${subject.id.padEnd(width)}  ${clauses.join('; ')}`
-      }),
-    ]
-    return {
-      exitCode: 0,
-      stdout: `${lines.join('\n')}\n`,
-      stderr: '',
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    return { exitCode: 2, stdout: '', stderr: `${message}\n` }
-  }
-}
