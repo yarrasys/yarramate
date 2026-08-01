@@ -1,4 +1,10 @@
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -10,6 +16,9 @@ const repositoryRoot = resolve(
   '..',
 )
 
+// The brief renderer (ADR 0055) survives the clean break behind the ask
+// slice (default rendering) and export briefs (budgeted bundle); these
+// tests pin its prose byte-for-byte through those surfaces.
 const document =
   'format: yarramate/v1\n' +
   'id: main\n' +
@@ -20,7 +29,7 @@ const document =
   '    name: Favourite once\n' +
   '    description: >-\n' +
   '      A signed-in reader may favourite an article at most once; responses\n' +
-  '      never include the reader\'s email.\n' +
+  "      never include the reader's email.\n" +
   '  - id: web-ui\n' +
   '    kind: applicationComponent\n' +
   '    name: Web UI\n' +
@@ -68,6 +77,16 @@ const document =
   '    to: favourites-api\n' +
   '    description: fronts every mutating endpoint\n'
 
+const manifest =
+  'format: yarramate/workspace/v1\n' +
+  'id: brief-fixture\n' +
+  'documents:\n' +
+  '  - architecture/main.yaml\n' +
+  'profiles: []\n' +
+  'projections: []\n' +
+  'adapterMappings: []\n' +
+  'evidence: []\n'
+
 const projection =
   'format: yarramate/projection/v1\n' +
   'id: favourites-slice\n' +
@@ -99,13 +118,14 @@ You are building "Favourites API", an application service. It reads "Articles st
 "Web UI", an application component, already exists.
 `
 
-describe('context --brief', () => {
+describe('brief rendering through ask and export', () => {
   let workspace: string
 
   beforeEach(() => {
     workspace = mkdtempSync(join(tmpdir(), 'yarramate-brief-'))
     mkdirSync(join(workspace, 'architecture'))
     writeFileSync(join(workspace, 'architecture/main.yaml'), document, 'utf8')
+    writeFileSync(join(workspace, 'workspace.yaml'), manifest, 'utf8')
     writeFileSync(join(workspace, 'projection.yaml'), projection, 'utf8')
   })
 
@@ -113,13 +133,13 @@ describe('context --brief', () => {
     rmSync(workspace, { recursive: true, force: true })
   })
 
-  it('renders the slice as readable prose, byte-identically', () => {
+  it('renders a projection slice as readable prose, byte-identically', () => {
     const first = runCli(
-      ['context', 'projection.yaml', 'architecture/main.yaml', '--brief'],
+      ['ask', 'workspace.yaml', 'projection.yaml'],
       workspace,
     )
     const second = runCli(
-      ['context', 'projection.yaml', 'architecture/main.yaml', '--brief'],
+      ['ask', 'workspace.yaml', 'projection.yaml'],
       workspace,
     )
     expect(first.exitCode).toBe(0)
@@ -127,50 +147,12 @@ describe('context --brief', () => {
     expect(second.stdout).toBe(first.stdout)
   })
 
-  it('announces paragraphs dropped under a budget instead of truncating', () => {
+  it('renders a subject neighbourhood as a brief', () => {
     const result = runCli(
-      [
-        'context',
-        'projection.yaml',
-        'architecture/main.yaml',
-        '--brief',
-        '--budget',
-        '60',
-      ],
+      ['ask', 'workspace.yaml', 'main#favourites-api'],
       workspace,
     )
     expect(result.exitCode).toBe(0)
-    expect(result.stdout).toContain('# Favourites slice')
-    expect(result.stdout).toMatch(
-      /\[budget 60: \d+ of 6 paragraphs omitted — raise --budget or drop --brief for the digest\]/,
-    )
-    const budgeted = runCli(
-      [
-        'context',
-        'projection.yaml',
-        'architecture/main.yaml',
-        '--brief',
-        '--budget',
-        '10000',
-      ],
-      workspace,
-    )
-    expect(budgeted.stdout).toBe(expectedBrief)
-  })
-
-  it('renders an ad-hoc subject neighbourhood as a brief', () => {
-    const result = runCli(
-      [
-        'context',
-        '--subject',
-        'main#favourites-api',
-        'architecture/main.yaml',
-        '--brief',
-      ],
-      workspace,
-    )
-    expect(result.exitCode).toBe(0)
-    expect(result.stdout).toContain('# Ad-hoc context')
     expect(result.stdout).toContain(
       'You are building "Favourites API", an application service.',
     )
@@ -179,44 +161,52 @@ describe('context --brief', () => {
     )
   })
 
-  it('keeps the digest and JSON modes untouched', () => {
+  it('announces paragraphs dropped under an export briefs budget', () => {
+    const result = runCli(
+      [
+        'export',
+        'briefs',
+        'projection.yaml',
+        'workspace.yaml',
+        '--out',
+        'handoff',
+        '--budget',
+        '60',
+      ],
+      workspace,
+    )
+    expect(result.exitCode).toBe(0)
+    const brief = readFileSync(
+      join(workspace, 'handoff/main--favourites-api.md'),
+      'utf8',
+    )
+    expect(brief).toMatch(
+      /\[budget 60: \d+ of \d+ paragraphs omitted — raise --budget or use --json for the complete slice\]/,
+    )
+  })
+
+  it('keeps the digest and JSON slice modes untouched', () => {
     const json = runCli(
-      ['context', 'projection.yaml', 'architecture/main.yaml'],
+      ['ask', 'workspace.yaml', 'projection.yaml', '--json'],
       workspace,
     )
     expect(json.exitCode).toBe(0)
-    expect(JSON.parse(json.stdout).format).toBe(
+    expect(JSON.parse(json.stdout).result.format).toBe(
       'yarramate/projection-result/v1',
     )
     const digest = runCli(
-      [
-        'context',
-        'projection.yaml',
-        'architecture/main.yaml',
-        '--budget',
-        '10000',
-      ],
+      ['ask', 'workspace.yaml', 'projection.yaml', '--budget', '10000'],
       workspace,
     )
     expect(digest.stdout).toContain('- main#favourites-api [applicationService]')
     expect(digest.stdout).not.toContain('You are building')
   })
 
-  it('rejects --brief on view', () => {
-    const result = runCli(
-      ['view', 'projection.yaml', 'architecture/main.yaml', '--brief'],
-      workspace,
-    )
-    expect(result.exitCode).toBe(2)
-    expect(result.stderr).toContain('Usage:')
-  })
-
   it('renders the repository self-model briefs deterministically', () => {
     const args = [
-      'context',
-      '.yarramate/projections/product-context.yaml',
+      'ask',
       '.yarramate/workspace.yaml',
-      '--brief',
+      '.yarramate/projections/product-context.yaml',
     ]
     const first = runCli(args, repositoryRoot)
     const second = runCli(args, repositoryRoot)

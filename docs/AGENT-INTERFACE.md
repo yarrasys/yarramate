@@ -148,28 +148,30 @@ living inside `design`'s internal catalogue:
 Text heuristics (length, name-mention) were considered and rejected:
 they erode the wiring-not-words boundary for little gain.
 
-## Migration map (0.7.0 clean break)
+## Migration map (0.7.0 clean break — EXECUTED, ADR 0061)
 
-| Today | Becomes |
+| Before 0.7.0 | Now |
 | --- | --- |
 | `init` | `init` (unchanged) |
-| `add`, `connect`, `new projection` | `apply` |
-| `interrogate <catalogue> <ws>` | `design` machinery; report via `ask --open` |
+| `add`, `connect` | `apply` (one atomic operations batch) |
+| `new projection` | author the projection file directly; validated by `check` (decision at build time — no scaffolding op) |
+| `interrogate <catalogue> <ws>` | `design` machinery; report via `ask --open [--catalogue]` |
 | `status` | `ask` (bare) |
-| `context <projection>` / `--subject` / `--budget` / `--brief` | `ask <slice>` |
-| `next` | `ask --next` |
+| `context <projection>` / `--subject` / `--budget` / `--brief` | `ask <slice>` (brief is the default rendering) |
+| `next` | `ask --next` (whole workspace) |
 | `compare` | `ask --compare` |
 | `view` | `export markdown` (interactive form: `ask <slice>`) |
 | `compile` | `export graph` |
 | `check` / `--strict` | `check` (unchanged) |
-| `evidence` | machinery under `check`/`reconcile` (open question below) |
+| `evidence` | removed as a surface; `reconcile` reports, `check --strict` gates (settled — see open questions) |
 | `reconcile` | `reconcile` (unchanged) |
-| adapter binaries (`yarramate-likec4`, `yarramate-graphify`) | implementation behind `export` / `reconcile`; direct binaries remain for advanced use |
-| MCP adapter | re-exposed as the seven verbs |
+| adapter binaries (`yarramate-likec4`, `yarramate-graphify`) | `export likec4` fronts the likec4 adapter as a separate process; direct binaries remain for advanced use |
+| MCP adapter | four read-only tools: `ask`, `design`, `check`, `reconcile` |
 
-Core contract, skill, MCP, README, and the marketplace listing rewrite
-to the seven verbs in the same release. No aliases: old names are
-removed, and the release notes carry the map above.
+Core contract, skill, MCP, README, and docs are rewritten to the seven
+verbs. No aliases: old names are removed, and the release notes carry
+the map above. `ask --kinds` ships alongside (#89): the declarable
+vocabulary as a read.
 
 ## Problem map — observed problem → owning verb
 
@@ -200,14 +202,17 @@ removed, and the release notes carry the map above.
    (#105) + `--open` [done, ADR 0059]
 5. `export` — consolidation of compile/view/likec4/briefs [done,
    ADR 0060]
-6. Contract/skill/MCP/docs rewrite; release 0.7.0
+6. Contract/skill/MCP/docs rewrite; release 0.7.0 [done, ADR 0061]
 7. Agent card (#89) folds into the skill/entry surfaces along the way
+   [done — `ask --kinds` + skill/pointer rewrite, ADR 0061]
 
-## Open questions (settle at build time, not by assumption)
+## Open questions
 
-- Attestation claim shape: predicate namespace, who-may-attest, and
-  whether revocation is deletion or a counter-claim.
-- Where the standalone `evidence` evaluation lands: `check` machinery,
-  `reconcile` mode, or gone as a public surface.
+- Attestation claim shape: SETTLED (ADR 0056) — `yarramate/attestation/<topic>`
+  claims, deletion-revocation, git-reviewed authority.
+- Where the standalone `evidence` evaluation lands: SETTLED (ADR 0061) —
+  gone as a public surface; `reconcile` reports, `check --strict` gates,
+  `yarramate/evidence-report/v1` remains a library-level format.
 - Catalogue versioning as the path deepens (the pinned-baseline lesson
-  from the benchmark applies).
+  from the benchmark applies) — still open; revisit when the
+  technology/implementation waves land.

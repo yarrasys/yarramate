@@ -45,12 +45,6 @@ formats:
   - id: yarramate/state-comparison/v1
     schema: schema/yarramate-state-comparison.schema.json
     packageExport: ./schema/state-comparison
-  - id: yarramate/status-result/v1
-    schema: schema/yarramate-status-result.schema.json
-    packageExport: ./schema/status-result
-  - id: yarramate/next-result/v1
-    schema: schema/yarramate-next-result.schema.json
-    packageExport: ./schema/next-result
   - id: yarramate/question-catalogue/v1
     schema: schema/yarramate-question-catalogue.schema.json
     packageExport: ./schema/question-catalogue
@@ -72,50 +66,21 @@ formats:
 commands:
   - name: init
     binary: yarramate
-  - name: add
-    binary: yarramate
-  - name: connect
-    binary: yarramate
-  - name: new
-    binary: yarramate
-  - name: check
-    binary: yarramate
-    machineFormat: yarramate/check-result/v1
-  - name: status
-    binary: yarramate
-    machineFormat: yarramate/status-result/v1
-  - name: next
-    binary: yarramate
-    machineFormat: yarramate/next-result/v1
-  - name: compile
-    binary: yarramate
-    machineFormat: yarramate/graph/v2
-  - name: view
-    binary: yarramate
-  - name: context
-    binary: yarramate
-    machineFormat: yarramate/projection-result/v1
-  - name: compare
-    binary: yarramate
-    machineFormat: yarramate/state-comparison/v1
-  - name: evidence
-    binary: yarramate
-    machineFormat: yarramate/evidence-report/v1
-  - name: reconcile
-    binary: yarramate
-    machineFormat: yarramate/reconciliation-report/v1
-  - name: interrogate
-    binary: yarramate
-    machineFormat: yarramate/interrogation-report/v1
-  - name: apply
-    binary: yarramate
-    machineFormat: yarramate/apply-result/v1
   - name: design
     binary: yarramate
     machineFormat: yarramate/design-step/v1
+  - name: apply
+    binary: yarramate
+    machineFormat: yarramate/apply-result/v1
   - name: ask
     binary: yarramate
     machineFormat: yarramate/ask-result/v1
+  - name: check
+    binary: yarramate
+    machineFormat: yarramate/check-result/v1
+  - name: reconcile
+    binary: yarramate
+    machineFormat: yarramate/reconciliation-report/v1
   - name: export
     binary: yarramate
     machineFormat: yarramate/graph/v2

@@ -25,11 +25,15 @@ automatically.
 When a workspace already exists, orient first with one call before choosing:
 
 ```sh
-yarramate status <workspace.yaml> --json
+yarramate ask <workspace.yaml>
 ```
 
-It reports the check verdict, the reconciliation summary, and a titled
-inventory of documents, states, projections, evidence, and contracts.
+It reports the check verdict, the reconciliation summary, the open
+design questions, and the backlog — planned subjects in dependency
+order. `ask <workspace.yaml> --subjects` lists every concept;
+`ask <workspace.yaml> --kinds` lists the declarable vocabulary;
+`ask <workspace.yaml> "<free text>"` returns the model slice matching
+your words.
 
 - Existing implementation is the starting point: follow **Discover an
   existing project**.
@@ -60,8 +64,10 @@ document, projection, evidence, or architecture-state syntax is needed.
    - principal information and dependencies;
    - significant actors, constraints, and ownership only when supported;
    - current state by default; do not infer target intent from code.
-5. Prefer `yarramate add` and `yarramate connect` for simple additions. Edit
-   YAML directly when states or several related declarations make that clearer.
+5. Land additions as one atomic `yarramate apply` batch
+   (`yarramate/operations/v1`): any invalid operation rejects the whole
+   batch, so the model never holds a partial edit. Edit YAML directly
+   when states or several related declarations make that clearer.
 6. Add an evidence overlay only for existing subjects or stable claim IDs.
    Evidence supports or challenges the proposal; it is not a second model.
 7. Add the focused projections needed to answer the
@@ -74,11 +80,10 @@ document, projection, evidence, or architecture-state syntax is needed.
 
 ```sh
 yarramate check .yarramate/workspace.yaml --json
-yarramate compile .yarramate/workspace.yaml
-yarramate evidence .yarramate/evidence/<evidence>.yaml .yarramate/workspace.yaml
+yarramate export graph .yarramate/workspace.yaml
 yarramate reconcile .yarramate/workspace.yaml
-yarramate context .yarramate/projections/<projection>.yaml .yarramate/workspace.yaml
-yarramate view .yarramate/projections/<projection>.yaml .yarramate/workspace.yaml
+yarramate ask .yarramate/workspace.yaml .yarramate/projections/<projection>.yaml
+yarramate export markdown .yarramate/projections/<projection>.yaml .yarramate/workspace.yaml
 yarramate-likec4 check .yarramate/likec4-project.yaml --json .yarramate/workspace.yaml
 yarramate-likec4 map --sync .yarramate/integrations/likec4/subject-mapping.yaml .yarramate/workspace.yaml
 yarramate-likec4 export-project .yarramate/likec4-project.yaml .yarramate-out/likec4 .yarramate/workspace.yaml
@@ -135,13 +140,13 @@ yarramate design .yarramate/workspace.yaml
 
 ```sh
 yarramate check .yarramate/workspace.yaml --json
-yarramate compile .yarramate/workspace.yaml
-yarramate context .yarramate/projections/<alternatives>.yaml .yarramate/workspace.yaml
-yarramate context .yarramate/projections/<target>.yaml .yarramate/workspace.yaml
-yarramate context .yarramate/projections/<target>.yaml .yarramate/workspace.yaml --brief
-yarramate view .yarramate/projections/<target>.yaml .yarramate/workspace.yaml
-yarramate view .yarramate/projections/<flow>.yaml .yarramate/workspace.yaml
-yarramate compare <document-id>#<baseline-state> <document-id>#<target-state> .yarramate/workspace.yaml
+yarramate export graph .yarramate/workspace.yaml
+yarramate ask .yarramate/workspace.yaml .yarramate/projections/<alternatives>.yaml
+yarramate ask .yarramate/workspace.yaml .yarramate/projections/<target>.yaml
+yarramate export markdown .yarramate/projections/<target>.yaml .yarramate/workspace.yaml
+yarramate export markdown .yarramate/projections/<flow>.yaml .yarramate/workspace.yaml
+yarramate export briefs .yarramate/projections/<target>.yaml .yarramate/workspace.yaml --out <handoff-dir>
+yarramate ask .yarramate/workspace.yaml --compare <document-id>#<baseline-state> <document-id>#<target-state>
 yarramate-likec4 check .yarramate/likec4-project.yaml --json .yarramate/workspace.yaml
 yarramate-likec4 map --sync .yarramate/integrations/likec4/subject-mapping.yaml .yarramate/workspace.yaml
 yarramate-likec4 export-project .yarramate/likec4-project.yaml .yarramate-out/likec4 .yarramate/workspace.yaml
@@ -153,10 +158,11 @@ yarramate-likec4 export-project .yarramate/likec4-project.yaml .yarramate-out/li
    discovery. State which omissions are intentional; do not convert partial
    coverage into a validation failure.
 8. Present alternatives, selected intent, unresolved decisions, and bounded
-   implementation context. Hand implementation work the `--brief` rendering
-   of its target projection — deterministic prose composed from the checked
-   model — rather than raw YAML. Do not generate code until the requested
-   design decision is reviewable.
+   implementation context. Hand implementation work the brief rendering of
+   its target slice (`yarramate ask <workspace.yaml> <projection.yaml>`,
+   or the `export briefs` bundle for several implementers) — deterministic
+   prose composed from the checked model — rather than raw YAML. Do not
+   generate code until the requested design decision is reviewable.
 
 ## Maintain an existing model
 

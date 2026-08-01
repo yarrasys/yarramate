@@ -37,16 +37,19 @@ notation.
 - Keep compiled artifacts reproducible and ignored by default. **Canonical
   serializers are deterministic and `dist/` remains ignored.**
 - Publish a normative, canonical graph interchange contract. **Graph v2 JSON
-  Schema, serializer, and `compile` CLI output implemented.**
+  Schema, serializer, and CLI graph output (today `yarramate export graph`)
+  implemented.**
 - Maintain a canonical native model of the YarraMate repository. **Initial
   three-document self-model implemented and checked through the public
   compiler and CLI.**
 
 ## 0.3 — Core CLI and correctness
 
-- Implement `init`, `add`, `connect`, `check`, `view`, and `context`.
-  **The initial explicit-file command set is implemented. `add` and `connect`
-  use validated writes and repeatable explicit workspace sources.**
+- Implement the initial authoring, checking, and reading command set.
+  **The initial explicit-file commands were implemented with validated
+  writes and repeatable explicit workspace sources, then consolidated into
+  the seven-verb surface: atomic `yarramate apply` batches for writes,
+  `yarramate ask` and `yarramate export` for reading.**
 - Define deterministic workspace input configuration. **Versioned explicit
   manifests, safe glob resolution, CLI consumption, and dogfooding
   implemented.**
@@ -76,8 +79,8 @@ notation.
   deterministic isolated-concept exclusion and opt-in descendant matching
   over resolved profile ancestry.**
 - Render projection results for humans and agent harnesses. **Deterministic
-  JSON context is implemented through `yarramate context`, with deterministic
-  Markdown through `yarramate view`.**
+  JSON context and reviewer Markdown are implemented, today served through
+  `yarramate ask` and `yarramate export markdown`.**
 - Supply an optional native starter view pack. **Eight original concern-based
   projections are dogfooded in one unified LikeC4 project; unmatched templates
   remain valid and impose no completeness requirement.**

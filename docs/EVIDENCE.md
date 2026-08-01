@@ -50,14 +50,12 @@ Successful evaluation produces deterministic
 normative structure is `schema/yarramate-evidence-report.schema.json`. The
 input semantic graph is not modified.
 
-```sh
-yarramate evidence .yarramate/evidence/repository.yaml .yarramate/workspace.yaml
-```
-
-Exit status is `0` for a valid report even when observations are contradicted,
-unknown, or not observed. Status `1` means structural or reference
-correctness failed and emits `yarramate/diagnostic-result/v1`; status `2`
-means invocation or file access failed.
+No command emits the per-document report directly: it is a library-level
+format. Workspace evidence declared in the manifest is evaluated by
+`yarramate reconcile` — the aggregated reconciliation report below — and
+gated by `yarramate check --strict`. Structural or reference correctness
+failures emit `yarramate/diagnostic-result/v1` with exit status `1`; status
+`2` means invocation or file access failed.
 
 The typed API exposes `loadEvidence`, `evaluateEvidence`, and
 `evaluateEvidenceWorkspace`. Evidence documents may be declared in the

@@ -1,25 +1,12 @@
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import Ajv2020Module from 'ajv/dist/2020.js'
+import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { runCli } from '../src/cli.js'
 
-const Ajv2020 = Ajv2020Module.default
-
-const repositoryRoot = resolve(
-  fileURLToPath(new URL('.', import.meta.url)),
-  '..',
-)
-
-const nextResultSchema = JSON.parse(
-  readFileSync(
-    join(repositoryRoot, 'schema/yarramate-next-result.schema.json'),
-    'utf8',
-  ),
-) as object
-
+// The build-ordering core (buildNextSubjects) survives the 0.7.0 clean
+// break behind `ask --next`; these tests pin its ordering, coverage, and
+// cycle semantics through that surface.
 const document =
   'format: yarramate/v1\n' +
   'id: main\n' +
@@ -67,14 +54,6 @@ const document =
   '    from: panel\n' +
   '    to: git-adapter\n'
 
-const projection =
-  'format: yarramate/projection/v1\n' +
-  'id: slice\n' +
-  'version: "1.0"\n' +
-  'query:\n' +
-  '  documents:\n' +
-  '    - main\n'
-
 const manifest = (evidence: readonly string[]) =>
   'format: yarramate/workspace/v1\n' +
   'id: next-fixture\n' +
@@ -103,14 +82,13 @@ const evidence =
   '      uri: repo:src/query-service.ts\n' +
   '      message: no import of the session adapter\n'
 
-describe('next command', () => {
+describe('ask --next build ordering', () => {
   let workspace: string
 
   beforeEach(() => {
     workspace = mkdtempSync(join(tmpdir(), 'yarramate-next-'))
     mkdirSync(join(workspace, 'architecture'))
     writeFileSync(join(workspace, 'architecture/main.yaml'), document, 'utf8')
-    writeFileSync(join(workspace, 'slice.projection.yaml'), projection, 'utf8')
   })
 
   afterEach(() => {
@@ -125,16 +103,13 @@ describe('next command', () => {
     )
     writeFileSync(join(workspace, 'scan.evidence.yaml'), evidence, 'utf8')
 
-    const result = runCli(
-      ['next', 'slice.projection.yaml', 'workspace.yaml'],
-      workspace,
-    )
+    const result = runCli(['ask', 'workspace.yaml', '--next'], workspace)
 
     expect(result.exitCode).toBe(0)
     expect(result.stderr).toBe('')
     const lines = result.stdout.split('\n')
     expect(lines[0]).toBe(
-      'Planned subjects in projection slice@1.0 (dependency order):',
+      'Planned subjects in workspace next-fixture (dependency order):',
     )
     const order = lines
       .slice(1)
@@ -162,7 +137,7 @@ describe('next command', () => {
     writeFileSync(join(workspace, 'scan.evidence.yaml'), evidence, 'utf8')
 
     const result = runCli(
-      ['next', 'slice.projection.yaml', 'workspace.yaml', '--json'],
+      ['ask', 'workspace.yaml', '--next', '--json'],
       workspace,
     )
 
@@ -170,7 +145,7 @@ describe('next command', () => {
     const payload = JSON.parse(result.stdout) as {
       format: string
       workspace: string
-      projection: string
+      mode: string
       subjects: readonly {
         id: string
         dependsOn: readonly string[]
@@ -179,9 +154,9 @@ describe('next command', () => {
         cycle?: true
       }[]
     }
-    expect(payload.format).toBe('yarramate/next-result/v1')
+    expect(payload.format).toBe('yarramate/ask-result/v1')
     expect(payload.workspace).toBe('next-fixture')
-    expect(payload.projection).toBe('slice@1.0')
+    expect(payload.mode).toBe('next')
     expect(payload.subjects.map(({ id }) => id)).toEqual([
       'main#git-adapter',
       'main#session-adapter',
@@ -210,13 +185,9 @@ describe('next command', () => {
       observations: 1,
       contradicted: 1,
     })
-    const validate = new Ajv2020({ allErrors: true }).compile(
-      nextResultSchema,
-    )
-    expect(validate(payload), JSON.stringify(validate.errors)).toBe(true)
   })
 
-  it('reports an empty slice when nothing is planned', () => {
+  it('reports an empty workspace when nothing is planned', () => {
     writeFileSync(
       join(workspace, 'architecture/main.yaml'),
       document.replaceAll('status: planned', 'status: current'),
@@ -224,14 +195,11 @@ describe('next command', () => {
     )
     writeFileSync(join(workspace, 'workspace.yaml'), manifest([]), 'utf8')
 
-    const result = runCli(
-      ['next', 'slice.projection.yaml', 'workspace.yaml'],
-      workspace,
-    )
+    const result = runCli(['ask', 'workspace.yaml', '--next'], workspace)
 
     expect(result.exitCode).toBe(0)
     expect(result.stdout).toBe(
-      'No planned subjects in projection slice@1.0.\n',
+      'No planned subjects in workspace next-fixture.\n',
     )
   })
 
@@ -264,7 +232,7 @@ describe('next command', () => {
     writeFileSync(join(workspace, 'workspace.yaml'), manifest([]), 'utf8')
 
     const result = runCli(
-      ['next', 'slice.projection.yaml', 'workspace.yaml', '--json'],
+      ['ask', 'workspace.yaml', '--next', '--json'],
       workspace,
     )
 
@@ -278,32 +246,7 @@ describe('next command', () => {
     ])
     expect(payload.subjects.every(({ cycle }) => cycle === true)).toBe(true)
 
-    const human = runCli(
-      ['next', 'slice.projection.yaml', 'workspace.yaml'],
-      workspace,
-    )
+    const human = runCli(['ask', 'workspace.yaml', '--next'], workspace)
     expect(human.stdout).toContain('dependency cycle')
-  })
-
-  it('requires an explicit workspace manifest', () => {
-    const result = runCli(
-      ['next', 'slice.projection.yaml', 'architecture/main.yaml'],
-      workspace,
-    )
-
-    expect(result.exitCode).toBe(2)
-    expect(result.stderr).toContain(
-      'next requires an explicit workspace manifest',
-    )
-  })
-
-  it('rejects unknown options with usage', () => {
-    const result = runCli(
-      ['next', 'slice.projection.yaml', 'workspace.yaml', '--budget'],
-      workspace,
-    )
-
-    expect(result.exitCode).toBe(2)
-    expect(result.stderr).toContain('Usage:')
   })
 })

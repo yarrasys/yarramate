@@ -120,12 +120,22 @@ When aspect policy blocks the kind you want—`triggering` between two
 components is the common case—keep the edge legal with `kind: flow` and carry
 the invocation semantics on the edge's `name` and `description`:
 
+```yaml
+format: yarramate/operations/v1
+operations:
+  - op: add-relationship
+    document: .yarramate/architecture/main.yaml
+    relationship:
+      id: cli-invokes-engine
+      kind: flow
+      from: cli
+      to: engine
+      name: invokes
+      description: The CLI invokes the engine once per check run
+```
+
 ```sh
-yarramate connect .yarramate/architecture/main.yaml \
-  --id cli-invokes-engine --kind flow \
-  --from cli --to engine \
-  --name "invokes" \
-  --description "The CLI invokes the engine once per check run"
+yarramate apply operations.yaml .yarramate/workspace.yaml
 ```
 
 Both fields compile to claims, so evidence can later confirm or contradict
@@ -338,20 +348,18 @@ or overwrite the output manually.
 
 ```sh
 yarramate init .
-yarramate add .yarramate/architecture/main.yaml \
-  --id delivery-api --kind applicationComponent --name "Delivery API"
-yarramate connect .yarramate/architecture/main.yaml \
-  --id api-realizes-service --kind realization \
-  --from delivery-api --to delivery-service \
-  --description "The API implements the agreed delivery boundary" \
-  --reference decision-source=delivery-service
+yarramate design .yarramate/workspace.yaml
+yarramate apply operations.yaml .yarramate/workspace.yaml
+yarramate ask .yarramate/workspace.yaml
+yarramate ask .yarramate/workspace.yaml <projection.yaml>
+yarramate ask .yarramate/workspace.yaml <document-id>#<local-id>
+yarramate ask .yarramate/workspace.yaml --next
+yarramate ask .yarramate/workspace.yaml --open
+yarramate ask .yarramate/workspace.yaml --compare <from-state> <to-state>
 yarramate check .yarramate/workspace.yaml --json
-yarramate compile .yarramate/workspace.yaml
-yarramate context <projection.yaml> .yarramate/workspace.yaml
-yarramate view <projection.yaml> .yarramate/workspace.yaml
-yarramate compare <from-state> <to-state> .yarramate/workspace.yaml
-yarramate evidence <evidence.yaml> .yarramate/workspace.yaml
 yarramate reconcile .yarramate/workspace.yaml
+yarramate export graph .yarramate/workspace.yaml
+yarramate export markdown <projection.yaml> .yarramate/workspace.yaml
 yarramate-likec4 check \
   .yarramate/likec4-project.yaml \
   --json \

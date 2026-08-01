@@ -50,7 +50,8 @@ correctness rules documented for native compilation.
 
 ## Canonical serialization
 
-`serializeSemanticGraph(graph)` and `yarramate compile` emit UTF-8 JSON with:
+`serializeSemanticGraph(graph)` and `yarramate export graph` emit UTF-8 JSON
+with:
 
 - two-space indentation;
 - object fields in the order defined by graph v2;
@@ -64,11 +65,13 @@ No generated graph file is required in Git. The same native inputs must produce
 byte-identical canonical output regardless of workspace source order.
 
 ```sh
-yarramate compile .yarramate/workspace.yaml > .yarramate-out/graph.v2.json
+yarramate export graph .yarramate/workspace.yaml \
+  --out .yarramate-out/graph.v2.json
 ```
 
-Exit status is `0` with the graph on standard output, `1` with deterministic
-correctness diagnostics, or `2` for invocation and file errors. Adapter
+Exit status is `0` with the graph on standard output (or in the `--out`
+file), `1` with deterministic correctness diagnostics, or `2` for
+invocation and file errors. Adapter
 mapping documents are not compiler inputs and do not become part of the graph.
 
 ## Compatibility
@@ -102,7 +105,7 @@ authoring format.
 Obtain and validate a graph:
 
 ```sh
-npx yarramate compile .yarramate/workspace.yaml > graph.v2.json
+npx yarramate export graph .yarramate/workspace.yaml --out graph.v2.json
 ```
 
 Validate against the schema exported as `yarramate/schema/graph-v2` with any

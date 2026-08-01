@@ -32,15 +32,72 @@ const workspaceProperty = {
 
 const tools: readonly ToolDefinition[] = [
   {
-    name: 'yarramate_status',
+    name: 'yarramate_ask',
     description:
-      'One-call workspace orientation: check verdict, reconciliation summary, and a titled inventory of documents, states, projections, evidence, and contracts.',
+      'The consumed-now read surface. Without a query: orientation — check verdict, drift summary, open-question count, and the backlog in dependency order. With a query: free text matches concept ids, names, and descriptions and returns the connected slice; exact subject ids (document-id#local-id) and projection paths address precisely. Set mode for the roster (subjects), declarable vocabulary (kinds), build order (next), or the full open-questions report (open).',
     inputSchema: {
       type: 'object',
       required: ['workspace'],
-      properties: workspaceProperty,
+      properties: {
+        ...workspaceProperty,
+        query: {
+          type: 'string',
+          description:
+            'Free text, a globally qualified subject id, or a projection path',
+        },
+        mode: {
+          type: 'string',
+          enum: ['subjects', 'kinds', 'next', 'open'],
+          description:
+            'Optional flag mode instead of a query: the filterable roster, the declarable kind vocabulary, dependency-ordered planned work, or the open-questions report',
+        },
+        budget: {
+          type: 'integer',
+          minimum: 1,
+          description:
+            'Approximate token budget for the compact slice rendering (query form only)',
+        },
+      },
     },
-    arguments: (input) => ['status', String(input.workspace), '--json'],
+    arguments: (input) => {
+      const workspace = String(input.workspace)
+      if (typeof input.mode === 'string') {
+        return ['ask', workspace, `--${input.mode}`, '--json']
+      }
+      if (typeof input.query === 'string' && input.query.length > 0) {
+        const budget =
+          typeof input.budget === 'number'
+            ? ['--budget', String(input.budget)]
+            : ['--json']
+        return ['ask', workspace, input.query, ...budget]
+      }
+      return ['ask', workspace, '--json']
+    },
+  },
+  {
+    name: 'yarramate_design',
+    description:
+      'The design interview, one stateless step: the top open question with its subject slice, materiality, and progress. Read-only — answers land through the CLI apply command in the repository, not through this server.',
+    inputSchema: {
+      type: 'object',
+      required: ['workspace'],
+      properties: {
+        ...workspaceProperty,
+        subject: {
+          type: 'string',
+          description:
+            'Optional globally qualified subject id to narrow the interview',
+        },
+      },
+    },
+    arguments: (input) => [
+      'design',
+      String(input.workspace),
+      ...(typeof input.subject === 'string'
+        ? ['--subject', input.subject]
+        : []),
+      '--json',
+    ],
   },
   {
     name: 'yarramate_check',
@@ -63,55 +120,6 @@ const tools: readonly ToolDefinition[] = [
       properties: workspaceProperty,
     },
     arguments: (input) => ['reconcile', String(input.workspace)],
-  },
-  {
-    name: 'yarramate_context',
-    description:
-      'Bounded architecture context. Provide either a projection path or one or more globally qualified subjects (document-id#local-id) for an ad-hoc connected neighbourhood. Optional token budget switches to a compact ranked rendering.',
-    inputSchema: {
-      type: 'object',
-      required: ['workspace'],
-      properties: {
-        ...workspaceProperty,
-        projection: {
-          type: 'string',
-          description: 'Path to an authored projection definition',
-        },
-        subjects: {
-          type: 'array',
-          items: { type: 'string' },
-          description:
-            'Globally qualified subject identities for ad-hoc context',
-        },
-        budget: {
-          type: 'integer',
-          minimum: 1,
-          description:
-            'Approximate token budget for the compact rendering',
-        },
-      },
-    },
-    arguments: (input) => {
-      const budget =
-        typeof input.budget === 'number'
-          ? ['--budget', String(input.budget)]
-          : []
-      if (typeof input.projection === 'string') {
-        return [
-          'context',
-          input.projection,
-          String(input.workspace),
-          ...budget,
-        ]
-      }
-      const subjects = Array.isArray(input.subjects)
-        ? input.subjects.flatMap((subject) => [
-            '--subject',
-            String(subject),
-          ])
-        : []
-      return ['context', ...subjects, String(input.workspace), ...budget]
-    },
   },
 ]
 

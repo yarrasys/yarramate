@@ -78,7 +78,7 @@ const manifest =
   'adapterMappings: []\n' +
   'evidence: []\n'
 
-describe('interrogate command', () => {
+describe('ask --open interrogation', () => {
   let workspace: string
 
   beforeEach(() => {
@@ -104,7 +104,7 @@ describe('interrogate command', () => {
 
   it('reports open questions and closes them when triggers stop matching', () => {
     const before = runCli(
-      ['interrogate', 'catalogue.yaml', 'workspace.yaml'],
+      ['ask', 'workspace.yaml', '--open', '--catalogue', 'catalogue.yaml'],
       workspace,
     )
     expect(before.exitCode).toBe(0)
@@ -124,7 +124,7 @@ describe('interrogate command', () => {
       'utf8',
     )
     const after = runCli(
-      ['interrogate', 'catalogue.yaml', 'workspace.yaml'],
+      ['ask', 'workspace.yaml', '--open', '--catalogue', 'catalogue.yaml'],
       workspace,
     )
     expect(after.exitCode).toBe(0)
@@ -135,7 +135,7 @@ describe('interrogate command', () => {
     // platform-team descends from businessActor, so the selector written
     // against the core kind must reach the derived concept too.
     const result = runCli(
-      ['interrogate', 'catalogue.yaml', 'workspace.yaml'],
+      ['ask', 'workspace.yaml', '--open', '--catalogue', 'catalogue.yaml'],
       workspace,
     )
     expect(result.exitCode).toBe(0)
@@ -159,7 +159,7 @@ describe('interrogate command', () => {
       'utf8',
     )
     const result = runCli(
-      ['interrogate', 'catalogue.yaml', 'workspace.yaml'],
+      ['ask', 'workspace.yaml', '--open', '--catalogue', 'catalogue.yaml'],
       workspace,
     )
     expect(result.exitCode).toBe(0)
@@ -169,29 +169,37 @@ describe('interrogate command', () => {
 
   it('emits a deterministic, schema-valid machine report', () => {
     const first = runCli(
-      ['interrogate', 'catalogue.yaml', 'workspace.yaml', '--json'],
+      ['ask', 'workspace.yaml', '--open', '--catalogue', 'catalogue.yaml', '--json'],
       workspace,
     )
     const second = runCli(
-      ['interrogate', 'catalogue.yaml', 'workspace.yaml', '--json'],
+      ['ask', 'workspace.yaml', '--open', '--catalogue', 'catalogue.yaml', '--json'],
       workspace,
     )
     expect(first.exitCode).toBe(0)
     expect(second.stdout).toBe(first.stdout)
-    const payload = JSON.parse(first.stdout) as {
-      format: string
-      workspace: string
-      catalogue: string
-      summary: { questions: number; openQuestions: number; open: number }
-      waves: readonly {
-        id: string
-        questions: readonly {
-          id: string
-          open: boolean
-          subjects?: readonly { id: string; question: string }[]
-        }[]
-      }[]
-    }
+    const payload = (
+      JSON.parse(first.stdout) as {
+        report: {
+          format: string
+          workspace: string
+          catalogue: string
+          summary: {
+            questions: number
+            openQuestions: number
+            open: number
+          }
+          waves: readonly {
+            id: string
+            questions: readonly {
+              id: string
+              open: boolean
+              subjects?: readonly { id: string; question: string }[]
+            }[]
+          }[]
+        }
+      }
+    ).report
     expect(payload.format).toBe('yarramate/interrogation-report/v1')
     expect(payload.workspace).toBe('interrogate-fixture')
     expect(payload.catalogue).toBe('fixture@1.0')
@@ -214,7 +222,7 @@ describe('interrogate command', () => {
       'utf8',
     )
     const result = runCli(
-      ['interrogate', 'catalogue.yaml', 'workspace.yaml'],
+      ['ask', 'workspace.yaml', '--open', '--catalogue', 'catalogue.yaml'],
       workspace,
     )
     expect(result.exitCode).toBe(1)
@@ -235,7 +243,7 @@ describe('interrogate command', () => {
       'utf8',
     )
     const result = runCli(
-      ['interrogate', 'catalogue.yaml', 'workspace.yaml'],
+      ['ask', 'workspace.yaml', '--open', '--catalogue', 'catalogue.yaml'],
       workspace,
     )
     expect(result.exitCode).toBe(1)
@@ -244,18 +252,18 @@ describe('interrogate command', () => {
 
   it('requires an explicit workspace manifest', () => {
     const result = runCli(
-      ['interrogate', 'catalogue.yaml', 'architecture/main.yaml'],
+      ['ask', 'architecture/main.yaml', '--open', '--catalogue', 'catalogue.yaml'],
       workspace,
     )
     expect(result.exitCode).toBe(2)
     expect(result.stderr).toContain(
-      'interrogate requires an explicit workspace manifest',
+      'ask requires an explicit workspace manifest',
     )
   })
 
   it('rejects unknown options with usage', () => {
     const result = runCli(
-      ['interrogate', 'catalogue.yaml', 'workspace.yaml', '--budget'],
+      ['ask', 'workspace.yaml', '--open', '--catalogue', 'catalogue.yaml', '--budget'],
       workspace,
     )
     expect(result.exitCode).toBe(2)
@@ -330,11 +338,11 @@ describe('interrogate command', () => {
     writeFileSync(join(workspace, 'architecture/main.yaml'), enriched, 'utf8')
 
     const before = runCli(
-      ['interrogate', 'catalogue.yaml', 'workspace.yaml', '--json'],
+      ['ask', 'workspace.yaml', '--open', '--catalogue', 'catalogue.yaml', '--json'],
       workspace,
     )
     expect(before.exitCode).toBe(0)
-    expect(JSON.parse(before.stdout).summary).toEqual({
+    expect(JSON.parse(before.stdout).report.summary).toEqual({
       questions: 3,
       openQuestions: 3,
       open: 3,
@@ -375,11 +383,11 @@ describe('interrogate command', () => {
       'utf8',
     )
     const after = runCli(
-      ['interrogate', 'catalogue.yaml', 'workspace.yaml', '--json'],
+      ['ask', 'workspace.yaml', '--open', '--catalogue', 'catalogue.yaml', '--json'],
       workspace,
     )
     expect(after.exitCode).toBe(0)
-    expect(JSON.parse(after.stdout).summary).toEqual({
+    expect(JSON.parse(after.stdout).report.summary).toEqual({
       questions: 3,
       openQuestions: 0,
       open: 0,
@@ -388,20 +396,15 @@ describe('interrogate command', () => {
 
   it('keeps the shipped catalogue fully closed on the repository self-model', () => {
     const result = runCli(
-      [
-        'interrogate',
-        'catalogues/core-enrichment.yaml',
-        '.yarramate/workspace.yaml',
-        '--json',
-      ],
+      ['ask', '.yarramate/workspace.yaml', '--open', '--json'],
       repositoryRoot,
     )
     expect(result.exitCode).toBe(0)
     const payload = JSON.parse(result.stdout) as {
-      summary: { open: number }
+      report: { summary: { open: number } }
     }
-    expect(payload.summary.open).toBe(0)
+    expect(payload.report.summary.open).toBe(0)
     const validate = new Ajv2020({ allErrors: true }).compile(reportSchema)
-    expect(validate(JSON.parse(result.stdout)), 'schema-valid').toBe(true)
+    expect(validate(payload.report), 'schema-valid').toBe(true)
   })
 })

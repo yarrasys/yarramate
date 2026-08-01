@@ -112,7 +112,14 @@ npm install --global yarramate
 yarramate --help
 
 npx yarramate check .yarramate/workspace.yaml
-npx yarramate status .yarramate/workspace.yaml --json
+npx yarramate ask .yarramate/workspace.yaml
+```
+
+The CLI is seven verbs, one per lifecycle stage:
+
+```text
+init → design → apply → ask → check → reconcile → export
+create  fill    write   read  gate    drift       derive
 ```
 
 When developing the repository, build and invoke the same executable surface:
@@ -121,21 +128,26 @@ When developing the repository, build and invoke the same executable surface:
 pnpm build
 
 node dist/cli.js init .
+node dist/cli.js design .yarramate/workspace.yaml
+node dist/cli.js apply operations.yaml .yarramate/workspace.yaml
+node dist/cli.js ask .yarramate/workspace.yaml
+node dist/cli.js ask .yarramate/workspace.yaml "free text about the model"
+node dist/cli.js ask .yarramate/workspace.yaml --subjects
+node dist/cli.js ask .yarramate/workspace.yaml --advise "a design question"
 node dist/cli.js check .yarramate/workspace.yaml --json
-node dist/cli.js compile .yarramate/workspace.yaml
-node dist/cli.js context .yarramate/projections/context.yaml .yarramate/workspace.yaml
-node dist/cli.js context .yarramate/projections/context.yaml .yarramate/workspace.yaml --brief
-node dist/cli.js view .yarramate/projections/context.yaml .yarramate/workspace.yaml
-node dist/cli.js next .yarramate/projections/context.yaml .yarramate/workspace.yaml
-node dist/cli.js evidence .yarramate/evidence/repository.yaml .yarramate/workspace.yaml
 node dist/cli.js reconcile .yarramate/workspace.yaml
-node dist/cli.js interrogate catalogues/core-enrichment.yaml .yarramate/workspace.yaml
+node dist/cli.js export graph .yarramate/workspace.yaml
+node dist/cli.js export briefs .yarramate/projections/context.yaml .yarramate/workspace.yaml --out handoff
 ```
 
 `init` creates `.yarramate/architecture/main.yaml` and
-`.yarramate/workspace.yaml`. Commands accept explicit source documents or one
-explicit workspace manifest. `check --strict` additionally fails when any
-evidence observation contradicts the model, for gates that want one knob.
+`.yarramate/workspace.yaml` and delivers the agent pointer. `design`
+serves the top open design question; `apply` lands answers as one
+validated atomic batch; `ask` is every consumed-now read; `export`
+derives persisted artifacts. `check --strict` additionally fails when
+any evidence observation contradicts the model, for gates that want one
+knob. The full contract is
+[docs/AGENT-INTERFACE.md](docs/AGENT-INTERFACE.md).
 
 For a local consumer test, create a package artifact:
 

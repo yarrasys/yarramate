@@ -21,7 +21,8 @@
         "advice",
         "next",
         "open",
-        "compare"
+        "compare",
+        "kinds"
       ]
     }
   },
@@ -209,6 +210,68 @@
             "waves": { "type": "array" }
           },
           "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": ["mode", "conceptKinds", "relationshipKinds", "extensions"],
+      "properties": {
+        "format": true,
+        "workspace": true,
+        "mode": { "const": "kinds" },
+        "conceptKinds": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "layer", "aspect"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "name": { "type": "string", "minLength": 1 },
+              "layer": { "type": "string", "minLength": 1 },
+              "aspect": { "type": "string", "minLength": 1 },
+              "inspiredBy": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "relationshipKinds": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "intent"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "intent": { "type": "string", "minLength": 1 },
+              "sourceAspects": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "targetAspects": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "repair": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "extensions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "type", "lineage"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "type": { "enum": ["concept", "relationship"] },
+              "lineage": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            },
+            "additionalProperties": false
+          }
         }
       },
       "additionalProperties": false
