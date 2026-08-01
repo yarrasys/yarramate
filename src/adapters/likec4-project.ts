@@ -5,6 +5,7 @@ import { loadSourceDocument } from '../source-document.js'
 import type { LikeC4PreparationResult } from './likec4-prepare.js'
 import {
   exportLikeC4,
+  type GitChangeOverlay,
   type LikeC4ExportResult,
 } from './likec4-export.js'
 import likeC4ProjectSchema from '../../schema/yarramate-likec4-project.schema.json' with {
@@ -116,12 +117,15 @@ const unionProjection = (
   ].sort((left, right) => left.id.localeCompare(right.id)),
 })
 
-const viewBody = ({
-  id,
-  prepared,
-  dynamic,
-  deployment,
-}: PreparedLikeC4ProjectView): string => {
+const viewBody = (
+  {
+    id,
+    prepared,
+    dynamic,
+    deployment,
+  }: PreparedLikeC4ProjectView,
+  gitChange?: GitChangeOverlay,
+): string => {
   const source = prepared.source
   const startToken = '\nviews {\n'
   const start = source.indexOf(startToken)
@@ -233,10 +237,28 @@ const viewBody = ({
       '  }',
     ].join('\n')
   }
+  const overlayRules =
+    gitChange === undefined
+      ? []
+      : prepared.projection.subjects
+          .filter(({ type }) => type === 'concept')
+          .flatMap(({ id: nativeId }) => {
+            const external = externalByNative.get(nativeId)
+            if (external === undefined) return []
+            if (gitChange.added.includes(nativeId)) {
+              return [`    style ${external} { color green }`]
+            }
+            if (gitChange.modified.includes(nativeId)) {
+              return [`    style ${external} { color amber }`]
+            }
+            return []
+          })
+          .sort()
   const membershipRules = [
     includeRule,
     '    exclude * -> *',
     ...relationshipRules,
+    ...overlayRules,
   ].join('\n')
   return source
     .slice(start + startToken.length, end)
@@ -299,9 +321,67 @@ const deploymentBody = ({
   ].join('\n')
 }
 
+// The synthetic review view (ADR 0066): every changed subject with its
+// highlight, and a description that doubles as the legend.
+const reviewChangesView = (
+  views: readonly PreparedLikeC4ProjectView[],
+  gitChange: GitChangeOverlay,
+): string | undefined => {
+  const externalByNative = new Map(
+    views.flatMap((view) =>
+      view.prepared.subjectMapping.mappings
+        .filter(({ type }) => type === 'concept')
+        .map(({ native, external }) => [native, external] as const),
+    ),
+  )
+  const changedConcepts = [
+    ...new Set(
+      [...gitChange.added, ...gitChange.modified].flatMap((nativeId) => {
+        const external = externalByNative.get(nativeId)
+        return external === undefined ? [] : [external]
+      }),
+    ),
+  ].sort()
+  if (changedConcepts.length === 0) return undefined
+  const changedRelationships = [
+    ...new Set(
+      [...gitChange.added, ...gitChange.modified].filter(
+        (nativeId) => !externalByNative.has(nativeId),
+      ),
+    ),
+  ].sort()
+  const styles = changedConcepts.map((external) => {
+    const nativeId = [...externalByNative.entries()].find(
+      ([, candidate]) => candidate === external,
+    )![0]
+    return gitChange.added.includes(nativeId)
+      ? `    style ${external} { color green }`
+      : `    style ${external} { color amber }`
+  })
+  return [
+    '  view review-changes {',
+    `    title ${quote(`Review: ${gitChange.range}`)}`,
+    `    description ${quote(
+      `Subjects touched in ${gitChange.range}. Legend: green = new, amber = changed; connected context unhighlighted. Derived from git - nothing here is authored (ADR 0066).`,
+    )}`,
+    `    include ${changedConcepts.join(', ')}`,
+    ...changedRelationships.map(
+      (id) => `    include * -> * where metadata.yarramateId is '${id}'`,
+    ),
+    ...styles,
+    '    autoLayout LeftRight',
+    '  }',
+  ].join('\n')
+}
+
+export interface LikeC4ProjectExportOptions {
+  readonly gitChange?: GitChangeOverlay
+}
+
 export function exportLikeC4Project(
   project: LikeC4ProjectDefinition,
   views: readonly PreparedLikeC4ProjectView[],
+  options: LikeC4ProjectExportOptions = {},
 ): LikeC4ExportResult {
   const first = views[0]
   if (first === undefined) {
@@ -311,6 +391,9 @@ export function exportLikeC4Project(
     unionProjection(project, views),
     first.prepared.subjectMapping,
     first.prepared.kindMapping,
+    options.gitChange === undefined
+      ? {}
+      : { gitChange: options.gitChange },
   )
   if (!model.ok) return model
   const startToken = '\nviews {\n'
@@ -319,9 +402,17 @@ export function exportLikeC4Project(
     const rendered = deploymentBody(view)
     return rendered === undefined ? [] : [rendered]
   })
-  const renderedViews = views.map(viewBody)
+  const renderedViews = views.map((view) =>
+    viewBody(view, options.gitChange),
+  )
+  const review =
+    options.gitChange === undefined
+      ? undefined
+      : reviewChangesView(views, options.gitChange)
+  const allViews =
+    review === undefined ? renderedViews : [...renderedViews, review]
   return {
     ok: true,
-    source: `${model.source.slice(0, modelEnd)}${deployments.length === 0 ? '' : `\n${deployments.join('\n')}\n`}\nviews {\n${renderedViews.join('\n')}\n}\n`,
+    source: `${model.source.slice(0, modelEnd)}${deployments.length === 0 ? '' : `\n${deployments.join('\n')}\n`}\nviews {\n${allViews.join('\n')}\n}\n`,
   }
 }
