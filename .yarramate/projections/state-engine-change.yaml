@@ -2,6 +2,7 @@ format: yarramate/projection/v1
 id: state-engine-change
 version: "1.0"
 query:
+  excludeStatuses: [retired]
   states:
     - yarramate-evolution#adapter-foundation
     - yarramate-evolution#state-foundation

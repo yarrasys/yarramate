@@ -49,6 +49,14 @@
             "enum": ["planned", "current", "retired"]
           }
         },
+        "excludeStatuses": {
+          "description": "Drop concepts carrying one of these lifecycle statuses while keeping concepts that declare no status at all - 'everything except retired' for viewpoint projections, where a bare statuses filter would wrongly drop unstatused actors and motivation elements.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": ["planned", "current", "retired"]
+          }
+        },
         "states": {
           "type": "array",
           "minItems": 1,

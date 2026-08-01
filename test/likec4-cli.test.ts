@@ -1410,7 +1410,7 @@ views:
 
       expect(result.exitCode).toBe(0)
       const model = readFileSync(join(project, 'model.likec4'), 'utf8')
-      expect(model.match(/^  (?:dynamic )?view /gm)).toHaveLength(15)
+      expect(model.match(/^  (?:dynamic )?view /gm)).toHaveLength(21)
       expect(model).not.toMatch(/^    include \*$/gm)
       expect(model).toContain('view index')
       expect(model).not.toContain('view starter-landscape')
@@ -1423,6 +1423,9 @@ views:
       expect(model).toContain('view starter-technology-deployment')
       expect(model).toContain('view starter-implementation-roadmap')
       expect(model).toContain('view engine-components')
+      expect(model).toContain('view seven-verb-surface')
+      expect(model).toContain('view product-context')
+      expect(model).toContain('view state-foundation')
       expect(model).toContain('dynamic view compiler-pipeline')
       expect(model).toContain(
         "view starter-technology-deployment {\n" +
@@ -1436,7 +1439,7 @@ views:
           'utf8',
         ),
       )
-      expect(marker.views).toHaveLength(15)
+      expect(marker.views).toHaveLength(21)
       expect(marker.views[0]).toEqual({
         id: 'index',
         projection: 'starter-landscape@1.0',

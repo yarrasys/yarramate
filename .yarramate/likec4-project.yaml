@@ -4,17 +4,20 @@ version: "1.0"
 title: YarraMate architecture
 mapping: integrations/likec4/subject-mapping.yaml
 kindMapping: integrations/likec4/kind-mapping.yaml
+# Views are ordered as five stories, coarse to fine: orientation, the
+# agent contract, engine internals, the ArchiMate viewpoints, and
+# evolution. Retired subjects are excluded by the underlying projections
+# (excludeStatuses) - the diagrams show the living architecture; git and
+# the model keep the history.
 views:
+  # --- 1 · Orientation ------------------------------------------------
   - id: index
     projection: projections/starter-landscape.yaml
-  - projection: projections/starter-motivation.yaml
-  - projection: projections/starter-strategy.yaml
   - projection: projections/product-journeys.yaml
-  - projection: projections/starter-business-operation.yaml
-  - projection: projections/starter-application-cooperation.yaml
-  - projection: projections/starter-information-structure.yaml
-  - projection: projections/starter-technology-deployment.yaml
-  - projection: projections/starter-implementation-roadmap.yaml
+  - projection: projections/product-context.yaml
+  # --- 2 · The agent contract -----------------------------------------
+  - projection: projections/seven-verb-surface.yaml
+  # --- 3 · Engine internals -------------------------------------------
   - projection: projections/engine-components.yaml
   - id: compiler-pipeline
     projection: projections/current-engine.yaml
@@ -27,6 +30,19 @@ views:
         - relationship: yarramate-engine#semantic-validation-triggers-compilation
           title: compiles graph
   - projection: projections/likec4-export-path.yaml
+  - projection: projections/maintainer-tool-neutral-engine.yaml
+  - projection: projections/implementation-traceability.yaml
+  # --- 4 · ArchiMate viewpoints ---------------------------------------
+  - projection: projections/starter-motivation.yaml
+  - projection: projections/starter-strategy.yaml
+  - projection: projections/starter-business-operation.yaml
+  - projection: projections/starter-application-cooperation.yaml
+  - projection: projections/starter-information-structure.yaml
+  - projection: projections/starter-technology-deployment.yaml
+  - projection: projections/starter-implementation-roadmap.yaml
+  # --- 5 · Evolution ---------------------------------------------------
+  - projection: projections/state-foundation.yaml
+  - projection: projections/core-contract-foundation.yaml
   - projection: projections/state-engine-adapter.yaml
   - projection: projections/state-engine-target.yaml
   - projection: projections/state-engine-change.yaml
