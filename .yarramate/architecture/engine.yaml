@@ -612,6 +612,12 @@ concepts:
     name: Ask result schema
     description: Normative JSON Schema for yarramate/ask-result/v1.
     owner: yarramate-product#yarramate-maintainers
+  - id: export-command
+    kind: applicationService
+    name: Export command
+    description: Derives every persisted artifact - the canonical graph, projection markdown, the per-concept briefs handoff bundle, and the LikeC4 visualization project delegated to the sibling adapter binary in a separate process.
+    owner: yarramate-product#yarramate-maintainers
+    status: current
 relationships:
   - id: core-contract-checker-loads-contract
     kind: assignment
@@ -1253,3 +1259,23 @@ relationships:
     from: ask-command
     to: profile-catalogue
     description: The same internal question catalogue design interviews from - ask reads what design asks, so orientation counts, --open, and --advise see identical open questions.
+  - id: cli-provides-export
+    kind: implements
+    from: cli
+    to: export-command
+  - id: export-command-serves-agent-harness
+    kind: serving
+    from: export-command
+    to: yarramate-product#agent-harness
+  - id: export-command-writes-semantic-graph
+    kind: access
+    from: export-command
+    to: semantic-graph
+    mode: write
+    description: export graph persists the canonical graph v2 serialization for pipelines and CI artifacts.
+  - id: export-command-reads-projection-definition
+    kind: access
+    from: export-command
+    to: projection-definition
+    mode: read
+    description: markdown and briefs exports scope their artifacts by a projection.

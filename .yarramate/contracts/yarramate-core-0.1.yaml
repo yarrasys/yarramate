@@ -116,6 +116,9 @@ commands:
   - name: ask
     binary: yarramate
     machineFormat: yarramate/ask-result/v1
+  - name: export
+    binary: yarramate
+    machineFormat: yarramate/graph/v2
 guarantees:
   - adapter-independent-core
   - canonical-graph-serialization

@@ -115,7 +115,7 @@ contradiction signal.
 
 ### `yarramate export` — derive artifacts
 
-[new verb; renderers built] Persisted outputs consumed later or by
+[built — ADR 0060] Persisted outputs consumed later or by
 others; graphify analogues: `--wiki` / `--svg` / `--neo4j`.
 
 - `export graph` — canonical graph v2 JSON (today's `compile`).
@@ -198,7 +198,8 @@ removed, and the release notes carry the map above.
    ADR 0058]
 4. `ask` — consolidation of status/context/next/compare + `--advise`
    (#105) + `--open` [done, ADR 0059]
-5. `export` — consolidation of compile/view/likec4/briefs
+5. `export` — consolidation of compile/view/likec4/briefs [done,
+   ADR 0060]
 6. Contract/skill/MCP/docs rewrite; release 0.7.0
 7. Agent card (#89) folds into the skill/entry surfaces along the way
 

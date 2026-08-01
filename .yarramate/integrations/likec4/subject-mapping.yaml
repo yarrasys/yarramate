@@ -1371,3 +1371,18 @@ mappings:
   - native: yarramate-engine#cli-provides-ask
     external: cliProvidesAsk
     type: relationship
+  - native: yarramate-engine#cli-provides-export
+    external: cliProvidesExport
+    type: relationship
+  - native: yarramate-engine#export-command
+    external: exportCommand
+    type: concept
+  - native: yarramate-engine#export-command-reads-projection-definition
+    external: exportCommandReadsProjectionDefinition
+    type: relationship
+  - native: yarramate-engine#export-command-serves-agent-harness
+    external: exportCommandServesAgentHarness
+    type: relationship
+  - native: yarramate-engine#export-command-writes-semantic-graph
+    external: exportCommandWritesSemanticGraph
+    type: relationship
