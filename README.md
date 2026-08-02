@@ -134,6 +134,7 @@ node dist/cli.js ask .yarramate/workspace.yaml
 node dist/cli.js ask .yarramate/workspace.yaml "free text about the model"
 node dist/cli.js ask .yarramate/workspace.yaml --subjects
 node dist/cli.js ask .yarramate/workspace.yaml --advise "a design question"
+node dist/cli.js ask .yarramate/workspace.yaml --where "compiler"
 node dist/cli.js check .yarramate/workspace.yaml --json
 node dist/cli.js reconcile .yarramate/workspace.yaml
 node dist/cli.js export graph .yarramate/workspace.yaml

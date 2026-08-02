@@ -33,7 +33,10 @@ design questions, and the backlog — planned subjects in dependency
 order. `ask <workspace.yaml> --subjects` lists every concept;
 `ask <workspace.yaml> --kinds` lists the declarable vocabulary;
 `ask <workspace.yaml> "<free text>"` returns the model slice matching
-your words.
+your words; `ask <workspace.yaml> --where "<free text>"` returns the
+evidence-verified code locations of matching subjects — prefer those
+over searching when the subject is modeled, and use your own search
+tools beyond the coverage boundary the output states.
 
 - Existing implementation is the starting point: follow **Discover an
   existing project**.
