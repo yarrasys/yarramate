@@ -2,6 +2,7 @@
 
 ## Start here
 
+- [Case study: the model is the handover](CASE-STUDY-CROSS-HARNESS.md)
 - [Product contract](PRODUCT-CONTRACT.md)
 - [Product journeys](PRODUCT-JOURNEYS.md)
 - [Consuming YarraMate](CONSUMING-YARRAMATE.md)
