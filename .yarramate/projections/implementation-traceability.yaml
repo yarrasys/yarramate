@@ -2,6 +2,7 @@ format: yarramate/projection/v1
 id: implementation-traceability
 version: "1.0"
 query:
+  excludeStatuses: [retired]
   documents: [yarramate-engine, yarramate-repository]
   kinds:
     - yarramate/development@1.0#compiler-module

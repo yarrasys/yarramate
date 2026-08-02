@@ -64,6 +64,7 @@ export interface CatalogueQuestion {
   readonly materiality: string
   readonly resolution: string
   readonly authority: 'human' | 'agent' | 'either'
+  readonly since?: string
 }
 
 export interface QuestionCatalogue {
@@ -97,6 +98,7 @@ interface ReportQuestion {
   readonly question: string
   readonly materiality: string
   readonly resolution: string
+  readonly since?: string
   readonly subjects?: readonly OpenSubject[]
 }
 
@@ -138,16 +140,6 @@ const indexGraph = (graph: SemanticGraph): GraphIndex => {
       .filter(({ predicate }) => predicate === 'yarramate/state/type')
       .map(({ subject }) => subject),
   )
-  // Architecture states carry concept subjects in the graph but are not
-  // enrichment targets; the catalogue interrogates the model, not the
-  // planning overlay.
-  const concepts = new Set(
-    graph.subjects
-      .filter(
-        ({ id, type }) => type === 'concept' && !stateSubjects.has(id),
-      )
-      .map(({ id }) => id),
-  )
   const claimsBySubject = new Map<string, GraphClaim[]>()
   const kindOf = new Map<string, string>()
   const nameOf = new Map<string, string>()
@@ -176,6 +168,21 @@ const indexGraph = (graph: SemanticGraph): GraphIndex => {
       }
     }
   }
+  // Architecture states carry concept subjects in the graph but are not
+  // enrichment targets; the catalogue interrogates the model, not the
+  // planning overlay. Retired concepts are excluded for the same reason
+  // (ADR 0064): retirement is the recorded decision that a subject left
+  // the design conversation, so no question stays open against it.
+  const concepts = new Set(
+    graph.subjects
+      .filter(
+        ({ id, type }) =>
+          type === 'concept' &&
+          !stateSubjects.has(id) &&
+          statusOf.get(id) !== 'retired',
+      )
+      .map(({ id }) => id),
+  )
   return {
     concepts,
     claimsBySubject,
@@ -381,6 +388,7 @@ export function evaluateCatalogue(
           question: question.question.trim(),
           materiality: question.materiality.trim(),
           resolution: question.resolution.trim(),
+          ...(question.since === undefined ? {} : { since: question.since }),
         }
         if (question.scope === 'workspace') {
           const isOpen = question.trigger.every((condition) =>
@@ -492,13 +500,17 @@ export function renderInterrogationReport(
         lines.push(`  closed ${question.id}`)
         continue
       }
+      const sinceMarker =
+        question.since === undefined ? '' : ` [since ${question.since}]`
       if (question.subjects === undefined) {
-        lines.push(`  OPEN   ${question.id} — ${question.question}`)
+        lines.push(
+          `  OPEN   ${question.id}${sinceMarker} — ${question.question}`,
+        )
         lines.push(`         why: ${question.materiality}`)
         continue
       }
       lines.push(
-        `  OPEN   ${question.id} (${question.subjects.length} ${question.subjects.length === 1 ? 'subject' : 'subjects'})`,
+        `  OPEN   ${question.id}${sinceMarker} (${question.subjects.length} ${question.subjects.length === 1 ? 'subject' : 'subjects'})`,
       )
       for (const subject of question.subjects) {
         lines.push(

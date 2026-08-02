@@ -39,6 +39,15 @@ export type LikeC4ExportResult =
 
 export interface LikeC4ExportOptions {
   readonly comparison?: StateComparison
+  /** Git-derived review overlay (ADR 0066): subjects new or changed in a
+   *  ref range carry metadata and view styling; nothing is authored. */
+  readonly gitChange?: GitChangeOverlay
+}
+
+export interface GitChangeOverlay {
+  readonly range: string
+  readonly added: readonly string[]
+  readonly modified: readonly string[]
 }
 
 const identifier = /^[A-Za-z_][A-Za-z0-9_-]*$/
@@ -155,6 +164,14 @@ export function exportLikeC4(
   const concepts = projection.subjects
     .filter(({ type }) => type === 'concept')
     .sort((left, right) => left.id.localeCompare(right.id))
+  const gitChangeOf = (id: string): 'new' | 'changed' | undefined =>
+    options.gitChange === undefined
+      ? undefined
+      : options.gitChange.added.includes(id)
+        ? 'new'
+        : options.gitChange.modified.includes(id)
+          ? 'changed'
+          : undefined
   const comparisonChange = new Map(
     options.comparison === undefined
       ? []
@@ -245,6 +262,7 @@ export function exportLikeC4(
         ['yarramateId', concept.id],
         ['yarramateKind', semanticKind],
         ['yarramateChange', comparisonChange.get(concept.id)],
+        ['yarramateGitChange', gitChangeOf(concept.id)],
         [
           'status',
           valueFor(
@@ -326,6 +344,7 @@ export function exportLikeC4(
         ['yarramateId', relationship.id],
         ['yarramateKind', structural.predicate],
         ['yarramateChange', comparisonChange.get(relationship.id)],
+        ['yarramateGitChange', gitChangeOf(relationship.id)],
         [
           'status',
           valueFor(
@@ -402,6 +421,19 @@ export function exportLikeC4(
             return `    style ${external} { color red; border dashed }`
           }
           return `    style ${external} { color gray }`
+        })),
+    ...(options.gitChange === undefined
+      ? []
+      : concepts.flatMap((concept) => {
+          const external = externalByNative.get(concept.id)!
+          const change = gitChangeOf(concept.id)
+          if (change === 'new') {
+            return [`    style ${external} { color green }`]
+          }
+          if (change === 'changed') {
+            return [`    style ${external} { color amber }`]
+          }
+          return []
         })),
     '    autoLayout LeftRight',
     '  }',

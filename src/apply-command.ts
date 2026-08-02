@@ -267,12 +267,39 @@ const itemMap = (
 const fieldIndentOf = (source: string, map: YAMLMap): number =>
   indentAt(source, nodeRange(map.items[0]!.key)[0])
 
+// A flow-style item (`- { id: x, ... }`) cannot take block field lines;
+// splicing them after it corrupts the sequence (Codex dogfood finding,
+// 2026-08-01). The whole item is rewritten as a block mapping with the
+// mutation applied — churn confined to the item being edited.
+const rewriteFlowItem = (
+  source: string,
+  map: YAMLMap,
+  mutate: (
+    fields: Record<string, unknown>,
+  ) => Record<string, unknown>,
+): string => {
+  const mutated = mutate(map.toJSON() as Record<string, unknown>)
+  const [start, valueEnd] = nodeRange(map)
+  const fieldIndent = indentAt(source, start)
+  const rendered = reindent(
+    stringify(mutated, { lineWidth: 0 }).trimEnd(),
+    fieldIndent,
+  )
+  return splice(source, start, valueEnd, rendered)
+}
+
 const setScalarField = (
   source: string,
   map: YAMLMap,
   key: string,
   value: unknown,
 ): string => {
+  if (map.flow) {
+    return rewriteFlowItem(source, map, (fields) => ({
+      ...fields,
+      [key]: value,
+    }))
+  }
   const indent = fieldIndentOf(source, map)
   const rendered = reindent(valueText(value), indent + 2)
   const pair = pairFor(map, key)
@@ -293,6 +320,15 @@ const appendListField = (
   key: string,
   additions: readonly unknown[],
 ): string => {
+  if (map.flow) {
+    return rewriteFlowItem(source, map, (fields) => ({
+      ...fields,
+      [key]: [
+        ...((fields[key] as readonly unknown[] | undefined) ?? []),
+        ...additions,
+      ],
+    }))
+  }
   const indent = fieldIndentOf(source, map)
   const pair = pairFor(map, key)
   if (pair === undefined) {
@@ -337,7 +373,9 @@ const appendListField = (
 }
 
 // Retraction (#115): delete the field's whole entry, from the start of its
-// key line through the end of its value's last line.
+// key line through the end of its value's last line. A flow item is
+// rewritten instead — line-based deletion there would take the whole item
+// with it.
 const removeField = (
   source: string,
   map: YAMLMap,
@@ -345,6 +383,12 @@ const removeField = (
 ): string | undefined => {
   const pair = pairFor(map, key)
   if (pair === undefined) return undefined
+  if (map.flow) {
+    return rewriteFlowItem(source, map, (fields) => {
+      const { [key]: _removed, ...rest } = fields
+      return rest
+    })
+  }
   const start = lineStartOf(source, nodeRange(pair.key)[0])
   const valueEnd =
     pair.value === null || pair.value === undefined

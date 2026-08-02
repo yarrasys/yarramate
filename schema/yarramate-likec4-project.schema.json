@@ -72,6 +72,11 @@
         "projection": {
           "$ref": "#/$defs/path"
         },
+        "folder": {
+          "type": "string",
+          "description": "Sidebar folder for the rendered view, emitted as a LikeC4 title path ('Folder / Title'). Nest with '/' separators; folders appear in the order their first view appears in the views list.",
+          "pattern": "^[^/]+(?:/[^/]+)*$"
+        },
         "compare": {
           "$ref": "#/$defs/comparison"
         },

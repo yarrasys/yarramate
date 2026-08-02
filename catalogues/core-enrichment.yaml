@@ -1,15 +1,18 @@
 format: yarramate/question-catalogue/v1
 id: core-enrichment
-version: "0.3"
+version: "0.5"
 profile: yarramate/core@0.1
 presentation:
   title: Core enrichment interview
   description: >-
-    The guided design path: motivation, business, and application waves plus
-    cross-cutting hygiene (technology and implementation follow in a later
-    version). Each question states the decision its answer changes; a
-    question that cannot is deleted, not softened. Adequacy is enforced by
-    linkage depth and attestation, never by reading words.
+    The guided design path: motivation, business, application, technology,
+    and implementation waves plus cross-cutting hygiene. Each question
+    states the decision its answer changes; a question that cannot is
+    deleted, not softened. Adequacy is enforced by linkage depth and
+    attestation, never by reading words. Versioning is additive within a
+    major version: every question records the catalogue version it arrived
+    in (ADR 0063), and a completed interview honestly reopens when the
+    path deepens.
 
 waves:
   - id: motivation
@@ -23,6 +26,16 @@ waves:
     description: >-
       How declared services are realized, performed, and fed with
       information.
+  - id: technology
+    name: Technology
+    description: >-
+      Where the declared applications actually run and what materializes
+      them.
+  - id: implementation
+    name: Implementation
+    description: >-
+      How the planned architecture becomes real: work, deliverables, and
+      the plateaus between here and there.
   - id: hygiene
     name: Model hygiene
     description: Cross-cutting completeness that keeps every wave honest.
@@ -31,6 +44,7 @@ questions:
   # ---- motivation ----------------------------------------------------------
   - id: outcome-missing
     wave: motivation
+    since: "0.1"
     scope: workspace
     trigger:
       - condition: no-subject-of-kind
@@ -50,6 +64,7 @@ questions:
 
   - id: stakeholders-missing
     wave: motivation
+    since: "0.1"
     scope: workspace
     trigger:
       - condition: no-subject-of-kind
@@ -68,6 +83,7 @@ questions:
 
   - id: constraints-missing
     wave: motivation
+    since: "0.1"
     scope: workspace
     trigger:
       - condition: no-subject-of-kind
@@ -86,6 +102,7 @@ questions:
 
   - id: goal-unrealized
     wave: motivation
+    since: "0.1"
     scope: subject
     subjects:
       kinds:
@@ -105,11 +122,14 @@ questions:
     authority: either
     resolution: >-
       Add realization relationships from the fulfilling capability or
-      service, or record the aspirational status in the goal's description.
+      service, record the aspirational status in the goal's description,
+      or retire the goal (status: retired) to record that it no longer
+      steers design.
 
 
   - id: goal-no-driver
     wave: motivation
+    since: "0.3"
     scope: subject
     subjects:
       kinds:
@@ -137,6 +157,7 @@ questions:
 
   - id: driver-influences-nothing
     wave: motivation
+    since: "0.3"
     scope: subject
     subjects:
       kinds:
@@ -158,6 +179,7 @@ questions:
 
   - id: stakeholder-unconcerned
     wave: motivation
+    since: "0.3"
     scope: subject
     subjects:
       kinds:
@@ -180,6 +202,7 @@ questions:
 
   - id: requirement-unrealized
     wave: motivation
+    since: "0.3"
     scope: subject
     subjects:
       kinds:
@@ -198,11 +221,15 @@ questions:
       roadmap.
     authority: either
     resolution: >-
-      Add realization from the fulfilling service, component, or behavior,
-      or record the descoping decision and remove the requirement.
+      Add realization from the fulfilling service, component, or
+      behavior; to descope instead, retire the requirement (status:
+      retired) — retirement preserves the decision on record and closes
+      the question (ADR 0064). Delete only when the history itself is
+      noise.
 
   - id: principle-unapplied
     wave: motivation
+    since: "0.3"
     scope: subject
     subjects:
       kinds:
@@ -225,6 +252,7 @@ questions:
 
   - id: assessment-unlinked
     wave: motivation
+    since: "0.3"
     scope: subject
     subjects:
       kinds:
@@ -243,6 +271,7 @@ questions:
 
   - id: motivation-unattested
     wave: motivation
+    since: "0.3"
     scope: subject
     subjects:
       kinds:
@@ -268,6 +297,7 @@ questions:
   # ---- business ------------------------------------------------------------
   - id: service-consumer-unknown
     wave: business
+    since: "0.1"
     scope: subject
     subjects:
       kinds:
@@ -291,6 +321,7 @@ questions:
 
   - id: owner-missing
     wave: business
+    since: "0.1"
     scope: subject
     subjects:
       kinds:
@@ -313,6 +344,7 @@ questions:
 
   - id: actor-unassigned
     wave: business
+    since: "0.1"
     scope: subject
     subjects:
       kinds:
@@ -335,6 +367,7 @@ questions:
 
   - id: information-unaccessed
     wave: business
+    since: "0.1"
     scope: subject
     subjects:
       kinds:
@@ -358,6 +391,7 @@ questions:
 
   - id: no-service-declared
     wave: business
+    since: "0.1"
     scope: workspace
     trigger:
       - condition: no-subject-of-kind
@@ -378,6 +412,7 @@ questions:
 
   - id: service-realizes-no-motivation
     wave: business
+    since: "0.3"
     scope: subject
     subjects:
       kinds:
@@ -405,6 +440,7 @@ questions:
 
   - id: process-untriggered
     wave: business
+    since: "0.3"
     scope: subject
     subjects:
       kinds:
@@ -427,6 +463,7 @@ questions:
 
   - id: business-service-unrealized
     wave: business
+    since: "0.3"
     scope: subject
     subjects:
       kinds:
@@ -460,6 +497,7 @@ questions:
   # ---- application ---------------------------------------------------------
   - id: app-service-unrealized
     wave: application
+    since: "0.3"
     scope: subject
     subjects:
       kinds:
@@ -490,6 +528,7 @@ questions:
 
   - id: component-realizes-nothing
     wave: application
+    since: "0.3"
     scope: subject
     subjects:
       kinds:
@@ -515,6 +554,7 @@ questions:
 
   - id: behavior-unassigned
     wave: application
+    since: "0.3"
     scope: subject
     subjects:
       kinds:
@@ -546,6 +586,7 @@ questions:
 
   - id: event-triggers-nothing
     wave: application
+    since: "0.3"
     scope: subject
     subjects:
       kinds:
@@ -568,6 +609,7 @@ questions:
 
   - id: information-unowned
     wave: application
+    since: "0.3"
     scope: subject
     subjects:
       kinds:
@@ -589,6 +631,7 @@ questions:
 
   - id: planned-design-unattested
     wave: application
+    since: "0.3"
     scope: subject
     subjects:
       kinds:
@@ -612,9 +655,246 @@ questions:
       topic "design-review" (revoke by deleting it when the design
       changes).
 
+  # ---- technology ----------------------------------------------------------
+  - id: component-unhosted
+    wave: technology
+    since: "0.4"
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#applicationComponent
+      kindMatching: exact
+      statuses:
+        - planned
+        - current
+    trigger:
+      - condition: missing-linkage
+        kinds:
+          - yarramate/core@0.1#serving
+          - yarramate/core@0.1#assignment
+        direction: incoming
+        counterpartKinds:
+          - yarramate/core@0.1#node
+          - yarramate/core@0.1#device
+          - yarramate/core@0.1#systemSoftware
+          - yarramate/core@0.1#technologyService
+    question: >-
+      Where does {subject.name} run?
+    materiality: >-
+      The hosting boundary decides latency, failure domain, scaling
+      model, and data residency; a component with no declared runtime is
+      deployed by whoever gets there first. Matching is exact by intent:
+      profile-derived module kinds inherit their deployable parent's
+      hosting rather than answering separately.
+    authority: either
+    resolution: >-
+      Add the node, device, or system software that hosts it with a
+      serving or assignment relationship into the component.
+
+  - id: node-serves-nothing
+    wave: technology
+    since: "0.4"
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#node
+        - yarramate/core@0.1#device
+        - yarramate/core@0.1#systemSoftware
+    trigger:
+      - condition: missing-relationship
+        kinds:
+          - yarramate/core@0.1#serving
+          - yarramate/core@0.1#assignment
+        direction: outgoing
+    question: >-
+      What does {subject.name} host or serve?
+    materiality: >-
+      Declared infrastructure that serves nothing is either cost without
+      purpose or missing the links that justify it; both change the
+      deployment budget.
+    authority: either
+    resolution: >-
+      Add serving or assignment relationships to the applications and
+      behavior it hosts, or remove it.
+
+  - id: technology-service-unrealized
+    wave: technology
+    since: "0.4"
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#technologyService
+      statuses:
+        - planned
+        - current
+    trigger:
+      - condition: missing-linkage
+        kinds:
+          - yarramate/core@0.1#realization
+        direction: incoming
+        counterpartKinds:
+          - yarramate/core@0.1#node
+          - yarramate/core@0.1#systemSoftware
+          - yarramate/core@0.1#technologyFunction
+          - yarramate/core@0.1#technologyProcess
+    question: >-
+      What provides {subject.name}?
+    materiality: >-
+      A technology service with no realizing node or behavior is a
+      dependency assumed rather than provided; outages and upgrades have
+      no owner in the model.
+    authority: either
+    resolution: >-
+      Add realization from the node, system software, or technology
+      behavior that provides the service.
+
+  - id: artifact-unassigned
+    wave: technology
+    since: "0.4"
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#artifact
+      kindMatching: exact
+    trigger:
+      - condition: missing-relationship
+        kinds:
+          - yarramate/core@0.1#assignment
+          - yarramate/core@0.1#realization
+        direction: any
+    question: >-
+      What deploys {subject.name}, and what does it materialize?
+    materiality: >-
+      An artifact with no deployment target and nothing it realizes is a
+      build output the architecture cannot place; release engineering
+      starts from exactly these links.
+    authority: either
+    resolution: >-
+      Assign the artifact to the node that deploys it and add realization
+      to the component or data it materializes.
+
+  # ---- implementation ------------------------------------------------------
+  - id: workpackage-delivers-nothing
+    wave: implementation
+    since: "0.4"
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#workPackage
+    trigger:
+      - condition: missing-relationship
+        kinds:
+          - yarramate/core@0.1#realization
+          - yarramate/core@0.1#aggregation
+        direction: outgoing
+    question: >-
+      What does {subject.name} produce?
+    materiality: >-
+      Work with no deliverable cannot be accepted or declared done; the
+      deliverable link is what makes progress reviewable rather than
+      reported.
+    authority: either
+    resolution: >-
+      Add realization from the work package to its deliverables.
+
+  - id: workpackage-unassigned
+    wave: implementation
+    since: "0.4"
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#workPackage
+    trigger:
+      - condition: missing-linkage
+        kinds:
+          - yarramate/core@0.1#assignment
+        direction: incoming
+        counterpartKinds:
+          - yarramate/core@0.1#businessActor
+          - yarramate/core@0.1#businessRole
+    question: >-
+      Who is committed to {subject.name}?
+    materiality: >-
+      An unassigned work package is a plan without capacity; commitment
+      is the difference between a roadmap and a wish list.
+    authority: human
+    resolution: >-
+      Add assignment from the actor or role that owns the work.
+
+  - id: deliverable-realizes-nothing
+    wave: implementation
+    since: "0.4"
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#deliverable
+      kindMatching: exact
+    trigger:
+      - condition: missing-relationship
+        kinds:
+          - yarramate/core@0.1#realization
+        direction: outgoing
+    question: >-
+      What does {subject.name} make real?
+    materiality: >-
+      A deliverable that realizes no architecture element is effort
+      disconnected from the design; its acceptance criteria cannot be
+      stated architecturally.
+    authority: either
+    resolution: >-
+      Add realization from the deliverable to the plateau, requirement,
+      or element it brings into being.
+
+  - id: plateau-aggregates-nothing
+    wave: implementation
+    since: "0.4"
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#plateau
+    trigger:
+      - condition: missing-relationship
+        kinds:
+          - yarramate/core@0.1#aggregation
+          - yarramate/core@0.1#composition
+        direction: outgoing
+    question: >-
+      Which architecture does {subject.name} stabilize?
+    materiality: >-
+      A plateau that aggregates nothing describes no state anyone can
+      stand on; migration planning needs to know what is stable when.
+    authority: either
+    resolution: >-
+      Aggregate the elements that are current during this plateau, or use
+      architecture states instead and remove it.
+
+  - id: gap-unaddressed
+    wave: implementation
+    since: "0.4"
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#gap
+    trigger:
+      - condition: missing-relationship
+        kinds:
+          - yarramate/core@0.1#association
+          - yarramate/core@0.1#realization
+        direction: any
+    question: >-
+      What closes {subject.name}?
+    materiality: >-
+      A named gap nothing addresses is a known risk with no plan; either
+      work closes it or the acceptance of it should be on record.
+    authority: human
+    resolution: >-
+      Associate the gap with the plateaus it separates and the
+      deliverable that closes it, or record the decision to accept it.
+
   # ---- hygiene -------------------------------------------------------------
   - id: concept-isolated
     wave: hygiene
+    since: "0.1"
     scope: subject
     subjects:
       kinds:
@@ -640,6 +920,7 @@ questions:
 
   - id: concept-undescribed
     wave: hygiene
+    since: "0.1"
     scope: subject
     subjects:
       kinds:
@@ -663,6 +944,7 @@ questions:
 
   - id: status-missing
     wave: hygiene
+    since: "0.1"
     scope: subject
     subjects:
       kinds:
@@ -685,6 +967,7 @@ questions:
 
   - id: states-undefined
     wave: hygiene
+    since: "0.1"
     scope: workspace
     trigger:
       - condition: no-state-defined

@@ -665,3 +665,81 @@ query:
     })
   })
 })
+
+describe('excludeStatuses', () => {
+  const graphOf = (source: string) => {
+    const result = compileWorkspace([{ path: 'doc.yaml', source }])
+    if (!result.ok) throw new Error('fixture must compile')
+    return result.graph
+  }
+
+  it('drops excluded statuses while keeping unstatused concepts', () => {
+    const graph = graphOf(`format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts:
+  - id: actor
+    kind: businessActor
+    name: Actor
+  - id: live-service
+    kind: applicationService
+    name: Live service
+    status: current
+  - id: dead-service
+    kind: applicationService
+    name: Dead service
+    status: retired
+relationships:
+  - id: dead-serves-actor
+    kind: serving
+    from: dead-service
+    to: actor
+`)
+    const result = evaluateProjection(graph, {
+      format: 'yarramate/projection/v1',
+      id: 'living',
+      version: '1.0',
+      query: { excludeStatuses: ['retired'], relationships: 'between' },
+    })
+    expect(result.subjects.map(({ id }) => id)).toEqual([
+      'main#actor',
+      'main#live-service',
+    ])
+  })
+
+  it('vetoes connected expansion into excluded concepts', () => {
+    const graph = graphOf(`format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts:
+  - id: live-service
+    kind: applicationService
+    name: Live service
+    status: current
+  - id: dead-service
+    kind: applicationService
+    name: Dead service
+    status: retired
+relationships:
+  - id: live-serves-dead
+    kind: serving
+    from: live-service
+    to: dead-service
+`)
+    const result = evaluateProjection(graph, {
+      format: 'yarramate/projection/v1',
+      id: 'living',
+      version: '1.0',
+      query: {
+        subjects: ['main#live-service'],
+        excludeStatuses: ['retired'],
+        relationships: 'connected',
+      },
+    })
+    // The retired neighbour is not pulled in, and the edge to it is
+    // dropped rather than left dangling.
+    expect(result.subjects.map(({ id }) => id)).toEqual([
+      'main#live-service',
+    ])
+  })
+})

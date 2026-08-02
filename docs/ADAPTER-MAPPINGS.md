@@ -228,8 +228,11 @@ kindMapping: integrations/likec4/kind-mapping.yaml
 views:
   - id: index
     projection: projections/starter-landscape.yaml
+    folder: "1 · Orientation"
   - projection: projections/likec4-export-path.yaml
+    folder: "3 · Engine internals"
   - projection: projections/state-engine-change.yaml
+    folder: "5 · Evolution"
     compare:
       from: yarramate-evolution#adapter-foundation
       to: yarramate-evolution#state-foundation
@@ -256,6 +259,16 @@ entries may supply an adapter-owned `id` override without changing the native
 projection identity. Using `id: index` on a curated landscape prevents LikeC4
 from synthesizing a landing view over the entire unioned model. The generated
 ownership marker records both the override and projection identity.
+
+An optional `folder` per view files it in LikeC4's sidebar tree: the folder
+is emitted as a title path (`title 'Folder / Title'`), which LikeC4 renders
+natively — every segment but the last becomes a folder, and `/` inside the
+folder value nests further (ADR 0067). A view whose projection declares no
+presentation title still gets a title line, with the view id as the leaf.
+LikeC4 orders sibling folders by name, so encode a deliberate reading order
+in the folder names themselves (`"1 · Orientation"`); views inside one
+folder keep the views-list order. No new LikeC4 constructs are involved,
+and the folder never touches the native projection.
 Project definition and generated marker v2 schemas are
 `schema/yarramate-likec4-project.schema.json` and
 `schema/yarramate-likec4-generated-project-v2.schema.json`. The lower-level

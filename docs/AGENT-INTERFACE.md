@@ -215,6 +215,6 @@ vocabulary as a read.
 - Where the standalone `evidence` evaluation lands: SETTLED (ADR 0061) —
   gone as a public surface; `reconcile` reports, `check --strict` gates,
   `yarramate/evidence-report/v1` remains a library-level format.
-- Catalogue versioning as the path deepens (the pinned-baseline lesson
-  from the benchmark applies) — still open; revisit when the
-  technology/implementation waves land.
+- Catalogue versioning: SETTLED (ADR 0063, with the 0.4 waves) —
+  honest reopen, `since` delta annotations, semver discipline (minor
+  is additive), no pinning.

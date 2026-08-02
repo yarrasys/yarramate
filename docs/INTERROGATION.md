@@ -77,3 +77,23 @@ by wave — answering what evidence can answer and escalating questions marked
 decision their answer changes. Answers are captured back into the model
 through the normal authoring surface and Git review; closure is then
 automatic on the next run.
+
+## Catalogue versioning
+
+The shipped catalogue is versioned with the product and deepens over time
+(ADR 0063). The discipline:
+
+- **Minor versions are additive**: new questions and loosened triggers
+  only. A model whose interview was complete honestly reopens when the
+  path deepens — the model did not regress; the standard of adequacy grew.
+- **Every question records `since`**, the catalogue version it first
+  appeared in. Reports, design steps, and `ask --open` carry the marker
+  (`[since 0.4]`), so consumers can attribute a reopened interview to the
+  catalogue delta without diffing catalogue files.
+- **There is no pinning.** The interview is stateless (ADR 0053/0058);
+  storing "the version this model was interviewed against" would let
+  models silently age against the path. Teams that need a frozen path can
+  copy the shipped catalogue and pass `--catalogue` explicitly.
+- **Major versions may change or remove triggers** — the only change
+  class that can silently alter what an existing "complete" means, which
+  is why it demands the major signal.

@@ -2,6 +2,7 @@ format: yarramate/projection/v1
 id: state-foundation
 version: "1.0"
 query:
+  excludeStatuses: [retired]
   states:
     - yarramate-evolution#state-foundation
   documents:

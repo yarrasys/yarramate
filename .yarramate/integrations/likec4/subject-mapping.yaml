@@ -1386,3 +1386,33 @@ mappings:
   - native: yarramate-engine#export-command-writes-semantic-graph
     external: exportCommandWritesSemanticGraph
     type: relationship
+  - native: yarramate-engine#consumer-host
+    external: consumerHost
+    type: concept
+  - native: yarramate-engine#consumer-host-composes-runtime
+    external: consumerHostComposesRuntime
+    type: relationship
+  - native: yarramate-engine#consumer-host-deploys-package
+    external: consumerHostDeploysPackage
+    type: relationship
+  - native: yarramate-engine#nodejs-runtime
+    external: nodejsRuntime
+    type: concept
+  - native: yarramate-engine#npm-package
+    external: npmPackage
+    type: concept
+  - native: yarramate-engine#npm-package-realizes-cli
+    external: npmPackageRealizesCli
+    type: relationship
+  - native: yarramate-engine#runtime-serves-cli
+    external: runtimeServesCli
+    type: relationship
+  - native: yarramate-engine#runtime-serves-graphify-adapter
+    external: runtimeServesGraphifyAdapter
+    type: relationship
+  - native: yarramate-engine#runtime-serves-likec4-adapter
+    external: runtimeServesLikec4Adapter
+    type: relationship
+  - native: yarramate-engine#runtime-serves-mcp-adapter
+    external: runtimeServesMcpAdapter
+    type: relationship

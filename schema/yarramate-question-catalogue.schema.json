@@ -392,6 +392,11 @@
         "resolution": {
           "description": "Guidance for how an accepted answer should land as native authoring (which claim, relationship, or state to add).",
           "$ref": "#/$defs/nonEmptyText"
+        },
+        "since": {
+          "description": "The catalogue version this question first appeared in. Lets consumers distinguish 'the catalogue deepened' from 'the model regressed' when a completed interview reopens (ADR 0063).",
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+$"
         }
       },
       "allOf": [

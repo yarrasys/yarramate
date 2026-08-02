@@ -42,6 +42,8 @@ interface DesignStep {
   readonly resolution: string
   readonly subject?: { readonly id: string; readonly name?: string }
   readonly remainingSubjects?: number
+  readonly openSubjects?: readonly string[]
+  readonly since?: string
 }
 
 interface DesignStepResult {
@@ -79,6 +81,7 @@ const selectStep = (
           question: question.question,
           materiality: question.materiality,
           resolution: question.resolution,
+          ...(question.since === undefined ? {} : { since: question.since }),
         }
       }
       const subjects =
@@ -95,6 +98,7 @@ const selectStep = (
         question: first.question,
         materiality: question.materiality,
         resolution: question.resolution,
+        ...(question.since === undefined ? {} : { since: question.since }),
         subject: {
           id: first.id,
           ...(first.name === undefined ? {} : { name: first.name }),
@@ -102,6 +106,10 @@ const selectStep = (
         ...(subjects.length > 1
           ? { remainingSubjects: subjects.length - 1 }
           : {}),
+        // The full roster sharing this question (#116): when one policy
+        // answer covers many subjects, the harness can collect it once
+        // and land one apply batch instead of interviewing N times.
+        openSubjects: subjects.map(({ id }) => id),
       }
     }
   }

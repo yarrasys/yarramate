@@ -4,20 +4,32 @@ version: "1.0"
 title: YarraMate architecture
 mapping: integrations/likec4/subject-mapping.yaml
 kindMapping: integrations/likec4/kind-mapping.yaml
+# Views are ordered as five stories, coarse to fine: orientation, the
+# agent contract, engine internals, the ArchiMate viewpoints, and
+# evolution. Each story is a sidebar folder (view titles become LikeC4
+# title paths, ADR 0067). LikeC4 orders folders by name, so the story
+# number is part of the folder name; views inside a folder keep this
+# list's order. Retired subjects are excluded by the underlying
+# projections (excludeStatuses) - the diagrams show the living
+# architecture; git and the model keep the history.
 views:
+  # --- 1 · Orientation ------------------------------------------------
   - id: index
     projection: projections/starter-landscape.yaml
-  - projection: projections/starter-motivation.yaml
-  - projection: projections/starter-strategy.yaml
+    folder: "1 · Orientation"
   - projection: projections/product-journeys.yaml
-  - projection: projections/starter-business-operation.yaml
-  - projection: projections/starter-application-cooperation.yaml
-  - projection: projections/starter-information-structure.yaml
-  - projection: projections/starter-technology-deployment.yaml
-  - projection: projections/starter-implementation-roadmap.yaml
+    folder: "1 · Orientation"
+  - projection: projections/product-context.yaml
+    folder: "1 · Orientation"
+  # --- 2 · The agent contract -----------------------------------------
+  - projection: projections/seven-verb-surface.yaml
+    folder: "2 · Agent contract"
+  # --- 3 · Engine internals -------------------------------------------
   - projection: projections/engine-components.yaml
+    folder: "3 · Engine internals"
   - id: compiler-pipeline
     projection: projections/current-engine.yaml
+    folder: "3 · Engine internals"
     dynamic:
       steps:
         - relationship: yarramate-engine#parse-triggers-structure-validation
@@ -27,9 +39,37 @@ views:
         - relationship: yarramate-engine#semantic-validation-triggers-compilation
           title: compiles graph
   - projection: projections/likec4-export-path.yaml
+    folder: "3 · Engine internals"
+  - projection: projections/maintainer-tool-neutral-engine.yaml
+    folder: "3 · Engine internals"
+  - projection: projections/implementation-traceability.yaml
+    folder: "3 · Engine internals"
+  # --- 4 · ArchiMate viewpoints ---------------------------------------
+  - projection: projections/starter-motivation.yaml
+    folder: "4 · ArchiMate viewpoints"
+  - projection: projections/starter-strategy.yaml
+    folder: "4 · ArchiMate viewpoints"
+  - projection: projections/starter-business-operation.yaml
+    folder: "4 · ArchiMate viewpoints"
+  - projection: projections/starter-application-cooperation.yaml
+    folder: "4 · ArchiMate viewpoints"
+  - projection: projections/starter-information-structure.yaml
+    folder: "4 · ArchiMate viewpoints"
+  - projection: projections/starter-technology-deployment.yaml
+    folder: "4 · ArchiMate viewpoints"
+  - projection: projections/starter-implementation-roadmap.yaml
+    folder: "4 · ArchiMate viewpoints"
+  # --- 5 · Evolution ---------------------------------------------------
+  - projection: projections/state-foundation.yaml
+    folder: "5 · Evolution"
+  - projection: projections/core-contract-foundation.yaml
+    folder: "5 · Evolution"
   - projection: projections/state-engine-adapter.yaml
+    folder: "5 · Evolution"
   - projection: projections/state-engine-target.yaml
+    folder: "5 · Evolution"
   - projection: projections/state-engine-change.yaml
+    folder: "5 · Evolution"
     compare:
       from: yarramate-evolution#adapter-foundation
       to: yarramate-evolution#state-foundation

@@ -9,6 +9,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseDocument } from 'yaml'
 import { renderBrief } from './brief.js'
+import { deriveChangedSubjects } from './changed.js'
 import { humanDiagnostics, usage, type CliResult } from './cli-support.js'
 import {
   compileWorkspaceWithProfileContext,
@@ -48,6 +49,7 @@ interface ParsedExport {
   readonly positionals: readonly string[]
   readonly out?: string
   readonly budget?: number
+  readonly changed?: string
   readonly json: boolean
 }
 
@@ -57,6 +59,7 @@ const parseExportOptions = (
   const positionals: string[] = []
   let out: string | undefined
   let budget: number | undefined
+  let changed: string | undefined
   let json = false
   for (let index = 0; index < options.length; index += 1) {
     const option = options[index]
@@ -64,12 +67,19 @@ const parseExportOptions = (
       json = true
       continue
     }
-    if (option === '--out' || option === '--budget') {
+    if (
+      option === '--out' ||
+      option === '--budget' ||
+      option === '--changed'
+    ) {
       const value = options[index + 1]
       if (value === undefined || value.startsWith('-')) return undefined
       if (option === '--out') {
         if (out !== undefined) return undefined
         out = value
+      } else if (option === '--changed') {
+        if (changed !== undefined) return undefined
+        changed = value
       } else {
         if (budget !== undefined || !/^[1-9][0-9]*$/.test(value)) {
           return undefined
@@ -86,6 +96,7 @@ const parseExportOptions = (
     positionals,
     ...(out === undefined ? {} : { out }),
     ...(budget === undefined ? {} : { budget }),
+    ...(changed === undefined ? {} : { changed }),
     json,
   }
 }
@@ -121,6 +132,8 @@ export function runExportCommand(
     ) {
       return { exitCode: 2, stdout: '', stderr: usage }
     }
+    const changedArguments =
+      parsed.changed === undefined ? [] : ['--changed', parsed.changed]
     if (!existsSync(likec4AdapterEntry)) {
       return {
         exitCode: 2,
@@ -138,6 +151,7 @@ export function runExportCommand(
         projectDefinition,
         outputDirectory,
         workspacePath,
+        ...changedArguments,
       ],
       { cwd, encoding: 'utf8' },
     )
@@ -149,14 +163,17 @@ export function runExportCommand(
     }
   }
 
-  const expectedPositionals = kind === 'graph' ? 1 : 2
-  const workspacePath =
-    parsed.positionals[expectedPositionals - 1]
-  const projectionPath = kind === 'graph' ? undefined : parsed.positionals[0]
+  const usesChanged = parsed.changed !== undefined
+  const expectedPositionals =
+    kind === 'graph' || usesChanged ? 1 : 2
+  const workspacePath = parsed.positionals[expectedPositionals - 1]
+  const projectionPath =
+    kind === 'graph' || usesChanged ? undefined : parsed.positionals[0]
   if (
     parsed.positionals.length !== expectedPositionals ||
     workspacePath === undefined ||
     parsed.json ||
+    (usesChanged && kind === 'graph') ||
     (parsed.budget !== undefined && kind !== 'briefs') ||
     (kind === 'briefs' && parsed.out === undefined)
   ) {
@@ -210,16 +227,67 @@ export function runExportCommand(
       }
     }
 
-    const loadedProjection = loadProjection({
-      path: projectionPath!,
-      source: readFileSync(resolve(cwd, projectionPath!), 'utf8'),
-    })
-    if (!loadedProjection.ok) return failed(loadedProjection.diagnostics)
-    const result = evaluateProjection(
-      compilation.graph,
-      loadedProjection.projection,
-      compilation.profileContext,
-    )
+    let result: ProjectionResult
+    if (parsed.changed !== undefined) {
+      // Review slices derive from git (ADR 0065): changed subjects seed
+      // the connected neighbourhood the reviewer inspects.
+      const documentIdByPath = new Map(
+        compilation.graph.documents.map(({ id, source }) => [source, id]),
+      )
+      const derived = deriveChangedSubjects(
+        cwd,
+        parsed.changed,
+        workspace.documents.map((path) => ({
+          path,
+          source: readFileSync(resolve(cwd, path), 'utf8'),
+          documentId: documentIdByPath.get(path) ?? path,
+        })),
+      )
+      if (!derived.ok) {
+        return { exitCode: 2, stdout: '', stderr: `${derived.message}\n` }
+      }
+      const endpoints = new Set<string>()
+      for (const relationshipId of derived.changed.relationships) {
+        const claim = compilation.graph.claims.find(
+          (candidate) =>
+            candidate.id === relationshipId && 'ref' in candidate.object,
+        )
+        if (claim !== undefined && 'ref' in claim.object) {
+          endpoints.add(claim.subject)
+          endpoints.add(claim.object.ref)
+        }
+      }
+      const seeds = [
+        ...new Set([...derived.changed.concepts, ...endpoints]),
+      ].sort()
+      result = evaluateProjection(
+        compilation.graph,
+        {
+          format: 'yarramate/projection/v1',
+          id: 'review-slice',
+          version: '0.0',
+          query: { subjects: seeds, relationships: 'connected' },
+          presentation: {
+            title: `Review slice ${parsed.changed}`,
+            description:
+              `Connected neighbourhood of the subjects changed in ` +
+              `${parsed.changed}.`,
+          },
+        },
+        compilation.profileContext,
+      )
+    } else {
+      const loadedProjection = loadProjection({
+        path: projectionPath!,
+        source: readFileSync(resolve(cwd, projectionPath!), 'utf8'),
+      })
+      if (!loadedProjection.ok) return failed(loadedProjection.diagnostics)
+      result = evaluateProjection(
+        compilation.graph,
+        loadedProjection.projection,
+        compilation.profileContext,
+      )
+    }
 
     if (kind === 'markdown') {
       const rendered = renderProjectionMarkdown(result)

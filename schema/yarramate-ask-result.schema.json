@@ -4,7 +4,11 @@
   "title": "YarraMate ask result",
   "description": "One envelope for every consumed-now read: orientation, roster, slice, advice, next, open questions, and state comparison, discriminated by mode.",
   "type": "object",
-  "required": ["format", "workspace", "mode"],
+  "required": [
+    "format",
+    "workspace",
+    "mode"
+  ],
   "properties": {
     "format": {
       "const": "yarramate/ask-result/v1"
@@ -29,18 +33,34 @@
   "oneOf": [
     {
       "type": "object",
-      "required": ["mode", "ok", "check", "backlog"],
+      "required": [
+        "mode",
+        "ok",
+        "check",
+        "backlog"
+      ],
       "properties": {
         "format": true,
         "workspace": true,
-        "mode": { "const": "orientation" },
-        "ok": { "type": "boolean" },
+        "mode": {
+          "const": "orientation"
+        },
+        "ok": {
+          "type": "boolean"
+        },
         "check": {
           "type": "object",
-          "required": ["ok", "diagnostics"],
+          "required": [
+            "ok",
+            "diagnostics"
+          ],
           "properties": {
-            "ok": { "type": "boolean" },
-            "diagnostics": { "type": "array" },
+            "ok": {
+              "type": "boolean"
+            },
+            "diagnostics": {
+              "type": "array"
+            },
             "counted": {
               "type": "object",
               "required": [
@@ -50,10 +70,18 @@
                 "states"
               ],
               "properties": {
-                "documents": { "type": "integer" },
-                "concepts": { "type": "integer" },
-                "relationships": { "type": "integer" },
-                "states": { "type": "integer" }
+                "documents": {
+                  "type": "integer"
+                },
+                "concepts": {
+                  "type": "integer"
+                },
+                "relationships": {
+                  "type": "integer"
+                },
+                "states": {
+                  "type": "integer"
+                }
               },
               "additionalProperties": false
             }
@@ -65,28 +93,47 @@
         },
         "design": {
           "type": "object",
-          "required": ["catalogue", "open"],
+          "required": [
+            "catalogue",
+            "open"
+          ],
           "properties": {
-            "catalogue": { "type": "string", "minLength": 1 },
-            "open": { "type": "integer", "minimum": 0 }
+            "catalogue": {
+              "type": "string",
+              "minLength": 1
+            },
+            "open": {
+              "type": "integer",
+              "minimum": 0
+            }
           },
           "additionalProperties": false
         },
         "backlog": {
           "type": "object",
-          "required": ["planned", "current", "retired"],
+          "required": [
+            "planned",
+            "current",
+            "retired"
+          ],
           "properties": {
             "planned": {
               "type": "array",
-              "items": { "$ref": "#/$defs/nextSubject" }
+              "items": {
+                "$ref": "#/$defs/nextSubject"
+              }
             },
             "current": {
               "type": "array",
-              "items": { "$ref": "#/$defs/conceptEntry" }
+              "items": {
+                "$ref": "#/$defs/conceptEntry"
+              }
             },
             "retired": {
               "type": "array",
-              "items": { "$ref": "#/$defs/conceptEntry" }
+              "items": {
+                "$ref": "#/$defs/conceptEntry"
+              }
             }
           },
           "additionalProperties": false
@@ -96,36 +143,126 @@
     },
     {
       "type": "object",
-      "required": ["mode", "total", "subjects"],
+      "required": [
+        "mode",
+        "total",
+        "subjects"
+      ],
       "properties": {
         "format": true,
         "workspace": true,
-        "mode": { "const": "roster" },
-        "total": { "type": "integer", "minimum": 0 },
+        "mode": {
+          "const": "roster"
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
         "subjects": {
           "type": "array",
-          "items": { "$ref": "#/$defs/conceptEntry" }
+          "items": {
+            "$ref": "#/$defs/conceptEntry"
+          }
         }
       },
       "additionalProperties": false
     },
     {
       "type": "object",
-      "required": ["mode", "addressing", "result"],
+      "required": [
+        "mode",
+        "addressing",
+        "result"
+      ],
       "properties": {
         "format": true,
         "workspace": true,
-        "mode": { "const": "slice" },
-        "addressing": {
-          "enum": ["free-text", "subjects", "projection"]
+        "mode": {
+          "const": "slice"
         },
-        "topic": { "type": "string", "minLength": 1 },
+        "addressing": {
+          "enum": [
+            "free-text",
+            "subjects",
+            "projection",
+            "changed"
+          ]
+        },
+        "topic": {
+          "type": "string",
+          "minLength": 1
+        },
         "seeds": {
           "type": "array",
-          "items": { "type": "string", "minLength": 1 }
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         },
-        "matched": { "type": "integer", "minimum": 0 },
-        "result": { "$ref": "#/$defs/projectionResult" }
+        "matched": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "result": {
+          "$ref": "#/$defs/projectionResult"
+        },
+        "changed": {
+          "type": "object",
+          "required": [
+            "range",
+            "concepts",
+            "relationships"
+          ],
+          "properties": {
+            "range": {
+              "type": "string",
+              "minLength": 1
+            },
+            "concepts": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "relationships": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "added": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "coverage": {
+          "type": "object",
+          "required": [
+            "projections",
+            "uncovered"
+          ],
+          "properties": {
+            "projections": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "uncovered": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "additionalProperties": false
+        }
       },
       "additionalProperties": false
     },
@@ -142,36 +279,84 @@
       "properties": {
         "format": true,
         "workspace": true,
-        "mode": { "const": "advice" },
-        "topic": { "type": "string", "minLength": 1 },
+        "mode": {
+          "const": "advice"
+        },
+        "topic": {
+          "type": "string",
+          "minLength": 1
+        },
         "seeds": {
           "type": "array",
-          "items": { "type": "string", "minLength": 1 }
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         },
-        "matched": { "type": "integer", "minimum": 0 },
-        "slice": { "type": "string", "minLength": 1 },
+        "matched": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "slice": {
+          "type": "string",
+          "minLength": 1
+        },
         "openQuestions": {
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["wave", "id", "authority", "question", "materiality"],
+            "required": [
+              "wave",
+              "id",
+              "authority",
+              "question",
+              "materiality"
+            ],
             "properties": {
-              "wave": { "type": "string", "minLength": 1 },
-              "id": { "type": "string", "minLength": 1 },
-              "authority": { "enum": ["human", "agent", "either"] },
-              "question": { "type": "string", "minLength": 1 },
-              "materiality": { "type": "string", "minLength": 1 },
-              "subject": { "type": "string", "minLength": 1 }
+              "wave": {
+                "type": "string",
+                "minLength": 1
+              },
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "authority": {
+                "enum": [
+                  "human",
+                  "agent",
+                  "either"
+                ]
+              },
+              "question": {
+                "type": "string",
+                "minLength": 1
+              },
+              "materiality": {
+                "type": "string",
+                "minLength": 1
+              },
+              "subject": {
+                "type": "string",
+                "minLength": 1
+              }
             },
             "additionalProperties": false
           }
         },
         "reconciliation": {
           "type": "object",
-          "required": ["summary", "findings"],
+          "required": [
+            "summary",
+            "findings"
+          ],
           "properties": {
-            "summary": { "$ref": "#/$defs/reconciliationSummary" },
-            "findings": { "type": "array" }
+            "summary": {
+              "$ref": "#/$defs/reconciliationSummary"
+            },
+            "findings": {
+              "type": "array"
+            }
           },
           "additionalProperties": false
         }
@@ -180,34 +365,62 @@
     },
     {
       "type": "object",
-      "required": ["mode", "subjects"],
+      "required": [
+        "mode",
+        "subjects"
+      ],
       "properties": {
         "format": true,
         "workspace": true,
-        "mode": { "const": "next" },
+        "mode": {
+          "const": "next"
+        },
         "subjects": {
           "type": "array",
-          "items": { "$ref": "#/$defs/nextSubject" }
+          "items": {
+            "$ref": "#/$defs/nextSubject"
+          }
         }
       },
       "additionalProperties": false
     },
     {
       "type": "object",
-      "required": ["mode", "report"],
+      "required": [
+        "mode",
+        "report"
+      ],
       "properties": {
         "format": true,
         "workspace": true,
-        "mode": { "const": "open" },
+        "mode": {
+          "const": "open"
+        },
         "report": {
           "type": "object",
-          "required": ["format", "workspace", "catalogue", "summary", "waves"],
+          "required": [
+            "format",
+            "workspace",
+            "catalogue",
+            "summary",
+            "waves"
+          ],
           "properties": {
-            "format": { "const": "yarramate/interrogation-report/v1" },
-            "workspace": { "type": "string" },
-            "catalogue": { "type": "string" },
-            "summary": { "type": "object" },
-            "waves": { "type": "array" }
+            "format": {
+              "const": "yarramate/interrogation-report/v1"
+            },
+            "workspace": {
+              "type": "string"
+            },
+            "catalogue": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "object"
+            },
+            "waves": {
+              "type": "array"
+            }
           },
           "additionalProperties": false
         }
@@ -216,22 +429,48 @@
     },
     {
       "type": "object",
-      "required": ["mode", "conceptKinds", "relationshipKinds", "extensions"],
+      "required": [
+        "mode",
+        "conceptKinds",
+        "relationshipKinds",
+        "extensions"
+      ],
       "properties": {
         "format": true,
         "workspace": true,
-        "mode": { "const": "kinds" },
+        "mode": {
+          "const": "kinds"
+        },
         "conceptKinds": {
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["id", "name", "layer", "aspect"],
+            "required": [
+              "id",
+              "name",
+              "layer",
+              "aspect"
+            ],
             "properties": {
-              "id": { "type": "string", "minLength": 1 },
-              "name": { "type": "string", "minLength": 1 },
-              "layer": { "type": "string", "minLength": 1 },
-              "aspect": { "type": "string", "minLength": 1 },
-              "inspiredBy": { "type": "string" }
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "layer": {
+                "type": "string",
+                "minLength": 1
+              },
+              "aspect": {
+                "type": "string",
+                "minLength": 1
+              },
+              "inspiredBy": {
+                "type": "string"
+              }
             },
             "additionalProperties": false
           }
@@ -240,19 +479,34 @@
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["id", "intent"],
+            "required": [
+              "id",
+              "intent"
+            ],
             "properties": {
-              "id": { "type": "string", "minLength": 1 },
-              "intent": { "type": "string", "minLength": 1 },
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "intent": {
+                "type": "string",
+                "minLength": 1
+              },
               "sourceAspects": {
                 "type": "array",
-                "items": { "type": "string" }
+                "items": {
+                  "type": "string"
+                }
               },
               "targetAspects": {
                 "type": "array",
-                "items": { "type": "string" }
+                "items": {
+                  "type": "string"
+                }
               },
-              "repair": { "type": "string" }
+              "repair": {
+                "type": "string"
+              }
             },
             "additionalProperties": false
           }
@@ -261,13 +515,27 @@
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["id", "type", "lineage"],
+            "required": [
+              "id",
+              "type",
+              "lineage"
+            ],
             "properties": {
-              "id": { "type": "string", "minLength": 1 },
-              "type": { "enum": ["concept", "relationship"] },
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "type": {
+                "enum": [
+                  "concept",
+                  "relationship"
+                ]
+              },
               "lineage": {
                 "type": "array",
-                "items": { "type": "string" }
+                "items": {
+                  "type": "string"
+                }
               }
             },
             "additionalProperties": false
@@ -278,21 +546,45 @@
     },
     {
       "type": "object",
-      "required": ["mode", "comparison"],
+      "required": [
+        "mode",
+        "comparison"
+      ],
       "properties": {
         "format": true,
         "workspace": true,
-        "mode": { "const": "compare" },
+        "mode": {
+          "const": "compare"
+        },
         "comparison": {
           "type": "object",
-          "required": ["format", "from", "to", "added", "removed", "retained"],
+          "required": [
+            "format",
+            "from",
+            "to",
+            "added",
+            "removed",
+            "retained"
+          ],
           "properties": {
-            "format": { "const": "yarramate/state-comparison/v1" },
-            "from": { "type": "string" },
-            "to": { "type": "string" },
-            "added": { "type": "array" },
-            "removed": { "type": "array" },
-            "retained": { "type": "array" }
+            "format": {
+              "const": "yarramate/state-comparison/v1"
+            },
+            "from": {
+              "type": "string"
+            },
+            "to": {
+              "type": "string"
+            },
+            "added": {
+              "type": "array"
+            },
+            "removed": {
+              "type": "array"
+            },
+            "retained": {
+              "type": "array"
+            }
           },
           "additionalProperties": false
         }
@@ -303,30 +595,67 @@
   "$defs": {
     "conceptEntry": {
       "type": "object",
-      "required": ["id", "kind"],
+      "required": [
+        "id",
+        "kind"
+      ],
       "properties": {
-        "id": { "type": "string", "minLength": 1 },
-        "kind": { "type": "string", "minLength": 1 },
-        "name": { "type": "string" },
-        "status": { "enum": ["planned", "current", "retired"] },
-        "description": { "type": "string" }
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "planned",
+            "current",
+            "retired"
+          ]
+        },
+        "description": {
+          "type": "string"
+        }
       },
       "additionalProperties": false
     },
     "nextSubject": {
       "type": "object",
-      "required": ["id", "kind", "dependsOn", "requiredBy", "evidence"],
+      "required": [
+        "id",
+        "kind",
+        "dependsOn",
+        "requiredBy",
+        "evidence"
+      ],
       "properties": {
-        "id": { "type": "string", "minLength": 1 },
-        "kind": { "type": "string", "minLength": 1 },
-        "name": { "type": "string" },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string"
+        },
         "dependsOn": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
         "requiredBy": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
         "evidence": {
           "type": "object",
@@ -338,28 +667,58 @@
             "notObserved"
           ],
           "properties": {
-            "observations": { "type": "integer" },
-            "confirmed": { "type": "integer" },
-            "contradicted": { "type": "integer" },
-            "unknown": { "type": "integer" },
-            "notObserved": { "type": "integer" }
+            "observations": {
+              "type": "integer"
+            },
+            "confirmed": {
+              "type": "integer"
+            },
+            "contradicted": {
+              "type": "integer"
+            },
+            "unknown": {
+              "type": "integer"
+            },
+            "notObserved": {
+              "type": "integer"
+            }
           },
           "additionalProperties": false
         },
-        "cycle": { "const": true }
+        "cycle": {
+          "const": true
+        }
       },
       "additionalProperties": false
     },
     "projectionResult": {
       "type": "object",
-      "required": ["format", "projection", "documents", "subjects", "claims"],
+      "required": [
+        "format",
+        "projection",
+        "documents",
+        "subjects",
+        "claims"
+      ],
       "properties": {
-        "format": { "const": "yarramate/projection-result/v1" },
-        "projection": { "type": "string" },
-        "presentation": { "type": "object" },
-        "documents": { "type": "array" },
-        "subjects": { "type": "array" },
-        "claims": { "type": "array" }
+        "format": {
+          "const": "yarramate/projection-result/v1"
+        },
+        "projection": {
+          "type": "string"
+        },
+        "presentation": {
+          "type": "object"
+        },
+        "documents": {
+          "type": "array"
+        },
+        "subjects": {
+          "type": "array"
+        },
+        "claims": {
+          "type": "array"
+        }
       },
       "additionalProperties": false
     },
@@ -376,14 +735,30 @@
         "subjectsWithoutEvidence"
       ],
       "properties": {
-        "evidenceDocuments": { "type": "integer" },
-        "observations": { "type": "integer" },
-        "confirmed": { "type": "integer" },
-        "findings": { "type": "integer" },
-        "contradicted": { "type": "integer" },
-        "unknown": { "type": "integer" },
-        "notObserved": { "type": "integer" },
-        "subjectsWithoutEvidence": { "type": "integer" }
+        "evidenceDocuments": {
+          "type": "integer"
+        },
+        "observations": {
+          "type": "integer"
+        },
+        "confirmed": {
+          "type": "integer"
+        },
+        "findings": {
+          "type": "integer"
+        },
+        "contradicted": {
+          "type": "integer"
+        },
+        "unknown": {
+          "type": "integer"
+        },
+        "notObserved": {
+          "type": "integer"
+        },
+        "subjectsWithoutEvidence": {
+          "type": "integer"
+        }
       },
       "additionalProperties": false
     }
