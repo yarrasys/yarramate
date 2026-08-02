@@ -94,6 +94,11 @@ read; graphify analogues: `query` / `explain` / `path`.
 - `ask --open` — the full open-questions report (today's interrogate
   output as a read).
 - `ask --compare <from> <to>` — state delta (today's `compare`).
+- `ask --where <topic|subject>` — evidence-backed pointing (ADR 0068):
+  the verified code locations of matched subjects, with an explicit
+  coverage boundary — unobserved subjects listed, everything outside
+  the model handed off to the harness's own search. Verified pointers
+  outrank derived ones; the routing is stated in the output.
 - Harness use: mid-task orientation, bounded context retrieval,
   design-review advice, build ordering.
 

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://yarrasys.dev/schema/yarramate-ask-result.schema.json",
   "title": "YarraMate ask result",
-  "description": "One envelope for every consumed-now read: orientation, roster, slice, advice, next, open questions, and state comparison, discriminated by mode.",
+  "description": "One envelope for every consumed-now read: orientation, roster, slice, advice, verified locations, next, open questions, and state comparison, discriminated by mode.",
   "type": "object",
   "required": [
     "format",
@@ -23,6 +23,7 @@
         "roster",
         "slice",
         "advice",
+        "where",
         "next",
         "open",
         "compare",
@@ -362,6 +363,119 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "mode",
+        "addressing",
+        "topic",
+        "seeds",
+        "matched",
+        "located",
+        "coverage"
+      ],
+      "properties": {
+        "format": true,
+        "workspace": true,
+        "mode": {
+          "const": "where"
+        },
+        "addressing": {
+          "enum": [
+            "free-text",
+            "subjects"
+          ]
+        },
+        "topic": {
+          "type": "string",
+          "minLength": 1
+        },
+        "seeds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "matched": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "located": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "subject",
+              "observations"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "subject": {
+                "type": "string",
+                "minLength": 1
+              },
+              "observations": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "uri",
+                    "result",
+                    "provider"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "uri": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "result": {
+                      "enum": [
+                        "confirmed",
+                        "contradicted",
+                        "unknown",
+                        "not-observed"
+                      ]
+                    },
+                    "provider": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "message": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "coverage": {
+          "type": "object",
+          "required": [
+            "unobserved",
+            "note"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "unobserved": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "note": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
     },
     {
       "type": "object",
