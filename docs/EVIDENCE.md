@@ -149,3 +149,9 @@ Diagnostics use `YM801` for an unknown subject, `YM802` for an unknown claim,
 The schemas are exported as `yarramate/schema/evidence` and
 `yarramate/schema/evidence-report`. The reconciliation schema is exported as
 `yarramate/schema/reconciliation-report`.
+
+Evidence locators also answer the inverse question. `ask --where`
+(ADR 0068) reads the same observations as verified code locations for
+matched subjects — so every observation authored for reconciliation
+doubles as a pointer, and every subject a `--where` answer lists as
+unobserved is a nudge toward the missing observation.

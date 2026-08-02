@@ -234,6 +234,165 @@ presentation:
     expect(result.stderr).toContain('--subjects')
   })
 
+  const evidenceManifest = `format: yarramate/workspace/v1
+id: ask-fixture
+documents:
+  - architecture/main.yaml
+profiles: []
+projections: []
+adapterMappings: []
+evidence:
+  - evidence/repo.yaml
+`
+
+  const evidenceDocument = `format: yarramate/evidence/v1
+id: fixture-evidence
+version: "1.0"
+provider: repository-audit
+observations:
+  - subject: main#todo-service
+    result: confirmed
+    evidence:
+      uri: repo:src/todo-service.ts
+  - subject: main#todo-service
+    result: contradicted
+    evidence:
+      uri: repo:src/legacy/todo.ts
+      message: Old implementation still wired
+  - claim: main#todo-service~description
+    result: confirmed
+    evidence:
+      uri: repo:docs/todo-service.md
+`
+
+  it('locates modeled subjects from evidence with --where', () => {
+    mkdirSync(join(workspace, 'evidence'))
+    writeFileSync(
+      join(workspace, 'evidence/repo.yaml'),
+      evidenceDocument,
+      'utf8',
+    )
+    writeFileSync(
+      join(workspace, 'workspace-evidence.yaml'),
+      evidenceManifest,
+      'utf8',
+    )
+    const result = runCli(
+      ['ask', 'workspace-evidence.yaml', '--where', 'todo service'],
+      workspace,
+    )
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toContain('main#todo-service')
+    expect(result.stdout).toContain(
+      'confirmed  repo:src/todo-service.ts  (repository-audit)',
+    )
+    // Contradicted locations are included and marked, never hidden.
+    expect(result.stdout).toContain(
+      'contradicted  repo:src/legacy/todo.ts  (repository-audit)',
+    )
+    expect(result.stdout).toContain('Old implementation still wired')
+    // Claim-level observations collapse to their subject.
+    expect(result.stdout).toContain(
+      'confirmed  repo:docs/todo-service.md  (repository-audit)',
+    )
+    expect(result.stdout).toContain('unobserved — modeled, no evidence:')
+    expect(result.stdout).toContain('main#todo-ui')
+    expect(result.stdout).toContain(
+      'use your search tools or a code index',
+    )
+
+    const json = runCli(
+      [
+        'ask',
+        'workspace-evidence.yaml',
+        '--where',
+        'todo service',
+        '--json',
+      ],
+      workspace,
+    )
+    const payload = JSON.parse(json.stdout) as {
+      mode: string
+      addressing: string
+      located: readonly {
+        subject: string
+        observations: readonly { uri: string; result: string }[]
+      }[]
+      coverage: { unobserved: readonly string[]; note: string }
+    }
+    expect(payload.mode).toBe('where')
+    expect(payload.addressing).toBe('free-text')
+    expect(payload.located).toHaveLength(1)
+    expect(payload.located[0]!.subject).toBe('main#todo-service')
+    expect(payload.located[0]!.observations).toHaveLength(3)
+    expect(payload.coverage.unobserved).toContain('main#todo-ui')
+    expect(validateAsk(payload), JSON.stringify(validateAsk.errors)).toBe(true)
+  })
+
+  it('treats exact subject ids as precise --where addressing', () => {
+    mkdirSync(join(workspace, 'evidence'))
+    writeFileSync(
+      join(workspace, 'evidence/repo.yaml'),
+      evidenceDocument,
+      'utf8',
+    )
+    writeFileSync(
+      join(workspace, 'workspace-evidence.yaml'),
+      evidenceManifest,
+      'utf8',
+    )
+    const result = runCli(
+      [
+        'ask',
+        'workspace-evidence.yaml',
+        '--where',
+        'main#todo-ui',
+        '--json',
+      ],
+      workspace,
+    )
+    expect(result.exitCode).toBe(0)
+    const payload = JSON.parse(result.stdout) as {
+      addressing: string
+      located: readonly unknown[]
+      coverage: { unobserved: readonly string[] }
+    }
+    expect(payload.addressing).toBe('subjects')
+    expect(payload.located).toEqual([])
+    expect(payload.coverage.unobserved).toEqual(['main#todo-ui'])
+    expect(validateAsk(payload), JSON.stringify(validateAsk.errors)).toBe(true)
+  })
+
+  it('says so honestly when no evidence overlay is declared', () => {
+    const result = runCli(
+      ['ask', 'workspace.yaml', '--where', 'todo'],
+      workspace,
+    )
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toContain('declares no evidence overlay')
+    expect(result.stdout).toContain(
+      'author evidence observations to make locations verifiable',
+    )
+  })
+
+  it('rejects --where without a query and with other modes', () => {
+    expect(
+      runCli(['ask', 'workspace.yaml', '--where'], workspace).exitCode,
+    ).toBe(2)
+    expect(
+      runCli(
+        ['ask', 'workspace.yaml', '--where', 'todo', '--next'],
+        workspace,
+      ).exitCode,
+    ).toBe(2)
+    expect(
+      runCli(
+        ['ask', 'workspace.yaml', '--where', 'todo', '--budget', '500'],
+        workspace,
+      ).exitCode,
+    ).toBe(2)
+  })
+
   it('orders planned work across the whole workspace with --next', () => {
     const result = runCli(['ask', 'workspace.yaml', '--next'], workspace)
     expect(result.exitCode).toBe(0)

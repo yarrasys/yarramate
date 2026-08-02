@@ -21,7 +21,13 @@ import {
   type GraphClaim,
   type SemanticGraph,
 } from './compiler.js'
-import { evaluateEvidenceWorkspace, loadEvidence } from './evidence.js'
+import {
+  evaluateEvidenceWorkspace,
+  loadEvidence,
+  type EvidenceDocument,
+  type EvidenceObservation,
+  type EvidenceResult,
+} from './evidence.js'
 import {
   evaluateCatalogue,
   loadQuestionCatalogue,
@@ -139,6 +145,26 @@ type AskResult = AskResultBase &
         readonly reconciliation?: {
           readonly summary: ReconciliationReport['summary']
           readonly findings: readonly ReconciliationFinding[]
+        }
+      }
+    | {
+        readonly mode: 'where'
+        readonly addressing: 'free-text' | 'subjects'
+        readonly topic: string
+        readonly seeds: readonly string[]
+        readonly matched: number
+        readonly located: readonly {
+          readonly subject: string
+          readonly observations: readonly {
+            readonly uri: string
+            readonly result: EvidenceResult
+            readonly provider: string
+            readonly message?: string
+          }[]
+        }[]
+        readonly coverage: {
+          readonly unobserved: readonly string[]
+          readonly note: string
         }
       }
     | { readonly mode: 'next'; readonly subjects: readonly NextSubject[] }
@@ -317,6 +343,7 @@ export function runAskCommand(
   let open = false
   let kinds = false
   let advise = false
+  let where = false
   let compare: readonly [string, string] | undefined
   let changed: string | undefined
   let budget: number | undefined
@@ -348,6 +375,10 @@ export function runAskCommand(
     }
     if (option === '--advise') {
       advise = true
+      continue
+    }
+    if (option === '--where') {
+      where = true
       continue
     }
     if (option === '--compare') {
@@ -428,6 +459,12 @@ export function runAskCommand(
     exclusiveModes > 1 ||
     (advise && exclusiveModes > 0) ||
     (advise && query.length === 0) ||
+    (where &&
+      (exclusiveModes > 0 ||
+        advise ||
+        changed !== undefined ||
+        budget !== undefined ||
+        query.length === 0)) ||
     (query.length > 0 && exclusiveModes > 0) ||
     (changed !== undefined &&
       (query.length > 0 || exclusiveModes > 0 || advise)) ||
@@ -969,7 +1006,10 @@ export function runAskCommand(
     // through free-text seeding, where exact subject ids win.
     const soleTerm = query.length === 1 ? query[0] : undefined
     const projectionCandidate =
-      soleTerm !== undefined && !advise && existsSync(resolve(cwd, soleTerm))
+      soleTerm !== undefined &&
+      !advise &&
+      !where &&
+      existsSync(resolve(cwd, soleTerm))
         ? resolve(cwd, soleTerm)
         : undefined
     if (
@@ -1015,6 +1055,111 @@ export function runAskCommand(
           `List the roster: yarramate ask ${workspacePath} --subjects\n`,
       }
     }
+    // --where: evidence-backed pointing (ADR 0068). Verified locations for
+    // the matched subjects, an explicit list of matched-but-unobserved
+    // subjects, and a hand-off note for everything outside the model —
+    // authority follows epistemic status, so the routing is stated in the
+    // output rather than assumed by the reader.
+    if (where) {
+      const evidenceDocuments: EvidenceDocument[] = []
+      for (const path of workspace.evidence) {
+        const loaded = loadEvidence({
+          path,
+          source: readFileSync(resolve(cwd, path), 'utf8'),
+        })
+        if (!loaded.ok) return failed(loaded.diagnostics)
+        evidenceDocuments.push(loaded.evidence)
+      }
+      const subjectOf = (observation: EvidenceObservation): string =>
+        'subject' in observation
+          ? observation.subject
+          : (observation.claim.split('~')[0] ?? observation.claim)
+      // Subject- and claim-level observations often share a locator; the
+      // pointer is the same either way, so identical entries collapse.
+      const entriesBySeed = resolution.seeds.map((seed) => ({
+        subject: seed,
+        observations: [
+          ...new Map(
+            evidenceDocuments
+              .flatMap((document) =>
+                document.observations
+                  .filter((observation) => subjectOf(observation) === seed)
+                  .map((observation) => ({
+                    uri: observation.evidence.uri,
+                    result: observation.result,
+                    provider: document.provider,
+                    ...(observation.evidence.message === undefined
+                      ? {}
+                      : { message: observation.evidence.message }),
+                  })),
+              )
+              .map(
+                (entry) =>
+                  [
+                    `${entry.uri} ${entry.result} ${entry.provider} ${entry.message ?? ''}`,
+                    entry,
+                  ] as const,
+              ),
+          ).values(),
+        ].sort(
+          (left, right) =>
+            left.uri.localeCompare(right.uri) ||
+            left.result.localeCompare(right.result),
+        ),
+      }))
+      const located = entriesBySeed.filter(
+        ({ observations }) => observations.length > 0,
+      )
+      const unobserved = entriesBySeed
+        .filter(({ observations }) => observations.length === 0)
+        .map(({ subject }) => subject)
+      const note =
+        workspace.evidence.length === 0
+          ? 'This workspace declares no evidence overlay, so no location is verified. For code locations, use your search tools; author evidence observations to make locations verifiable.'
+          : 'Locations above are verified by evidence overlays. Subjects listed as unobserved are modeled but unlocated. For code outside the model, use your search tools or a code index.'
+      const result: AskResult = {
+        format: 'yarramate/ask-result/v1',
+        workspace: workspace.id,
+        mode: 'where',
+        addressing: resolution.addressing,
+        topic,
+        seeds: resolution.seeds,
+        matched: resolution.matched,
+        located,
+        coverage: { unobserved, note },
+      }
+      const lines: string[] = [
+        `Where: "${topic}" — ${plural(resolution.matched, 'concept')} matched` +
+          (resolution.matched > resolution.seeds.length
+            ? `, seeded from the top ${resolution.seeds.length}`
+            : '') +
+          `: ${resolution.seeds.join(', ')}`,
+        '',
+      ]
+      for (const entry of located) {
+        lines.push(`  ${entry.subject}`)
+        for (const observation of entry.observations) {
+          lines.push(
+            `    ${observation.result}  ${observation.uri}  (${observation.provider})`,
+          )
+          if (observation.message !== undefined) {
+            lines.push(`      ${observation.message}`)
+          }
+        }
+      }
+      if (located.length === 0) {
+        lines.push('  no verified locations')
+      }
+      if (unobserved.length > 0) {
+        lines.push(
+          '',
+          `  unobserved — modeled, no evidence: ${unobserved.join(', ')}`,
+        )
+      }
+      lines.push('', note)
+      return emit(result, `${lines.join('\n')}\n`)
+    }
+
     const evaluated = sliceProjection(
       graph,
       resolution.seeds,
