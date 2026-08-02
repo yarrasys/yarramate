@@ -17,6 +17,20 @@ whose gaps are found deterministically.
 > YarraMate is pre-release software. Interfaces may evolve before the first
 > stable release.
 
+## Proven across harnesses
+
+The design bet is that the model — not the session — is the state, so any
+agent in any harness can resume the work cold. We tested that adversarially
+on a real product: a Claude Code session worked the design interview all
+day, then an OpenAI Codex session — no shared context, the tool never
+named — resumed it from a ten-line pointer file and the published CLI. It
+answered 63 open design questions, filed two genuine defect reports, and in
+a later session reported that the model "was not merely documentation" — it
+caught an approval-path regression before the release shipped.
+
+The full story, with every commit, PR, and release attached:
+[The model is the handover](docs/CASE-STUDY-CROSS-HARNESS.md).
+
 ## Why YarraMate?
 
 Architecture documents often drift away from implementation or become tied to
