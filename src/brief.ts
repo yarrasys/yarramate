@@ -40,7 +40,9 @@ const claimReferences = (
 
 // Resolve a qualified kind to its nearest core-profile local id through
 // declared lineage, mirroring how `next` orients relationships (ADR 0048).
-const coreLocalKind = (
+// Exported so ask's neighbour cap ranks neighbours by the same reading
+// the brief ranks paragraphs with (ADR 0070).
+export const coreLocalKind = (
   kind: string,
   lineages: ReadonlyMap<string, readonly string[]> | undefined,
 ): string | undefined => {
