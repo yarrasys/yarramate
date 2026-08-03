@@ -170,6 +170,18 @@
         }
       }
     },
+    "deleteTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/nonEmptyText"
+        }
+      }
+    },
     "operation": {
       "oneOf": [
         {
@@ -325,6 +337,46 @@
                   "presentIn"
                 ]
               }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "document",
+            "concept"
+          ],
+          "properties": {
+            "op": {
+              "const": "delete-concept"
+            },
+            "document": {
+              "$ref": "#/$defs/nonEmptyText"
+            },
+            "concept": {
+              "$ref": "#/$defs/deleteTarget"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "document",
+            "relationship"
+          ],
+          "properties": {
+            "op": {
+              "const": "delete-relationship"
+            },
+            "document": {
+              "$ref": "#/$defs/nonEmptyText"
+            },
+            "relationship": {
+              "$ref": "#/$defs/deleteTarget"
             }
           }
         }

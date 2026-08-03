@@ -99,6 +99,8 @@ describe('apply command', () => {
       addedRelationships: 1,
       updatedConcepts: 1,
       updatedRelationships: 0,
+      deletedConcepts: 0,
+      deletedRelationships: 0,
     })
     const validate = new Ajv2020({ allErrors: true }).compile(resultSchema)
     expect(validate(payload), JSON.stringify(validate.errors)).toBe(true)
@@ -441,6 +443,304 @@ operations:
     // The neighbouring block item and everything else stay byte-identical.
     expect(after).toContain('  - id: neighbour\n    kind: businessActor\n    name: Neighbour\n')
     expect(after.split('flow-item').length).toBe(2)
+  })
+
+  it('deletes a concept and its referring relationship in one batch', () => {
+    const authored = `format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts:
+  - id: user
+    kind: businessActor
+    name: User
+  - id: legacy-portal
+    kind: applicationService
+    name: Legacy portal
+    status: retired
+relationships:
+  - id: portal-serves-user
+    kind: serving
+    from: legacy-portal
+    to: user
+`
+    writeFileSync(join(workspace, 'architecture/main.yaml'), authored, 'utf8')
+    // The concept delete precedes the delete of the relationship that
+    // references it: integrity is evaluated against the post-batch
+    // state, so in-batch order does not matter.
+    writeFileSync(
+      join(workspace, 'operations.yaml'),
+      `format: yarramate/operations/v1
+operations:
+  - op: delete-concept
+    document: architecture/main.yaml
+    concept:
+      id: legacy-portal
+  - op: delete-relationship
+    document: architecture/main.yaml
+    relationship:
+      id: portal-serves-user
+`,
+      'utf8',
+    )
+    const result = runCli(
+      ['apply', 'operations.yaml', 'workspace.yaml', '--json'],
+      workspace,
+    )
+    expect(result.exitCode).toBe(0)
+    const payload = JSON.parse(result.stdout) as {
+      applied: Record<string, number>
+    }
+    expect(payload.applied).toEqual({
+      addedConcepts: 0,
+      addedRelationships: 0,
+      updatedConcepts: 0,
+      updatedRelationships: 0,
+      deletedConcepts: 1,
+      deletedRelationships: 1,
+    })
+    const validate = new Ajv2020({ allErrors: true }).compile(resultSchema)
+    expect(validate(payload), JSON.stringify(validate.errors)).toBe(true)
+    // Untouched bytes stay byte-identical; deleting the last item of a
+    // collection leaves an explicit empty collection.
+    expect(
+      readFileSync(join(workspace, 'architecture/main.yaml'), 'utf8'),
+    ).toBe(`format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts:
+  - id: user
+    kind: businessActor
+    name: User
+relationships: []
+`)
+  })
+
+  it('rejects deleting a concept that is still referenced, locating the operation', () => {
+    const authored = `format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts:
+  - id: user
+    kind: businessActor
+    name: User
+  - id: legacy-portal
+    kind: applicationService
+    name: Legacy portal
+relationships:
+  - id: portal-serves-user
+    kind: serving
+    from: legacy-portal
+    to: user
+`
+    writeFileSync(join(workspace, 'architecture/main.yaml'), authored, 'utf8')
+    writeFileSync(
+      join(workspace, 'operations.yaml'),
+      `format: yarramate/operations/v1
+operations:
+  - op: delete-concept
+    document: architecture/main.yaml
+    concept:
+      id: user
+`,
+      'utf8',
+    )
+    const result = runCli(
+      ['apply', 'operations.yaml', 'workspace.yaml'],
+      workspace,
+    )
+    expect(result.exitCode).toBe(1)
+    expect(result.stdout).toContain('error YM912')
+    expect(result.stdout).toContain(
+      'deletes "user", which is still referenced by "main#portal-serves-user" (to)',
+    )
+    expect(result.stdout).toMatch(/^operations\.yaml:\d+:\d+ /)
+    expect(
+      readFileSync(join(workspace, 'architecture/main.yaml'), 'utf8'),
+    ).toBe(authored)
+  })
+
+  it('rejects deletes referenced through owner, constraints, and identified references', () => {
+    const authored = `format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts:
+  - id: platform-team
+    kind: businessActor
+    name: Platform team
+  - id: australia-only
+    kind: constraint
+    name: Australia only
+  - id: user
+    kind: businessActor
+    name: User
+  - id: checkout
+    kind: applicationService
+    name: Checkout
+    owner: platform-team
+    constraints:
+      - id: residency
+        ref: australia-only
+    references:
+      - id: served
+        ref: checkout-serves-user
+relationships:
+  - id: checkout-serves-user
+    kind: serving
+    from: checkout
+    to: user
+`
+    writeFileSync(join(workspace, 'architecture/main.yaml'), authored, 'utf8')
+    writeFileSync(
+      join(workspace, 'operations.yaml'),
+      `format: yarramate/operations/v1
+operations:
+  - op: delete-concept
+    document: architecture/main.yaml
+    concept:
+      id: platform-team
+  - op: delete-concept
+    document: architecture/main.yaml
+    concept:
+      id: australia-only
+  - op: delete-relationship
+    document: architecture/main.yaml
+    relationship:
+      id: checkout-serves-user
+`,
+      'utf8',
+    )
+    const result = runCli(
+      ['apply', 'operations.yaml', 'workspace.yaml'],
+      workspace,
+    )
+    expect(result.exitCode).toBe(1)
+    expect(result.stdout).toContain(
+      'deletes "platform-team", which is still referenced by "main#checkout" (owner)',
+    )
+    expect(result.stdout).toContain(
+      'deletes "australia-only", which is still referenced by "main#checkout" (constraints)',
+    )
+    expect(result.stdout).toContain(
+      'deletes "checkout-serves-user", which is still referenced by "main#checkout" (references)',
+    )
+    expect(
+      readFileSync(join(workspace, 'architecture/main.yaml'), 'utf8'),
+    ).toBe(authored)
+  })
+
+  it('deletes a flow-style item wholly, leaving neighbours byte-identical', () => {
+    // Whole-item deletion is the intent here, unlike field removal
+    // where a line-based delete on a flow item destroyed the item.
+    const flow = `format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts:
+  - { id: flow-item, kind: applicationService, name: Flow item }
+  - id: neighbour
+    kind: businessActor
+    name: Neighbour
+relationships: []
+`
+    writeFileSync(join(workspace, 'architecture/main.yaml'), flow, 'utf8')
+    writeFileSync(
+      join(workspace, 'operations.yaml'),
+      `format: yarramate/operations/v1
+operations:
+  - op: delete-concept
+    document: architecture/main.yaml
+    concept:
+      id: flow-item
+`,
+      'utf8',
+    )
+    expect(
+      runCli(['apply', 'operations.yaml', 'workspace.yaml'], workspace)
+        .exitCode,
+    ).toBe(0)
+    expect(
+      readFileSync(join(workspace, 'architecture/main.yaml'), 'utf8'),
+    ).toBe(
+      flow.replace(
+        '  - { id: flow-item, kind: applicationService, name: Flow item }\n',
+        '',
+      ),
+    )
+  })
+
+  it('rejects the whole batch when one delete violates integrity', () => {
+    const authored = `format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts:
+  - id: user
+    kind: businessActor
+    name: User
+  - id: portal
+    kind: applicationService
+    name: Portal
+relationships:
+  - id: portal-serves-user
+    kind: serving
+    from: portal
+    to: user
+  - id: portal-notifies-user
+    kind: serving
+    from: portal
+    to: user
+`
+    writeFileSync(join(workspace, 'architecture/main.yaml'), authored, 'utf8')
+    writeFileSync(
+      join(workspace, 'operations.yaml'),
+      `format: yarramate/operations/v1
+operations:
+  - op: delete-relationship
+    document: architecture/main.yaml
+    relationship:
+      id: portal-serves-user
+  - op: delete-concept
+    document: architecture/main.yaml
+    concept:
+      id: user
+`,
+      'utf8',
+    )
+    const result = runCli(
+      ['apply', 'operations.yaml', 'workspace.yaml'],
+      workspace,
+    )
+    expect(result.exitCode).toBe(1)
+    // The remaining referrer is reported; the one deleted in the same
+    // batch is not — integrity looks at the post-batch state even when
+    // it rejects.
+    expect(result.stdout).toContain(
+      'deletes "user", which is still referenced by "main#portal-notifies-user" (to)',
+    )
+    expect(result.stdout).not.toContain('by "main#portal-serves-user"')
+    // Atomicity: the valid relationship delete must not have landed.
+    expect(
+      readFileSync(join(workspace, 'architecture/main.yaml'), 'utf8'),
+    ).toBe(authored)
+  })
+
+  it('locates a delete aimed at a subject that does not exist', () => {
+    writeFileSync(
+      join(workspace, 'operations.yaml'),
+      `format: yarramate/operations/v1
+operations:
+  - op: delete-concept
+    document: architecture/main.yaml
+    concept:
+      id: nobody
+`,
+      'utf8',
+    )
+    const result = runCli(
+      ['apply', 'operations.yaml', 'workspace.yaml'],
+      workspace,
+    )
+    expect(result.exitCode).toBe(1)
+    expect(result.stdout).toContain('error YM912')
+    expect(result.stdout).toContain('deletes "nobody", which does not exist')
   })
 
   it('removing a field from a flow-style item never deletes the item', () => {
