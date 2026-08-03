@@ -83,6 +83,16 @@ type Operation =
       readonly relationship: RelationshipFields
       readonly remove?: readonly string[]
     }
+  | {
+      readonly op: 'delete-concept'
+      readonly document: string
+      readonly concept: { readonly id: string }
+    }
+  | {
+      readonly op: 'delete-relationship'
+      readonly document: string
+      readonly relationship: { readonly id: string }
+    }
 
 interface OperationsDocument {
   readonly format: 'yarramate/operations/v1'
@@ -243,13 +253,14 @@ const itemMap = (
   source: string,
   collection: string,
   id: string,
-): { readonly map: YAMLMap } | undefined => {
+): { readonly map: YAMLMap; readonly sequence: YAMLSeq } | undefined => {
   const document = parseDocument(source)
   const root = document.contents
   if (!isMap(root)) return undefined
   const pair = pairFor(root, collection)
   if (pair === undefined || !isSeq(pair.value)) return undefined
-  const found = (pair.value as YAMLSeq).items.find(
+  const sequence = pair.value as YAMLSeq
+  const found = sequence.items.find(
     (candidate) =>
       isMap(candidate) &&
       (candidate as YAMLMap).items.some(
@@ -260,7 +271,9 @@ const itemMap = (
           field.value.value === id,
       ),
   )
-  return found === undefined ? undefined : { map: found as YAMLMap }
+  return found === undefined
+    ? undefined
+    : { map: found as YAMLMap, sequence }
 }
 
 // The indent item fields sit at, read off the item's own first field.
@@ -397,6 +410,54 @@ const removeField = (
   return splice(source, start, lineEndAfter(source, valueEnd), '')
 }
 
+// Whole-subject deletion (#123): remove the exact authored item range,
+// marker line included. Unlike field removal — where line deletion on a
+// flow item would silently take the whole item (the 0.8.1 regression) —
+// deleting the whole item is precisely the intent here, so flow-style
+// items in a block sequence share the line-based path. An item inside a
+// flow collection rewrites the collection value instead, and removing
+// the last item leaves an explicit empty collection: the document
+// schema requires the key.
+const removeCollectionItem = (
+  source: string,
+  collection: 'concepts' | 'relationships',
+  id: string,
+): string => {
+  const { map, sequence } = itemMap(source, collection, id)!
+  if (sequence.flow) {
+    const remaining = (
+      sequence.toJSON() as ReadonlyArray<Readonly<Record<string, unknown>>>
+    ).filter((item) => item.id !== id)
+    const [start, valueEnd] = nodeRange(sequence)
+    return splice(
+      source,
+      start,
+      valueEnd,
+      remaining.length === 0
+        ? '[]'
+        : stringify(remaining, {
+            collectionStyle: 'flow',
+            lineWidth: 0,
+          }).trimEnd(),
+    )
+  }
+  // Node ranges may extend past the trailing newline to the next line
+  // start; afterContentLine anchors the removal on the item's own last
+  // content line.
+  const end = afterContentLine(source, nodeRange(map)[2])
+  if (sequence.items.length === 1) {
+    let valueStart = nodeRange(sequence)[0]
+    while (
+      valueStart > 0 &&
+      (source[valueStart - 1] === ' ' || source[valueStart - 1] === '\n')
+    ) {
+      valueStart -= 1
+    }
+    return splice(source, valueStart, end, ' []\n')
+  }
+  return splice(source, lineStartOf(source, nodeRange(map)[0]), end, '')
+}
+
 // ---------------------------------------------------------------------------
 
 export function runApplyCommand(
@@ -461,22 +522,31 @@ export function runApplyCommand(
       addedRelationships: 0,
       updatedConcepts: 0,
       updatedRelationships: 0,
+      deletedConcepts: 0,
+      deletedRelationships: 0,
     }
+    const deletions: Array<{
+      readonly index: number
+      readonly absolute: string
+      readonly id: string
+    }> = []
+    const locateOperation = (index: number, message: string): Diagnostic => ({
+      severity: 'error',
+      code: 'YM912',
+      message,
+      ...locateSourcePath(
+        operationsPath,
+        yaml,
+        lineCounter,
+        ['operations', index, 'document'],
+        `/operations/${index}/document`,
+      ),
+    })
     for (const [index, operation] of operations.entries()) {
       const absolute = resolve(cwd, operation.document)
       const manifestPath = workspaceDocuments.get(absolute)
-      const locate = (message: string): Diagnostic => ({
-        severity: 'error',
-        code: 'YM912',
-        message,
-        ...locateSourcePath(
-          operationsPath,
-          yaml,
-          lineCounter,
-          ['operations', index, 'document'],
-          `/operations/${index}/document`,
-        ),
-      })
+      const locate = (message: string): Diagnostic =>
+        locateOperation(index, message)
       if (manifestPath === undefined) {
         return failed([
           locate(
@@ -502,6 +572,30 @@ export function runApplyCommand(
           operation.relationship as unknown as Readonly<Record<string, unknown>>,
         )
         counts.addedRelationships += 1
+      } else if (
+        operation.op === 'delete-concept' ||
+        operation.op === 'delete-relationship'
+      ) {
+        const collection =
+          operation.op === 'delete-concept' ? 'concepts' : 'relationships'
+        const id =
+          operation.op === 'delete-concept'
+            ? operation.concept.id
+            : operation.relationship.id
+        if (itemMap(source, collection, id) === undefined) {
+          return failed([
+            locate(
+              `Operation ${index} deletes "${id}", which does not exist in ${operation.document}`,
+            ),
+          ])
+        }
+        source = removeCollectionItem(source, collection, id)
+        deletions.push({ index, absolute, id })
+        if (operation.op === 'delete-concept') {
+          counts.deletedConcepts += 1
+        } else {
+          counts.deletedRelationships += 1
+        }
       } else {
         const collection =
           operation.op === 'update-concept' ? 'concepts' : 'relationships'
@@ -581,6 +675,106 @@ export function runApplyCommand(
       candidates.set(absolute, source)
     }
 
+    // Reference integrity for deletes (#123), evaluated against the
+    // post-batch state: stage everything first, then look, so a concept
+    // deleted together with its referring relationships in one batch
+    // succeeds while a target anything still points at rejects the
+    // whole batch. Referring sites are relationship endpoints, owner,
+    // constraint and identified references; projection selectors are
+    // deliberately unchecked — they tolerate no-match by design. The
+    // compile gate below stays the backstop.
+    if (deletions.length > 0) {
+      interface ReferringSite {
+        readonly ref: string
+        readonly subject: string
+        readonly field: string
+      }
+      const staged = workspace.documents.map((path) => {
+        const absolute = resolve(cwd, path)
+        return {
+          absolute,
+          value: parseDocument(
+            candidates.get(absolute) ?? readFileSync(absolute, 'utf8'),
+          ).toJSON() as {
+            readonly id?: string
+            readonly concepts?: readonly ConceptFields[]
+            readonly relationships?: readonly RelationshipFields[]
+          } | null,
+        }
+      })
+      const qualify = (documentId: string, reference: string): string =>
+        reference.includes('#') ? reference : `${documentId}#${reference}`
+      const referrers: ReferringSite[] = staged.flatMap(({ value }) => {
+        const documentId = value?.id
+        if (documentId === undefined) return []
+        const sites: ReferringSite[] = []
+        for (const concept of value?.concepts ?? []) {
+          const subject = `${documentId}#${concept.id}`
+          if (concept.owner !== undefined) {
+            sites.push({
+              ref: qualify(documentId, concept.owner),
+              subject,
+              field: 'owner',
+            })
+          }
+          for (const constraint of concept.constraints ?? []) {
+            sites.push({
+              ref: qualify(documentId, constraint.ref),
+              subject,
+              field: 'constraints',
+            })
+          }
+          for (const reference of concept.references ?? []) {
+            sites.push({
+              ref: qualify(documentId, reference.ref),
+              subject,
+              field: 'references',
+            })
+          }
+        }
+        for (const relationship of value?.relationships ?? []) {
+          const subject = `${documentId}#${relationship.id}`
+          for (const endpoint of ['from', 'to'] as const) {
+            const reference = relationship[endpoint]
+            if (reference !== undefined) {
+              sites.push({
+                ref: qualify(documentId, reference),
+                subject,
+                field: endpoint,
+              })
+            }
+          }
+          for (const reference of relationship.references ?? []) {
+            sites.push({
+              ref: qualify(documentId, reference.ref),
+              subject,
+              field: 'references',
+            })
+          }
+        }
+        return sites
+      })
+      const documentIds = new Map(
+        staged.map(({ absolute, value }) => [absolute, value?.id]),
+      )
+      const violations = deletions.flatMap((deletion) => {
+        const documentId = documentIds.get(deletion.absolute)
+        if (documentId === undefined) return []
+        const target = `${documentId}#${deletion.id}`
+        const referring = referrers.filter((site) => site.ref === target)
+        if (referring.length === 0) return []
+        return [
+          locateOperation(
+            deletion.index,
+            `Operation ${deletion.index} deletes "${deletion.id}", which is still referenced by ${referring
+              .map((site) => `"${site.subject}" (${site.field})`)
+              .join(', ')}`,
+          ),
+        ]
+      })
+      if (violations.length > 0) return failed(violations)
+    }
+
     // The atomic gate: the whole candidate workspace must compile before a
     // single byte is written; any diagnostic rejects the entire batch.
     const compilation = compileWorkspace(
@@ -620,7 +814,9 @@ export function runApplyCommand(
       counts.addedConcepts +
       counts.addedRelationships +
       counts.updatedConcepts +
-      counts.updatedRelationships
+      counts.updatedRelationships +
+      counts.deletedConcepts +
+      counts.deletedRelationships
     return {
       exitCode: 0,
       stdout: `Applied ${applied} operation${applied === 1 ? '' : 's'} to ${touched.join(', ')}\n`,

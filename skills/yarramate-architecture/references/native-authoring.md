@@ -168,8 +168,12 @@ yarramate apply operations.yaml workspace.yaml
 ```
 
 The whole candidate workspace must compile or nothing is written.
-Update operations enrich only — scalars replace, lists append; removals
-stay Git edits.
+Update operations enrich by default — scalars replace, lists append — and
+retract explicitly with `remove: [<field> ...]`. Whole subjects leave
+through `delete-concept` / `delete-relationship` (payload: the `id` only),
+rejected while anything still references the target; delete the referring
+relationships in the same batch. To descope, retire (`status: retired`)
+instead — delete only when the history itself is noise.
 
 ## Ownership and constraints
 
