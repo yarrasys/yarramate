@@ -263,6 +263,9 @@
             }
           },
           "additionalProperties": false
+        },
+        "neighbourhood": {
+          "$ref": "#/$defs/neighbourhoodOmission"
         }
       },
       "additionalProperties": false
@@ -301,6 +304,9 @@
         "slice": {
           "type": "string",
           "minLength": 1
+        },
+        "neighbourhood": {
+          "$ref": "#/$defs/neighbourhoodOmission"
         },
         "openQuestions": {
           "type": "array",
@@ -707,6 +713,52 @@
     }
   ],
   "$defs": {
+    "neighbourhoodOmission": {
+      "description": "Present only when the per-seed neighbour cap dropped part of the 1-hop expansion (ADR 0070): the cap in force, neighbours kept and omitted in total, and the per-seed omission counts. Absent means the slice is the complete connected neighbourhood.",
+      "type": "object",
+      "required": [
+        "cap",
+        "kept",
+        "omitted",
+        "omittedBySeed"
+      ],
+      "properties": {
+        "cap": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "kept": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "omitted": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "omittedBySeed": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "seed",
+              "omitted"
+            ],
+            "properties": {
+              "seed": {
+                "type": "string",
+                "minLength": 1
+              },
+              "omitted": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
     "conceptEntry": {
       "type": "object",
       "required": [

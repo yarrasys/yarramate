@@ -6,7 +6,7 @@ import {
   compareArchitectureStates,
   type StateComparison,
 } from './architecture-state.js'
-import { renderBrief } from './brief.js'
+import { coreLocalKind, renderBrief } from './brief.js'
 import { deriveChangedSubjects } from './changed.js'
 import { runCheckCommand } from './check-command.js'
 import {
@@ -133,6 +133,7 @@ type AskResult = AskResultBase &
           readonly projections: number
           readonly uncovered: readonly string[]
         }
+        readonly neighbourhood?: NeighbourhoodOmission
         readonly result: ProjectionResult
       }
     | {
@@ -141,6 +142,7 @@ type AskResult = AskResultBase &
         readonly seeds: readonly string[]
         readonly matched: number
         readonly slice: string
+        readonly neighbourhood?: NeighbourhoodOmission
         readonly openQuestions: readonly OpenQuestionRef[]
         readonly reconciliation?: {
           readonly summary: ReconciliationReport['summary']
@@ -310,15 +312,65 @@ const plannedLines = (subjects: readonly NextSubject[]): readonly string[] => {
   })
 }
 
+// On a dense graph, hub seeds make 1-hop connected expansion reach most
+// of the model (a focused ask on a 248-concept model reached 243). The
+// cap keeps each seed's most material neighbours and announces the rest
+// (ADR 0070); --neighbours overrides it, 0 lifts it.
+const defaultNeighbourCap = 12
+
+interface NeighbourhoodOmission {
+  readonly cap: number
+  readonly kept: number
+  readonly omitted: number
+  readonly omittedBySeed: readonly {
+    readonly seed: string
+    readonly omitted: number
+  }[]
+}
+
+interface SliceEvaluation {
+  readonly result: ProjectionResult
+  readonly neighbourhood?: NeighbourhoodOmission
+}
+
+const motivationKindIds = new Set(
+  conceptKinds
+    .filter(({ layer }) => layer === 'motivation')
+    .map(({ id }) => id),
+)
+
+// Neighbours rank by the same reading the brief ranks paragraphs with
+// under a budget (ADR 0042/0055): motivation first, then planned,
+// current, retired. Ties break on seed affinity (a neighbour touching
+// more seeds is more material to the slice), then id — deterministic.
+const materialityRank = (
+  graph: SemanticGraph,
+  profileContext: Parameters<typeof evaluateProjection>[2],
+  id: string,
+): number => {
+  const kind = claimValue(graph.claims, id, 'yarramate/concept/kind')
+  const core =
+    kind === undefined
+      ? undefined
+      : coreLocalKind(kind, profileContext?.conceptKindLineages)
+  if (core !== undefined && motivationKindIds.has(core)) return 0
+  const status = claimValue(graph.claims, id, 'yarramate/lifecycle/status')
+  return status === 'planned' ? 1 : status === 'retired' ? 3 : 2
+}
+
 // The one-hop connected neighbourhood every slice and advice mode uses:
 // the same machinery context --subject exposed, now seeded by matching.
+// The capped result is always a subset of the uncapped one — the cap
+// drops neighbours and their edges, never seeds, and never adds edges
+// the connected expansion would not have selected.
 const sliceProjection = (
   graph: SemanticGraph,
   seeds: readonly string[],
   title: string,
   profileContext: Parameters<typeof evaluateProjection>[2],
-): ProjectionResult =>
-  evaluateProjection(
+  neighbourCap: number,
+): SliceEvaluation => {
+  const full = evaluateProjection(
     graph,
     {
       format: 'yarramate/projection/v1',
@@ -332,6 +384,102 @@ const sliceProjection = (
     },
     profileContext,
   )
+  if (neighbourCap === 0) return { result: full }
+
+  const seedSet = new Set(seeds)
+  const relationshipIds = new Set(
+    full.subjects
+      .filter(({ type }) => type === 'relationship')
+      .map(({ id }) => id),
+  )
+  const endpointsById = new Map<string, readonly [string, string]>()
+  for (const claim of full.claims) {
+    if (relationshipIds.has(claim.id) && 'ref' in claim.object) {
+      endpointsById.set(claim.id, [claim.subject, claim.object.ref])
+    }
+  }
+  const neighboursOf = new Map<string, string[]>(
+    seeds.map((seed) => [seed, []]),
+  )
+  const affinity = new Map<string, number>()
+  for (const [from, to] of endpointsById.values()) {
+    for (const [seed, neighbour] of [
+      [from, to],
+      [to, from],
+    ] as const) {
+      if (!seedSet.has(seed) || seedSet.has(neighbour)) continue
+      const list = neighboursOf.get(seed)
+      if (list !== undefined && !list.includes(neighbour)) {
+        list.push(neighbour)
+        affinity.set(neighbour, (affinity.get(neighbour) ?? 0) + 1)
+      }
+    }
+  }
+
+  const keptNeighbours = new Set<string>()
+  for (const list of neighboursOf.values()) {
+    const ordered = [...list].sort(
+      (left, right) =>
+        materialityRank(graph, profileContext, left) -
+          materialityRank(graph, profileContext, right) ||
+        (affinity.get(right) ?? 0) - (affinity.get(left) ?? 0) ||
+        left.localeCompare(right),
+    )
+    for (const neighbour of ordered.slice(0, neighbourCap)) {
+      keptNeighbours.add(neighbour)
+    }
+  }
+  const allNeighbours = new Set([...neighboursOf.values()].flat())
+  const omitted = allNeighbours.size - keptNeighbours.size
+  if (omitted === 0) return { result: full }
+
+  const keptConcepts = new Set([...seedSet, ...keptNeighbours])
+  const keptRelationships = new Set(
+    [...endpointsById]
+      .filter(
+        ([, [from, to]]) => keptConcepts.has(from) && keptConcepts.has(to),
+      )
+      .map(([id]) => id),
+  )
+  const keptSubjects = new Set([...keptConcepts, ...keptRelationships])
+  const keptDocuments = new Set(
+    [...keptConcepts].map((id) => id.slice(0, id.indexOf('#'))),
+  )
+  const result: ProjectionResult = {
+    ...full,
+    documents: full.documents.filter(({ id }) => keptDocuments.has(id)),
+    subjects: full.subjects.filter(({ id }) => keptSubjects.has(id)),
+    claims: full.claims.filter(
+      (claim) =>
+        (keptConcepts.has(claim.subject) && !relationshipIds.has(claim.id)) ||
+        keptRelationships.has(claim.subject) ||
+        keptRelationships.has(claim.id),
+    ),
+  }
+  return {
+    result,
+    neighbourhood: {
+      cap: neighbourCap,
+      kept: keptNeighbours.size,
+      omitted,
+      omittedBySeed: seeds.flatMap((seed) => {
+        const dropped = (neighboursOf.get(seed) ?? []).filter(
+          (neighbour) => !keptNeighbours.has(neighbour),
+        ).length
+        return dropped > 0 ? [{ seed, omitted: dropped }] : []
+      }),
+    },
+  }
+}
+
+// The honesty line, in the budgeted-ladder voice (ADR 0042): what was
+// dropped is named, and so is the way to widen.
+const neighbourhoodLine = (
+  neighbourhood: NeighbourhoodOmission,
+): string =>
+  `[neighbours ${neighbourhood.cap}: ${neighbourhood.omitted} of ` +
+  `${neighbourhood.kept + neighbourhood.omitted} neighbours omitted — ` +
+  `raise --neighbours or pass --neighbours 0 for the full neighbourhood]`
 
 export function runAskCommand(
   options: readonly string[],
@@ -347,6 +495,7 @@ export function runAskCommand(
   let compare: readonly [string, string] | undefined
   let changed: string | undefined
   let budget: number | undefined
+  let neighbours: number | undefined
   let kindFilter: string | undefined
   let statusFilter: string | undefined
   let cataloguePath: string | undefined
@@ -399,6 +548,7 @@ export function runAskCommand(
     }
     if (
       option === '--budget' ||
+      option === '--neighbours' ||
       option === '--kind' ||
       option === '--status' ||
       option === '--catalogue' ||
@@ -413,6 +563,11 @@ export function runAskCommand(
           return { exitCode: 2, stdout: '', stderr: usage }
         }
         budget = Number(value)
+      } else if (option === '--neighbours') {
+        if (neighbours !== undefined || !/^(0|[1-9][0-9]*)$/.test(value)) {
+          return { exitCode: 2, stdout: '', stderr: usage }
+        }
+        neighbours = Number(value)
       } else if (option === '--changed') {
         if (changed !== undefined) {
           return { exitCode: 2, stdout: '', stderr: usage }
@@ -464,6 +619,7 @@ export function runAskCommand(
         advise ||
         changed !== undefined ||
         budget !== undefined ||
+        neighbours !== undefined ||
         query.length === 0)) ||
     (query.length > 0 && exclusiveModes > 0) ||
     (changed !== undefined &&
@@ -471,7 +627,11 @@ export function runAskCommand(
     ((kindFilter !== undefined || statusFilter !== undefined) && !subjects) ||
     (cataloguePath !== undefined && !open && !advise) ||
     (budget !== undefined &&
-      (json || (query.length === 0 && !advise && changed === undefined)))
+      (json || (query.length === 0 && !advise && changed === undefined))) ||
+    (neighbours !== undefined &&
+      query.length === 0 &&
+      !advise &&
+      changed === undefined)
   ) {
     return { exitCode: 2, stdout: '', stderr: usage }
   }
@@ -961,11 +1121,12 @@ export function runAskCommand(
         uncovered,
       }
 
-      const evaluated = sliceProjection(
+      const { result: evaluated, neighbourhood } = sliceProjection(
         graph,
         seeds,
         `Review slice ${changed}`,
         compilation.profileContext,
+        neighbours ?? defaultNeighbourCap,
       )
       const result: AskResult = {
         format: 'yarramate/ask-result/v1',
@@ -975,6 +1136,7 @@ export function runAskCommand(
         seeds,
         changed: derived.changed,
         coverage,
+        ...(neighbourhood === undefined ? {} : { neighbourhood }),
         result: evaluated,
       }
       if (changedIds.length === 0) {
@@ -992,6 +1154,9 @@ export function runAskCommand(
           `${plural(derived.changed.relationships.length, 'relationship')} changed (workspace ${workspace.id})`,
         '',
         rendered.trimEnd(),
+        ...(neighbourhood === undefined
+          ? []
+          : ['', neighbourhoodLine(neighbourhood)]),
         '',
         uncovered.length === 0
           ? `Review coverage: every changed subject appears in at least one of the ${coverage.projections} authored projections.`
@@ -1018,6 +1183,18 @@ export function runAskCommand(
         'format',
       ) === 'yarramate/projection/v1'
     ) {
+      // A projection file defines its own query; there is no seeded
+      // expansion to cap, so an explicit --neighbours is a contradiction
+      // rather than something to ignore silently.
+      if (neighbours !== undefined) {
+        return {
+          exitCode: 2,
+          stdout: '',
+          stderr:
+            `--neighbours applies to seeded slices; ${soleTerm} is a ` +
+            'projection that defines its own query\n',
+        }
+      }
       const loaded = loadProjection({
         path: soleTerm!,
         source: readFileSync(projectionCandidate, 'utf8'),
@@ -1160,11 +1337,12 @@ export function runAskCommand(
       return emit(result, `${lines.join('\n')}\n`)
     }
 
-    const evaluated = sliceProjection(
+    const { result: evaluated, neighbourhood } = sliceProjection(
       graph,
       resolution.seeds,
       topic,
       compilation.profileContext,
+      neighbours ?? defaultNeighbourCap,
     )
 
     if (!advise) {
@@ -1176,6 +1354,7 @@ export function runAskCommand(
         topic,
         seeds: resolution.seeds,
         matched: resolution.matched,
+        ...(neighbourhood === undefined ? {} : { neighbourhood }),
         result: evaluated,
       }
       const rendered =
@@ -1190,7 +1369,12 @@ export function runAskCommand(
               : '') +
             `: ${resolution.seeds.join(', ')}\n\n`
           : ''
-      return emit(result, `${header}${rendered}`)
+      return emit(
+        result,
+        neighbourhood === undefined
+          ? `${header}${rendered}`
+          : `${header}${rendered.trimEnd()}\n\n${neighbourhoodLine(neighbourhood)}\n`,
+      )
     }
 
     // --advise: the expert composition. The engine assembles ground
@@ -1288,6 +1472,7 @@ export function runAskCommand(
       seeds: resolution.seeds,
       matched: resolution.matched,
       slice: brief,
+      ...(neighbourhood === undefined ? {} : { neighbourhood }),
       openQuestions,
       ...(reconciliation === undefined ? {} : { reconciliation }),
     }
@@ -1299,6 +1484,9 @@ export function runAskCommand(
       '== Model slice ==',
       '',
       brief.trimEnd(),
+      ...(neighbourhood === undefined
+        ? []
+        : ['', neighbourhoodLine(neighbourhood)]),
       '',
       '== Open questions touching this slice ==',
     ]
