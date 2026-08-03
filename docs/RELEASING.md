@@ -14,7 +14,11 @@ either action.
 
 ## Release preparation
 
-1. Select the version and update `package.json`.
+1. Select the version and update `package.json`. Set the first non-comment
+   line of `assets/taglines.txt` to the same version (`vX.Y.Z`); the lines
+   after it are the rotating hero taglines on [yarramate.dev](https://yarramate.dev),
+   fetched from `main` at page load — refresh them when the release changes
+   the story.
 2. Update public documentation for any stable-interface change.
 3. Run:
 

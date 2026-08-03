@@ -5,6 +5,8 @@
 [![CodeQL](https://github.com/yarrasys/yarramate/actions/workflows/codeql.yml/badge.svg)](https://github.com/yarrasys/yarramate/actions/workflows/codeql.yml)
 [![license: MIT](https://img.shields.io/github/license/yarrasys/yarramate)](LICENSE)
 
+Product site: **[yarramate.dev](https://yarramate.dev)**
+
 YarraMate keeps your coding agents' architecture context correct. Declare
 the design once, as a checked model in git; agents receive prose rendered
 from it — bounded briefs and open design questions — and the CLI
