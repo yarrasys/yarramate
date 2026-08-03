@@ -191,3 +191,457 @@ observations:
     result: confirmed
     evidence:
       uri: repo:.yarramate/integrations/likec4/subject-mapping.yaml
+  # Coverage sweep 2026-08-03: every status-current subject observed
+  # (113 added; agent-authored, path-verified, spot-checked).
+  - subject: yarramate-engine#adapter-mapping-schema
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-adapter-mapping.schema.json
+  - subject: yarramate-engine#apply-command
+    result: confirmed
+    evidence:
+      uri: repo:src/apply-command.ts
+  - subject: yarramate-engine#ask-command
+    result: confirmed
+    evidence:
+      uri: repo:src/ask-command.ts
+  - subject: yarramate-engine#check-core-contract
+    result: confirmed
+    evidence:
+      uri: repo:src/core-contract.ts
+  - subject: yarramate-engine#check-result
+    result: confirmed
+    evidence:
+      uri: repo:src/cli-support.ts
+  - subject: yarramate-engine#cli
+    result: confirmed
+    evidence:
+      uri: repo:src/cli.ts
+  - subject: yarramate-engine#compare-architecture-states
+    result: confirmed
+    evidence:
+      uri: repo:src/architecture-state.ts
+  - subject: yarramate-engine#compile-semantic-graph
+    result: confirmed
+    evidence:
+      uri: repo:src/compiler.ts
+  - subject: yarramate-engine#consumer-host
+    result: confirmed
+    evidence:
+      uri: repo:action.yml
+  - subject: yarramate-engine#core-contract-manifest
+    result: confirmed
+    evidence:
+      uri: repo:.yarramate/contracts/yarramate-core-0.1.yaml
+  - subject: yarramate-engine#design-command
+    result: confirmed
+    evidence:
+      uri: repo:src/design-command.ts
+  - subject: yarramate-engine#diagnostic-result
+    result: confirmed
+    evidence:
+      uri: repo:src/cli-support.ts
+  - subject: yarramate-engine#diagnostics
+    result: confirmed
+    evidence:
+      uri: repo:src/compiler.ts
+  - subject: yarramate-engine#document-schema
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-document.schema.json
+  - subject: yarramate-engine#evaluate-evidence
+    result: confirmed
+    evidence:
+      uri: repo:src/evidence.ts
+  - subject: yarramate-engine#evidence-document
+    result: confirmed
+    evidence:
+      uri: repo:.yarramate/evidence/repository.yaml
+  - subject: yarramate-engine#evidence-evaluator
+    result: confirmed
+    evidence:
+      uri: repo:src/evidence.ts
+  - subject: yarramate-engine#evidence-report
+    result: confirmed
+    evidence:
+      uri: repo:src/evidence.ts
+  - subject: yarramate-engine#evidence-schema
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-evidence.schema.json
+  - subject: yarramate-engine#export-command
+    result: confirmed
+    evidence:
+      uri: repo:src/export-command.ts
+  - subject: yarramate-engine#graphify-observe-command
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/graphify-cli.ts
+  - subject: yarramate-engine#init-command
+    result: confirmed
+    evidence:
+      uri: repo:src/cli.ts
+  - subject: yarramate-engine#kind-catalogue
+    result: confirmed
+    evidence:
+      uri: repo:src/profile.ts
+  - subject: yarramate-engine#likec4-check-result
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/likec4-cli.ts
+  - subject: yarramate-engine#likec4-diagnostic-result
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/likec4-cli.ts
+  - subject: yarramate-engine#load-core-contract
+    result: confirmed
+    evidence:
+      uri: repo:src/core-contract.ts
+  - subject: yarramate-engine#load-source-document
+    result: confirmed
+    evidence:
+      uri: repo:src/source-document.ts
+  - subject: yarramate-engine#mcp-adapter
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/mcp-cli.ts
+  - subject: yarramate-engine#native-document
+    result: confirmed
+    evidence:
+      uri: repo:.yarramate/architecture/engine.yaml
+  - subject: yarramate-engine#nodejs-runtime
+    result: confirmed
+    evidence:
+      uri: repo:package.json
+  - subject: yarramate-engine#npm-package
+    result: confirmed
+    evidence:
+      uri: repo:package.json
+  - subject: yarramate-engine#parse-document
+    result: confirmed
+    evidence:
+      uri: repo:src/compiler.ts
+  - subject: yarramate-engine#profile-catalogue
+    result: confirmed
+    evidence:
+      uri: repo:src/profile.ts
+  - subject: yarramate-engine#projection-result
+    result: confirmed
+    evidence:
+      uri: repo:src/projection.ts
+  - subject: yarramate-engine#projection-schema
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-projection.schema.json
+  - subject: yarramate-engine#reconcile-command
+    result: confirmed
+    evidence:
+      uri: repo:src/cli.ts
+  - subject: yarramate-engine#reconciliation-report
+    result: confirmed
+    evidence:
+      uri: repo:src/reconciliation.ts
+  - subject: yarramate-engine#relationship-policy-catalogue
+    result: confirmed
+    evidence:
+      uri: repo:src/profile.ts
+  - subject: yarramate-engine#render-likec4-state-comparison
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/likec4-export.ts
+  - subject: yarramate-engine#resolve-workspace
+    result: confirmed
+    evidence:
+      uri: repo:src/workspace.ts
+  - subject: yarramate-engine#semantic-graph
+    result: confirmed
+    evidence:
+      uri: repo:src/compiler.ts
+  - subject: yarramate-engine#serialize-semantic-graph
+    result: confirmed
+    evidence:
+      uri: repo:src/graph.ts
+  - subject: yarramate-engine#state-comparison
+    result: confirmed
+    evidence:
+      uri: repo:src/architecture-state.ts
+  - subject: yarramate-engine#validate-adapter-mapping
+    result: confirmed
+    evidence:
+      uri: repo:src/adapter-mapping.ts
+  - subject: yarramate-engine#validate-document-structure
+    result: confirmed
+    evidence:
+      uri: repo:src/compiler.ts
+  - subject: yarramate-engine#validate-semantic-claims
+    result: confirmed
+    evidence:
+      uri: repo:src/compiler.ts
+  - subject: yarramate-engine#workspace-loader
+    result: confirmed
+    evidence:
+      uri: repo:src/workspace.ts
+  - subject: yarramate-engine#workspace-schema
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-workspace.schema.json
+  - subject: yarramate-product#compile-native-architecture
+    result: confirmed
+    evidence:
+      uri: repo:src/compiler.ts
+  - subject: yarramate-product#design-solution-before-build
+    result: confirmed
+    evidence:
+      uri: repo:src/design-command.ts
+  - subject: yarramate-product#discover-project-architecture
+    result: confirmed
+    evidence:
+      uri: repo:skills/yarramate-architecture/SKILL.md
+  - subject: yarramate-product#evaluate-architecture-evidence
+    result: confirmed
+    evidence:
+      uri: repo:src/evidence.ts
+  - subject: yarramate-product#provide-machine-context
+    result: confirmed
+    evidence:
+      uri: repo:src/ask-command.ts
+  - subject: yarramate-product#reconcile-intent-and-evidence
+    result: confirmed
+    evidence:
+      uri: repo:src/reconciliation.ts
+  - subject: yarramate-product#validate-native-architecture
+    result: confirmed
+    evidence:
+      uri: repo:src/check-command.ts
+  - subject: yarramate-repository#adapter-mapping-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-adapter-mapping.schema.json
+  - subject: yarramate-repository#adapter-mapping-source
+    result: confirmed
+    evidence:
+      uri: repo:src/adapter-mapping.ts
+  - subject: yarramate-repository#adapter-mapping-tests
+    result: confirmed
+    evidence:
+      uri: repo:test/adapter-mapping.test.ts
+  - subject: yarramate-repository#architecture-state-source
+    result: confirmed
+    evidence:
+      uri: repo:src/architecture-state.ts
+  - subject: yarramate-repository#architecture-state-tests
+    result: confirmed
+    evidence:
+      uri: repo:test/architecture-state.test.ts
+  - subject: yarramate-repository#check-command-source
+    result: confirmed
+    evidence:
+      uri: repo:src/check-command.ts
+  - subject: yarramate-repository#check-result-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-check-result.schema.json
+  - subject: yarramate-repository#cli-source
+    result: confirmed
+    evidence:
+      uri: repo:src/cli.ts
+  - subject: yarramate-repository#cli-support-source
+    result: confirmed
+    evidence:
+      uri: repo:src/cli-support.ts
+  - subject: yarramate-repository#cli-tests
+    result: confirmed
+    evidence:
+      uri: repo:test/cli.test.ts
+  - subject: yarramate-repository#compiler-tests
+    result: confirmed
+    evidence:
+      uri: repo:test/compiler.test.ts
+  - subject: yarramate-repository#core-contract-release-manifest
+    result: confirmed
+    evidence:
+      uri: repo:.yarramate/contracts/yarramate-core-0.1.yaml
+  - subject: yarramate-repository#core-contract-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-core-contract.schema.json
+  - subject: yarramate-repository#core-contract-source
+    result: confirmed
+    evidence:
+      uri: repo:src/core-contract.ts
+  - subject: yarramate-repository#core-contract-tests
+    result: confirmed
+    evidence:
+      uri: repo:test/core-contract.test.ts
+  - subject: yarramate-repository#diagnostic-result-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-diagnostic-result.schema.json
+  - subject: yarramate-repository#document-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-document.schema.json
+  - subject: yarramate-repository#evidence-report-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-evidence-report.schema.json
+  - subject: yarramate-repository#evidence-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-evidence.schema.json
+  - subject: yarramate-repository#evidence-source
+    result: confirmed
+    evidence:
+      uri: repo:src/evidence.ts
+  - subject: yarramate-repository#evidence-tests
+    result: confirmed
+    evidence:
+      uri: repo:test/evidence.test.ts
+  - subject: yarramate-repository#evolution-model
+    result: confirmed
+    evidence:
+      uri: repo:.yarramate/architecture/evolution.yaml
+  - subject: yarramate-repository#graph-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-graph-v2.schema.json
+  - subject: yarramate-repository#graph-schema-tests
+    result: confirmed
+    evidence:
+      uri: repo:test/graph-schema.test.ts
+  - subject: yarramate-repository#graph-source
+    result: confirmed
+    evidence:
+      uri: repo:src/graph.ts
+  - subject: yarramate-repository#graphify-adapter-source
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/graphify.ts
+  - subject: yarramate-repository#graphify-cli-source
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/graphify-cli.ts
+  - subject: yarramate-repository#interrogate-command-source
+    result: confirmed
+    evidence:
+      uri: repo:src/interrogate-command.ts
+  - subject: yarramate-repository#likec4-check-result-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-likec4-check-result.schema.json
+  - subject: yarramate-repository#likec4-cli-source
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/likec4-cli.ts
+  - subject: yarramate-repository#likec4-cli-tests
+    result: confirmed
+    evidence:
+      uri: repo:test/likec4-cli.test.ts
+  - subject: yarramate-repository#likec4-diagnostic-result-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-likec4-diagnostic-result.schema.json
+  - subject: yarramate-repository#likec4-export-source
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/likec4-export.ts
+  - subject: yarramate-repository#likec4-export-tests
+    result: confirmed
+    evidence:
+      uri: repo:test/likec4-export.test.ts
+  - subject: yarramate-repository#likec4-generated-project-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-likec4-generated-project.schema.json
+  - subject: yarramate-repository#likec4-generated-project-v2-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-likec4-generated-project-v2.schema.json
+  - subject: yarramate-repository#likec4-kind-mapping-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-likec4-kind-mapping.schema.json
+  - subject: yarramate-repository#likec4-kind-mapping-source
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/likec4-kind-mapping.ts
+  - subject: yarramate-repository#likec4-kind-mapping-tests
+    result: confirmed
+    evidence:
+      uri: repo:test/likec4-kind-mapping.test.ts
+  - subject: yarramate-repository#likec4-kind-profile-source
+    result: confirmed
+    evidence:
+      uri: repo:.yarramate/integrations/likec4/kind-mapping.yaml
+  - subject: yarramate-repository#likec4-prepare-tests
+    result: confirmed
+    evidence:
+      uri: repo:test/likec4-prepare.test.ts
+  - subject: yarramate-repository#likec4-project-definition-source
+    result: confirmed
+    evidence:
+      uri: repo:.yarramate/likec4-project.yaml
+  - subject: yarramate-repository#likec4-project-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-likec4-project.schema.json
+  - subject: yarramate-repository#likec4-project-source
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/likec4-project.ts
+  - subject: yarramate-repository#mcp-cli-source
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/mcp-cli.ts
+  - subject: yarramate-repository#next-command-source
+    result: confirmed
+    evidence:
+      uri: repo:src/next-command.ts
+  - subject: yarramate-repository#profile-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-profile.schema.json
+  - subject: yarramate-repository#projection-result-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-projection-result.schema.json
+  - subject: yarramate-repository#projection-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-projection.schema.json
+  - subject: yarramate-repository#projection-source
+    result: confirmed
+    evidence:
+      uri: repo:src/projection.ts
+  - subject: yarramate-repository#reconciliation-report-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-reconciliation-report.schema.json
+  - subject: yarramate-repository#repository-evidence
+    result: confirmed
+    evidence:
+      uri: repo:.yarramate/evidence/repository.yaml
+  - subject: yarramate-repository#root-workspace-manifest
+    result: confirmed
+    evidence:
+      uri: repo:.yarramate/workspace.yaml
+  - subject: yarramate-repository#source-document-source
+    result: confirmed
+    evidence:
+      uri: repo:src/source-document.ts
+  - subject: yarramate-repository#state-comparison-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-state-comparison.schema.json
+  - subject: yarramate-repository#workspace-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-workspace.schema.json
+  - subject: yarramate-repository#workspace-source
+    result: confirmed
+    evidence:
+      uri: repo:src/workspace.ts
+  - subject: yarramate-repository#workspace-tests
+    result: confirmed
+    evidence:
+      uri: repo:test/workspace.test.ts
