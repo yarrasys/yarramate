@@ -15,13 +15,17 @@
         "addedConcepts",
         "addedRelationships",
         "updatedConcepts",
-        "updatedRelationships"
+        "updatedRelationships",
+        "deletedConcepts",
+        "deletedRelationships"
       ],
       "properties": {
         "addedConcepts": { "type": "integer", "minimum": 0 },
         "addedRelationships": { "type": "integer", "minimum": 0 },
         "updatedConcepts": { "type": "integer", "minimum": 0 },
-        "updatedRelationships": { "type": "integer", "minimum": 0 }
+        "updatedRelationships": { "type": "integer", "minimum": 0 },
+        "deletedConcepts": { "type": "integer", "minimum": 0 },
+        "deletedRelationships": { "type": "integer", "minimum": 0 }
       }
     },
     "documents": {

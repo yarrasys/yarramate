@@ -322,8 +322,9 @@ operations:
 yarramate apply operations.yaml .yarramate/workspace.yaml
 ```
 
-The operations are `add-concept`, `add-relationship`, `update-concept`, and
-`update-relationship`. Concept and relationship records accept the same
+The operations are `add-concept`, `add-relationship`, `update-concept`,
+`update-relationship`, `delete-concept`, and `delete-relationship`. Concept
+and relationship records accept the same
 optional fields as the authoring format — for example `status`,
 `description`, `owner`, `constraints`, `references`, `presentIn`, and the
 controlled `mode` and `content` fields. `apply` writes by splicing minimal
@@ -336,7 +337,13 @@ fields replace, list fields append — and retract explicitly: an update may
 carry `remove: [<field> ...]` to delete optional fields it previously
 asserted. Identity fields (`id`, `kind`, `from`, `to`) are never removable,
 removing a field that is not set is an error, and one operation cannot both
-set and remove the same field.
+set and remove the same field. Delete operations remove the whole authored
+item and are rejected while anything still references the target —
+relationship endpoints, `owner`, constraint refs, identified references.
+Integrity is evaluated against the post-batch state, so a concept and its
+referring relationships can leave in one batch (ADR 0069). Retirement
+(`status: retired`) remains the descoping path; delete only when the
+history itself is noise.
 
 The workspace manifest supplies the extension profiles and documents needed
 for qualified references. This explicit input contract matches
