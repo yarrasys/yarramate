@@ -54,7 +54,11 @@ relationships:
 
 IDs are document-local and compile to `document-id#subject-id`. Cross-document
 references must be globally qualified. Use `planned`, `current`, or `retired`
-only for operational lifecycle—not approval or alternative selection.
+only for operational lifecycle—not approval or alternative selection. A goal,
+outcome, or requirement authored with `status: retired` at inception, with
+the rationale in its description, records a declared non-goal; `export
+markdown` and `export briefs` render these under a Non-goals heading
+(ADR 0073).
 
 Supported relationship kinds are:
 
@@ -173,7 +177,9 @@ retract explicitly with `remove: [<field> ...]`. Whole subjects leave
 through `delete-concept` / `delete-relationship` (payload: the `id` only),
 rejected while anything still references the target; delete the referring
 relationships in the same batch. To descope, retire (`status: retired`)
-instead — delete only when the history itself is noise.
+instead — delete only when the history itself is noise. Descoping at
+inception is the same motion: author the subject retired with its
+rationale in the description and it becomes the non-goal record.
 
 ## Ownership and constraints
 

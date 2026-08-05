@@ -124,6 +124,15 @@ Concepts and relationships may also declare an operational `status` of
 `yarramate/lifecycle/status` claim. Status describes architecture lifecycle,
 not review or approval; Git remains authoritative for governance.
 
+Retirement also records scope that was considered and declined. A goal,
+outcome, or requirement may be authored with `status: retired` from the
+start, with the rationale in its `description`: that entry is the model's
+non-goal record, and no dedicated status value exists for it (ADR 0073).
+`export markdown` and `export briefs` render such subjects under a
+Non-goals heading so declined scope stays visible to stakeholders. A
+projection that lists `retired` in `excludeStatuses` keeps them out of
+its exports entirely; exclusion always wins over rendering.
+
 Documents may optionally declare baseline, transition, and target architecture
 states. Concepts and relationships use concise `presentIn` references to
 compile explicit presence claims:
