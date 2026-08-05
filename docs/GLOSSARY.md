@@ -89,6 +89,17 @@ _Avoid_: Embedded policy engine, compliance result, free-form metadata
 An evidence-provider observation about an existing constraint claim.
 _Avoid_: Core validation result, approval, canonical compliance status
 
+**Expected observation**:
+A constraint entry declaring the provider, key, and exact value the model
+expects an evidence provider to report. It makes a rule testable by string
+equality without giving Core a rule language.
+_Avoid_: Policy expression, assertion language, matching rule, waiver
+
+**Value observation**:
+An evidence observation carrying the key it read and the value it read there,
+alongside the presence or absence result it always carried.
+_Avoid_: Observed claim, model mutation, provider metadata bag
+
 **Concept kind**:
 A named semantic category available to elements, such as `goal`, `capability`,
 or `applicationComponent`.

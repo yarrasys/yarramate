@@ -50,10 +50,18 @@
         }
       }
     },
+    "observationKey": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
+    },
     "observation": {
       "type": "object",
       "additionalProperties": false,
       "required": ["result", "evidence"],
+      "dependentRequired": {
+        "key": ["value"],
+        "value": ["key"]
+      },
       "properties": {
         "subject": {
           "$ref": "#/$defs/qualifiedIdentity"
@@ -68,6 +76,13 @@
             "unknown",
             "not-observed"
           ]
+        },
+        "key": {
+          "$ref": "#/$defs/observationKey"
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1
         },
         "evidence": {
           "$ref": "#/$defs/evidenceLocator"

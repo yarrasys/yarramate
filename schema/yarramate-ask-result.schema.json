@@ -924,6 +924,12 @@
         },
         "subjectsWithoutEvidence": {
           "type": "integer"
+        },
+        "expectationsCompared": {
+          "type": "integer"
+        },
+        "expectationsWithoutObservation": {
+          "type": "integer"
         }
       },
       "additionalProperties": false

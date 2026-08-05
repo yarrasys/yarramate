@@ -30,7 +30,9 @@
         "unknown": { "type": "integer", "minimum": 0 },
         "notObserved": { "type": "integer", "minimum": 0 },
         "subjectsWithoutEvidence": { "type": "integer", "minimum": 0 },
-        "staleAttestations": { "type": "integer", "minimum": 0 }
+        "staleAttestations": { "type": "integer", "minimum": 0 },
+        "expectationsCompared": { "type": "integer", "minimum": 0 },
+        "expectationsWithoutObservation": { "type": "integer", "minimum": 0 }
       }
     },
     "findings": {
@@ -40,6 +42,10 @@
     "unobservedSubjects": {
       "type": "array",
       "items": { "$ref": "#/$defs/subjectIdentity" }
+    },
+    "unobservedExpectations": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/unobservedExpectation" }
     },
     "notes": {
       "type": "array",
@@ -92,6 +98,47 @@
         "name": { "type": "string", "minLength": 1 }
       }
     },
+    "observationKey": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
+    },
+    "declaredSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["document", "path", "pointer", "line", "column"],
+      "properties": {
+        "document": { "$ref": "#/$defs/id" },
+        "path": { "type": "string", "minLength": 1 },
+        "pointer": { "type": "string", "minLength": 1 },
+        "line": { "type": "integer", "minimum": 1 },
+        "column": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "expectation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "key", "expected", "observed", "declared"],
+      "properties": {
+        "provider": { "$ref": "#/$defs/id" },
+        "key": { "$ref": "#/$defs/observationKey" },
+        "expected": { "type": "string", "minLength": 1 },
+        "observed": { "type": "string", "minLength": 1 },
+        "declared": { "$ref": "#/$defs/declaredSource" }
+      }
+    },
+    "unobservedExpectation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claim", "subject", "provider", "key", "expected", "declared"],
+      "properties": {
+        "claim": { "$ref": "#/$defs/qualifiedIdentity" },
+        "subject": { "$ref": "#/$defs/subjectIdentity" },
+        "provider": { "$ref": "#/$defs/id" },
+        "key": { "$ref": "#/$defs/observationKey" },
+        "expected": { "type": "string", "minLength": 1 },
+        "declared": { "$ref": "#/$defs/declaredSource" }
+      }
+    },
     "finding": {
       "oneOf": [
         { "$ref": "#/$defs/evidenceFinding" },
@@ -111,6 +158,7 @@
       "properties": {
         "target": { "$ref": "#/$defs/target" },
         "asserted": { "$ref": "#/$defs/assertedRelationship" },
+        "expectation": { "$ref": "#/$defs/expectation" },
         "result": {
           "enum": ["contradicted", "unknown", "not-observed"]
         },

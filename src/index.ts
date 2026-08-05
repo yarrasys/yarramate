@@ -33,18 +33,23 @@ export {
   type EvidenceLoadResult,
   type EvidenceLocator,
   type EvidenceObservation,
+  type EvidenceObservedValue,
   type EvidenceReport,
   type EvidenceResult,
   type EvidenceWorkspaceEvaluationResult,
 } from './evidence.js'
 export {
+  constraintExpectsPredicate,
   reconcileEvidenceReports,
   type AssertedRelationship,
   type AttestationStaleness,
+  type DeclaredSource,
   type EvidenceFinding,
+  type ExpectationComparison,
   type ReconciliationFinding,
   type ReconciliationReport,
   type StaleAttestationFinding,
+  type UnobservedExpectation,
 } from './reconciliation.js'
 export { deriveAttestationStaleness } from './attestation-staleness.js'
 export {

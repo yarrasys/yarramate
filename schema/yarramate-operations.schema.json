@@ -42,6 +42,44 @@
         }
       }
     },
+    "constraintReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "ref"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "ref": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "expects": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "provider",
+            "key",
+            "value"
+          ],
+          "properties": {
+            "provider": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+            },
+            "key": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
+            },
+            "value": {
+              "$ref": "#/$defs/nonEmptyText"
+            }
+          }
+        }
+      }
+    },
     "attestation": {
       "type": "object",
       "additionalProperties": false,
@@ -93,7 +131,7 @@
         "constraints": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/identifiedReference"
+            "$ref": "#/$defs/constraintReference"
           }
         },
         "references": {

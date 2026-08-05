@@ -1,0 +1,2080 @@
+{
+  "format": "yarramate/graph/v2",
+  "profiles": [
+    "yarramate/core@0.1"
+  ],
+  "documents": [
+    {
+      "id": "governed-change",
+      "source": "test/fixtures/valid/governed-change.yaml"
+    }
+  ],
+  "subjects": [
+    {
+      "id": "governed-change#adoption-realizes-suite",
+      "type": "relationship"
+    },
+    {
+      "id": "governed-change#ai-change-risk",
+      "type": "concept"
+    },
+    {
+      "id": "governed-change#approval-artifact",
+      "type": "concept"
+    },
+    {
+      "id": "governed-change#approval-decision",
+      "type": "concept"
+    },
+    {
+      "id": "governed-change#approval-interface",
+      "type": "concept"
+    },
+    {
+      "id": "governed-change#approval-record",
+      "type": "concept"
+    },
+    {
+      "id": "governed-change#approval-requested",
+      "type": "concept"
+    },
+    {
+      "id": "governed-change#approval-supports-integrity",
+      "type": "relationship"
+    },
+    {
+      "id": "governed-change#artifact-realizes-record",
+      "type": "relationship"
+    },
+    {
+      "id": "governed-change#attributable-approval",
+      "type": "concept"
+    },
+    {
+      "id": "governed-change#board-member",
+      "type": "concept"
+    },
+    {
+      "id": "governed-change#conformance-suite",
+      "type": "concept"
+    },
+    {
+      "id": "governed-change#constraint-enforces-approval",
+      "type": "relationship"
+    },
+    {
+      "id": "governed-change#control-plane",
+      "type": "concept"
+    },
+    {
+      "id": "governed-change#control-plane-assigned-to-edge",
+      "type": "relationship"
+    },
+    {
+      "id": "governed-change#control-plane-performs-verification",
+      "type": "relationship"
+    },
+    {
+      "id": "governed-change#control-plane-realizes-intent-match",
+      "type": "relationship"
+    },
+    {
+      "id": "governed-change#decide-proposal",
+      "type": "concept"
+    },
+    {
+      "id": "governed-change#decision-gate-realizes-capability",
+      "type": "relationship"
+    },
+    {
+      "id": "governed-change#decision-serves-process",
+      "type": "relationship"
+    },
+    {
+      "id": "governed-change#drift-threatens-integrity",
+      "type": "relationship"
+    },
+    {
+      "id": "governed-change#edge-composes-runtime",
+      "type": "relationship"
+    },
+    {
+      "id": "governed-change#edge-runtime",
+      "type": "concept"
+    },
+    {
+      "id": "governed-change#execute-request",
+      "type": "concept"
+    },
+    {
+      "id": "governed-change#explicit-decision-gate",
+      "type": "concept"
+    },
+    {
+      "id": "governed-change#foundation",
+      "type": "concept"
+    },
+    {
+      "id": "governed-change#govern-ai-change",
+      "type": "concept"
+    },
+    {
+      "id": "governed-change#governed-publication",
+      "type": "concept"
+    },
+    {
+      "id": "governed-change#intent-digest",
+      "type": "concept"
+    },
+    {
+      "id": "governed-change#intent-match-fulfills-integrity",
+      "type": "relationship"
+    },
+    {
+      "id": "governed-change#interface-serves-member",
+      "type": "relationship"
+    },
+    {
+      "id": "governed-change#journey-realizes-capability",
+      "type": "relationship"
+    },
+    {
+      "id": "governed-change#member-performs-process",
+      "type": "relationship"
+    },
+    {
+      "id": "governed-change#no-anonymous-approval",
+      "type": "concept"
+    },
+    {
+      "id": "governed-change#owner-concerned-with-integrity",
+      "type": "relationship"
+    },
+    {
+      "id": "governed-change#process-realizes-publication",
+      "type": "relationship"
+    },
+    {
+      "id": "governed-change#process-writes-record",
+      "type": "relationship"
+    },
+    {
+      "id": "governed-change#product-owner",
+      "type": "concept"
+    },
+    {
+      "id": "governed-change#proposal",
+      "type": "concept"
+    },
+    {
+      "id": "governed-change#proposal-drift",
+      "type": "concept"
+    },
+    {
+      "id": "governed-change#proposal-intent-match",
+      "type": "concept"
+    },
+    {
+      "id": "governed-change#publication-serves-member",
+      "type": "relationship"
+    },
+    {
+      "id": "governed-change#request-triggers-verification",
+      "type": "relationship"
+    },
+    {
+      "id": "governed-change#reviewed-change-integrity",
+      "type": "concept"
+    },
+    {
+      "id": "governed-change#risk-causes-drift",
+      "type": "relationship"
+    },
+    {
+      "id": "governed-change#runtime-realizes-execution",
+      "type": "relationship"
+    },
+    {
+      "id": "governed-change#safe-change-journey",
+      "type": "concept"
+    },
+    {
+      "id": "governed-change#structured-traceability",
+      "type": "concept"
+    },
+    {
+      "id": "governed-change#suite-realizes-traceability",
+      "type": "relationship"
+    },
+    {
+      "id": "governed-change#traceability-associated-with-foundation",
+      "type": "relationship"
+    },
+    {
+      "id": "governed-change#verification-reads-digest",
+      "type": "relationship"
+    },
+    {
+      "id": "governed-change#verification-reads-proposal",
+      "type": "relationship"
+    },
+    {
+      "id": "governed-change#verification-realizes-decision",
+      "type": "relationship"
+    },
+    {
+      "id": "governed-change#verify-intent",
+      "type": "concept"
+    },
+    {
+      "id": "governed-change#worker-runtime",
+      "type": "concept"
+    },
+    {
+      "id": "governed-change#yarramate-adoption",
+      "type": "concept"
+    }
+  ],
+  "claims": [
+    {
+      "id": "governed-change#adoption-realizes-suite",
+      "subject": "governed-change#yarramate-adoption",
+      "predicate": "yarramate/core@0.1#realization",
+      "object": {
+        "ref": "governed-change#conformance-suite"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/25",
+        "line": 221,
+        "column": 5
+      }
+    },
+    {
+      "id": "governed-change#adoption-realizes-suite~name",
+      "subject": "governed-change#adoption-realizes-suite",
+      "predicate": "yarramate/relationship/name",
+      "object": {
+        "value": "delivers"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/25/name",
+        "line": 225,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#ai-change-risk~kind",
+      "subject": "governed-change#ai-change-risk",
+      "predicate": "yarramate/concept/kind",
+      "object": {
+        "value": "yarramate/core@0.1#driver"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/1/kind",
+        "line": 9,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#ai-change-risk~name",
+      "subject": "governed-change#ai-change-risk",
+      "predicate": "yarramate/concept/name",
+      "object": {
+        "value": "Risk from AI-authored change"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/1/name",
+        "line": 10,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#approval-artifact~kind",
+      "subject": "governed-change#approval-artifact",
+      "predicate": "yarramate/concept/kind",
+      "object": {
+        "value": "yarramate/core@0.1#artifact"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/24/kind",
+        "line": 78,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#approval-artifact~name",
+      "subject": "governed-change#approval-artifact",
+      "predicate": "yarramate/concept/name",
+      "object": {
+        "value": "Sealed approval artifact"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/24/name",
+        "line": 79,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#approval-decision~kind",
+      "subject": "governed-change#approval-decision",
+      "predicate": "yarramate/concept/kind",
+      "object": {
+        "value": "yarramate/core@0.1#applicationService"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/18/kind",
+        "line": 60,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#approval-decision~name",
+      "subject": "governed-change#approval-decision",
+      "predicate": "yarramate/concept/name",
+      "object": {
+        "value": "Approval decision"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/18/name",
+        "line": 61,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#approval-interface~kind",
+      "subject": "governed-change#approval-interface",
+      "predicate": "yarramate/concept/kind",
+      "object": {
+        "value": "yarramate/core@0.1#applicationInterface"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/15/kind",
+        "line": 51,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#approval-interface~name",
+      "subject": "governed-change#approval-interface",
+      "predicate": "yarramate/concept/name",
+      "object": {
+        "value": "Approval interface"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/15/name",
+        "line": 52,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#approval-record~kind",
+      "subject": "governed-change#approval-record",
+      "predicate": "yarramate/concept/kind",
+      "object": {
+        "value": "yarramate/core@0.1#businessObject"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/13/kind",
+        "line": 45,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#approval-record~name",
+      "subject": "governed-change#approval-record",
+      "predicate": "yarramate/concept/name",
+      "object": {
+        "value": "Approval record"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/13/name",
+        "line": 46,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#approval-requested~kind",
+      "subject": "governed-change#approval-requested",
+      "predicate": "yarramate/concept/kind",
+      "object": {
+        "value": "yarramate/core@0.1#applicationEvent"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/17/kind",
+        "line": 57,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#approval-requested~name",
+      "subject": "governed-change#approval-requested",
+      "predicate": "yarramate/concept/name",
+      "object": {
+        "value": "Approval requested"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/17/name",
+        "line": 58,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#approval-supports-integrity",
+      "subject": "governed-change#attributable-approval",
+      "predicate": "yarramate/core@0.1#realization",
+      "object": {
+        "ref": "governed-change#reviewed-change-integrity"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/4",
+        "line": 113,
+        "column": 5
+      }
+    },
+    {
+      "id": "governed-change#approval-supports-integrity~name",
+      "subject": "governed-change#approval-supports-integrity",
+      "predicate": "yarramate/relationship/name",
+      "object": {
+        "value": "supports"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/4/name",
+        "line": 117,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#artifact-realizes-record",
+      "subject": "governed-change#approval-artifact",
+      "predicate": "yarramate/core@0.1#realization",
+      "object": {
+        "ref": "governed-change#approval-record"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/23",
+        "line": 211,
+        "column": 5
+      }
+    },
+    {
+      "id": "governed-change#artifact-realizes-record~name",
+      "subject": "governed-change#artifact-realizes-record",
+      "predicate": "yarramate/relationship/name",
+      "object": {
+        "value": "materializes"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/23/name",
+        "line": 215,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#attributable-approval~kind",
+      "subject": "governed-change#attributable-approval",
+      "predicate": "yarramate/concept/kind",
+      "object": {
+        "value": "yarramate/core@0.1#principle"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/4/kind",
+        "line": 18,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#attributable-approval~name",
+      "subject": "governed-change#attributable-approval",
+      "predicate": "yarramate/concept/name",
+      "object": {
+        "value": "Every approval names a decision-maker"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/4/name",
+        "line": 19,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#board-member~kind",
+      "subject": "governed-change#board-member",
+      "predicate": "yarramate/concept/kind",
+      "object": {
+        "value": "yarramate/core@0.1#businessRole"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/10/kind",
+        "line": 36,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#board-member~name",
+      "subject": "governed-change#board-member",
+      "predicate": "yarramate/concept/name",
+      "object": {
+        "value": "Board member"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/10/name",
+        "line": 37,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#conformance-suite~kind",
+      "subject": "governed-change#conformance-suite",
+      "predicate": "yarramate/concept/kind",
+      "object": {
+        "value": "yarramate/core@0.1#deliverable"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/28/kind",
+        "line": 90,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#conformance-suite~name",
+      "subject": "governed-change#conformance-suite",
+      "predicate": "yarramate/concept/name",
+      "object": {
+        "value": "Profile conformance suite"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/28/name",
+        "line": 91,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#constraint-enforces-approval",
+      "subject": "governed-change#no-anonymous-approval",
+      "predicate": "yarramate/core@0.1#realization",
+      "object": {
+        "ref": "governed-change#attributable-approval"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/5",
+        "line": 118,
+        "column": 5
+      }
+    },
+    {
+      "id": "governed-change#constraint-enforces-approval~name",
+      "subject": "governed-change#constraint-enforces-approval",
+      "predicate": "yarramate/relationship/name",
+      "object": {
+        "value": "enforces"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/5/name",
+        "line": 122,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#control-plane-assigned-to-edge",
+      "subject": "governed-change#control-plane",
+      "predicate": "yarramate/core@0.1#assignment",
+      "object": {
+        "ref": "governed-change#edge-runtime"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/21",
+        "line": 201,
+        "column": 5
+      }
+    },
+    {
+      "id": "governed-change#control-plane-assigned-to-edge~name",
+      "subject": "governed-change#control-plane-assigned-to-edge",
+      "predicate": "yarramate/relationship/name",
+      "object": {
+        "value": "deployed on"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/21/name",
+        "line": 205,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#control-plane-performs-verification",
+      "subject": "governed-change#control-plane",
+      "predicate": "yarramate/core@0.1#assignment",
+      "object": {
+        "ref": "governed-change#verify-intent"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/12",
+        "line": 154,
+        "column": 5
+      }
+    },
+    {
+      "id": "governed-change#control-plane-performs-verification~name",
+      "subject": "governed-change#control-plane-performs-verification",
+      "predicate": "yarramate/relationship/name",
+      "object": {
+        "value": "performs"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/12/name",
+        "line": 158,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#control-plane-realizes-intent-match",
+      "subject": "governed-change#control-plane",
+      "predicate": "yarramate/core@0.1#realization",
+      "object": {
+        "ref": "governed-change#proposal-intent-match"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/19",
+        "line": 191,
+        "column": 5
+      }
+    },
+    {
+      "id": "governed-change#control-plane-realizes-intent-match~name",
+      "subject": "governed-change#control-plane-realizes-intent-match",
+      "predicate": "yarramate/relationship/name",
+      "object": {
+        "value": "implements"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/19/name",
+        "line": 195,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#control-plane~kind",
+      "subject": "governed-change#control-plane",
+      "predicate": "yarramate/concept/kind",
+      "object": {
+        "value": "yarramate/core@0.1#applicationComponent"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/14/kind",
+        "line": 48,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#control-plane~name",
+      "subject": "governed-change#control-plane",
+      "predicate": "yarramate/concept/name",
+      "object": {
+        "value": "Control plane"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/14/name",
+        "line": 49,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#decide-proposal~kind",
+      "subject": "governed-change#decide-proposal",
+      "predicate": "yarramate/concept/kind",
+      "object": {
+        "value": "yarramate/core@0.1#businessProcess"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/11/kind",
+        "line": 39,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#decide-proposal~name",
+      "subject": "governed-change#decide-proposal",
+      "predicate": "yarramate/concept/name",
+      "object": {
+        "value": "Decide proposal"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/11/name",
+        "line": 40,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#decision-gate-realizes-capability",
+      "subject": "governed-change#explicit-decision-gate",
+      "predicate": "yarramate/core@0.1#realization",
+      "object": {
+        "ref": "governed-change#govern-ai-change"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/6",
+        "line": 123,
+        "column": 5
+      }
+    },
+    {
+      "id": "governed-change#decision-gate-realizes-capability~name",
+      "subject": "governed-change#decision-gate-realizes-capability",
+      "predicate": "yarramate/relationship/name",
+      "object": {
+        "value": "implements strategy"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/6/name",
+        "line": 127,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#decision-serves-process",
+      "subject": "governed-change#approval-decision",
+      "predicate": "yarramate/core@0.1#serving",
+      "object": {
+        "ref": "governed-change#decide-proposal"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/18",
+        "line": 186,
+        "column": 5
+      }
+    },
+    {
+      "id": "governed-change#decision-serves-process~name",
+      "subject": "governed-change#decision-serves-process",
+      "predicate": "yarramate/relationship/name",
+      "object": {
+        "value": "supports"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/18/name",
+        "line": 190,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#drift-threatens-integrity",
+      "subject": "governed-change#proposal-drift",
+      "predicate": "yarramate/core@0.1#influence",
+      "object": {
+        "ref": "governed-change#reviewed-change-integrity"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/2",
+        "line": 103,
+        "column": 5
+      }
+    },
+    {
+      "id": "governed-change#drift-threatens-integrity~name",
+      "subject": "governed-change#drift-threatens-integrity",
+      "predicate": "yarramate/relationship/name",
+      "object": {
+        "value": "threatens"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/2/name",
+        "line": 107,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#edge-composes-runtime",
+      "subject": "governed-change#edge-runtime",
+      "predicate": "yarramate/core@0.1#composition",
+      "object": {
+        "ref": "governed-change#worker-runtime"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/20",
+        "line": 196,
+        "column": 5
+      }
+    },
+    {
+      "id": "governed-change#edge-composes-runtime~name",
+      "subject": "governed-change#edge-composes-runtime",
+      "predicate": "yarramate/relationship/name",
+      "object": {
+        "value": "contains"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/20/name",
+        "line": 200,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#edge-runtime~kind",
+      "subject": "governed-change#edge-runtime",
+      "predicate": "yarramate/concept/kind",
+      "object": {
+        "value": "yarramate/core@0.1#node"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/21/kind",
+        "line": 69,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#edge-runtime~name",
+      "subject": "governed-change#edge-runtime",
+      "predicate": "yarramate/concept/name",
+      "object": {
+        "value": "Edge runtime"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/21/name",
+        "line": 70,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#execute-request~kind",
+      "subject": "governed-change#execute-request",
+      "predicate": "yarramate/concept/kind",
+      "object": {
+        "value": "yarramate/core@0.1#technologyService"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/23/kind",
+        "line": 75,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#execute-request~name",
+      "subject": "governed-change#execute-request",
+      "predicate": "yarramate/concept/name",
+      "object": {
+        "value": "Execute request"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/23/name",
+        "line": 76,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#explicit-decision-gate~kind",
+      "subject": "governed-change#explicit-decision-gate",
+      "predicate": "yarramate/concept/kind",
+      "object": {
+        "value": "yarramate/core@0.1#courseOfAction"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/8/kind",
+        "line": 30,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#explicit-decision-gate~name",
+      "subject": "governed-change#explicit-decision-gate",
+      "predicate": "yarramate/concept/name",
+      "object": {
+        "value": "Use an explicit decision gate"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/8/name",
+        "line": 31,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#foundation~kind",
+      "subject": "governed-change#foundation",
+      "predicate": "yarramate/concept/kind",
+      "object": {
+        "value": "yarramate/core@0.1#plateau"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/25/kind",
+        "line": 81,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#foundation~name",
+      "subject": "governed-change#foundation",
+      "predicate": "yarramate/concept/name",
+      "object": {
+        "value": "Governance foundation"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/25/name",
+        "line": 82,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#govern-ai-change~kind",
+      "subject": "governed-change#govern-ai-change",
+      "predicate": "yarramate/concept/kind",
+      "object": {
+        "value": "yarramate/core@0.1#capability"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/7/kind",
+        "line": 27,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#govern-ai-change~name",
+      "subject": "governed-change#govern-ai-change",
+      "predicate": "yarramate/concept/name",
+      "object": {
+        "value": "Govern AI-authored change"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/7/name",
+        "line": 28,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#governed-publication~kind",
+      "subject": "governed-change#governed-publication",
+      "predicate": "yarramate/concept/kind",
+      "object": {
+        "value": "yarramate/core@0.1#businessService"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/12/kind",
+        "line": 42,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#governed-publication~name",
+      "subject": "governed-change#governed-publication",
+      "predicate": "yarramate/concept/name",
+      "object": {
+        "value": "Governed publication"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/12/name",
+        "line": 43,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#intent-digest~kind",
+      "subject": "governed-change#intent-digest",
+      "predicate": "yarramate/concept/kind",
+      "object": {
+        "value": "yarramate/core@0.1#dataObject"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/20/kind",
+        "line": 66,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#intent-digest~name",
+      "subject": "governed-change#intent-digest",
+      "predicate": "yarramate/concept/name",
+      "object": {
+        "value": "Intent digest"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/20/name",
+        "line": 67,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#intent-match-fulfills-integrity",
+      "subject": "governed-change#proposal-intent-match",
+      "predicate": "yarramate/core@0.1#realization",
+      "object": {
+        "ref": "governed-change#reviewed-change-integrity"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/3",
+        "line": 108,
+        "column": 5
+      }
+    },
+    {
+      "id": "governed-change#intent-match-fulfills-integrity~name",
+      "subject": "governed-change#intent-match-fulfills-integrity",
+      "predicate": "yarramate/relationship/name",
+      "object": {
+        "value": "fulfills"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/3/name",
+        "line": 112,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#interface-serves-member",
+      "subject": "governed-change#approval-interface",
+      "predicate": "yarramate/core@0.1#serving",
+      "object": {
+        "ref": "governed-change#board-member"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/13",
+        "line": 159,
+        "column": 5
+      }
+    },
+    {
+      "id": "governed-change#interface-serves-member~name",
+      "subject": "governed-change#interface-serves-member",
+      "predicate": "yarramate/relationship/name",
+      "object": {
+        "value": "serves"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/13/name",
+        "line": 163,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#journey-realizes-capability",
+      "subject": "governed-change#safe-change-journey",
+      "predicate": "yarramate/core@0.1#realization",
+      "object": {
+        "ref": "governed-change#govern-ai-change"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/7",
+        "line": 128,
+        "column": 5
+      }
+    },
+    {
+      "id": "governed-change#journey-realizes-capability~name",
+      "subject": "governed-change#journey-realizes-capability",
+      "predicate": "yarramate/relationship/name",
+      "object": {
+        "value": "delivers"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/7/name",
+        "line": 132,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#member-performs-process",
+      "subject": "governed-change#board-member",
+      "predicate": "yarramate/core@0.1#assignment",
+      "object": {
+        "ref": "governed-change#decide-proposal"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/10",
+        "line": 143,
+        "column": 5
+      }
+    },
+    {
+      "id": "governed-change#member-performs-process~name",
+      "subject": "governed-change#member-performs-process",
+      "predicate": "yarramate/relationship/name",
+      "object": {
+        "value": "performs"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/10/name",
+        "line": 147,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#no-anonymous-approval~kind",
+      "subject": "governed-change#no-anonymous-approval",
+      "predicate": "yarramate/concept/kind",
+      "object": {
+        "value": "yarramate/core@0.1#constraint"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/6/kind",
+        "line": 24,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#no-anonymous-approval~name",
+      "subject": "governed-change#no-anonymous-approval",
+      "predicate": "yarramate/concept/name",
+      "object": {
+        "value": "The system cannot approve without an identity"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/6/name",
+        "line": 25,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#owner-concerned-with-integrity",
+      "subject": "governed-change#product-owner",
+      "predicate": "yarramate/core@0.1#association",
+      "object": {
+        "ref": "governed-change#reviewed-change-integrity"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/0",
+        "line": 93,
+        "column": 5
+      }
+    },
+    {
+      "id": "governed-change#owner-concerned-with-integrity~name",
+      "subject": "governed-change#owner-concerned-with-integrity",
+      "predicate": "yarramate/relationship/name",
+      "object": {
+        "value": "has concern"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/0/name",
+        "line": 97,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#process-realizes-publication",
+      "subject": "governed-change#decide-proposal",
+      "predicate": "yarramate/core@0.1#realization",
+      "object": {
+        "ref": "governed-change#governed-publication"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/9",
+        "line": 138,
+        "column": 5
+      }
+    },
+    {
+      "id": "governed-change#process-realizes-publication~name",
+      "subject": "governed-change#process-realizes-publication",
+      "predicate": "yarramate/relationship/name",
+      "object": {
+        "value": "realizes"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/9/name",
+        "line": 142,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#process-writes-record",
+      "subject": "governed-change#decide-proposal",
+      "predicate": "yarramate/core@0.1#access",
+      "object": {
+        "ref": "governed-change#approval-record"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/11",
+        "line": 148,
+        "column": 5
+      }
+    },
+    {
+      "id": "governed-change#process-writes-record~mode",
+      "subject": "governed-change#process-writes-record",
+      "predicate": "yarramate/access/mode",
+      "object": {
+        "value": "write"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/11/mode",
+        "line": 153,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#process-writes-record~name",
+      "subject": "governed-change#process-writes-record",
+      "predicate": "yarramate/relationship/name",
+      "object": {
+        "value": "creates"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/11/name",
+        "line": 152,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#product-owner~kind",
+      "subject": "governed-change#product-owner",
+      "predicate": "yarramate/concept/kind",
+      "object": {
+        "value": "yarramate/core@0.1#stakeholder"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/0/kind",
+        "line": 6,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#product-owner~name",
+      "subject": "governed-change#product-owner",
+      "predicate": "yarramate/concept/name",
+      "object": {
+        "value": "Product owner"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/0/name",
+        "line": 7,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#proposal-drift~kind",
+      "subject": "governed-change#proposal-drift",
+      "predicate": "yarramate/concept/kind",
+      "object": {
+        "value": "yarramate/core@0.1#assessment"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/2/kind",
+        "line": 12,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#proposal-drift~name",
+      "subject": "governed-change#proposal-drift",
+      "predicate": "yarramate/concept/name",
+      "object": {
+        "value": "Intent can change after execution"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/2/name",
+        "line": 13,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#proposal-intent-match~kind",
+      "subject": "governed-change#proposal-intent-match",
+      "predicate": "yarramate/concept/kind",
+      "object": {
+        "value": "yarramate/core@0.1#requirement"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/5/kind",
+        "line": 21,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#proposal-intent-match~name",
+      "subject": "governed-change#proposal-intent-match",
+      "predicate": "yarramate/concept/name",
+      "object": {
+        "value": "Proposal matches current intent"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/5/name",
+        "line": 22,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#proposal~kind",
+      "subject": "governed-change#proposal",
+      "predicate": "yarramate/concept/kind",
+      "object": {
+        "value": "yarramate/core@0.1#dataObject"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/19/kind",
+        "line": 63,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#proposal~name",
+      "subject": "governed-change#proposal",
+      "predicate": "yarramate/concept/name",
+      "object": {
+        "value": "Proposal"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/19/name",
+        "line": 64,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#publication-serves-member",
+      "subject": "governed-change#governed-publication",
+      "predicate": "yarramate/core@0.1#serving",
+      "object": {
+        "ref": "governed-change#board-member"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/8",
+        "line": 133,
+        "column": 5
+      }
+    },
+    {
+      "id": "governed-change#publication-serves-member~name",
+      "subject": "governed-change#publication-serves-member",
+      "predicate": "yarramate/relationship/name",
+      "object": {
+        "value": "serves"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/8/name",
+        "line": 137,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#request-triggers-verification",
+      "subject": "governed-change#approval-requested",
+      "predicate": "yarramate/core@0.1#triggering",
+      "object": {
+        "ref": "governed-change#verify-intent"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/14",
+        "line": 164,
+        "column": 5
+      }
+    },
+    {
+      "id": "governed-change#request-triggers-verification~name",
+      "subject": "governed-change#request-triggers-verification",
+      "predicate": "yarramate/relationship/name",
+      "object": {
+        "value": "starts"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/14/name",
+        "line": 168,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#reviewed-change-integrity~kind",
+      "subject": "governed-change#reviewed-change-integrity",
+      "predicate": "yarramate/concept/kind",
+      "object": {
+        "value": "yarramate/core@0.1#goal"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/3/kind",
+        "line": 15,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#reviewed-change-integrity~name",
+      "subject": "governed-change#reviewed-change-integrity",
+      "predicate": "yarramate/concept/name",
+      "object": {
+        "value": "Published change matches reviewed change"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/3/name",
+        "line": 16,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#risk-causes-drift",
+      "subject": "governed-change#ai-change-risk",
+      "predicate": "yarramate/core@0.1#influence",
+      "object": {
+        "ref": "governed-change#proposal-drift"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/1",
+        "line": 98,
+        "column": 5
+      }
+    },
+    {
+      "id": "governed-change#risk-causes-drift~name",
+      "subject": "governed-change#risk-causes-drift",
+      "predicate": "yarramate/relationship/name",
+      "object": {
+        "value": "causes"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/1/name",
+        "line": 102,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#runtime-realizes-execution",
+      "subject": "governed-change#worker-runtime",
+      "predicate": "yarramate/core@0.1#realization",
+      "object": {
+        "ref": "governed-change#execute-request"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/22",
+        "line": 206,
+        "column": 5
+      }
+    },
+    {
+      "id": "governed-change#runtime-realizes-execution~name",
+      "subject": "governed-change#runtime-realizes-execution",
+      "predicate": "yarramate/relationship/name",
+      "object": {
+        "value": "provides"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/22/name",
+        "line": 210,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#safe-change-journey~kind",
+      "subject": "governed-change#safe-change-journey",
+      "predicate": "yarramate/concept/kind",
+      "object": {
+        "value": "yarramate/core@0.1#valueStream"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/9/kind",
+        "line": 33,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#safe-change-journey~name",
+      "subject": "governed-change#safe-change-journey",
+      "predicate": "yarramate/concept/name",
+      "object": {
+        "value": "Intent to governed publication"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/9/name",
+        "line": 34,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#structured-traceability~kind",
+      "subject": "governed-change#structured-traceability",
+      "predicate": "yarramate/concept/kind",
+      "object": {
+        "value": "yarramate/core@0.1#gap"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/26/kind",
+        "line": 84,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#structured-traceability~name",
+      "subject": "governed-change#structured-traceability",
+      "predicate": "yarramate/concept/name",
+      "object": {
+        "value": "Structured traceability"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/26/name",
+        "line": 85,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#suite-realizes-traceability",
+      "subject": "governed-change#conformance-suite",
+      "predicate": "yarramate/core@0.1#realization",
+      "object": {
+        "ref": "governed-change#structured-traceability"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/26",
+        "line": 226,
+        "column": 5
+      }
+    },
+    {
+      "id": "governed-change#suite-realizes-traceability~name",
+      "subject": "governed-change#suite-realizes-traceability",
+      "predicate": "yarramate/relationship/name",
+      "object": {
+        "value": "closes"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/26/name",
+        "line": 230,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#traceability-associated-with-foundation",
+      "subject": "governed-change#structured-traceability",
+      "predicate": "yarramate/core@0.1#association",
+      "object": {
+        "ref": "governed-change#foundation"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/24",
+        "line": 216,
+        "column": 5
+      }
+    },
+    {
+      "id": "governed-change#traceability-associated-with-foundation~name",
+      "subject": "governed-change#traceability-associated-with-foundation",
+      "predicate": "yarramate/relationship/name",
+      "object": {
+        "value": "identified in"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/24/name",
+        "line": 220,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#verification-reads-digest",
+      "subject": "governed-change#verify-intent",
+      "predicate": "yarramate/core@0.1#access",
+      "object": {
+        "ref": "governed-change#intent-digest"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/17",
+        "line": 180,
+        "column": 5
+      }
+    },
+    {
+      "id": "governed-change#verification-reads-digest~mode",
+      "subject": "governed-change#verification-reads-digest",
+      "predicate": "yarramate/access/mode",
+      "object": {
+        "value": "read"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/17/mode",
+        "line": 185,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#verification-reads-digest~name",
+      "subject": "governed-change#verification-reads-digest",
+      "predicate": "yarramate/relationship/name",
+      "object": {
+        "value": "reads"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/17/name",
+        "line": 184,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#verification-reads-proposal",
+      "subject": "governed-change#verify-intent",
+      "predicate": "yarramate/core@0.1#access",
+      "object": {
+        "ref": "governed-change#proposal"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/16",
+        "line": 174,
+        "column": 5
+      }
+    },
+    {
+      "id": "governed-change#verification-reads-proposal~mode",
+      "subject": "governed-change#verification-reads-proposal",
+      "predicate": "yarramate/access/mode",
+      "object": {
+        "value": "read"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/16/mode",
+        "line": 179,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#verification-reads-proposal~name",
+      "subject": "governed-change#verification-reads-proposal",
+      "predicate": "yarramate/relationship/name",
+      "object": {
+        "value": "reads"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/16/name",
+        "line": 178,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#verification-realizes-decision",
+      "subject": "governed-change#verify-intent",
+      "predicate": "yarramate/core@0.1#realization",
+      "object": {
+        "ref": "governed-change#approval-decision"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/15",
+        "line": 169,
+        "column": 5
+      }
+    },
+    {
+      "id": "governed-change#verification-realizes-decision~name",
+      "subject": "governed-change#verification-realizes-decision",
+      "predicate": "yarramate/relationship/name",
+      "object": {
+        "value": "realizes"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/relationships/15/name",
+        "line": 173,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#verify-intent~kind",
+      "subject": "governed-change#verify-intent",
+      "predicate": "yarramate/concept/kind",
+      "object": {
+        "value": "yarramate/core@0.1#applicationFunction"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/16/kind",
+        "line": 54,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#verify-intent~name",
+      "subject": "governed-change#verify-intent",
+      "predicate": "yarramate/concept/name",
+      "object": {
+        "value": "Verify proposal intent"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/16/name",
+        "line": 55,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#worker-runtime~kind",
+      "subject": "governed-change#worker-runtime",
+      "predicate": "yarramate/concept/kind",
+      "object": {
+        "value": "yarramate/core@0.1#systemSoftware"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/22/kind",
+        "line": 72,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#worker-runtime~name",
+      "subject": "governed-change#worker-runtime",
+      "predicate": "yarramate/concept/name",
+      "object": {
+        "value": "Workers runtime"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/22/name",
+        "line": 73,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#yarramate-adoption~kind",
+      "subject": "governed-change#yarramate-adoption",
+      "predicate": "yarramate/concept/kind",
+      "object": {
+        "value": "yarramate/core@0.1#workPackage"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/27/kind",
+        "line": 87,
+        "column": 11
+      }
+    },
+    {
+      "id": "governed-change#yarramate-adoption~name",
+      "subject": "governed-change#yarramate-adoption",
+      "predicate": "yarramate/concept/name",
+      "object": {
+        "value": "Adopt YarraMate profile"
+      },
+      "origin": "declared",
+      "source": {
+        "document": "governed-change",
+        "path": "test/fixtures/valid/governed-change.yaml",
+        "pointer": "/concepts/27/name",
+        "line": 88,
+        "column": 11
+      }
+    }
+  ]
+}

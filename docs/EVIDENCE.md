@@ -36,6 +36,37 @@ The `evidence.uri` value is opaque to YarraMate Core. Its provider owns URI
 resolution and external validity. An optional non-empty message may explain
 the observation; arbitrary provider metadata is not accepted.
 
+## Value observations
+
+An observation may additionally report the value it read, by carrying an
+observed `key` and `value` together (ADR 0075):
+
+```yaml
+observations:
+  - subject: shop#customer-data
+    result: confirmed
+    key: region
+    value: us-east-1
+    evidence:
+      uri: repo:infra/main.tf#L12
+      message: aws_s3_bucket.customer_data region
+```
+
+The two fields are required together: a key without a value, or a value
+without a key, is rejected. The key is provider-owned naming with no
+whitespace; the value is any non-empty string, compared verbatim.
+
+`key` and `value` do not replace or reinterpret `result`. The result still
+answers whether the target holds up at all, which is a presence or absence
+judgment; the keyed value reports a fact that a declared expectation can be
+compared against. A provider that reads several facts in one place may report
+several keys at one target, and each key at a target at most once. Its
+presence result is still stated once per target.
+
+Providers own their key vocabulary. Core neither defines key names nor
+resolves them: it only compares the reported value with the value a
+constraint declared it expects.
+
 ## Evaluation
 
 Generic evaluation checks:
@@ -64,7 +95,9 @@ optional `evidence` category of a workspace manifest, in which case
 
 `yarramate check --strict` additionally fails the check (exit `1`) when any
 evidence observation is `contradicted`, rendering each contradiction as a
-source-located `YM901` diagnostic anchored at the declared claim. `unknown`
+source-located `YM901` diagnostic anchored at the declared claim. A
+contradicted expectation surfaces the same way, anchored at the authored
+expected value, with no gate semantics of its own. `unknown`
 and `not-observed` results stay advisory. A strict pass reports how many
 observations it evaluated, so a gate over zero evidence is visible rather
 than silently vacuous (ADR 0047).
@@ -111,6 +144,59 @@ the evidence is visible in the finding itself:
 
 Subject-targeted findings and findings on relationship sub-claims (such as
 `…~name`) do not carry `asserted`.
+
+### Declared expectations
+
+When a constraint declares an expected observation
+(`expects` in `docs/NATIVE-DOCUMENT.md`), reconciliation compares the declared
+value with what the named provider observed. A declared expectation is matched
+to observations by provider and key. The observation's own target anchors its
+provenance but does not narrow the match, because a keyed value is a fact
+about the project rather than about one subject, and several constraints may
+legitimately expect the same fact.
+
+A disagreement is an ordinary `contradicted` finding, rendered with both
+sides: the declared expectation with the source location where it was
+authored, and the observed value with its provider, evidence document, and
+locator.
+
+```json
+{
+  "target": {
+    "type": "claim",
+    "id": "shop#customer-data~expects-residency"
+  },
+  "expectation": {
+    "provider": "terraform-scan",
+    "key": "region",
+    "expected": "ap-southeast-2",
+    "observed": "us-east-1",
+    "declared": {
+      "document": "shop",
+      "path": "architecture/shop.yaml",
+      "pointer": "/concepts/1/constraints/0/expects/value",
+      "line": 18,
+      "column": 18
+    }
+  },
+  "result": "contradicted",
+  "provider": "terraform-scan",
+  "evidenceDocument": "shop-terraform@1.0",
+  "evidence": {
+    "uri": "repo:infra/main.tf#L12",
+    "message": "aws_s3_bucket.customer_data region"
+  }
+}
+```
+
+The summary counts `expectationsCompared`, the declared expectations a
+matching observation reached, and `expectationsWithoutObservation`, those no
+provider reported on. An expectation nobody observed is listed in a top-level
+`unobservedExpectations` array, sorted by claim then key, and never converted
+into a finding: no provider disagreed, so there is nothing to accuse, and the
+same discipline applies as for unobserved subjects (ADR 0049). An unobserved
+expectation is therefore reported honestly rather than passing as satisfied,
+and it does not fail `check --strict`.
 
 The summary also counts `current` concepts that appear in no observation at
 all — neither targeted directly, nor through a claim they own, nor as an
@@ -200,6 +286,11 @@ stable claim such as
 constraint assessment, not Core conformance. Core does not execute policy
 rules, interpret missing observations, manage exceptions, or convert a result
 into CI failure.
+
+A declared expectation does not change that boundary. Comparing two strings is
+not a rule engine: Core still holds no policy language, no waivers, no
+exceptions, and no opinion about which value is correct. It reports that the
+model and a provider disagree, and leaves the judgment to a reviewer.
 
 Diagnostics use `YM801` for an unknown subject, `YM802` for an unknown claim,
 `YM803` for a duplicate target, and `YM804` for a duplicate evidence document.

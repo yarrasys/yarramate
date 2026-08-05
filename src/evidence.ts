@@ -30,17 +30,27 @@ export interface EvidenceLocator {
   readonly message?: string
 }
 
+// A value observation carries the key it read and the value it read there,
+// alongside the presence or absence result it always carried (ADR 0075).
+// The two are orthogonal: `result` still answers "does the target hold up",
+// while `key`/`value` report a fact a declared expectation can be compared
+// against.
+export interface EvidenceObservedValue {
+  readonly key: string
+  readonly value: string
+}
+
 export type EvidenceObservation =
-  | {
+  | ({
       readonly subject: string
       readonly result: EvidenceResult
       readonly evidence: EvidenceLocator
-    }
-  | {
+    } & Partial<EvidenceObservedValue>)
+  | ({
       readonly claim: string
       readonly result: EvidenceResult
       readonly evidence: EvidenceLocator
-    }
+    } & Partial<EvidenceObservedValue>)
 
 export interface EvidenceDocument {
   readonly format: 'yarramate/evidence/v1'
@@ -104,6 +114,9 @@ export function loadEvidence(source: WorkspaceSource): EvidenceLoadResult {
           ? { subject: observation.subject }
           : { claim: observation.claim }),
         result: observation.result,
+        ...(observation.key === undefined || observation.value === undefined
+          ? {}
+          : { key: observation.key, value: observation.value }),
         evidence: {
           uri: observation.evidence.uri,
           ...(observation.evidence.message === undefined
@@ -112,10 +125,14 @@ export function loadEvidence(source: WorkspaceSource): EvidenceLoadResult {
         },
       } as EvidenceObservation,
     }))
-    .sort((left, right) =>
-      observationTarget(left.observation).localeCompare(
-        observationTarget(right.observation),
-      ),
+    .sort(
+      (left, right) =>
+        observationTarget(left.observation).localeCompare(
+          observationTarget(right.observation),
+        ) ||
+        (left.observation.key ?? '').localeCompare(
+          right.observation.key ?? '',
+        ),
     )
   const evidence: EvidenceDocument = {
     format: value.format,
@@ -187,12 +204,20 @@ export function evaluateEvidence(
       })
     }
     const target = observationTarget(observation)
-    const targetKey = `${'subject' in observation ? 'subject' : 'claim'}:${target}`
+    // One target may carry several keyed values, because a provider reads
+    // several facts at one place; it may still state its presence result
+    // only once, and each key only once (ADR 0075).
+    const targetKey =
+      `${'subject' in observation ? 'subject' : 'claim'}:${target}` +
+      (observation.key === undefined ? '' : `#${observation.key}`)
     if (seenTargets.has(targetKey)) {
       diagnostics.push({
         severity: 'error',
         code: 'YM803',
-        message: `Evidence target "${target}" is evaluated more than once`,
+        message:
+          observation.key === undefined
+            ? `Evidence target "${target}" is evaluated more than once`
+            : `Evidence target "${target}" is evaluated more than once for key "${observation.key}"`,
         ...location,
       })
     }
