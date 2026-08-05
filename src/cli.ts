@@ -24,6 +24,7 @@ import {
   evaluateEvidenceWorkspace,
   loadEvidence,
 } from './evidence.js'
+import { deriveAttestationStaleness } from './attestation-staleness.js'
 import { reconcileEvidenceReports } from './reconciliation.js'
 import { loadWorkspaceManifest } from './workspace.js'
 
@@ -99,6 +100,20 @@ const runReconciliation = (
         stderr: '',
       }
     }
+    // Attestation staleness derives from git (ADR 0074), so it belongs
+    // to reconcile, the verb that reports observed reality; the design
+    // evaluator and the check gate stay git-free.
+    const documentIdByPath = new Map(
+      compilation.graph.documents.map(({ id, source }) => [source, id]),
+    )
+    const staleness = deriveAttestationStaleness(
+      cwd,
+      loadedWorkspace.workspace.documents.map((path) => ({
+        path,
+        source: readFileSync(resolve(cwd, path), 'utf8'),
+        documentId: documentIdByPath.get(path) ?? path,
+      })),
+    )
     return {
       exitCode: 0,
       stdout: `${JSON.stringify(
@@ -106,6 +121,7 @@ const runReconciliation = (
           loadedWorkspace.workspace.id,
           evaluation.reports,
           compilation.graph,
+          staleness,
         ),
         null,
         2,

@@ -40,9 +40,13 @@ export {
 export {
   reconcileEvidenceReports,
   type AssertedRelationship,
+  type AttestationStaleness,
+  type EvidenceFinding,
   type ReconciliationFinding,
   type ReconciliationReport,
+  type StaleAttestationFinding,
 } from './reconciliation.js'
+export { deriveAttestationStaleness } from './attestation-staleness.js'
 export type {
   CompilationResult,
   ContextualCompilationResult,

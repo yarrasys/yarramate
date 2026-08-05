@@ -29,7 +29,8 @@
         "contradicted": { "type": "integer", "minimum": 0 },
         "unknown": { "type": "integer", "minimum": 0 },
         "notObserved": { "type": "integer", "minimum": 0 },
-        "subjectsWithoutEvidence": { "type": "integer", "minimum": 0 }
+        "subjectsWithoutEvidence": { "type": "integer", "minimum": 0 },
+        "staleAttestations": { "type": "integer", "minimum": 0 }
       }
     },
     "findings": {
@@ -39,6 +40,10 @@
     "unobservedSubjects": {
       "type": "array",
       "items": { "$ref": "#/$defs/subjectIdentity" }
+    },
+    "notes": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
     }
   },
   "$defs": {
@@ -88,6 +93,12 @@
       }
     },
     "finding": {
+      "oneOf": [
+        { "$ref": "#/$defs/evidenceFinding" },
+        { "$ref": "#/$defs/staleAttestationFinding" }
+      ]
+    },
+    "evidenceFinding": {
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -105,6 +116,39 @@
         },
         "provider": { "$ref": "#/$defs/id" },
         "evidenceDocument": { "$ref": "#/$defs/evidenceIdentity" },
+        "evidence": { "$ref": "#/$defs/evidenceLocator" }
+      }
+    },
+    "staleAttestationFinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target", "result", "attestation", "provider", "evidence"],
+      "properties": {
+        "target": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "id"],
+          "properties": {
+            "type": { "const": "subject" },
+            "id": { "$ref": "#/$defs/subjectIdentity" }
+          }
+        },
+        "result": { "const": "stale-attestation" },
+        "attestation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["topic", "by", "on"],
+          "properties": {
+            "topic": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+            "by": { "type": "string", "minLength": 1 },
+            "on": {
+              "type": "string",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+            }
+          }
+        },
+        "provider": { "const": "git" },
+        "changedAt": { "type": "string", "minLength": 1 },
         "evidence": { "$ref": "#/$defs/evidenceLocator" }
       }
     }

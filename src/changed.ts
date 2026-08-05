@@ -26,7 +26,12 @@ interface ItemSpan {
   readonly endLine: number
 }
 
-const lineOfOffset = (lineStarts: readonly number[], offset: number): number => {
+// Shared with attestation staleness (ADR 0074): both features map git
+// diff hunks onto the line spans YAML declarations occupy today.
+export const lineOfOffset = (
+  lineStarts: readonly number[],
+  offset: number,
+): number => {
   let low = 0
   let high = lineStarts.length - 1
   while (low < high) {
@@ -84,12 +89,12 @@ const itemSpans = (source: string): readonly ItemSpan[] => {
 // zero count; it still touches the position it collapsed onto. Ranges
 // whose old side is empty are pure insertions - a subject living wholly
 // inside them is new, not changed.
-interface DiffRanges {
+export interface DiffRanges {
   readonly touched: ReadonlyArray<readonly [number, number]>
   readonly inserted: ReadonlyArray<readonly [number, number]>
 }
 
-const changedLineRanges = (diff: string): DiffRanges => {
+export const changedLineRanges = (diff: string): DiffRanges => {
   const touched: Array<readonly [number, number]> = []
   const inserted: Array<readonly [number, number]> = []
   for (const match of diff.matchAll(
