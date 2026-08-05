@@ -118,6 +118,9 @@
         "distinctFrom": {
           "$ref": "#/$defs/subjectReferences"
         },
+        "supersedes": {
+          "$ref": "#/$defs/successionReferences"
+        },
         "constraints": {
           "type": "array",
           "items": {
@@ -215,6 +218,15 @@
       }
     },
     "subjectReferences": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/reference"
+      }
+    },
+    "successionReferences": {
+      "description": "Subjects whose responsibility this one took over. One entry is a rename, several are a merge, and one predecessor named by several successors is a split. A predecessor need not be retired: the transition period is real.",
       "type": "array",
       "minItems": 1,
       "uniqueItems": true,

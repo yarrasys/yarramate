@@ -155,6 +155,12 @@ export function renderBrief(
   result: ProjectionResult,
   profileContext?: ResolvedProfileContext,
   budgetTokens?: number,
+  // A succession claim belongs to the successor (ADR 0080), so the claim
+  // that answers "where did this go?" about a slice's subject usually sits
+  // on a subject the slice does not contain. Passing the workspace's claims
+  // lets the brief name that successor by id without pulling it into the
+  // slice, which would spend the neighbourhood cap of ADR 0070 on history.
+  workspaceClaims?: readonly GraphClaim[],
 ): string {
   const stateIds = new Set(
     result.claims
@@ -260,6 +266,36 @@ export function renderBrief(
     )[0]
     if (owner !== undefined) {
       sentences.push(`Owned by "${nameOf(owner)}".`)
+    }
+    // A succession claim is authored on the successor and points back
+    // (ADR 0080), but "where did this go?" is asked of the predecessor, so
+    // the brief reads the same claims in both directions. This is the
+    // surface that answers the question the mechanism exists for.
+    const predecessors = claimReferences(
+      result.claims,
+      id,
+      'yarramate/lineage/supersedes',
+    )
+    if (predecessors.length > 0) {
+      sentences.push(
+        `Succeeds ${listPhrase(
+          predecessors.map((predecessor) => `"${nameOf(predecessor)}"`),
+        )}.`,
+      )
+    }
+    const successors = (workspaceClaims ?? result.claims).flatMap((claim) =>
+      claim.predicate === 'yarramate/lineage/supersedes' &&
+      'ref' in claim.object &&
+      claim.object.ref === id
+        ? [claim.subject]
+        : [],
+    )
+    if (successors.length > 0) {
+      sentences.push(
+        `Superseded by ${listPhrase(
+          successors.map((successor) => `"${nameOf(successor)}"`),
+        )}.`,
+      )
     }
     return sentences
   }

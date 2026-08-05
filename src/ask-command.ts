@@ -1166,7 +1166,7 @@ export function runAskCommand(
       }
       const rendered =
         budget === undefined
-          ? renderBrief(evaluated, compilation.profileContext)
+          ? renderBrief(evaluated, compilation.profileContext, undefined, compilation.graph.claims)
           : renderBudgetedContext(evaluated, budget)
       const lines = [
         `Review slice ${changed} — ${plural(derived.changed.concepts.length, 'concept')}, ` +
@@ -1234,7 +1234,7 @@ export function runAskCommand(
       return emit(
         result,
         budget === undefined
-          ? renderBrief(evaluated, compilation.profileContext)
+          ? renderBrief(evaluated, compilation.profileContext, undefined, compilation.graph.claims)
           : renderBudgetedContext(evaluated, budget),
       )
     }
@@ -1378,7 +1378,7 @@ export function runAskCommand(
       }
       const rendered =
         budget === undefined
-          ? renderBrief(evaluated, compilation.profileContext)
+          ? renderBrief(evaluated, compilation.profileContext, undefined, compilation.graph.claims)
           : renderBudgetedContext(evaluated, budget)
       const header =
         resolution.addressing === 'free-text'
@@ -1399,7 +1399,7 @@ export function runAskCommand(
     // --advise: the expert composition. The engine assembles ground
     // truth — slice, open questions, drift — and stops; the reading and
     // the advice belong to the LLM on top (ADR 0054).
-    const brief = renderBrief(evaluated, compilation.profileContext, budget)
+    const brief = renderBrief(evaluated, compilation.profileContext, budget, compilation.graph.claims)
     const sliceIds = new Set(
       evaluated.subjects
         .filter(({ type }) => type === 'concept')
