@@ -45,6 +45,7 @@ interface NativeConcept {
   readonly constraints?: ReadonlyArray<{
     readonly id: string
     readonly ref: string
+    readonly expects?: NativeExpectedObservation
   }>
   readonly references?: readonly NativeIdentifiedReference[]
   readonly presentIn?: readonly string[]
@@ -58,6 +59,12 @@ interface NativeConcept {
 interface NativeIdentifiedReference {
   readonly id: string
   readonly ref: string
+}
+
+interface NativeExpectedObservation {
+  readonly provider: string
+  readonly key: string
+  readonly value: string
 }
 
 interface NativeRelationship {
@@ -1311,6 +1318,33 @@ function compileWorkspaceResolved(
             `/concepts/${index}/constraints/${constraintIndex}/ref`,
           ),
         })
+        // An expected observation is a testable restatement of the rule the
+        // constraint names (ADR 0075). Provider and key cannot contain
+        // whitespace, so `<provider> <key> <expected value>` round-trips
+        // through the single string value graph v2 already carries; the
+        // reconciler mirrors this encoding when it parses the claim back.
+        if (constraint.expects !== undefined) {
+          claims.push({
+            id: `${subject}~expects-${constraint.id}`,
+            subject,
+            predicate: 'yarramate/constraint/expects',
+            object: {
+              value: `${constraint.expects.provider} ${constraint.expects.key} ${constraint.expects.value}`,
+            },
+            origin: 'declared',
+            source: location(
+              [
+                'concepts',
+                index,
+                'constraints',
+                constraintIndex,
+                'expects',
+                'value',
+              ],
+              `/concepts/${index}/constraints/${constraintIndex}/expects/value`,
+            ),
+          })
+        }
       }
       for (const [referenceIndex, reference] of (
         concept.references ?? []

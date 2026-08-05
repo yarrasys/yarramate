@@ -146,8 +146,35 @@
         },
         "ref": {
           "$ref": "#/$defs/reference"
+        },
+        "expects": {
+          "$ref": "#/$defs/expectedObservation"
         }
       }
+    },
+    "expectedObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "key",
+        "value"
+      ],
+      "properties": {
+        "provider": {
+          "$ref": "#/$defs/id"
+        },
+        "key": {
+          "$ref": "#/$defs/observationKey"
+        },
+        "value": {
+          "$ref": "#/$defs/nonEmptyText"
+        }
+      }
+    },
+    "observationKey": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
     },
     "identifiedReference": {
       "type": "object",

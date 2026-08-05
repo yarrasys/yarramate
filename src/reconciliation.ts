@@ -1,4 +1,4 @@
-import type { SemanticGraph } from './compiler.js'
+import type { GraphClaim, SemanticGraph } from './compiler.js'
 import type {
   EvidenceLocator,
   EvidenceReport,
@@ -12,12 +12,38 @@ export interface AssertedRelationship {
   readonly name?: string
 }
 
+export interface DeclaredSource {
+  readonly document: string
+  readonly path: string
+  readonly pointer: string
+  readonly line: number
+  readonly column: number
+}
+
+export interface ExpectationComparison {
+  readonly provider: string
+  readonly key: string
+  readonly expected: string
+  readonly observed: string
+  readonly declared: DeclaredSource
+}
+
+export interface UnobservedExpectation {
+  readonly claim: string
+  readonly subject: string
+  readonly provider: string
+  readonly key: string
+  readonly expected: string
+  readonly declared: DeclaredSource
+}
+
 export interface EvidenceFinding {
   readonly target: {
     readonly type: 'subject' | 'claim'
     readonly id: string
   }
   readonly asserted?: AssertedRelationship
+  readonly expectation?: ExpectationComparison
   readonly result: Exclude<EvidenceResult, 'confirmed'>
   readonly provider: string
   readonly evidenceDocument: string
@@ -64,9 +90,12 @@ export interface ReconciliationReport {
     readonly notObserved: number
     readonly subjectsWithoutEvidence: number
     readonly staleAttestations?: number
+    readonly expectationsCompared: number
+    readonly expectationsWithoutObservation: number
   }
   readonly findings: readonly ReconciliationFinding[]
   readonly unobservedSubjects?: readonly string[]
+  readonly unobservedExpectations?: readonly UnobservedExpectation[]
   readonly notes?: readonly string[]
 }
 
@@ -100,6 +129,114 @@ const assertedRelationshipsByClaim = (
     })
   }
   return asserted
+}
+
+export const constraintExpectsPredicate = 'yarramate/constraint/expects'
+
+// A finding is now a union (ADR 0074); only the evidence arm can carry an
+// expectation, so ordering reads it through one narrowing helper.
+const expectationOf = (
+  finding: ReconciliationFinding,
+): ExpectationComparison | undefined =>
+  'expectation' in finding ? finding.expectation : undefined
+
+interface DeclaredExpectation extends UnobservedExpectation {}
+
+// Mirrors the compiler encoding (ADR 0075). Provider and key admit no
+// whitespace, so the first two spaces delimit them and everything after the
+// second space is the expected value verbatim, spaces included.
+const parseExpectation = (
+  claim: GraphClaim,
+): DeclaredExpectation | undefined => {
+  if (
+    claim.predicate !== constraintExpectsPredicate ||
+    !('value' in claim.object)
+  ) {
+    return undefined
+  }
+  const match = /^(\S+) (\S+) ([\s\S]+)$/.exec(claim.object.value)
+  if (match === null) return undefined
+  return {
+    claim: claim.id,
+    subject: claim.subject,
+    provider: match[1]!,
+    key: match[2]!,
+    expected: match[3]!,
+    declared: {
+      document: claim.source.document,
+      path: claim.source.path,
+      pointer: claim.source.pointer,
+      line: claim.source.line,
+      column: claim.source.column,
+    },
+  }
+}
+
+interface ExpectationOutcome {
+  readonly findings: readonly EvidenceFinding[]
+  readonly unobserved: readonly UnobservedExpectation[]
+  readonly compared: number
+}
+
+// A declared expectation is matched to observations by provider and key. The
+// observation's own target anchors its provenance but does not narrow the
+// match: a keyed value is a fact about the project ("this deployment's region
+// is X"), and several constraints on different subjects may legitimately
+// expect the same fact. Comparison is string equality, deliberately; a
+// provider that needs richer matching normalizes before it reports.
+const compareExpectations = (
+  graph: SemanticGraph | undefined,
+  reports: readonly EvidenceReport[],
+): ExpectationOutcome => {
+  if (graph === undefined) {
+    return { findings: [], unobserved: [], compared: 0 }
+  }
+  const findings: EvidenceFinding[] = []
+  const unobserved: UnobservedExpectation[] = []
+  let compared = 0
+  for (const claim of graph.claims) {
+    const expectation = parseExpectation(claim)
+    if (expectation === undefined) continue
+    let matched = false
+    for (const report of reports) {
+      if (report.provider !== expectation.provider) continue
+      for (const observation of report.observations) {
+        if (
+          observation.key !== expectation.key ||
+          observation.value === undefined
+        ) {
+          continue
+        }
+        matched = true
+        if (observation.value === expectation.expected) continue
+        findings.push({
+          target: { type: 'claim', id: expectation.claim },
+          expectation: {
+            provider: expectation.provider,
+            key: expectation.key,
+            expected: expectation.expected,
+            observed: observation.value,
+            declared: expectation.declared,
+          },
+          result: 'contradicted',
+          provider: report.provider,
+          evidenceDocument: report.evidence,
+          evidence: observation.evidence,
+        })
+      }
+    }
+    if (!matched) unobserved.push(expectation)
+    else compared += 1
+  }
+  return {
+    findings,
+    unobserved: [...unobserved].sort(
+      (left, right) =>
+        left.claim.localeCompare(right.claim) ||
+        left.key.localeCompare(right.key),
+    ),
+    compared,
+  }
 }
 
 const unobservedCurrentConcepts = (
@@ -154,6 +291,7 @@ export function reconcileEvidenceReports(
 ): ReconciliationReport {
   const assertedByClaim = assertedRelationshipsByClaim(graph)
   const unobservedSubjects = unobservedCurrentConcepts(graph, reports)
+  const expectations = compareExpectations(graph, reports)
   const summary = {
     evidenceDocuments: reports.length,
     observations: 0,
@@ -170,6 +308,8 @@ export function reconcileEvidenceReports(
     ...(staleness === undefined
       ? {}
       : { staleAttestations: staleness.findings.length }),
+    expectationsCompared: expectations.compared,
+    expectationsWithoutObservation: expectations.unobserved.length,
   }
   const findings: ReconciliationFinding[] = [...(staleness?.findings ?? [])]
   for (const report of reports) {
@@ -200,6 +340,12 @@ export function reconcileEvidenceReports(
       })
     }
   }
+  // A disagreeing expectation is an ordinary contradicted finding: same
+  // taxonomy, same counters, same strict-check consequence (ADR 0075).
+  for (const finding of expectations.findings) {
+    summary.contradicted += 1
+    findings.push(finding)
+  }
   findings.sort((left, right) =>
     left.target.id.localeCompare(right.target.id) ||
     left.target.type.localeCompare(right.target.type) ||
@@ -209,6 +355,12 @@ export function reconcileEvidenceReports(
     ) ||
     ('attestation' in left ? left.attestation.topic : '').localeCompare(
       'attestation' in right ? right.attestation.topic : '',
+    ) ||
+    (expectationOf(left)?.key ?? '').localeCompare(
+      expectationOf(right)?.key ?? '',
+    ) ||
+    (expectationOf(left)?.observed ?? '').localeCompare(
+      expectationOf(right)?.observed ?? '',
     ),
   )
   summary.findings = findings.length
@@ -219,6 +371,9 @@ export function reconcileEvidenceReports(
     summary,
     findings,
     ...(unobservedSubjects.length === 0 ? {} : { unobservedSubjects }),
+    ...(expectations.unobserved.length === 0
+      ? {}
+      : { unobservedExpectations: expectations.unobserved }),
     ...(notes.length === 0 ? {} : { notes }),
   }
 }

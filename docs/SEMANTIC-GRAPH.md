@@ -31,6 +31,14 @@ references use `yarramate/constraint/requires`. Both point to globally
 qualified concept subjects and use stable claim IDs derived from authored
 syntax; neither adds fields to graph v2.
 
+A constraint that declares an expected observation emits one further claim,
+`yarramate/constraint/expects`, whose value is
+`<provider> <key> <expected value>`. Provider and key admit no whitespace, so
+the first two spaces delimit them and the remainder is the expected value
+verbatim. It is an ordinary value claim in the existing envelope: no new
+field, no new structure, and a consumer that does not know the predicate keeps
+reading the graph correctly.
+
 Concept and relationship descriptions use
 `yarramate/concept/description` and
 `yarramate/relationship/description`. Identified citations use
@@ -127,6 +135,7 @@ Core claim predicates:
 | `yarramate/lifecycle/status` | value | `planned`, `current`, or `retired` |
 | `yarramate/ownership/owner` | ref | Accountable concept subject |
 | `yarramate/constraint/requires` | ref | Binding constraint subject |
+| `yarramate/constraint/expects` | value | Expected observation as `<provider> <key> <expected value>` |
 | `yarramate/reference/refers-to` | ref | Identified citation to any subject |
 | `yarramate/access/mode` | value | Access mode of an access relationship |
 | `yarramate/flow/content` | value | Transferred content of a flow |

@@ -37,6 +37,14 @@ interface IdentifiedReference {
   readonly ref: string
 }
 
+interface ConstraintReference extends IdentifiedReference {
+  readonly expects?: {
+    readonly provider: string
+    readonly key: string
+    readonly value: string
+  }
+}
+
 interface ConceptFields {
   readonly id: string
   readonly kind?: string
@@ -44,7 +52,7 @@ interface ConceptFields {
   readonly description?: string
   readonly status?: string
   readonly owner?: string
-  readonly constraints?: readonly IdentifiedReference[]
+  readonly constraints?: readonly ConstraintReference[]
   readonly references?: readonly IdentifiedReference[]
   readonly presentIn?: readonly string[]
   readonly attestations?: ReadonlyArray<{

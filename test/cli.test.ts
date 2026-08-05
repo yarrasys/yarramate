@@ -543,6 +543,8 @@ describe('YarraMate CLI', () => {
         notObserved: 0,
         subjectsWithoutEvidence: 1,
         staleAttestations: 0,
+        expectationsCompared: 0,
+        expectationsWithoutObservation: 0,
       },
       unobservedSubjects: ['orders-project#order-service'],
       findings: [
@@ -599,6 +601,8 @@ describe('YarraMate CLI', () => {
         notObserved: 0,
         subjectsWithoutEvidence: 0,
         staleAttestations: 0,
+        expectationsCompared: 0,
+        expectationsWithoutObservation: 0,
       },
       findings: [
         {

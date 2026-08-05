@@ -36,6 +36,17 @@ const strictFindingMessage = (finding: EvidenceFinding): string => {
     finding.evidence.message === undefined
       ? finding.evidence.uri
       : `${finding.evidence.uri}: ${finding.evidence.message}`
+  // A contradicted expectation is gated exactly like any other contradicted
+  // finding (ADR 0075); only the wording differs, because both sides of the
+  // disagreement are known values worth naming.
+  if (finding.expectation !== undefined) {
+    const { key, expected, observed: observedValue } = finding.expectation
+    return (
+      `Evidence contradicts expectation "${finding.target.id}": the model expects ` +
+      `${key} to be "${expected}", but provider "${finding.provider}" observed ` +
+      `"${observedValue}" (${observed}); align the model or the evidence to pass --strict`
+    )
+  }
   const assertion =
     finding.asserted === undefined
       ? `Evidence contradicts ${finding.target.type} "${finding.target.id}"`

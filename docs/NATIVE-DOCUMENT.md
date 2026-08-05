@@ -79,6 +79,37 @@ evaluate the stable generated claim ID and report through an evidence overlay;
 the observation does not mutate declared intent or become a Core validation
 result.
 
+A constraint entry may also declare the observation it expects, which turns a
+rule stated in prose into a fact a provider can testify about:
+
+```yaml
+concepts:
+  - id: customer-data
+    kind: dataObject
+    name: Customer data
+    constraints:
+      - id: residency
+        ref: australia-only
+        expects:
+          provider: terraform-scan
+          key: region
+          value: ap-southeast-2
+```
+
+`expects` names the provider expected to report the fact, the key that
+provider reads, and the exact value the model expects to find there. It
+compiles to `<subject>~expects-<id>` with predicate
+`yarramate/constraint/expects`. Core checks nothing about the expectation
+beyond its shape: it does not contact the provider, resolve the key, or decide
+whether the value is architecturally correct. `yarramate reconcile` compares
+the declared value with what the named provider observed, and
+`yarramate check --strict` gates on a disagreement exactly as it gates on any
+other contradicted evidence (ADR 0075).
+
+The comparison is string equality. A provider that needs case folding, unit
+conversion, or pattern matching normalizes before it reports, so the model
+never carries a matching language of its own.
+
 `constraints` and `realization` express different claims. A constraint entry
 means the concept is bound by the referenced rule; a realization relationship
 means its source implements or fulfils its target. A component that must obey a
