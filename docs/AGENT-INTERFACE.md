@@ -147,6 +147,14 @@ others; graphify analogues: `--wiki` / `--svg` / `--neo4j`.
 - `export markdown <projection>` — human-readable document (today's
   `view`). Retired goals, outcomes, and requirements in the result
   render under a Non-goals heading (ADR 0073), as they do in briefs.
+- `export rtm`: the requirements traceability matrix as a derived
+  compliance bundle: one deterministic markdown matrix plus a
+  machine-readable `yarramate/rtm/v1` JSON, tracing each requirement
+  and constraint to its motivation lineage, realizers with lifecycle
+  status, evidence verdicts, and attestations, with an authored
+  `path:line` citation on every cell and unrealized requirements as
+  explicit gaps (ADR 0071). Declared non-goals (ADR 0073) leave the
+  coverage arithmetic as descoped rows rather than counting against it.
 - `export likec4` — visualization project (today's adapter surface;
   the adapter binary remains the implementation).
 - Harness use: handoff preparation, CI artifact generation,

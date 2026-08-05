@@ -1,0 +1,204 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yarramate.org/schema/rtm/v1",
+  "title": "YarraMate requirements traceability matrix",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "workspace",
+    "summary",
+    "rows",
+    "descoped",
+    "motivationContext"
+  ],
+  "properties": {
+    "format": { "const": "yarramate/rtm/v1" },
+    "workspace": { "$ref": "#/$defs/id" },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rows",
+        "requirements",
+        "constraints",
+        "covered",
+        "gaps",
+        "descoped",
+        "realizers",
+        "realizersWithEvidence",
+        "attestedRows"
+      ],
+      "properties": {
+        "rows": { "type": "integer", "minimum": 0 },
+        "requirements": { "type": "integer", "minimum": 0 },
+        "constraints": { "type": "integer", "minimum": 0 },
+        "covered": { "type": "integer", "minimum": 0 },
+        "gaps": { "type": "integer", "minimum": 0 },
+        "descoped": { "type": "integer", "minimum": 0 },
+        "realizers": { "type": "integer", "minimum": 0 },
+        "realizersWithEvidence": { "type": "integer", "minimum": 0 },
+        "attestedRows": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "rows": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/row" }
+    },
+    "descoped": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/descopedEntry" }
+    },
+    "motivationContext": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/contextEntry" }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+    },
+    "subjectIdentity": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*#[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "line"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "line": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "evidenceVerdict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target",
+        "result",
+        "provider",
+        "evidenceDocument",
+        "uri"
+      ],
+      "properties": {
+        "target": { "enum": ["subject", "claim"] },
+        "result": {
+          "enum": ["confirmed", "contradicted", "unknown", "not-observed"]
+        },
+        "provider": { "$ref": "#/$defs/id" },
+        "evidenceDocument": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*@[0-9]+\\.[0-9]+$"
+        },
+        "uri": { "type": "string", "minLength": 1 },
+        "message": { "type": "string", "minLength": 1 }
+      }
+    },
+    "lineageEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relationship", "role", "subject", "source"],
+      "properties": {
+        "relationship": { "$ref": "#/$defs/subjectIdentity" },
+        "role": { "enum": ["realizes", "influences", "influenced-by"] },
+        "subject": { "$ref": "#/$defs/subjectIdentity" },
+        "kind": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "source": { "$ref": "#/$defs/source" }
+      }
+    },
+    "realizer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subject", "relationship", "source", "evidence"],
+      "properties": {
+        "subject": { "$ref": "#/$defs/subjectIdentity" },
+        "kind": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "status": { "enum": ["planned", "current", "retired"] },
+        "relationship": { "$ref": "#/$defs/subjectIdentity" },
+        "source": { "$ref": "#/$defs/source" },
+        "evidence": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/evidenceVerdict" }
+        }
+      }
+    },
+    "attestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["topic", "by", "on", "source"],
+      "properties": {
+        "topic": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+        "by": { "type": "string", "minLength": 1 },
+        "on": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "source": { "$ref": "#/$defs/source" }
+      }
+    },
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "subject",
+        "kind",
+        "coreKind",
+        "name",
+        "gap",
+        "source",
+        "lineage",
+        "realizers",
+        "attestations"
+      ],
+      "properties": {
+        "subject": { "$ref": "#/$defs/subjectIdentity" },
+        "kind": { "type": "string", "minLength": 1 },
+        "coreKind": { "enum": ["requirement", "constraint"] },
+        "name": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "status": { "enum": ["planned", "current", "retired"] },
+        "gap": { "type": "boolean" },
+        "source": { "$ref": "#/$defs/source" },
+        "lineage": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/lineageEntry" }
+        },
+        "realizers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/realizer" }
+        },
+        "attestations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/attestation" }
+        }
+      }
+    },
+    "descopedEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subject", "name", "reason", "source"],
+      "properties": {
+        "subject": { "$ref": "#/$defs/subjectIdentity" },
+        "name": { "type": "string", "minLength": 1 },
+        "reason": { "enum": ["non-goal", "lifted-constraint"] },
+        "rationale": { "type": "string", "minLength": 1 },
+        "source": { "$ref": "#/$defs/source" }
+      }
+    },
+    "contextEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subject", "kind", "name", "source"],
+      "properties": {
+        "subject": { "$ref": "#/$defs/subjectIdentity" },
+        "kind": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "source": { "$ref": "#/$defs/source" }
+      }
+    }
+  }
+}

@@ -47,6 +47,19 @@ export {
   type StaleAttestationFinding,
 } from './reconciliation.js'
 export { deriveAttestationStaleness } from './attestation-staleness.js'
+export {
+  buildRtm,
+  renderRtmMarkdown,
+  type RequirementsTraceabilityMatrix,
+  type RtmAttestation,
+  type RtmContextEntry,
+  type RtmDescopedEntry,
+  type RtmEvidenceVerdict,
+  type RtmLineageEntry,
+  type RtmRealizer,
+  type RtmRow,
+  type RtmSource,
+} from './rtm.js'
 export type {
   CompilationResult,
   ContextualCompilationResult,
