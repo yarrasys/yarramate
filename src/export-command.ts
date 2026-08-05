@@ -18,11 +18,17 @@ import {
 } from './compiler.js'
 import { serializeSemanticGraph } from './graph.js'
 import {
+  evaluateEvidenceWorkspace,
+  loadEvidence,
+  type EvidenceDocument,
+} from './evidence.js'
+import {
   evaluateProjection,
   loadProjection,
   renderProjectionMarkdown,
   type ProjectionResult,
 } from './projection.js'
+import { buildRtm, renderRtmMarkdown } from './rtm.js'
 import { loadWorkspaceManifest } from './workspace.js'
 
 // The adapter stays a separate process behind the verb: the core never
@@ -108,7 +114,7 @@ export function runExportCommand(
   const [kind, ...rest] = options
   if (
     kind === undefined ||
-    !['graph', 'markdown', 'briefs', 'likec4'].includes(kind)
+    !['graph', 'markdown', 'briefs', 'rtm', 'likec4'].includes(kind)
   ) {
     return { exitCode: 2, stdout: '', stderr: usage }
   }
@@ -165,17 +171,19 @@ export function runExportCommand(
 
   const usesChanged = parsed.changed !== undefined
   const expectedPositionals =
-    kind === 'graph' || usesChanged ? 1 : 2
+    kind === 'graph' || kind === 'rtm' || usesChanged ? 1 : 2
   const workspacePath = parsed.positionals[expectedPositionals - 1]
   const projectionPath =
-    kind === 'graph' || usesChanged ? undefined : parsed.positionals[0]
+    kind === 'graph' || kind === 'rtm' || usesChanged
+      ? undefined
+      : parsed.positionals[0]
   if (
     parsed.positionals.length !== expectedPositionals ||
     workspacePath === undefined ||
     parsed.json ||
-    (usesChanged && kind === 'graph') ||
+    (usesChanged && (kind === 'graph' || kind === 'rtm')) ||
     (parsed.budget !== undefined && kind !== 'briefs') ||
-    (kind === 'briefs' && parsed.out === undefined)
+    ((kind === 'briefs' || kind === 'rtm') && parsed.out === undefined)
   ) {
     return { exitCode: 2, stdout: '', stderr: usage }
   }
@@ -211,6 +219,54 @@ export function runExportCommand(
       })),
     )
     if (!compilation.ok) return failed(compilation.diagnostics)
+
+    if (kind === 'rtm') {
+      // The RTM is a compliance bundle over the whole workspace: the
+      // evidence overlay supplies the verdict column, so it loads here
+      // exactly as reconcile loads it (ADR 0071).
+      const evidenceDocuments: EvidenceDocument[] = []
+      for (const path of workspace.evidence) {
+        const loaded = loadEvidence({
+          path,
+          source: readFileSync(resolve(cwd, path), 'utf8'),
+        })
+        if (!loaded.ok) return failed(loaded.diagnostics)
+        evidenceDocuments.push(loaded.evidence)
+      }
+      const evaluation = evaluateEvidenceWorkspace(
+        compilation.graph,
+        evidenceDocuments,
+      )
+      if (!evaluation.ok) return failed(evaluation.diagnostics)
+      const rtm = buildRtm(
+        workspace.id,
+        compilation.graph,
+        compilation.profileContext,
+        evaluation.reports,
+      )
+      const outDirectory = resolve(cwd, parsed.out!)
+      mkdirSync(outDirectory, { recursive: true })
+      writeFileSync(
+        join(outDirectory, 'RTM.md'),
+        renderRtmMarkdown(rtm),
+        'utf8',
+      )
+      writeFileSync(
+        join(outDirectory, 'rtm.json'),
+        `${JSON.stringify(rtm, null, 2)}\n`,
+        'utf8',
+      )
+      return {
+        exitCode: 0,
+        stdout:
+          `Wrote RTM.md and rtm.json (${rtm.summary.rows} row${
+            rtm.summary.rows === 1 ? '' : 's'
+          }, ${rtm.summary.gaps} gap${
+            rtm.summary.gaps === 1 ? '' : 's'
+          }) to ${parsed.out}\n`,
+        stderr: '',
+      }
+    }
 
     if (kind === 'graph') {
       const serialized = serializeSemanticGraph(compilation.graph)

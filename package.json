@@ -71,7 +71,8 @@
     "./schema/operations": "./schema/yarramate-operations.schema.json",
     "./schema/apply-result": "./schema/yarramate-apply-result.schema.json",
     "./schema/design-step": "./schema/yarramate-design-step.schema.json",
-    "./schema/ask-result": "./schema/yarramate-ask-result.schema.json"
+    "./schema/ask-result": "./schema/yarramate-ask-result.schema.json",
+    "./schema/rtm": "./schema/yarramate-rtm.schema.json"
   },
   "bin": {
     "yarramate": "dist/cli.js",

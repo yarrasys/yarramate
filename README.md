@@ -158,6 +158,9 @@ diff — merging is the human acceptance step, not yours.
 - `ask` accepts free text (`yarramate ask <ws> "billing"`), `--subjects`
   for the full roster, `--where` for evidence-backed pointing, and
   `--changed <git-range>` for review slices.
+- `export rtm <ws> --out <dir>` derives the requirements traceability
+  matrix: every requirement traced to its motivation, realizers, evidence
+  verdicts, and attestations, with a `path:line` citation per cell.
 - `init` writes the discovery pointer into both `AGENTS.md` and
   `CLAUDE.md`, so this section finds you rather than the reverse.
 - `yarramate-mcp` exposes four read-only tools (ask/design/check/reconcile)

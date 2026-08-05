@@ -63,6 +63,9 @@ formats:
   - id: yarramate/ask-result/v1
     schema: schema/yarramate-ask-result.schema.json
     packageExport: ./schema/ask-result
+  - id: yarramate/rtm/v1
+    schema: schema/yarramate-rtm.schema.json
+    packageExport: ./schema/rtm
 commands:
   - name: init
     binary: yarramate
