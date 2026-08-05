@@ -1,6 +1,6 @@
 format: yarramate/question-catalogue/v1
 id: core-enrichment
-version: "0.5"
+version: "0.6"
 profile: yarramate/core@0.1
 presentation:
   title: Core enrichment interview
@@ -124,7 +124,10 @@ questions:
       Add realization relationships from the fulfilling capability or
       service, record the aspirational status in the goal's description,
       or retire the goal (status: retired) to record that it no longer
-      steers design.
+      steers design. A goal may also be authored retired from the start:
+      status retired with the rationale in its description is the
+      declared non-goal record, and exports render it under a Non-goals
+      heading (ADR 0073).
 
 
   - id: goal-no-driver
@@ -224,8 +227,11 @@ questions:
       Add realization from the fulfilling service, component, or
       behavior; to descope instead, retire the requirement (status:
       retired) — retirement preserves the decision on record and closes
-      the question (ADR 0064). Delete only when the history itself is
-      noise.
+      the question (ADR 0064). Descoping at inception is the same
+      motion: a requirement authored with status retired, rationale in
+      its description, is the standing non-goal record and exports
+      render it under a Non-goals heading (ADR 0073). Delete only when
+      the history itself is noise.
 
   - id: principle-unapplied
     wave: motivation

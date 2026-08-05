@@ -55,6 +55,27 @@ export const coreLocalKind = (
   return undefined
 }
 
+// First-class non-goals (ADR 0073): the convention is a goal, outcome,
+// or requirement carrying `status: retired` with its rationale in the
+// description. That record is the declared non-goal; no dedicated status
+// value exists. Principles and constraints are deliberately outside the
+// set: retiring one lifts a rule rather than declining scope. Both
+// stakeholder renderers (projection markdown and the brief) share this
+// predicate. Projection membership is not consulted here: a projection
+// whose excludeStatuses drops retired subjects has already kept them out
+// of the result, so nothing reaches the renderers to present.
+const nonGoalKindIds = new Set(['goal', 'outcome', 'requirement'])
+
+export const isDeclaredNonGoal = (
+  kind: string | undefined,
+  status: string | undefined,
+  lineages: ReadonlyMap<string, readonly string[]> | undefined,
+): boolean => {
+  if (status !== 'retired' || kind === undefined) return false
+  const core = coreLocalKind(kind, lineages)
+  return core !== undefined && nonGoalKindIds.has(core)
+}
+
 const humanizeKind = (kind: string): string => {
   const local = kind.slice(kind.indexOf('#') + 1)
   return local
@@ -258,6 +279,22 @@ export function renderBrief(
     )
   }
 
+  const nonGoalParagraph = (id: string): string => {
+    const kind = kindOf(id) ?? ''
+    const reading = kindReading(kind)
+    const label = reading.charAt(0).toUpperCase() + reading.slice(1)
+    const description = descriptionOf(id)
+    const opening =
+      description === undefined
+        ? `${label} "${nameOf(id)}" is declined.`
+        : `${label} "${nameOf(id)}" is declined: "${description}"`
+    return [
+      sentenceEnd(opening),
+      ...relationshipSentences(id),
+      ...supportSentences(id),
+    ].join(' ')
+  }
+
   const workParagraph = (id: string): string => {
     const kind = kindOf(id) ?? ''
     const reading = kindReading(kind)
@@ -283,11 +320,23 @@ export function renderBrief(
   // Motivation opens the brief (the interview's waves lead with why), the
   // planned work follows (it is what the reader came to do), and existing
   // context comes after; the same order ranks paragraphs under a budget.
+  // Declared non-goals close the brief (ADR 0073): they tell the reader
+  // what not to build, they are not the work itself, so under a budget
+  // their paragraphs are the first to be omitted.
   const statusRank = (id: string): number => {
     const status = statusOf(id)
     return status === 'planned' ? 1 : status === 'retired' ? 3 : 2
   }
-  const motivation = concepts.filter(({ id }) => isMotivation(id))
+  const isNonGoal = (id: string): boolean =>
+    isDeclaredNonGoal(
+      kindOf(id),
+      statusOf(id),
+      profileContext?.conceptKindLineages,
+    )
+  const motivation = concepts.filter(
+    ({ id }) => isMotivation(id) && !isNonGoal(id),
+  )
+  const nonGoals = concepts.filter(({ id }) => isNonGoal(id))
   const work = concepts.filter(({ id }) => !isMotivation(id))
   const paragraphs: {
     readonly heading: string
@@ -305,6 +354,13 @@ export function renderBrief(
       entries: work
         .map(({ id }) => ({ text: workParagraph(id), rank: statusRank(id) }))
         .sort((a, b) => a.rank - b.rank),
+    },
+    {
+      heading: '## Non-goals',
+      entries: nonGoals.map(({ id }) => ({
+        text: nonGoalParagraph(id),
+        rank: 0,
+      })),
     },
   ]
 
