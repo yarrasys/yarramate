@@ -52,7 +52,13 @@ tools beyond the coverage boundary the output states.
 Read [references/journey-checklists.md](references/journey-checklists.md) for
 the minimum evidence and design questions. Read
 [references/native-authoring.md](references/native-authoring.md) when native
-document, projection, evidence, or architecture-state syntax is needed.
+document, projection, evidence, or architecture-state syntax is needed. Read
+[references/modelling-patterns.md](references/modelling-patterns.md) for the
+named solutions to recurring modelling problems: invocation chain, degraded
+edge, delivery with content, one answer many subjects, descoping by
+retirement, and hosting a component. Open it when a relationship is rejected,
+when one answer touches many subjects, or when a subject leaves scope, and
+cite the pattern by name when explaining the resulting model.
 
 ## Discover an existing project
 

@@ -3,6 +3,7 @@ import { LineCounter, parseDocument } from 'yaml'
 import {
   conceptKinds,
   relationshipPolicies,
+  type Rigidity,
 } from './profile.js'
 import {
   closestCandidate,
@@ -104,6 +105,10 @@ interface NativeProfileKind {
   readonly parent: string
 }
 
+interface NativeProfileConceptKind extends NativeProfileKind {
+  readonly rigidity?: Rigidity
+}
+
 interface NativeProfileRelationshipKind extends NativeProfileKind {
   readonly sourceAspects?: readonly (typeof conceptKinds)[number]['aspect'][]
   readonly targetAspects?: readonly (typeof conceptKinds)[number]['aspect'][]
@@ -114,7 +119,7 @@ interface NativeProfile {
   readonly id: string
   readonly version: string
   readonly extends: string
-  readonly conceptKinds: readonly NativeProfileKind[]
+  readonly conceptKinds: readonly NativeProfileConceptKind[]
   readonly relationshipKinds: readonly NativeProfileRelationshipKind[]
 }
 
@@ -122,6 +127,7 @@ interface ResolvedConceptKind {
   readonly identity: string
   readonly aspect: (typeof conceptKinds)[number]['aspect']
   readonly lineage: readonly string[]
+  readonly rigidity?: Rigidity
 }
 
 interface ResolvedRelationshipKind {
@@ -259,6 +265,7 @@ function compileWorkspaceResolved(
       identity: `${coreProfile}#${kind.id}`,
       aspect: kind.aspect,
       lineage: [`${coreProfile}#${kind.id}`],
+      ...(kind.rigidity === undefined ? {} : { rigidity: kind.rigidity }),
     } satisfies ResolvedConceptKind
     coreConceptKinds.set(kind.id, resolved)
     conceptKindByIdentity.set(resolved.identity, resolved)
@@ -414,10 +421,34 @@ function compileWorkspaceResolved(
           })
           continue
         }
+        // OntoClean: an anti-rigid kind cannot subsume a rigid one. The
+        // parent's lineage is the full ancestor chain, and subsumption is
+        // transitive, so an unannotated kind sitting in between does not
+        // launder the violation (ADR 0078).
+        if (kind.rigidity === 'rigid') {
+          const antiRigidAncestor = parent.lineage.find(
+            (ancestor) =>
+              conceptKindByIdentity.get(ancestor)?.rigidity === 'anti-rigid',
+          )
+          if (antiRigidAncestor !== undefined) {
+            const position = positionFor(['conceptKinds', index, 'rigidity'])
+            profileDiagnostics.push({
+              severity: 'error',
+              code: 'YM413',
+              message: `Rigid concept kind "${kind.id}" specializes anti-rigid kind "${antiRigidAncestor}"; nothing is essentially of an anti-rigid kind, so parent "${kind.id}" under an entity kind, or drop its "rigid" annotation`,
+              path: input.path,
+              pointer: `/conceptKinds/${index}/rigidity`,
+              line: position.line,
+              column: position.col,
+            })
+            continue
+          }
+        }
         const resolved = {
           identity: `${identity}#${kind.id}`,
           aspect: parent.aspect,
           lineage: [...parent.lineage, `${identity}#${kind.id}`],
+          ...(kind.rigidity === undefined ? {} : { rigidity: kind.rigidity }),
         } satisfies ResolvedConceptKind
         resolvedConceptKinds.set(kind.id, resolved)
         conceptKindByIdentity.set(resolved.identity, resolved)

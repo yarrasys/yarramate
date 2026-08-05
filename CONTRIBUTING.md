@@ -81,6 +81,16 @@ Do not reproduce restricted definitions, matrices, diagrams, or derivation
 rules from external standards. Compatibility work must establish its own
 licensing and provenance boundary first.
 
+## Reviewing model growth
+
+`check` decides correctness, `reconcile` reports drift, and `ask --open`
+reports which questions are still open. None of them decides whether a new
+distinction is worth the contract surface it costs. `docs/MODEL-REVIEW.md`
+carries the questions a reviewer puts to the author of a new concept kind,
+profile kind, or catalogue question. It is judgment support rather than a
+gate, and it applies to a proposal that widens the vocabulary here as much as
+to a model in a consuming repository.
+
 ## Pull requests
 
 All repository changes are contributed through pull requests. Do not push
