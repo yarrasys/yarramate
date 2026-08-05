@@ -199,4 +199,184 @@ describe('export command', () => {
       expect(result.stderr, args.join(' ')).toContain('Usage:')
     }
   })
+
+  it('renders no Non-goals section when nothing is retired', () => {
+    const result = runCli(
+      ['export', 'markdown', 'everything.yaml', 'workspace.yaml'],
+      workspace,
+    )
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).not.toContain('## Non-goals')
+  })
+})
+
+// First-class non-goals (ADR 0073): a goal, outcome, or requirement
+// authored `status: retired` with its rationale in the description is
+// the declared non-goal, and both stakeholder exports render it under
+// an explicit Non-goals heading instead of burying it.
+const nonGoalDocument = `format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts:
+  - id: capture-todos
+    kind: requirement
+    name: Capture todos
+    description: A user records a todo in one step.
+  - id: offline-sync
+    kind: requirement
+    name: Offline sync
+    status: retired
+    description: Declined for launch; conflict resolution outweighs the value.
+  - id: team-boards
+    kind: goal
+    name: Team boards
+    status: retired
+    description: Single-user scope holds; collaboration is out.
+  - id: files-portable
+    kind: principle
+    name: Files stay portable
+    status: retired
+    description: A retired principle is a lifted rule, not declined scope.
+  - id: legacy-api
+    kind: applicationService
+    name: Legacy API
+    status: retired
+    description: Replaced by the todo service; kept for history.
+  - id: todo-service
+    kind: applicationService
+    name: Todo service
+    status: planned
+    description: Stores and serves todo items.
+relationships:
+  - id: service-realizes-capture
+    kind: realization
+    from: todo-service
+    to: capture-todos
+`
+
+const livingProjection = `format: yarramate/projection/v1
+id: living
+version: "1.0"
+query:
+  excludeStatuses: [retired]
+presentation:
+  title: Living architecture
+`
+
+describe('non-goals in exports (ADR 0073)', () => {
+  let workspace: string
+
+  beforeEach(() => {
+    workspace = mkdtempSync(join(tmpdir(), 'yarramate-nongoals-'))
+    mkdirSync(join(workspace, 'architecture'))
+    writeFileSync(
+      join(workspace, 'architecture/main.yaml'),
+      nonGoalDocument,
+      'utf8',
+    )
+    writeFileSync(join(workspace, 'workspace.yaml'), manifest, 'utf8')
+    writeFileSync(join(workspace, 'everything.yaml'), projection, 'utf8')
+    writeFileSync(join(workspace, 'living.yaml'), livingProjection, 'utf8')
+  })
+
+  afterEach(() => {
+    rmSync(workspace, { recursive: true, force: true })
+  })
+
+  it('markdown renders retired motivation subjects under Non-goals, deterministically', () => {
+    const first = runCli(
+      ['export', 'markdown', 'everything.yaml', 'workspace.yaml'],
+      workspace,
+    )
+    expect(first.exitCode).toBe(0)
+    const [inventory, nonGoals] = first.stdout.split('## Non-goals')
+    expect(nonGoals).toBeDefined()
+    expect(nonGoals).toContain(
+      'Offline sync (`main#offline-sync`) — Declined for launch; ' +
+        'conflict resolution outweighs the value.',
+    )
+    expect(nonGoals).toContain(
+      'Team boards (`main#team-boards`) — Single-user scope holds; ' +
+        'collaboration is out.',
+    )
+    // The Concepts inventory keeps the declared non-goals: relationship
+    // endpoints must still resolve against the concept list.
+    expect(inventory).toContain('Offline sync')
+    // Non-motivation retired subjects and retired principles are
+    // history or lifted rules, never non-goals.
+    expect(nonGoals).not.toContain('Legacy API')
+    expect(nonGoals).not.toContain('Files stay portable')
+    const second = runCli(
+      ['export', 'markdown', 'everything.yaml', 'workspace.yaml'],
+      workspace,
+    )
+    expect(second.stdout).toBe(first.stdout)
+  })
+
+  it('excludeStatuses still suppresses retired subjects entirely', () => {
+    const result = runCli(
+      ['export', 'markdown', 'living.yaml', 'workspace.yaml'],
+      workspace,
+    )
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).not.toContain('## Non-goals')
+    expect(result.stdout).not.toContain('Offline sync')
+    expect(result.stdout).not.toContain('Team boards')
+  })
+
+  it('briefs close with a Non-goals section for declared non-goals', () => {
+    const result = runCli(
+      [
+        'export',
+        'briefs',
+        'everything.yaml',
+        'workspace.yaml',
+        '--out',
+        'handoff',
+      ],
+      workspace,
+    )
+    expect(result.exitCode).toBe(0)
+    const declined = readFileSync(
+      join(workspace, 'handoff/main--offline-sync.md'),
+      'utf8',
+    )
+    expect(declined).toContain('## Non-goals')
+    expect(declined).toContain(
+      'Requirement "Offline sync" is declined: "Declined for launch; ' +
+        'conflict resolution outweighs the value."',
+    )
+    expect(declined).not.toContain('## Why this exists')
+    // Live motivation still opens the brief; no Non-goals section
+    // appears where nothing in the slice is a declared non-goal.
+    const building = readFileSync(
+      join(workspace, 'handoff/main--todo-service.md'),
+      'utf8',
+    )
+    expect(building).toContain('## Why this exists')
+    expect(building).toContain('Requirement "Capture todos"')
+    expect(building).not.toContain('## Non-goals')
+    // A retired principle keeps its motivation reading.
+    const principle = readFileSync(
+      join(workspace, 'handoff/main--files-portable.md'),
+      'utf8',
+    )
+    expect(principle).toContain('## Why this exists')
+    expect(principle).not.toContain('## Non-goals')
+    const again = runCli(
+      [
+        'export',
+        'briefs',
+        'everything.yaml',
+        'workspace.yaml',
+        '--out',
+        'handoff',
+      ],
+      workspace,
+    )
+    expect(again.stdout).toBe(result.stdout)
+    expect(
+      readFileSync(join(workspace, 'handoff/main--offline-sync.md'), 'utf8'),
+    ).toBe(declined)
+  })
 })
