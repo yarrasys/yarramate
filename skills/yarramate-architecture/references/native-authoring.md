@@ -88,6 +88,8 @@ The other kinds accept endpoints of any aspect.
 
 ## Invocation chains
 
+The **invocation chain** pattern; see `modelling-patterns.md`.
+
 "User invokes command" and "component invokes component" fail `YM404` when
 written as `triggering` between active-structure elements. Name the invoked
 behavior, assign the performers, and trigger between behaviors:
@@ -119,6 +121,8 @@ Chain steps with `triggering` only between behavior concepts, for example
 `run-check` triggering a downstream process owned by another component.
 
 ## Degrading a blocked kind
+
+The **degraded edge** pattern; see `modelling-patterns.md`.
 
 When aspect policy blocks the kind you want—`triggering` between two
 components is the common case—keep the edge legal with `kind: flow` and carry
