@@ -127,9 +127,11 @@ Exit code is the contract.
 ### `yarramate reconcile` — drift report
 
 [built, kept separate — decision 2026-07-31] The full intent-vs-
-evidence report: supported, contradicted, unknown, unobserved. A
-report, never a gate; `check --strict` is the gate form of its
-contradiction signal.
+evidence report: supported, contradicted, unknown, unobserved, plus
+`stale-attestation` (ADR 0074) when a sign-off predates the current
+wording of the subject it accepted. A report, never a gate;
+`check --strict` is the gate form of its contradiction signal, and
+staleness is deliberately not part of that gate.
 
 - Harness use: trust assessment before relying on a model; the CI
   drift Action's substance.

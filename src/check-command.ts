@@ -26,12 +26,12 @@ import {
 import { loadProjection } from './projection.js'
 import {
   reconcileEvidenceReports,
-  type ReconciliationFinding,
+  type EvidenceFinding,
 } from './reconciliation.js'
 
 const Ajv2020 = Ajv2020Module.default
 
-const strictFindingMessage = (finding: ReconciliationFinding): string => {
+const strictFindingMessage = (finding: EvidenceFinding): string => {
   const observed =
     finding.evidence.message === undefined
       ? finding.evidence.uri
@@ -284,11 +284,17 @@ export function runCheckCommand(
                 ? evidenceEvaluation.reports
                 : []
             const graph = result.graph
+            // Stale attestations never reach this gate: staleness is a
+            // freshness signal, not a contradiction (ADR 0074), and the
+            // gate derives no attestation staleness in the first place.
             const contradicted = reconcileEvidenceReports(
               'strict',
               reports,
               graph,
-            ).findings.filter(({ result: outcome }) => outcome === 'contradicted')
+            ).findings.filter(
+              (finding): finding is EvidenceFinding =>
+                finding.result === 'contradicted',
+            )
             return {
               observations: reports.reduce(
                 (total, report) => total + report.observations.length,

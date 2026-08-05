@@ -215,6 +215,13 @@ outside the engine — only the claim's existence is checked. Revoke by
 deleting the entry; both signing and revoking are reviewed at the Git
 boundary (ADR 0056).
 
+A sign-off covers the wording it read. If the subject's `name` or
+`description` changes in a commit after the attestation's `on` date,
+`yarramate reconcile` reports a `stale-attestation` finding naming the
+attestation and the commit that reworded the subject (ADR 0074). Renew
+the sign-off by updating `on` after the rewording. This is a report, not
+a gate: `check --strict` is unaffected.
+
 ## Rationale and citations
 
 Use `description` on either a concept or relationship for decided narrative

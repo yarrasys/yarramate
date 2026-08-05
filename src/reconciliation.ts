@@ -12,7 +12,7 @@ export interface AssertedRelationship {
   readonly name?: string
 }
 
-export interface ReconciliationFinding {
+export interface EvidenceFinding {
   readonly target: {
     readonly type: 'subject' | 'claim'
     readonly id: string
@@ -22,6 +22,33 @@ export interface ReconciliationFinding {
   readonly provider: string
   readonly evidenceDocument: string
   readonly evidence: EvidenceLocator
+}
+
+// A stale attestation is a finding with git provenance (ADR 0074): the
+// sign-off predates the current wording of the attested subject. It has
+// no evidence document because no provider authored it; git is the
+// witness.
+export interface StaleAttestationFinding {
+  readonly target: {
+    readonly type: 'subject'
+    readonly id: string
+  }
+  readonly result: 'stale-attestation'
+  readonly attestation: {
+    readonly topic: string
+    readonly by: string
+    readonly on: string
+  }
+  readonly provider: 'git'
+  readonly changedAt?: string
+  readonly evidence: EvidenceLocator
+}
+
+export type ReconciliationFinding = EvidenceFinding | StaleAttestationFinding
+
+export interface AttestationStaleness {
+  readonly findings: readonly StaleAttestationFinding[]
+  readonly notes: readonly string[]
 }
 
 export interface ReconciliationReport {
@@ -36,9 +63,11 @@ export interface ReconciliationReport {
     readonly unknown: number
     readonly notObserved: number
     readonly subjectsWithoutEvidence: number
+    readonly staleAttestations?: number
   }
   readonly findings: readonly ReconciliationFinding[]
   readonly unobservedSubjects?: readonly string[]
+  readonly notes?: readonly string[]
 }
 
 const assertedRelationshipsByClaim = (
@@ -121,6 +150,7 @@ export function reconcileEvidenceReports(
   workspace: string,
   reports: readonly EvidenceReport[],
   graph?: SemanticGraph,
+  staleness?: AttestationStaleness,
 ): ReconciliationReport {
   const assertedByClaim = assertedRelationshipsByClaim(graph)
   const unobservedSubjects = unobservedCurrentConcepts(graph, reports)
@@ -133,8 +163,15 @@ export function reconcileEvidenceReports(
     unknown: 0,
     notObserved: 0,
     subjectsWithoutEvidence: unobservedSubjects.length,
+    // Attestation staleness is assessed only when the caller derived it
+    // (the reconcile command); the counter appears exactly then, so a
+    // report without it is one that never looked, not one that found
+    // nothing.
+    ...(staleness === undefined
+      ? {}
+      : { staleAttestations: staleness.findings.length }),
   }
-  const findings: ReconciliationFinding[] = []
+  const findings: ReconciliationFinding[] = [...(staleness?.findings ?? [])]
   for (const report of reports) {
     summary.observations += report.observations.length
     for (const observation of report.observations) {
@@ -167,14 +204,21 @@ export function reconcileEvidenceReports(
     left.target.id.localeCompare(right.target.id) ||
     left.target.type.localeCompare(right.target.type) ||
     left.provider.localeCompare(right.provider) ||
-    left.evidenceDocument.localeCompare(right.evidenceDocument),
+    ('evidenceDocument' in left ? left.evidenceDocument : '').localeCompare(
+      'evidenceDocument' in right ? right.evidenceDocument : '',
+    ) ||
+    ('attestation' in left ? left.attestation.topic : '').localeCompare(
+      'attestation' in right ? right.attestation.topic : '',
+    ),
   )
   summary.findings = findings.length
+  const notes = staleness?.notes ?? []
   return {
     format: 'yarramate/reconciliation-report/v1',
     workspace,
     summary,
     findings,
     ...(unobservedSubjects.length === 0 ? {} : { unobservedSubjects }),
+    ...(notes.length === 0 ? {} : { notes }),
   }
 }

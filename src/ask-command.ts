@@ -1454,13 +1454,15 @@ export function runAskCommand(
       )
       reconciliation = {
         summary: reconciled.summary,
-        findings: reconciled.findings.filter(
-          (finding) =>
-            sliceIds.has(finding.target.id) ||
-            (finding.asserted !== undefined &&
-              (sliceIds.has(finding.asserted.from) ||
-                sliceIds.has(finding.asserted.to))),
-        ),
+        findings: reconciled.findings.filter((finding) => {
+          if (sliceIds.has(finding.target.id)) return true
+          const asserted =
+            'asserted' in finding ? finding.asserted : undefined
+          return (
+            asserted !== undefined &&
+            (sliceIds.has(asserted.from) || sliceIds.has(asserted.to))
+          )
+        }),
       }
     }
 
