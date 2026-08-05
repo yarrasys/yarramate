@@ -404,6 +404,7 @@ export function runExportCommand(
         slice,
         compilation.profileContext,
         parsed.budget,
+        compilation.graph.claims,
       )
       writeFileSync(join(outDirectory, briefFileName(id)), brief, 'utf8')
       const name = claimValue(result.claims, id, 'yarramate/concept/name')

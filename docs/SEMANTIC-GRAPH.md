@@ -45,6 +45,17 @@ reference claim. Both are ordinary claims in the existing envelope: no new
 field and no new structure, so a consumer that does not know either
 predicate keeps reading the graph, and the preferred name, correctly.
 
+A recorded succession emits one `yarramate/lineage/supersedes` reference
+claim per predecessor, authored on the successor and pointing back. One
+predicate carries rename, split, and merge, because the shape is
+cardinality rather than vocabulary: group the predicate's claims by object
+and a predecessor named once was renamed, a predecessor named by several
+successors was split, and a successor naming several predecessors is a
+merge. A superseded subject is not required to carry
+`yarramate/lifecycle/status` of `retired`, since the transition period
+during which both run is real. This too is an ordinary claim in the
+existing envelope.
+
 Concept and relationship descriptions use
 `yarramate/concept/description` and
 `yarramate/relationship/description`. Identified citations use
@@ -145,6 +156,7 @@ Core claim predicates:
 | `yarramate/constraint/expects` | value | Expected observation as `<provider> <key> <expected value>` |
 | `yarramate/reference/refers-to` | ref | Identified citation to any subject |
 | `yarramate/identity/distinct-from` | ref | Recorded judgment that a resembling subject is a different thing |
+| `yarramate/lineage/supersedes` | ref | Predecessor whose responsibility this subject took over |
 | `yarramate/access/mode` | value | Access mode of an access relationship |
 | `yarramate/flow/content` | value | Transferred content of a flow |
 | `yarramate/state/type` | value | `baseline`, `transition`, or `target` |

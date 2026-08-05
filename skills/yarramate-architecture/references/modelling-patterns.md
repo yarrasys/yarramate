@@ -205,3 +205,53 @@ X, and what does it materialize?"
 **Why it is material.** The hosting boundary decides latency, failure domain,
 scaling model, and data residency. A component with no declared runtime is
 deployed by whoever gets there first.
+
+## Recorded succession
+
+**Problem.** A component is renamed, split in two, or merged with another,
+and the model records one retirement and two arrivals with nothing joining
+them. A month later the refactoring is invisible, and so is the answer to
+"where did this go?" Nothing in two documents distinguishes a rename from a
+coincidence of naming, so the connection is recorded or it is lost.
+
+**Solution.** Name the predecessors on the subject that took the work over,
+using `supersedes`. One predicate covers every case, because the shape is
+cardinality (ADR 0080): one entry is a rename, several entries are a merge,
+and one predecessor named by several successors is a split.
+
+```yaml
+concepts:
+  - id: order-api
+    kind: applicationComponent
+    name: Order API
+    supersedes:
+      - order-gateway
+  - id: order-events
+    kind: applicationComponent
+    name: Order Events
+    supersedes:
+      - order-gateway
+  - id: order-gateway
+    kind: applicationComponent
+    name: Order Gateway
+    status: retired
+```
+
+Two successors naming one predecessor is the split. Write it on the
+successor, at the moment you introduce it, which is the moment you know:
+the new subject then arrives complete in one document, and the predecessor's
+document is not touched.
+
+**Prevents.** `YM312` when a lineage points at nothing, and the silent loss
+of the history that explains why the current model looks the way it does.
+
+**Do not retire the predecessor just because it has a successor.** The
+transition period during which both run is real, and both may be `planned`
+while the split is still being designed. Retirement is the separate
+descoping decision of ADR 0064. Equally, a retired subject with no
+successor is a legitimate record: some things are decommissioned into
+nothing, and the model should not invent a destination for them.
+
+**Worked example.** `.yarramate/architecture/engine.yaml`, where the 0.7.0
+clean break to seven verbs (ADR 0061) is recorded as a merge, a split, and
+a rename against the retired command services.

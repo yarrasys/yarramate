@@ -562,6 +562,9 @@ concepts:
     description: Applies an atomic batch of validated writes; the whole candidate workspace must compile before a single byte lands.
     owner: yarramate-product#yarramate-maintainers
     status: current
+    supersedes:
+      - add-command
+      - connect-command
   - id: apply-operations
     kind: dataObject
     name: Operations document
@@ -588,6 +591,8 @@ concepts:
     description: Serves exactly the top open catalogue question with its subject slice, recomputed statelessly from the model; the internal catalogue never crosses the harness boundary.
     owner: yarramate-product#yarramate-maintainers
     status: current
+    supersedes:
+      - interrogate-command
   - id: design-step
     kind: dataObject
     name: Design step
@@ -604,6 +609,12 @@ concepts:
     description: One entry point for every consumed-now read - orientation with the backlog-shaped verdict, the filterable roster, free-text-seeded slices, the advise composition, build order, open questions, and state comparison.
     owner: yarramate-product#yarramate-maintainers
     status: current
+    supersedes:
+      - status-command
+      - context-command
+      - next-command
+      - compare-command
+      - interrogate-command
   - id: ask-result
     kind: dataObject
     name: Ask result
@@ -620,6 +631,8 @@ concepts:
     description: Derives every persisted artifact - the canonical graph, projection markdown, the per-concept briefs handoff bundle, and the LikeC4 visualization project delegated to the sibling adapter binary in a separate process.
     owner: yarramate-product#yarramate-maintainers
     status: current
+    supersedes:
+      - compile-command
   - id: consumer-host
     kind: node
     name: Consumer host

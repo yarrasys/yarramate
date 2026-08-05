@@ -202,6 +202,25 @@ context budget in a brief. Aliases also feed near-duplicate detection
 directly, because a genuine duplicate very often reuses the other
 subject's alias.
 
+## Recording where a subject went
+
+A subject that is renamed, split, or merged loses its history unless the
+succession is recorded, because nothing in two documents distinguishes a
+rename from a coincidence of naming. Concepts carry an optional
+`supersedes` list naming the subjects whose responsibility they took over
+(ADR 0080), compiled to `yarramate/lineage/supersedes` claims.
+
+A harness should write it at the moment it introduces the replacement,
+which is the moment it knows. One predicate covers every case: name one
+predecessor for a rename, several for a merge, and let several successors
+name one predecessor for a split. Do **not** retire the predecessor merely
+because it has a successor; retirement is its own decision and the
+transition period during which both run is real.
+
+Briefs read the claims in both directions, so the replacement reads
+"Succeeds ..." and the original reads "Superseded by ...", which is how a
+later session recovers the refactoring that a diff alone does not explain.
+
 ## Migration map (0.7.0 clean break — EXECUTED, ADR 0061)
 
 | Before 0.7.0 | Now |
@@ -278,3 +297,11 @@ vocabulary as a read.
   catalogue condition, deterministic and lexical, never a `check`
   error. A dismissal is a `distinctFrom` claim, read symmetrically, so
   it survives re-running the interview.
+- Succession: SETTLED (ADR 0080): one `supersedes` list on concepts
+  compiling to `yarramate/lineage/supersedes`, authored on the successor
+  and read both ways. Cardinality is the shape, so rename, split, and
+  merge need no separate vocabulary. Retirement is deliberately not
+  coupled. The RTM and a catalogue question about retired subjects with
+  no successor are deferred, the latter because retired subjects are
+  outside the interrogation index by ADR 0064 and because "it went
+  nowhere" is an answer the question would have to accept.

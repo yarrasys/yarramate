@@ -142,6 +142,13 @@
             "$ref": "#/$defs/nonEmptyText"
           }
         },
+        "supersedes": {
+          "description": "Subjects whose responsibility this one took over, recording a rename, split, or merge (ADR 0080).",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/nonEmptyText"
+          }
+        },
         "constraints": {
           "type": "array",
           "items": {
@@ -340,6 +347,7 @@
                   "status",
                   "owner",
                   "distinctFrom",
+                  "supersedes",
                   "constraints",
                   "references",
                   "presentIn",

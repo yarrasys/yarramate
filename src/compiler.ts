@@ -45,6 +45,7 @@ interface NativeConcept {
   readonly status?: 'planned' | 'current' | 'retired'
   readonly owner?: string
   readonly distinctFrom?: readonly string[]
+  readonly supersedes?: readonly string[]
   readonly constraints?: ReadonlyArray<{
     readonly id: string
     readonly ref: string
@@ -210,6 +211,9 @@ const aliasClaimId = (subject: string, alias: string) =>
 
 const distinctFromClaimId = (subject: string, other: string) =>
   `${subject}~distinct-from-${Buffer.from(other, 'utf8').toString('hex')}`
+
+const supersedesClaimId = (subject: string, predecessor: string) =>
+  `${subject}~supersedes-${Buffer.from(predecessor, 'utf8').toString('hex')}`
 
 const describeAspect = (aspect: (typeof conceptKinds)[number]['aspect']) =>
   aspect.replace('-', ' ')
@@ -734,6 +738,48 @@ function compileWorkspaceResolved(
     }
     return false
   }
+  // A succession points backwards, from a successor to the predecessors it
+  // took over from (ADR 0080). Unlike state ordering it is a list, so the
+  // walk fans out rather than following a single link.
+  const supersededBy = new Map<string, readonly string[]>(
+    documents.flatMap(({ value }) =>
+      value.concepts.flatMap((concept) =>
+        concept.supersedes === undefined
+          ? []
+          : [
+              [
+                `${value.id}#${concept.id}`,
+                concept.supersedes.map((predecessor) =>
+                  qualifyReference(value.id, predecessor),
+                ),
+              ] as const,
+            ],
+      ),
+    ),
+  )
+  // Self-succession is a cycle of length one, but it has its own diagnostic
+  // because it is the case that actually happens; skipping it here keeps
+  // exactly one diagnostic firing per defect.
+  const participatesInSuccessionCycle = (start: string) => {
+    const visited = new Set<string>([start])
+    const pending = [
+      ...(supersededBy.get(start) ?? []).filter(
+        (predecessor) => predecessor !== start,
+      ),
+    ]
+    while (pending.length > 0) {
+      const current = pending.pop()!
+      if (current === start) return true
+      if (visited.has(current)) continue
+      visited.add(current)
+      pending.push(
+        ...(supersededBy.get(current) ?? []).filter(
+          (predecessor) => predecessor !== current,
+        ),
+      )
+    }
+    return false
+  }
 
   for (const { input, value, location } of documents) {
     const selectedProfile = profiles.get(value.profile)
@@ -959,6 +1005,56 @@ function compileWorkspaceResolved(
             severity: 'error',
             code: 'YM311',
             message: `Concept "${concept.id}" declares itself distinct from itself`,
+            path: input.path,
+            pointer,
+            line: source.line,
+            column: source.column,
+          })
+        }
+      }
+      for (const [supersedesIndex, predecessor] of (
+        concept.supersedes ?? []
+      ).entries()) {
+        const pointer = `/concepts/${index}/supersedes/${supersedesIndex}`
+        const predecessorIdentity = qualifyReference(value.id, predecessor)
+        const subjectIdentity = `${value.id}#${concept.id}`
+        if (!conceptByQualifiedId.has(predecessorIdentity)) {
+          const source = location(
+            ['concepts', index, 'supersedes', supersedesIndex],
+            pointer,
+          )
+          diagnostics.push({
+            severity: 'error',
+            code: 'YM312',
+            message: `Unresolved succession reference "${predecessor}"`,
+            path: input.path,
+            pointer,
+            line: source.line,
+            column: source.column,
+          })
+        } else if (predecessorIdentity === subjectIdentity) {
+          const source = location(
+            ['concepts', index, 'supersedes', supersedesIndex],
+            pointer,
+          )
+          diagnostics.push({
+            severity: 'error',
+            code: 'YM313',
+            message: `Concept "${concept.id}" declares that it supersedes itself`,
+            path: input.path,
+            pointer,
+            line: source.line,
+            column: source.column,
+          })
+        } else if (participatesInSuccessionCycle(subjectIdentity)) {
+          const source = location(
+            ['concepts', index, 'supersedes', supersedesIndex],
+            pointer,
+          )
+          diagnostics.push({
+            severity: 'error',
+            code: 'YM504',
+            message: `Concept "${subjectIdentity}" participates in a succession cycle`,
             path: input.path,
             pointer,
             line: source.line,
@@ -1397,6 +1493,27 @@ function compileWorkspaceResolved(
           source: location(
             ['concepts', index, 'distinctFrom', distinctIndex],
             `/concepts/${index}/distinctFrom/${distinctIndex}`,
+          ),
+        })
+      }
+      // A succession says where a subject's responsibility came from
+      // (ADR 0080). One predicate carries rename, split, and merge, because
+      // the shape is derivable from how many claims point where, and a
+      // predecessor is not required to be retired: the transition period
+      // during which both are current is real.
+      for (const [supersedesIndex, predecessor] of (
+        concept.supersedes ?? []
+      ).entries()) {
+        const predecessorIdentity = qualifyReference(value.id, predecessor)
+        claims.push({
+          id: supersedesClaimId(subject, predecessorIdentity),
+          subject,
+          predicate: 'yarramate/lineage/supersedes',
+          object: { ref: predecessorIdentity },
+          origin: 'declared',
+          source: location(
+            ['concepts', index, 'supersedes', supersedesIndex],
+            `/concepts/${index}/supersedes/${supersedesIndex}`,
           ),
         })
       }

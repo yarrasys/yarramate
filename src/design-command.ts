@@ -260,7 +260,12 @@ export function runDesignCommand(
         },
         compilation.profileContext,
       )
-      slice = renderBrief(projection, compilation.profileContext)
+      slice = renderBrief(
+        projection,
+        compilation.profileContext,
+        undefined,
+        compilation.graph.claims,
+      )
     }
 
     const result: DesignStepResult = {

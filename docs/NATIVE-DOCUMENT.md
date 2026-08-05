@@ -90,6 +90,40 @@ from either side, and it survives re-running the interview because it is
 part of the model rather than session state. `YM310` reports an unresolved
 reference and `YM311` a subject declared distinct from itself.
 
+A concept may record which subjects it took over from:
+
+```yaml
+concepts:
+  - id: order-api
+    kind: applicationComponent
+    name: Order API
+    supersedes:
+      - order-gateway
+```
+
+Each entry compiles to a `yarramate/lineage/supersedes` reference claim
+whose ID derives from the predecessor's identity, so reordering the list
+leaves the canonical graph byte-identical. One predicate carries every
+shape, because the shape is cardinality (ADR 0080): one entry is a rename,
+several entries on one successor are a merge, and one predecessor named by
+several successors is a split. Recording it on the successor means a new
+subject arrives complete, in one document, saying where its responsibility
+came from.
+
+A predecessor is **not** required to be retired. The transition period
+during which the old thing and the new thing both run is real, and both may
+equally be `planned` while a split is still being designed. Retirement
+stays the separate descoping decision it is under ADR 0064; succession says
+only where the responsibility went.
+
+`YM312` reports an unresolved succession reference, `YM313` a subject
+declaring that it supersedes itself, and `YM504` a succession cycle, which
+asserts that a subject is its own ancestor.
+
+Briefs read these claims in both directions, so a successor reads
+"Succeeds ..." and a predecessor reads "Superseded by ...". That is the
+answer to "where did this go?" a month after the refactoring.
+
 A concept may require multiple explicitly identified constraints:
 
 ```yaml
@@ -322,9 +356,9 @@ and one-based line and column.
 | --- | --- | --- |
 | `YM1xx` | YAML parsing | `YM101` malformed YAML |
 | `YM2xx` | Document structure | `YM201` JSON Schema violation |
-| `YM3xx` | Identity and references | `YM301` duplicate local ID; `YM302` unresolved concept reference; `YM303` duplicate document ID; `YM304` unresolved owner; `YM305` unresolved constraint; `YM306` duplicate constraint ID; `YM307` unresolved architecture state; `YM308` unresolved subject reference; `YM309` duplicate reference ID; `YM310` unresolved distinct-from reference; `YM311` self-referential distinct-from |
+| `YM3xx` | Identity and references | `YM301` duplicate local ID; `YM302` unresolved concept reference; `YM303` duplicate document ID; `YM304` unresolved owner; `YM305` unresolved constraint; `YM306` duplicate constraint ID; `YM307` unresolved architecture state; `YM308` unresolved subject reference; `YM309` duplicate reference ID; `YM310` unresolved distinct-from reference; `YM311` self-referential distinct-from; `YM312` unresolved succession reference; `YM313` self-referential succession |
 | `YM4xx` | Profile conformance | `YM401` unknown concept kind; `YM402` unknown relationship kind; `YM403` unavailable profile; `YM404` incompatible endpoint; `YM405` misplaced controlled field; `YM406` unavailable parent profile; `YM407`/`YM408` unavailable semantic parent; `YM409`/`YM410` inherited-name collision; `YM411` duplicate profile; `YM412` broadened constraint; `YM413` rigid kind specializing an anti-rigid one |
-| `YM5xx` | Claim consistency | `YM501` competing whole-part claims; `YM502` cyclic state ordering; `YM503` relationship present without an endpoint |
+| `YM5xx` | Claim consistency | `YM501` competing whole-part claims; `YM502` cyclic state ordering; `YM503` relationship present without an endpoint; `YM504` cyclic succession |
 | `YM6xx` | Adapter mapping integrity | `YM601` unknown native subject; `YM602` subject type mismatch; `YM603` duplicate native mapping; `YM604` duplicate external mapping; `YM605` duplicate versioned mapping |
 | `YM7xx` | Workspace resolution | `YM701` unsafe pattern; `YM702` unmatched pattern; `YM703` cross-category file |
 | `YM8xx` | Evidence integrity | `YM801` unknown subject; `YM802` unknown claim; `YM803` duplicate target; `YM804` duplicate evidence document |
@@ -403,8 +437,8 @@ The operations are `add-concept`, `add-relationship`, `update-concept`,
 `update-relationship`, `delete-concept`, and `delete-relationship`. Concept
 and relationship records accept the same
 optional fields as the authoring format — for example `status`,
-`description`, `aka`, `owner`, `distinctFrom`, `constraints`,
-`references`, `presentIn`, and the
+`description`, `aka`, `owner`, `distinctFrom`, `supersedes`,
+`constraints`, `references`, `presentIn`, and the
 controlled `mode` and `content` fields. `apply` writes by splicing minimal
 text edits into the authored source, so bytes an operation never touched —
 including folded prose and comments — stay byte-identical (ADR 0062). It
