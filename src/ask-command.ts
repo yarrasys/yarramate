@@ -1292,7 +1292,7 @@ export function runAskCommand(
               .map(
                 (entry) =>
                   [
-                    `${entry.uri} ${entry.result} ${entry.provider} ${entry.message ?? ''}`,
+                    `${entry.uri}\u0000${entry.result}\u0000${entry.provider}\u0000${entry.message ?? ''}`,
                     entry,
                   ] as const,
               ),
