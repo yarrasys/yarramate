@@ -20,11 +20,28 @@ export const aspects = [
 export type Layer = (typeof layers)[number]
 export type Aspect = (typeof aspects)[number]
 
+/**
+ * OntoClean rigidity, the one meta-property with a mechanical consequence.
+ * A kind is `rigid` when being of that kind is essential to every instance
+ * (a thing IS an application component); `anti-rigid` when it is essential
+ * to none (a role is played contingently and can be given up). Identity and
+ * unity are deliberately out of scope: neither yields a check (ADR 0078).
+ */
+export const rigidities = ['rigid', 'anti-rigid'] as const
+
+export type Rigidity = (typeof rigidities)[number]
+
 export interface ConceptKind {
   readonly id: string
   readonly name: string
   readonly layer: Layer
   readonly aspect: Aspect
+  /**
+   * Optional and opt-in. An unannotated kind constrains nothing, in either
+   * direction. Annotated, it feeds one rule: a rigid kind may not specialize
+   * an anti-rigid one, anywhere in its lineage (YM413).
+   */
+  readonly rigidity?: Rigidity
   /**
    * A compatibility pointer, not a claim of standards conformance.
    * Exact external identifiers can be added after licensing review.
@@ -35,19 +52,25 @@ export interface ConceptKind {
 const kind = (
   layer: Layer,
   aspect: Aspect,
-  entries: ReadonlyArray<readonly [id: string, name: string]>,
+  entries: ReadonlyArray<
+    readonly [id: string, name: string, rigidity?: Rigidity]
+  >,
 ): ConceptKind[] =>
-  entries.map(([id, name]) => ({
+  entries.map(([id, name, rigidity]) => ({
     id,
     name,
     layer,
     aspect,
+    ...(rigidity === undefined ? {} : { rigidity }),
     inspiredBy: `ArchiMate-inspired:${name}`,
   }))
 
 export const conceptKinds: readonly ConceptKind[] = [
   ...kind('motivation', 'motivation', [
-    ['stakeholder', 'Stakeholder'],
+    // "Represents the role of an individual, team, or organization": a
+    // stakeholder is a stance held towards one architecture, not a kind of
+    // thing anything essentially is.
+    ['stakeholder', 'Stakeholder', 'anti-rigid'],
     ['driver', 'Driver'],
     ['assessment', 'Assessment'],
     ['goal', 'Goal'],
@@ -66,8 +89,13 @@ export const conceptKinds: readonly ConceptKind[] = [
   ]),
   ...kind('business', 'active-structure', [
     ['businessActor', 'Business actor'],
-    ['businessRole', 'Business role'],
-    ['businessCollaboration', 'Business collaboration'],
+    // A role is a responsibility an actor is assigned and can be released
+    // from. Nothing is essentially a role, which is the whole point of
+    // separating it from the actor that plays it.
+    ['businessRole', 'Business role', 'anti-rigid'],
+    // A collaboration is an aggregate of active structure elements formed to
+    // perform collective behavior, and it dissolves when they stop.
+    ['businessCollaboration', 'Business collaboration', 'anti-rigid'],
     ['businessInterface', 'Business interface'],
   ]),
   ...kind('business', 'behavior', [
@@ -85,7 +113,7 @@ export const conceptKinds: readonly ConceptKind[] = [
   ]),
   ...kind('application', 'active-structure', [
     ['applicationComponent', 'Application component'],
-    ['applicationCollaboration', 'Application collaboration'],
+    ['applicationCollaboration', 'Application collaboration', 'anti-rigid'],
     ['applicationInterface', 'Application interface'],
   ]),
   ...kind('application', 'behavior', [
@@ -100,7 +128,7 @@ export const conceptKinds: readonly ConceptKind[] = [
     ['node', 'Node'],
     ['device', 'Device'],
     ['systemSoftware', 'System software'],
-    ['technologyCollaboration', 'Technology collaboration'],
+    ['technologyCollaboration', 'Technology collaboration', 'anti-rigid'],
     ['technologyInterface', 'Technology interface'],
     ['path', 'Path'],
     ['communicationNetwork', 'Communication network'],
