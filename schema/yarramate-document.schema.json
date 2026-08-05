@@ -106,11 +106,17 @@
         "description": {
           "$ref": "#/$defs/nonEmptyText"
         },
+        "aka": {
+          "$ref": "#/$defs/alternativeLabels"
+        },
         "status": {
           "$ref": "#/$defs/lifecycleStatus"
         },
         "owner": {
           "$ref": "#/$defs/reference"
+        },
+        "distinctFrom": {
+          "$ref": "#/$defs/subjectReferences"
         },
         "constraints": {
           "type": "array",
@@ -197,6 +203,23 @@
       "minItems": 1,
       "items": {
         "$ref": "#/$defs/identifiedReference"
+      }
+    },
+    "alternativeLabels": {
+      "description": "Other names this subject is known by: abbreviations, legacy names, team jargon. The preferred label stays in name; renderers show only that.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/nonEmptyText"
+      }
+    },
+    "subjectReferences": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/reference"
       }
     },
     "relationship": {

@@ -34,8 +34,12 @@ questions. Each question binds:
   `missing-linkage` (no relationship of given kinds, in a given
   direction, whose counterpart is of a given kind — the linkage-depth
   primitive), `missing-reference` (no reference-bearing claim such as a
-  constraint binding, by direction), or `missing-attestation` (no
-  recorded `yarramate/attestation/<topic>` claim; see ADR 0056).
+  constraint binding, by direction), `missing-attestation` (no
+  recorded `yarramate/attestation/<topic>` claim; see ADR 0056), or
+  `near-duplicate` (the subject resembles another subject of the same
+  kind closely enough to be the same thing under two names, and no
+  `yarramate/identity/distinct-from` claim dismisses the pair; the
+  algorithm and its thresholds are stated in ADR 0077).
   Relationship kinds in conditions resolve through profile lineage by
   default, the same rule as subject selectors;
 - a **scope** — `workspace` (asked once) or `subject` (asked per matching
@@ -47,6 +51,9 @@ questions. Each question binds:
 - an **authority** — `human`, `agent`, or `either` — declaring who may
   answer;
 - a **resolution** hint — how an answer is typically modelled;
+- a **question** phrasing interpolating `{subject.id}` and
+  `{subject.name}`, plus `{counterparts}` for questions whose trigger
+  names other subjects, such as `near-duplicate`;
 - an optional **askPlain** phrasing: the same question in plain
   workshop language, interpolating the same `{subject.id}` and
   `{subject.name}` placeholders. `design --facilitate` prefers it and

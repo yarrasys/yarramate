@@ -118,6 +118,13 @@
         "description": {
           "$ref": "#/$defs/nonEmptyText"
         },
+        "aka": {
+          "description": "Alternative labels appended to the subject's aka list.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/nonEmptyText"
+          }
+        },
         "status": {
           "enum": [
             "planned",
@@ -127,6 +134,13 @@
         },
         "owner": {
           "$ref": "#/$defs/nonEmptyText"
+        },
+        "distinctFrom": {
+          "description": "Subjects this one has been judged genuinely different from, dismissing a near-duplicate question permanently (ADR 0077).",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/nonEmptyText"
+          }
         },
         "constraints": {
           "type": "array",
@@ -322,8 +336,10 @@
                 "enum": [
                   "name",
                   "description",
+                  "aka",
                   "status",
                   "owner",
+                  "distinctFrom",
                   "constraints",
                   "references",
                   "presentIn",

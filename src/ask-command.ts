@@ -74,6 +74,7 @@ interface ConceptEntry {
   readonly name?: string
   readonly status?: string
   readonly description?: string
+  readonly aka?: readonly string[]
 }
 
 interface OpenQuestionRef {
@@ -217,6 +218,17 @@ const conceptEntries = (graph: SemanticGraph): readonly ConceptEntry[] => {
         id,
         'yarramate/concept/description',
       )
+      // Alternative labels (ADR 0076) are matchable, not renderable: they
+      // widen what free-text seeding finds without changing the name any
+      // renderer prints.
+      const aka = graph.claims
+        .filter(
+          (claim) =>
+            claim.subject === id &&
+            claim.predicate === 'yarramate/concept/alias' &&
+            'value' in claim.object,
+        )
+        .map((claim) => ('value' in claim.object ? claim.object.value : ''))
       return {
         id,
         kind:
@@ -224,6 +236,7 @@ const conceptEntries = (graph: SemanticGraph): readonly ConceptEntry[] => {
         ...(name === undefined ? {} : { name }),
         ...(status === undefined ? {} : { status }),
         ...(description === undefined ? {} : { description }),
+        ...(aka.length === 0 ? {} : { aka }),
       }
     })
     .sort((left, right) => left.id.localeCompare(right.id))
@@ -238,9 +251,15 @@ interface SeedResolution {
 }
 
 // Free text is the default addressing mode: terms match concept ids,
-// names, and descriptions; matching concepts seed the slice. Exact
-// subject ids short-circuit to precise addressing — the seeding finds
-// what an explicit --subject flag would have named.
+// names, alternative labels, and descriptions; matching concepts seed the
+// slice. Exact subject ids short-circuit to precise addressing: the
+// seeding finds what an explicit --subject flag would have named.
+//
+// Aliases join the same flat haystack the id, name, and description
+// already share, so they score at equal weight (ADR 0076). Weighting only
+// aliases would be the one graded field in an otherwise ungraded match,
+// and the whole point of recording the team's actual word for a subject is
+// that it should find it.
 const resolveSeeds = (
   terms: readonly string[],
   entries: readonly ConceptEntry[],
@@ -261,7 +280,7 @@ const resolveSeeds = (
   const scored = entries
     .map((entry) => {
       const text =
-        `${entry.id} ${entry.name ?? ''} ${entry.description ?? ''}`.toLowerCase()
+        `${entry.id} ${entry.name ?? ''} ${(entry.aka ?? []).join(' ')} ${entry.description ?? ''}`.toLowerCase()
       return {
         id: entry.id,
         score: lowered.filter((term) => text.includes(term)).length,

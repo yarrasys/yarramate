@@ -162,8 +162,8 @@ others; graphify analogues: `--wiki` / `--svg` / `--neo4j`.
 
 ## Adequacy: how "filled" becomes "filled adequately"
 
-Two mechanisms, layered, both deterministic (decision 2026-07-31),
-living inside `design`'s internal catalogue:
+Three mechanisms, layered, all deterministic (decision 2026-07-31,
+extended 2026-08-05), living inside `design`'s internal catalogue:
 
 1. **Linkage-depth conditions** — a question stays open until the
    blank's *neighbourhood* exists: a goal needs a realizing element, a
@@ -177,8 +177,30 @@ living inside `design`'s internal catalogue:
    Content thinness caught by explicit, auditable sign-off — the engine
    still never reads words.
 
+3. **Distinctness claims**: the same pattern applied to identity
+   (ADR 0077). The `near-duplicate` condition opens a hygiene question
+   when two subjects of one kind resemble each other closely enough to be
+   the same thing under two names. This is not the engine judging a name:
+   it compares two strings under a stated normalization, deterministically
+   and with no model involved. A false positive is dismissed by recording
+   a `distinctFrom` reference, which is itself a claim, so the answer
+   lives in the model, is read symmetrically from either side of the pair,
+   and survives re-running the interview.
+
 Text heuristics (length, name-mention) were considered and rejected:
 they erode the wiring-not-words boundary for little gain.
+
+## Naming a subject more than one way
+
+Concepts carry an optional `aka` list of alternative labels (ADR 0076),
+compiled to `yarramate/concept/alias` claims. A harness should record the
+words a team actually uses for a subject, including abbreviations, legacy
+names, and codenames: `ask` free-text seeding matches them at the same
+weight as the name, so the team's own vocabulary addresses the model.
+Renderers keep printing the preferred `name` only, so aliases cost no
+context budget in a brief. Aliases also feed near-duplicate detection
+directly, because a genuine duplicate very often reuses the other
+subject's alias.
 
 ## Migration map (0.7.0 clean break — EXECUTED, ADR 0061)
 
@@ -248,3 +270,11 @@ vocabulary as a read.
 - Catalogue versioning: SETTLED (ADR 0063, with the 0.4 waves) —
   honest reopen, `since` delta annotations, semver discipline (minor
   is additive), no pinning.
+- Alternative labels: SETTLED (ADR 0076): an optional `aka` list
+  compiling to `yarramate/concept/alias` claims, matched by `ask`
+  seeding at the same weight as the name, never rendered. Hidden labels
+  and relationship aliases deliberately deferred; both stay additive.
+- Near-duplicate subjects: SETTLED (ADR 0077): the `near-duplicate`
+  catalogue condition, deterministic and lexical, never a `check`
+  error. A dismissal is a `distinctFrom` claim, read symmetrically, so
+  it survives re-running the interview.

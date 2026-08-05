@@ -41,8 +41,10 @@ interface NativeConcept {
   readonly kind: string
   readonly name: string
   readonly description?: string
+  readonly aka?: readonly string[]
   readonly status?: 'planned' | 'current' | 'retired'
   readonly owner?: string
+  readonly distinctFrom?: readonly string[]
   readonly constraints?: ReadonlyArray<{
     readonly id: string
     readonly ref: string
@@ -198,6 +200,16 @@ const compareById = <T extends { readonly id: string }>(left: T, right: T) =>
 
 const presenceClaimId = (subject: string, state: string) =>
   `${subject}~present-in-${Buffer.from(state, 'utf8').toString('hex')}`
+
+// Alternative labels and distinctness records are unordered sets, not
+// authored lists with ids. Hex-encoding the value the way presence
+// encodes its state keeps the claim id derived from content rather than
+// position, so reordering the YAML leaves the graph byte-identical.
+const aliasClaimId = (subject: string, alias: string) =>
+  `${subject}~alias-${Buffer.from(alias, 'utf8').toString('hex')}`
+
+const distinctFromClaimId = (subject: string, other: string) =>
+  `${subject}~distinct-from-${Buffer.from(other, 'utf8').toString('hex')}`
 
 const describeAspect = (aspect: (typeof conceptKinds)[number]['aspect']) =>
   aspect.replace('-', ' ')
@@ -919,6 +931,41 @@ function compileWorkspaceResolved(
           column: source.column,
         })
       }
+      for (const [distinctIndex, other] of (
+        concept.distinctFrom ?? []
+      ).entries()) {
+        const pointer = `/concepts/${index}/distinctFrom/${distinctIndex}`
+        const otherIdentity = qualifyReference(value.id, other)
+        if (!conceptByQualifiedId.has(otherIdentity)) {
+          const source = location(
+            ['concepts', index, 'distinctFrom', distinctIndex],
+            pointer,
+          )
+          diagnostics.push({
+            severity: 'error',
+            code: 'YM310',
+            message: `Unresolved distinct-from reference "${other}"`,
+            path: input.path,
+            pointer,
+            line: source.line,
+            column: source.column,
+          })
+        } else if (otherIdentity === `${value.id}#${concept.id}`) {
+          const source = location(
+            ['concepts', index, 'distinctFrom', distinctIndex],
+            pointer,
+          )
+          diagnostics.push({
+            severity: 'error',
+            code: 'YM311',
+            message: `Concept "${concept.id}" declares itself distinct from itself`,
+            path: input.path,
+            pointer,
+            line: source.line,
+            column: source.column,
+          })
+        }
+      }
       const seenConstraintIds = new Set<string>()
       for (const [constraintIndex, constraint] of (
         concept.constraints ?? []
@@ -1305,6 +1352,22 @@ function compileWorkspaceResolved(
           ),
         })
       }
+      // An alternative label is a matchable name, never a rendered one
+      // (ADR 0076): one value claim each, so a consumer that does not know
+      // the predicate keeps reading the preferred name correctly.
+      for (const [akaIndex, alias] of (concept.aka ?? []).entries()) {
+        claims.push({
+          id: aliasClaimId(subject, alias),
+          subject,
+          predicate: 'yarramate/concept/alias',
+          object: { value: alias },
+          origin: 'declared',
+          source: location(
+            ['concepts', index, 'aka', akaIndex],
+            `/concepts/${index}/aka/${akaIndex}`,
+          ),
+        })
+      }
       if (concept.status !== undefined) {
         claims.push({
           id: `${subject}~status`,
@@ -1315,6 +1378,25 @@ function compileWorkspaceResolved(
           source: location(
             ['concepts', index, 'status'],
             `/concepts/${index}/status`,
+          ),
+        })
+      }
+      // A distinctness record is a human's dismissal of a near-duplicate
+      // question (ADR 0077), stored the way an attestation is: the claim's
+      // existence is the whole signal, and revocation is deletion.
+      for (const [distinctIndex, other] of (
+        concept.distinctFrom ?? []
+      ).entries()) {
+        const otherIdentity = qualifyReference(value.id, other)
+        claims.push({
+          id: distinctFromClaimId(subject, otherIdentity),
+          subject,
+          predicate: 'yarramate/identity/distinct-from',
+          object: { ref: otherIdentity },
+          origin: 'declared',
+          source: location(
+            ['concepts', index, 'distinctFrom', distinctIndex],
+            `/concepts/${index}/distinctFrom/${distinctIndex}`,
           ),
         })
       }

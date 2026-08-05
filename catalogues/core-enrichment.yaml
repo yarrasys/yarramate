@@ -1,6 +1,6 @@
 format: yarramate/question-catalogue/v1
 id: core-enrichment
-version: "0.6"
+version: "0.7"
 profile: yarramate/core@0.1
 presentation:
   title: Core enrichment interview
@@ -1027,6 +1027,37 @@ questions:
     resolution: >-
       Add a lifecycle status claim; planned subjects should also appear in a
       target architecture state where states are used.
+
+  - id: subjects-near-duplicate
+    wave: hygiene
+    since: "0.7"
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#capability
+        - yarramate/core@0.1#businessService
+        - yarramate/core@0.1#applicationService
+        - yarramate/core@0.1#applicationComponent
+        - yarramate/core@0.1#businessActor
+        - yarramate/core@0.1#dataObject
+        - yarramate/core@0.1#businessObject
+    trigger:
+      - condition: near-duplicate
+    question: >-
+      {subject.name} closely resembles {counterparts}. Is this one subject
+      recorded twice, or are they genuinely different things?
+    materiality: >-
+      Identity is the first thing the model promises: one subject, one name,
+      one place to change it. Two records for one thing silently fork every
+      decision made about it, and both halves still pass check.
+    authority: human
+    resolution: >-
+      If they are the same subject, keep one and delete or retire the other,
+      moving its relationships across, and record the discarded name in the
+      survivor's aka list so the old word still finds it. If they are
+      genuinely different, say so in the model: add the counterpart's id to
+      this subject's distinctFrom list. That answer is itself a claim, so it
+      closes the question permanently and survives re-running the interview.
 
   - id: states-undefined
     wave: hygiene

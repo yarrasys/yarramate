@@ -53,6 +53,43 @@ reference. It compiles to a stable `~owner` claim with predicate
 `yarramate/ownership/owner`. The claim expresses accountable stewardship,
 not approval authority or workflow. Core checks only that the subject exists.
 
+A concept may record the other names it is known by:
+
+```yaml
+concepts:
+  - id: order-gateway
+    kind: applicationComponent
+    name: Order Gateway
+    aka:
+      - OG
+      - the gateway
+```
+
+Each entry compiles to a `yarramate/concept/alias` value claim whose ID
+derives from the alias text, so reordering the list leaves the canonical
+graph byte-identical. Alternative labels are matchable, never renderable
+(ADR 0076): free-text seeding in `ask` matches them at the same weight as
+the name, and every renderer keeps printing the preferred `name` alone.
+
+A concept may also record that it has been judged genuinely different from
+another subject it resembles:
+
+```yaml
+concepts:
+  - id: order-gateway
+    kind: applicationComponent
+    name: Order Gateway
+    distinctFrom:
+      - orders-service
+```
+
+This compiles to a `yarramate/identity/distinct-from` reference claim and
+permanently closes the `subjects-near-duplicate` hygiene question for that
+pair (ADR 0077). It is read symmetrically, so one entry settles the pair
+from either side, and it survives re-running the interview because it is
+part of the model rather than session state. `YM310` reports an unresolved
+reference and `YM311` a subject declared distinct from itself.
+
 A concept may require multiple explicitly identified constraints:
 
 ```yaml
@@ -285,7 +322,7 @@ and one-based line and column.
 | --- | --- | --- |
 | `YM1xx` | YAML parsing | `YM101` malformed YAML |
 | `YM2xx` | Document structure | `YM201` JSON Schema violation |
-| `YM3xx` | Identity and references | `YM301` duplicate local ID; `YM302` unresolved concept reference; `YM303` duplicate document ID; `YM304` unresolved owner; `YM305` unresolved constraint; `YM306` duplicate constraint ID; `YM307` unresolved architecture state; `YM308` unresolved subject reference; `YM309` duplicate reference ID |
+| `YM3xx` | Identity and references | `YM301` duplicate local ID; `YM302` unresolved concept reference; `YM303` duplicate document ID; `YM304` unresolved owner; `YM305` unresolved constraint; `YM306` duplicate constraint ID; `YM307` unresolved architecture state; `YM308` unresolved subject reference; `YM309` duplicate reference ID; `YM310` unresolved distinct-from reference; `YM311` self-referential distinct-from |
 | `YM4xx` | Profile conformance | `YM401` unknown concept kind; `YM402` unknown relationship kind; `YM403` unavailable profile; `YM404` incompatible endpoint; `YM405` misplaced controlled field; `YM406` unavailable parent profile; `YM407`/`YM408` unavailable semantic parent; `YM409`/`YM410` inherited-name collision; `YM411` duplicate profile; `YM412` broadened constraint; `YM413` rigid kind specializing an anti-rigid one |
 | `YM5xx` | Claim consistency | `YM501` competing whole-part claims; `YM502` cyclic state ordering; `YM503` relationship present without an endpoint |
 | `YM6xx` | Adapter mapping integrity | `YM601` unknown native subject; `YM602` subject type mismatch; `YM603` duplicate native mapping; `YM604` duplicate external mapping; `YM605` duplicate versioned mapping |
@@ -366,7 +403,8 @@ The operations are `add-concept`, `add-relationship`, `update-concept`,
 `update-relationship`, `delete-concept`, and `delete-relationship`. Concept
 and relationship records accept the same
 optional fields as the authoring format — for example `status`,
-`description`, `owner`, `constraints`, `references`, `presentIn`, and the
+`description`, `aka`, `owner`, `distinctFrom`, `constraints`,
+`references`, `presentIn`, and the
 controlled `mode` and `content` fields. `apply` writes by splicing minimal
 text edits into the authored source, so bytes an operation never touched —
 including folded prose and comments — stay byte-identical (ADR 0062). It

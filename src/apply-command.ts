@@ -50,8 +50,10 @@ interface ConceptFields {
   readonly kind?: string
   readonly name?: string
   readonly description?: string
+  readonly aka?: readonly string[]
   readonly status?: string
   readonly owner?: string
+  readonly distinctFrom?: readonly string[]
   readonly constraints?: readonly ConstraintReference[]
   readonly references?: readonly IdentifiedReference[]
   readonly presentIn?: readonly string[]
@@ -111,7 +113,7 @@ interface OperationsDocument {
 // An answer enriches what is there and may explicitly take back what it
 // asserted — it never silently shrinks anything.
 const SCALAR_CONCEPT_FIELDS = ['kind', 'name', 'description', 'status', 'owner'] as const
-const LIST_CONCEPT_FIELDS = ['constraints', 'references', 'presentIn', 'attestations'] as const
+const LIST_CONCEPT_FIELDS = ['aka', 'constraints', 'references', 'presentIn', 'attestations', 'distinctFrom'] as const
 const SCALAR_RELATIONSHIP_FIELDS = ['kind', 'from', 'to', 'name', 'description', 'status', 'mode', 'content'] as const
 const LIST_RELATIONSHIP_FIELDS = ['references', 'presentIn'] as const
 
