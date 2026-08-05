@@ -143,7 +143,8 @@ others; graphify analogues: `--wiki` / `--svg` / `--neo4j`.
 - `export briefs <projection>` — the handoff bundle: one brief per
   slice for N implementers (the spec-build family's `handoff/`).
 - `export markdown <projection>` — human-readable document (today's
-  `view`).
+  `view`). Retired goals, outcomes, and requirements in the result
+  render under a Non-goals heading (ADR 0073), as they do in briefs.
 - `export likec4` — visualization project (today's adapter surface;
   the adapter binary remains the implementation).
 - Harness use: handoff preparation, CI artifact generation,

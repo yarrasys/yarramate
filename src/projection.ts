@@ -1,4 +1,5 @@
 import Ajv2020Module from 'ajv/dist/2020.js'
+import { isDeclaredNonGoal } from './brief.js'
 import type {
   Diagnostic,
   GraphClaim,
@@ -335,7 +336,10 @@ export function evaluateProjection(
 const markdownText = (value: string) =>
   value.replaceAll('\n', ' ').replaceAll('`', '\\`')
 
-export function renderProjectionMarkdown(result: ProjectionResult): string {
+export function renderProjectionMarkdown(
+  result: ProjectionResult,
+  profileContext?: ResolvedProfileContext,
+): string {
   const title = result.presentation?.title ?? result.projection
   const concepts = result.subjects.filter(({ type }) => type === 'concept')
   const relationships = result.subjects.filter(
@@ -373,6 +377,36 @@ export function renderProjectionMarkdown(result: ProjectionResult): string {
     if (claim !== undefined && 'ref' in claim.object) {
       lines.push(
         `- \`${claim.subject}\` — \`${claim.predicate}\` → \`${claim.object.ref}\` (\`${relationship.id}\`)`,
+      )
+    }
+  }
+
+  // First-class non-goals (ADR 0073): retired goals, outcomes, and
+  // requirements in the result are declared decisions, not history to
+  // bury. They stay in the Concepts inventory above (relationship
+  // endpoints must resolve there) and are restated here with their
+  // rationale. Subjects a projection's excludeStatuses dropped never
+  // reach this renderer, so exclusion still wins.
+  const nonGoals = concepts.filter(({ id }) =>
+    isDeclaredNonGoal(
+      claimValue(result.claims, id, 'yarramate/concept/kind'),
+      claimValue(result.claims, id, 'yarramate/lifecycle/status'),
+      profileContext?.conceptKindLineages,
+    ),
+  )
+  if (nonGoals.length > 0) {
+    lines.push('', '## Non-goals', '')
+    for (const concept of nonGoals) {
+      const name =
+        claimValue(result.claims, concept.id, 'yarramate/concept/name') ??
+        concept.id
+      const description = claimValue(
+        result.claims,
+        concept.id,
+        'yarramate/concept/description',
+      )
+      lines.push(
+        `- ${markdownText(name)} (\`${concept.id}\`)${description === undefined ? '' : ` — ${markdownText(description)}`}`,
       )
     }
   }

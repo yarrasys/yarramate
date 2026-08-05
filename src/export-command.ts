@@ -290,7 +290,10 @@ export function runExportCommand(
     }
 
     if (kind === 'markdown') {
-      const rendered = renderProjectionMarkdown(result)
+      const rendered = renderProjectionMarkdown(
+        result,
+        compilation.profileContext,
+      )
       if (parsed.out === undefined) {
         return { exitCode: 0, stdout: rendered, stderr: '' }
       }
