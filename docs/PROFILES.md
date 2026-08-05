@@ -77,3 +77,69 @@ Profiles define semantic vocabulary and deterministic constraints. They do not
 define adapter layout, organizational approval workflow, completeness taste,
 or external-language compatibility unless they are separately governed for
 that purpose.
+
+## Conservative extension
+
+Profiles are the extension point offered to users, so the safety property that
+makes extension sound is stated here rather than left to be discovered.
+
+> **Loading a profile extension adds subjects. It never changes verdicts.**
+>
+> Let `W` be a workspace and let `E` be an extension: one or more profile
+> documents that no document in `W` selects, together with any documents that
+> select them. Then for every subject present in `W`, every diagnostic,
+> catalogue evaluation, and projection result concerning that subject is the
+> same in `W` and in `W + E`. Loading `E` may add outcomes concerning the
+> subjects `E` itself introduces. It may change no outcome concerning a
+> subject that was already there.
+
+The prior art is the standard ontology-modularization criterion: a module is a
+conservative extension when it adds nothing about the original vocabulary.
+Everything the base said about base terms still holds, and nothing new about
+base terms becomes derivable. That is what lets someone import a module
+without auditing it.
+
+### Why the naive phrasing is wrong
+
+"A query about core kinds returns the same answer" is false here, and it is
+false by design. A core-kind selector with `kindMatching: descendants` returns
+more subjects once an extension exists: `yarramate/core@0.1#applicationComponent`
+matches an extension's `microservice`, which is exactly what ADR 0029 built it
+to do, and catalogue conditions resolve through lineage by default for the
+same reason. If the property forbade that, the property would be wrong rather
+than the behaviour.
+
+It survives because it is quantified over subjects, not over queries. The
+extra matches are subjects the extension brought with it. Nothing that was in
+the answer has left it, and nothing that was already in the model has changed
+kind, status, lineage, or diagnosis. An extension may enlarge the domain. It
+may not revise the domain it enlarged.
+
+### The testable form
+
+When `E` introduces no documents, a profile loaded but never selected, it adds
+no subjects at all. The property then collapses to exact output identity, and
+that is what `test/conservative-extension.test.ts` asserts: a core-only
+workspace compiles to a byte-identical graph, byte-identical diagnostics,
+byte-identical catalogue evaluation, and byte-identical projection results
+with and without an unrelated extension loaded. A fifth case covers the
+widening, asserting both that the answer grows and that every arrival is a
+subject the extension document introduced.
+
+This is a test discipline rather than a mechanical check. A general proof over
+every future feature would be out of proportion to a property that currently
+holds by construction.
+
+### What it rules out
+
+Any future profile feature that lets an extension restate, re-parent,
+re-annotate, or constrain a kind it did not declare would violate this, and
+would therefore need to be a deliberate decision with this section rewritten,
+not a discovered consequence. Today no such feature exists: an extension may
+only add kinds, and may only narrow constraints on the kinds it adds.
+
+The rigidity annotation (ADR 0078) sits on the right side of this line for
+extensions, since a profile may only annotate kinds it declares. Annotating
+the core profile's own kinds is a different matter, and it is honestly not
+conservative: it adds a fact about core vocabulary. That is why it was done in
+core, with a compatibility argument, rather than through a profile (ADR 0079).
