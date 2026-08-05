@@ -39,6 +39,12 @@ verbatim. It is an ordinary value claim in the existing envelope: no new
 field, no new structure, and a consumer that does not know the predicate keeps
 reading the graph correctly.
 
+Alternative labels emit one `yarramate/concept/alias` value claim each, and
+a recorded distinctness judgment emits one `yarramate/identity/distinct-from`
+reference claim. Both are ordinary claims in the existing envelope: no new
+field and no new structure, so a consumer that does not know either
+predicate keeps reading the graph, and the preferred name, correctly.
+
 Concept and relationship descriptions use
 `yarramate/concept/description` and
 `yarramate/relationship/description`. Identified citations use
@@ -130,6 +136,7 @@ Core claim predicates:
 | `yarramate/concept/kind` | value | Globally qualified kind of a concept |
 | `yarramate/concept/name` | value | Display name |
 | `yarramate/concept/description` | value | Narrative meaning claim |
+| `yarramate/concept/alias` | value | Alternative label, matchable but never rendered |
 | `yarramate/relationship/name` | value | Display name |
 | `yarramate/relationship/description` | value | Narrative meaning claim |
 | `yarramate/lifecycle/status` | value | `planned`, `current`, or `retired` |
@@ -137,6 +144,7 @@ Core claim predicates:
 | `yarramate/constraint/requires` | ref | Binding constraint subject |
 | `yarramate/constraint/expects` | value | Expected observation as `<provider> <key> <expected value>` |
 | `yarramate/reference/refers-to` | ref | Identified citation to any subject |
+| `yarramate/identity/distinct-from` | ref | Recorded judgment that a resembling subject is a different thing |
 | `yarramate/access/mode` | value | Access mode of an access relationship |
 | `yarramate/flow/content` | value | Transferred content of a flow |
 | `yarramate/state/type` | value | `baseline`, `transition`, or `target` |

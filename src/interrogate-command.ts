@@ -10,6 +10,7 @@ import {
   loadSourceDocument,
   locateSourcePath,
 } from './source-document.js'
+import { nearDuplicateIndex } from './subject-identity.js'
 import catalogueSchema from '../schema/yarramate-question-catalogue.schema.json' with {
   type: 'json',
 }
@@ -53,6 +54,7 @@ type CatalogueCondition =
       readonly direction: 'incoming' | 'outgoing'
     }
   | { readonly condition: 'missing-attestation'; readonly topic: string }
+  | { readonly condition: 'near-duplicate' }
 
 export interface CatalogueQuestion {
   readonly id: string
@@ -128,6 +130,9 @@ interface GraphIndex {
   readonly nameOf: ReadonlyMap<string, string>
   readonly statusOf: ReadonlyMap<string, string>
   readonly hasStates: boolean
+  // Memoized: pairwise identity comparison costs nothing for a catalogue
+  // that never asks about it, so it is only paid on first use.
+  readonly nearDuplicates: () => ReadonlyMap<string, readonly string[]>
 }
 
 const indexGraph = (graph: SemanticGraph): GraphIndex => {
@@ -147,6 +152,9 @@ const indexGraph = (graph: SemanticGraph): GraphIndex => {
   const statusOf = new Map<string, string>()
   const relationshipClaims: GraphClaim[] = []
   const referenceClaims: GraphClaim[] = []
+  const aliasesOf = new Map<string, string[]>()
+  const ownerOf = new Map<string, string>()
+  const distinctFromOf = new Map<string, Set<string>>()
   for (const claim of graph.claims) {
     const forSubject = claimsBySubject.get(claim.subject)
     if (forSubject === undefined) {
@@ -159,6 +167,18 @@ const indexGraph = (graph: SemanticGraph): GraphIndex => {
     } else if ('ref' in claim.object) {
       referenceClaims.push(claim)
     }
+    if ('ref' in claim.object) {
+      if (claim.predicate === 'yarramate/ownership/owner') {
+        ownerOf.set(claim.subject, claim.object.ref)
+      } else if (claim.predicate === 'yarramate/identity/distinct-from') {
+        const existing = distinctFromOf.get(claim.subject)
+        if (existing === undefined) {
+          distinctFromOf.set(claim.subject, new Set([claim.object.ref]))
+        } else {
+          existing.add(claim.object.ref)
+        }
+      }
+    }
     if ('value' in claim.object) {
       if (claim.predicate === 'yarramate/concept/kind') {
         kindOf.set(claim.subject, claim.object.value)
@@ -166,6 +186,10 @@ const indexGraph = (graph: SemanticGraph): GraphIndex => {
         nameOf.set(claim.subject, claim.object.value)
       } else if (claim.predicate === 'yarramate/lifecycle/status') {
         statusOf.set(claim.subject, claim.object.value)
+      } else if (claim.predicate === 'yarramate/concept/alias') {
+        const existing = aliasesOf.get(claim.subject)
+        if (existing === undefined) aliasesOf.set(claim.subject, [claim.object.value])
+        else existing.push(claim.object.value)
       }
     }
   }
@@ -184,6 +208,42 @@ const indexGraph = (graph: SemanticGraph): GraphIndex => {
       )
       .map(({ id }) => id),
   )
+  let pairs: ReadonlyMap<string, readonly string[]> | undefined
+  const nearDuplicates = (): ReadonlyMap<string, readonly string[]> => {
+    if (pairs !== undefined) return pairs
+    const neighboursOf = new Map<string, Set<string>>()
+    const link = (from: string, to: string) => {
+      const existing = neighboursOf.get(from)
+      if (existing === undefined) neighboursOf.set(from, new Set([to]))
+      else existing.add(to)
+    }
+    for (const claim of relationshipClaims) {
+      if (!('ref' in claim.object)) continue
+      link(claim.subject, claim.object.ref)
+      link(claim.object.ref, claim.subject)
+    }
+    pairs = nearDuplicateIndex(
+      [...concepts].map((id) => {
+        const owner = ownerOf.get(id)
+        return {
+          id,
+          kind: kindOf.get(id) ?? 'unknown',
+          // The local id is a label in its own right: an agent that named a
+          // subject `order-gateway` and gave it the display name "Gateway"
+          // still declared "order gateway" about it.
+          labels: [
+            id.slice(id.indexOf('#') + 1),
+            ...(nameOf.get(id) === undefined ? [] : [nameOf.get(id)!]),
+            ...(aliasesOf.get(id) ?? []),
+          ],
+          ...(owner === undefined ? {} : { owner }),
+          neighbours: neighboursOf.get(id) ?? new Set<string>(),
+          distinctFrom: distinctFromOf.get(id) ?? new Set<string>(),
+        }
+      }),
+    )
+    return pairs
+  }
   return {
     concepts,
     claimsBySubject,
@@ -193,6 +253,7 @@ const indexGraph = (graph: SemanticGraph): GraphIndex => {
     nameOf,
     statusOf,
     hasStates: stateSubjects.size > 0,
+    nearDuplicates,
   }
 }
 
@@ -355,20 +416,53 @@ const conditionHolds = (
         ({ predicate }) =>
           predicate === `yarramate/attestation/${condition.topic}`,
       )
+    case 'near-duplicate':
+      // A recorded distinctness judgment removes the pair upstream, in the
+      // index, so this reads exactly like every other condition: the claim's
+      // existence is the whole signal (ADR 0056).
+      return (index.nearDuplicates().get(subjectId!) ?? []).length > 0
   }
 }
 
 // Shared with design: question templates (standard and askPlain alike)
-// interpolate the same two subject placeholders.
+// interpolate the same subject placeholders.
+//
+// `{counterparts}` is the one placeholder that names other subjects. A
+// finding still references exactly one subject, because openSubject is a
+// closed shape shared by three report contracts and widening all of them
+// for one question would be disproportionate. Naming the counterpart by
+// qualified id inside the rendered question keeps the answer actionable
+// anyway: that id is literally the value the answer writes back into
+// distinctFrom.
 export const renderQuestion = (
   template: string,
   subjectId: string,
   subjectName: string | undefined,
+  counterparts?: readonly string[],
 ): string =>
   template
     .trim()
     .replaceAll('{subject.name}', subjectName ?? subjectId)
     .replaceAll('{subject.id}', subjectId)
+    .replaceAll('{counterparts}', (counterparts ?? []).join(', '))
+
+// Only the pairwise condition has counterparts to name, so nothing is
+// computed for the other thirty-eight questions.
+const describeCounterparts = (
+  index: GraphIndex,
+  question: CatalogueQuestion,
+  subjectId: string,
+): readonly string[] | undefined => {
+  if (
+    !question.trigger.some(({ condition }) => condition === 'near-duplicate')
+  ) {
+    return undefined
+  }
+  return (index.nearDuplicates().get(subjectId) ?? []).map((id) => {
+    const name = index.nameOf.get(id)
+    return name === undefined ? id : `${name} (${id})`
+  })
+}
 
 export function evaluateCatalogue(
   catalogue: QuestionCatalogue,
@@ -425,7 +519,12 @@ export function evaluateCatalogue(
             return {
               id,
               ...(name === undefined ? {} : { name }),
-              question: renderQuestion(question.question, id, name),
+              question: renderQuestion(
+                question.question,
+                id,
+                name,
+                describeCounterparts(index, question, id),
+              ),
             }
           }),
         }

@@ -786,6 +786,13 @@
         },
         "description": {
           "type": "string"
+        },
+        "aka": {
+          "description": "Alternative labels this subject is also known by. Free-text seeding matches them at the same weight as the name; renderers show the preferred name only.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "additionalProperties": false

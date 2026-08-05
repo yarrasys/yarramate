@@ -406,6 +406,8 @@ concepts:
     name: Multi-view generated LikeC4 project marker JSON Schema
     description: Normative marker structure guarding multi-view generated LikeC4 projects.
     status: current
+    distinctFrom:
+      - likec4-generated-project-schema
   - id: likec4-kind-mapping
     kind: dataObject
     owner: yarramate-product#yarramate-maintainers

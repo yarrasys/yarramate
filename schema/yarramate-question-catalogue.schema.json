@@ -333,6 +333,19 @@
               "pattern": "^[a-z][a-z0-9-]*$"
             }
           }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "The subject resembles another subject of the same kind closely enough to be the same thing under two names, and no yarramate/identity/distinct-from claim dismisses the pair. Deterministic and lexical; the algorithm and thresholds are stated in ADR 0077. Questions using it may interpolate {counterparts}.",
+          "required": [
+            "condition"
+          ],
+          "properties": {
+            "condition": {
+              "const": "near-duplicate"
+            }
+          }
         }
       ]
     },
