@@ -61,6 +61,7 @@ export interface CatalogueQuestion {
   readonly subjects?: CatalogueSelector
   readonly trigger: readonly CatalogueCondition[]
   readonly question: string
+  readonly askPlain?: string
   readonly materiality: string
   readonly resolution: string
   readonly authority: 'human' | 'agent' | 'either'
@@ -357,7 +358,9 @@ const conditionHolds = (
   }
 }
 
-const renderQuestion = (
+// Shared with design: question templates (standard and askPlain alike)
+// interpolate the same two subject placeholders.
+export const renderQuestion = (
   template: string,
   subjectId: string,
   subjectName: string | undefined,

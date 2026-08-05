@@ -53,6 +53,9 @@ questions:
           - yarramate/core@0.1#outcome
     question: >-
       What outcome justifies this system's existence?
+    askPlain: >-
+      What would success look like for this system? What should be
+      different in the business because it exists?
     materiality: >-
       Without a declared goal or outcome, no alternative can be selected or
       rejected on grounds anyone can review; every later trade-off becomes
@@ -73,6 +76,9 @@ questions:
           - yarramate/core@0.1#driver
     question: >-
       Which stakeholders and drivers shape this architecture?
+    askPlain: >-
+      Who cares about this system, and what outside pressures are
+      pushing on it: customers, regulators, costs, deadlines?
     materiality: >-
       Drivers decide which qualities dominate when requirements conflict;
       unstated drivers get re-litigated in every review.
@@ -92,6 +98,9 @@ questions:
           - yarramate/core@0.1#requirement
     question: >-
       Which constraints and requirements are non-negotiable?
+    askPlain: >-
+      What are the hard rules here? Is there anything we absolutely
+      must do, or must never do, no matter which option we pick?
     materiality: >-
       Non-negotiable constraints eliminate alternatives outright; discovering
       them after design selection invalidates the selection.
@@ -116,6 +125,9 @@ questions:
     question: >-
       Nothing realizes {subject.name}. What fulfils it — or is it
       aspirational?
+    askPlain: >-
+      Nothing in the plan currently delivers "{subject.name}". What is
+      going to get us there? Or is it more of an aspiration for now?
     materiality: >-
       An unrealized goal either reprioritizes the roadmap or should be
       declared aspirational so it stops steering design.
@@ -149,6 +161,9 @@ questions:
           - yarramate/core@0.1#stakeholder
     question: >-
       What pressure produces {subject.name}?
+    askPlain: >-
+      Why is "{subject.name}" a goal at all? Who or what is pushing
+      for it?
     materiality: >-
       A goal with no driver behind it cannot be reprioritized when the
       environment changes; it floats free of the forces that would retire
@@ -172,6 +187,9 @@ questions:
         direction: outgoing
     question: >-
       What does {subject.name} actually push on?
+    askPlain: >-
+      We say "{subject.name}" matters. What would we decide differently
+      because of it? If nothing, does it belong in this conversation?
     materiality: >-
       A driver that influences nothing cannot participate in any trade-off;
       it is context theatre until it points at a goal or principle.
@@ -195,6 +213,9 @@ questions:
         direction: any
     question: >-
       What does {subject.name} care about here?
+    askPlain: >-
+      What does {subject.name} actually care about in all this? What
+      would make them push back, and what would make them happy?
     materiality: >-
       A stakeholder with no stated concern cannot veto or endorse anything;
       their objections will arrive as surprises at review time.
@@ -218,6 +239,9 @@ questions:
     question: >-
       Nothing realizes {subject.name}. What will fulfil it — or is it
       out of scope?
+    askPlain: >-
+      Who or what is going to make "{subject.name}" happen? Or should
+      we agree to drop it?
     materiality: >-
       An unrealized requirement is either unplanned work hiding in plain
       sight or scope that should be explicitly declined; both change the
@@ -248,6 +272,9 @@ questions:
         direction: any
     question: >-
       Where does {subject.name} bite?
+    askPlain: >-
+      Where does the principle "{subject.name}" actually change how we
+      work? Can you point to a decision it has shaped, or would shape?
     materiality: >-
       A principle applied nowhere constrains nothing; naming what it
       influences is what makes it enforceable in review.
@@ -267,6 +294,9 @@ questions:
       - condition: isolated
     question: >-
       What does the finding {subject.name} bear on?
+    askPlain: >-
+      We recorded the finding "{subject.name}". What does it actually
+      tell us, and what should change because of it?
     materiality: >-
       An assessment that touches nothing changes no decision; link it to
       the driver or goal it evaluates or drop it.
@@ -290,6 +320,9 @@ questions:
     question: >-
       Has an accountable reviewer accepted {subject.name} as adequately
       stated?
+    askPlain: >-
+      Is everyone happy with how "{subject.name}" is written up? Who in
+      this room is willing to put their name on it as correct?
     materiality: >-
       Linkage proves the wiring exists; only a recorded judgment says the
       words are right. Without an attestation, adequacy is nobody's
@@ -317,6 +350,9 @@ questions:
         direction: outgoing
     question: >-
       Who or what consumes {subject.name}?
+    askPlain: >-
+      Who actually uses "{subject.name}"? If we cannot name anyone,
+      why do we offer it?
     materiality: >-
       A service with no consumer is either the system boundary stated
       implicitly, missing model detail, or scope to delete.
@@ -340,6 +376,9 @@ questions:
         predicate: yarramate/ownership/owner
     question: >-
       Who is accountable for {subject.name}?
+    askPlain: >-
+      If something goes wrong with "{subject.name}", whose desk does
+      it land on?
     materiality: >-
       Ownership decides who accepts changes, budgets maintenance, and
       adjudicates constraint conflicts for the subject.
@@ -363,6 +402,9 @@ questions:
         direction: outgoing
     question: >-
       What behavior is {subject.name} actually responsible for?
+    askPlain: >-
+      What does {subject.name} actually do in this picture? What work
+      are they on the hook for day to day?
     materiality: >-
       An actor with no assignment is either decorative or hiding an
       undeclared responsibility boundary.
@@ -387,6 +429,9 @@ questions:
         direction: any
     question: >-
       Which behavior creates and maintains {subject.name}?
+    askPlain: >-
+      Where does "{subject.name}" come from? Who creates it, and who
+      keeps it up to date?
     materiality: >-
       Information nothing accesses cannot be owned, persisted, or exchanged
       correctly; write responsibility determines consistency boundaries.
@@ -407,6 +452,9 @@ questions:
           - yarramate/core@0.1#technologyService
     question: >-
       What does this system offer its environment, and to whom?
+    askPlain: >-
+      In plain terms: what does this system do for people, and who are
+      those people?
     materiality: >-
       Declared services define the solution boundary; without them the model
       cannot say what is inside versus outside.
@@ -435,6 +483,9 @@ questions:
           - yarramate/core@0.1#outcome
     question: >-
       Which requirement or goal does {subject.name} exist to satisfy?
+    askPlain: >-
+      Why do we have "{subject.name}" at all? If we dropped it
+      tomorrow, which goal or promise would suffer?
     materiality: >-
       A service with no motivation link cannot be traded off against
       anything; when budgets tighten nobody can say what breaks if it
@@ -459,6 +510,9 @@ questions:
         direction: incoming
     question: >-
       What starts {subject.name}?
+    askPlain: >-
+      How does "{subject.name}" get kicked off? Does somebody start
+      it, or does something happen that sets it in motion?
     materiality: >-
       A process nothing triggers or performs either runs on an undeclared
       schedule or does not actually happen; both are design facts worth
@@ -490,6 +544,9 @@ questions:
           - yarramate/core@0.1#capability
     question: >-
       What actually delivers {subject.name}?
+    askPlain: >-
+      We promise "{subject.name}". Walk me through how it actually
+      gets delivered today, or how it will be.
     materiality: >-
       A business service with no realizing behavior or application is a
       promise with no mechanism; the gap is where delivery estimates go

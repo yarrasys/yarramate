@@ -111,6 +111,10 @@
               "type": "string",
               "minLength": 1
             },
+            "askPlain": {
+              "type": "string",
+              "minLength": 1
+            },
             "materiality": {
               "type": "string",
               "minLength": 1
