@@ -15,6 +15,7 @@ import {
 import {
   evaluateCatalogue,
   loadQuestionCatalogue,
+  renderQuestion,
   type InterrogationReport,
 } from './interrogate-command.js'
 import { evaluateProjection } from './projection.js'
@@ -38,6 +39,7 @@ interface DesignStep {
   readonly scope: 'workspace' | 'subject'
   readonly authority: 'human' | 'agent' | 'either'
   readonly question: string
+  readonly askPlain?: string
   readonly materiality: string
   readonly resolution: string
   readonly subject?: { readonly id: string; readonly name?: string }
@@ -67,10 +69,12 @@ interface DesignStepResult {
 const selectStep = (
   report: Omit<InterrogationReport, 'workspace'>,
   subjectFilter: string | undefined,
+  askPlainById: ReadonlyMap<string, string>,
 ): DesignStep | null => {
   for (const wave of report.waves) {
     for (const question of wave.questions) {
       if (!question.open) continue
+      const askPlainTemplate = askPlainById.get(question.id)
       if (question.subjects === undefined) {
         if (subjectFilter !== undefined) continue
         return {
@@ -79,6 +83,9 @@ const selectStep = (
           scope: 'workspace',
           authority: question.authority,
           question: question.question,
+          ...(askPlainTemplate === undefined
+            ? {}
+            : { askPlain: askPlainTemplate.trim() }),
           materiality: question.materiality,
           resolution: question.resolution,
           ...(question.since === undefined ? {} : { since: question.since }),
@@ -96,6 +103,9 @@ const selectStep = (
         scope: 'subject',
         authority: question.authority,
         question: first.question,
+        ...(askPlainTemplate === undefined
+          ? {}
+          : { askPlain: renderQuestion(askPlainTemplate, first.id, first.name) }),
         materiality: question.materiality,
         resolution: question.resolution,
         ...(question.since === undefined ? {} : { since: question.since }),
@@ -121,10 +131,16 @@ export function runDesignCommand(
   cwd: string,
 ): CliResult {
   const json = options.includes('--json')
+  // Facilitation is a rendering preference, not an interview mode: the
+  // same step, slice, and envelope, with the plain phrasing preferred in
+  // the human question line when the catalogue provides one.
+  const facilitate = options.includes('--facilitate')
   let subjectFilter: string | undefined
   let cataloguePath: string | undefined
   const rest: string[] = []
-  const withoutJson = options.filter((option) => option !== '--json')
+  const withoutJson = options.filter(
+    (option) => option !== '--json' && option !== '--facilitate',
+  )
   for (let index = 0; index < withoutJson.length; index += 1) {
     const option = withoutJson[index]
     if (option === '--subject' || option === '--catalogue') {
@@ -216,7 +232,14 @@ export function runDesignCommand(
       compilation.graph,
       compilation.profileContext,
     )
-    const step = selectStep(report, subjectFilter)
+    const askPlainById = new Map(
+      loadedCatalogue.catalogue.questions.flatMap((question) =>
+        question.askPlain === undefined
+          ? []
+          : [[question.id, question.askPlain] as const],
+      ),
+    )
+    const step = selectStep(report, subjectFilter, askPlainById)
 
     let slice: string | undefined
     if (step?.subject !== undefined) {
@@ -285,9 +308,15 @@ export function runDesignCommand(
           : `Interview complete for ${subjectFilter}: no open questions touch it.`,
       )
     } else {
+      // --facilitate prefers the workshop phrasing and falls back to the
+      // standard one when a question has none; it never blocks.
+      const asked =
+        facilitate && step.askPlain !== undefined
+          ? step.askPlain
+          : step.question
       lines.push(
         `Q [${step.wave} · ${step.questionId}] (authority: ${step.authority})`,
-        `  ${step.question}`,
+        `  ${asked}`,
         `  Why it matters: ${step.materiality}`,
         `  How to answer: ${step.resolution}`,
       )

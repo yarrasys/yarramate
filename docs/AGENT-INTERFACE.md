@@ -47,6 +47,13 @@ translates it into `apply` operations → re-invoke `design`.
   technology/implementation later) plus adequacy conditions (below).
   `--catalogue <path>` exists only as an override for teams authoring
   their own. Harnesses never pass or read catalogue files.
+- **`--facilitate` speaks the room's language** (ADR 0072). Catalogue
+  questions may carry an optional plain `askPlain` phrasing authored
+  for stakeholder workshops; the flag prefers it in the human question
+  line and falls back to the standard phrasing when a question has
+  none, never blocking. Same step, same slice, same envelope: the JSON
+  step carries `askPlain` additively whenever the catalogue provides
+  one, so `--json` output is identical with or without the flag.
 - Today's `interrogate` demotes to internal machinery; the full
   open-questions report remains reachable as a read (see `ask`).
 - Harness use: greenfield conception from a one-line idea; enrichment

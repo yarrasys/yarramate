@@ -46,7 +46,12 @@ questions. Each question binds:
   that cannot state one is deleted, not softened;
 - an **authority** — `human`, `agent`, or `either` — declaring who may
   answer;
-- a **resolution** hint — how an answer is typically modelled.
+- a **resolution** hint — how an answer is typically modelled;
+- an optional **askPlain** phrasing: the same question in plain
+  workshop language, interpolating the same `{subject.id}` and
+  `{subject.name}` placeholders. `design --facilitate` prefers it and
+  falls back to the standard phrasing when a question has none
+  (ADR 0072).
 
 The engine ships an internal core-enrichment catalogue, seed questions
 across motivation, business, application, and hygiene waves for

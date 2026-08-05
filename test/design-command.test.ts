@@ -212,8 +212,113 @@ questions:
       'main#todo-service',
       'main#user',
     ])
+    // Envelope stability: a catalogue without askPlain yields a step
+    // without the key, exactly as before.
+    expect(payload.step).not.toHaveProperty('askPlain')
     const validate = new Ajv2020({ allErrors: true }).compile(stepSchema)
     expect(validate(payload), JSON.stringify(validate.errors)).toBe(true)
+  })
+
+  it('prefers the plain workshop phrasing under --facilitate', () => {
+    const result = runCli(
+      ['design', 'workspace.yaml', '--facilitate'],
+      workspace,
+    )
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toContain('Q [motivation · outcome-missing]')
+    // The shipped catalogue authors askPlain for the motivation wave.
+    expect(result.stdout).toContain(
+      'What would success look like for this system?',
+    )
+    expect(result.stdout).not.toContain(
+      "What outcome justifies this system's existence?",
+    )
+  })
+
+  it('falls back to the standard phrasing when a question has no askPlain', () => {
+    writeFileSync(
+      join(workspace, 'tiny.yaml'),
+      `format: yarramate/question-catalogue/v1
+id: tiny
+version: "1.0"
+profile: yarramate/core@0.1
+waves:
+  - id: only
+    name: Only
+questions:
+  - id: states-question
+    wave: only
+    scope: workspace
+    trigger:
+      - condition: no-state-defined
+    question: Should states be declared?
+    materiality: States separate current from target intent.
+    authority: human
+    resolution: Declare states or decline them.
+`,
+      'utf8',
+    )
+    const result = runCli(
+      ['design', 'workspace.yaml', '--catalogue', 'tiny.yaml', '--facilitate'],
+      workspace,
+    )
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toContain('Should states be declared?')
+  })
+
+  it('round-trips askPlain through the JSON step with subject interpolation', () => {
+    writeFileSync(
+      join(workspace, 'plain.yaml'),
+      `format: yarramate/question-catalogue/v1
+id: plain
+version: "1.0"
+profile: yarramate/core@0.1
+waves:
+  - id: business
+    name: Business
+questions:
+  - id: owner-missing
+    wave: business
+    scope: subject
+    subjects:
+      kinds:
+        - "yarramate/core@0.1#applicationService"
+    trigger:
+      - condition: missing-claim
+        predicate: yarramate/ownership/owner
+    question: Who is accountable for {subject.name}?
+    askPlain: If something goes wrong with {subject.name}, whose desk does it land on?
+    materiality: Ownership decides who accepts changes.
+    authority: either
+    resolution: Add an owner reference.
+`,
+      'utf8',
+    )
+    // askPlain rides the envelope additively whether or not --facilitate
+    // is passed; the flag is a human-rendering preference only.
+    const result = runCli(
+      ['design', 'workspace.yaml', '--catalogue', 'plain.yaml', '--json'],
+      workspace,
+    )
+    expect(result.exitCode).toBe(0)
+    const payload = JSON.parse(result.stdout) as {
+      step: { question: string; askPlain?: string }
+    }
+    expect(payload.step.question).toBe(
+      'Who is accountable for Todo service?',
+    )
+    expect(payload.step.askPlain).toBe(
+      'If something goes wrong with Todo service, whose desk does it land on?',
+    )
+    const validate = new Ajv2020({ allErrors: true }).compile(stepSchema)
+    expect(validate(payload), JSON.stringify(validate.errors)).toBe(true)
+  })
+
+  it('lists --facilitate in the usage grammar', () => {
+    const result = runCli(['design', '--facilitate'], workspace)
+    expect(result.exitCode).toBe(2)
+    expect(result.stderr).toContain('Usage:')
+    expect(result.stderr).toContain('[--facilitate]')
   })
 
   it('requires an explicit workspace manifest', () => {

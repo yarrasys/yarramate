@@ -377,6 +377,10 @@
           "description": "Human-facing phrasing. Subject-scope questions may interpolate {subject.id} and {subject.name}.",
           "$ref": "#/$defs/nonEmptyText"
         },
+        "askPlain": {
+          "description": "Optional plain-language phrasing of the same question, written to be read aloud in a stakeholder workshop. Interpolates {subject.id} and {subject.name} exactly like question. design --facilitate prefers it; when absent, renderers fall back to question and never block.",
+          "$ref": "#/$defs/nonEmptyText"
+        },
         "materiality": {
           "description": "Which architectural decision the answer changes. A question that cannot state this does not belong in the catalogue.",
           "$ref": "#/$defs/nonEmptyText"
