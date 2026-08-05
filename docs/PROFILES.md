@@ -33,6 +33,50 @@ endpoint constraints and may narrow them with `sourceAspects` or
 Local kind names may not shadow inherited names. Profiles may extend other
 explicit profiles, and resolution is independent of CLI/source order.
 
+## Rigidity
+
+A concept kind may declare one optional meta-property, `rigidity`, borrowed
+from OntoClean:
+
+```yaml
+conceptKinds:
+  - id: microservice
+    name: Microservice
+    parent: yarramate/core@0.1#applicationComponent
+    rigidity: rigid
+```
+
+A kind is `rigid` when being of that kind is essential to every instance: a
+thing IS an application component, and it stops existing before it stops being
+one. A kind is `anti-rigid` when it is essential to no instance: a role is
+played contingently, and the actor playing it survives giving it up. Most
+kinds are neither, so the annotation is optional and an unannotated kind
+constrains nothing in either direction.
+
+One rule follows mechanically, and it is the only one the compiler checks:
+
+> **A rigid kind may not specialize an anti-rigid one.**
+
+Person is not a subclass of Student. If everything of kind X is essentially X,
+and nothing of kind Y is essentially Y, then X cannot be a Y. Violating it is
+`YM413`, a compile error, and the whole lineage is checked rather than the
+immediate parent, because specialization is transitive and an unannotated kind
+in between does not launder the violation.
+
+The core profile annotates five of its own kinds, all `anti-rigid`, and only
+where the ArchiMate-inspired semantics make the answer plain:
+`stakeholder`, `businessRole`, `businessCollaboration`,
+`applicationCollaboration`, and `technologyCollaboration`. Nothing is
+essentially a role or a collaboration; both are held for as long as they are
+held. Core declares no `rigid` kinds: core kinds are lineage roots, so the
+annotation could never fire on them, and each one would be a fresh semantic
+claim about a stable profile bought for nothing.
+
+Rigidity is checked at profile-resolution time and then discarded. It reaches
+no graph, no claim, and no projection, so annotating a kind changes no
+compiled output. Identity and unity, OntoClean's other meta-properties, are
+out of scope: neither yields a check this cheap (ADR 0078).
+
 ## Authoring and compiled identity
 
 A document selects one profile and uses its local names:

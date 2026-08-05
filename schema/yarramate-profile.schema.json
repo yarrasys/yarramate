@@ -59,6 +59,10 @@
         "composite"
       ]
     },
+    "rigidity": {
+      "description": "OntoClean rigidity. Optional: an unannotated kind constrains nothing.",
+      "enum": ["rigid", "anti-rigid"]
+    },
     "conceptKind": {
       "type": "object",
       "additionalProperties": false,
@@ -73,6 +77,9 @@
         },
         "parent": {
           "$ref": "#/$defs/qualifiedKindId"
+        },
+        "rigidity": {
+          "$ref": "#/$defs/rigidity"
         }
       }
     },
