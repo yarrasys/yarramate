@@ -1416,3 +1416,102 @@ mappings:
   - native: yarramate-engine#runtime-serves-mcp-adapter
     external: runtimeServesMcpAdapter
     type: relationship
+  - native: yarramate-engine#ask-command-seeds-on-alternative-labels
+    external: askCommandSeedsOnAlternativeLabels
+    type: relationship
+  - native: yarramate-engine#ask-command-serves-brief-composition
+    external: askCommandServesBriefComposition
+    type: relationship
+  - native: yarramate-engine#ask-command-serves-changed-slice
+    external: askCommandServesChangedSlice
+    type: relationship
+  - native: yarramate-engine#ask-command-serves-near-duplicate-question
+    external: askCommandServesNearDuplicateQuestion
+    type: relationship
+  - native: yarramate-engine#brief-composition-reads-projection-result
+    external: briefCompositionReadsProjectionResult
+    type: relationship
+  - native: yarramate-engine#changed-slice-reads-graph
+    external: changedSliceReadsGraph
+    type: relationship
+  - native: yarramate-engine#compose-subject-brief
+    external: composeSubjectBrief
+    type: concept
+  - native: yarramate-engine#derive-changed-slice
+    external: deriveChangedSlice
+    type: concept
+  - native: yarramate-engine#derive-traceability-matrix
+    external: deriveTraceabilityMatrix
+    type: concept
+  - native: yarramate-engine#design-command-serves-brief-composition
+    external: designCommandServesBriefComposition
+    type: relationship
+  - native: yarramate-engine#design-command-serves-near-duplicate-question
+    external: designCommandServesNearDuplicateQuestion
+    type: relationship
+  - native: yarramate-engine#detect-near-duplicate-subjects
+    external: detectNearDuplicateSubjects
+    type: concept
+  - native: yarramate-engine#detect-stale-attestations
+    external: detectStaleAttestations
+    type: concept
+  - native: yarramate-engine#evidence-evaluator-detects-stale-attestations
+    external: evidenceEvaluatorDetectsStaleAttestations
+    type: relationship
+  - native: yarramate-engine#export-command-serves-brief-composition
+    external: exportCommandServesBriefComposition
+    type: relationship
+  - native: yarramate-engine#export-command-serves-changed-slice
+    external: exportCommandServesChangedSlice
+    type: relationship
+  - native: yarramate-engine#export-command-serves-traceability-matrix
+    external: exportCommandServesTraceabilityMatrix
+    type: relationship
+  - native: yarramate-engine#likec4-command-serves-changed-slice
+    external: likec4CommandServesChangedSlice
+    type: relationship
+  - native: yarramate-engine#near-duplicate-detection-reads-graph
+    external: nearDuplicateDetectionReadsGraph
+    type: relationship
+  - native: yarramate-engine#reconcile-command-serves-stale-attestations
+    external: reconcileCommandServesStaleAttestations
+    type: relationship
+  - native: yarramate-engine#requirements-traceability-matrix
+    external: requirementsTraceabilityMatrix
+    type: concept
+  - native: yarramate-engine#rtm-schema
+    external: rtmSchema
+    type: concept
+  - native: yarramate-engine#rtm-schema-describes-matrix
+    external: rtmSchemaDescribesMatrix
+    type: relationship
+  - native: yarramate-engine#stale-attestation-detection-reads-graph
+    external: staleAttestationDetectionReadsGraph
+    type: relationship
+  - native: yarramate-engine#stale-attestation-detection-writes-report
+    external: staleAttestationDetectionWritesReport
+    type: relationship
+  - native: yarramate-engine#subject-identity
+    external: subjectIdentity
+    type: concept
+  - native: yarramate-engine#subject-identity-detects-near-duplicates
+    external: subjectIdentityDetectsNearDuplicates
+    type: relationship
+  - native: yarramate-engine#traceability-derivation-produces-matrix
+    external: traceabilityDerivationProducesMatrix
+    type: relationship
+  - native: yarramate-engine#traceability-derivation-reads-graph
+    external: traceabilityDerivationReadsGraph
+    type: relationship
+  - native: yarramate-engine#traceability-derivation-reads-schema
+    external: traceabilityDerivationReadsSchema
+    type: relationship
+  - native: yarramate-engine#compiler-composes-briefs
+    external: compilerComposesBriefs
+    type: relationship
+  - native: yarramate-engine#compiler-derives-changed-slices
+    external: compilerDerivesChangedSlices
+    type: relationship
+  - native: yarramate-engine#compiler-derives-traceability-matrix
+    external: compilerDerivesTraceabilityMatrix
+    type: relationship
