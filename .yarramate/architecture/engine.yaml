@@ -634,6 +634,7 @@ concepts:
     status: current
     supersedes:
       - compile-command
+      - view-command
   - id: consumer-host
     kind: node
     name: Consumer host
@@ -695,6 +696,12 @@ concepts:
     name: Derive changed slice
     description: Derives a review slice from a git ref range by intersecting changed lines with each subject's current declaration span, then seeding the existing neighbourhood machinery, so a reviewer names a range instead of maintaining review tags that go stale. It carries a coverage note for changed subjects no authored projection contains, and it cannot express a decision grouping git never grouped.
     status: current
+  - id: view-command
+    kind: applicationService
+    name: View command
+    description: Rendered a projection result as deterministic Markdown for reviewers, the human-facing counterpart to the JSON context of the same projection.
+    owner: yarramate-product#yarramate-maintainers
+    status: retired
 relationships:
   - id: core-contract-checker-loads-contract
     kind: assignment
@@ -1515,3 +1522,13 @@ relationships:
     kind: assignment
     from: compiler
     to: derive-changed-slice
+  - id: cli-provides-view
+    kind: implements
+    from: cli
+    to: view-command
+    status: retired
+  - id: view-command-serves-agent-harness
+    kind: serving
+    from: view-command
+    to: yarramate-product#agent-harness
+    status: retired
