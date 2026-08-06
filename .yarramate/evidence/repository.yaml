@@ -225,6 +225,10 @@ observations:
     result: confirmed
     evidence:
       uri: repo:src/compiler.ts
+  - subject: yarramate-engine#compose-subject-brief
+    result: confirmed
+    evidence:
+      uri: repo:src/brief.ts
   - subject: yarramate-engine#consumer-host
     result: confirmed
     evidence:
@@ -233,10 +237,26 @@ observations:
     result: confirmed
     evidence:
       uri: repo:.yarramate/contracts/yarramate-core-0.1.yaml
+  - subject: yarramate-engine#derive-changed-slice
+    result: confirmed
+    evidence:
+      uri: repo:src/changed.ts
+  - subject: yarramate-engine#derive-traceability-matrix
+    result: confirmed
+    evidence:
+      uri: repo:src/rtm.ts
   - subject: yarramate-engine#design-command
     result: confirmed
     evidence:
       uri: repo:src/design-command.ts
+  - subject: yarramate-engine#detect-near-duplicate-subjects
+    result: confirmed
+    evidence:
+      uri: repo:src/subject-identity.ts
+  - subject: yarramate-engine#detect-stale-attestations
+    result: confirmed
+    evidence:
+      uri: repo:src/attestation-staleness.ts
   - subject: yarramate-engine#diagnostic-result
     result: confirmed
     evidence:
@@ -349,10 +369,18 @@ observations:
     result: confirmed
     evidence:
       uri: repo:src/adapters/likec4-export.ts
+  - subject: yarramate-engine#requirements-traceability-matrix
+    result: confirmed
+    evidence:
+      uri: repo:src/rtm.ts
   - subject: yarramate-engine#resolve-workspace
     result: confirmed
     evidence:
       uri: repo:src/workspace.ts
+  - subject: yarramate-engine#rtm-schema
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-rtm.schema.json
   - subject: yarramate-engine#semantic-graph
     result: confirmed
     evidence:
@@ -365,6 +393,10 @@ observations:
     result: confirmed
     evidence:
       uri: repo:src/architecture-state.ts
+  - subject: yarramate-engine#subject-identity
+    result: confirmed
+    evidence:
+      uri: repo:src/subject-identity.ts
   - subject: yarramate-engine#validate-adapter-mapping
     result: confirmed
     evidence:

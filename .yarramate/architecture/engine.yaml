@@ -116,6 +116,7 @@ concepts:
     kind: applicationFunction
     name: Validate semantic claims
     status: current
+    description: "Checks reference integrity and consistency across compiled claims, including succession: a supersedes entry resolving to nothing, to itself, or into a cycle is an error, so a renamed, split, or merged subject keeps a history a reader can follow."
   - id: validate-adapter-mapping
     kind: applicationFunction
     name: Validate adapter mapping
@@ -138,12 +139,12 @@ concepts:
   - id: evaluate-evidence
     kind: applicationFunction
     name: Evaluate evidence overlay
-    description: Produces a deterministic report without modifying graph v2.
+    description: Produces a deterministic report without modifying graph v2, carrying any keyed value a provider observed alongside the confirmed or contradicted verdict, so a fact can leave prose and become checkable.
     status: current
   - id: reconcile-evidence
     kind: applicationFunction
     name: Reconcile workspace evidence
-    description: Aggregates evidence reports into deterministic unresolved findings without proposing or applying remediation.
+    description: Aggregates evidence reports into deterministic unresolved findings without proposing or applying remediation, and compares the value a constraint declares it expects against the value a provider observed, by string equality only. A mismatch is an ordinary contradiction that already fails strict checking; an expectation nobody observed is reported and never gates.
     status: current
   - id: observe-graphify
     kind: applicationFunction
@@ -332,7 +333,7 @@ concepts:
     kind: dataObject
     owner: yarramate-product#yarramate-maintainers
     name: Concept kind catalogue
-    description: Resolved concept kinds with aspects and lineage available to a compilation.
+    description: Resolved concept kinds with aspects, lineage, and the optional rigidity meta-property available to a compilation. A rigid kind may not specialize an anti-rigid one, so a profile author who parents a service under a role is told at resolution time instead of inheriting a distinction that cannot hold.
     status: current
   - id: relationship-policy-catalogue
     kind: dataObject
@@ -650,6 +651,49 @@ concepts:
     name: npm package
     description: The published yarramate package - compiled binaries, normative schemas, the internal catalogue, and the agent skill.
     owner: yarramate-product#yarramate-maintainers
+    status: current
+  - id: derive-traceability-matrix
+    kind: applicationFunction
+    name: Derive requirements traceability matrix
+    description: Derives requirement and constraint coverage from compiled claims, joining realization, evidence verdicts, attestations, and lineage into one bundle. Gaps are counted rather than omitted, and retired rows move to a descoped section outside the gap arithmetic. The output carries no timestamp, so identical inputs produce identical bytes and CI can diff it.
+    status: current
+  - id: requirements-traceability-matrix
+    kind: dataObject
+    name: Requirements traceability matrix
+    description: "The yarramate/rtm/v1 two-file bundle: RTM.md for a reader and rtm.json for a pipeline, both derived readings of the graph that are never authored by hand."
+    owner: yarramate-product#yarramate-maintainers
+    status: current
+  - id: rtm-schema
+    kind: dataObject
+    name: Requirements traceability matrix JSON Schema
+    description: Normative structure for the yarramate/rtm/v1 contract.
+    owner: yarramate-product#yarramate-maintainers
+    status: current
+  - id: detect-stale-attestations
+    kind: applicationFunction
+    name: Detect stale attestations
+    description: "Reports a sign-off as stale when the attested subject's name or description changed in a commit dated after the attestation, so a reviewer learns which sign-offs no longer cover the wording they read. It is a reconcile finding only: it never reopens an evaluator verdict and never gates check --strict, because gating would reward backdating. Outside a git checkout it emits a note rather than silence, keeping \"not assessed\" distinguishable from \"clean\"."
+    status: current
+  - id: subject-identity
+    kind: compiler-module
+    name: Subject identity resolver
+    description: "Normalizes preferred labels and alternative labels into one deterministic index, so the same two subjects pair the same way regardless of the order they were authored in. Alternative labels are matchable and never renderable: they seed a slice, and no renderer spends context budget printing them."
+    owner: yarramate-product#yarramate-maintainers
+    status: current
+  - id: detect-near-duplicate-subjects
+    kind: applicationFunction
+    name: Detect near-duplicate subjects
+    description: Pairs subjects whose labels collide above published lexical thresholds and opens a hygiene question, so two agents who invented two names for one subject are asked about it instead of both names surviving silently. It is never a check error, and a symmetric distinctFrom dismissal closes the question permanently on both sides.
+    status: current
+  - id: compose-subject-brief
+    kind: applicationFunction
+    name: Compose subject brief
+    description: Composes prose from sentence templates over declared intent, resolving custom kinds to their nearest core ancestor, with no language model involved, so the same model and projection always yield identical bytes. Motivation comes first and requirement bodies are quoted verbatim. Under a budget it drops whole paragraphs and announces the drop rather than truncating a sentence.
+    status: current
+  - id: derive-changed-slice
+    kind: applicationFunction
+    name: Derive changed slice
+    description: Derives a review slice from a git ref range by intersecting changed lines with each subject's current declaration span, then seeding the existing neighbourhood machinery, so a reviewer names a range instead of maintaining review tags that go stale. It carries a coverage note for changed subjects no authored projection contains, and it cannot express a decision grouping git never grouped.
     status: current
 relationships:
   - id: core-contract-checker-loads-contract
@@ -1361,3 +1405,113 @@ relationships:
     kind: serving
     from: nodejs-runtime
     to: mcp-adapter
+  - id: export-command-serves-traceability-matrix
+    kind: serving
+    from: export-command
+    to: derive-traceability-matrix
+    description: export rtm is the fifth derivation mode of the one export verb, not a verb of its own.
+  - id: traceability-derivation-reads-graph
+    kind: access
+    from: derive-traceability-matrix
+    to: semantic-graph
+    mode: read
+  - id: traceability-derivation-produces-matrix
+    kind: realization
+    from: derive-traceability-matrix
+    to: requirements-traceability-matrix
+  - id: rtm-schema-describes-matrix
+    kind: realization
+    from: rtm-schema
+    to: requirements-traceability-matrix
+  - id: traceability-derivation-reads-schema
+    kind: access
+    from: derive-traceability-matrix
+    to: rtm-schema
+    mode: read
+  - id: evidence-evaluator-detects-stale-attestations
+    kind: assignment
+    from: evidence-evaluator
+    to: detect-stale-attestations
+  - id: reconcile-command-serves-stale-attestations
+    kind: serving
+    from: reconcile-command
+    to: detect-stale-attestations
+  - id: stale-attestation-detection-reads-graph
+    kind: access
+    from: detect-stale-attestations
+    to: semantic-graph
+    mode: read
+  - id: stale-attestation-detection-writes-report
+    kind: access
+    from: detect-stale-attestations
+    to: reconciliation-report
+    mode: write
+  - id: subject-identity-detects-near-duplicates
+    kind: assignment
+    from: subject-identity
+    to: detect-near-duplicate-subjects
+  - id: near-duplicate-detection-reads-graph
+    kind: access
+    from: detect-near-duplicate-subjects
+    to: semantic-graph
+    mode: read
+  - id: design-command-serves-near-duplicate-question
+    kind: serving
+    from: design-command
+    to: detect-near-duplicate-subjects
+  - id: ask-command-serves-near-duplicate-question
+    kind: serving
+    from: ask-command
+    to: detect-near-duplicate-subjects
+    description: ask --open reports the same hygiene question design would serve next.
+  - id: ask-command-seeds-on-alternative-labels
+    kind: association
+    from: ask-command
+    to: subject-identity
+    description: Free-text seeding matches alternative labels, so a team's own word for a subject finds it without that word reaching any rendered output.
+  - id: brief-composition-reads-projection-result
+    kind: access
+    from: compose-subject-brief
+    to: projection-result
+    mode: read
+  - id: ask-command-serves-brief-composition
+    kind: serving
+    from: ask-command
+    to: compose-subject-brief
+  - id: export-command-serves-brief-composition
+    kind: serving
+    from: export-command
+    to: compose-subject-brief
+  - id: design-command-serves-brief-composition
+    kind: serving
+    from: design-command
+    to: compose-subject-brief
+  - id: changed-slice-reads-graph
+    kind: access
+    from: derive-changed-slice
+    to: semantic-graph
+    mode: read
+  - id: ask-command-serves-changed-slice
+    kind: serving
+    from: ask-command
+    to: derive-changed-slice
+  - id: export-command-serves-changed-slice
+    kind: serving
+    from: export-command
+    to: derive-changed-slice
+  - id: likec4-command-serves-changed-slice
+    kind: serving
+    from: likec4-export-command
+    to: derive-changed-slice
+  - id: compiler-derives-traceability-matrix
+    kind: assignment
+    from: compiler
+    to: derive-traceability-matrix
+  - id: compiler-composes-briefs
+    kind: assignment
+    from: compiler
+    to: compose-subject-brief
+  - id: compiler-derives-changed-slices
+    kind: assignment
+    from: compiler
+    to: derive-changed-slice
