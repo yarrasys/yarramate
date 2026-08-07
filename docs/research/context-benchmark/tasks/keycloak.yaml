@@ -1,0 +1,414 @@
+# Frozen benchmark task suite: keycloak (yarramate/benchmark-suite/v1).
+# Authored before any condition run (DESIGN.md "Task suite"); ground truth was
+# verified by reading the source at the pinned commit — the code, not the
+# gallery model, is the authority. Comprehension and change prompts are
+# condition-neutral; model-maintenance prompts necessarily reference the
+# committed workspace and only run under model-present conditions.
+#
+# First version for this repository (no prior sweep, so no errata to correct).
+# Informed by issue #56 (the 2026-07-29 sweep found comprehension saturated at
+# both model tiers on the original four repos because the tasks were
+# single-hop): this suite is built with multi-hop tasks from the start rather
+# than needing a later v2 round. Two of the four comprehension tasks below
+# each require chaining 3+ hops across different subsystems and files:
+# - kc-comp-ldap-auth-chain: login form -> credential-manager dispatch ->
+#   federation-linked storage-provider lookup -> the LDAP storage provider's
+#   CredentialInputValidator implementation -> the actual LDAP bind, plus the
+#   success/failure branches back up the chain.
+# - kc-comp-idp-delete-cascade: the admin delete endpoint -> its call order
+#   into the user-storage preRemove hook -> the JPA-layer bulk delete of
+#   federated-identity link rows -> what does and does not happen to the
+#   affected local user accounts.
+# The other two comprehension tasks are foundational (still real, but
+# effectively single-hop) so the family is not saturation-proof by omission —
+# it deliberately mixes both difficulties.
+type: yarramate/benchmark-suite/v1
+suite: keycloak
+headline: true
+repository:
+  name: keycloak
+  source: https://github.com/keycloak/keycloak
+  commit: 73f08b397f193712b26d317210dce99898129709
+  gallery: https://github.com/yarrasys/yarramate-gallery
+  model: showcases/keycloak
+
+tasks:
+  # --- Comprehension (foundational) -----------------------------------------
+  - id: kc-comp-idp-entrypoints
+    family: comprehension
+    prompt: >-
+      This server implements identity brokering — delegating login to
+      external identity providers such as Google or an external OIDC/SAML
+      IdP. Identify: (1) the single class that implements every broker-facing
+      HTTP endpoint (login, callback, account-linking, token retrieval); (2)
+      the URL path prefix under which it is mounted, and the file and line
+      where that mounting happens; (3) name the four distinct broker
+      operations it exposes as separate methods and, for each, the HTTP verb
+      and path segment used to reach it.
+    groundTruth:
+      answer: >-
+        (1) org.keycloak.services.resources.IdentityBrokerService
+        (services/src/main/java/org/keycloak/services/resources/IdentityBrokerService.java).
+        (2) It is mounted at {realm}/broker by
+        services/src/main/java/org/keycloak/services/resources/RealmsResource.java:210
+        (@Path("{realm}/broker")), instantiated as "new
+        IdentityBrokerService(session)" at RealmsResource.java:214 — combined
+        with RealmsResource's own realm-scoped base path this yields
+        /realms/{realm}/broker. (3) Four operations: login — GET and POST
+        {provider_alias}/login via performLogin (IdentityBrokerService.java:394-397)
+        and performPostLogin (:383-385); account linking —
+        {provider_alias}/link via clientInitiatedAccountLinking
+        (:222-226, GET) with a preflight OPTIONS-style check
+        clientIntiatedAccountLinkingPreflight (:216-217); the provider
+        callback/endpoint — {provider_alias}/endpoint via getEndpoint
+        (:464-465); and token retrieval — GET {provider_alias}/token via the
+        method at :483-485, with a preflight retrieveTokenPreflight at
+        :477-479.
+      verifiedAgainst:
+        - services/src/main/java/org/keycloak/services/resources/RealmsResource.java:210
+        - services/src/main/java/org/keycloak/services/resources/RealmsResource.java:214
+        - services/src/main/java/org/keycloak/services/resources/IdentityBrokerService.java:216-226
+        - services/src/main/java/org/keycloak/services/resources/IdentityBrokerService.java:383-397
+        - services/src/main/java/org/keycloak/services/resources/IdentityBrokerService.java:464-485
+    scoring:
+      method: ground-truth
+
+  - id: kc-comp-bruteforce-lockout
+    family: comprehension
+    prompt: >-
+      A user has failed to log in with the wrong password several times.
+      Explain how the server decides, on the next login attempt, whether that
+      user is temporarily locked out: (1) which class implements the check
+      and the exact method name; (2) what value on the stored failure record
+      the check compares the current time against; (3) name the interface and
+      method that reads the stored failure record, and state what happens if
+      no record exists for that user; (4) separately, name the condition
+      under which the account instead becomes *permanently* locked out rather
+      than temporarily, citing the two realm-level settings involved.
+    groundTruth:
+      answer: >-
+        (1) org.keycloak.services.managers.DefaultBruteForceProtector
+        (services/src/main/java/org/keycloak/services/managers/DefaultBruteForceProtector.java),
+        method isTemporarilyDisabled(session, realm, user) at line 267. (2)
+        It compares the current time (Time.currentTimeMillis()/1000) against
+        userLoginFailure.getFailedLoginNotBefore() — if currTime is still
+        before that timestamp it returns true (lines 269-274). (3) The record
+        is read via getUserFailureModel, which calls
+        session.loginFailures().getUserLoginFailure(realm, userId) (line
+        182), where loginFailures() is a UserLoginFailureProvider
+        (server-spi/src/main/java/org/keycloak/models/UserLoginFailureProvider.java);
+        if no record exists, getUserLoginFailure returns null and
+        isTemporarilyDisabled's null check causes it to fall through to
+        "return false" (line 267-280) — no record means no lockout. (4)
+        isPermanentlyLockedOut (line 284) locks the account permanently when
+        realm.isPermanentLockout() is true AND the stored record's
+        getNumTemporaryLockouts() exceeds realm.getMaxTemporaryLockouts()
+        (line 292-293) — i.e. it takes more than the configured number of
+        separate temporary-lockout episodes before the realm's permanent-lockout
+        policy kicks in.
+      verifiedAgainst:
+        - services/src/main/java/org/keycloak/services/managers/DefaultBruteForceProtector.java:180-182
+        - services/src/main/java/org/keycloak/services/managers/DefaultBruteForceProtector.java:267-280
+        - services/src/main/java/org/keycloak/services/managers/DefaultBruteForceProtector.java:284-294
+        - server-spi/src/main/java/org/keycloak/models/UserLoginFailureProvider.java:24-47
+        - server-spi/src/main/java/org/keycloak/models/UserLoginFailureModel.java:24-35
+    scoring:
+      method: ground-truth
+
+  # --- Comprehension (multi-hop) ---------------------------------------------
+  - id: kc-comp-ldap-auth-chain
+    family: comprehension
+    prompt: >-
+      A user account is federated from an LDAP directory and has no locally
+      stored password (LDAP is the sole password source for that account).
+      They submit the login form with a password. Trace the complete
+      call chain from the form submission to the LDAP server, and back to a
+      pass/fail decision, citing files, classes and methods at every hop: (1)
+      the authenticator class and method that first receives the submitted
+      password and what it checks before attempting any credential
+      validation; (2) the class and method it calls into to validate the
+      credential, and — since the user is federated — which storage provider
+      instance actually performs the check and how that instance is located;
+      (3) the SPI interface that storage provider implements to be eligible
+      for credential validation, and the method on it that is invoked; (4)
+      inside that method, which private method performs the actual LDAP bind,
+      and what happens if the LDAP entry for the user cannot be found at all;
+      (5) precisely what the authenticator does differently when validation
+      succeeds versus when it fails (name the two distinct outcomes it
+      produces in each case).
+    groundTruth:
+      answer: >-
+        (1) AbstractUsernameFormAuthenticator.validatePassword(context, user,
+        inputData, clearUser)
+        (services/src/main/java/org/keycloak/authentication/authenticators/browser/AbstractUsernameFormAuthenticator.java:211-225),
+        called from UsernamePasswordForm's form-validation path
+        (AbstractUsernameFormAuthenticator.java:143). Before validating
+        anything it checks the password field is non-empty (line 213-215,
+        else treated as a bad-password case) and calls
+        isDisabledByBruteForce(context, user) (line 217), returning false
+        immediately if the account is already locked out. (2) It calls
+        user.credentialManager().isValid(UserCredentialModel.password(password))
+        (line 219). credentialManager() returns a UserCredentialManager
+        (model/storage/src/main/java/org/keycloak/credential/UserCredentialManager.java);
+        its isValid(List<CredentialInput>) (lines 71-92) checks
+        user.isFederated() (line 78), and if true looks up the
+        federation-linked UserStorageProviderModel via
+        getStorageProviderModel(realm, user.getFederationLink()) (line 79)
+        and obtains a CredentialInputValidator instance for that model via
+        getStorageProviderInstance(model, CredentialInputValidator.class)
+        (line 82) — for an LDAP-federated user this resolves to the
+        LDAPStorageProvider instance registered for that federation link. (3)
+        The SPI interface is
+        org.keycloak.credential.CredentialInputValidator
+        (server-spi/src/main/java/org/keycloak/credential/CredentialInputValidator.java),
+        which LDAPStorageProvider implements
+        (federation/ldap/src/main/java/org/keycloak/storage/ldap/LDAPStorageProvider.java:115-116);
+        UserCredentialManager's private validate() helper (lines 282-294)
+        invokes validator.isValid(realm, user, input) (line 286), which for
+        LDAP is LDAPStorageProvider.isValid(realm, user, input)
+        (LDAPStorageProvider.java:942-949) — it returns false immediately for
+        a non-password credential or one already configured locally,
+        otherwise it calls the private validPassword(realm, user, password).
+        (4) validPassword (LDAPStorageProvider.java:813-871) performs
+        loadAndValidateUser to re-resolve the LDAP entry; if that returns
+        null (the user was removed from LDAP) it returns false immediately
+        without attempting a bind (lines 824-828). Otherwise it calls
+        ldapIdentityStore.validatePassword(ldapUser, password) (line 831) —
+        the actual LDAP bind — inside a try/catch that returns true on
+        success (line 832) and false (or a required-action flow, for a
+        forced password-policy change) on the various LDAP exception types.
+        (5) On success, validate()'s removeIf drops the input from the
+        toValidate list so isValid(user) returns toValidate.isEmpty() == true;
+        validatePassword then sets the auth-session note
+        AuthenticationManager.PASSWORD_VALIDATED = "true"
+        (AbstractUsernameFormAuthenticator.java:220) and returns true,
+        letting the flow proceed. On failure the input is not removed,
+        isValid returns false, and validatePassword calls
+        badPasswordHandler(context, user, clearUser, false)
+        (AbstractUsernameFormAuthenticator.java:223, :228-245), which raises
+        an INVALID_USER_CREDENTIALS event and calls
+        context.failureChallenge(AuthenticationFlowError.INVALID_CREDENTIALS,
+        challengeResponse) to fail the authentication flow with a challenge
+        response.
+      verifiedAgainst:
+        - services/src/main/java/org/keycloak/authentication/authenticators/browser/AbstractUsernameFormAuthenticator.java:143
+        - services/src/main/java/org/keycloak/authentication/authenticators/browser/AbstractUsernameFormAuthenticator.java:211-245
+        - model/storage/src/main/java/org/keycloak/credential/UserCredentialManager.java:71-92
+        - model/storage/src/main/java/org/keycloak/credential/UserCredentialManager.java:282-294
+        - federation/ldap/src/main/java/org/keycloak/storage/ldap/LDAPStorageProvider.java:115-116
+        - federation/ldap/src/main/java/org/keycloak/storage/ldap/LDAPStorageProvider.java:942-949
+        - federation/ldap/src/main/java/org/keycloak/storage/ldap/LDAPStorageProvider.java:813-848
+        - server-spi/src/main/java/org/keycloak/credential/CredentialInputValidator.java
+    scoring:
+      method: ground-truth
+
+  - id: kc-comp-idp-delete-cascade
+    family: comprehension
+    prompt: >-
+      An administrator deletes an identity provider that has users who
+      previously logged in through it (their accounts are linked to that
+      provider). Trace exactly what happens to those users' accounts and
+      their link to the deleted provider: (1) the admin REST resource and
+      method that handles the delete, the authorization check it requires,
+      and the exact order of the two data-layer calls it makes; (2) which of
+      those two calls is responsible for cleaning up the linkage data, the
+      interface method it implements, and the file where that implementation
+      lives; (3) exactly what that implementation does at the data layer —
+      quote or closely paraphrase the actual query/operation and state its
+      scope (which rows, for which realm and provider); (4) after the
+      deletion completes, are the previously-linked users' accounts deleted,
+      disabled, or left as ordinary local accounts — state which, and what
+      it implies for a user whose only credential was that identity
+      provider.
+    groundTruth:
+      answer: >-
+        (1)
+        org.keycloak.services.resources.admin.IdentityProviderResource.delete()
+        (services/src/main/java/org/keycloak/services/resources/admin/IdentityProviderResource.java:126-147).
+        It requires auth.realm().requireManageIdentityProviders() (line 131).
+        The order is: session.users().preRemove(realm, identityProviderModel)
+        (line 138) FIRST, then session.identityProviders().remove(alias)
+        (line 139) SECOND, followed by removing any identity-provider mappers
+        for that alias (lines 141-142). (2) The first call,
+        preRemove(RealmModel, IdentityProviderModel), is the cleanup step. It
+        is declared on the UserProvider interface
+        (server-spi/src/main/java/org/keycloak/models/UserProvider.java) and
+        implemented in
+        model/jpa/src/main/java/org/keycloak/models/jpa/JpaUserProvider.java:224-229.
+        (3) The implementation runs the JPA named query
+        "deleteFederatedIdentityByProvider" — "delete from
+        FederatedIdentityEntity fdi where fdi.realmId = :realmId and
+        fdi.identityProvider = :providerAlias" (declared in
+        model/jpa/src/main/java/org/keycloak/models/jpa/entities/FederatedIdentityEntity.java,
+        the @NamedQuery block) — parameterised with the current realm's id
+        and the provider's alias (JpaUserProvider.java:226-228), i.e. it bulk
+        deletes every FEDERATED_IDENTITY link row for that realm and that
+        specific provider alias only. (4) The query only deletes rows in the
+        FEDERATED_IDENTITY link table; it does not touch the UserEntity/user
+        rows at all, so the local user accounts are left exactly as ordinary
+        , still-enabled local accounts — neither deleted nor disabled. For a
+        user whose only credential had been authentication through that
+        identity provider (no local password or other credential configured),
+        this means they still exist as a user but now have no way to
+        authenticate until an administrator grants them another credential.
+      verifiedAgainst:
+        - services/src/main/java/org/keycloak/services/resources/admin/IdentityProviderResource.java:126-147
+        - server-spi/src/main/java/org/keycloak/models/UserProvider.java
+        - model/jpa/src/main/java/org/keycloak/models/jpa/JpaUserProvider.java:224-229
+        - model/jpa/src/main/java/org/keycloak/models/jpa/entities/FederatedIdentityEntity.java:42-46
+    scoring:
+      method: ground-truth
+
+  # --- Change ----------------------------------------------------------------
+  - id: kc-change-idp-linked-users-count
+    family: change
+    prompt: >-
+      Add a new admin REST endpoint for a single identity provider instance
+      that returns how many users are currently linked to it (i.e. have a
+      federated-identity record for that provider in the current realm):
+      GET on the identity provider instance's existing resource path with an
+      additional "/linked-users-count" segment, returning a small JSON body
+      containing the count. It must require the same authorization the
+      existing single-identity-provider GET endpoint requires. Do not
+      implement this by loading every linked user into memory in Java code —
+      add a proper counting query at the data-access layer (JPA), following
+      the pattern of the existing federated-identity queries for that
+      entity, and expose it through the existing storage-provider interface
+      that already declares other federated-identity operations for a
+      provider (rather than querying the entity manager directly from the
+      REST layer). Existing identity-provider CRUD behavior must be
+      unchanged.
+    touches:
+      - services/src/main/java/org/keycloak/services/resources/admin/IdentityProviderResource.java
+      - model/jpa/src/main/java/org/keycloak/models/jpa/entities/FederatedIdentityEntity.java
+      - server-spi/src/main/java/org/keycloak/models/UserProvider.java
+      - model/jpa/src/main/java/org/keycloak/models/jpa/JpaUserProvider.java
+      - identity-provider-admin-api
+      - user-federation
+    scoring:
+      method: rubric
+      rubric:
+        - >-
+          A new GET endpoint under the existing identity-provider-instance
+          resource path with a "/linked-users-count" segment returns a JSON
+          body with the correct count of FEDERATED_IDENTITY rows for that
+          realm and provider alias, and requires the same authorization
+          check (requireViewIdentityProviders, matching the existing single
+          GET) as the existing single-provider GET endpoint.
+        - >-
+          The count is produced by a new counting query added at the JPA
+          layer (a new named/JPQL query following the style of the existing
+          federated-identity queries on FederatedIdentityEntity), not by
+          fetching and counting entities/users in Java.
+        - >-
+          The new count operation is exposed through the same
+          storage-provider interface (UserProvider or its JPA
+          implementation) that already owns the other federated-identity
+          operations for a provider, rather than the REST resource querying
+          the entity manager or repository directly.
+        - >-
+          Existing identity-provider CRUD endpoints (get, update, delete) and
+          their behavior are unchanged.
+
+  - id: kc-change-list-locked-out-users
+    family: change
+    prompt: >-
+      Today the brute-force-protection storage interface only supports
+      looking up, adding, or removing one user's login-failure record by
+      user id — there is no way to list every currently-locked-out user in a
+      realm. Add that capability: a new admin-facing way to retrieve the set
+      of users in a realm who are presently temporarily locked out (their
+      stored failure record's lockout-until value is still in the future).
+      Extend the storage-provider interface that already owns the per-user
+      login-failure operations with a new method that streams every stored
+      failure record for a realm (do not add a second, parallel storage
+      abstraction), implement it at the JPA layer, and use it — together with
+      the existing per-record check for whether the lockout window is still
+      active — to compute the locked-out set rather than re-deriving the
+      lockout logic separately. Existing single-user lockout checks and
+      login-failure recording must be unchanged.
+    touches:
+      - server-spi/src/main/java/org/keycloak/models/UserLoginFailureProvider.java
+      - model/jpa/src/main/java/org/keycloak/models/jpa/JpaUserProvider.java
+      - services/src/main/java/org/keycloak/services/managers/DefaultBruteForceProtector.java
+      - brute-force-protection
+    scoring:
+      method: rubric
+      rubric:
+        - >-
+          UserLoginFailureProvider gains a new method that streams every
+          stored login-failure record for a given realm, implemented at the
+          JPA layer as a genuine query (not an in-memory scan of unrelated
+          data), and no second/parallel storage mechanism is introduced for
+          this.
+        - >-
+          The locked-out-user computation reuses the existing per-record
+          temporary-lockout check (the failedLoginNotBefore-vs-current-time
+          comparison already used by isTemporarilyDisabled) rather than
+          re-implementing separate, possibly-diverging lockout logic.
+        - >-
+          Existing behavior is unchanged: per-user lookup/add/remove of a
+          login-failure record and the existing isTemporarilyDisabled /
+          isPermanentlyLockedOut checks still work exactly as before.
+        - >-
+          The new capability is reachable from an admin-facing surface (a
+          new or extended admin REST endpoint, or an equivalent
+          admin-console-consumable API) rather than left as dead code only
+          callable from tests.
+
+  # --- Model maintenance ------------------------------------------------------
+  - id: kc-model-ldap-sync-dynamic-view
+    family: model-maintenance
+    prompt: >-
+      The committed .yarramate workspace for this repository models LDAP
+      user federation (the user-federation bridge, the LDAP/Active Directory
+      server, and the JPA model store) but only through static
+      relationships — it has no dynamic (ordered flow) view walking through
+      what actually happens when a federated user's credential is checked
+      against LDAP and, on success, how that maps to the local JPA-backed
+      user record. Add a new dynamic projection to the workspace that walks
+      this path end to end: the authenticator receiving the submitted
+      credential, the credential-manager dispatch that resolves the
+      federation-linked storage provider, the LDAP storage provider's
+      CredentialInputValidator check culminating in the LDAP bind, and back
+      to the local user record the federated identity is tied to. Ground
+      every step in the actual source (cite real files/classes), do not
+      invent steps that aren't in the code, and do not contradict the
+      workspace's existing static relationships for this area — extend them
+      with the missing ordered flow. The workspace must still pass check,
+      and the generated LikeC4 export must remain valid.
+    scoring:
+      method: deterministic
+      deterministic:
+        expect:
+          - check-pass
+          - likec4-check-pass
+          - catalogue-density-not-worse
+
+  - id: kc-model-authz-decision-dynamic-view
+    family: model-maintenance
+    prompt: >-
+      The committed .yarramate workspace models authorization services
+      (resources, scopes, policies, and a policy enforcer) but its one
+      reconciliation finding already notes that the policy-enforcer runtime
+      is a separate client-side adapter artifact not present in this
+      repository — so the workspace has no dynamic view of how a resource
+      permission is actually decided on the server side for a confidential
+      client. Add a dynamic projection covering the server-side decision
+      path only (not the absent client-side enforcer): from the
+      authorization-services evaluation entry point, through the policy
+      evaluator that walks the configured policies for the requested
+      resource/scope, to the decision it produces. Ground every step in the
+      actual source (cite real files/classes such as the policy evaluator
+      and evaluation classes under the authorization package), and do not
+      claim the client-side enforcement step is present in this repository —
+      the workspace must continue to accurately reflect that boundary. The
+      workspace must still pass check, and the generated LikeC4 export must
+      remain valid.
+    scoring:
+      method: deterministic
+      deterministic:
+        expect:
+          - check-pass
+          - likec4-check-pass
+          - catalogue-density-not-worse
