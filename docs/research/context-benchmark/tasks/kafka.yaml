@@ -1,0 +1,372 @@
+# Frozen benchmark task suite: kafka (yarramate/benchmark-suite/v1).
+# Authored before any condition run (DESIGN.md "Task suite"); ground truth was
+# verified by reading the source at the pinned commit — the code, not the
+# gallery model, is the authority. Comprehension and change prompts are
+# condition-neutral; model-maintenance prompts necessarily reference the
+# committed workspace and only run under model-present conditions.
+#
+# First version for this repository (no prior sweep, so no errata to correct).
+# Informed by issue #56 (the 2026-07-29 sweep found comprehension saturated at
+# both model tiers on the original four repos because the tasks were
+# single-hop): this suite is built with multi-hop tasks from the start rather
+# than needing a later v2 round. Two of the four comprehension tasks below
+# each require chaining 3+ hops across different files/modules:
+# - kf-comp-produce-acks-all-ack: the DelayedProduce purgatory operation ->
+#   its validator callback -> Partition's acks=-1 completion check -> the ISR
+#   membership condition that lets the high watermark satisfy it, plus the
+#   distinct error path when the ISR shrinks below min.insync.replicas after
+#   the record was already appended.
+# - kf-comp-consumer-rebalance: the consumer's own pre-join offset-commit and
+#   revoke sequence, the broker electing and briefing a group leader, and the
+#   leader-side client code that actually computes the new assignment before
+#   any member applies it.
+# The other two comprehension tasks are foundational (still real, but
+# effectively single-hop) so the family deliberately mixes both difficulties.
+#
+# Kafka 4.3.1 is KRaft-only (Apache ZooKeeper was removed in 4.0); no task in
+# this suite depends on ZooKeeper.
+type: yarramate/benchmark-suite/v1
+suite: kafka
+headline: true
+repository:
+  name: kafka
+  source: https://github.com/apache/kafka
+  commit: 26b251a451ce941d3d7a55e6487bcb7f16b5ad48
+  gallery: https://github.com/yarrasys/yarramate-gallery
+  model: showcases/kafka
+
+tasks:
+  # --- Comprehension (foundational) -----------------------------------------
+  - id: kf-comp-isr-hw-ownership
+    family: comprehension
+    prompt: >-
+      For a single topic partition on its leader broker: (1) which class
+      holds the set of broker ids currently in the in-sync replica set, and
+      the exact method that returns that set; (2) which class tracks the
+      partition's high watermark, the name of the field backing it, and the
+      exact accessor method and its return type; (3) name one method on the
+      first class that can shrink the in-sync set and one that can grow it,
+      and state which of the two (if either) is a private method (do not
+      describe their internals, just identify them).
+    groundTruth:
+      answer: >-
+        (1) kafka.cluster.Partition
+        (core/src/main/scala/kafka/cluster/Partition.scala) via
+        inSyncReplicaIds: Set[Int], defined at line 267 as
+        "partitionState.isr.asScala.map(_.toInt).toSet". (2)
+        org.apache.kafka.storage.internals.log.UnifiedLog
+        (storage/src/main/java/org/apache/kafka/storage/internals/log/UnifiedLog.java)
+        tracks it via the private field highWatermarkMetadata (declared as
+        "private volatile LogOffsetMetadata highWatermarkMetadata" at line
+        160); the accessor is "public long highWatermark()" (lines 506-508),
+        returning highWatermarkMetadata.messageOffset. (3) On Partition:
+        maybeShrinkIsr() (line 1089, package-visible — no "private" modifier)
+        can shrink the ISR; maybeExpandIsr(followerReplica: Replica) (line
+        876, declared "private def") can grow it — of the two, only
+        maybeExpandIsr is private.
+      verifiedAgainst:
+        - core/src/main/scala/kafka/cluster/Partition.scala:267
+        - core/src/main/scala/kafka/cluster/Partition.scala:876
+        - core/src/main/scala/kafka/cluster/Partition.scala:1089
+        - storage/src/main/java/org/apache/kafka/storage/internals/log/UnifiedLog.java:160
+        - storage/src/main/java/org/apache/kafka/storage/internals/log/UnifiedLog.java:506-508
+    scoring:
+      method: ground-truth
+
+  - id: kf-comp-kraft-controller-classes
+    family: comprehension
+    prompt: >-
+      This cluster runs in KRaft mode (no ZooKeeper). Identify two distinct
+      classes involved in that: (1) the class that implements the Raft
+      consensus protocol itself (leader election, log replication of the
+      metadata log) — name it, the interface it implements, and its module
+      path; (2) the class that implements the active controller's metadata
+      mutation logic (the component that actually processes things like
+      topic creation and partition reassignment once this node is the
+      elected leader) — name it, the interface it implements, and its module
+      path. State which of the two is concerned with consensus/replication
+      versus which is concerned with the controller's business logic.
+    groundTruth:
+      answer: >-
+        (1) org.apache.kafka.raft.KafkaRaftClient<T>
+        (raft/src/main/java/org/apache/kafka/raft/KafkaRaftClient.java:169),
+        which implements RaftClient<T> — this is the consensus/replication
+        layer: leader election and replicating the metadata log entries
+        across the controller quorum. (2)
+        org.apache.kafka.controller.QuorumController
+        (metadata/src/main/java/org/apache/kafka/controller/QuorumController.java:175),
+        which implements the Controller interface — this is the business-logic
+        layer that runs once a node's KafkaRaftClient has it acting as the
+        active/leader controller, translating admin requests (create topic,
+        reassign partitions, etc.) into metadata log records. KafkaRaftClient
+        is the consensus/replication component; QuorumController is the
+        controller business-logic component built on top of it.
+      verifiedAgainst:
+        - raft/src/main/java/org/apache/kafka/raft/KafkaRaftClient.java:169
+        - metadata/src/main/java/org/apache/kafka/controller/QuorumController.java:175
+    scoring:
+      method: ground-truth
+
+  # --- Comprehension (multi-hop) ---------------------------------------------
+  - id: kf-comp-produce-acks-all-ack
+    family: comprehension
+    prompt: >-
+      A producer sends a record with acks=all (acks=-1) to a topic whose
+      min.insync.replicas is 2, on a partition with 3 replicas. Trace exactly
+      how and when the broker acknowledges this request, citing files,
+      classes and methods: (1) after the leader appends the record locally,
+      what kind of operation is created to track the pending
+      acknowledgement, and the interface/callback it uses to periodically
+      check whether it can complete; (2) the partition-level method that
+      callback ultimately reaches, and the exact condition (in terms of high
+      watermark and the required offset) under which it reports the request
+      as satisfied; (3) precisely what additional condition determines
+      whether that method reports success with no error versus success with
+      an explicit "not enough replicas" error, and under what real scenario
+      the latter happens even though the record was already durably
+      appended; (4) what value being compared to what causes the check to
+      report "still pending" rather than either success outcome; (5) once
+      every partition in the request is satisfied, what actually invokes the
+      callback that sends the response back for the whole request.
+    groundTruth:
+      answer: >-
+        (1) A DelayedProduce operation
+        (server/src/main/java/org/apache/kafka/server/purgatory/DelayedProduce.java)
+        is created and placed in the produce purgatory; it periodically has
+        tryComplete() (lines 139-171) invoked, which for each still-pending
+        partition calls a PartitionStatusValidator's validate(topicPartition,
+        requiredOffset) method (the @FunctionalInterface declared at lines
+        82-93) — this validator is supplied by
+        ReplicaManager#maybeAddDelayedProduce() (per the class-level comment
+        at lines 134-136, since DelayedProduce lives in the server module and
+        cannot reach ReplicaManager directly). (2) The validator ultimately
+        calls kafka.cluster.Partition.checkEnoughReplicasReachOffset(requiredOffset)
+        (core/src/main/scala/kafka/cluster/Partition.scala:947-982), whose
+        own doc comment states it is "only be called if requiredAcks = -1".
+        It reports the request satisfied once leaderLog.highWatermark >=
+        requiredOffset (line 969) — i.e. once the high watermark has advanced
+        past the offset the produced record was written at. (3) Even when
+        that condition is true, the method separately checks minIsr <=
+        curMaximalIsr.size (line 974, minIsr from effectiveMinIsr(leaderLog)
+        at line 968); if true it returns (true, Errors.NONE) (line 975,
+        success), but if the current ISR has shrunk below the configured
+        min.insync.replicas it returns (true,
+        Errors.NOT_ENOUGH_REPLICAS_AFTER_APPEND) (line 977) instead — the
+        code comment explains this happens when "the request was already
+        appended locally and then added to the purgatory before the ISR was
+        shrunk", i.e. the record is durably written but the client is told
+        the durability guarantee it asked for was not actually met at
+        acknowledgement time. (4) While leaderLog.highWatermark is still less
+        than requiredOffset, the method returns (false, Errors.NONE) (line
+        979) — "still pending", not yet an error. (5) Once every partition in
+        produceStatus is no longer acksPending, tryComplete() calls
+        forceComplete() (line 167 of DelayedProduce.java), which triggers
+        onComplete() (lines 186-195): it assembles the per-partition
+        PartitionResponse map and calls responseCallback.accept(...), which
+        is the callback that ultimately sends the ProduceResponse back to the
+        client.
+      verifiedAgainst:
+        - server/src/main/java/org/apache/kafka/server/purgatory/DelayedProduce.java:82-93
+        - server/src/main/java/org/apache/kafka/server/purgatory/DelayedProduce.java:134-171
+        - server/src/main/java/org/apache/kafka/server/purgatory/DelayedProduce.java:186-195
+        - core/src/main/scala/kafka/cluster/Partition.scala:947-982
+    scoring:
+      method: ground-truth
+
+  - id: kf-comp-consumer-rebalance
+    family: comprehension
+    prompt: >-
+      A third consumer joins an existing two-consumer group that uses the
+      classic (eager) group-membership protocol and auto-commit enabled.
+      Trace what happens on the client side before, during, and after the
+      resulting rebalance, citing files, classes and methods: (1) the method
+      each of the two existing consumers runs before rejoining the group,
+      and the two things it does, in order, regarding currently-owned
+      partitions and their offsets — including what governs how long it will
+      wait for an in-flight offset commit before proceeding anyway; (2) under
+      the eager protocol specifically, what happens to a consumer's assigned-partitions
+      set as part of that same method, and when (relative to the revoke
+      callback) that happens; (3) which client-side class and method is
+      invoked, only on the member elected group leader, once the broker has
+      collected every member's subscription — name the parameter that
+      carries the other members' subscription data into it; (4) inside that
+      method, how the leader determines which partition-assignment strategy
+      implementation to use for computing the new assignment.
+    groundTruth:
+      answer: >-
+        (1) Each consumer runs onJoinPrepare(timer, generation, memberId)
+        (clients/src/main/java/org/apache/kafka/clients/consumer/internals/ConsumerCoordinator.java:752-864)
+        before rejoining. If auto-commit is enabled and no commit is already
+        in flight, it first attempts an asynchronous auto-commit of currently
+        owned partitions' offsets (maybeAutoCommitOffsetsAsync, lines
+        764-767) and only afterward proceeds to revoke; how long it will wait
+        for that commit is bounded by rebalanceTimeoutMs via a joinPrepareTimer
+        (lines 754-774) — if that timer expires the method logs an error and
+        proceeds to revoke anyway rather than blocking indefinitely (lines
+        784-785). (2) Under the EAGER branch of the protocol switch (lines
+        826-833), it revokes ALL currently assigned partitions — it collects
+        them into revokedPartitions, invokes rebalanceListenerInvoker.
+        invokePartitionsRevoked(revokedPartitions) (the user's revoke
+        callback), and only THEN calls
+        subscriptions.assignFromSubscribed(Collections.emptySet()) to clear
+        the local assignment (line 832) — the callback runs BEFORE the local
+        assignment is cleared, specifically so the callback can still see
+        which partitions it owned (e.g. to commit their offsets manually) at
+        the time it fires. (3) Only the elected leader has
+        onLeaderElected(leaderId, assignmentStrategy, allSubscriptions,
+        skipAssignment) invoked
+        (ConsumerCoordinator.java:653-714); allSubscriptions (a
+        List<JoinGroupResponseData.JoinGroupResponseMember>) carries every
+        member's subscription metadata, gathered by the broker-side
+        coordinator and handed to the leader once every member has joined.
+        (4) It calls lookupAssignor(assignmentStrategy) (line 657) to resolve
+        the ConsumerPartitionAssignor implementation matching the negotiated
+        assignmentStrategy name (e.g. the group's configured
+        partition.assignment.strategy, such as CooperativeStickyAssignor).
+        After first collecting every member's subscription and owned
+        partitions from allSubscriptions into local maps (lines 662-674), it
+        invokes assignor.assign(metadata.fetch(), new
+        GroupSubscription(subscriptions)).groupAssignment() (line 691) to
+        compute the actual new assignment.
+      verifiedAgainst:
+        - clients/src/main/java/org/apache/kafka/clients/consumer/internals/ConsumerCoordinator.java:752-804
+        - clients/src/main/java/org/apache/kafka/clients/consumer/internals/ConsumerCoordinator.java:826-833
+        - clients/src/main/java/org/apache/kafka/clients/consumer/internals/ConsumerCoordinator.java:653-714
+    scoring:
+      method: ground-truth
+
+  # --- Change ----------------------------------------------------------------
+  - id: kf-change-partition-isr-below-minisr
+    family: change
+    prompt: >-
+      Add a method to the class that owns a partition's leader-side
+      replication state (in-sync-replica set and configured minimum
+      in-sync-replica count) that reports, for the current leader-local
+      state, whether the in-sync replica set size is currently at or below
+      the configured minimum in-sync-replica count for that partition — a
+      pure query with no side effects. It must reuse the same minimum-in-sync-replica
+      resolution logic already used elsewhere in this class (there is
+      existing code in this file that computes the effective minimum
+      in-sync-replica count for a log and compares it against the current
+      maximal in-sync-replica set size) rather than re-deriving that
+      threshold independently or hard-coding a config lookup. It should
+      return a definite false when this broker does not currently hold the
+      partition's leader-local log (rather than throwing).
+    touches:
+      - core/src/main/scala/kafka/cluster/Partition.scala
+      - replication
+    scoring:
+      method: rubric
+      rubric:
+        - >-
+          The new method lives on the Partition class (or an equivalent
+          leader-side replication-state owner in this file) and reuses the
+          existing effective-min-in-sync-replicas resolution already present
+          in this file rather than introducing a second, independent way of
+          computing or looking up that threshold.
+        - >-
+          The method is a pure query (no mutation of ISR state, no network
+          calls, no side effects) that returns true exactly when the current
+          maximal in-sync-replica set size is at or below the effective
+          minimum, and false otherwise.
+        - >-
+          When this broker does not currently hold the partition's
+          leader-local log, the method returns false rather than throwing an
+          exception.
+        - >-
+          Existing ISR expansion, shrinkage, and the acks=all completion
+          check (checkEnoughReplicasReachOffset) are unchanged in behavior.
+
+  - id: kf-change-follower-hw-lag
+    family: change
+    prompt: >-
+      In the class that owns a partition's leader-side replication state,
+      there is existing logic that determines whether a follower replica is
+      caught up by comparing that follower's fetched log-end-offset against
+      the leader log's high watermark. Extract that offset comparison into
+      its own named, reusable method that returns how far behind the high
+      watermark a given follower replica currently is, as a non-negative
+      count of offsets (0 when the follower has fully caught up to or passed
+      the high watermark). Update the existing caught-up-check logic to call
+      this new method instead of repeating the comparison inline, without
+      changing its observable behavior (a replica must still be considered
+      caught up under exactly the same condition as before, including the
+      leader-epoch requirement that check already applies). The new method
+      must handle the case where this broker does not currently hold the
+      partition's leader-local log without throwing.
+    touches:
+      - core/src/main/scala/kafka/cluster/Partition.scala
+      - replication
+    scoring:
+      method: rubric
+      rubric:
+        - >-
+          A new named method returns the follower's lag from the leader's
+          high watermark as a non-negative offset count, and is used by the
+          existing follower-caught-up check (isFollowerInSync or its
+          equivalent after the change) instead of that check repeating the
+          offset comparison inline.
+        - >-
+          The follower-caught-up check's observable behavior is unchanged:
+          it still additionally requires the follower to be within the
+          current leader epoch, exactly as before — the refactor does not
+          silently drop or relax that condition.
+        - >-
+          The new method does not throw when this broker does not currently
+          hold the partition's leader-local log; it returns a sensible
+          non-throwing result (e.g. 0 or another clearly-documented
+          sentinel) in that case.
+        - >-
+          No unrelated ISR-expansion or ISR-shrinkage behavior changes as a
+          side effect of the refactor.
+
+  # --- Model maintenance ------------------------------------------------------
+  - id: kf-model-producer-idempotence-view
+    family: model-maintenance
+    prompt: >-
+      The committed .yarramate workspace models the produce path (producer
+      client through the partition leader) but does not model producer
+      idempotence at all — there is no concept for the client-side component
+      that tracks the producer id/epoch and per-partition sequence numbers
+      used to detect and deduplicate retried produce requests. Add a concept
+      for this client-side idempotence-tracking component, grounded in the
+      actual client source (there is a dedicated class for this under the
+      producer internals package, alongside a small value type pairing a
+      producer id with its epoch), and add the relationship(s) needed to
+      connect it into the existing produce-path concepts already in the
+      workspace (it sits on the producer side, ahead of a produce request
+      being sent). Do not claim broker-side deduplication state as part of
+      this concept — scope it to the client-side tracking component only.
+      Cite the real files/classes you used. The workspace must still pass
+      check, and the generated LikeC4 export must remain valid.
+    scoring:
+      method: deterministic
+      deterministic:
+        expect:
+          - check-pass
+          - likec4-check-pass
+          - catalogue-density-not-worse
+
+  - id: kf-model-transaction-coordinator-view
+    family: model-maintenance
+    prompt: >-
+      The committed .yarramate workspace models the consumer-group
+      coordinator (for consumer group membership and offset commits) but has
+      no concept at all for the separate broker-side coordinator that
+      manages producer transactions — a distinct component from the
+      consumer-group coordinator, backed by its own internal topic, that
+      exists in this codebase as its own class. Add a concept for this
+      transaction coordinator, grounded in the actual broker source, and add
+      relationship(s) that place it correctly relative to existing concepts
+      already in the workspace (brokers, and the produce path) — without
+      merging it into or confusing it with the existing consumer-group
+      coordinator concept, which is a different component for a different
+      purpose. Cite the real files/classes you used. The workspace must
+      still pass check, and the generated LikeC4 export must remain valid.
+    scoring:
+      method: deterministic
+      deterministic:
+        expect:
+          - check-pass
+          - likec4-check-pass
+          - catalogue-density-not-worse

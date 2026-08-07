@@ -58,9 +58,13 @@ subject repos. That authoring is still outstanding (#56).
 Suites reference the models published in
 [yarramate-gallery](https://github.com/yarrasys/yarramate-gallery) at pinned
 source commits. `yarramate-self.yaml` is `headline: false` and reported
-separately (self-serving ground truth). ⚠️ Headline pooling wants **N ≥ 5**
-external repositories; the gallery currently provides 4 — add a fifth showcase
-before publishing pooled numbers.
+separately (self-serving ground truth). The six external suites (fastify,
+httpie, miniflux, uptime-kuma, keycloak, kafka) cover every showcase currently
+in the gallery, clearing the **N ≥ 5** external-repository threshold for
+headline pooling. Keycloak and Kafka anchor the enterprise end of the gallery's
+CLI-to-enterprise spectrum; their comprehension tasks were authored multi-hop
+from the start (see "Suite versions" above on issue #56) rather than needing a
+later v2 errata round.
 
 ## Running
 
