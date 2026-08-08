@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto'
 import { once } from 'node:events'
 import {
+  chmod,
   mkdir,
   mkdtemp,
   readFile,
@@ -204,6 +205,56 @@ const postResponse = (
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(response),
   })
+
+/**
+ * The success path of `postResponse`. A refusal is never what a test that goes
+ * on to read session state meant to exercise, so a vacuous POST is caught here
+ * rather than surviving as a silently skipped transition.
+ */
+const postAcceptedResponse = async (
+  handle: VisualServerHandle,
+  capability: string,
+  response: VisualResponse,
+) => {
+  const posted = await postResponse(handle, capability, response)
+  expect(posted.status).toBe(200)
+  const body = (await posted.json()) as { readonly accepted: boolean }
+  expect(body.accepted).toBe(true)
+  return body
+}
+
+/** The question this session is still holding, as a reloading browser reads it. */
+const pendingChoiceOf = async (handle: VisualServerHandle, cookie: string) => {
+  const session = (await (
+    await fetch(`${handle.started.origin}/api/session`, {
+      headers: { Cookie: cookie },
+    })
+  ).json()) as { readonly pendingChoice: unknown }
+  return session.pendingChoice
+}
+
+const deliveryQuestion = {
+  choiceId: 'delivery',
+  question: 'Which delivery design should we keep?',
+  options: [
+    { id: 'shared-queue', label: 'Shared queue' },
+    { id: 'isolated-worker', label: 'Isolated worker' },
+  ],
+} as const
+
+const choicePresent = (
+  handle: VisualServerHandle,
+  eventId: string,
+  index: number,
+): VisualResponse => ({
+  format: 'yarramate/visual-response/v1',
+  sessionId: handle.started.sessionId,
+  responseId: identifier(index),
+  eventId,
+  type: 'choice.present',
+  timestamp: '2026-08-08T00:00:02.000Z',
+  payload: deliveryQuestion,
+})
 
 const chatResponse = (
   handle: VisualServerHandle,
@@ -534,36 +585,16 @@ describe('startVisualServer bootstrap and browser authentication', () => {
     const { cookie } = await bootstrap(server)
     const socket = await openBrowserSocket(server, cookie)
     const asked = await sendChat(socket, 'Which option?')
-    const question = {
-      choiceId: 'delivery',
-      question: 'Which delivery design should we keep?',
-      options: [
-        { id: 'shared-queue', label: 'Shared queue' },
-        { id: 'isolated-worker', label: 'Isolated worker' },
-      ],
-    }
-    const pendingChoice = async () =>
-      (
-        (await (
-          await fetch(`${server.started.origin}/api/session`, {
-            headers: { Cookie: cookie },
-          })
-        ).json()) as { readonly pendingChoice: unknown }
-      ).pendingChoice
 
-    expect(await pendingChoice()).toBe(null)
-    await postResponse(server, capability, {
-      format: 'yarramate/visual-response/v1',
-      sessionId: server.started.sessionId,
-      responseId: identifier(4),
-      eventId: asked.eventId,
-      type: 'choice.present',
-      timestamp: '2026-08-08T00:00:02.000Z',
-      payload: question,
-    })
+    expect(await pendingChoiceOf(server, cookie)).toBe(null)
+    await postAcceptedResponse(
+      server,
+      capability,
+      choicePresent(server, asked.eventId, 4),
+    )
     // The question lives in the agent's response, never in the transcript, so
     // a browser that reloads reads it here or cannot answer at all.
-    expect(await pendingChoice()).toEqual(question)
+    expect(await pendingChoiceOf(server, cookie)).toEqual(deliveryQuestion)
 
     const chosen = nextFrame(socket, 'accepted')
     socket.send(
@@ -574,7 +605,7 @@ describe('startVisualServer bootstrap and browser authentication', () => {
       }),
     )
     await chosen
-    expect(await pendingChoice()).toBe(null)
+    expect(await pendingChoiceOf(server, cookie)).toBe(null)
     socket.close()
   })
 
@@ -584,32 +615,18 @@ describe('startVisualServer bootstrap and browser authentication', () => {
     const { cookie } = await bootstrap(server)
     const socket = await openBrowserSocket(server, cookie)
     const asked = await sendChat(socket, 'Which option?')
-    await postResponse(server, capability, {
-      format: 'yarramate/visual-response/v1',
-      sessionId: server.started.sessionId,
-      responseId: identifier(4),
-      eventId: asked.eventId,
-      type: 'choice.present',
-      timestamp: '2026-08-08T00:00:02.000Z',
-      payload: {
-        choiceId: 'delivery',
-        question: 'Which delivery design should we keep?',
-        options: [
-          { id: 'shared-queue', label: 'Shared queue' },
-          { id: 'isolated-worker', label: 'Isolated worker' },
-        ],
-      },
-    })
+    await postAcceptedResponse(
+      server,
+      capability,
+      choicePresent(server, asked.eventId, 4),
+    )
+    expect(await pendingChoiceOf(server, cookie)).toEqual(deliveryQuestion)
+
     // Asking something else is how a reviewer declines to choose, and the
     // browser closes the buttons on itself when it sends one.
     await sendChat(socket, 'What does the queue cost?')
 
-    const session = (await (
-      await fetch(`${server.started.origin}/api/session`, {
-        headers: { Cookie: cookie },
-      })
-    ).json()) as { readonly pendingChoice: unknown }
-    expect(session.pendingChoice).toBe(null)
+    expect(await pendingChoiceOf(server, cookie)).toBe(null)
     socket.close()
   })
 
@@ -619,22 +636,12 @@ describe('startVisualServer bootstrap and browser authentication', () => {
     const { cookie } = await bootstrap(server)
     const socket = await openBrowserSocket(server, cookie)
     const asked = await sendChat(socket, 'Which option?')
-    await postResponse(server, capability, {
-      format: 'yarramate/visual-response/v1',
-      sessionId: server.started.sessionId,
-      responseId: identifier(4),
-      eventId: asked.eventId,
-      type: 'choice.present',
-      timestamp: '2026-08-08T00:00:02.000Z',
-      payload: {
-        choiceId: 'delivery',
-        question: 'Which delivery design should we keep?',
-        options: [
-          { id: 'shared-queue', label: 'Shared queue' },
-          { id: 'isolated-worker', label: 'Isolated worker' },
-        ],
-      },
-    })
+    await postAcceptedResponse(
+      server,
+      capability,
+      choicePresent(server, asked.eventId, 4),
+    )
+    expect(await pendingChoiceOf(server, cookie)).toEqual(deliveryQuestion)
 
     const ended = nextFrame(socket, 'accepted')
     socket.send(
@@ -648,12 +655,55 @@ describe('startVisualServer bootstrap and browser authentication', () => {
 
     // A session on its way out is waiting on nobody, so a browser that comes
     // back to it is not asked a question again.
-    const session = (await (
-      await fetch(`${server.started.origin}/api/session`, {
-        headers: { Cookie: cookie },
-      })
-    ).json()) as { readonly pendingChoice: unknown }
-    expect(session.pendingChoice).toBe(null)
+    expect(await pendingChoiceOf(server, cookie)).toBe(null)
+    socket.close()
+  })
+
+  it('holds no question the agent presented after the reviewer ended', async () => {
+    const server = await start()
+    const capability = await capabilityOf(server)
+    const { cookie } = await bootstrap(server)
+    const socket = await openBrowserSocket(server, cookie)
+    const asked = await sendChat(socket, 'Which option?')
+
+    const ended = nextFrame(socket, 'accepted')
+    socket.send(
+      JSON.stringify({
+        type: 'session.end',
+        lastAcknowledgedSequence: 1,
+        payload: { reason: 'user-ended' },
+      }),
+    )
+    const end = await ended
+
+    // The agent was still composing when the End landed, so its question
+    // answers an event whose reviewer has already walked away.
+    await postAcceptedResponse(
+      server,
+      capability,
+      choicePresent(server, asked.eventId, 4),
+    )
+    // The handoff a terminating session waits for is still the agent's to
+    // send, so a response after an End stays admissible.
+    await postAcceptedResponse(server, capability, {
+      format: 'yarramate/visual-response/v1',
+      sessionId: server.started.sessionId,
+      responseId: identifier(5),
+      eventId: end.eventId,
+      type: 'handoff.complete',
+      timestamp: '2026-08-08T00:00:05.000Z',
+      payload: {
+        summary: 'The reviewer ended before choosing a delivery design.',
+        confirmedDecisions: [],
+        requestedChanges: [],
+        unresolvedQuestions: ['Which delivery design should we keep?'],
+        finalViews: ['choices'],
+      },
+    })
+
+    // A browser that reloads into an ended session is never handed buttons it
+    // can no longer press.
+    expect(await pendingChoiceOf(server, cookie)).toBe(null)
     socket.close()
   })
 
@@ -1270,7 +1320,7 @@ describe('startVisualServer agent responses', () => {
     expect(response.status).toBe(409)
     await expect(response.json()).resolves.toMatchObject({
       accepted: false,
-      diagnostics: [{ code: 'YMVS131', pointer: '#/eventId' }],
+      diagnostics: [{ code: 'YMVS131', pointer: '/eventId' }],
     })
     expect(await journalOf(server)).toHaveLength(1)
     socket.close()
@@ -1315,11 +1365,17 @@ describe('startVisualServer agent responses', () => {
   })
 
   it('keeps the last good rendering when a replacement fails to compile', async () => {
-    const server = await start()
+    const server = await start({ agentPollMs: 60 })
     const capability = await capabilityOf(server)
     const { cookie } = await bootstrap(server)
     const socket = await openBrowserSocket(server, cookie)
     const accepted = await sendChat(socket, 'redraw it badly')
+    // The replacement has to answer a turn the agent is actually holding, or
+    // the failed compile has nothing to finish.
+    const turn = (await (
+      await agentFetch(server, capability, '/api/agent/events?after=0')
+    ).json()) as { readonly event: VisualEvent }
+    expect(turn.event.eventId).toBe(accepted.eventId)
 
     const diagnosed = nextFrame(
       socket,
@@ -1357,6 +1413,17 @@ describe('startVisualServer agent responses', () => {
       })
     ).json()) as { readonly model: { readonly candidate: string } }
     expect(session.model.candidate).toBe('000001')
+
+    // A compile that failed still ends the turn its response answered, so the
+    // reviewer's next message reaches the agent instead of queueing behind a
+    // turn nobody owns any more.
+    expect(server.status().agent.inFlightEventId).toBe(null)
+    await sendChat(socket, 'try the other one')
+    const next = (await (
+      await agentFetch(server, capability, '/api/agent/events?after=1')
+    ).json()) as { readonly waiting: boolean; readonly event: VisualEvent }
+    expect(next.waiting).toBe(false)
+    expect(next.event.payload).toEqual({ text: 'try the other one' })
     socket.close()
   })
 })
@@ -1864,6 +1931,53 @@ describe('startVisualServer diagnostic conformance', () => {
     })
     socket.close()
   })
+})
+
+describe('startVisualServer teardown retries', () => {
+  /**
+   * The teardown is failed through the filesystem rather than the clock: a
+   * session root nothing may unlink from refuses the removal a stop ends with,
+   * refuses it on every attempt, and stops refusing the moment the permission
+   * comes back. A process the permission does not bind cannot see any of it.
+   */
+  const enforcesPermissions =
+    process.platform !== 'win32' && process.getuid?.() !== 0
+
+  it.skipIf(!enforcesPermissions)(
+    'retries a teardown the first stop failed to finish',
+    async () => {
+      const server = await start()
+      const root = server.started.sessionRoot
+      // Readable and traversable, so the recovery the stop reads still
+      // succeeds; not writable, so the removal that follows it cannot.
+      await chmod(root, 0o500)
+
+      await expect(server.stop('user-ended')).rejects.toThrow()
+      // Nothing was lost to the failure: the journal the retry recovers from
+      // is still the one this session wrote.
+      await expect(stat(join(root, 'journal.jsonl'))).resolves.toBeDefined()
+
+      await chmod(root, 0o700)
+      const closed = await server.stop('user-ended')
+
+      expect(closed).toMatchObject({
+        reason: 'user-ended',
+        alreadyStopped: false,
+      })
+      expect(closed.handoff).toMatchObject({
+        format: 'yarramate/visual-handoff/v1',
+        sessionId: server.started.sessionId,
+      })
+      await expect(stat(root)).rejects.toThrow()
+      await expect(server.closed).resolves.toMatchObject({
+        reason: 'user-ended',
+      })
+      expect(server.status()).toMatchObject({
+        lifecycle: 'stopped',
+        server: { listening: false },
+      })
+    },
+  )
 })
 
 it('keeps the fixture asset root free of anything the server must not serve', async () => {
