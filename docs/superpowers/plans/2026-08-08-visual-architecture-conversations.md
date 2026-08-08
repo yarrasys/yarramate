@@ -973,13 +973,13 @@ Document `start` through the harness's long-running process tool. Never recommen
 
 - [ ] **Step 4: Update consumer guidance and package exports**
 
-Document authority labels, the local-only server, consented pinned runner, chat-capable journey, diagram-only fallback, main-agent recovery, transcript-on-demand, and server cleanup. Add all eight schema exports and the binary. The prepack build already runs both Node and visual builds from Task 6.
+Document authority labels, the local-only server, consented pinned runner, chat-capable journey, diagram-only fallback, main-agent recovery, transcript-on-demand, and server cleanup. Add all nine schema exports and the binary. The prepack build already runs both Node and visual builds from Task 6.
 
 - [ ] **Step 5: Run skill/package tests and pack smoke**
 
 Run: `pnpm exec vitest run test/package-consumer.test.ts && pnpm build && npm pack --dry-run`
 
-Expected: PASS; dry-run lists `dist/adapters/visual-cli.js`, `dist/visual-app/index.html`, eight visual schemas, and the visual-conversation reference.
+Expected: PASS; dry-run lists `dist/adapters/visual-cli.js`, `dist/visual-app/index.html`, nine visual schemas, and the visual-conversation reference.
 
 - [ ] **Step 6: Commit the consumer journey**
 

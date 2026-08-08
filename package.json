@@ -96,7 +96,7 @@
   },
   "scripts": {
     "build:node": "tsc -p tsconfig.build.json",
-    "build:visual": "vite build --config vite.visual.config.ts",
+    "build:visual": "vite build --config vite.visual.config.ts --logLevel warn",
     "build": "pnpm build:node && pnpm build:visual",
     "prepack": "pnpm build",
     "docs:dev": "pnpm self:export:likec4 && likec4 serve .yarramate-out/likec4",
