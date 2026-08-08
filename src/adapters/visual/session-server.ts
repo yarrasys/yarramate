@@ -146,6 +146,23 @@ const TERMINATION_REASONS: Readonly<Record<string, true>> = {
   'compiler-failed': true,
 }
 
+/**
+ * Which freezes are a runtime failing rather than a session closing.
+ *
+ * A ceiling the runtime enforced for itself means nothing more can be
+ * journaled, so the conversation is over whether or not anyone asks it to
+ * stop. `terminal-event` is already that ending, and a disconnected browser is
+ * the reconnect grace's business, so neither ends a session a second time.
+ */
+const LIMIT_FREEZE: Readonly<Record<VisualFreezeReason, boolean>> = {
+  'message-bytes': true,
+  'model-bytes': true,
+  'transcript-bytes': true,
+  'pending-events': true,
+  'browser-disconnected': false,
+  'terminal-event': false,
+}
+
 /** Built browser application, beside the compiled adapter in `dist`. */
 const DEFAULT_ASSET_ROOT = fileURLToPath(
   new URL('../../visual-app/', import.meta.url),
@@ -571,9 +588,40 @@ export const startVisualServer = async (
     }
   }
 
-  /** The first limit a session reaches is the one it reports for good. */
+  /**
+   * Ends a session that reached one of its own ceilings, exactly once.
+   *
+   * `freeze` is reached from inside the admission chain and the transition
+   * drains that same chain, so the entry that detected the limit is allowed to
+   * answer its sender first: starting the transition inline would be a session
+   * waiting on itself. Nothing is truncated — every record already accepted
+   * stands, and only the closing one is added.
+   */
+  let limitFailure: Promise<void> | undefined
+  const failOnLimit = () => {
+    limitFailure ??= (async () => {
+      await drainAdmission()
+      try {
+        // `server-failed` is the truth of it: not the reviewer, not the child,
+        // but the runtime is why the conversation stopped. Recovery reads that
+        // back as a failed handoff carrying everything the session did accept.
+        await terminateVisualSession(active, 'server-failed')
+      } finally {
+        // Whatever the journal managed, the child must not be left holding a
+        // turn on a session that has stopped answering.
+        settleAllPolls()
+      }
+    })().catch(() => undefined)
+  }
+
+  /**
+   * The first limit a session reaches is the one it reports for good, and a
+   * limit the runtime detected for itself also ends it.
+   */
   const freeze = (reason: VisualFreezeReason) => {
-    frozen ??= reason
+    if (frozen !== undefined) return
+    frozen = reason
+    if (LIMIT_FREEZE[reason]) failOnLimit()
   }
 
   /**
@@ -1010,6 +1058,51 @@ export const startVisualServer = async (
     })
   }
 
+  /**
+   * Journals one transport record the runtime owns outright: a browser was
+   * admitted, or the socket it was admitted on went away. `closedWith` is the
+   * close code for the second and absent for the first.
+   *
+   * The browser neither sends these nor waits on them. They are non-actionable,
+   * so they open no agent turn and never join the pending queue; they take
+   * their sequence, identifier, and timestamp from the same admission chain
+   * every other record does, so a connection is always journaled ahead of the
+   * frames it goes on to send. A session that is no longer taking input skips
+   * them, because a shutdown closing its own sockets is not the reviewer
+   * leaving. The append is deliberately answered to nobody: a socket callback
+   * awaits nothing, so a failure here becomes a freeze rather than a rejection
+   * the process never handles.
+   */
+  const journalConnection = (
+    connectionId: string,
+    closedWith?: number,
+  ): Promise<void> =>
+    admit(async () => {
+      if (active.lifecycle !== 'running' || frozen !== undefined) return
+      const envelope = {
+        format: 'yarramate/visual-event/v1',
+        sessionId,
+        sequence: lastSequence + 1,
+        eventId: drawHex(16),
+        timestamp: stamp(),
+      } as const
+      const event: VisualEvent =
+        closedWith === undefined
+          ? { ...envelope, type: 'browser.connected', payload: { connectionId } }
+          : {
+              ...envelope,
+              type: 'browser.disconnected',
+              payload: { connectionId, code: closedWith },
+            }
+      const appended = await appendVisualEvent(paths, event)
+      if (!appended.ok) {
+        if (appended.freeze !== undefined) freeze(appended.freeze)
+        return
+      }
+      lastSequence = appended.lastSequence
+      transcriptBytes = appended.transcriptBytes
+    }).catch(() => undefined)
+
   const attachBrowser = (socket: WebSocket) => {
     const connectionId = drawHex(16)
     // The reviewer is back inside the window, so the session it was holding
@@ -1050,12 +1143,24 @@ export const startVisualServer = async (
         freeze('message-bytes')
       }
     })
-    socket.on('close', () => {
+    socket.on('close', (code: number) => {
       connections.delete(connectionId)
       lastSeenAt = stamp()
+      // The code the transport reported, held inside the range the journal
+      // accepts: a socket that died without one still has to be recorded as
+      // having gone, and 1006 is what that abnormal closure is called.
+      void journalConnection(
+        connectionId,
+        Number.isInteger(code) && code >= 1000 && code <= 4999 ? code : 1006,
+      )
       if (connections.size === 0) armGrace()
     })
-    sendFrame(socket, { kind: 'ready', snapshot: snapshot() })
+    // The arrival is journaled before the snapshot is handed over, so the
+    // sequence the browser starts from already counts it, and a reload cannot
+    // be told it acknowledged a sequence the journal never reached.
+    void journalConnection(connectionId)
+      .then(() => sendFrame(socket, { kind: 'ready', snapshot: snapshot() }))
+      .catch(() => socket.close(1011))
   }
 
   // ------------------------------------------------------------- agent routes
