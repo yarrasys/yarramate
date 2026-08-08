@@ -84,6 +84,7 @@ const requestWith = (marker?: string): VisualSessionRequest => ({
 
 const chatEventInput = {
   type: 'chat.message',
+  lastAcknowledgedSequence: 0,
   payload: { text: 'Compare the two delivery designs' },
 } as const
 

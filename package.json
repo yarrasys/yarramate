@@ -95,7 +95,9 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build:node": "tsc -p tsconfig.build.json",
+    "build:visual": "vite build --config vite.visual.config.ts",
+    "build": "pnpm build:node && pnpm build:visual",
     "prepack": "pnpm build",
     "docs:dev": "pnpm self:export:likec4 && likec4 serve .yarramate-out/likec4",
     "format": "likec4 format assets/likec4",
@@ -112,7 +114,7 @@
     "validate": "pnpm self:export:likec4 && likec4 validate --no-layout .yarramate-out/likec4",
     "verify": "pnpm typecheck && pnpm build && pnpm test && pnpm self:check && pnpm validate",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.visual.json"
   },
   "dependencies": {
     "ajv": "^8.17.1",
@@ -120,10 +122,16 @@
     "yaml": "^2.8.1"
   },
   "devDependencies": {
+    "@likec4/core": "1.59.2",
     "@types/node": "^26.1.2",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
     "@types/ws": "^8.18.1",
     "likec4": "^1.59.2",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
     "typescript": "^7.0.2",
+    "vite": "^8.1.5",
     "vitest": "^4.1.10"
   }
 }

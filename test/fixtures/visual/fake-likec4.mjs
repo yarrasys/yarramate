@@ -90,7 +90,32 @@ if (argv[0] === 'validate') {
   const exported = JSON.parse(
     readFileSync(new URL('./model.json', import.meta.url), 'utf8'),
   )
-  if (marker === 'malformed-export') writeFileSync(outfile, '{"views": ')
+  if (marker === 'default-project') {
+    // What the real CLI writes for two projects: a bare array. A staged
+    // configuration resolves the named project beside an empty default one.
+    writeFileSync(
+      outfile,
+      JSON.stringify(
+        [exported, { ...exported, projectId: 'default', views: {} }],
+        null,
+        2,
+      ),
+    )
+  } else if (marker === 'ambiguous-projects') {
+    writeFileSync(
+      outfile,
+      JSON.stringify(
+        [
+          { ...exported, projectId: 'other' },
+          { ...exported, projectId: 'another' },
+        ],
+        null,
+        2,
+      ),
+    )
+  } else if (marker === 'one-project') {
+    writeFileSync(outfile, JSON.stringify([exported], null, 2))
+  } else if (marker === 'malformed-export') writeFileSync(outfile, '{"views": ')
   else if (marker === 'no-views') {
     writeFileSync(outfile, JSON.stringify({ ...exported, views: {} }, null, 2))
   } else if (marker === 'huge-export') {

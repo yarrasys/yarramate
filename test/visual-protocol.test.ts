@@ -223,6 +223,7 @@ describe('visual protocol', () => {
     expect(
       parseVisualBrowserInput({
         type: 'chat.message',
+        lastAcknowledgedSequence: 0,
         payload: { text: 'Hello' },
       }),
     ).toMatchObject({ ok: true })
@@ -311,6 +312,7 @@ describe('visual protocol', () => {
     expect(
       parseVisualBrowserInput({
         type: 'chat.message',
+        lastAcknowledgedSequence: 0,
         payload: { text: 'Hello' },
         sessionId,
       }),
@@ -318,10 +320,39 @@ describe('visual protocol', () => {
     expect(
       parseVisualBrowserInput({
         type: 'browser.connected',
+        lastAcknowledgedSequence: 0,
         payload: { connectionId: 'c1' },
       }),
     ).toMatchObject({ ok: false })
   })
+
+  it('requires every browser frame to carry its last acknowledged sequence', () => {
+    expect(
+      parseVisualBrowserInput({
+        type: 'chat.message',
+        payload: { text: 'Hello' },
+      }),
+    ).toMatchObject({ ok: false })
+    expect(
+      parseVisualBrowserInput({
+        type: 'session.end',
+        payload: { reason: 'user-ended' },
+      }),
+    ).toMatchObject({ ok: false })
+  })
+
+  it.each([-1, 1.5, '1', null])(
+    'rejects %s as a last acknowledged sequence',
+    (lastAcknowledgedSequence) => {
+      expect(
+        parseVisualBrowserInput({
+          type: 'chat.message',
+          lastAcknowledgedSequence,
+          payload: { text: 'Hello' },
+        }),
+      ).toMatchObject({ ok: false })
+    },
+  )
 
   it('requires the request authority to match the initial model authority', () => {
     expect(
@@ -386,12 +417,14 @@ describe('visual protocol', () => {
     expect(
       parseVisualBrowserInput({
         type: 'chat.message',
+        lastAcknowledgedSequence: 0,
         payload: { text: exact },
       }),
     ).toMatchObject({ ok: true })
     expect(
       parseVisualBrowserInput({
         type: 'chat.message',
+        lastAcknowledgedSequence: 0,
         payload: { text: `${exact}a` },
       }),
     ).toMatchObject({ ok: false })
@@ -401,6 +434,7 @@ describe('visual protocol', () => {
     expect(
       parseVisualBrowserInput({
         type: 'chat.message',
+        lastAcknowledgedSequence: 0,
         payload: { text: multiByte },
       }),
     ).toMatchObject({ ok: false })
