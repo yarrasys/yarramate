@@ -1,0 +1,581 @@
+/*
+ * A drafting desk, not a dashboard: paper ground, charcoal ink, hairline rules,
+ * and one signature — the handoff rail that joins the drawing to the
+ * conversation and ends at the control that hands the review back.
+ *
+ * Every face is a system stack, every colour is one of the six the session
+ * speaks in, and nothing is loaded from anywhere but this origin.
+ */
+
+:root {
+  --paper: #e8eef0;
+  --ink: #182228;
+  --eucalyptus: #416f65;
+  --ochre: #b66a2c;
+  --cobalt: #2457a6;
+  --failure: #a3403a;
+
+  --sheet: color-mix(in oklab, var(--paper) 55%, white);
+  --rule: color-mix(in oklab, var(--ink) 16%, transparent);
+  --rule-firm: color-mix(in oklab, var(--ink) 34%, transparent);
+  --quiet: color-mix(in oklab, var(--ink) 62%, var(--paper));
+
+  --display: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua',
+    Georgia, serif;
+  --body: 'Avenir Next', Avenir, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    system-ui, sans-serif;
+  --utility: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+
+  --step: 0.5rem;
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 3px solid var(--cobalt);
+  outline-offset: 2px;
+}
+
+.offscreen {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------ desk */
+
+.desk {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 3.5rem minmax(21rem, 26vw);
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* ------------------------------------------------------------------ plan */
+
+.plan {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 0;
+  background: var(--sheet);
+}
+
+.plan > header {
+  padding: calc(var(--step) * 3) calc(var(--step) * 3) calc(var(--step) * 2);
+  border-bottom: 1px solid var(--rule);
+}
+
+.authority {
+  margin: 0;
+  font-family: var(--utility);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--eucalyptus);
+}
+
+.authority::before {
+  content: '';
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.5rem;
+  vertical-align: 0;
+  background: currentColor;
+}
+
+.authority-ad-hoc {
+  color: var(--ochre);
+}
+
+.plan h1 {
+  margin: calc(var(--step) * 1.25) 0 0;
+  font-family: var(--display);
+  font-size: clamp(1.5rem, 1.1rem + 1.2vw, 2.15rem);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+
+.lede {
+  margin: calc(var(--step) * 0.75) 0 0;
+  max-width: 62ch;
+  color: var(--quiet);
+}
+
+.canvas {
+  position: relative;
+  min-height: 0;
+  padding: var(--step);
+}
+
+/* The diagram owns its box. LikeC4 sizes its shadow host from a stylesheet it
+   injects at runtime, which this page's policy does not admit, so the host is
+   sized from here instead. Only the host: the blocked <style> element is a
+   sibling, and a display rule would put its source text on the page. */
+.canvas > .diagram {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.waiting {
+  margin: 0;
+  padding: calc(var(--step) * 4);
+  font-family: var(--utility);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--quiet);
+}
+
+.views {
+  border-top: 1px solid var(--rule);
+  padding: var(--step) calc(var(--step) * 3);
+}
+
+.views ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--step);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.views button {
+  font-family: var(--utility);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--quiet);
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 0;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+}
+
+.views button:hover {
+  color: var(--ink);
+  border-color: var(--rule-firm);
+}
+
+.views button[aria-current] {
+  color: var(--paper);
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+/* --------------------------------------------------------------- the rail */
+
+.rail {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--step) * 3);
+  padding: calc(var(--step) * 2) 0;
+  border-left: 1px solid var(--rule);
+  border-right: 1px solid var(--rule);
+  background: var(--paper);
+}
+
+/* The spine: one hairline joining authority, connection, view, and End. */
+.rail::before {
+  content: '';
+  position: absolute;
+  top: calc(var(--step) * 2);
+  bottom: calc(var(--step) * 2);
+  left: 50%;
+  width: 1px;
+  background: var(--rule-firm);
+}
+
+.station {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--step);
+  margin: 0;
+  font-family: var(--utility);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--quiet);
+}
+
+.station .value {
+  writing-mode: vertical-rl;
+  max-height: 11rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.station .tick {
+  width: 9px;
+  height: 9px;
+  background: var(--paper);
+  border: 1px solid var(--rule-firm);
+}
+
+.rail-canonical .station-authority .tick {
+  background: var(--eucalyptus);
+  border-color: var(--eucalyptus);
+}
+
+.rail-ad-hoc .station-authority .tick {
+  background: var(--ochre);
+  border-color: var(--ochre);
+}
+
+.station-link.link-live .tick {
+  background: var(--cobalt);
+  border-color: var(--cobalt);
+}
+
+.station-link.link-reconnecting .tick,
+.station-link.link-closed .tick {
+  background: var(--failure);
+  border-color: var(--failure);
+}
+
+.station-link.link-ending .tick {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+.station-view .tick {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+.rail .end {
+  position: relative;
+  margin-top: auto;
+  padding: 0.55rem 0.4rem;
+  min-width: 2.5rem;
+  font-family: var(--utility);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--paper);
+  background: var(--ink);
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.rail .end:hover:enabled {
+  background: var(--failure);
+  border-color: var(--failure);
+}
+
+.rail .end:disabled {
+  color: var(--quiet);
+  background: transparent;
+  border-color: var(--rule-firm);
+  cursor: not-allowed;
+}
+
+/* ------------------------------------------------------------------ talk */
+
+.talk {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto auto auto;
+  min-width: 0;
+  min-height: 0;
+  background: var(--sheet);
+}
+
+.ledger {
+  margin: 0;
+  padding: calc(var(--step) * 2) calc(var(--step) * 2.5);
+  list-style: none;
+  overflow-y: auto;
+}
+
+.ledger .empty p {
+  margin: 0;
+  color: var(--quiet);
+  font-family: var(--utility);
+  font-size: 12px;
+}
+
+.said {
+  padding: 0 0 calc(var(--step) * 1.75) calc(var(--step) * 1.5);
+  border-left: 2px solid var(--rule);
+}
+
+.said + .said {
+  padding-top: calc(var(--step) * 1.75);
+}
+
+.said-reviewer {
+  border-left-color: var(--cobalt);
+}
+
+.said-agent {
+  border-left-color: var(--eucalyptus);
+}
+
+.said-session {
+  border-left-color: var(--ochre);
+}
+
+.who {
+  margin: 0 0 0.15rem;
+  font-family: var(--utility);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--quiet);
+}
+
+.words {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.faults {
+  padding: calc(var(--step) * 1.5) calc(var(--step) * 2.5);
+  border-top: 1px solid var(--failure);
+  background: color-mix(in oklab, var(--failure) 8%, var(--sheet));
+}
+
+.faults-title {
+  margin: 0 0 var(--step);
+  font-size: 13px;
+  color: var(--failure);
+}
+
+.faults ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-family: var(--utility);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.faults .code {
+  font-weight: 700;
+}
+
+.faults .where {
+  color: var(--quiet);
+  margin-left: 0.4rem;
+}
+
+.choices {
+  padding: calc(var(--step) * 1.5) calc(var(--step) * 2.5);
+  border-top: 1px solid var(--rule);
+}
+
+.question {
+  margin: 0 0 var(--step);
+  font-family: var(--display);
+  font-size: 1.05rem;
+}
+
+.choices ul {
+  display: grid;
+  gap: var(--step);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.choices button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 0.7rem;
+  font-family: var(--body);
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule-firm);
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.choices button:hover:enabled {
+  border-color: var(--cobalt);
+}
+
+.choices button:disabled {
+  color: var(--quiet);
+  cursor: not-allowed;
+}
+
+.choices .detail {
+  display: block;
+  font-size: 12px;
+  color: var(--quiet);
+}
+
+.composer {
+  padding: calc(var(--step) * 1.5) calc(var(--step) * 2.5)
+    calc(var(--step) * 2);
+  border-top: 1px solid var(--rule);
+}
+
+.composer textarea {
+  display: block;
+  width: 100%;
+  resize: vertical;
+  padding: 0.55rem 0.65rem;
+  font-family: var(--body);
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule-firm);
+  border-radius: 0;
+}
+
+.composer textarea:disabled {
+  color: var(--quiet);
+  background: color-mix(in oklab, var(--paper) 70%, var(--sheet));
+  cursor: not-allowed;
+}
+
+.composer-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--step);
+  margin-top: var(--step);
+}
+
+.agent-status {
+  margin: 0;
+  font-family: var(--utility);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--quiet);
+}
+
+.composer button {
+  padding: 0.45rem 1.1rem;
+  font-family: var(--utility);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--paper);
+  background: var(--cobalt);
+  border: 1px solid var(--cobalt);
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.composer button:disabled {
+  color: var(--quiet);
+  background: transparent;
+  border-color: var(--rule-firm);
+  cursor: not-allowed;
+}
+
+/* ---------------------------------------------------------------- narrow */
+
+@media (max-width: 900px) {
+  .desk {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  .plan {
+    grid-template-rows: auto 45vh auto;
+  }
+
+  .plan > header {
+    padding: calc(var(--step) * 2);
+  }
+
+  /* The rail turns with the layout and stays in reach: authority, connection,
+     view, and End remain one strip, pinned while the conversation scrolls. */
+  .rail {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    flex-direction: row;
+    align-items: center;
+    gap: calc(var(--step) * 2);
+    padding: var(--step) calc(var(--step) * 2);
+    border-left: 0;
+    border-right: 0;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .rail::before {
+    top: 50%;
+    bottom: auto;
+    left: calc(var(--step) * 2);
+    right: calc(var(--step) * 2);
+    width: auto;
+    height: 1px;
+  }
+
+  .station {
+    flex-direction: row;
+  }
+
+  .station .value {
+    writing-mode: horizontal-tb;
+    max-height: none;
+    max-width: 9rem;
+  }
+
+  .rail .end {
+    margin-top: 0;
+    margin-left: auto;
+    padding: 0.5rem 1rem;
+  }
+
+  .talk {
+    grid-template-rows: auto auto auto auto;
+  }
+
+  .ledger {
+    overflow-y: visible;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

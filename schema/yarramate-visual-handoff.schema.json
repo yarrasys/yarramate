@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yarramate.org/schema/visual-handoff/v1",
+  "title": "YarraMate visual conversation handoff",
+  "description": "Recoverable summary returned to the main agent. The raw transcript appears only when it was explicitly requested.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "sessionId",
+    "authority",
+    "decision",
+    "terminationReason",
+    "lastSequence",
+    "summary",
+    "confirmedDecisions",
+    "requestedChanges",
+    "unresolvedQuestions",
+    "finalViews",
+    "transcriptPath",
+    "completedAt"
+  ],
+  "properties": {
+    "format": {
+      "const": "yarramate/visual-handoff/v1"
+    },
+    "sessionId": {
+      "$ref": "https://yarramate.org/schema/visual-event/v1#/$defs/identifier"
+    },
+    "authority": {
+      "$ref": "https://yarramate.org/schema/visual-model/v1#/$defs/authority"
+    },
+    "decision": {
+      "$ref": "#/$defs/handoffDecision"
+    },
+    "terminationReason": {
+      "$ref": "#/$defs/terminationReason"
+    },
+    "lastSequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "summary": {
+      "$ref": "https://yarramate.org/schema/visual-response/v1#/$defs/summaryText"
+    },
+    "confirmedDecisions": {
+      "$ref": "https://yarramate.org/schema/visual-response/v1#/$defs/statementList"
+    },
+    "requestedChanges": {
+      "$ref": "https://yarramate.org/schema/visual-response/v1#/$defs/statementList"
+    },
+    "unresolvedQuestions": {
+      "$ref": "https://yarramate.org/schema/visual-response/v1#/$defs/statementList"
+    },
+    "finalViews": {
+      "$ref": "https://yarramate.org/schema/visual-response/v1#/$defs/viewList"
+    },
+    "transcriptPath": {
+      "$ref": "https://yarramate.org/schema/visual-session-started/v1#/$defs/absolutePath"
+    },
+    "transcript": {
+      "type": "array",
+      "maxItems": 100000,
+      "items": {
+        "$ref": "#/$defs/transcriptEntry"
+      }
+    },
+    "completedAt": {
+      "$ref": "https://yarramate.org/schema/visual-event/v1#/$defs/timestamp"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "type": "object",
+        "required": ["decision"],
+        "properties": {
+          "decision": { "const": "completed" }
+        }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "terminationReason": { "const": "user-ended" }
+        }
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "required": ["decision"],
+        "properties": {
+          "decision": { "enum": ["cancelled", "failed"] }
+        }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "terminationReason": {
+            "not": { "const": "user-ended" }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "handoffDecision": {
+      "enum": ["completed", "cancelled", "failed"]
+    },
+    "terminationReason": {
+      "$ref": "https://yarramate.org/schema/visual-event/v1#/$defs/terminationReason"
+    },
+    "transcriptEntry": {
+      "oneOf": [
+        { "$ref": "https://yarramate.org/schema/visual-event/v1" },
+        { "$ref": "https://yarramate.org/schema/visual-response/v1" }
+      ]
+    }
+  }
+}

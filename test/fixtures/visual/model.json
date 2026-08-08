@@ -1,0 +1,1063 @@
+{
+  "_stage": "layouted",
+  "projectId": "visual",
+  "project": {
+    "id": "visual",
+    "title": "visual"
+  },
+  "specification": {
+    "tags": {},
+    "elements": {
+      "review": {
+        "style": {}
+      },
+      "option": {
+        "style": {}
+      },
+      "part": {
+        "style": {}
+      }
+    },
+    "relationships": {},
+    "deployments": {},
+    "customColors": {}
+  },
+  "elements": {
+    "desk": {
+      "style": {},
+      "description": {
+        "txt": "The question this session was opened to answer."
+      },
+      "title": "Delivery design review",
+      "kind": "review",
+      "id": "desk"
+    },
+    "streaming": {
+      "style": {},
+      "description": {
+        "txt": "Each change is published as an event and applied as it arrives."
+      },
+      "title": "Option 1 - Event-driven delivery",
+      "kind": "option",
+      "id": "streaming"
+    },
+    "nightly": {
+      "style": {},
+      "description": {
+        "txt": "Changes are collected and applied once per night."
+      },
+      "title": "Option 2 - Nightly batch delivery",
+      "kind": "option",
+      "id": "nightly"
+    },
+    "streaming.publisher": {
+      "style": {},
+      "description": {
+        "txt": "Emits one event per committed change."
+      },
+      "title": "Change publisher",
+      "kind": "part",
+      "id": "streaming.publisher"
+    },
+    "streaming.bus": {
+      "style": {},
+      "description": {
+        "txt": "At-least-once fan-out with replay."
+      },
+      "title": "Event bus",
+      "kind": "part",
+      "id": "streaming.bus"
+    },
+    "streaming.consumer": {
+      "style": {},
+      "description": {
+        "txt": "Applies each event on arrival."
+      },
+      "title": "Streaming consumer",
+      "kind": "part",
+      "id": "streaming.consumer"
+    },
+    "nightly.collector": {
+      "style": {},
+      "description": {
+        "txt": "Accumulates changes through the day."
+      },
+      "title": "Change collector",
+      "kind": "part",
+      "id": "nightly.collector"
+    },
+    "nightly.window": {
+      "style": {},
+      "description": {
+        "txt": "One scheduled run, no partial state."
+      },
+      "title": "Nightly window",
+      "kind": "part",
+      "id": "nightly.window"
+    },
+    "nightly.loader": {
+      "style": {},
+      "description": {
+        "txt": "Applies the whole night in one transaction."
+      },
+      "title": "Batch loader",
+      "kind": "part",
+      "id": "nightly.loader"
+    }
+  },
+  "relations": {
+    "5l0pi9": {
+      "title": "compares",
+      "source": {
+        "model": "desk"
+      },
+      "target": {
+        "model": "streaming"
+      },
+      "id": "5l0pi9"
+    },
+    "191xp83": {
+      "title": "compares",
+      "source": {
+        "model": "desk"
+      },
+      "target": {
+        "model": "nightly"
+      },
+      "id": "191xp83"
+    },
+    "e6bltu": {
+      "title": "publishes change",
+      "source": {
+        "model": "streaming.publisher"
+      },
+      "target": {
+        "model": "streaming.bus"
+      },
+      "id": "e6bltu"
+    },
+    "xkk6qd": {
+      "title": "delivers event",
+      "source": {
+        "model": "streaming.bus"
+      },
+      "target": {
+        "model": "streaming.consumer"
+      },
+      "id": "xkk6qd"
+    },
+    "1w5wchw": {
+      "title": "stages change",
+      "source": {
+        "model": "nightly.collector"
+      },
+      "target": {
+        "model": "nightly.window"
+      },
+      "id": "1w5wchw"
+    },
+    "soe31t": {
+      "title": "hands over batch",
+      "source": {
+        "model": "nightly.window"
+      },
+      "target": {
+        "model": "nightly.loader"
+      },
+      "id": "soe31t"
+    }
+  },
+  "globals": {
+    "predicates": {},
+    "dynamicPredicates": {},
+    "styles": {}
+  },
+  "views": {
+    "index": {
+      "_type": "element",
+      "tags": null,
+      "links": null,
+      "_stage": "layouted",
+      "sourcePath": "views/choices.likec4",
+      "description": {
+        "txt": "The two candidate deliveries and the review that compares them."
+      },
+      "title": "Delivery options - comparison",
+      "id": "index",
+      "autoLayout": {
+        "direction": "TB"
+      },
+      "hash": "rgsX2IkDhkcwwrzKeNnXnPduGlxbb9YsOdJvjA7KVLs",
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 766,
+        "height": 503
+      },
+      "nodes": [
+        {
+          "id": "desk",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [],
+          "outEdges": [
+            "18l3bv3",
+            "19v07zu"
+          ],
+          "title": "Delivery design review",
+          "modelRef": "desk",
+          "shape": "rectangle",
+          "color": "primary",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "description": {
+            "txt": "The question this session was opened to answer."
+          },
+          "tags": [],
+          "kind": "review",
+          "x": 220,
+          "y": 0,
+          "width": 320,
+          "height": 180,
+          "labelBBox": {
+            "x": 22,
+            "y": 56,
+            "width": 275,
+            "height": 65
+          }
+        },
+        {
+          "id": "streaming",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [
+            "18l3bv3"
+          ],
+          "outEdges": [],
+          "title": "Option 1 - Event-driven delivery",
+          "modelRef": "streaming",
+          "shape": "rectangle",
+          "color": "primary",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "description": {
+            "txt": "Each change is published as an event and applied as it arrives."
+          },
+          "tags": [],
+          "kind": "option",
+          "navigateTo": "detailStreaming",
+          "x": 0,
+          "y": 323,
+          "width": 321,
+          "height": 180,
+          "labelBBox": {
+            "x": 18,
+            "y": 56,
+            "width": 286,
+            "height": 65
+          }
+        },
+        {
+          "id": "nightly",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [
+            "19v07zu"
+          ],
+          "outEdges": [],
+          "title": "Option 2 - Nightly batch delivery",
+          "modelRef": "nightly",
+          "shape": "rectangle",
+          "color": "primary",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "description": {
+            "txt": "Changes are collected and applied once per night."
+          },
+          "tags": [],
+          "kind": "option",
+          "navigateTo": "detailNightly",
+          "x": 432,
+          "y": 323,
+          "width": 333,
+          "height": 180,
+          "labelBBox": {
+            "x": 18,
+            "y": 56,
+            "width": 298,
+            "height": 65
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "18l3bv3",
+          "source": "desk",
+          "target": "streaming",
+          "label": "compares",
+          "points": [
+            [
+              319,
+              180
+            ],
+            [
+              291,
+              222
+            ],
+            [
+              257,
+              272
+            ],
+            [
+              227,
+              315
+            ]
+          ],
+          "labelBBox": {
+            "x": 278,
+            "y": 241,
+            "width": 65,
+            "height": 18
+          },
+          "parent": null,
+          "relations": [
+            "5l0pi9"
+          ],
+          "color": "gray",
+          "line": "dashed",
+          "head": "normal"
+        },
+        {
+          "id": "19v07zu",
+          "source": "desk",
+          "target": "nightly",
+          "label": "compares",
+          "points": [
+            [
+              441,
+              180
+            ],
+            [
+              469,
+              222
+            ],
+            [
+              503,
+              272
+            ],
+            [
+              533,
+              315
+            ]
+          ],
+          "labelBBox": {
+            "x": 497,
+            "y": 241,
+            "width": 65,
+            "height": 18
+          },
+          "parent": null,
+          "relations": [
+            "191xp83"
+          ],
+          "color": "gray",
+          "line": "dashed",
+          "head": "normal"
+        }
+      ]
+    },
+    "choices": {
+      "_type": "element",
+      "tags": null,
+      "links": null,
+      "_stage": "layouted",
+      "sourcePath": "views/choices.likec4",
+      "description": {
+        "txt": "Ad hoc, non-canonical. Both candidates, each opening its own detail."
+      },
+      "title": "Delivery options - comparison",
+      "id": "choices",
+      "autoLayout": {
+        "direction": "TB"
+      },
+      "hash": "oaajO0MLKAReHfZcyiHRW8Bb6KIFPxUat0N-EhP7O6I",
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 766,
+        "height": 503
+      },
+      "nodes": [
+        {
+          "id": "desk",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [],
+          "outEdges": [
+            "18l3bv3",
+            "19v07zu"
+          ],
+          "title": "Delivery design review",
+          "modelRef": "desk",
+          "shape": "rectangle",
+          "color": "primary",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "description": {
+            "txt": "The question this session was opened to answer."
+          },
+          "tags": [],
+          "kind": "review",
+          "x": 220,
+          "y": 0,
+          "width": 320,
+          "height": 180,
+          "labelBBox": {
+            "x": 22,
+            "y": 56,
+            "width": 275,
+            "height": 65
+          }
+        },
+        {
+          "id": "streaming",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [
+            "18l3bv3"
+          ],
+          "outEdges": [],
+          "title": "Option 1 - Event-driven delivery",
+          "modelRef": "streaming",
+          "shape": "rectangle",
+          "color": "primary",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "description": {
+            "txt": "Each change is published as an event and applied as it arrives."
+          },
+          "tags": [],
+          "kind": "option",
+          "navigateTo": "detailStreaming",
+          "x": 0,
+          "y": 323,
+          "width": 321,
+          "height": 180,
+          "labelBBox": {
+            "x": 18,
+            "y": 56,
+            "width": 286,
+            "height": 65
+          }
+        },
+        {
+          "id": "nightly",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [
+            "19v07zu"
+          ],
+          "outEdges": [],
+          "title": "Option 2 - Nightly batch delivery",
+          "modelRef": "nightly",
+          "shape": "rectangle",
+          "color": "primary",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "description": {
+            "txt": "Changes are collected and applied once per night."
+          },
+          "tags": [],
+          "kind": "option",
+          "navigateTo": "detailNightly",
+          "x": 432,
+          "y": 323,
+          "width": 333,
+          "height": 180,
+          "labelBBox": {
+            "x": 18,
+            "y": 56,
+            "width": 298,
+            "height": 65
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "18l3bv3",
+          "source": "desk",
+          "target": "streaming",
+          "label": "compares",
+          "points": [
+            [
+              319,
+              180
+            ],
+            [
+              291,
+              222
+            ],
+            [
+              257,
+              272
+            ],
+            [
+              227,
+              315
+            ]
+          ],
+          "labelBBox": {
+            "x": 278,
+            "y": 241,
+            "width": 65,
+            "height": 18
+          },
+          "parent": null,
+          "relations": [
+            "5l0pi9"
+          ],
+          "color": "gray",
+          "line": "dashed",
+          "head": "normal"
+        },
+        {
+          "id": "19v07zu",
+          "source": "desk",
+          "target": "nightly",
+          "label": "compares",
+          "points": [
+            [
+              441,
+              180
+            ],
+            [
+              469,
+              222
+            ],
+            [
+              503,
+              272
+            ],
+            [
+              533,
+              315
+            ]
+          ],
+          "labelBBox": {
+            "x": 497,
+            "y": 241,
+            "width": 65,
+            "height": 18
+          },
+          "parent": null,
+          "relations": [
+            "191xp83"
+          ],
+          "color": "gray",
+          "line": "dashed",
+          "head": "normal"
+        }
+      ]
+    },
+    "detailStreaming": {
+      "_type": "element",
+      "tags": null,
+      "links": null,
+      "viewOf": "streaming",
+      "_stage": "layouted",
+      "sourcePath": "views/choices.likec4",
+      "description": {
+        "txt": "Ad hoc, non-canonical. Inside the event-driven option."
+      },
+      "title": "Option 1 detail - event-driven delivery",
+      "id": "detailStreaming",
+      "autoLayout": {
+        "direction": "LR"
+      },
+      "hash": "EKAs9oznq_lmtXrN7NfN67_sA3_AcC31R_1u2UVVisI",
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1504,
+        "height": 317
+      },
+      "nodes": [
+        {
+          "id": "streaming",
+          "parent": null,
+          "level": 0,
+          "children": [
+            "streaming.publisher",
+            "streaming.bus",
+            "streaming.consumer"
+          ],
+          "inEdges": [],
+          "outEdges": [],
+          "title": "Option 1 - Event-driven delivery",
+          "modelRef": "streaming",
+          "shape": "rectangle",
+          "color": "primary",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "description": {
+            "txt": "Each change is published as an event and applied as it arrives."
+          },
+          "tags": [],
+          "kind": "option",
+          "depth": 1,
+          "x": 8,
+          "y": 8,
+          "width": 1488,
+          "height": 301,
+          "labelBBox": {
+            "x": 6,
+            "y": 0,
+            "width": 205,
+            "height": 15
+          }
+        },
+        {
+          "id": "streaming.publisher",
+          "parent": "streaming",
+          "level": 1,
+          "children": [],
+          "inEdges": [],
+          "outEdges": [
+            "rh73b4"
+          ],
+          "title": "Change publisher",
+          "modelRef": "streaming.publisher",
+          "shape": "rectangle",
+          "color": "primary",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "description": {
+            "txt": "Emits one event per committed change."
+          },
+          "tags": [],
+          "kind": "part",
+          "x": 48,
+          "y": 69,
+          "width": 320,
+          "height": 180,
+          "labelBBox": {
+            "x": 26,
+            "y": 65,
+            "width": 268,
+            "height": 47
+          }
+        },
+        {
+          "id": "streaming.bus",
+          "parent": "streaming",
+          "level": 1,
+          "children": [],
+          "inEdges": [
+            "rh73b4"
+          ],
+          "outEdges": [
+            "1pwggkw"
+          ],
+          "title": "Event bus",
+          "modelRef": "streaming.bus",
+          "shape": "rectangle",
+          "color": "primary",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "description": {
+            "txt": "At-least-once fan-out with replay."
+          },
+          "tags": [],
+          "kind": "part",
+          "x": 603,
+          "y": 69,
+          "width": 320,
+          "height": 180,
+          "labelBBox": {
+            "x": 48,
+            "y": 65,
+            "width": 223,
+            "height": 47
+          }
+        },
+        {
+          "id": "streaming.consumer",
+          "parent": "streaming",
+          "level": 1,
+          "children": [],
+          "inEdges": [
+            "1pwggkw"
+          ],
+          "outEdges": [],
+          "title": "Streaming consumer",
+          "modelRef": "streaming.consumer",
+          "shape": "rectangle",
+          "color": "primary",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "description": {
+            "txt": "Applies each event on arrival."
+          },
+          "tags": [],
+          "kind": "part",
+          "x": 1136,
+          "y": 69,
+          "width": 320,
+          "height": 180,
+          "labelBBox": {
+            "x": 59,
+            "y": 65,
+            "width": 201,
+            "height": 47
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "rh73b4",
+          "source": "streaming.publisher",
+          "target": "streaming.bus",
+          "label": "publishes change",
+          "points": [
+            [
+              368,
+              159
+            ],
+            [
+              438,
+              159
+            ],
+            [
+              521,
+              159
+            ],
+            [
+              593,
+              159
+            ]
+          ],
+          "labelBBox": {
+            "x": 429,
+            "y": 137,
+            "width": 113,
+            "height": 18
+          },
+          "parent": "streaming",
+          "relations": [
+            "e6bltu"
+          ],
+          "color": "gray",
+          "line": "dashed",
+          "head": "normal"
+        },
+        {
+          "id": "1pwggkw",
+          "source": "streaming.bus",
+          "target": "streaming.consumer",
+          "label": "delivers event",
+          "points": [
+            [
+              923,
+              159
+            ],
+            [
+              987,
+              159
+            ],
+            [
+              1060,
+              159
+            ],
+            [
+              1125,
+              159
+            ]
+          ],
+          "labelBBox": {
+            "x": 984,
+            "y": 137,
+            "width": 90,
+            "height": 18
+          },
+          "parent": "streaming",
+          "relations": [
+            "xkk6qd"
+          ],
+          "color": "gray",
+          "line": "dashed",
+          "head": "normal"
+        }
+      ]
+    },
+    "detailNightly": {
+      "_type": "element",
+      "tags": null,
+      "links": null,
+      "viewOf": "nightly",
+      "_stage": "layouted",
+      "sourcePath": "views/choices.likec4",
+      "description": {
+        "txt": "Ad hoc, non-canonical. Inside the nightly batch option."
+      },
+      "title": "Option 2 detail - nightly batch delivery",
+      "id": "detailNightly",
+      "autoLayout": {
+        "direction": "LR"
+      },
+      "hash": "pJBXxCW1z2ajDed_K4-ly6QohfJIj5XiiOgBPbDmPQE",
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1508,
+        "height": 317
+      },
+      "nodes": [
+        {
+          "id": "nightly",
+          "parent": null,
+          "level": 0,
+          "children": [
+            "nightly.collector",
+            "nightly.window",
+            "nightly.loader"
+          ],
+          "inEdges": [],
+          "outEdges": [],
+          "title": "Option 2 - Nightly batch delivery",
+          "modelRef": "nightly",
+          "shape": "rectangle",
+          "color": "primary",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "description": {
+            "txt": "Changes are collected and applied once per night."
+          },
+          "tags": [],
+          "kind": "option",
+          "depth": 1,
+          "x": 8,
+          "y": 8,
+          "width": 1492,
+          "height": 301,
+          "labelBBox": {
+            "x": 6,
+            "y": 0,
+            "width": 213,
+            "height": 15
+          }
+        },
+        {
+          "id": "nightly.collector",
+          "parent": "nightly",
+          "level": 1,
+          "children": [],
+          "inEdges": [],
+          "outEdges": [
+            "1ukk291"
+          ],
+          "title": "Change collector",
+          "modelRef": "nightly.collector",
+          "shape": "rectangle",
+          "color": "primary",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "description": {
+            "txt": "Accumulates changes through the day."
+          },
+          "tags": [],
+          "kind": "part",
+          "x": 48,
+          "y": 69,
+          "width": 320,
+          "height": 180,
+          "labelBBox": {
+            "x": 28,
+            "y": 65,
+            "width": 263,
+            "height": 47
+          }
+        },
+        {
+          "id": "nightly.window",
+          "parent": "nightly",
+          "level": 1,
+          "children": [],
+          "inEdges": [
+            "1ukk291"
+          ],
+          "outEdges": [
+            "1ijh3ef"
+          ],
+          "title": "Nightly window",
+          "modelRef": "nightly.window",
+          "shape": "rectangle",
+          "color": "primary",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "description": {
+            "txt": "One scheduled run, no partial state."
+          },
+          "tags": [],
+          "kind": "part",
+          "x": 585,
+          "y": 69,
+          "width": 320,
+          "height": 180,
+          "labelBBox": {
+            "x": 39,
+            "y": 65,
+            "width": 242,
+            "height": 47
+          }
+        },
+        {
+          "id": "nightly.loader",
+          "parent": "nightly",
+          "level": 1,
+          "children": [],
+          "inEdges": [
+            "1ijh3ef"
+          ],
+          "outEdges": [],
+          "title": "Batch loader",
+          "modelRef": "nightly.loader",
+          "shape": "rectangle",
+          "color": "primary",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "description": {
+            "txt": "Applies the whole night in one transaction."
+          },
+          "tags": [],
+          "kind": "part",
+          "x": 1138,
+          "y": 69,
+          "width": 321,
+          "height": 180,
+          "labelBBox": {
+            "x": 19,
+            "y": 65,
+            "width": 285,
+            "height": 47
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "1ukk291",
+          "source": "nightly.collector",
+          "target": "nightly.window",
+          "label": "stages change",
+          "points": [
+            [
+              368,
+              159
+            ],
+            [
+              433,
+              159
+            ],
+            [
+              509,
+              159
+            ],
+            [
+              575,
+              159
+            ]
+          ],
+          "labelBBox": {
+            "x": 429,
+            "y": 137,
+            "width": 95,
+            "height": 18
+          },
+          "parent": "nightly",
+          "relations": [
+            "1w5wchw"
+          ],
+          "color": "gray",
+          "line": "dashed",
+          "head": "normal"
+        },
+        {
+          "id": "1ijh3ef",
+          "source": "nightly.window",
+          "target": "nightly.loader",
+          "label": "hands over batch",
+          "points": [
+            [
+              905,
+              159
+            ],
+            [
+              975,
+              159
+            ],
+            [
+              1057,
+              159
+            ],
+            [
+              1128,
+              159
+            ]
+          ],
+          "labelBBox": {
+            "x": 966,
+            "y": 137,
+            "width": 111,
+            "height": 18
+          },
+          "parent": "nightly",
+          "relations": [
+            "soe31t"
+          ],
+          "color": "gray",
+          "line": "dashed",
+          "head": "normal"
+        }
+      ]
+    }
+  },
+  "deployments": {
+    "elements": {},
+    "relations": {}
+  },
+  "imports": {},
+  "manualLayouts": {}
+}

@@ -331,6 +331,74 @@ concepts:
     kind: repository-file
     name: .yarramate/evidence/repository.yaml
     status: current
+  - id: visual-session-server-source
+    kind: repository-file
+    name: src/adapters/visual/session-server.ts
+    status: current
+  - id: visual-session-store-source
+    kind: repository-file
+    name: src/adapters/visual/session-store.ts
+    status: current
+  - id: visual-likec4-compiler-source
+    kind: repository-file
+    name: src/adapters/visual/likec4-compiler.ts
+    status: current
+  - id: visual-protocol-source
+    kind: repository-file
+    name: src/adapters/visual/protocol.ts
+    status: current
+  - id: visual-cli-source
+    kind: repository-file
+    name: src/adapters/visual-cli.ts
+    status: current
+  - id: visual-browser-source
+    kind: repository-file
+    name: src/visual-app/App.tsx
+    status: current
+  - id: visual-browser-shell
+    kind: repository-file
+    name: src/visual-app/index.html
+    status: current
+  - id: visual-event-schema-source
+    kind: repository-file
+    name: schema/yarramate-visual-event.schema.json
+    status: current
+  - id: visual-handoff-schema-source
+    kind: repository-file
+    name: schema/yarramate-visual-handoff.schema.json
+    status: current
+  - id: visual-session-server-tests
+    kind: repository-file
+    name: test/visual-session-server.test.ts
+    status: current
+  - id: visual-session-store-tests
+    kind: repository-file
+    name: test/visual-session-store.test.ts
+    status: current
+  - id: visual-likec4-compiler-tests
+    kind: repository-file
+    name: test/visual-likec4-compiler.test.ts
+    status: current
+  - id: visual-protocol-tests
+    kind: repository-file
+    name: test/visual-protocol.test.ts
+    status: current
+  - id: visual-cli-tests
+    kind: repository-file
+    name: test/visual-cli.test.ts
+    status: current
+  - id: visual-browser-tests
+    kind: repository-file
+    name: test/visual-app-state.test.ts
+    status: current
+  - id: visual-journey-tests
+    kind: repository-file
+    name: test/visual-journey.test.ts
+    status: current
+  - id: visual-skill-reference
+    kind: repository-file
+    name: skills/yarramate-architecture/references/visual-conversations.md
+    status: current
 relationships:
   - id: backlog-disposition-qualifies-roadmap
     kind: association
@@ -687,3 +755,76 @@ relationships:
     kind: realization
     from: repository-evidence
     to: yarramate-engine#evidence-document
+  - id: visual-session-server-realizes-runtime
+    kind: realization
+    from: visual-session-server-source
+    to: yarramate-engine#visual-runtime
+  - id: visual-session-store-realizes-recovery
+    kind: realization
+    from: visual-session-store-source
+    to: yarramate-engine#recover-visual-session
+  - id: visual-likec4-compiler-realizes-rendering
+    kind: realization
+    from: visual-likec4-compiler-source
+    to: yarramate-engine#render-visual-model
+  - id: visual-protocol-source-realizes-protocol
+    kind: realization
+    from: visual-protocol-source
+    to: yarramate-engine#visual-session-protocol
+  - id: visual-cli-source-realizes-session-command
+    kind: realization
+    from: visual-cli-source
+    to: yarramate-engine#visual-session-service
+  - id: visual-browser-source-realizes-browser
+    kind: realization
+    from: visual-browser-source
+    to: yarramate-engine#visual-browser
+  - id: visual-browser-shell-realizes-browser
+    kind: realization
+    from: visual-browser-shell
+    to: yarramate-engine#visual-browser
+  - id: visual-event-schema-realizes-protocol
+    kind: realization
+    from: visual-event-schema-source
+    to: yarramate-engine#visual-session-protocol
+  - id: visual-handoff-schema-realizes-handoff
+    kind: realization
+    from: visual-handoff-schema-source
+    to: yarramate-engine#visual-handoff
+  - id: visual-server-tests-validate-runtime
+    kind: association
+    from: visual-session-server-tests
+    to: yarramate-engine#visual-runtime
+  - id: visual-store-tests-validate-recovery
+    kind: association
+    from: visual-session-store-tests
+    to: yarramate-engine#recover-visual-session
+  - id: visual-compiler-tests-validate-rendering
+    kind: association
+    from: visual-likec4-compiler-tests
+    to: yarramate-engine#render-visual-model
+  - id: visual-protocol-tests-validate-protocol
+    kind: association
+    from: visual-protocol-tests
+    to: yarramate-engine#visual-session-protocol
+  - id: visual-cli-tests-validate-session-command
+    kind: association
+    from: visual-cli-tests
+    to: yarramate-engine#visual-session-service
+  - id: visual-browser-tests-validate-browser
+    kind: association
+    from: visual-browser-tests
+    to: yarramate-engine#visual-browser
+  - id: visual-journey-tests-validate-handoff
+    kind: association
+    from: visual-journey-tests
+    to: yarramate-engine#visual-handoff
+  - id: visual-reference-documents-session-command
+    kind: association
+    from: visual-skill-reference
+    to: yarramate-engine#visual-session-service
+  - id: agent-skill-references-visual-conversations
+    kind: association
+    from: agent-skill-source
+    to: visual-skill-reference
+    description: The canonical skill routes a harness into the visual journey and decides delegated chat versus diagram-only mode before the runtime starts.

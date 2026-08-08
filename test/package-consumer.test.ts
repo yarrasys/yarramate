@@ -38,6 +38,13 @@ describe('consumer package contract', () => {
     expect(
       packageJson.exports['./schema/reconciliation-report'],
     ).toBe('./schema/yarramate-reconciliation-report.schema.json')
+    expect(packageJson.bin['yarramate-visual']).toBe(
+      'dist/adapters/visual-cli.js',
+    )
+    expect(packageJson.files).toContain('dist')
+    expect(
+      packageJson.exports['./schema/visual-diagnostic-result'],
+    ).toBe('./schema/yarramate-visual-diagnostic-result.schema.json')
 
     const consumerGuide = readFileSync(
       join(repositoryRoot, 'docs/CONSUMING-YARRAMATE.md'),
@@ -47,7 +54,24 @@ describe('consumer package contract', () => {
       'npx skills add yarrasys/yarramate --skill yarramate-architecture',
     )
     expect(consumerGuide).toContain('yarramate init .')
+    expect(consumerGuide).toContain('visually explain')
+    expect(consumerGuide).toContain('diagram-only mode')
+    expect(consumerGuide).toContain('yarramate-visual')
     expect(consumerGuide).not.toContain('pnpm exec yarramate')
+
+    const visualGuide = readFileSync(
+      join(
+        repositoryRoot,
+        'skills/yarramate-architecture/references/visual-conversations.md',
+      ),
+      'utf8',
+    )
+    expect(visualGuide).toContain('must be an absolute executable path')
+    expect(visualGuide).toContain('command -v npx')
+    expect(visualGuide).not.toContain(
+      '"command": "./node_modules/.bin/likec4"',
+    )
+    expect(visualGuide).not.toContain('"command": "npx"')
   })
 
   it('packs only a self-contained consumer surface', { timeout: 30_000 }, () => {
@@ -84,6 +108,28 @@ describe('consumer package contract', () => {
       expect(files).toContain(
         'package/skills/yarramate-architecture/references/native-authoring.md',
       )
+      expect(files).toContain(
+        'package/skills/yarramate-architecture/references/visual-conversations.md',
+      )
+      expect(files).toContain('package/dist/adapters/visual-cli.js')
+      expect(files).toContain('package/dist/visual-app/index.html')
+      // The nine standalone visual protocol documents a consumer validates
+      // against, each exported under `./schema/visual-*`.
+      for (const schema of [
+        'session-request',
+        'session-started',
+        'session-descriptor',
+        'event',
+        'response',
+        'model',
+        'handoff',
+        'status',
+        'diagnostic-result',
+      ]) {
+        expect(files).toContain(
+          `package/schema/yarramate-visual-${schema}.schema.json`,
+        )
+      }
       expect(files).toContain('package/docs/CONSUMING-YARRAMATE.md')
       expect(
         files.some((file) =>
@@ -150,6 +196,9 @@ describe('consumer package contract', () => {
       const mcpCli = join(binDirectory, 'yarramate-mcp')
       chmodSync(join(packagePath, 'dist/adapters/mcp-cli.js'), 0o755)
       symlinkSync('../yarramate/dist/adapters/mcp-cli.js', mcpCli)
+      const visualCli = join(binDirectory, 'yarramate-visual')
+      chmodSync(join(packagePath, 'dist/adapters/visual-cli.js'), 0o755)
+      symlinkSync('../yarramate/dist/adapters/visual-cli.js', visualCli)
       const run = (args: readonly string[]) =>
         execFileSync(cli, args, {
           cwd: consumer,
@@ -384,6 +433,7 @@ views:
         [likec4Cli, 'yarramate-likec4'],
         [graphifyCli, 'yarramate-graphify'],
         [mcpCli, 'yarramate-mcp'],
+        [visualCli, 'yarramate-visual'],
       ] as const) {
         expect(
           spawnSync(binary, ['--version'], {
@@ -414,6 +464,11 @@ views:
           packagePath,
           'schema/yarramate-reconciliation-report.schema.json',
         ),
+      )
+      expect(
+        requireFromConsumer.resolve('yarramate/schema/visual-handoff'),
+      ).toBe(
+        join(packagePath, 'schema/yarramate-visual-handoff.schema.json'),
       )
 
       for (const harness of ['.agents', '.claude']) {

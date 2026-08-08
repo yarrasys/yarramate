@@ -301,6 +301,7 @@ describe('workspace manifests', () => {
         '.yarramate/projections/state-engine-change.yaml',
         '.yarramate/projections/state-engine-target.yaml',
         '.yarramate/projections/state-foundation.yaml',
+        '.yarramate/projections/visual-conversation-path.yaml',
       ],
       adapterMappings: [
         '.yarramate/integrations/likec4/subject-mapping.yaml',

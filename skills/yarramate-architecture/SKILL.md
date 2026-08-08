@@ -1,6 +1,6 @@
 ---
 name: yarramate-architecture
-description: Discover, design, or maintain repository architecture using native YarraMate documents and the stable CLI. Use when an agent needs to map a codebase, propose an evidence-backed architecture model, brainstorm solution alternatives, evolve a model that already validates, rename or replace semantic subjects safely, define current/transition/target architecture, reconcile intent with evidence, or provide bounded architecture context to implementation work.
+description: Discover, design, or maintain repository architecture using native YarraMate documents and the stable CLI. Use when an agent needs to map a codebase, propose an evidence-backed architecture model, brainstorm solution alternatives, evolve a model that already validates, rename or replace semantic subjects safely, define current/transition/target architecture, reconcile intent with evidence, provide bounded architecture context to implementation work, or visually explain, show, walk through, or compare architecture or design choices in a browser.
 ---
 
 # YarraMate architecture
@@ -48,6 +48,8 @@ tools beyond the coverage boundary the output states.
   requested: begin with discovery,
   preserve the declared model, then report supported, contradicted, unknown,
   and unobserved claims without silently rewriting it.
+- A user asks to see, walk through, or compare architecture or choices
+  visually: follow **Explain a model visually**.
 
 Read [references/journey-checklists.md](references/journey-checklists.md) for
 the minimum evidence and design questions. Read
@@ -228,6 +230,31 @@ yarramate-likec4 export-project .yarramate/likec4-project.yaml .yarramate-out/li
    edit. The maintained model must pass before handoff. Report changed
    identities, updated dependants, mapping repairs, generated output, and any
    intentionally deferred architecture work.
+
+## Explain a model visually
+
+Use this journey when the answer is a picture the user talks to: "visually
+explain this architecture", "show how this question relates to the model",
+"compare these choices visually", "open a visual conversation about this flow".
+No CLI command is asked of the user; this skill stays the public interface.
+
+```text
+request
+  -> classify canonical or ad hoc authority
+  -> for repository architecture: yarramate check, then yarramate ask --json
+  -> resolve LikeC4 >=1.59.2 <1.60.0; ask before the pinned runner
+  -> inspect actual harness delegation/recovery capabilities
+  -> start yarramate-visual as a managed foreground process
+  -> capable: delegate a bounded visual agent and await handoff
+  -> incapable: diagram-only mode; continue the conversation here
+  -> End or failure: recover, optionally read the transcript, stop, resume
+```
+
+Read [references/visual-conversations.md](references/visual-conversations.md)
+before starting a session. It owns the authority rules, the compiler consent
+step, the capability test, the exact commands and documents, the delegated
+child's prompt and authority limits, and the recovery order. A visual session
+renders a bounded slice; it never becomes declared intent on its own.
 
 ## Correctness and authority
 

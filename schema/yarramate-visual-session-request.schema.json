@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yarramate.org/schema/visual-session-request/v1",
+  "title": "YarraMate visual session request",
+  "description": "Trusted main-agent input that starts a visual session. Browser URLs, identifiers, capabilities, ports, and filesystem locations are runtime outputs and cannot be supplied here.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "authority",
+    "title",
+    "description",
+    "chatEnabled",
+    "compiler",
+    "initialModel"
+  ],
+  "properties": {
+    "format": {
+      "const": "yarramate/visual-session-request/v1"
+    },
+    "authority": {
+      "$ref": "https://yarramate.org/schema/visual-model/v1#/$defs/authority"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "chatEnabled": {
+      "type": "boolean"
+    },
+    "compiler": {
+      "$ref": "#/$defs/compilerCommand"
+    },
+    "initialModel": {
+      "$ref": "https://yarramate.org/schema/visual-model/v1"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "type": "object",
+        "required": ["authority"],
+        "properties": {
+          "authority": { "const": "canonical" }
+        }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "initialModel": {
+            "type": "object",
+            "properties": {
+              "authority": { "const": "canonical" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "required": ["authority"],
+        "properties": {
+          "authority": { "const": "ad-hoc" }
+        }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "initialModel": {
+            "type": "object",
+            "properties": {
+              "authority": { "const": "ad-hoc" }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "compilerCommand": {
+      "description": "Absolute executable plus argument vector executed without a shell.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "args"],
+      "properties": {
+        "command": {
+          "type": "string",
+          "maxLength": 4096,
+          "pattern": "^(?:/|[A-Za-z]:[\\\\/])[^\\u0000]+$"
+        },
+        "args": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "string",
+            "maxLength": 4096,
+            "pattern": "^[^\\u0000]*$"
+          }
+        }
+      }
+    }
+  }
+}
