@@ -452,6 +452,35 @@ describe('startVisualServer bootstrap and browser authentication', () => {
     expect(session.lastSequence).toBe(1)
   })
 
+  it('tells a reconnecting browser whether the agent still owes an answer', async () => {
+    const server = await start()
+    const capability = await capabilityOf(server)
+    const { cookie } = await bootstrap(server)
+    const socket = await openBrowserSocket(server, cookie)
+    const snapshotNow = async () => {
+      const body = (await (
+        await fetch(`${server.started.origin}/api/session`, {
+          headers: { Cookie: cookie },
+        })
+      ).json()) as { readonly agentTurnOpen: boolean }
+      return body.agentTurnOpen
+    }
+
+    expect(await snapshotNow()).toBe(false)
+    const asked = await sendChat(socket, 'Why is option B cheaper?')
+    expect(await snapshotNow()).toBe(true)
+
+    await postResponse(
+      server,
+      capability,
+      chatResponse(server, asked.eventId, 5, 'It reuses the intake path.'),
+    )
+    // The turn the browser opened is closed, whether or not it was connected to
+    // see the answer land.
+    expect(await snapshotNow()).toBe(false)
+    socket.close()
+  })
+
   it('restores a selected choice by the label the reviewer read', async () => {
     const server = await start()
     const capability = await capabilityOf(server)

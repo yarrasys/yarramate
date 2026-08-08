@@ -55,6 +55,7 @@ export interface VisualAppSnapshot {
   readonly chatEnabled: boolean
   readonly model: VisualRenderedModel
   readonly transcript: readonly VisualTranscriptRecord[]
+  readonly agentTurnOpen: boolean
   readonly styleNonce: string
   readonly lastSequence: number
   readonly frozen: boolean
@@ -77,6 +78,8 @@ export interface VisualAppState {
   readonly handoff: VisualHandoffSummary | null
   readonly composerEnabled: boolean
   readonly awaitingAgent: boolean
+  /** Records this browser has written itself, so a key is never reused. */
+  readonly localRecords: number
   readonly lastSequence: number
   readonly frozen: boolean
   readonly closedReason: string | null
@@ -136,6 +139,7 @@ export const initialVisualAppState: VisualAppState = {
   handoff: null,
   composerEnabled: false,
   awaitingAgent: false,
+  localRecords: 0,
   lastSequence: 0,
   frozen: false,
   closedReason: null,
@@ -150,6 +154,7 @@ export const visualAppSnapshotFrom = (
   chatEnabled: snapshot.chatEnabled,
   model: snapshot.model,
   transcript: snapshot.transcript,
+  agentTurnOpen: snapshot.agentTurnOpen,
   styleNonce: snapshot.styleNonce,
   lastSequence: snapshot.lastSequence,
   frozen: snapshot.frozen,
@@ -167,21 +172,33 @@ export const visualAuthorityLabel = (authority: VisualAuthority): string =>
 export const canReconnect = (lostAt: number, now: number): boolean =>
   now - lostAt < RECONNECT_WINDOW_MS
 
-/** A record keyed by its position, for the records the server never named. */
+/**
+ * A record this browser wrote itself, keyed by a counter rather than by
+ * position: a restored conversation changes the position of everything, and a
+ * key that moves is a key that can collide.
+ */
 const localRecord = (
   state: VisualAppState,
   speaker: VisualAppSpeaker,
   text: string,
 ): VisualAppRecord => ({
-  id: `local-${state.transcript.length}`,
+  id: `local-${state.localRecords}`,
   speaker,
   text,
 })
 
+/**
+ * The record appended, unless the conversation already holds it. A reconnect
+ * can restore a record and then replay the frame that produced it; both name it
+ * by the same identifier, and it was said once.
+ */
 const withRecord = (
   state: VisualAppState,
   record: VisualAppRecord,
-): readonly VisualAppRecord[] => [...state.transcript, record]
+): readonly VisualAppRecord[] =>
+  state.transcript.some((existing) => existing.id === record.id)
+    ? state.transcript
+    : [...state.transcript, record]
 
 /** The view the reviewer keeps, or the one the new model opens on. */
 const viewWithin = (model: VisualRenderedModel, activeView: string): string =>
@@ -214,6 +231,11 @@ const transition = (
           ...action.snapshot.transcript,
           ...state.transcript.filter((record) => record.speaker === 'session'),
         ],
+        // The session knows whether the turn is still open; a browser that was
+        // away while the agent answered must not stay locked out, and one that
+        // reconnects mid-turn must not be told the agent is idle.
+        awaitingAgent: action.snapshot.agentTurnOpen,
+        agentStatus: action.snapshot.agentTurnOpen ? state.agentStatus : null,
         lastSequence: Math.max(state.lastSequence, action.snapshot.lastSequence),
       }
     case 'model.received':
@@ -237,6 +259,7 @@ const transition = (
           state,
           localRecord(state, 'reviewer', action.text),
         ),
+        localRecords: state.localRecords + 1,
         choices: null,
         awaitingAgent: true,
       }
@@ -303,6 +326,7 @@ const transition = (
           state,
           localRecord(state, 'session', VISUAL_END_NOTICE),
         ),
+        localRecords: state.localRecords + 1,
       }
     case 'connection.lost':
       return { ...state, lifecycle: 'disconnected' }

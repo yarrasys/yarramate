@@ -534,6 +534,7 @@ export const startVisualServer = async (
     webSocketUrl,
     model: rendered,
     transcript: [...transcript],
+    agentTurnOpen: openTurn(),
     styleNonce,
     lastSequence,
     frozen: frozen !== undefined,
@@ -932,6 +933,32 @@ export const startVisualServer = async (
     return { diagnostics: compiled.diagnostics }
   }
 
+  /**
+   * Events a turn-completing response has already answered.
+   *
+   * `completeTurn` only retires an event the agent actually polled for, so an
+   * answer that arrives before the poll leaves the event queued. The browser
+   * still has to be told its turn is over, and it is pruned back to the queue
+   * it describes so it cannot outgrow it.
+   */
+  const answered = new Set<string>()
+
+  const openTurn = () =>
+    (inFlight === undefined ? pending : [inFlight, ...pending]).some(
+      (event) => !answered.has(event.eventId),
+    )
+
+  const markAnswered = (response: VisualResponse) => {
+    if (TURN_COMPLETING[response.type] !== true) return
+    answered.add(response.eventId)
+    for (const eventId of answered) {
+      const queued =
+        inFlight?.eventId === eventId ||
+        pending.some((event) => event.eventId === eventId)
+      if (!queued) answered.delete(eventId)
+    }
+  }
+
   const completeTurn = (response: VisualResponse) => {
     if (TURN_COMPLETING[response.type] !== true) return
     if (inFlight?.eventId !== response.eventId) return
@@ -1018,6 +1045,7 @@ export const startVisualServer = async (
           }
         }
         recordResponse(response)
+        markAnswered(response)
         broadcast({ kind: 'response', response })
         const replaced =
           response.type === 'model.replace'
