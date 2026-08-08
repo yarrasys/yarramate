@@ -148,12 +148,33 @@
         "requiresAttention": { "type": "boolean" }
       }
     },
+    "terminationReason": {
+      "description": "Why a visual session ended. The terminal event is where a reason is born, so it is declared here and reported by the handoff.",
+      "enum": [
+        "user-ended",
+        "child-failed",
+        "browser-timeout",
+        "main-cancelled",
+        "server-failed",
+        "compiler-failed"
+      ]
+    },
     "sessionEndPayload": {
+      "description": "Terminal event the runtime journals. Every termination reason is the runtime's to choose; the browser may only request the user-ended one.",
       "type": "object",
       "additionalProperties": false,
       "required": ["reason"],
       "properties": {
-        "reason": { "enum": ["user-ended", "browser-timeout"] }
+        "reason": { "$ref": "#/$defs/terminationReason" }
+      }
+    },
+    "browserSessionEndPayload": {
+      "description": "End as an untrusted browser may ask for it. A browser cannot claim a timeout, a child failure, or a cancellation it does not own.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reason"],
+      "properties": {
+        "reason": { "const": "user-ended" }
       }
     },
     "browserConnectedPayload": {
@@ -225,7 +246,7 @@
             "lastAcknowledgedSequence": {
               "$ref": "#/$defs/acknowledgedSequence"
             },
-            "payload": { "$ref": "#/$defs/sessionEndPayload" }
+            "payload": { "$ref": "#/$defs/browserSessionEndPayload" }
           }
         }
       ]

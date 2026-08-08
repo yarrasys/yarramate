@@ -40,12 +40,16 @@ import {
   type VisualTerminationReason,
 } from './protocol.js'
 import {
+  appendTerminalEvent,
   appendVisualEvent,
   appendVisualResponse,
   createVisualSession,
   isActionableVisualEvent,
+  recoverVisualSession,
   removeVisualSession,
   writeVisualSessionDescriptor,
+  type TerminalEventDependencies,
+  type VisualSessionPaths,
 } from './session-store.js'
 import type {
   VisualRenderedModel,
@@ -204,6 +208,12 @@ export interface VisualServerOptions {
   readonly agentPollMs?: number
   /** Whether the handoff a stop returns carries the raw transcript. */
   readonly includeTranscript?: boolean
+  /**
+   * Arms the browser reconnect grace, and answers with the cancellation of the
+   * window it armed. Injected so the exact window a session waits is
+   * observable, and so it can elapse without waiting out five real minutes.
+   */
+  readonly schedule?: (task: () => Promise<void>, ms: number) => () => void
 }
 
 export interface VisualServerHandle {
@@ -211,6 +221,71 @@ export interface VisualServerHandle {
   readonly closed: Promise<VisualServerClosed>
   status(): VisualStatus
   stop(reason: VisualTerminationReason): Promise<VisualServerClosed>
+}
+
+/**
+ * The runtime half of one live session: everything the terminal transition
+ * mutates, and the hooks it needs to quiet the rest down first.
+ *
+ * `lifecycle` is the whole admission gate — only a `running` session takes a
+ * browser frame or an agent response — so freezing input is one assignment
+ * rather than a second flag that could disagree with it.
+ */
+export interface ActiveVisualSession {
+  readonly paths: VisualSessionPaths
+  lifecycle: VisualLifecycle
+  /** Cancels whatever the trusted compiler is doing for this session. */
+  readonly compilerAbort: AbortController
+  /** Records why the browser stopped being able to speak. */
+  readonly freeze: (reason: VisualFreezeReason) => void
+  /** Settles work already admitted, so recovery reads a quiet journal. */
+  readonly quiesce: () => Promise<void>
+  readonly terminalEvent: TerminalEventDependencies
+  /** The transition in flight, so concurrent causes converge on one run. */
+  terminating: Promise<VisualHandoff> | undefined
+  /** What this session ended with, once it has ended. */
+  handoff: VisualHandoff | undefined
+}
+
+/**
+ * Takes one session terminal, whatever caused it: a reviewer's End, a child
+ * that failed, a browser that never came back, a cancelling main agent, or a
+ * runtime shutting itself down.
+ *
+ * The order is the invariant. Input freezes before anything is read; the
+ * compiler is cancelled rather than waited out; work already admitted is still
+ * allowed to finish; exactly one terminal event is journaled; and the handoff
+ * is recovered without deleting anything, so `stop` — and only `stop` — is what
+ * removes the session directory.
+ */
+export const terminateVisualSession = (
+  session: ActiveVisualSession,
+  reason: VisualTerminationReason,
+): Promise<VisualHandoff> => {
+  session.terminating ??= (async () => {
+    if (session.lifecycle !== 'stopped') session.lifecycle = 'draining'
+    session.freeze('terminal-event')
+    session.compilerAbort.abort()
+    await session.quiesce()
+    // A terminal event that cannot be journaled must not be why a session
+    // stays up: `runVisualStart` waits on this to return, so a transition that
+    // refuses to settle hangs the command and strands the directory. The
+    // journal is then a runtime that died without saying why, and recovery
+    // reports precisely that.
+    await appendTerminalEvent(
+      session.paths,
+      reason,
+      session.terminalEvent,
+    ).catch(() => undefined)
+    session.handoff = await recoverVisualSession(session.paths, false)
+    return session.handoff
+  })().catch((cause: unknown) => {
+    // A transition that failed is not this session's outcome: the next
+    // terminal cause has to be able to try it again.
+    session.terminating = undefined
+    throw cause
+  })
+  return session.terminating
 }
 
 interface VisualEventEnvelope {
@@ -392,9 +467,17 @@ export const startVisualServer = async (
     'Content-Security-Policy': visualContentSecurityPolicy(styleNonce),
   }
 
+  /** Cancels every compile this session runs, including one in flight. */
+  const compilerAbort = new AbortController()
+  /** Set once the loopback listener exists; a failed start has to close it. */
+  let closeListener: (() => Promise<void>) | undefined
+
   // Past this point a session directory exists on disk; a failed start must not
-  // leave one behind for the next run to prune.
+  // leave one behind for the next run to prune, nor a listener for the process
+  // to outlive.
   const abandon = async (cause: unknown): Promise<never> => {
+    compilerAbort.abort()
+    await closeListener?.().catch(() => undefined)
     await removeVisualSession(paths).catch(() => undefined)
     throw cause
   }
@@ -404,6 +487,7 @@ export const startVisualServer = async (
     command: request.compiler,
     paths,
     now,
+    signal: compilerAbort.signal,
   }).catch(abandon)
   if (!compilation.ok) {
     const first = compilation.diagnostics[0]
@@ -429,7 +513,6 @@ export const startVisualServer = async (
     transcript: true,
   }
 
-  let lifecycle: VisualLifecycle = 'starting'
   let listening = false
   let bootstrapSpent = false
   let agentAttached = false
@@ -477,6 +560,49 @@ export const startVisualServer = async (
   /** The first limit a session reaches is the one it reports for good. */
   const freeze = (reason: VisualFreezeReason) => {
     frozen ??= reason
+  }
+
+  /**
+   * Everything a terminal cause touches, in one place. The transition below is
+   * the only thing that moves a live session off `running`.
+   */
+  const active: ActiveVisualSession = {
+    paths,
+    lifecycle: 'starting',
+    compilerAbort,
+    freeze,
+    quiesce: drainAdmission,
+    terminalEvent: { now, randomBytes },
+    terminating: undefined,
+    handoff: undefined,
+  }
+
+  const schedule =
+    options.schedule ??
+    ((task, ms) => {
+      const timer = setTimeout(() => void task().catch(() => undefined), ms)
+      // A grace nobody is waiting on must never be why a process stays alive.
+      timer.unref()
+      return () => clearTimeout(timer)
+    })
+
+  /**
+   * The reviewer's browser is gone and the session is holding the conversation
+   * open for it. Reconnecting inside the window resumes exactly where it left
+   * off; reaching the end of it is a terminal cause like any other.
+   */
+  let cancelGrace: (() => void) | undefined
+  const armGrace = () => {
+    if (cancelGrace !== undefined || active.lifecycle !== 'running') return
+    cancelGrace = schedule(async () => {
+      cancelGrace = undefined
+      if (connections.size > 0 || active.lifecycle !== 'running') return
+      await terminateVisualSession(active, 'browser-timeout')
+    }, VISUAL_LIMITS.reconnectMs)
+  }
+  const disarmGrace = () => {
+    cancelGrace?.()
+    cancelGrace = undefined
   }
 
   /** A journaled browser event, as the line the reviewer sees. */
@@ -545,14 +671,16 @@ export const startVisualServer = async (
       format: 'yarramate/visual-status/v1',
       protocolVersion: VISUAL_PROTOCOL_VERSION,
       sessionId,
-      lifecycle,
-      alreadyStopped: lifecycle === 'stopped',
+      lifecycle: active.lifecycle,
+      alreadyStopped: active.lifecycle === 'stopped',
       server: { listening, origin },
       browser: {
         connected: connections.size > 0,
         connections: connections.size,
         ...(lastSeenAt === undefined ? {} : { lastSeenAt }),
-        ...(connections.size === 0 && lastSeenAt !== undefined
+        // Only while one is actually armed: a session whose window already
+        // elapsed is not still waiting for that browser, and must not say so.
+        ...(cancelGrace !== undefined && lastSeenAt !== undefined
           ? {
               graceExpiresAt: new Date(
                 Date.parse(lastSeenAt) + VISUAL_LIMITS.reconnectMs,
@@ -671,6 +799,17 @@ export const startVisualServer = async (
     maxPayload: VISUAL_SERVER_LIMITS.browserFrameBytes,
   })
 
+  // A start that fails after the port is bound has to give it back; nothing
+  // has published this origin yet, so there is nothing to drain first.
+  closeListener = async () => {
+    listening = false
+    sockets.close()
+    for (const socket of httpSockets) socket.destroy()
+    const shut = Promise.withResolvers<void>()
+    httpServer.close(() => shut.resolve())
+    await shut.promise
+  }
+
   // ---------------------------------------------------------------- responses
 
   const respond = (
@@ -685,7 +824,7 @@ export const startVisualServer = async (
       'Content-Length': Buffer.byteLength(body),
       // A draining session must not leave a pooled connection behind that
       // outlives its listener.
-      ...(lifecycle === 'running' ? {} : { Connection: 'close' }),
+      ...(active.lifecycle === 'running' ? {} : { Connection: 'close' }),
     })
     server.end(body)
   }
@@ -738,13 +877,13 @@ export const startVisualServer = async (
       // A frame can already be on the chain when a stop begins. Recovery must
       // see a journal nothing is still writing to, so anything that has not
       // been journaled yet is refused rather than raced.
-      if (lifecycle !== 'running') {
+      if (active.lifecycle !== 'running') {
         sendFrame(socket, {
           kind: 'rejected',
           diagnostics: [
             serverDiagnostic(
               'YMVS306',
-              `Session is ${lifecycle} and no longer accepts input`,
+              `Session is ${active.lifecycle} and no longer accepts input`,
             ),
           ],
         })
@@ -756,6 +895,27 @@ export const startVisualServer = async (
           frozen,
           diagnostics: [
             serverDiagnostic('YMVS304', `Session input is frozen: ${frozen}`),
+          ],
+        })
+        return
+      }
+      // A session that was started without a conversation has no chat and no
+      // choices to make; the diagram, and moving around it, is all it granted.
+      const granted =
+        input.value.type === 'chat.message'
+          ? capabilities.chat
+          : input.value.type === 'choice.selected'
+            ? capabilities.choices
+            : true
+      if (!granted) {
+        sendFrame(socket, {
+          kind: 'rejected',
+          diagnostics: [
+            serverDiagnostic(
+              'YMVS309',
+              `Session did not grant the capability "${input.value.type}" needs`,
+              '/type',
+            ),
           ],
         })
         return
@@ -829,6 +989,9 @@ export const startVisualServer = async (
 
   const attachBrowser = (socket: WebSocket) => {
     const connectionId = drawHex(16)
+    // The reviewer is back inside the window, so the session it was holding
+    // open for them is not going to end.
+    disarmGrace()
     connections.set(connectionId, socket)
     lastSeenAt = stamp()
     socket.on('message', (raw, binary) => {
@@ -867,6 +1030,7 @@ export const startVisualServer = async (
     socket.on('close', () => {
       connections.delete(connectionId)
       lastSeenAt = stamp()
+      if (connections.size === 0) armGrace()
     })
     sendFrame(socket, { kind: 'ready', snapshot: snapshot() })
   }
@@ -881,7 +1045,7 @@ export const startVisualServer = async (
       return
     }
     const immediate = takeDelivery(after)
-    if (!immediate.waiting || lifecycle !== 'running') {
+    if (!immediate.waiting || active.lifecycle !== 'running') {
       respondJson(server, 200, immediate)
       return
     }
@@ -910,6 +1074,7 @@ export const startVisualServer = async (
       command: request.compiler,
       paths,
       now,
+      signal: compilerAbort.signal,
     })
     if (compiled.ok) {
       rendered = await renderCompiled(compiled.compiled)
@@ -929,6 +1094,9 @@ export const startVisualServer = async (
     }
     const appended = await appendVisualResponse(paths, diagnostic)
     if (appended.ok) transcriptBytes = appended.transcriptBytes
+    // A journal that refused the explanation is still a journal that reached a
+    // limit, and the limit outlives this response.
+    else if (appended.freeze !== undefined) freeze(appended.freeze)
     broadcast({ kind: 'response', response: diagnostic })
     return { diagnostics: compiled.diagnostics }
   }
@@ -1001,6 +1169,24 @@ export const startVisualServer = async (
       } satisfies VisualResponseAcceptance)
       return
     }
+    // The agent cannot hold a conversation a diagram-only session never
+    // offered; the browser has nowhere to show one.
+    if (
+      !capabilities.chat &&
+      (response.type === 'chat.response' || response.type === 'choice.present')
+    ) {
+      respondJson(server, 409, {
+        accepted: false,
+        diagnostics: [
+          serverDiagnostic(
+            'YMVS309',
+            `Session did not grant the capability "${response.type}" needs`,
+            '/type',
+          ),
+        ],
+      } satisfies VisualResponseAcceptance)
+      return
+    }
     const result = await admit(
       async (): Promise<{
         readonly code: number
@@ -1008,7 +1194,7 @@ export const startVisualServer = async (
       }> => {
         // Same race as a browser frame: a request already on the chain must not
         // append to a session recovery has begun reading.
-        if (lifecycle !== 'running') {
+        if (active.lifecycle !== 'running') {
           return {
             code: 503,
             body: {
@@ -1016,7 +1202,7 @@ export const startVisualServer = async (
               diagnostics: [
                 serverDiagnostic(
                   'YMVS306',
-                  `Session is ${lifecycle} and no longer accepts responses`,
+                  `Session is ${active.lifecycle} and no longer accepts responses`,
                 ),
               ],
             },
@@ -1079,14 +1265,20 @@ export const startVisualServer = async (
       refuse(server, body.status, body.message)
       return
     }
-    const reason =
-      typeof body.value === 'object' &&
-      body.value !== null &&
-      'reason' in body.value
-        ? body.value.reason
-        : undefined
+    const asked =
+      typeof body.value === 'object' && body.value !== null
+        ? (body.value as Readonly<Record<string, unknown>>)
+        : {}
+    const reason = asked.reason
     if (typeof reason !== 'string' || TERMINATION_REASONS[reason] !== true) {
       refuse(server, 400, 'Stop requires a known termination reason')
+      return
+    }
+    if (
+      asked.includeTranscript !== undefined &&
+      typeof asked.includeTranscript !== 'boolean'
+    ) {
+      refuse(server, 400, 'Stop takes a boolean "includeTranscript" or none')
       return
     }
     // The socket answering the stop is the one connection shutdown may not end
@@ -1094,6 +1286,7 @@ export const startVisualServer = async (
     const closed = await stop(
       reason as VisualTerminationReason,
       incoming.socket,
+      asked.includeTranscript,
     )
     server.on('finish', () => incoming.socket.end())
     respondJson(server, 200, closed)
@@ -1274,7 +1467,7 @@ export const startVisualServer = async (
       )
       socket.destroy()
     }
-    if (lifecycle !== 'running') return deny(503, 'Service Unavailable')
+    if (active.lifecycle !== 'running') return deny(503, 'Service Unavailable')
     if (incoming.headers.host !== authority) return deny(403, 'Forbidden')
     // An upgrade always carries an Origin, so it is checked without exception.
     if (incoming.headers.origin !== origin) return deny(403, 'Forbidden')
@@ -1303,13 +1496,17 @@ export const startVisualServer = async (
   const stop = async (
     reason: VisualTerminationReason,
     exempt?: Socket,
+    includeTranscript = options.includeTranscript ?? false,
   ): Promise<VisualServerClosed> => {
     if (stopping !== undefined) {
       return { ...(await stopping), alreadyStopped: true }
     }
     stopping = (async () => {
-      lifecycle = 'draining'
+      // Frozen before anything is torn down: a request already on the wire
+      // must not be journaled behind the recovery this stop is about to read.
+      active.lifecycle = 'draining'
       listening = false
+      disarmGrace()
       httpServer.close()
       // Waiting agents are answered before any socket is torn down, so a poll
       // in flight during a stop still receives its non-terminal idle result.
@@ -1319,27 +1516,24 @@ export const startVisualServer = async (
         socket.close(1001)
       }
       sockets.close()
-      // Work admitted before the drain began still has to finish: recovery must
-      // read a journal nothing is mid-append to, and a rejected append must be
-      // observed here rather than escaping as an unhandled rejection. Work that
-      // has not started refuses itself, which is what bounds this wait.
-      await drainAdmission()
+      // The one transition: freeze, cancel the compiler, let admitted work
+      // finish, journal the terminal event, and recover — all without deleting
+      // anything, so shutdown can never be the step that loses confirmed state.
+      // A session that already ended answers with the handoff it ended with.
+      const terminal = await terminateVisualSession(active, reason)
       // Only now: an in-flight agent request has had its answer written, so
       // ending its connection cannot swallow the refusal it was owed.
       for (const socket of httpSockets) {
         if (socket !== exempt) socket.end()
       }
-      // Recovery runs before the delete, so shutdown can never be the step that
-      // loses confirmed state.
-      const handoff = await removeVisualSession(
-        paths,
-        options.includeTranscript ?? false,
-      )
-      lifecycle = 'stopped'
+      // The transcript is read once, here, and only if this stop asked for it;
+      // the same read is what removes the marked root.
+      const removed = await removeVisualSession(paths, includeTranscript)
+      active.lifecycle = 'stopped'
       const outcome: VisualServerClosed = {
         reason,
         alreadyStopped: false,
-        handoff,
+        handoff: removed ?? terminal,
       }
       announceClosed(outcome)
       return outcome
@@ -1347,44 +1541,50 @@ export const startVisualServer = async (
     return stopping
   }
 
-  await writeVisualSessionDescriptor(paths, {
-    format: 'yarramate/visual-session-descriptor/v1',
-    protocolVersion: VISUAL_PROTOCOL_VERSION,
-    sessionId,
-    origin,
-    agentCapability: session.agentToken,
-    sessionRoot: paths.root,
-    journalPath: paths.journal,
-    createdAt: stamp(),
-  }).catch(abandon)
-
-  const started: VisualSessionStarted = {
-    format: 'yarramate/visual-session-started/v1',
-    protocolVersion: VISUAL_PROTOCOL_VERSION,
-    sessionId,
-    authority: request.authority,
-    title: request.title,
-    chatEnabled: request.chatEnabled,
-    browserUrl: `${origin}/bootstrap?key=${session.browserToken}`,
-    webSocketUrl,
-    origin,
-    descriptorPath: paths.descriptor,
-    sessionRoot: paths.root,
-    capabilities,
-    startedAt: stamp(),
-  }
-  const validated = parseVisualSessionStarted(started)
-  if (!validated.ok) {
-    return abandon(
-      serverError(
+  // Everything from here is publication, and every way it can fail — a
+  // descriptor that will not write, a document that does not validate, a clock
+  // that answers with nonsense — leaves a bound port and a session directory
+  // behind unless it goes through `abandon`.
+  let started: VisualSessionStarted
+  try {
+    await writeVisualSessionDescriptor(paths, {
+      format: 'yarramate/visual-session-descriptor/v1',
+      protocolVersion: VISUAL_PROTOCOL_VERSION,
+      sessionId,
+      origin,
+      agentCapability: session.agentToken,
+      sessionRoot: paths.root,
+      journalPath: paths.journal,
+      createdAt: stamp(),
+    })
+    started = {
+      format: 'yarramate/visual-session-started/v1',
+      protocolVersion: VISUAL_PROTOCOL_VERSION,
+      sessionId,
+      authority: request.authority,
+      title: request.title,
+      chatEnabled: request.chatEnabled,
+      browserUrl: `${origin}/bootstrap?key=${session.browserToken}`,
+      webSocketUrl,
+      origin,
+      descriptorPath: paths.descriptor,
+      sessionRoot: paths.root,
+      capabilities,
+      startedAt: stamp(),
+    }
+    const validated = parseVisualSessionStarted(started)
+    if (!validated.ok) {
+      throw serverError(
         validated.diagnostics[0]?.code ?? 'YMVS102',
         `Started session is invalid: ${
           validated.diagnostics[0]?.message ?? 'unknown violation'
         }`,
-      ),
-    )
+      )
+    }
+  } catch (cause) {
+    return abandon(cause)
   }
-  lifecycle = 'running'
+  active.lifecycle = 'running'
 
   return { started, closed, status, stop: (reason) => stop(reason) }
 }

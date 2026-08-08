@@ -1337,7 +1337,9 @@ describe('startVisualServer lifecycle', () => {
     expect(closed.handoff).toMatchObject({
       format: 'yarramate/visual-handoff/v1',
       sessionId: server.started.sessionId,
-      lastSequence: accepted.sequence,
+      // The reviewer's own End was never journaled here, so the shutdown's
+      // terminal event is the record past the chat it recovered.
+      lastSequence: accepted.sequence + 1,
     })
     await expect(stat(root)).rejects.toThrow()
     await expect(server.closed).resolves.toMatchObject({ reason: 'user-ended' })
@@ -1562,21 +1564,20 @@ describe('startVisualServer shutdown and admission races', () => {
   })
 
   it('finishes admitted work before recovering the session', async () => {
+    const compilerLog = join(baseDir, 'compiler.log')
+    await writeFile(compilerLog, '')
     const server = await start({ includeTranscript: true })
     const capability = await capabilityOf(server)
     const { cookie } = await bootstrap(server)
     const socket = await openBrowserSocket(server, cookie)
-    const accepted = await sendChat(socket, 'redraw it badly')
+    const accepted = await sendChat(socket, 'redraw it slowly')
     const rejections = collectRejections()
 
-    // A model replacement is journaled and broadcast before its candidate is
-    // compiled, so this frame is the signal that admitted work is genuinely
-    // in flight — the compile, and the diagnostic it will journal, are not.
-    const inFlight = nextFrame(
-      socket,
-      'response',
-      (frame) => frame.response.type === 'model.replace',
-    )
+    // The barrier: the fake compiler records every execution before it does
+    // anything else, and this candidate's validate stage never returns, so a
+    // logged run means a compile is provably still in flight when stop begins.
+    process.env.YARRAMATE_FAKE_LIKEC4_LOG = compilerLog
+    const running = watch(compilerLog)
     const posted = postResponse(server, capability, {
       format: 'yarramate/visual-response/v1',
       sessionId: server.started.sessionId,
@@ -1584,24 +1585,28 @@ describe('startVisualServer shutdown and admission races', () => {
       eventId: accepted.eventId,
       type: 'model.replace',
       timestamp: '2026-08-08T00:00:06.000Z',
-      payload: { model: modelWith('invalid') },
+      payload: { model: modelWith('hang') },
     })
-    await inFlight
+    for await (const _change of running) {
+      if ((await readFile(compilerLog, 'utf8')).includes('validate')) break
+    }
+    delete process.env.YARRAMATE_FAKE_LIKEC4_LOG
 
     const closed = await server.stop('main-cancelled')
 
-    // Shutdown waited for the compile to fail and for its diagnostic to be
+    // Shutdown cancelled the compile rather than waiting out its budget, and
+    // still waited for the diagnostic that cancellation produced to be
     // journaled, so recovery reports work the server had already accepted.
     const types = (closed.handoff?.transcript ?? []).map((record) => record.type)
     expect(types).toContain('model.replace')
     expect(types).toContain('diagnostic')
     await expect((await posted).json()).resolves.toMatchObject({
       accepted: true,
-      diagnostics: [{ code: 'YMVS201' }],
+      diagnostics: [{ code: 'YMVS204' }],
     })
     await expect(stat(server.started.sessionRoot)).rejects.toThrow()
     expect(await rejections.settled()).toEqual([])
-  })
+  }, 30_000)
 })
 
 describe('startVisualServer diagnostic conformance', () => {

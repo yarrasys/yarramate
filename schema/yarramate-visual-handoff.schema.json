@@ -108,14 +108,7 @@
       "enum": ["completed", "cancelled", "failed"]
     },
     "terminationReason": {
-      "enum": [
-        "user-ended",
-        "child-failed",
-        "browser-timeout",
-        "main-cancelled",
-        "server-failed",
-        "compiler-failed"
-      ]
+      "$ref": "https://yarramate.org/schema/visual-event/v1#/$defs/terminationReason"
     },
     "transcriptEntry": {
       "oneOf": [

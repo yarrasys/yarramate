@@ -276,11 +276,16 @@ export const runVisualStart = async (
   signals.on('SIGTERM', interrupt)
   try {
     const closed = await handle.closed
-    return FAILED_TERMINATION[closed.reason] === true
+    // The recovered handoff is what the journal says happened; the reason the
+    // stop asked for is only what someone wanted. A session the reviewer ended
+    // is a success even when a cancelling agent is what closed the server, and
+    // a child that died before its handoff is a failure even when it did not.
+    const outcome = closed.handoff?.terminationReason ?? closed.reason
+    return FAILED_TERMINATION[outcome] === true
       ? refusalResult([
           visualClientDiagnostic(
             'YMVS409',
-            `Visual session ${handle.started.sessionId} ended with termination reason "${closed.reason}"`,
+            `Visual session ${handle.started.sessionId} ended with termination reason "${outcome}"`,
           ),
         ])
       : { exitCode: 0, stdout: '', stderr: '' }

@@ -108,8 +108,18 @@ export interface VisualViewNavigatePayload {
   readonly requiresAttention: boolean
 }
 
+/**
+ * Terminal event payload. Every reason is the runtime's to choose: only it
+ * knows whether a session ended by request, by a failing child, by a browser
+ * that never came back, or by its own cancellation.
+ */
 export interface VisualSessionEndPayload {
-  readonly reason: 'user-ended' | 'browser-timeout'
+  readonly reason: VisualTerminationReason
+}
+
+/** End as an untrusted browser may ask for it, and nothing more. */
+export interface VisualBrowserSessionEndPayload {
+  readonly reason: 'user-ended'
 }
 
 export interface VisualBrowserConnectedPayload {
@@ -151,7 +161,7 @@ export type VisualBrowserInput =
   | {
       readonly type: 'session.end'
       readonly lastAcknowledgedSequence: number
-      readonly payload: VisualSessionEndPayload
+      readonly payload: VisualBrowserSessionEndPayload
     }
 
 interface VisualEventEnvelope<Type extends string, Payload> {

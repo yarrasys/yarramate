@@ -4,6 +4,7 @@ import {
   VISUAL_PROTOCOL_VERSION,
   parseVisualDiagnosticResult,
   parseVisualEvent,
+  parseVisualHandoff,
   parseVisualSessionDescriptor,
   parseVisualStatus,
   type ParseResult,
@@ -450,10 +451,28 @@ export const recoverVisualSessionClient = async (
 }
 
 /**
+ * The handoff a runtime answered its own stop with. It is the terminal one —
+ * journaled terminal event and all — so it supersedes what this client read
+ * on the way in. Anything that is not a conforming handoff is dropped rather
+ * than repaired: the pre-stop recovery is already a sound answer.
+ */
+const closedHandoff = (answer: AgentAnswer): VisualHandoff | undefined => {
+  let document: unknown
+  try {
+    document = JSON.parse(answer.body)
+  } catch {
+    return undefined
+  }
+  const handoff = parseVisualHandoff(documentFields(document).handoff)
+  return handoff.ok ? handoff.value : undefined
+}
+
+/**
  * Converges one session on stopped, whatever is left of it. Recovery runs
  * first, so no later step can be the one that loses confirmed state; the stop
- * request only returns once the runtime has drained and removed the session it
- * owns; and the local removal converges the case where nothing was listening.
+ * request only returns once the runtime has journaled its terminal event,
+ * drained, and removed the session it owns; and the local removal converges
+ * the case where nothing was listening.
  *
  * `undefined` means the session was already gone, which is what makes a
  * repeated stop idempotent.
@@ -472,16 +491,17 @@ export const stopVisualSessionClient = async (
   const answered = await agentRequest(
     descriptor,
     AGENT_STOP,
-    JSON.stringify({ reason: STOP_REASON }),
+    JSON.stringify({ reason: STOP_REASON, includeTranscript }),
   )
   // A server that answered and refused is not this caller's to tear down.
   if (answered.ok && answered.value.status !== 200) {
     return refused(refusalDiagnostics(answered.value, AGENT_STOP))
   }
+  const terminal = answered.ok ? closedHandoff(answered.value) : undefined
   try {
     await removeVisualSession(paths, includeTranscript)
   } catch (cause) {
     return refused(visualFailureDiagnostics(cause))
   }
-  return recovered
+  return { ok: true, value: terminal ?? recovered.value }
 }
