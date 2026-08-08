@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto'
 import { once } from 'node:events'
 import {
   mkdir,
@@ -6,6 +7,7 @@ import {
   rm,
   stat,
   symlink,
+  watch,
   writeFile,
 } from 'node:fs/promises'
 import { connect } from 'node:net'
@@ -16,6 +18,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { WebSocket } from 'ws'
 import {
   VISUAL_LIMITS,
+  parseVisualSessionDescriptor,
   type VisualEvent,
   type VisualModel,
   type VisualResponse,
@@ -84,13 +87,25 @@ const start = async (overrides: Partial<VisualServerOptions> = {}) => {
   return handle
 }
 
-/** The agent capability lives only in the mode 0600 descriptor. */
-const capabilityOf = async (handle: VisualServerHandle): Promise<string> => {
-  const descriptor: unknown = JSON.parse(
-    await readFile(handle.started.descriptorPath, 'utf8'),
+/**
+ * Reads the private descriptor through the protocol parser, so a test that
+ * depends on one of its fields also asserts the document is valid.
+ */
+const readDescriptor = async (descriptorPath: string) => {
+  const parsed = parseVisualSessionDescriptor(
+    JSON.parse(await readFile(descriptorPath, 'utf8')),
   )
-  return (descriptor as { readonly agentCapability: string }).agentCapability
+  if (!parsed.ok) {
+    throw new Error(
+      `descriptor "${descriptorPath}" is invalid: ${parsed.diagnostics[0]?.message}`,
+    )
+  }
+  return parsed.value
 }
+
+/** The agent capability lives only in the mode 0600 descriptor. */
+const capabilityOf = async (handle: VisualServerHandle) =>
+  (await readDescriptor(handle.started.descriptorPath)).agentCapability
 
 const bootstrap = async (handle: VisualServerHandle) => {
   const response = await fetch(handle.started.browserUrl, {
@@ -200,24 +215,22 @@ const chatResponse = (
 /**
  * Waits for the journal named by a session descriptor to carry an event past
  * `after`. The descriptor is the agent's only entry point into the session, so
- * the helper reads the journal the way an out-of-process agent would.
+ * the helper reads the journal the way an out-of-process agent would, and it
+ * waits on the file's own change events rather than on a guessed delay.
  */
 const waitForVisualEvent = async (
   descriptorPath: string,
   after: number,
 ): Promise<VisualEvent> => {
-  const descriptor: unknown = JSON.parse(await readFile(descriptorPath, 'utf8'))
-  const journalPath = (descriptor as { readonly journalPath: string })
-    .journalPath
-  const deadline = Date.now() + 5000
-  for (;;) {
+  const { journalPath } = await readDescriptor(descriptorPath)
+  const journaled = async () => {
     let lines: string[] = []
     try {
       lines = (await readFile(journalPath, 'utf8'))
         .split('\n')
         .filter((line) => line.length > 0)
     } catch {
-      lines = []
+      return undefined
     }
     for (const line of lines) {
       const event = JSON.parse(line) as VisualEvent
@@ -228,11 +241,16 @@ const waitForVisualEvent = async (
         return event
       }
     }
-    if (Date.now() > deadline) {
-      throw new Error(`no event past ${after} in "${journalPath}"`)
-    }
-    await new Promise((resolve) => setTimeout(resolve, 10))
+    return undefined
   }
+  const already = await journaled()
+  if (already !== undefined) return already
+  // The journal exists from session creation, so it can be watched directly.
+  for await (const _change of watch(journalPath)) {
+    const appended = await journaled()
+    if (appended !== undefined) return appended
+  }
+  throw new Error(`no event past ${after} in "${journalPath}"`)
 }
 
 const journalOf = async (handle: VisualServerHandle) =>
@@ -1114,7 +1132,12 @@ describe('startVisualServer lifecycle', () => {
     const server = await start()
     const capability = await capabilityOf(server)
     const polled = agentFetch(server, capability, '/api/agent/events?after=0')
-    await new Promise((resolve) => setTimeout(resolve, 20))
+    // A real long poll has to reach the server before the stop does, and the
+    // request is in undici's hands until then: there is no in-process signal to
+    // await, and a fake clock cannot move a socket.
+    const onTheWire = Promise.withResolvers<void>()
+    setTimeout(onTheWire.resolve, 20)
+    await onTheWire.promise
     await server.stop('main-cancelled')
     await expect((await polled).json()).resolves.toMatchObject({
       waiting: true,
@@ -1153,6 +1176,170 @@ describe('startVisualServer lifecycle', () => {
     expect(idle.browser.graceExpiresAt).toMatch(
       /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z$/,
     )
+  })
+})
+
+describe('startVisualServer shutdown and admission races', () => {
+  /**
+   * Rejections raised by fire-and-forget socket work never reach a test's
+   * `await`, so they are collected from the process the way Node would see
+   * them: an empty list is the assertion that nothing crashed the runtime.
+   */
+  const collectRejections = () => {
+    const seen: unknown[] = []
+    const observe = (reason: unknown) => seen.push(reason)
+    process.on('unhandledRejection', observe)
+    return {
+      seen,
+      settled: async () => {
+        // A rejection is reported a macrotask after it is raised, so give the
+        // loop two turns before deciding nothing was left unobserved.
+        for (let turn = 0; turn < 2; turn += 1) {
+          const tick = Promise.withResolvers<void>()
+          setImmediate(tick.resolve)
+          await tick.promise
+        }
+        process.off('unhandledRejection', observe)
+        return seen
+      },
+    }
+  }
+
+  it('never journals a browser frame that raced the stop it lost', async () => {
+    const server = await start({ includeTranscript: true })
+    const { cookie } = await bootstrap(server)
+    const socket = await openBrowserSocket(server, cookie)
+    const rejections = collectRejections()
+
+    // Enqueued, unacknowledged, and deliberately not awaited: every frame is
+    // already on the admission chain when the stop begins.
+    for (let sent = 0; sent < 8; sent += 1) {
+      socket.send(
+        JSON.stringify({ type: 'chat.message', payload: { text: `race ${sent}` } }),
+      )
+    }
+    const closed = await server.stop('main-cancelled')
+
+    expect(closed).toMatchObject({
+      reason: 'main-cancelled',
+      alreadyStopped: false,
+    })
+    expect(closed.handoff).toBeDefined()
+    // Recovery must observe a settled journal: every sequence it counted is a
+    // record it could actually read.
+    const events = (closed.handoff?.transcript ?? []).filter(
+      (record) => record.format === 'yarramate/visual-event/v1',
+    )
+    expect(events).toHaveLength(closed.handoff?.lastSequence ?? -1)
+    await expect(server.closed).resolves.toMatchObject({
+      reason: 'main-cancelled',
+    })
+    await expect(server.stop('user-ended')).resolves.toMatchObject({
+      alreadyStopped: true,
+      reason: 'main-cancelled',
+    })
+    expect(server.status()).toMatchObject({
+      lifecycle: 'stopped',
+      alreadyStopped: true,
+    })
+    // Nothing may recreate the session directory after recovery deleted it.
+    await expect(stat(server.started.sessionRoot)).rejects.toThrow()
+    expect(await rejections.settled()).toEqual([])
+  })
+
+  it('tells the browser when admitting its frame fails', async () => {
+    let narrow = 0
+    const server = await start({
+      // 16-byte draws mint the session id, then the connection id, then event
+      // identifiers; failing from the first event id makes admission throw
+      // inside the socket's own fire-and-forget handler.
+      randomBytes: (size: number) => {
+        if (size !== 16) return randomBytes(size)
+        narrow += 1
+        if (narrow >= 3) throw new Error('random source unavailable')
+        return randomBytes(16)
+      },
+    })
+    const { cookie } = await bootstrap(server)
+    const socket = await openBrowserSocket(server, cookie)
+    const rejections = collectRejections()
+
+    const rejected = nextFrame(socket, 'rejected')
+    socket.send(
+      JSON.stringify({ type: 'chat.message', payload: { text: 'unminted' } }),
+    )
+
+    expect((await rejected).diagnostics[0]?.code).toBe('YMVS307')
+    expect(await journalOf(server)).toHaveLength(0)
+    // The session survives a failed admission and still answers.
+    expect(server.status().lifecycle).toBe('running')
+    expect(await rejections.settled()).toEqual([])
+  })
+
+  it('never journals a frame sent after the drain began', async () => {
+    const server = await start({ includeTranscript: true })
+    const { cookie } = await bootstrap(server)
+    const socket = await openBrowserSocket(server, cookie)
+    await sendChat(socket, 'in time')
+    const rejections = collectRejections()
+
+    // The stop marks the session draining and starts the socket's closing
+    // handshake synchronously, but the client is still OPEN for a moment: a
+    // frame written now can reach a session that is already recovering.
+    const stopping = server.stop('main-cancelled')
+    socket.send(
+      JSON.stringify({ type: 'chat.message', payload: { text: 'too late' } }),
+    )
+    const closed = await stopping
+
+    const texts = (closed.handoff?.transcript ?? [])
+      .filter((record) => record.type === 'chat.message')
+      .map((record) => JSON.stringify(record.payload))
+    expect(texts).toEqual([JSON.stringify({ text: 'in time' })])
+    await expect(stat(server.started.sessionRoot)).rejects.toThrow()
+    expect(await rejections.settled()).toEqual([])
+  })
+
+  it('finishes admitted work before recovering the session', async () => {
+    const server = await start({ includeTranscript: true })
+    const capability = await capabilityOf(server)
+    const { cookie } = await bootstrap(server)
+    const socket = await openBrowserSocket(server, cookie)
+    const accepted = await sendChat(socket, 'redraw it badly')
+    const rejections = collectRejections()
+
+    // A model replacement is journaled and broadcast before its candidate is
+    // compiled, so this frame is the signal that admitted work is genuinely
+    // in flight — the compile, and the diagnostic it will journal, are not.
+    const inFlight = nextFrame(
+      socket,
+      'response',
+      (frame) => frame.response.type === 'model.replace',
+    )
+    const posted = postResponse(server, capability, {
+      format: 'yarramate/visual-response/v1',
+      sessionId: server.started.sessionId,
+      responseId: identifier(6),
+      eventId: accepted.eventId,
+      type: 'model.replace',
+      timestamp: '2026-08-08T00:00:06.000Z',
+      payload: { model: modelWith('invalid') },
+    })
+    await inFlight
+
+    const closed = await server.stop('main-cancelled')
+
+    // Shutdown waited for the compile to fail and for its diagnostic to be
+    // journaled, so recovery reports work the server had already accepted.
+    const types = (closed.handoff?.transcript ?? []).map((record) => record.type)
+    expect(types).toContain('model.replace')
+    expect(types).toContain('diagnostic')
+    await expect((await posted).json()).resolves.toMatchObject({
+      accepted: true,
+      diagnostics: [{ code: 'YMVS201' }],
+    })
+    await expect(stat(server.started.sessionRoot)).rejects.toThrow()
+    expect(await rejections.settled()).toEqual([])
   })
 })
 

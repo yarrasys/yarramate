@@ -447,6 +447,18 @@ export const startVisualServer = async (
     return next
   }
 
+  /**
+   * Waits until nothing is left on the admission chain. `admission` absorbs its
+   * own rejections, and work can still enqueue while draining (it refuses
+   * itself), so the tail is re-read until it stops moving.
+   */
+  const drainAdmission = async () => {
+    for (let tail = admission; ; tail = admission) {
+      await tail
+      if (tail === admission) return
+    }
+  }
+
   /** The first limit a session reaches is the one it reports for good. */
   const freeze = (reason: VisualFreezeReason) => {
     frozen ??= reason
@@ -576,16 +588,15 @@ export const startVisualServer = async (
   })
   httpServer.on('clientError', (_error, socket) => socket.destroy())
 
-  await new Promise<void>((settle, fail) => {
-    const onError = (error: Error) => fail(error)
-    httpServer.once('error', onError)
-    // Loopback only, on a kernel-assigned port: the session is never reachable
-    // from another host, and never collides with a well-known service.
-    httpServer.listen(0, '127.0.0.1', () => {
-      httpServer.removeListener('error', onError)
-      settle()
-    })
-  }).catch(abandon)
+  const bound = Promise.withResolvers<void>()
+  httpServer.once('error', bound.reject)
+  // Loopback only, on a kernel-assigned port: the session is never reachable
+  // from another host, and never collides with a well-known service.
+  httpServer.listen(0, '127.0.0.1', () => {
+    httpServer.removeListener('error', bound.reject)
+    bound.resolve()
+  })
+  await bound.promise.catch(abandon)
 
   const address = httpServer.address() as AddressInfo
   const origin = `http://127.0.0.1:${address.port}`
@@ -662,6 +673,21 @@ export const startVisualServer = async (
       return
     }
     await admit(async () => {
+      // A frame can already be on the chain when a stop begins. Recovery must
+      // see a journal nothing is still writing to, so anything that has not
+      // been journaled yet is refused rather than raced.
+      if (lifecycle !== 'running') {
+        sendFrame(socket, {
+          kind: 'rejected',
+          diagnostics: [
+            serverDiagnostic(
+              'YMVS306',
+              `Session is ${lifecycle} and no longer accepts input`,
+            ),
+          ],
+        })
+        return
+      }
       if (frozen !== undefined) {
         sendFrame(socket, {
           kind: 'rejected',
@@ -725,15 +751,35 @@ export const startVisualServer = async (
     connections.set(connectionId, socket)
     lastSeenAt = stamp()
     socket.on('message', (raw, binary) => {
-      void admitBrowserInput(socket, raw, binary)
+      // Nothing awaits this handler, so a rejection here would reach the
+      // process as an unhandled one and take the runtime down with it. The
+      // browser is told its frame failed; the session stays up.
+      admitBrowserInput(socket, raw, binary).catch((cause: unknown) => {
+        try {
+          sendFrame(socket, {
+            kind: 'rejected',
+            diagnostics: [
+              serverDiagnostic(
+                'YMVS307',
+                `Admitting the browser frame failed: ${
+                  cause instanceof Error ? cause.message : String(cause)
+                }`,
+              ),
+            ],
+          })
+        } catch {
+          socket.close(1011)
+        }
+      })
     })
     socket.on('error', (error) => {
       // ws refuses an oversized frame before buffering it, which is exactly the
       // byte ceiling the protocol calls a freeze.
-      if (
-        (error as { code?: string }).code ===
-        'WS_ERR_UNSUPPORTED_MESSAGE_LENGTH'
-      ) {
+      const code =
+        typeof error === 'object' && error !== null && 'code' in error
+          ? error.code
+          : undefined
+      if (code === 'WS_ERR_UNSUPPORTED_MESSAGE_LENGTH') {
         freeze('message-bytes')
       }
     })
@@ -858,6 +904,22 @@ export const startVisualServer = async (
         readonly code: number
         readonly body: VisualResponseAcceptance
       }> => {
+        // Same race as a browser frame: a request already on the chain must not
+        // append to a session recovery has begun reading.
+        if (lifecycle !== 'running') {
+          return {
+            code: 503,
+            body: {
+              accepted: false,
+              diagnostics: [
+                serverDiagnostic(
+                  'YMVS306',
+                  `Session is ${lifecycle} and no longer accepts responses`,
+                ),
+              ],
+            },
+          }
+        }
         const appended = await appendVisualResponse(paths, response)
         if (!appended.ok) {
           if (appended.freeze !== undefined) freeze(appended.freeze)
@@ -913,7 +975,12 @@ export const startVisualServer = async (
       refuse(server, body.status, body.message)
       return
     }
-    const reason = (body.value as { readonly reason?: unknown }).reason
+    const reason =
+      typeof body.value === 'object' &&
+      body.value !== null &&
+      'reason' in body.value
+        ? body.value.reason
+        : undefined
     if (typeof reason !== 'string' || TERMINATION_REASONS[reason] !== true) {
       refuse(server, 400, 'Stop requires a known termination reason')
       return
@@ -1125,10 +1192,8 @@ export const startVisualServer = async (
 
   // ----------------------------------------------------------------- shutdown
 
-  let announceClosed!: (closed: VisualServerClosed) => void
-  const closed = new Promise<VisualServerClosed>((settle) => {
-    announceClosed = settle
-  })
+  const { promise: closed, resolve: announceClosed } =
+    Promise.withResolvers<VisualServerClosed>()
   let stopping: Promise<VisualServerClosed> | undefined
 
   const stop = async (
@@ -1150,6 +1215,13 @@ export const startVisualServer = async (
         socket.close(1001)
       }
       sockets.close()
+      // Work admitted before the drain began still has to finish: recovery must
+      // read a journal nothing is mid-append to, and a rejected append must be
+      // observed here rather than escaping as an unhandled rejection. Work that
+      // has not started refuses itself, which is what bounds this wait.
+      await drainAdmission()
+      // Only now: an in-flight agent request has had its answer written, so
+      // ending its connection cannot swallow the refusal it was owed.
       for (const socket of httpSockets) {
         if (socket !== exempt) socket.end()
       }
