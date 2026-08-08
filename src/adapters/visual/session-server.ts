@@ -537,6 +537,13 @@ export const startVisualServer = async (
    * again after a reload if the session hands the question back.
    */
   let pendingChoice: VisualChoicePresentPayload | null = null
+  /**
+   * A journaled End is the last thing this session takes from the reviewer, so
+   * no later question can ever be answered. The lock outlives the clearing
+   * below: an agent response still in flight when the End landed must not hand
+   * a reloading browser buttons that lead nowhere.
+   */
+  let choicesClosed = false
   const connections = new Map<string, WebSocket>()
   const polls = new Set<PendingPoll>()
   const httpSockets = new Set<Socket>()
@@ -619,6 +626,7 @@ export const startVisualServer = async (
     if (event.type === 'chat.message' || event.type === 'session.end') {
       pendingChoice = null
     }
+    if (event.type === 'session.end') choicesClosed = true
     if (event.type === 'chat.message') {
       transcript.push({
         id: event.eventId,
@@ -644,7 +652,7 @@ export const startVisualServer = async (
   /** An accepted agent response, as the line the reviewer sees. */
   const recordResponse = (response: VisualResponse) => {
     if (response.type === 'choice.present') {
-      pendingChoice = response.payload
+      if (!choicesClosed) pendingChoice = response.payload
       choiceLabels.set(
         response.payload.choiceId,
         new Map(
@@ -1113,6 +1121,12 @@ export const startVisualServer = async (
     // limit, and the limit outlives this response.
     else if (appended.freeze !== undefined) freeze(appended.freeze)
     broadcast({ kind: 'response', response: diagnostic })
+    // The diagnostic is the answer to the event the replacement was answering,
+    // and it is the only one that event will get. It retires the turn exactly
+    // as an agent-posted diagnostic would, so the reviewer's next message is
+    // deliverable instead of waiting behind a turn nobody will ever close.
+    markAnswered(diagnostic)
+    completeTurn(diagnostic)
     return { diagnostics: compiled.diagnostics }
   }
 
@@ -1516,7 +1530,7 @@ export const startVisualServer = async (
     if (stopping !== undefined) {
       return { ...(await stopping), alreadyStopped: true }
     }
-    stopping = (async () => {
+    const attempt = (async () => {
       // Frozen before anything is torn down: a request already on the wire
       // must not be journaled behind the recovery this stop is about to read.
       active.lifecycle = 'draining'
@@ -1553,7 +1567,16 @@ export const startVisualServer = async (
       announceClosed(outcome)
       return outcome
     })()
-    return stopping
+    // Every step of a teardown is idempotent, and one that throws has left the
+    // session directory behind for someone to finish. Forgetting the failed
+    // attempt is what makes the next stop that fresh run rather than a replay
+    // of the same rejection; observing it here is what keeps the cached promise
+    // from being a rejection nothing ever handled.
+    stopping = attempt
+    attempt.catch(() => {
+      if (stopping === attempt) stopping = undefined
+    })
+    return attempt
   }
 
   // Everything from here is publication, and every way it can fail — a
