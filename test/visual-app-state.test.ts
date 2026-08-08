@@ -400,6 +400,64 @@ describe('visualAppReducer conversation', () => {
     expect(chosen.composerEnabled).toBe(false)
   })
 
+  describe('after a choice, every later record keeps its own key', () => {
+    const present = (state: VisualAppState, choiceId: string) =>
+      visualAppReducer(state, {
+        type: 'choice.presented',
+        choice: {
+          choiceId,
+          question: 'Which delivery design should we keep?',
+          options: [
+            { id: 'option-a', label: 'Isolated worker' },
+            { id: 'option-b', label: 'Shared queue' },
+          ],
+        },
+      })
+
+    const chosen = visualAppReducer(present(activeState, 'first'), {
+      type: 'choice.sent',
+      optionId: 'option-b',
+    })
+
+    const unique = (state: VisualAppState) => {
+      const keys = state.transcript.map((record) => record.id)
+      expect(new Set(keys).size).toBe(keys.length)
+    }
+
+    it('records a second choice beside the first', () => {
+      const next = visualAppReducer(present(chosen, 'second'), {
+        type: 'choice.sent',
+        optionId: 'option-a',
+      })
+      expect(next.transcript.map((record) => record.text)).toEqual([
+        'Shared queue',
+        'Isolated worker',
+      ])
+      unique(next)
+    })
+
+    it('records a question asked after a choice', () => {
+      const next = visualAppReducer(chosen, {
+        type: 'chat.sent',
+        text: 'What does that cost?',
+      })
+      expect(next.transcript.map((record) => record.text)).toEqual([
+        'Shared queue',
+        'What does that cost?',
+      ])
+      unique(next)
+    })
+
+    it('still shows the End notice after a choice', () => {
+      const next = visualAppReducer(chosen, { type: 'end.requested' })
+      expect(next.transcript.map((record) => record.text)).toEqual([
+        'Shared queue',
+        VISUAL_END_NOTICE,
+      ])
+      unique(next)
+    })
+  })
+
   it('reports agent status without disturbing the transcript', () => {
     const next = visualAppReducer(activeState, {
       type: 'status.received',

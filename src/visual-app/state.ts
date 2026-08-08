@@ -284,7 +284,11 @@ const transition = (
       if (chosen === undefined) return state
       return {
         ...state,
-        transcript: withRecord(state, localRecord(state, 'reviewer', chosen.label)),
+        transcript: withRecord(
+          state,
+          localRecord(state, 'reviewer', chosen.label),
+        ),
+        localRecords: state.localRecords + 1,
         choices: null,
         awaitingAgent: true,
       }
