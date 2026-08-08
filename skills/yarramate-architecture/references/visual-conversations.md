@@ -45,16 +45,22 @@ and Git review, after the user asks for that as its own step.
 ## 2. Preflight the LikeC4 compiler
 
 The request carries a trusted command vector; the runtime executes it and
-nothing else. The browser and the child cannot change it.
+nothing else. The browser and the child cannot change it. The compiler command
+must be an absolute executable path; the runtime deliberately rejects relative
+paths and `PATH` lookup.
 
-1. Prefer a repository-local executable satisfying `>=1.59.2 <1.60.0`:
-   `./node_modules/.bin/likec4 --version`. Use it as
-   `{"command": "./node_modules/.bin/likec4", "args": []}`.
+1. Prefer a repository-local executable satisfying `>=1.59.2 <1.60.0`. Print
+   its absolute path with
+   `node -p "require('node:path').resolve('./node_modules/.bin/likec4')"`, run
+   `<printed-path> --version`, then use
+   `{"command": "<printed absolute path>", "args": []}`.
 2. No compatible local executable? Ask the user once, in this turn, before
-   resolving the pinned runner
-   `{"command": "npx", "args": ["--yes", "likec4@1.59.2"]}`. Name the pin and
-   say that it resolves into the npx cache and adds no repository dependency.
-   Consent is per session; an unpinned or `@latest` runner is never the answer.
+   resolving the pinned runner. Run `command -v npx`, require an absolute
+   result, then use
+   `{"command": "<printed absolute npx path>", "args": ["--yes", "likec4@1.59.2"]}`.
+   Name the pin and say that it resolves into the npx cache and adds no
+   repository dependency. Consent is per session; an unpinned or `@latest`
+   runner is never the answer.
 3. The pinned runner needs Node `>=22.22.3`. Below that floor, report the
    preflight diagnostic and stop — the semantic binaries keep the package's own
    Node contract, so nothing else is affected.
@@ -87,7 +93,7 @@ capabilities, and filesystem locations are runtime outputs — never supply them
   "title": "Delivery architecture",
   "description": "Checked slice of .yarramate/workspace.yaml",
   "chatEnabled": true,
-  "compiler": { "command": "./node_modules/.bin/likec4", "args": [] },
+  "compiler": { "command": "/absolute/path/to/node_modules/.bin/likec4", "args": [] },
   "initialModel": {
     "format": "yarramate/visual-model/v1",
     "authority": "canonical",
