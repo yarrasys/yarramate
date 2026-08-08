@@ -58,6 +58,20 @@ describe('consumer package contract', () => {
     expect(consumerGuide).toContain('diagram-only mode')
     expect(consumerGuide).toContain('yarramate-visual')
     expect(consumerGuide).not.toContain('pnpm exec yarramate')
+
+    const visualGuide = readFileSync(
+      join(
+        repositoryRoot,
+        'skills/yarramate-architecture/references/visual-conversations.md',
+      ),
+      'utf8',
+    )
+    expect(visualGuide).toContain('must be an absolute executable path')
+    expect(visualGuide).toContain('command -v npx')
+    expect(visualGuide).not.toContain(
+      '"command": "./node_modules/.bin/likec4"',
+    )
+    expect(visualGuide).not.toContain('"command": "npx"')
   })
 
   it('packs only a self-contained consumer surface', { timeout: 30_000 }, () => {
