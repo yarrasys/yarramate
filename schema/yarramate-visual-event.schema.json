@@ -103,6 +103,11 @@
       "type": "integer",
       "minimum": 1
     },
+    "acknowledgedSequence": {
+      "description": "Highest journaled sequence the browser has seen acknowledged, or 0 before its first acknowledgement.",
+      "type": "integer",
+      "minimum": 0
+    },
     "timestamp": {
       "type": "string",
       "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"
@@ -173,41 +178,53 @@
       }
     },
     "browserInput": {
-      "description": "Untrusted browser message. It carries only a discriminant and payload; session identifiers, sequences, timestamps, and runtime-only event types are rejected.",
+      "description": "Untrusted browser message. It carries a discriminant, the last sequence the browser saw acknowledged, and the payload; session identifiers, assigned sequences, timestamps, and runtime-only event types are rejected.",
       "oneOf": [
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["type", "payload"],
+          "required": ["type", "lastAcknowledgedSequence", "payload"],
           "properties": {
             "type": { "const": "chat.message" },
+            "lastAcknowledgedSequence": {
+              "$ref": "#/$defs/acknowledgedSequence"
+            },
             "payload": { "$ref": "#/$defs/chatMessagePayload" }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["type", "payload"],
+          "required": ["type", "lastAcknowledgedSequence", "payload"],
           "properties": {
             "type": { "const": "choice.selected" },
+            "lastAcknowledgedSequence": {
+              "$ref": "#/$defs/acknowledgedSequence"
+            },
             "payload": { "$ref": "#/$defs/choiceSelectedPayload" }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["type", "payload"],
+          "required": ["type", "lastAcknowledgedSequence", "payload"],
           "properties": {
             "type": { "const": "view.navigate" },
+            "lastAcknowledgedSequence": {
+              "$ref": "#/$defs/acknowledgedSequence"
+            },
             "payload": { "$ref": "#/$defs/viewNavigatePayload" }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["type", "payload"],
+          "required": ["type", "lastAcknowledgedSequence", "payload"],
           "properties": {
             "type": { "const": "session.end" },
+            "lastAcknowledgedSequence": {
+              "$ref": "#/$defs/acknowledgedSequence"
+            },
             "payload": { "$ref": "#/$defs/sessionEndPayload" }
           }
         }

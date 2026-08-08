@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { readFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import { extname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import type { Readable } from 'node:stream'
 import type {
@@ -93,10 +93,13 @@ interface ProcessOutcome {
  * Reads a trusted compiler document's own fields. Anything that is not a plain
  * object simply has no fields, so the caller's field checks report the fault.
  */
-const plainFields = (value: unknown): Readonly<Record<string, unknown>> =>
+const isPlainObject = (
+  value: unknown,
+): value is Readonly<Record<string, unknown>> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? (value as Readonly<Record<string, unknown>>)
-    : {}
+
+const plainFields = (value: unknown): Readonly<Record<string, unknown>> =>
+  isPlainObject(value) ? value : {}
 
 const pointerSegment = (segment: string) =>
   segment.replace(/~/g, '~0').replace(/\//g, '~1')
@@ -272,6 +275,67 @@ const exitDiagnostic = (stage: CompilerStage, outcome: ProcessOutcome) =>
   )
 
 /**
+ * Project the staged configuration declares, if it declares one.
+ */
+const declaredProject = (model: VisualModel): string | undefined => {
+  const config = model.files['likec4.config.json']
+  if (config === undefined) return undefined
+  try {
+    const name = plainFields(JSON.parse(config)).name
+    return typeof name === 'string' && name.length > 0 ? name : undefined
+  } catch {
+    // An unreadable configuration is the CLI's to report, not this adapter's.
+    return undefined
+  }
+}
+
+/**
+ * The one exported project this rendering comes from.
+ *
+ * `likec4 export json` writes a bare project document for exactly one project
+ * and a bare array otherwise, and a workspace that stages a configuration
+ * resolves the named project beside an implicit default over the same sources.
+ * The named project is asked for on the command line; this is the reader that
+ * still resolves whatever arrives: one project, else the only project defining
+ * the requested view, else the one the configuration named. Anything still
+ * ambiguous is refused rather than picked from.
+ */
+const projectDocument = (
+  exported: unknown,
+  initialView: string,
+  declared: string | undefined,
+):
+  | { readonly ok: true; readonly document: unknown }
+  | {
+      readonly ok: false
+      readonly projects: number
+      readonly matches: number
+    } => {
+  const documents = Array.isArray(exported) ? exported : [exported]
+  const projects = documents.filter((document) =>
+    isPlainObject(plainFields(document).views),
+  )
+  const only = projects[0]
+  if (projects.length === 1 && only !== undefined) {
+    return { ok: true, document: only }
+  }
+  const defining = projects.filter(
+    (document) => initialView in plainFields(plainFields(document).views),
+  )
+  const named =
+    declared === undefined
+      ? []
+      : defining.filter(
+          (document) => plainFields(document).projectId === declared,
+        )
+  const resolved = named.length === 1 ? named : defining
+  const match = resolved[0]
+  return resolved.length === 1 && match !== undefined
+    ? { ok: true, document: match }
+    : { ok: false, projects: projects.length, matches: defining.length }
+}
+
+/**
  * Candidate-relative POSIX path for a source location the compiler reported,
  * or `undefined` when the location is not a file staged under this candidate.
  */
@@ -393,6 +457,7 @@ const exportViews = async (
   readonly views?: readonly string[]
   readonly diagnostics: readonly VisualDiagnostic[]
 }> => {
+  const declared = declaredProject(model)
   const outcome = await runCompiler(
     command,
     [
@@ -400,6 +465,9 @@ const exportViews = async (
       'export',
       'json',
       '--pretty',
+      // Without a project the CLI writes every project it resolved, and a
+      // staged configuration always resolves at least two.
+      ...(declared === undefined ? [] : ['--project', declared]),
       '-o',
       exportPath,
       candidateDir,
@@ -446,8 +514,28 @@ const exportViews = async (
       ],
     }
   }
-  const views = plainFields(exported).views
-  if (typeof views !== 'object' || views === null || Array.isArray(views)) {
+  const sole = projectDocument(exported, model.initialView, declared)
+  if (!sole.ok) {
+    return {
+      diagnostics: [
+        compilerDiagnostic(
+          sole.projects === 0 ? 'YMVS207' : 'YMVS210',
+          sole.projects === 0
+            ? 'LikeC4 export document does not carry a view collection'
+            : `LikeC4 export carries ${sole.projects} projects and ${sole.matches} of them define "${model.initialView}", so no single rendering can be promoted`,
+        ),
+      ],
+    }
+  }
+  // The promoted artefact is always one project document, because that is what
+  // the browser's model factory reads.
+  if (sole.document !== exported) {
+    await writeFile(exportPath, JSON.stringify(sole.document, null, 2), {
+      mode: 0o600,
+    })
+  }
+  const views = plainFields(sole.document).views
+  if (!isPlainObject(views)) {
     return {
       diagnostics: [
         compilerDiagnostic(

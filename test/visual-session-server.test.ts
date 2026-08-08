@@ -67,6 +67,7 @@ const request: VisualSessionRequest = {
 
 const chatEventInput = {
   type: 'chat.message',
+  lastAcknowledgedSequence: 0,
   payload: { text: 'Compare the two delivery designs' },
 } as const
 
@@ -170,7 +171,11 @@ const nextFrame = async <Kind extends VisualServerFrame['kind']>(
 
 const sendChat = (socket: WebSocket, text: string) => {
   const accepted = nextFrame(socket, 'accepted')
-  socket.send(JSON.stringify({ type: 'chat.message', payload: { text } }))
+  socket.send(JSON.stringify({
+    type: 'chat.message',
+    lastAcknowledgedSequence: 0,
+    payload: { text },
+  }))
   return accepted
 }
 
@@ -440,6 +445,23 @@ describe('startVisualServer bootstrap and browser authentication', () => {
       },
     })
   })
+
+  it('reports the compiled LikeC4 model the browser has to render', async () => {
+    const server = await start()
+    const { cookie } = await bootstrap(server)
+    const response = await fetch(`${server.started.origin}/api/session`, {
+      headers: { Cookie: cookie },
+    })
+    const session = (await response.json()) as {
+      readonly model: { readonly compiled: Record<string, unknown> }
+    }
+    // The compiled export is what `createLikeC4Model` consumes: without it the
+    // browser has view identifiers and nothing to draw.
+    expect(session.model.compiled).toMatchObject({
+      _stage: 'layouted',
+      views: { choices: { id: 'choices' } },
+    })
+  })
 })
 
 describe('startVisualServer agent capability separation', () => {
@@ -614,6 +636,7 @@ describe('startVisualServer event queue and long polling', () => {
     socket.send(
       JSON.stringify({
         type: 'view.navigate',
+        lastAcknowledgedSequence: 0,
         payload: { viewId: 'choices', requiresAttention: false },
       }),
     )
@@ -636,6 +659,7 @@ describe('startVisualServer event queue and long polling', () => {
     socket.send(
       JSON.stringify({
         type: 'view.navigate',
+        lastAcknowledgedSequence: 0,
         payload: { viewId: 'choices', requiresAttention: true },
       }),
     )
@@ -659,7 +683,11 @@ describe('startVisualServer event queue and long polling', () => {
     }
     const rejected = nextFrame(socket, 'rejected')
     socket.send(
-      JSON.stringify({ type: 'chat.message', payload: { text: 'one more' } }),
+      JSON.stringify({
+        type: 'chat.message',
+        lastAcknowledgedSequence: 0,
+        payload: { text: 'one more' },
+      }),
     )
     expect(await rejected).toMatchObject({ frozen: 'pending-events' })
 
@@ -684,6 +712,7 @@ describe('startVisualServer event queue and long polling', () => {
     socket.send(
       JSON.stringify({
         type: 'chat.message',
+        lastAcknowledgedSequence: 0,
         payload: { text: 'x'.repeat(VISUAL_LIMITS.messageBytes + 1) },
       }),
     )
@@ -702,6 +731,7 @@ describe('startVisualServer event queue and long polling', () => {
     socket.send(
       JSON.stringify({
         type: 'chat.message',
+        lastAcknowledgedSequence: 0,
         payload: { text: 'x'.repeat(VISUAL_SERVER_LIMITS.browserFrameBytes) },
       }),
     )
@@ -759,7 +789,11 @@ describe('startVisualServer event queue and long polling', () => {
     await sendChat(socket, 'first')
     const rejected = nextFrame(socket, 'rejected')
     socket.send(
-      JSON.stringify({ type: 'chat.message', payload: { text: 'second' } }),
+      JSON.stringify({
+        type: 'chat.message',
+        lastAcknowledgedSequence: 0,
+        payload: { text: 'second' },
+      }),
     )
     expect((await rejected).diagnostics[0]?.code).toBe('YMVS127')
 
@@ -767,6 +801,44 @@ describe('startVisualServer event queue and long polling', () => {
       (record) => record.type === 'chat.message',
     )
     expect(events).toHaveLength(1)
+    socket.close()
+  })
+
+  it('refuses a browser frame acknowledging a sequence the journal never reached', async () => {
+    const server = await start()
+    const { cookie } = await bootstrap(server)
+    const socket = await openBrowserSocket(server, cookie)
+    const rejected = nextFrame(socket, 'rejected')
+    socket.send(
+      JSON.stringify({
+        type: 'chat.message',
+        lastAcknowledgedSequence: 4,
+        payload: { text: 'I have seen the future' },
+      }),
+    )
+    expect((await rejected).diagnostics[0]?.code).toBe('YMVS308')
+    expect(await journalOf(server)).toHaveLength(0)
+    expect(server.status().queue.lastSequence).toBe(0)
+    socket.close()
+  })
+
+  it('admits a browser frame whose acknowledgement is merely stale', async () => {
+    const server = await start()
+    const { cookie } = await bootstrap(server)
+    const socket = await openBrowserSocket(server, cookie)
+    expect((await sendChat(socket, 'first')).sequence).toBe(1)
+
+    // The browser is a sequence behind, which is what a reconnect mid-turn
+    // looks like; admission still owns the sequence it assigns.
+    const accepted = nextFrame(socket, 'accepted')
+    socket.send(
+      JSON.stringify({
+        type: 'chat.message',
+        lastAcknowledgedSequence: 0,
+        payload: { text: 'second' },
+      }),
+    )
+    expect((await accepted).sequence).toBe(2)
     socket.close()
   })
 })
@@ -902,7 +974,11 @@ describe('startVisualServer agent responses', () => {
       accepted: true,
       model: { candidate: '000002', initialView: 'choices' },
     })
-    expect((await rendered).model.candidate).toBe('000002')
+    const broadcast = await rendered
+    expect(broadcast.model.candidate).toBe('000002')
+    // A promoted candidate reaches the browser with its own compiled export,
+    // so the diagram it renders is never one candidate behind.
+    expect(broadcast.model.compiled).toMatchObject({ _stage: 'layouted' })
 
     const active: unknown = JSON.parse(
       await readFile(
@@ -1217,7 +1293,11 @@ describe('startVisualServer shutdown and admission races', () => {
     // already on the admission chain when the stop begins.
     for (let sent = 0; sent < 8; sent += 1) {
       socket.send(
-        JSON.stringify({ type: 'chat.message', payload: { text: `race ${sent}` } }),
+        JSON.stringify({
+          type: 'chat.message',
+          lastAcknowledgedSequence: 0,
+          payload: { text: `race ${sent}` },
+        }),
       )
     }
     const closed = await server.stop('main-cancelled')
@@ -1268,7 +1348,11 @@ describe('startVisualServer shutdown and admission races', () => {
 
     const rejected = nextFrame(socket, 'rejected')
     socket.send(
-      JSON.stringify({ type: 'chat.message', payload: { text: 'unminted' } }),
+      JSON.stringify({
+        type: 'chat.message',
+        lastAcknowledgedSequence: 0,
+        payload: { text: 'unminted' },
+      }),
     )
 
     expect((await rejected).diagnostics[0]?.code).toBe('YMVS307')
@@ -1290,7 +1374,11 @@ describe('startVisualServer shutdown and admission races', () => {
     // frame written now can reach a session that is already recovering.
     const stopping = server.stop('main-cancelled')
     socket.send(
-      JSON.stringify({ type: 'chat.message', payload: { text: 'too late' } }),
+      JSON.stringify({
+        type: 'chat.message',
+        lastAcknowledgedSequence: 0,
+        payload: { text: 'too late' },
+      }),
     )
     const closed = await stopping
 
@@ -1416,7 +1504,11 @@ describe('startVisualServer diagnostic conformance', () => {
     const { cookie } = await bootstrap(server)
     const socket = await openBrowserSocket(server, cookie)
     const rejected = nextFrame(socket, 'rejected')
-    socket.send(JSON.stringify({ type: 'chat.message', payload: {} }))
+    socket.send(JSON.stringify({
+      type: 'chat.message',
+      lastAcknowledgedSequence: 0,
+      payload: {},
+    }))
     expect(publishable((await rejected).diagnostics).length).toBeGreaterThan(0)
     socket.close()
   })
@@ -1430,7 +1522,11 @@ describe('startVisualServer diagnostic conformance', () => {
     }
     const rejected = nextFrame(socket, 'rejected')
     socket.send(
-      JSON.stringify({ type: 'chat.message', payload: { text: 'one more' } }),
+      JSON.stringify({
+        type: 'chat.message',
+        lastAcknowledgedSequence: 0,
+        payload: { text: 'one more' },
+      }),
     )
     const diagnostics = publishable((await rejected).diagnostics)
     expect(diagnostics[0]).toMatchObject({

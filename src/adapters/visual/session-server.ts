@@ -14,7 +14,10 @@ import { basename, extname, join, resolve, sep } from 'node:path'
 import type { Duplex } from 'node:stream'
 import { fileURLToPath } from 'node:url'
 import { WebSocketServer, type RawData, type WebSocket } from 'ws'
-import { compileVisualModel } from './likec4-compiler.js'
+import {
+  compileVisualModel,
+  type CompiledVisualModel,
+} from './likec4-compiler.js'
 import {
   VISUAL_LIMITS,
   VISUAL_PROTOCOL_VERSION,
@@ -44,6 +47,16 @@ import {
   removeVisualSession,
   writeVisualSessionDescriptor,
 } from './session-store.js'
+import type {
+  VisualRenderedModel,
+  VisualServerFrame,
+  VisualSessionSnapshot,
+} from './wire.js'
+
+// The browser application imports these from `./wire.js`; the server keeps
+// publishing them so one import still covers the whole transport for an
+// agent-side consumer.
+export type { VisualRenderedModel, VisualServerFrame, VisualSessionSnapshot }
 
 /**
  * Document name reported by diagnostics the server itself raises — a refused
@@ -119,48 +132,20 @@ const DEFAULT_ASSET_ROOT = fileURLToPath(
   new URL('../../visual-app/', import.meta.url),
 )
 
-export interface VisualRenderedModel {
-  readonly candidate: string
-  readonly authority: VisualAuthority
-  readonly initialView: string
-  readonly views: readonly string[]
-}
-
-/** Everything the browser needs to render, and nothing that authenticates it. */
-export interface VisualSessionSnapshot {
-  readonly protocolVersion: typeof VISUAL_PROTOCOL_VERSION
-  readonly sessionId: string
-  readonly authority: VisualAuthority
-  readonly title: string
-  readonly description: string
-  readonly chatEnabled: boolean
-  readonly capabilities: VisualCapabilities
-  readonly webSocketUrl: string
-  readonly model: VisualRenderedModel
-  readonly lastSequence: number
-  readonly frozen: boolean
-}
-
 /**
- * Server-to-browser transport frame. These are not protocol documents: they
- * carry validated documents plus the transport's own acknowledgements, so they
- * are discriminated by `kind` rather than by a versioned `format`.
+ * One promoted candidate as the browser receives it. The export is read back
+ * from the candidate directory rather than re-derived, so what the browser
+ * draws is exactly the document the trusted compiler wrote.
  */
-export type VisualServerFrame =
-  | { readonly kind: 'ready'; readonly snapshot: VisualSessionSnapshot }
-  | {
-      readonly kind: 'accepted'
-      readonly sequence: number
-      readonly eventId: string
-    }
-  | {
-      readonly kind: 'rejected'
-      readonly diagnostics: readonly VisualDiagnostic[]
-      readonly frozen?: VisualFreezeReason
-    }
-  | { readonly kind: 'response'; readonly response: VisualResponse }
-  | { readonly kind: 'model'; readonly model: VisualRenderedModel }
-  | { readonly kind: 'closing'; readonly reason: VisualTerminationReason }
+const renderCompiled = async (
+  compiled: CompiledVisualModel,
+): Promise<VisualRenderedModel> => ({
+  candidate: compiled.candidate,
+  authority: compiled.authority,
+  initialView: compiled.initialView,
+  views: compiled.views,
+  compiled: JSON.parse(await readFile(compiled.exportPath, 'utf8')) as unknown,
+})
 
 export type VisualEventDelivery =
   | {
@@ -412,12 +397,9 @@ export const startVisualServer = async (
     )
   }
 
-  let rendered: VisualRenderedModel = {
-    candidate: compilation.compiled.candidate,
-    authority: compilation.compiled.authority,
-    initialView: compilation.compiled.initialView,
-    views: compilation.compiled.views,
-  }
+  let rendered: VisualRenderedModel = await renderCompiled(
+    compilation.compiled,
+  ).catch(abandon)
 
   const capabilities: VisualCapabilities = {
     chat: request.chatEnabled,
@@ -703,6 +685,24 @@ export const startVisualServer = async (
         })
         return
       }
+      // A browser cannot have seen an acknowledgement the journal never issued.
+      // A stale claim is ordinary — a reconnect mid-turn looks exactly like one
+      // — but a claim ahead of the journal means this frame was composed against
+      // a session state that does not exist, so it is refused rather than
+      // journaled behind a sequence its sender never read.
+      if (input.value.lastAcknowledgedSequence > lastSequence) {
+        sendFrame(socket, {
+          kind: 'rejected',
+          diagnostics: [
+            serverDiagnostic(
+              'YMVS308',
+              `Browser acknowledged sequence ${input.value.lastAcknowledgedSequence}, past the journal's ${lastSequence}`,
+              '/lastAcknowledgedSequence',
+            ),
+          ],
+        })
+        return
+      }
       const event = eventFrom(input.value, {
         format: 'yarramate/visual-event/v1',
         sessionId,
@@ -836,12 +836,7 @@ export const startVisualServer = async (
       now,
     })
     if (compiled.ok) {
-      rendered = {
-        candidate: compiled.compiled.candidate,
-        authority: compiled.compiled.authority,
-        initialView: compiled.compiled.initialView,
-        views: compiled.compiled.views,
-      }
+      rendered = await renderCompiled(compiled.compiled)
       broadcast({ kind: 'model', model: rendered })
       return { model: rendered, diagnostics: [] }
     }
