@@ -333,6 +333,10 @@ observations:
     result: confirmed
     evidence:
       uri: repo:package.json
+  - subject: yarramate-engine#local-web-browser
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/index.html
   - subject: yarramate-engine#npm-package
     result: confirmed
     evidence:
@@ -373,6 +377,10 @@ observations:
     result: confirmed
     evidence:
       uri: repo:src/adapters/likec4-export.ts
+  - subject: yarramate-engine#present-visual-conversation
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/App.tsx
   - subject: yarramate-engine#render-visual-model
     result: confirmed
     evidence:

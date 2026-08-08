@@ -647,6 +647,12 @@ concepts:
     description: The Node.js 22+ runtime that executes every shipped binary on the consumer host.
     owner: yarramate-product#yarramate-maintainers
     status: current
+  - id: local-web-browser
+    kind: systemSoftware
+    name: Local web browser
+    description: The reviewer's own browser on the consumer host. It is the only place the visual conversation presentation runs, and it reaches nothing but the one authenticated loopback origin its session serves.
+    owner: yarramate-product#yarramate-maintainers
+    status: current
   - id: npm-package
     kind: artifact
     name: npm package
@@ -741,6 +747,11 @@ concepts:
     kind: applicationFunction
     name: Recover visual conversation
     description: Derives the main-agent handoff from the append-only journal before shutdown or after failure.
+    status: current
+  - id: present-visual-conversation
+    kind: applicationFunction
+    name: Present the visual conversation
+    description: Draws the promoted views, the authority and connection state, the transcript, the structured choices, and End, and turns what the reviewer does with them into session events.
     status: current
 relationships:
   - id: core-contract-checker-loads-contract
@@ -1427,6 +1438,10 @@ relationships:
     kind: composition
     from: consumer-host
     to: nodejs-runtime
+  - id: consumer-host-composes-web-browser
+    kind: composition
+    from: consumer-host
+    to: local-web-browser
   - id: consumer-host-deploys-package
     kind: assignment
     from: consumer-host
@@ -1452,6 +1467,15 @@ relationships:
     kind: serving
     from: nodejs-runtime
     to: mcp-adapter
+  - id: runtime-serves-visual-runtime
+    kind: serving
+    from: nodejs-runtime
+    to: visual-runtime
+  - id: web-browser-serves-visual-browser
+    kind: serving
+    from: local-web-browser
+    to: visual-browser
+    description: The presentation runs in the reviewer's own browser on the same host; nothing about it is deployed anywhere else.
   - id: export-command-serves-traceability-matrix
     kind: serving
     from: export-command
@@ -1605,6 +1629,10 @@ relationships:
     to: visual-session-protocol
     mode: read-write
     description: The browser exchanges only versioned session documents. It cannot reach .yarramate, repository files, or the trusted compiler command vector, and no model provider is reachable from it.
+  - id: visual-browser-presents-conversation
+    kind: assignment
+    from: visual-browser
+    to: present-visual-conversation
   - id: visual-recovery-writes-handoff
     kind: access
     from: recover-visual-session

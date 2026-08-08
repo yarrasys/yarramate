@@ -1574,7 +1574,7 @@ views:
 
       expect(result.exitCode).toBe(0)
       const model = readFileSync(join(project, 'model.likec4'), 'utf8')
-      expect(model.match(/^  (?:dynamic )?view /gm)).toHaveLength(21)
+      expect(model.match(/^  (?:dynamic )?view /gm)).toHaveLength(22)
       expect(model).not.toMatch(/^    include \*$/gm)
       expect(model).toContain('view index')
       expect(model).not.toContain('view starter-landscape')
@@ -1601,7 +1601,7 @@ views:
         "view starter-technology-deployment {\n" +
           "    title '4 · ArchiMate viewpoints / Technology and deployment'\n" +
           "    description 'Technology structure, behavior, services, networks, and deployed artifacts.'\n" +
-          '    include consumerHost, consumerPackage, engineCli, engineGraphifyEvidenceAdapter, likec4ExportAdapter, mcpAdapter, nodejsRuntime, npmPackage, packageConsumerTests, productDesignSolutionBeforeBuild, productDiscoverProjectArchitecture, productStableCli',
+          '    include consumerHost, consumerPackage, engineCli, engineGraphifyEvidenceAdapter, likec4ExportAdapter, localWebBrowser, mcpAdapter, nodejsRuntime, npmPackage, packageConsumerTests, productDesignSolutionBeforeBuild, productDiscoverProjectArchitecture, productStableCli, visualBrowser, visualRuntime',
       )
       const marker = JSON.parse(
         readFileSync(
@@ -1609,7 +1609,7 @@ views:
           'utf8',
         ),
       )
-      expect(marker.views).toHaveLength(21)
+      expect(marker.views).toHaveLength(22)
       expect(marker.views[0]).toEqual({
         id: 'index',
         projection: 'starter-landscape@1.0',
@@ -2579,7 +2579,7 @@ mappings:
             subject: 'yarramate-engine#likec4-adapter-provides-export',
             path: '.yarramate/architecture/engine.yaml',
             pointer: '/relationships/124',
-            line: 1274,
+            line: 1325,
             column: 5,
           },
           {
@@ -2590,7 +2590,7 @@ mappings:
             subject: 'yarramate-engine#likec4-adapter-provides-check',
             path: '.yarramate/architecture/engine.yaml',
             pointer: '/relationships/125',
-            line: 1278,
+            line: 1329,
             column: 5,
           },
           {

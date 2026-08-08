@@ -1392,12 +1392,21 @@ mappings:
   - native: yarramate-engine#consumer-host-composes-runtime
     external: consumerHostComposesRuntime
     type: relationship
+  - native: yarramate-engine#consumer-host-composes-web-browser
+    external: consumerHostComposesWebBrowser
+    type: relationship
   - native: yarramate-engine#consumer-host-deploys-package
     external: consumerHostDeploysPackage
     type: relationship
   - native: yarramate-engine#nodejs-runtime
     external: nodejsRuntime
     type: concept
+  - native: yarramate-engine#local-web-browser
+    external: localWebBrowser
+    type: concept
+  - native: yarramate-engine#web-browser-serves-visual-browser
+    external: webBrowserServesVisualBrowser
+    type: relationship
   - native: yarramate-engine#npm-package
     external: npmPackage
     type: concept
@@ -1406,6 +1415,9 @@ mappings:
     type: relationship
   - native: yarramate-engine#runtime-serves-cli
     external: runtimeServesCli
+    type: relationship
+  - native: yarramate-engine#runtime-serves-visual-runtime
+    external: runtimeServesVisualRuntime
     type: relationship
   - native: yarramate-engine#runtime-serves-graphify-adapter
     external: runtimeServesGraphifyAdapter
@@ -1524,6 +1536,12 @@ mappings:
   - native: yarramate-engine#visual-browser
     external: visualBrowser
     type: concept
+  - native: yarramate-engine#present-visual-conversation
+    external: presentVisualConversation
+    type: concept
+  - native: yarramate-engine#visual-browser-presents-conversation
+    external: visualBrowserPresentsConversation
+    type: relationship
   - native: yarramate-engine#visual-browser-exchanges-protocol
     external: visualBrowserExchangesProtocol
     type: relationship
