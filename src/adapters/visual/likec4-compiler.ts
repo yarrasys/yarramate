@@ -135,6 +135,14 @@ const runCompiler = (
   budget: CompilerBudget,
 ): Promise<ProcessOutcome> =>
   new Promise((settle) => {
+    // An abort that already landed raises no further event, so a signal
+    // cancelled before this call — including in the window between one stage
+    // settling and the next registering its listener — must be read directly.
+    if (budget.signal?.aborted === true) {
+      settle({ status: 'cancelled', code: null, failure: '', stdout: '', stderr: '' })
+      return
+    }
+
     const controller = new AbortController()
     let timedOut = false
     const deadline = setTimeout(() => {
@@ -490,6 +498,19 @@ export const compileVisualModel = async (
         compilerDiagnostic(
           'YMVS202',
           `LikeC4 compiler command "${command.command}" must be an absolute executable path`,
+        ),
+      ],
+    }
+  }
+  // Staging a candidate for a request the caller already withdrew would leave
+  // a directory behind for work that can never be promoted.
+  if (options.signal?.aborted === true) {
+    return {
+      ok: false,
+      diagnostics: [
+        compilerDiagnostic(
+          'YMVS204',
+          'LikeC4 compilation was cancelled before it started',
         ),
       ],
     }

@@ -311,9 +311,47 @@ describe('trusted LikeC4 compiler adapter', () => {
       await started
       controller.abort()
 
+      const result = await running
+      expect(result.diagnostics).toMatchObject([
+        { code: 'YMVS204', message: expect.stringContaining('cancelled') },
+      ])
+      // Cancelling one stage must not let the next one start.
+      expect((await argVectors()).map((argv) => argv[0])).toEqual(['validate'])
+      expect(existsSync(session.paths.activeModel)).toBe(false)
+    })
+
+    it('refuses an already-aborted compilation before staging a candidate', async () => {
+      const session = await startSession()
+      const controller = new AbortController()
+      controller.abort()
+
+      const result = await compile(session.paths, {
+        signal: controller.signal,
+      })
+
+      expect(result.diagnostics).toMatchObject([
+        { code: 'YMVS204', message: expect.stringContaining('cancelled') },
+      ])
+      expect(existsSync(join(session.paths.candidates, '000001'))).toBe(false)
+      expect(existsSync(invocations)).toBe(false)
+      expect(existsSync(session.paths.activeModel)).toBe(false)
+    })
+
+    it('never spawns a stage once the caller has cancelled', async () => {
+      const session = await startSession()
+      const controller = new AbortController()
+
+      // Aborting after the call has returned its promise, but before staging
+      // has resolved, lands in the window between one stage settling and the
+      // next one registering its abort listener.
+      const running = compile(session.paths, { signal: controller.signal })
+      controller.abort()
+
       expect((await running).diagnostics).toMatchObject([
         { code: 'YMVS204', message: expect.stringContaining('cancelled') },
       ])
+      expect(existsSync(invocations)).toBe(false)
+      expect(existsSync(session.paths.activeModel)).toBe(false)
     })
 
     it('stops a compiler that floods its output budget', async () => {
