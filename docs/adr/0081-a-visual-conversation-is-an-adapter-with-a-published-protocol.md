@@ -38,11 +38,11 @@ implementation.
 
 ## Not a Core verb
 
-`yarramate visual` was the obvious shape and is wrong for the same reason
-`yarramate mcp` was (ADR 0044): the semantic CLI is the tool-neutral
-surface, and a long-lived localhost webserver driving a React bundle is
-presentation and runtime. ADR 0023 already drew this line for the smaller
-case, keeping comparison colors in the adapter while Core kept the
+`yarramate visual` was the obvious shape and is wrong for the reason the
+MCP affordance ships as `yarramate-mcp` (ADR 0044): the semantic CLI is the
+tool-neutral surface, and a long-lived localhost webserver driving a React
+bundle is presentation and runtime. ADR 0023 drew the same line in the
+smaller case, keeping comparison colors in the adapter while Core kept the
 classification.
 
 The concrete costs of crossing it are three. Core's release contract would
@@ -94,11 +94,12 @@ capabilities.
 **The journal is append-only and written before the acknowledgement.** An
 accepted browser event is appended before it is acknowledged and an
 accepted response before it is broadcast, so a crash cannot have
-acknowledged something recovery cannot see. The cost is that the journal
-records rejected-in-hindsight turns too, and that every limit — message
-size, model size, transcript size, queue depth — freezes input and routes
-the session through recovery rather than truncating an accepted event.
-Losing the tail is not available as a shortcut.
+acknowledged something recovery cannot see. The cost is that nothing can be
+unsaid: an accepted event is in the record for the life of the session, and
+every limit — message size, model size, transcript size, queue depth —
+freezes input and routes the session through recovery rather than
+truncating an accepted event. Losing the tail is not available as a
+shortcut.
 
 **The child is provider-neutral.** `yarramate-visual` never calls a model
 provider and stores no credentials; inference belongs to whatever harness
