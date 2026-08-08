@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto'
 import { once } from 'node:events'
+import { watch as watchEagerly } from 'node:fs'
 import {
   chmod,
   mkdir,
@@ -272,44 +273,57 @@ const chatResponse = (
 })
 
 /**
- * Waits for the journal named by a session descriptor to carry an event past
- * `after`. The descriptor is the agent's only entry point into the session, so
+ * Waits for the next event the journal named by a session descriptor carries
+ * past `after`, and answers only if it is the `type` the caller is correlating
+ * against. The descriptor is the agent's only entry point into the session, so
  * the helper reads the journal the way an out-of-process agent would, and it
  * waits on the file's own change events rather than on a guessed delay.
+ *
+ * Naming the type is what makes the wait a correlation rather than a cursor:
+ * the runtime journals records of its own, and a wait that took whatever came
+ * next would hand one of those back as the event under test.
  */
-const waitForVisualEvent = async (
+const waitForVisualEvent = async <Type extends VisualEvent['type']>(
   descriptorPath: string,
   after: number,
-): Promise<VisualEvent> => {
+  type: Type,
+): Promise<Extract<VisualEvent, { readonly type: Type }>> => {
   const { journalPath } = await readDescriptor(descriptorPath)
-  const journaled = async () => {
-    let lines: string[] = []
-    try {
-      lines = (await readFile(journalPath, 'utf8'))
+  // The callback watcher, not `fs/promises.watch`: the promise form is an async
+  // generator that registers nothing until its first iteration, so it cannot be
+  // armed ahead of the read the way this window needs. This one is watching
+  // from the moment it is constructed, and every change it sees is counted, so
+  // an append landing during the read below is observed rather than lost.
+  let changes = 0
+  let changed = Promise.withResolvers<void>()
+  const watcher = watchEagerly(journalPath, () => {
+    changes += 1
+    changed.resolve()
+    changed = Promise.withResolvers<void>()
+  })
+  try {
+    for (;;) {
+      const seen = changes
+      const lines = (await readFile(journalPath, 'utf8'))
         .split('\n')
         .filter((line) => line.length > 0)
-    } catch {
-      return undefined
-    }
-    for (const line of lines) {
-      const event = JSON.parse(line) as VisualEvent
-      if (
-        event.format === 'yarramate/visual-event/v1' &&
-        event.sequence > after
-      ) {
-        return event
+      for (const line of lines) {
+        const record = JSON.parse(line) as VisualEvent | VisualResponse
+        if (record.format !== 'yarramate/visual-event/v1') continue
+        if (record.sequence <= after) continue
+        if (record.type !== type) {
+          throw new Error(
+            `journal holds ${record.type} at sequence ${record.sequence}, not the ${type} this wait is for`,
+          )
+        }
+        return record as Extract<VisualEvent, { readonly type: Type }>
       }
+      // Nothing since the read began, so there is a change worth waiting for.
+      if (changes === seen) await changed.promise
     }
-    return undefined
+  } finally {
+    watcher.close()
   }
-  const already = await journaled()
-  if (already !== undefined) return already
-  // The journal exists from session creation, so it can be watched directly.
-  for await (const _change of watch(journalPath)) {
-    const appended = await journaled()
-    if (appended !== undefined) return appended
-  }
-  throw new Error(`no event past ${after} in "${journalPath}"`)
 }
 
 const journalOf = async (handle: VisualServerHandle) =>
@@ -338,8 +352,10 @@ const waitForAttachedAgent = async (handle: VisualServerHandle) => {
 
 /**
  * Resolves once the session has journaled up to `sequence`. The runtime moves
- * its own queue cursor as each append lands, so this observes the server that
- * did the writing rather than racing a watch on the file it wrote.
+ * its own queue cursor one statement *after* the append resolves, so a wait on
+ * the journal file can see a record the server has not finished accounting
+ * for. This is the stronger of the two waits — it implies the file too — and it
+ * is what anything that then reads server state has to wait on.
  */
 const waitForSequence = async (
   handle: VisualServerHandle,
@@ -416,8 +432,8 @@ describe('startVisualServer bootstrap and browser authentication', () => {
     socket.send(JSON.stringify(chatEventInput))
     await expect(
       // Sequence 1 is the connection the runtime journaled for this socket.
-      waitForVisualEvent(server.started.descriptorPath, 1),
-    ).resolves.toMatchObject({ type: 'chat.message', sequence: 2 })
+      waitForVisualEvent(server.started.descriptorPath, 1, 'chat.message'),
+    ).resolves.toMatchObject({ sequence: 2 })
     socket.close()
   })
 
@@ -531,8 +547,8 @@ describe('startVisualServer bootstrap and browser authentication', () => {
       chatResponse(server, asked.eventId, 3, 'It reuses the intake path.'),
     )
     socket.close()
-    // The reload is read after the socket it replaces is journaled as gone, so
-    // the sequence the snapshot reports is settled rather than raced.
+    // The reload is read after the runtime has accounted for the socket it
+    // replaces, so the sequence the snapshot reports is settled, not raced.
     await waitForSequence(server, 3)
 
     const session = (await (
@@ -1298,9 +1314,9 @@ describe('startVisualServer limit failures', () => {
     const terminal = await waitForVisualEvent(
       server.started.descriptorPath,
       VISUAL_LIMITS.pendingEvents + 1,
+      'session.end',
     )
     expect(terminal).toMatchObject({
-      type: 'session.end',
       sequence: VISUAL_LIMITS.pendingEvents + 2,
       payload: { reason: 'server-failed' },
     })
@@ -1348,9 +1364,12 @@ describe('startVisualServer limit failures', () => {
     await expect((await polled).json()).resolves.toMatchObject({
       waiting: true,
     })
-    const terminal = await waitForVisualEvent(server.started.descriptorPath, 1)
+    const terminal = await waitForVisualEvent(
+      server.started.descriptorPath,
+      1,
+      'session.end',
+    )
     expect(terminal).toMatchObject({
-      type: 'session.end',
       sequence: 2,
       payload: { reason: 'server-failed' },
     })
@@ -1391,9 +1410,12 @@ describe('startVisualServer limit failures', () => {
       diagnostics: [{ code: 'YMVS122' }],
     })
 
-    const terminal = await waitForVisualEvent(server.started.descriptorPath, 2)
+    const terminal = await waitForVisualEvent(
+      server.started.descriptorPath,
+      2,
+      'session.end',
+    )
     expect(terminal).toMatchObject({
-      type: 'session.end',
       sequence: 3,
       payload: { reason: 'server-failed' },
     })
