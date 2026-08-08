@@ -402,6 +402,36 @@ describe('visual session store', () => {
       expect(await journalLines(session.paths.journal)).toHaveLength(0)
     })
 
+    it('rejects a response whose triggering event was never journaled', async () => {
+      const session = await startSession()
+      await appendVisualEvent(session.paths, chatEvent)
+
+      const fabricated = await appendVisualResponse(session.paths, {
+        ...chatResponse,
+        eventId: identifier(0xbad),
+      })
+
+      expect(fabricated.ok).toBe(false)
+      expect(
+        fabricated.ok === false && fabricated.diagnostics[0],
+      ).toMatchObject({ code: 'YMVS131', pointer: '#/eventId' })
+      expect(await journalLines(session.paths.journal)).toHaveLength(1)
+    })
+
+    it('accepts the handoff that answers a journaled End', async () => {
+      const session = await startSession()
+      const end = endEvent(1, 'user-ended')
+      await appendVisualEvent(session.paths, end)
+
+      expect(
+        await appendVisualResponse(session.paths, {
+          ...handoffResponse,
+          eventId: end.eventId,
+        }),
+      ).toMatchObject({ ok: true, duplicate: false })
+      expect(await journalLines(session.paths.journal)).toHaveLength(2)
+    })
+
     it('treats a duplicate response as an accepted no-op', async () => {
       const session = await startSession()
       await appendVisualEvent(session.paths, chatEvent)
@@ -436,6 +466,10 @@ describe('visual session store', () => {
 
     it('freezes the session at exactly the 5 MiB transcript limit', async () => {
       const session = await startSession()
+      // Every response answers a journaled event, so the event this session
+      // opens with is part of the budget the responses then fill.
+      await appendVisualEvent(session.paths, chatEvent)
+      const opening = Buffer.byteLength(JSON.stringify(chatEvent), 'utf8') + 1
       const filler = 'x'.repeat(32768)
       const overhead =
         Buffer.byteLength(
@@ -444,8 +478,9 @@ describe('visual session store', () => {
         ) + 1
       const fullLine = overhead + filler.length
 
-      let count = Math.floor(VISUAL_LIMITS.transcriptBytes / fullLine)
-      let finalText = VISUAL_LIMITS.transcriptBytes - count * fullLine - overhead
+      const budget = VISUAL_LIMITS.transcriptBytes - opening
+      let count = Math.floor(budget / fullLine)
+      let finalText = budget - count * fullLine - overhead
       if (finalText < 1) {
         count -= 1
         finalText += fullLine

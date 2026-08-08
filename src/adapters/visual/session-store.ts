@@ -659,6 +659,23 @@ export const appendVisualResponse = async (
         ],
       }
     }
+    // A response answers an event, and only an event this session took. Without
+    // this, a capability holder could journal a summary, a diagnostic, or a
+    // whole handoff against an identifier the reviewer never generated — and
+    // recovery, which reads the journal as the record, would believe it.
+    if (!state.eventIds.has(record.eventId)) {
+      return {
+        ok: false,
+        diagnostics: [
+          storeDiagnostic(
+            'YMVS131',
+            `Response answers event "${record.eventId}", which session "${state.sessionId}" never journaled`,
+            paths.journal,
+            '#/eventId',
+          ),
+        ],
+      }
+    }
     // A response the runtime already journaled must not be written twice: the
     // broadcast may be retried after a partial failure.
     if (state.responseIds.has(record.responseId)) {

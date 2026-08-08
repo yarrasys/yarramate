@@ -948,6 +948,38 @@ describe('the visual recovery matrix', () => {
     expect(inOne).toHaveLength(1)
     expect(inOne.filter((id) => inOther.includes(id))).toEqual([])
 
+    // An event identifier is one session's alone: presenting the other's, under
+    // this session's own id and capability, buys nothing.
+    const borrowed = await agentFetch(
+      one.descriptorPath,
+      '/api/agent/responses',
+      {
+        format: 'yarramate/visual-response/v1',
+        sessionId: one.sessionId,
+        responseId: nextResponseId(),
+        eventId: inOther[0] as string,
+        type: 'handoff.complete',
+        timestamp: '2026-08-08T00:00:06.000Z',
+        payload: {
+          summary: 'Borrowed a turn that was never taken here.',
+          confirmedDecisions: ['forged'],
+          requestedChanges: [],
+          unresolvedQuestions: [],
+          finalViews: ['choices'],
+        },
+      },
+    )
+    expect(borrowed.status).toBe(409)
+    expect(await borrowed.json()).toMatchObject({
+      accepted: false,
+      diagnostics: [{ code: 'YMVS131', pointer: '#/eventId' }],
+    })
+    // Nothing forged reaches the handoff the main agent will read.
+    expect(await recoverVisualSessionClient(one.descriptorPath)).toMatchObject({
+      decision: 'failed',
+      confirmedDecisions: [],
+    })
+
     // And a descriptor recovers only the session it lives in.
     expect(await recoverVisualSessionClient(one.descriptorPath)).toMatchObject({
       sessionId: one.sessionId,
