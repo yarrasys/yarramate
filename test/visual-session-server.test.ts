@@ -528,6 +528,135 @@ describe('startVisualServer bootstrap and browser authentication', () => {
     })
   })
 
+  it('restores a choice the agent is still waiting on', async () => {
+    const server = await start()
+    const capability = await capabilityOf(server)
+    const { cookie } = await bootstrap(server)
+    const socket = await openBrowserSocket(server, cookie)
+    const asked = await sendChat(socket, 'Which option?')
+    const question = {
+      choiceId: 'delivery',
+      question: 'Which delivery design should we keep?',
+      options: [
+        { id: 'shared-queue', label: 'Shared queue' },
+        { id: 'isolated-worker', label: 'Isolated worker' },
+      ],
+    }
+    const pendingChoice = async () =>
+      (
+        (await (
+          await fetch(`${server.started.origin}/api/session`, {
+            headers: { Cookie: cookie },
+          })
+        ).json()) as { readonly pendingChoice: unknown }
+      ).pendingChoice
+
+    expect(await pendingChoice()).toBe(null)
+    await postResponse(server, capability, {
+      format: 'yarramate/visual-response/v1',
+      sessionId: server.started.sessionId,
+      responseId: identifier(4),
+      eventId: asked.eventId,
+      type: 'choice.present',
+      timestamp: '2026-08-08T00:00:02.000Z',
+      payload: question,
+    })
+    // The question lives in the agent's response, never in the transcript, so
+    // a browser that reloads reads it here or cannot answer at all.
+    expect(await pendingChoice()).toEqual(question)
+
+    const chosen = nextFrame(socket, 'accepted')
+    socket.send(
+      JSON.stringify({
+        type: 'choice.selected',
+        lastAcknowledgedSequence: 1,
+        payload: { choiceId: 'delivery', optionId: 'shared-queue' },
+      }),
+    )
+    await chosen
+    expect(await pendingChoice()).toBe(null)
+    socket.close()
+  })
+
+  it('drops a waiting choice the reviewer asked past', async () => {
+    const server = await start()
+    const capability = await capabilityOf(server)
+    const { cookie } = await bootstrap(server)
+    const socket = await openBrowserSocket(server, cookie)
+    const asked = await sendChat(socket, 'Which option?')
+    await postResponse(server, capability, {
+      format: 'yarramate/visual-response/v1',
+      sessionId: server.started.sessionId,
+      responseId: identifier(4),
+      eventId: asked.eventId,
+      type: 'choice.present',
+      timestamp: '2026-08-08T00:00:02.000Z',
+      payload: {
+        choiceId: 'delivery',
+        question: 'Which delivery design should we keep?',
+        options: [
+          { id: 'shared-queue', label: 'Shared queue' },
+          { id: 'isolated-worker', label: 'Isolated worker' },
+        ],
+      },
+    })
+    // Asking something else is how a reviewer declines to choose, and the
+    // browser closes the buttons on itself when it sends one.
+    await sendChat(socket, 'What does the queue cost?')
+
+    const session = (await (
+      await fetch(`${server.started.origin}/api/session`, {
+        headers: { Cookie: cookie },
+      })
+    ).json()) as { readonly pendingChoice: unknown }
+    expect(session.pendingChoice).toBe(null)
+    socket.close()
+  })
+
+  it('waits on nothing once the reviewer has ended the session', async () => {
+    const server = await start()
+    const capability = await capabilityOf(server)
+    const { cookie } = await bootstrap(server)
+    const socket = await openBrowserSocket(server, cookie)
+    const asked = await sendChat(socket, 'Which option?')
+    await postResponse(server, capability, {
+      format: 'yarramate/visual-response/v1',
+      sessionId: server.started.sessionId,
+      responseId: identifier(4),
+      eventId: asked.eventId,
+      type: 'choice.present',
+      timestamp: '2026-08-08T00:00:02.000Z',
+      payload: {
+        choiceId: 'delivery',
+        question: 'Which delivery design should we keep?',
+        options: [
+          { id: 'shared-queue', label: 'Shared queue' },
+          { id: 'isolated-worker', label: 'Isolated worker' },
+        ],
+      },
+    })
+
+    const ended = nextFrame(socket, 'accepted')
+    socket.send(
+      JSON.stringify({
+        type: 'session.end',
+        lastAcknowledgedSequence: 1,
+        payload: { reason: 'user-ended' },
+      }),
+    )
+    await ended
+
+    // A session on its way out is waiting on nobody, so a browser that comes
+    // back to it is not asked a question again.
+    const session = (await (
+      await fetch(`${server.started.origin}/api/session`, {
+        headers: { Cookie: cookie },
+      })
+    ).json()) as { readonly pendingChoice: unknown }
+    expect(session.pendingChoice).toBe(null)
+    socket.close()
+  })
+
   it('never puts model sources or credentials in a restored conversation', async () => {
     const server = await start()
     const { cookie } = await bootstrap(server)
@@ -612,7 +741,7 @@ describe('startVisualServer bootstrap and browser authentication', () => {
       model: {
         candidate: '000001',
         initialView: 'choices',
-        views: ['choices'],
+        views: ['choices', 'detailNightly', 'detailStreaming', 'index'],
       },
     })
   })

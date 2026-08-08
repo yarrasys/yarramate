@@ -28,6 +28,7 @@ import {
   type VisualAuthority,
   type VisualBrowserInput,
   type VisualCapabilities,
+  type VisualChoicePresentPayload,
   type VisualDiagnostic,
   type VisualEvent,
   type VisualFreezeReason,
@@ -530,6 +531,12 @@ export const startVisualServer = async (
   const transcript: VisualTranscriptRecord[] = []
   /** Option labels the agent presented, so a selection restores as its label. */
   const choiceLabels = new Map<string, Map<string, string>>()
+  /**
+   * The choice the agent presented and nobody has answered. It is session
+   * state, not transcript: the reviewer's browser can only render the buttons
+   * again after a reload if the session hands the question back.
+   */
+  let pendingChoice: VisualChoicePresentPayload | null = null
   const connections = new Map<string, WebSocket>()
   const polls = new Set<PendingPoll>()
   const httpSockets = new Set<Socket>()
@@ -607,6 +614,11 @@ export const startVisualServer = async (
 
   /** A journaled browser event, as the line the reviewer sees. */
   const recordEvent = (event: VisualEvent) => {
+    // A session on its way out waits on nobody, and asking past the question
+    // is how a reviewer declines to answer it.
+    if (event.type === 'chat.message' || event.type === 'session.end') {
+      pendingChoice = null
+    }
     if (event.type === 'chat.message') {
       transcript.push({
         id: event.eventId,
@@ -616,6 +628,7 @@ export const startVisualServer = async (
       return
     }
     if (event.type !== 'choice.selected') return
+    if (pendingChoice?.choiceId === event.payload.choiceId) pendingChoice = null
     // The reviewer chose a label, not an identifier, so that is what the
     // restored conversation says they chose.
     const label = choiceLabels
@@ -631,6 +644,7 @@ export const startVisualServer = async (
   /** An accepted agent response, as the line the reviewer sees. */
   const recordResponse = (response: VisualResponse) => {
     if (response.type === 'choice.present') {
+      pendingChoice = response.payload
       choiceLabels.set(
         response.payload.choiceId,
         new Map(
@@ -661,6 +675,7 @@ export const startVisualServer = async (
     model: rendered,
     transcript: [...transcript],
     agentTurnOpen: openTurn(),
+    pendingChoice,
     styleNonce,
     lastSequence,
     frozen: frozen !== undefined,

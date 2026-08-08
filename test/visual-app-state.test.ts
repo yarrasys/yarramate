@@ -55,6 +55,7 @@ const serverSnapshot: VisualSessionSnapshot = {
   model: model('000001', 'choices', 'option-b'),
   transcript: [],
   agentTurnOpen: false,
+  pendingChoice: null,
   styleNonce: 'a'.repeat(32),
   lastSequence: 0,
   frozen: false,
@@ -119,6 +120,32 @@ describe('visualAppReducer session lifecycle', () => {
     })
     expect(reconnected.composerEnabled).toBe(false)
     expect(reconnected.agentStatus).toEqual({ state: 'thinking' })
+  })
+
+  it('restores the choice the agent is still waiting on at reconnect', () => {
+    const question = {
+      choiceId: 'delivery',
+      question: 'Which delivery design should we keep?',
+      options: [
+        { id: 'shared-queue', label: 'Shared queue' },
+        { id: 'isolated-worker', label: 'Isolated worker' },
+      ],
+    }
+    // Nothing in the transcript says a question was asked, so a reviewer who
+    // reloads can only answer it if the snapshot brings it back.
+    expect(loaded({ pendingChoice: question }).choices).toEqual(question)
+  })
+
+  it('closes a choice the session no longer waits on', () => {
+    const presented = visualAppReducer(activeState, {
+      type: 'choice.presented',
+      choice: { choiceId: 'delivery', question: 'Which?', options: [] },
+    })
+    const reconnected = visualAppReducer(presented, {
+      type: 'session.loaded',
+      snapshot: visualAppSnapshotFrom(serverSnapshot),
+    })
+    expect(reconnected.choices).toBe(null)
   })
 
   it('reopens input when the agent answered while the browser was away', () => {

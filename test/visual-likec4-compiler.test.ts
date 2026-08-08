@@ -1,8 +1,10 @@
+import { execFile } from 'node:child_process'
 import { existsSync, watch } from 'node:fs'
 import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { promisify } from 'node:util'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   VISUAL_COMPILER_DOCUMENT,
@@ -27,6 +29,47 @@ const fakeLikeC4 = fileURLToPath(
 const compiler: VisualCompilerCommand = {
   command: process.execPath,
   args: [fakeLikeC4],
+}
+
+/** Only the parts of an exported project document this suite reads back. */
+interface ExportedProject {
+  readonly views: Readonly<
+    Record<
+      string,
+      { readonly nodes: readonly { readonly navigateTo?: string }[] }
+    >
+  >
+}
+
+const repositoryRoot = fileURLToPath(new URL('../', import.meta.url))
+
+/** The browser's own model factory, as a standalone module. */
+const BROWSER_FACTORY_PROBE = [
+  "import { readFileSync } from 'node:fs'",
+  "import { LikeC4Model } from '@likec4/core/model'",
+  "LikeC4Model.create(JSON.parse(readFileSync(process.argv[1], 'utf8')))",
+].join('\n')
+
+/**
+ * Reads an exported document through the very factory the browser draws with,
+ * and answers with the failure it reported, or the empty string.
+ *
+ * It runs out of process because `@likec4/core` belongs to the browser program:
+ * `tsconfig.visual.json` owns it and skips its library check, while this
+ * program deliberately checks the declarations of everything it imports.
+ */
+const browserFactoryFailure = async (exportPath: string) => {
+  try {
+    await promisify(execFile)(
+      process.execPath,
+      ['--input-type=module', '-e', BROWSER_FACTORY_PROBE, exportPath],
+      { cwd: repositoryRoot },
+    )
+    return ''
+  } catch (cause) {
+    if (cause instanceof Error && 'stderr' in cause) return String(cause.stderr)
+    return String(cause)
+  }
 }
 
 /**
@@ -114,7 +157,7 @@ describe('trusted LikeC4 compiler adapter', () => {
           initialView: 'choices',
           authority: 'ad-hoc',
           candidate: '000001',
-          views: ['choices'],
+          views: ['choices', 'detailNightly', 'detailStreaming', 'index'],
         },
       })
       expect(
@@ -125,6 +168,32 @@ describe('trusted LikeC4 compiler adapter', () => {
         authority: 'ad-hoc',
         promotedAt: '2026-08-08T00:00:05.000Z',
       })
+    })
+
+    it('promotes a comparison the browser can render and navigate', async () => {
+      const session = await startSession()
+
+      const result = await compile(session.paths)
+
+      expect(result).toMatchObject({ ok: true })
+      if (!result.ok) return
+      // The overview the reviewer lands on, and one detail view per option.
+      expect(result.compiled.views).toEqual(
+        expect.arrayContaining(['choices', 'detailNightly', 'detailStreaming']),
+      )
+      const exported = JSON.parse(
+        await readFile(result.compiled.exportPath, 'utf8'),
+      ) as ExportedProject
+      // The browser draws through this factory and swallows what it cannot
+      // read, so an unreadable export is a session with a blank canvas.
+      expect(await browserFactoryFailure(result.compiled.exportPath)).toBe('')
+      // The overview is the way into both details.
+      const overview = exported.views[result.compiled.initialView]
+      expect(
+        (overview?.nodes ?? [])
+          .flatMap((node) => node.navigateTo ?? [])
+          .toSorted(),
+      ).toEqual(['detailNightly', 'detailStreaming'])
     })
 
     it('runs validate before export with a deterministic argument vector', async () => {
@@ -287,7 +356,9 @@ describe('trusted LikeC4 compiler adapter', () => {
 
       expect(result).toMatchObject({
         ok: true,
-        compiled: { views: ['choices'] },
+        compiled: {
+          views: ['choices', 'detailNightly', 'detailStreaming', 'index'],
+        },
       })
       // What is promoted is the project document itself, because that is what
       // the browser's model factory reads.
@@ -309,7 +380,9 @@ describe('trusted LikeC4 compiler adapter', () => {
 
       expect(result).toMatchObject({
         ok: true,
-        compiled: { views: ['choices'] },
+        compiled: {
+          views: ['choices', 'detailNightly', 'detailStreaming', 'index'],
+        },
       })
     })
 
