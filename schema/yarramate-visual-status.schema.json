@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yarramate.org/schema/visual-status/v1",
+  "title": "YarraMate visual session status",
+  "description": "Non-mutating report of server, browser, agent, queue, and lifecycle state.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "protocolVersion",
+    "sessionId",
+    "lifecycle",
+    "alreadyStopped",
+    "server",
+    "browser",
+    "agent",
+    "queue",
+    "capabilities",
+    "transcriptBytes",
+    "updatedAt"
+  ],
+  "properties": {
+    "format": {
+      "const": "yarramate/visual-status/v1"
+    },
+    "protocolVersion": {
+      "const": "yarramate/visual-protocol/v1"
+    },
+    "sessionId": {
+      "$ref": "https://yarramate.org/schema/visual-event/v1#/$defs/identifier"
+    },
+    "lifecycle": {
+      "enum": ["starting", "running", "draining", "stopped"]
+    },
+    "alreadyStopped": {
+      "type": "boolean"
+    },
+    "server": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["listening", "origin"],
+      "properties": {
+        "listening": { "type": "boolean" },
+        "origin": {
+          "$ref": "https://yarramate.org/schema/visual-session-started/v1#/$defs/localOrigin"
+        }
+      }
+    },
+    "browser": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["connected", "connections"],
+      "properties": {
+        "connected": { "type": "boolean" },
+        "connections": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 64
+        },
+        "lastSeenAt": {
+          "$ref": "https://yarramate.org/schema/visual-event/v1#/$defs/timestamp"
+        },
+        "graceExpiresAt": {
+          "$ref": "https://yarramate.org/schema/visual-event/v1#/$defs/timestamp"
+        }
+      }
+    },
+    "agent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attached", "inFlightEventId"],
+      "properties": {
+        "attached": { "type": "boolean" },
+        "inFlightEventId": {
+          "oneOf": [
+            {
+              "$ref": "https://yarramate.org/schema/visual-event/v1#/$defs/identifier"
+            },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "queue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pendingEvents", "lastSequence", "frozen"],
+      "properties": {
+        "pendingEvents": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 32
+        },
+        "lastSequence": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "frozen": { "type": "boolean" },
+        "frozenReason": {
+          "enum": [
+            "message-bytes",
+            "model-bytes",
+            "transcript-bytes",
+            "pending-events",
+            "browser-disconnected",
+            "terminal-event"
+          ]
+        }
+      }
+    },
+    "capabilities": {
+      "$ref": "https://yarramate.org/schema/visual-session-started/v1#/$defs/capabilities"
+    },
+    "transcriptBytes": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 5242880
+    },
+    "updatedAt": {
+      "$ref": "https://yarramate.org/schema/visual-event/v1#/$defs/timestamp"
+    }
+  }
+}

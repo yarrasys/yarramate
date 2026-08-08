@@ -72,7 +72,16 @@
     "./schema/apply-result": "./schema/yarramate-apply-result.schema.json",
     "./schema/design-step": "./schema/yarramate-design-step.schema.json",
     "./schema/ask-result": "./schema/yarramate-ask-result.schema.json",
-    "./schema/rtm": "./schema/yarramate-rtm.schema.json"
+    "./schema/rtm": "./schema/yarramate-rtm.schema.json",
+    "./schema/visual-session-request": "./schema/yarramate-visual-session-request.schema.json",
+    "./schema/visual-session-started": "./schema/yarramate-visual-session-started.schema.json",
+    "./schema/visual-session-descriptor": "./schema/yarramate-visual-session-descriptor.schema.json",
+    "./schema/visual-event": "./schema/yarramate-visual-event.schema.json",
+    "./schema/visual-response": "./schema/yarramate-visual-response.schema.json",
+    "./schema/visual-model": "./schema/yarramate-visual-model.schema.json",
+    "./schema/visual-handoff": "./schema/yarramate-visual-handoff.schema.json",
+    "./schema/visual-status": "./schema/yarramate-visual-status.schema.json",
+    "./schema/visual-diagnostic-result": "./schema/yarramate-visual-diagnostic-result.schema.json"
   },
   "bin": {
     "yarramate": "dist/cli.js",

@@ -1,0 +1,230 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yarramate.org/schema/visual-response/v1",
+  "title": "YarraMate visual session response",
+  "description": "One agent response correlated to the browser event that triggered it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "sessionId",
+    "responseId",
+    "eventId",
+    "type",
+    "timestamp",
+    "payload"
+  ],
+  "properties": {
+    "format": {
+      "const": "yarramate/visual-response/v1"
+    },
+    "sessionId": {
+      "$ref": "https://yarramate.org/schema/visual-event/v1#/$defs/identifier"
+    },
+    "responseId": {
+      "$ref": "https://yarramate.org/schema/visual-event/v1#/$defs/identifier"
+    },
+    "eventId": {
+      "$ref": "https://yarramate.org/schema/visual-event/v1#/$defs/identifier"
+    },
+    "type": {
+      "enum": [
+        "chat.response",
+        "agent.status",
+        "choice.present",
+        "model.replace",
+        "handoff.complete",
+        "diagnostic"
+      ]
+    },
+    "timestamp": {
+      "$ref": "https://yarramate.org/schema/visual-event/v1#/$defs/timestamp"
+    },
+    "payload": {
+      "type": "object"
+    }
+  },
+  "oneOf": [
+    {
+      "type": "object",
+      "required": ["type", "payload"],
+      "properties": {
+        "type": { "const": "chat.response" },
+        "payload": { "$ref": "#/$defs/chatResponsePayload" }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["type", "payload"],
+      "properties": {
+        "type": { "const": "agent.status" },
+        "payload": { "$ref": "#/$defs/agentStatusPayload" }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["type", "payload"],
+      "properties": {
+        "type": { "const": "choice.present" },
+        "payload": { "$ref": "#/$defs/choicePresentPayload" }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["type", "payload"],
+      "properties": {
+        "type": { "const": "model.replace" },
+        "payload": { "$ref": "#/$defs/modelReplacePayload" }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["type", "payload"],
+      "properties": {
+        "type": { "const": "handoff.complete" },
+        "payload": { "$ref": "#/$defs/handoffSummary" }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["type", "payload"],
+      "properties": {
+        "type": { "const": "diagnostic" },
+        "payload": { "$ref": "#/$defs/diagnosticPayload" }
+      }
+    }
+  ],
+  "$defs": {
+    "shortId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    },
+    "summaryText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20000
+    },
+    "statementList": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 4000
+      }
+    },
+    "viewList": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {
+        "$ref": "https://yarramate.org/schema/visual-model/v1#/$defs/viewId"
+      }
+    },
+    "chatResponsePayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 65536
+        }
+      }
+    },
+    "agentStatusPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state"],
+      "properties": {
+        "state": {
+          "enum": ["thinking", "compiling", "waiting", "idle"]
+        },
+        "detail": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        }
+      }
+    },
+    "choicePresentPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["choiceId", "question", "options"],
+      "properties": {
+        "choiceId": { "$ref": "#/$defs/shortId" },
+        "question": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "options": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "label"],
+            "properties": {
+              "id": { "$ref": "#/$defs/shortId" },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 400
+              },
+              "description": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4000
+              }
+            }
+          }
+        }
+      }
+    },
+    "modelReplacePayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model"],
+      "properties": {
+        "model": {
+          "$ref": "https://yarramate.org/schema/visual-model/v1"
+        }
+      }
+    },
+    "handoffSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "summary",
+        "confirmedDecisions",
+        "requestedChanges",
+        "unresolvedQuestions",
+        "finalViews"
+      ],
+      "properties": {
+        "summary": { "$ref": "#/$defs/summaryText" },
+        "confirmedDecisions": { "$ref": "#/$defs/statementList" },
+        "requestedChanges": { "$ref": "#/$defs/statementList" },
+        "unresolvedQuestions": { "$ref": "#/$defs/statementList" },
+        "finalViews": { "$ref": "#/$defs/viewList" }
+      }
+    },
+    "diagnosticPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["diagnostics"],
+      "properties": {
+        "diagnostics": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1000,
+          "items": {
+            "$ref": "https://yarramate.org/schema/visual-diagnostic-result/v1#/$defs/diagnostic"
+          }
+        }
+      }
+    }
+  }
+}
