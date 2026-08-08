@@ -269,8 +269,14 @@ export const runVisualStart = async (
 
   // One handler for both signals: `stop` converges on the first reason it is
   // given, so a repeated or second signal is absorbed rather than racing.
+  //
+  // A signal is not a caller, and nothing here awaits the teardown it starts:
+  // a stop that fails is observed rather than left to reach the runtime as an
+  // unhandled rejection and take the whole session down with it. What it could
+  // not tear down is still up, this command is still blocked on `closed`, and
+  // the next signal runs the teardown again.
   const interrupt = () => {
-    void handle.stop('main-cancelled')
+    void handle.stop('main-cancelled').catch(() => undefined)
   }
   signals.on('SIGINT', interrupt)
   signals.on('SIGTERM', interrupt)

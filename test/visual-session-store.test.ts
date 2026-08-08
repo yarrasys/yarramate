@@ -15,6 +15,7 @@ import { basename, join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   VISUAL_LIMITS,
+  parseVisualDiagnosticResult,
   type VisualDiagnostic,
   type VisualEvent,
   type VisualModel,
@@ -414,8 +415,63 @@ describe('visual session store', () => {
       expect(fabricated.ok).toBe(false)
       expect(
         fabricated.ok === false && fabricated.diagnostics[0],
-      ).toMatchObject({ code: 'YMVS131', pointer: '#/eventId' })
+      ).toMatchObject({ code: 'YMVS131', pointer: '/eventId' })
       expect(await journalLines(session.paths.journal)).toHaveLength(1)
+    })
+
+    /**
+     * Every refusal is read back by the one-shot agent clients out of a
+     * `visual-diagnostic-result/v1` document, and whatever that document
+     * refuses is dropped rather than repaired — so a pointer that is not the
+     * RFC 6901 the schema requires costs the caller the code that explains
+     * the refusal, and buys a transport error in its place.
+     */
+    it('mints refusals the one-shot client keeps rather than drops', async () => {
+      const session = await startSession()
+      await appendVisualEvent(session.paths, chatEvent)
+
+      const refused = [
+        await appendVisualEvent(session.paths, {
+          ...chatEvent,
+          sessionId: 'ab'.repeat(16),
+        }),
+        await appendVisualEvent(session.paths, { ...chatEvent, sequence: 2 }),
+        await appendVisualEvent(session.paths, {
+          ...chatEvent,
+          eventId: identifier(0x5e),
+        }),
+        await appendVisualResponse(session.paths, {
+          ...chatResponse,
+          eventId: identifier(0xbad),
+        }),
+      ]
+      await appendVisualEvent(session.paths, endEvent(2, 'user-ended'))
+      refused.push(
+        await appendVisualEvent(session.paths, {
+          ...chatEvent,
+          sequence: 3,
+          eventId: identifier(0x5f),
+        }),
+      )
+      const diagnostics = refused.flatMap((result) =>
+        result.ok ? [] : result.diagnostics,
+      )
+
+      expect(
+        diagnostics.map(({ code, pointer }) => [code, pointer]),
+      ).toEqual([
+        ['YMVS126', '/sessionId'],
+        ['YMVS127', '/eventId'],
+        ['YMVS121', '/sequence'],
+        ['YMVS131', '/eventId'],
+        ['YMVS130', '/type'],
+      ])
+      expect(
+        parseVisualDiagnosticResult({
+          format: 'yarramate/visual-diagnostic-result/v1',
+          diagnostics,
+        }),
+      ).toMatchObject({ ok: true })
     })
 
     it('accepts the handoff that answers a journaled End', async () => {
@@ -517,7 +573,19 @@ describe('visual session store', () => {
       })
 
       expect(frozen).toMatchObject({ ok: false, freeze: 'transcript-bytes' })
-      expect(frozen.ok === false && frozen.diagnostics[0]?.code).toBe('YMVS122')
+      const overflow = frozen.ok === false ? frozen.diagnostics : []
+      expect(overflow[0]).toMatchObject({
+        code: 'YMVS122',
+        pointer: '/payload',
+      })
+      // The freeze reaches the agent only through the one-shot client's strict
+      // read of a diagnostic result, which keeps nothing that document refuses.
+      expect(
+        parseVisualDiagnosticResult({
+          format: 'yarramate/visual-diagnostic-result/v1',
+          diagnostics: overflow,
+        }),
+      ).toMatchObject({ ok: true })
       expect((await stat(session.paths.journal)).size).toBe(
         VISUAL_LIMITS.transcriptBytes,
       )
@@ -735,7 +803,7 @@ describe('visual session store', () => {
         code: 'YMVS201',
         message: 'Unknown element',
         path: 'model.likec4',
-        pointer: '#/files/model.likec4',
+        pointer: '/files/model.likec4',
         line: 1,
         column: 1,
       }

@@ -471,7 +471,7 @@ const overflowsTranscript = (
             'YMVS122',
             `Journaling ${bytes} more bytes would exceed the ${VISUAL_LIMITS.transcriptBytes} byte transcript limit`,
             paths.journal,
-            '#/payload',
+            '/payload',
           ),
         ],
       }
@@ -568,7 +568,7 @@ export const appendVisualEvent = async (
             'YMVS126',
             `Event belongs to session "${record.sessionId}", not "${state.sessionId}"`,
             paths.journal,
-            '#/sessionId',
+            '/sessionId',
           ),
         ],
       }
@@ -581,7 +581,7 @@ export const appendVisualEvent = async (
             'YMVS127',
             `Event "${record.eventId}" was already journaled`,
             paths.journal,
-            '#/eventId',
+            '/eventId',
           ),
         ],
       }
@@ -597,7 +597,7 @@ export const appendVisualEvent = async (
             'YMVS130',
             `Session "${state.sessionId}" ended at sequence ${state.terminal.sequence} and takes no further event`,
             paths.journal,
-            '#/type',
+            '/type',
           ),
         ],
       }
@@ -610,7 +610,7 @@ export const appendVisualEvent = async (
             'YMVS121',
             `Event sequence ${record.sequence} does not advance past ${state.lastSequence}`,
             paths.journal,
-            '#/sequence',
+            '/sequence',
           ),
         ],
       }
@@ -654,7 +654,7 @@ export const appendVisualResponse = async (
             'YMVS126',
             `Response belongs to session "${record.sessionId}", not "${state.sessionId}"`,
             paths.journal,
-            '#/sessionId',
+            '/sessionId',
           ),
         ],
       }
@@ -671,7 +671,7 @@ export const appendVisualResponse = async (
             'YMVS131',
             `Response answers event "${record.eventId}", which session "${state.sessionId}" never journaled`,
             paths.journal,
-            '#/eventId',
+            '/eventId',
           ),
         ],
       }

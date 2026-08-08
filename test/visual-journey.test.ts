@@ -972,7 +972,7 @@ describe('the visual recovery matrix', () => {
     expect(borrowed.status).toBe(409)
     expect(await borrowed.json()).toMatchObject({
       accepted: false,
-      diagnostics: [{ code: 'YMVS131', pointer: '#/eventId' }],
+      diagnostics: [{ code: 'YMVS131', pointer: '/eventId' }],
     })
     // Nothing forged reaches the handoff the main agent will read.
     expect(await recoverVisualSessionClient(one.descriptorPath)).toMatchObject({
