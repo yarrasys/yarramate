@@ -18,6 +18,7 @@ import {
   parseVisualHandoff,
   parseVisualModel,
   parseVisualResponse,
+  parseVisualSessionDescriptor,
   parseVisualSessionRequest,
   type VisualAuthority,
   type VisualDiagnostic,
@@ -28,6 +29,7 @@ import {
   type VisualHandoffSummary,
   type VisualModel,
   type VisualResponse,
+  type VisualSessionDescriptor,
   type VisualSessionRequest,
   type VisualTerminationReason,
 } from './protocol.js'
@@ -51,16 +53,21 @@ const TIMESTAMP =
   /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$/
 const NEWLINE = 0x0a
 
+const ACTIONABLE_EVENT_TYPES: Readonly<Record<string, true>> = {
+  'chat.message': true,
+  'choice.selected': true,
+  'session.end': true,
+}
+
 /**
- * Browser events that require an agent turn. Navigation is journaled for
+ * Whether a journaled event requires an agent turn. Navigation is journaled for
  * context but only interrupts the agent when the browser marked it as needing
- * attention.
+ * attention. The runtime shares this definition rather than restating it, so
+ * the queue the server bounds and the events recovery replays cannot diverge.
  */
-const ACTIONABLE_EVENT_TYPES: ReadonlySet<string> = new Set([
-  'chat.message',
-  'choice.selected',
-  'session.end',
-])
+export const isActionableVisualEvent = (event: VisualEvent): boolean =>
+  ACTIONABLE_EVENT_TYPES[event.type] === true ||
+  (event.type === 'view.navigate' && event.payload.requiresAttention)
 
 export interface VisualSessionPaths {
   readonly root: string
@@ -488,6 +495,43 @@ export const createVisualSession = async (
   }
 }
 
+/**
+ * Publishes the agent's entry point into a live session. The descriptor is the
+ * only file that carries the agent capability, so it is written with the same
+ * private write-then-rename every other session document uses, and only after
+ * the marker confirms the descriptor describes this session and no other.
+ */
+export const writeVisualSessionDescriptor = async (
+  paths: VisualSessionPaths,
+  descriptor: VisualSessionDescriptor,
+): Promise<void> => {
+  const validated = parseVisualSessionDescriptor(descriptor)
+  if (!validated.ok) {
+    const first = validated.diagnostics[0]
+    throw storeError(
+      first?.code ?? 'YMVS103',
+      `Session descriptor is invalid: ${first?.message ?? 'unknown violation'}`,
+    )
+  }
+  const marker = await readSessionMarker(paths)
+  if (validated.value.sessionId !== marker.id) {
+    throw storeError(
+      'YMVS126',
+      `Descriptor belongs to session "${validated.value.sessionId}", not "${marker.id}"`,
+    )
+  }
+  if (
+    validated.value.sessionRoot !== paths.root ||
+    validated.value.journalPath !== paths.journal
+  ) {
+    throw storeError(
+      'YMVS125',
+      `Descriptor for session "${marker.id}" names artefacts outside "${paths.root}"`,
+    )
+  }
+  await writePrivateJson(paths.descriptor, validated.value)
+}
+
 export const appendVisualEvent = async (
   paths: VisualSessionPaths,
   event: VisualEvent,
@@ -618,8 +662,7 @@ export const readActionableEventsAfter = async (
     (record): record is VisualEvent =>
       record.format === 'yarramate/visual-event/v1' &&
       record.sequence > sequence &&
-      (ACTIONABLE_EVENT_TYPES.has(record.type) ||
-        (record.type === 'view.navigate' && record.payload.requiresAttention)),
+      isActionableVisualEvent(record),
   )
 }
 

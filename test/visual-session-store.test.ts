@@ -19,6 +19,7 @@ import {
   type VisualEvent,
   type VisualModel,
   type VisualResponse,
+  type VisualSessionDescriptor,
   type VisualSessionRequest,
 } from '../src/adapters/visual/protocol.js'
 import {
@@ -34,6 +35,8 @@ import {
   recoverVisualSession,
   removeVisualSession,
   visualSessionPaths,
+  writeVisualSessionDescriptor,
+  type VisualSessionPaths,
 } from '../src/adapters/visual/session-store.js'
 
 const model: VisualModel = {
@@ -244,6 +247,84 @@ describe('visual session store', () => {
         expect(await modeOf(session.paths.journal)).toBe(0o600)
       },
     )
+  })
+
+  describe('agent descriptor', () => {
+    const descriptorFor = (
+      paths: VisualSessionPaths,
+      overrides: Partial<VisualSessionDescriptor> = {},
+    ): VisualSessionDescriptor => ({
+      format: 'yarramate/visual-session-descriptor/v1',
+      protocolVersion: 'yarramate/visual-protocol/v1',
+      sessionId,
+      origin: 'http://127.0.0.1:49152',
+      agentCapability: '5c'.repeat(32),
+      sessionRoot: paths.root,
+      journalPath: paths.journal,
+      createdAt: '2026-08-08T00:00:00.000Z',
+      ...overrides,
+    })
+
+    it('writes the agent descriptor as a private document of this session', async () => {
+      const session = await startSession()
+      const descriptor = descriptorFor(session.paths)
+
+      await writeVisualSessionDescriptor(session.paths, descriptor)
+
+      expect(
+        JSON.parse(await readFile(session.paths.descriptor, 'utf8')),
+      ).toEqual(descriptor)
+    })
+
+    it.skipIf(!posixOnly)(
+      'keeps the capability-carrying descriptor readable only by its owner',
+      async () => {
+        const session = await startSession()
+
+        await writeVisualSessionDescriptor(
+          session.paths,
+          descriptorFor(session.paths),
+        )
+
+        expect(await modeOf(session.paths.descriptor)).toBe(0o600)
+      },
+    )
+
+    it('refuses a descriptor that names another session', async () => {
+      const session = await startSession()
+
+      await expect(
+        writeVisualSessionDescriptor(
+          session.paths,
+          descriptorFor(session.paths, { sessionId: identifier(3) }),
+        ),
+      ).rejects.toThrow(/YMVS126/)
+      expect(existsSync(session.paths.descriptor)).toBe(false)
+    })
+
+    it('refuses a descriptor that names another session directory', async () => {
+      const session = await startSession()
+
+      await expect(
+        writeVisualSessionDescriptor(
+          session.paths,
+          descriptorFor(session.paths, { journalPath: join(parent, 'x.jsonl') }),
+        ),
+      ).rejects.toThrow(/YMVS125/)
+      expect(existsSync(session.paths.descriptor)).toBe(false)
+    })
+
+    it('refuses a descriptor that fails protocol validation', async () => {
+      const session = await startSession()
+
+      await expect(
+        writeVisualSessionDescriptor(
+          session.paths,
+          descriptorFor(session.paths, { agentCapability: 'short' }),
+        ),
+      ).rejects.toThrow(/YMVS103/)
+      expect(existsSync(session.paths.descriptor)).toBe(false)
+    })
   })
 
   describe('append-only journal', () => {

@@ -1,0 +1,1214 @@
+import {
+  createHash,
+  randomBytes as randomSource,
+  timingSafeEqual,
+} from 'node:crypto'
+import { lstat, readFile } from 'node:fs/promises'
+import {
+  createServer,
+  type IncomingMessage,
+  type ServerResponse,
+} from 'node:http'
+import type { AddressInfo, Socket } from 'node:net'
+import { basename, extname, join, resolve, sep } from 'node:path'
+import type { Duplex } from 'node:stream'
+import { fileURLToPath } from 'node:url'
+import { WebSocketServer, type RawData, type WebSocket } from 'ws'
+import { compileVisualModel } from './likec4-compiler.js'
+import {
+  VISUAL_LIMITS,
+  VISUAL_PROTOCOL_VERSION,
+  parseVisualBrowserInput,
+  parseVisualResponse,
+  parseVisualSessionStarted,
+  parseVisualStatus,
+  type VisualAuthority,
+  type VisualBrowserInput,
+  type VisualCapabilities,
+  type VisualDiagnostic,
+  type VisualEvent,
+  type VisualFreezeReason,
+  type VisualHandoff,
+  type VisualLifecycle,
+  type VisualResponse,
+  type VisualSessionRequest,
+  type VisualSessionStarted,
+  type VisualStatus,
+  type VisualTerminationReason,
+} from './protocol.js'
+import {
+  appendVisualEvent,
+  appendVisualResponse,
+  createVisualSession,
+  isActionableVisualEvent,
+  removeVisualSession,
+  writeVisualSessionDescriptor,
+} from './session-store.js'
+
+/**
+ * Document name reported by diagnostics the server itself raises — a refused
+ * frame, a frozen queue, or a transport violation that no protocol document
+ * owns.
+ */
+export const VISUAL_SERVER_DOCUMENT = 'visual-session-server'
+
+/**
+ * Returned on every response. The policy admits no external origin at all, so
+ * neither a compromised model nor a hostile chat message can reach the network,
+ * and the page can be neither framed nor used as a base for relative fetches.
+ */
+export const VISUAL_BROWSER_HEADERS = {
+  'Content-Security-Policy': `default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'`,
+  'Referrer-Policy': 'no-referrer',
+  'X-Content-Type-Options': 'nosniff',
+  'Cache-Control': 'no-store',
+} as const
+
+export const VISUAL_SERVER_LIMITS = {
+  /** WebSocket frame ceiling: one 64 KiB chat message plus its envelope. */
+  browserFrameBytes: VISUAL_LIMITS.messageBytes + 1024,
+  /** Agent request body ceiling: one 5 MiB candidate model plus its envelope. */
+  agentBodyBytes: VISUAL_LIMITS.modelBytes + 64 * 1024,
+  /** Agent stop requests carry a termination reason and nothing else. */
+  agentControlBytes: 4096,
+  /** How long one agent long poll waits before answering "still idle". */
+  agentPollMs: 30_000,
+  /** Browser sockets one session serves at once. */
+  browserConnections: 8,
+} as const
+
+export const VISUAL_SOCKET_PATH = '/socket'
+
+const COOKIE_NAME = 'ym_visual'
+
+/**
+ * Assets are addressed by a single flat, hashed file name. Rejecting every
+ * separator here means a traversal never reaches path resolution at all.
+ */
+const ASSET_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/
+
+const CONTENT_TYPES: Readonly<Record<string, string>> = {
+  '.css': 'text/css; charset=utf-8',
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.png': 'image/png',
+  '.svg': 'image/svg+xml',
+  '.woff2': 'font/woff2',
+}
+
+/** Response types that finish the agent turn an event opened. */
+const TURN_COMPLETING: Readonly<Record<string, true>> = {
+  'chat.response': true,
+  'choice.present': true,
+  'handoff.complete': true,
+  diagnostic: true,
+}
+
+const TERMINATION_REASONS: Readonly<Record<string, true>> = {
+  'user-ended': true,
+  'child-failed': true,
+  'browser-timeout': true,
+  'main-cancelled': true,
+  'server-failed': true,
+  'compiler-failed': true,
+}
+
+/** Built browser application, beside the compiled adapter in `dist`. */
+const DEFAULT_ASSET_ROOT = fileURLToPath(
+  new URL('../../visual-app/', import.meta.url),
+)
+
+export interface VisualRenderedModel {
+  readonly candidate: string
+  readonly authority: VisualAuthority
+  readonly initialView: string
+  readonly views: readonly string[]
+}
+
+/** Everything the browser needs to render, and nothing that authenticates it. */
+export interface VisualSessionSnapshot {
+  readonly protocolVersion: typeof VISUAL_PROTOCOL_VERSION
+  readonly sessionId: string
+  readonly authority: VisualAuthority
+  readonly title: string
+  readonly description: string
+  readonly chatEnabled: boolean
+  readonly capabilities: VisualCapabilities
+  readonly webSocketUrl: string
+  readonly model: VisualRenderedModel
+  readonly lastSequence: number
+  readonly frozen: boolean
+}
+
+/**
+ * Server-to-browser transport frame. These are not protocol documents: they
+ * carry validated documents plus the transport's own acknowledgements, so they
+ * are discriminated by `kind` rather than by a versioned `format`.
+ */
+export type VisualServerFrame =
+  | { readonly kind: 'ready'; readonly snapshot: VisualSessionSnapshot }
+  | {
+      readonly kind: 'accepted'
+      readonly sequence: number
+      readonly eventId: string
+    }
+  | {
+      readonly kind: 'rejected'
+      readonly diagnostics: readonly VisualDiagnostic[]
+      readonly frozen?: VisualFreezeReason
+    }
+  | { readonly kind: 'response'; readonly response: VisualResponse }
+  | { readonly kind: 'model'; readonly model: VisualRenderedModel }
+  | { readonly kind: 'closing'; readonly reason: VisualTerminationReason }
+
+export type VisualEventDelivery =
+  | {
+      readonly waiting: false
+      readonly event: VisualEvent
+      readonly lastSequence: number
+      readonly pendingEvents: number
+    }
+  | {
+      readonly waiting: true
+      readonly lastSequence: number
+      readonly pendingEvents: number
+    }
+
+export type VisualResponseAcceptance =
+  | {
+      readonly accepted: true
+      readonly duplicate: boolean
+      readonly lastSequence: number
+      readonly model?: VisualRenderedModel
+      readonly diagnostics: readonly VisualDiagnostic[]
+    }
+  | {
+      readonly accepted: false
+      readonly diagnostics: readonly VisualDiagnostic[]
+    }
+
+export interface VisualServerClosed {
+  readonly reason: VisualTerminationReason
+  readonly alreadyStopped: boolean
+  readonly handoff: VisualHandoff | undefined
+}
+
+export interface VisualServerOptions {
+  readonly request: VisualSessionRequest
+  /** Directory that holds one directory per live session. */
+  readonly baseDir: string
+  /** Root of the self-contained browser application. */
+  readonly assetRoot?: string
+  readonly now?: () => Date
+  readonly randomBytes?: (size: number) => Buffer
+  readonly agentPollMs?: number
+  /** Whether the handoff a stop returns carries the raw transcript. */
+  readonly includeTranscript?: boolean
+}
+
+export interface VisualServerHandle {
+  readonly started: VisualSessionStarted
+  readonly closed: Promise<VisualServerClosed>
+  status(): VisualStatus
+  stop(reason: VisualTerminationReason): Promise<VisualServerClosed>
+}
+
+interface VisualEventEnvelope {
+  readonly format: 'yarramate/visual-event/v1'
+  readonly sessionId: string
+  readonly sequence: number
+  readonly eventId: string
+  readonly timestamp: string
+}
+
+interface PendingPoll {
+  readonly after: number
+  readonly settle: (delivery: VisualEventDelivery) => void
+  readonly timer: NodeJS.Timeout
+}
+
+type BodyResult =
+  | { readonly ok: true; readonly value: unknown }
+  | { readonly ok: false; readonly status: number; readonly message: string }
+
+const serverError = (code: string, message: string) =>
+  new Error(`${code}: ${message}`)
+
+const serverDiagnostic = (
+  code: string,
+  message: string,
+  pointer = '#',
+): VisualDiagnostic => ({
+  severity: 'error',
+  code,
+  message,
+  path: VISUAL_SERVER_DOCUMENT,
+  pointer,
+  line: 1,
+  column: 1,
+})
+
+/**
+ * Compares two capabilities without leaking where they differ, or how long the
+ * presented one is: both sides are reduced to a fixed-width digest first, so
+ * the comparison is over equal-length buffers by construction.
+ */
+const secretEquals = (expected: string, presented: string | undefined) => {
+  if (presented === undefined) return false
+  const digest = (value: string) =>
+    createHash('sha256').update(value, 'utf8').digest()
+  return timingSafeEqual(digest(expected), digest(presented))
+}
+
+const cookieValue = (header: string | undefined, name: string) => {
+  if (header === undefined) return undefined
+  for (const part of header.split(';')) {
+    const split = part.indexOf('=')
+    if (split < 0) continue
+    if (part.slice(0, split).trim() === name) {
+      return part.slice(split + 1).trim()
+    }
+  }
+  return undefined
+}
+
+const bearerToken = (header: string | undefined) =>
+  header === undefined
+    ? undefined
+    : /^Bearer +([\x21-\x7e]+)$/.exec(header)?.[1]
+
+const isJsonContent = (header: string | undefined) =>
+  header !== undefined && /^application\/json\s*(;.*)?$/i.test(header.trim())
+
+/**
+ * Buffers at most `limit` bytes while always draining the request, so an
+ * oversized body costs bounded memory and still gets a clean HTTP answer
+ * instead of a severed connection.
+ */
+const readJsonBody = async (
+  incoming: IncomingMessage,
+  limit: number,
+): Promise<BodyResult> => {
+  if (!isJsonContent(incoming.headers['content-type'])) {
+    incoming.resume()
+    return {
+      ok: false,
+      status: 415,
+      message: 'Request body must be application/json',
+    }
+  }
+  const chunks: Buffer[] = []
+  let bytes = 0
+  let overflowed = false
+  for await (const chunk of incoming) {
+    const part = chunk as Buffer
+    bytes += part.byteLength
+    if (bytes > limit) {
+      overflowed = true
+      continue
+    }
+    chunks.push(part)
+  }
+  if (overflowed) {
+    return {
+      ok: false,
+      status: 413,
+      message: `Request body of ${bytes} bytes exceeds the ${limit} byte ceiling`,
+    }
+  }
+  try {
+    return {
+      ok: true,
+      value: JSON.parse(Buffer.concat(chunks).toString('utf8')),
+    }
+  } catch {
+    return { ok: false, status: 400, message: 'Request body is not JSON' }
+  }
+}
+
+/**
+ * Widens one validated browser input into the journaled event. The runtime owns
+ * every field the browser is not allowed to choose.
+ */
+const eventFrom = (
+  input: VisualBrowserInput,
+  envelope: VisualEventEnvelope,
+): VisualEvent => {
+  switch (input.type) {
+    case 'chat.message':
+      return { ...envelope, type: input.type, payload: input.payload }
+    case 'choice.selected':
+      return { ...envelope, type: input.type, payload: input.payload }
+    case 'view.navigate':
+      return { ...envelope, type: input.type, payload: input.payload }
+    case 'session.end':
+      return { ...envelope, type: input.type, payload: input.payload }
+  }
+}
+
+/**
+ * Serves one authenticated visual session over loopback. The handle owns the
+ * session directory it created: `stop` recovers the handoff before deleting it,
+ * and answers every later call with that same outcome.
+ */
+export const startVisualServer = async (
+  options: VisualServerOptions,
+): Promise<VisualServerHandle> => {
+  const now = options.now ?? (() => new Date())
+  const randomBytes = options.randomBytes ?? randomSource
+  const agentPollMs = options.agentPollMs ?? VISUAL_SERVER_LIMITS.agentPollMs
+  const assetRoot = resolve(options.assetRoot ?? DEFAULT_ASSET_ROOT)
+  const request = options.request
+
+  const drawHex = (size: number) => {
+    const drawn = randomBytes(size)
+    if (drawn.byteLength < size) {
+      throw serverError(
+        'YMVS301',
+        `Random source returned ${drawn.byteLength} bytes for a ${size}-byte draw`,
+      )
+    }
+    return drawn.subarray(0, size).toString('hex')
+  }
+  const stamp = () => now().toISOString()
+
+  const session = await createVisualSession(request, {
+    baseDir: options.baseDir,
+    now,
+    randomBytes,
+  })
+  const paths = session.paths
+  const sessionId = basename(paths.root)
+  const cookieSecret = drawHex(32)
+
+  // Past this point a session directory exists on disk; a failed start must not
+  // leave one behind for the next run to prune.
+  const abandon = async (cause: unknown): Promise<never> => {
+    await removeVisualSession(paths).catch(() => undefined)
+    throw cause
+  }
+
+  const compilation = await compileVisualModel({
+    model: request.initialModel,
+    command: request.compiler,
+    paths,
+    now,
+  }).catch(abandon)
+  if (!compilation.ok) {
+    const first = compilation.diagnostics[0]
+    return abandon(
+      serverError(
+        first?.code ?? 'YMVS302',
+        `Initial visual model did not compile: ${
+          first?.message ?? 'unknown violation'
+        }`,
+      ),
+    )
+  }
+
+  let rendered: VisualRenderedModel = {
+    candidate: compilation.compiled.candidate,
+    authority: compilation.compiled.authority,
+    initialView: compilation.compiled.initialView,
+    views: compilation.compiled.views,
+  }
+
+  const capabilities: VisualCapabilities = {
+    chat: request.chatEnabled,
+    choices: request.chatEnabled,
+    navigation: true,
+    modelReplacement: true,
+    transcript: true,
+  }
+
+  let lifecycle: VisualLifecycle = 'starting'
+  let listening = false
+  let bootstrapSpent = false
+  let agentAttached = false
+  let lastSequence = 0
+  let transcriptBytes = 0
+  let frozen: VisualFreezeReason | undefined
+  let inFlight: VisualEvent | undefined
+  let lastSeenAt: string | undefined
+  let pending: VisualEvent[] = []
+  const connections = new Map<string, WebSocket>()
+  const polls = new Set<PendingPoll>()
+  const httpSockets = new Set<Socket>()
+
+  /** Every sequence assignment and queue mutation runs in call order. */
+  let admission: Promise<unknown> = Promise.resolve()
+  const admit = <T>(action: () => Promise<T>): Promise<T> => {
+    const next = admission.then(action)
+    admission = next.then(
+      () => undefined,
+      () => undefined,
+    )
+    return next
+  }
+
+  /** The first limit a session reaches is the one it reports for good. */
+  const freeze = (reason: VisualFreezeReason) => {
+    frozen ??= reason
+  }
+
+  const snapshot = (): VisualSessionSnapshot => ({
+    protocolVersion: VISUAL_PROTOCOL_VERSION,
+    sessionId,
+    authority: request.authority,
+    title: request.title,
+    description: request.description,
+    chatEnabled: request.chatEnabled,
+    capabilities,
+    webSocketUrl,
+    model: rendered,
+    lastSequence,
+    frozen: frozen !== undefined,
+  })
+
+  const status = (): VisualStatus => {
+    const value: VisualStatus = {
+      format: 'yarramate/visual-status/v1',
+      protocolVersion: VISUAL_PROTOCOL_VERSION,
+      sessionId,
+      lifecycle,
+      alreadyStopped: lifecycle === 'stopped',
+      server: { listening, origin },
+      browser: {
+        connected: connections.size > 0,
+        connections: connections.size,
+        ...(lastSeenAt === undefined ? {} : { lastSeenAt }),
+        ...(connections.size === 0 && lastSeenAt !== undefined
+          ? {
+              graceExpiresAt: new Date(
+                Date.parse(lastSeenAt) + VISUAL_LIMITS.reconnectMs,
+              ).toISOString(),
+            }
+          : {}),
+      },
+      agent: {
+        attached: agentAttached,
+        inFlightEventId: inFlight?.eventId ?? null,
+      },
+      queue: {
+        pendingEvents: pending.length,
+        lastSequence,
+        frozen: frozen !== undefined,
+        ...(frozen === undefined ? {} : { frozenReason: frozen }),
+      },
+      capabilities,
+      transcriptBytes,
+      updatedAt: stamp(),
+    }
+    // A status document that does not validate is a runtime defect, not
+    // untrusted input: the agent must never have to parse a broken report.
+    const validated = parseVisualStatus(value)
+    if (!validated.ok) {
+      throw serverError(
+        validated.diagnostics[0]?.code ?? 'YMVS108',
+        `Session status is invalid: ${
+          validated.diagnostics[0]?.message ?? 'unknown violation'
+        }`,
+      )
+    }
+    return value
+  }
+
+  const sendFrame = (socket: WebSocket, frame: VisualServerFrame) => {
+    if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(frame))
+  }
+
+  const broadcast = (frame: VisualServerFrame) => {
+    for (const socket of connections.values()) sendFrame(socket, frame)
+  }
+
+  const idleDelivery = (): VisualEventDelivery => ({
+    waiting: true,
+    lastSequence,
+    pendingEvents: pending.length,
+  })
+
+  /**
+   * While a turn is outstanding the only event the agent may see is the one it
+   * already owns, so a repeated poll replays it and a later chat message waits
+   * for the current response.
+   */
+  const deliverable = (after: number) =>
+    inFlight === undefined
+      ? pending.find((event) => event.sequence > after)
+      : inFlight.sequence > after
+        ? inFlight
+        : undefined
+
+  const takeDelivery = (after: number): VisualEventDelivery => {
+    const event = deliverable(after)
+    if (event === undefined) return idleDelivery()
+    inFlight = event
+    return {
+      waiting: false,
+      event,
+      lastSequence,
+      pendingEvents: pending.length,
+    }
+  }
+
+  const wakePolls = () => {
+    for (const poll of [...polls]) {
+      if (deliverable(poll.after) === undefined) continue
+      polls.delete(poll)
+      clearTimeout(poll.timer)
+      poll.settle(takeDelivery(poll.after))
+    }
+  }
+
+  const settleAllPolls = () => {
+    for (const poll of [...polls]) {
+      polls.delete(poll)
+      clearTimeout(poll.timer)
+      poll.settle(idleDelivery())
+    }
+  }
+
+  const httpServer = createServer()
+  httpServer.on('connection', (socket) => {
+    httpSockets.add(socket)
+    socket.on('close', () => httpSockets.delete(socket))
+  })
+  httpServer.on('clientError', (_error, socket) => socket.destroy())
+
+  await new Promise<void>((settle, fail) => {
+    const onError = (error: Error) => fail(error)
+    httpServer.once('error', onError)
+    // Loopback only, on a kernel-assigned port: the session is never reachable
+    // from another host, and never collides with a well-known service.
+    httpServer.listen(0, '127.0.0.1', () => {
+      httpServer.removeListener('error', onError)
+      settle()
+    })
+  }).catch(abandon)
+
+  const address = httpServer.address() as AddressInfo
+  const origin = `http://127.0.0.1:${address.port}`
+  const authority = `127.0.0.1:${address.port}`
+  const webSocketUrl = `ws://${authority}${VISUAL_SOCKET_PATH}`
+  listening = true
+
+  const sockets = new WebSocketServer({
+    noServer: true,
+    maxPayload: VISUAL_SERVER_LIMITS.browserFrameBytes,
+  })
+
+  // ---------------------------------------------------------------- responses
+
+  const respond = (
+    server: ServerResponse,
+    code: number,
+    body: string | Buffer,
+    contentType: string,
+  ) => {
+    server.writeHead(code, {
+      ...VISUAL_BROWSER_HEADERS,
+      'Content-Type': contentType,
+      'Content-Length': Buffer.byteLength(body),
+      // A draining session must not leave a pooled connection behind that
+      // outlives its listener.
+      ...(lifecycle === 'running' ? {} : { Connection: 'close' }),
+    })
+    server.end(body)
+  }
+
+  const respondJson = (server: ServerResponse, code: number, value: unknown) =>
+    respond(
+      server,
+      code,
+      JSON.stringify(value),
+      'application/json; charset=utf-8',
+    )
+
+  const refuse = (server: ServerResponse, code: number, message: string) =>
+    respond(server, code, `${message}\n`, 'text/plain; charset=utf-8')
+
+  // ------------------------------------------------------------ browser input
+
+  const admitBrowserInput = async (
+    socket: WebSocket,
+    raw: RawData,
+    binary: boolean,
+  ) => {
+    if (binary) {
+      sendFrame(socket, {
+        kind: 'rejected',
+        diagnostics: [
+          serverDiagnostic('YMVS303', 'Browser frames must be UTF-8 JSON text'),
+        ],
+      })
+      return
+    }
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(raw.toString())
+    } catch {
+      sendFrame(socket, {
+        kind: 'rejected',
+        diagnostics: [
+          serverDiagnostic('YMVS109', 'Browser frame is not a JSON document'),
+        ],
+      })
+      return
+    }
+    const input = parseVisualBrowserInput(parsed)
+    if (!input.ok) {
+      sendFrame(socket, { kind: 'rejected', diagnostics: input.diagnostics })
+      return
+    }
+    await admit(async () => {
+      if (frozen !== undefined) {
+        sendFrame(socket, {
+          kind: 'rejected',
+          frozen,
+          diagnostics: [
+            serverDiagnostic('YMVS304', `Session input is frozen: ${frozen}`),
+          ],
+        })
+        return
+      }
+      const event = eventFrom(input.value, {
+        format: 'yarramate/visual-event/v1',
+        sessionId,
+        sequence: lastSequence + 1,
+        eventId: drawHex(16),
+        timestamp: stamp(),
+      })
+      const actionable = isActionableVisualEvent(event)
+      if (actionable && pending.length >= VISUAL_LIMITS.pendingEvents) {
+        freeze('pending-events')
+        sendFrame(socket, {
+          kind: 'rejected',
+          frozen,
+          diagnostics: [
+            serverDiagnostic(
+              'YMVS305',
+              `Queue already holds the ${VISUAL_LIMITS.pendingEvents} event maximum`,
+              '#/sequence',
+            ),
+          ],
+        })
+        return
+      }
+      const appended = await appendVisualEvent(paths, event)
+      if (!appended.ok) {
+        if (appended.freeze !== undefined) freeze(appended.freeze)
+        sendFrame(socket, {
+          kind: 'rejected',
+          ...(frozen === undefined ? {} : { frozen }),
+          diagnostics: appended.diagnostics,
+        })
+        return
+      }
+      lastSequence = appended.lastSequence
+      transcriptBytes = appended.transcriptBytes
+      if (actionable) pending.push(event)
+      // A journaled end is the last input this session takes. The agent still
+      // has to see it, so the queue freezes rather than the socket closing.
+      if (event.type === 'session.end') freeze('terminal-event')
+      sendFrame(socket, {
+        kind: 'accepted',
+        sequence: event.sequence,
+        eventId: event.eventId,
+      })
+      wakePolls()
+    })
+  }
+
+  const attachBrowser = (socket: WebSocket) => {
+    const connectionId = drawHex(16)
+    connections.set(connectionId, socket)
+    lastSeenAt = stamp()
+    socket.on('message', (raw, binary) => {
+      void admitBrowserInput(socket, raw, binary)
+    })
+    socket.on('error', (error) => {
+      // ws refuses an oversized frame before buffering it, which is exactly the
+      // byte ceiling the protocol calls a freeze.
+      if (
+        (error as { code?: string }).code ===
+        'WS_ERR_UNSUPPORTED_MESSAGE_LENGTH'
+      ) {
+        freeze('message-bytes')
+      }
+    })
+    socket.on('close', () => {
+      connections.delete(connectionId)
+      lastSeenAt = stamp()
+    })
+    sendFrame(socket, { kind: 'ready', snapshot: snapshot() })
+  }
+
+  // ------------------------------------------------------------- agent routes
+
+  const answerPoll = (server: ServerResponse, query: URLSearchParams) => {
+    const raw = query.get('after') ?? '0'
+    const after = Number(raw)
+    if (!Number.isSafeInteger(after) || after < 0) {
+      refuse(server, 400, `Query "after" must be a sequence, not "${raw}"`)
+      return
+    }
+    const immediate = takeDelivery(after)
+    if (!immediate.waiting || lifecycle !== 'running') {
+      respondJson(server, 200, immediate)
+      return
+    }
+    const poll: PendingPoll = {
+      after,
+      settle: (result) => respondJson(server, 200, result),
+      timer: setTimeout(() => {
+        polls.delete(poll)
+        respondJson(server, 200, idleDelivery())
+      }, agentPollMs),
+    }
+    polls.add(poll)
+    server.on('close', () => {
+      if (polls.delete(poll)) clearTimeout(poll.timer)
+    })
+  }
+
+  const replaceModel = async (
+    response: Extract<VisualResponse, { readonly type: 'model.replace' }>,
+  ): Promise<{
+    readonly model?: VisualRenderedModel
+    readonly diagnostics: readonly VisualDiagnostic[]
+  }> => {
+    const compiled = await compileVisualModel({
+      model: response.payload.model,
+      command: request.compiler,
+      paths,
+      now,
+    })
+    if (compiled.ok) {
+      rendered = {
+        candidate: compiled.compiled.candidate,
+        authority: compiled.compiled.authority,
+        initialView: compiled.compiled.initialView,
+        views: compiled.compiled.views,
+      }
+      broadcast({ kind: 'model', model: rendered })
+      return { model: rendered, diagnostics: [] }
+    }
+    // The candidate is discarded and the last good rendering stays live; the
+    // browser learns why from a journaled diagnostic response.
+    const diagnostic: VisualResponse = {
+      format: 'yarramate/visual-response/v1',
+      sessionId,
+      responseId: drawHex(16),
+      eventId: response.eventId,
+      type: 'diagnostic',
+      timestamp: stamp(),
+      payload: { diagnostics: compiled.diagnostics },
+    }
+    const appended = await appendVisualResponse(paths, diagnostic)
+    if (appended.ok) transcriptBytes = appended.transcriptBytes
+    broadcast({ kind: 'response', response: diagnostic })
+    return { diagnostics: compiled.diagnostics }
+  }
+
+  const completeTurn = (response: VisualResponse) => {
+    if (TURN_COMPLETING[response.type] !== true) return
+    if (inFlight?.eventId !== response.eventId) return
+    pending = pending.filter((event) => event.eventId !== response.eventId)
+    inFlight = undefined
+    wakePolls()
+  }
+
+  const acceptResponse = async (
+    server: ServerResponse,
+    incoming: IncomingMessage,
+  ) => {
+    const body = await readJsonBody(
+      incoming,
+      VISUAL_SERVER_LIMITS.agentBodyBytes,
+    )
+    if (!body.ok) {
+      refuse(server, body.status, body.message)
+      return
+    }
+    const parsed = parseVisualResponse(body.value)
+    if (!parsed.ok) {
+      respondJson(server, 400, {
+        accepted: false,
+        diagnostics: parsed.diagnostics,
+      } satisfies VisualResponseAcceptance)
+      return
+    }
+    const response = parsed.value
+    if (response.sessionId !== sessionId) {
+      respondJson(server, 409, {
+        accepted: false,
+        diagnostics: [
+          serverDiagnostic(
+            'YMVS126',
+            `Response belongs to session "${response.sessionId}", not "${sessionId}"`,
+            '#/sessionId',
+          ),
+        ],
+      } satisfies VisualResponseAcceptance)
+      return
+    }
+    const result = await admit(
+      async (): Promise<{
+        readonly code: number
+        readonly body: VisualResponseAcceptance
+      }> => {
+        const appended = await appendVisualResponse(paths, response)
+        if (!appended.ok) {
+          if (appended.freeze !== undefined) freeze(appended.freeze)
+          return {
+            code: 409,
+            body: { accepted: false, diagnostics: appended.diagnostics },
+          }
+        }
+        transcriptBytes = appended.transcriptBytes
+        // A response the runtime already journaled must not be broadcast or
+        // compiled twice: a retried delivery is not a second turn.
+        if (appended.duplicate) {
+          return {
+            code: 200,
+            body: {
+              accepted: true,
+              duplicate: true,
+              lastSequence: appended.lastSequence,
+              diagnostics: [],
+            },
+          }
+        }
+        broadcast({ kind: 'response', response })
+        const replaced =
+          response.type === 'model.replace'
+            ? await replaceModel(response)
+            : { diagnostics: [] as readonly VisualDiagnostic[] }
+        completeTurn(response)
+        return {
+          code: 200,
+          body: {
+            accepted: true,
+            duplicate: false,
+            lastSequence,
+            ...(replaced.model === undefined ? {} : { model: replaced.model }),
+            diagnostics: replaced.diagnostics,
+          },
+        }
+      },
+    )
+    respondJson(server, result.code, result.body)
+  }
+
+  const acceptStop = async (
+    server: ServerResponse,
+    incoming: IncomingMessage,
+  ) => {
+    const body = await readJsonBody(
+      incoming,
+      VISUAL_SERVER_LIMITS.agentControlBytes,
+    )
+    if (!body.ok) {
+      refuse(server, body.status, body.message)
+      return
+    }
+    const reason = (body.value as { readonly reason?: unknown }).reason
+    if (typeof reason !== 'string' || TERMINATION_REASONS[reason] !== true) {
+      refuse(server, 400, 'Stop requires a known termination reason')
+      return
+    }
+    // The socket answering the stop is the one connection shutdown may not end
+    // before it has been written to.
+    const closed = await stop(
+      reason as VisualTerminationReason,
+      incoming.socket,
+    )
+    server.on('finish', () => incoming.socket.end())
+    respondJson(server, 200, closed)
+  }
+
+  const serveAgent = async (
+    incoming: IncomingMessage,
+    server: ServerResponse,
+    pathname: string,
+    query: URLSearchParams,
+  ) => {
+    // An agent is not a browser. A request carrying an Origin came from a page,
+    // which must never be able to spend a leaked agent capability.
+    if (incoming.headers.origin !== undefined) {
+      refuse(server, 403, 'Agent routes reject browser-originated requests')
+      return
+    }
+    if (
+      !secretEquals(
+        session.agentToken,
+        bearerToken(incoming.headers.authorization),
+      )
+    ) {
+      refuse(server, 401, 'Agent capability required')
+      return
+    }
+    agentAttached = true
+    if (pathname === '/api/agent/events') {
+      if (incoming.method !== 'GET') return refuse(server, 405, 'Use GET')
+      answerPoll(server, query)
+      return
+    }
+    if (pathname === '/api/agent/status') {
+      if (incoming.method !== 'GET') return refuse(server, 405, 'Use GET')
+      respondJson(server, 200, status())
+      return
+    }
+    if (pathname === '/api/agent/responses') {
+      if (incoming.method !== 'POST') return refuse(server, 405, 'Use POST')
+      await acceptResponse(server, incoming)
+      return
+    }
+    if (pathname === '/api/agent/stop') {
+      if (incoming.method !== 'POST') return refuse(server, 405, 'Use POST')
+      await acceptStop(server, incoming)
+      return
+    }
+    refuse(server, 404, 'No such route')
+  }
+
+  // ----------------------------------------------------------- browser routes
+
+  const assetPath = (pathname: string) => {
+    if (pathname === '/') return join(assetRoot, 'index.html')
+    const prefix = '/assets/'
+    if (!pathname.startsWith(prefix)) return undefined
+    const name = pathname.slice(prefix.length)
+    if (!ASSET_NAME.test(name)) return undefined
+    const target = resolve(assetRoot, 'assets', name)
+    // The name cannot carry a separator, so this only confirms what the pattern
+    // already guaranteed — which is the point of having both.
+    return target.startsWith(`${assetRoot}${sep}`) ? target : undefined
+  }
+
+  const serveAsset = async (server: ServerResponse, pathname: string) => {
+    const target = assetPath(pathname)
+    const contentType =
+      target === undefined ? undefined : CONTENT_TYPES[extname(target)]
+    if (target === undefined || contentType === undefined) {
+      refuse(server, 404, 'No such asset')
+      return
+    }
+    try {
+      // lstat, never stat: a symlink inside the asset root is a link out of it.
+      const entry = await lstat(target)
+      if (!entry.isFile()) {
+        refuse(server, 404, 'No such asset')
+        return
+      }
+      respond(server, 200, await readFile(target), contentType)
+    } catch {
+      refuse(server, 404, 'No such asset')
+    }
+  }
+
+  const serveBootstrap = (server: ServerResponse, query: URLSearchParams) => {
+    const key = query.get('key') ?? undefined
+    if (bootstrapSpent || !secretEquals(session.browserToken, key)) {
+      refuse(server, 403, 'Bootstrap capability is not valid')
+      return
+    }
+    // One-time by construction: the URL capability buys exactly one cookie, and
+    // the cookie carries a different secret, so a leaked URL cannot be replayed
+    // and a leaked cookie cannot be pasted into an address bar.
+    bootstrapSpent = true
+    server.writeHead(303, {
+      ...VISUAL_BROWSER_HEADERS,
+      Location: '/',
+      'Set-Cookie': `${COOKIE_NAME}=${cookieSecret}; HttpOnly; SameSite=Strict; Path=/`,
+      'Content-Length': 0,
+    })
+    server.end()
+  }
+
+  const serveBrowser = async (
+    incoming: IncomingMessage,
+    server: ServerResponse,
+    pathname: string,
+    query: URLSearchParams,
+  ) => {
+    const sent = incoming.headers.origin
+    if (sent !== undefined && sent !== origin) {
+      refuse(server, 403, 'Origin is not this session')
+      return
+    }
+    if (incoming.method !== 'GET') {
+      refuse(server, 405, 'Use GET')
+      return
+    }
+    if (pathname === '/bootstrap') {
+      serveBootstrap(server, query)
+      return
+    }
+    if (
+      !secretEquals(
+        cookieSecret,
+        cookieValue(incoming.headers.cookie, COOKIE_NAME),
+      )
+    ) {
+      refuse(server, 401, 'Session cookie required')
+      return
+    }
+    if (pathname === '/api/session') {
+      respondJson(server, 200, snapshot())
+      return
+    }
+    await serveAsset(server, pathname)
+  }
+
+  httpServer.on('request', (incoming, server) => {
+    void (async () => {
+      try {
+        // Rebinding defence: a request that reached this port under any other
+        // name was routed here by something other than the browser we started.
+        if (incoming.headers.host !== authority) {
+          refuse(server, 403, 'Host is not the bound loopback authority')
+          return
+        }
+        const [rawPath = '/', rawQuery = ''] = (incoming.url ?? '/').split('?')
+        let pathname: string
+        try {
+          pathname = decodeURIComponent(rawPath)
+        } catch {
+          refuse(server, 400, 'Request target is not a valid URL path')
+          return
+        }
+        if (pathname.includes('\0')) {
+          refuse(server, 400, 'Request target is not a valid URL path')
+          return
+        }
+        const query = new URLSearchParams(rawQuery)
+        if (pathname.startsWith('/api/agent/')) {
+          await serveAgent(incoming, server, pathname, query)
+          return
+        }
+        await serveBrowser(incoming, server, pathname, query)
+      } catch (cause) {
+        if (server.headersSent) server.destroy(cause as Error)
+        else refuse(server, 500, 'Session server failed')
+      }
+    })()
+  })
+
+  httpServer.on('upgrade', (incoming, socket: Duplex, head) => {
+    const deny = (code: number, message: string) => {
+      socket.write(
+        `HTTP/1.1 ${code} ${message}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`,
+      )
+      socket.destroy()
+    }
+    if (lifecycle !== 'running') return deny(503, 'Service Unavailable')
+    if (incoming.headers.host !== authority) return deny(403, 'Forbidden')
+    // An upgrade always carries an Origin, so it is checked without exception.
+    if (incoming.headers.origin !== origin) return deny(403, 'Forbidden')
+    const [rawPath = '/'] = (incoming.url ?? '/').split('?')
+    if (rawPath !== VISUAL_SOCKET_PATH) return deny(404, 'Not Found')
+    if (
+      !secretEquals(
+        cookieSecret,
+        cookieValue(incoming.headers.cookie, COOKIE_NAME),
+      )
+    ) {
+      return deny(401, 'Unauthorized')
+    }
+    if (connections.size >= VISUAL_SERVER_LIMITS.browserConnections) {
+      return deny(503, 'Service Unavailable')
+    }
+    sockets.handleUpgrade(incoming, socket, head, attachBrowser)
+  })
+
+  // ----------------------------------------------------------------- shutdown
+
+  let announceClosed!: (closed: VisualServerClosed) => void
+  const closed = new Promise<VisualServerClosed>((settle) => {
+    announceClosed = settle
+  })
+  let stopping: Promise<VisualServerClosed> | undefined
+
+  const stop = async (
+    reason: VisualTerminationReason,
+    exempt?: Socket,
+  ): Promise<VisualServerClosed> => {
+    if (stopping !== undefined) {
+      return { ...(await stopping), alreadyStopped: true }
+    }
+    stopping = (async () => {
+      lifecycle = 'draining'
+      listening = false
+      httpServer.close()
+      // Waiting agents are answered before any socket is torn down, so a poll
+      // in flight during a stop still receives its non-terminal idle result.
+      settleAllPolls()
+      for (const socket of connections.values()) {
+        sendFrame(socket, { kind: 'closing', reason })
+        socket.close(1001)
+      }
+      sockets.close()
+      for (const socket of httpSockets) {
+        if (socket !== exempt) socket.end()
+      }
+      // Recovery runs before the delete, so shutdown can never be the step that
+      // loses confirmed state.
+      const handoff = await removeVisualSession(
+        paths,
+        options.includeTranscript ?? false,
+      )
+      lifecycle = 'stopped'
+      const outcome: VisualServerClosed = {
+        reason,
+        alreadyStopped: false,
+        handoff,
+      }
+      announceClosed(outcome)
+      return outcome
+    })()
+    return stopping
+  }
+
+  await writeVisualSessionDescriptor(paths, {
+    format: 'yarramate/visual-session-descriptor/v1',
+    protocolVersion: VISUAL_PROTOCOL_VERSION,
+    sessionId,
+    origin,
+    agentCapability: session.agentToken,
+    sessionRoot: paths.root,
+    journalPath: paths.journal,
+    createdAt: stamp(),
+  }).catch(abandon)
+
+  const started: VisualSessionStarted = {
+    format: 'yarramate/visual-session-started/v1',
+    protocolVersion: VISUAL_PROTOCOL_VERSION,
+    sessionId,
+    authority: request.authority,
+    title: request.title,
+    chatEnabled: request.chatEnabled,
+    browserUrl: `${origin}/bootstrap?key=${session.browserToken}`,
+    webSocketUrl,
+    origin,
+    descriptorPath: paths.descriptor,
+    sessionRoot: paths.root,
+    capabilities,
+    startedAt: stamp(),
+  }
+  const validated = parseVisualSessionStarted(started)
+  if (!validated.ok) {
+    return abandon(
+      serverError(
+        validated.diagnostics[0]?.code ?? 'YMVS102',
+        `Started session is invalid: ${
+          validated.diagnostics[0]?.message ?? 'unknown violation'
+        }`,
+      ),
+    )
+  }
+  lifecycle = 'running'
+
+  return { started, closed, status, stop: (reason) => stop(reason) }
+}
