@@ -1,6 +1,7 @@
 import { EventEmitter, once } from 'node:events'
 import { existsSync } from 'node:fs'
 import {
+  chmod,
   mkdir,
   mkdtemp,
   readFile,
@@ -708,6 +709,25 @@ describe('respond', () => {
     expect(refusalCodes(result)).toEqual(['YMVS126'])
   })
 
+  it('surfaces the store refusal of a response for an event never taken', async () => {
+    const handle = await startServer()
+    await sendBrowserEvent(handle.started, chatEventInput)
+    const responsePath = join(workDir, 'response.json')
+    await writeJson(
+      responsePath,
+      responseFor(handle.started.sessionId, identifier(0xbad)),
+    )
+    const result = await runVisualClientCli(
+      ['respond', handle.started.descriptorPath, responsePath],
+      workDir,
+    )
+    expect(result).toMatchObject({ exitCode: 1, stdout: '' })
+    // The store's own code, and not the transport refusal this is laundered
+    // into when the carried diagnostic does not survive the client's strict
+    // read of the diagnostic result the server answered with.
+    expect(refusalCodes(result)).toEqual(['YMVS131'])
+  })
+
   it('reports a session server that is not listening', async () => {
     const { descriptor, descriptorPath } = await plantSession()
     const responsePath = join(workDir, 'response.json')
@@ -1046,6 +1066,100 @@ describe('runVisualStart', () => {
     })
     expect(existsSync(started.sessionRoot)).toBe(false)
   })
+
+  /**
+   * A signal is not a caller: nothing awaits the stop it starts, so a teardown
+   * that fails there reaches the runtime as an unhandled rejection unless the
+   * handler observes it. The failure is injected through the filesystem rather
+   * than the clock — a session root nothing may unlink from refuses the removal
+   * every time, and stops refusing the moment the permission comes back.
+   */
+  const enforcesPermissions =
+    process.platform !== 'win32' && process.getuid?.() !== 0
+
+  /**
+   * A ceiling on the turns of the loop one teardown takes, measured in turns
+   * rather than milliseconds so a slow machine spends no longer here than a
+   * fast one: nothing in this test waits for a duration.
+   */
+  const teardownTurns = 5000
+
+  it.skipIf(!enforcesPermissions)(
+    'observes a signal stop that failed instead of crashing the runtime',
+    async () => {
+      const foreground = startForeground(await writeRequest(), workDir)
+      const started = await foreground.started
+      const journal = join(started.sessionRoot, 'journal.jsonl')
+      const rejections: unknown[] = []
+      const observe = (reason: unknown) => rejections.push(reason)
+      // One turn of the loop, which is also one turn of the teardown's own
+      // filesystem work: waiting is spent on the runtime's progress rather
+      // than on a duration guessed to be long enough.
+      const turn = async () => {
+        const next = Promise.withResolvers<undefined>()
+        setImmediate(() => next.resolve(undefined))
+        return Promise.race([foreground.result, next.promise])
+      }
+      process.on('unhandledRejection', observe)
+      try {
+        // Readable and traversable, so the recovery a stop reads still
+        // succeeds; not writable, so the removal that follows it cannot.
+        await chmod(started.sessionRoot, 0o500)
+        foreground.signals.emit('SIGTERM')
+
+        // The terminal event is the last thing journaled before the removal
+        // this permission denies, and the refusal is a few hundred turns of
+        // the loop past it. The ceiling is not a wait: a runtime that lost a
+        // rejection reports it in the turn after it is raised, and leaves this
+        // loop there.
+        let journaled = await readFile(journal, 'utf8')
+        while (!journaled.includes('"session.end"')) {
+          journaled = await readFile(journal, 'utf8')
+        }
+        let blocked = await turn()
+        for (
+          let spin = 0;
+          spin < teardownTurns &&
+          blocked === undefined &&
+          rejections.length === 0;
+          spin += 1
+        ) {
+          blocked = await turn()
+        }
+
+        // The teardown failed: the command is still blocked, its session is
+        // still on disk, and the runtime was told about none of it.
+        expect(blocked).toBeUndefined()
+        expect(existsSync(started.sessionRoot)).toBe(true)
+        expect(rejections).toEqual([])
+
+        // A stop that failed stopped nothing: a later signal runs the teardown
+        // again. One that lands on an attempt still in flight is absorbed by
+        // it, so the command is signalled every turn until it returns.
+        await chmod(started.sessionRoot, 0o700)
+        let closed = await turn()
+        for (
+          let spin = 0;
+          closed === undefined && spin < teardownTurns;
+          spin += 1
+        ) {
+          foreground.signals.emit('SIGTERM')
+          closed = await turn()
+        }
+
+        expect(closed).toMatchObject({ exitCode: 0 })
+        expect(existsSync(started.sessionRoot)).toBe(false)
+        expect(rejections).toEqual([])
+      } finally {
+        process.off('unhandledRejection', observe)
+        // Whatever failed, the temporary directory cannot be collected while
+        // one of its sessions refuses to be unlinked from.
+        if (existsSync(started.sessionRoot)) {
+          await chmod(started.sessionRoot, 0o700)
+        }
+      }
+    },
+  )
 
   it('observes the process signals when no source is injected', async () => {
     const requestPath = await writeRequest()
