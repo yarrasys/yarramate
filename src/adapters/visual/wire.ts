@@ -33,6 +33,20 @@ export interface VisualRenderedModel {
   readonly compiled: unknown
 }
 
+/**
+ * One line of the conversation, as plain text.
+ *
+ * The server keeps this beside the journal so a browser that reloads or
+ * reconnects sees the conversation it left. It carries no model source, no
+ * credential, and none of the journal's own bookkeeping — only what was said
+ * and who said it.
+ */
+export interface VisualTranscriptRecord {
+  readonly id: string
+  readonly speaker: 'reviewer' | 'agent'
+  readonly text: string
+}
+
 /** Everything the browser needs to render, and nothing that authenticates it. */
 export interface VisualSessionSnapshot {
   readonly protocolVersion: typeof VISUAL_PROTOCOL_VERSION
@@ -44,6 +58,13 @@ export interface VisualSessionSnapshot {
   readonly capabilities: VisualCapabilities
   readonly webSocketUrl: string
   readonly model: VisualRenderedModel
+  readonly transcript: readonly VisualTranscriptRecord[]
+  /**
+   * Nonce this session's policy admits for the inline styles the diagram
+   * renderer injects. It authorises styling and nothing else, and it is not a
+   * credential: the session cookie is what authenticates this snapshot.
+   */
+  readonly styleNonce: string
   readonly lastSequence: number
   readonly frozen: boolean
 }

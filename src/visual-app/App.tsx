@@ -308,6 +308,9 @@ export const App = () => {
                 enableRelationshipDetails
                 enableNotes
                 enableSearch={false}
+                // The renderer injects its own stylesheets; this session's
+                // policy admits them under this nonce and nothing else.
+                styleNonce={state.styleNonce}
                 showNavigationButtons
                 reduceGraphics={reduceGraphics ? true : 'auto'}
                 className="diagram"

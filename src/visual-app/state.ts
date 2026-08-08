@@ -11,6 +11,7 @@ import type {
   VisualRenderedModel,
   VisualServerFrame,
   VisualSessionSnapshot,
+  VisualTranscriptRecord,
 } from '../adapters/visual/wire.js'
 
 /**
@@ -36,12 +37,14 @@ export type VisualAppLifecycle =
   | 'disconnected'
   | 'closed'
 
-export type VisualAppSpeaker = 'reviewer' | 'agent' | 'session'
+/**
+ * The session speaks too: it is the browser, not the agent, that tells the
+ * reviewer control is going back.
+ */
+export type VisualAppSpeaker = VisualTranscriptRecord['speaker'] | 'session'
 
-export interface VisualAppRecord {
-  readonly id: string
+export interface VisualAppRecord extends Omit<VisualTranscriptRecord, 'speaker'> {
   readonly speaker: VisualAppSpeaker
-  readonly text: string
 }
 
 /** The part of the server snapshot that decides what the browser renders. */
@@ -51,6 +54,8 @@ export interface VisualAppSnapshot {
   readonly description: string
   readonly chatEnabled: boolean
   readonly model: VisualRenderedModel
+  readonly transcript: readonly VisualTranscriptRecord[]
+  readonly styleNonce: string
   readonly lastSequence: number
   readonly frozen: boolean
 }
@@ -63,6 +68,7 @@ export interface VisualAppState {
   readonly chatEnabled: boolean
   /** Last model that compiled. A failed candidate never replaces it. */
   readonly model: VisualRenderedModel | null
+  readonly styleNonce: string
   readonly activeView: string
   readonly transcript: readonly VisualAppRecord[]
   readonly choices: VisualChoicePresentPayload | null
@@ -121,6 +127,7 @@ export const initialVisualAppState: VisualAppState = {
   description: '',
   chatEnabled: false,
   model: null,
+  styleNonce: '',
   activeView: '',
   transcript: [],
   choices: null,
@@ -142,6 +149,8 @@ export const visualAppSnapshotFrom = (
   description: snapshot.description,
   chatEnabled: snapshot.chatEnabled,
   model: snapshot.model,
+  transcript: snapshot.transcript,
+  styleNonce: snapshot.styleNonce,
   lastSequence: snapshot.lastSequence,
   frozen: snapshot.frozen,
 })
@@ -198,6 +207,13 @@ const transition = (
         // holds — never that a session the reviewer already ended is open.
         lifecycle: state.lifecycle === 'ending' ? 'ending' : 'active',
         activeView: viewWithin(action.snapshot.model, state.activeView),
+        // The session owns what was said; this browser owns only what it told
+        // the reviewer itself, so a reload restores the record and keeps its
+        // own notices.
+        transcript: [
+          ...action.snapshot.transcript,
+          ...state.transcript.filter((record) => record.speaker === 'session'),
+        ],
         lastSequence: Math.max(state.lastSequence, action.snapshot.lastSequence),
       }
     case 'model.received':

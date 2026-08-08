@@ -29,6 +29,7 @@ import {
 import {
   VISUAL_BROWSER_HEADERS,
   VISUAL_SERVER_LIMITS,
+  visualContentSecurityPolicy,
   startVisualServer,
   type VisualServerFrame,
   type VisualServerHandle,
@@ -373,6 +374,147 @@ describe('startVisualServer bootstrap and browser authentication', () => {
         expect(checked.headers.get(name)).toBe(value)
       }
     }
+  })
+
+  it('admits inline style only under this session own nonce', async () => {
+    const server = await start()
+    const { response, cookie } = await bootstrap(server)
+    const page = await fetch(`${server.started.origin}/`, {
+      headers: { Cookie: cookie },
+    })
+    const snapshot = (await (
+      await fetch(`${server.started.origin}/api/session`, {
+        headers: { Cookie: cookie },
+      })
+    ).json()) as { readonly styleNonce: string }
+
+    expect(snapshot.styleNonce).toMatch(/^[0-9a-f]{32}$/)
+    for (const checked of [response, page]) {
+      const policy = checked.headers.get('content-security-policy') as string
+      expect(policy).toBe(visualContentSecurityPolicy(snapshot.styleNonce))
+      expect(policy).toContain(`style-src 'self' 'nonce-${snapshot.styleNonce}'`)
+      // A nonce admits the styles this application ships and nothing else.
+      expect(policy).not.toContain('unsafe-inline')
+      expect(policy).toContain(`script-src 'self'`)
+      expect(policy).toContain(`frame-ancestors 'none'`)
+    }
+  })
+
+  it('mints a nonce no other session can use', async () => {
+    const first = await start()
+    const second = await start()
+    const nonceOf = async (server: VisualServerHandle) => {
+      const { cookie } = await bootstrap(server)
+      const snapshot = (await (
+        await fetch(`${server.started.origin}/api/session`, {
+          headers: { Cookie: cookie },
+        })
+      ).json()) as { readonly styleNonce: string }
+      return snapshot.styleNonce
+    }
+    expect(await nonceOf(first)).not.toBe(await nonceOf(second))
+  })
+
+  it('restores the conversation to a browser that reloads', async () => {
+    const server = await start()
+    const capability = await capabilityOf(server)
+    const { cookie } = await bootstrap(server)
+    const socket = await openBrowserSocket(server, cookie)
+    const asked = await sendChat(socket, 'Why is option B cheaper?')
+    await postResponse(
+      server,
+      capability,
+      chatResponse(server, asked.eventId, 3, 'It reuses the intake path.'),
+    )
+    socket.close()
+
+    const session = (await (
+      await fetch(`${server.started.origin}/api/session`, {
+        headers: { Cookie: cookie },
+      })
+    ).json()) as {
+      readonly transcript: readonly { readonly text: string }[]
+      readonly lastSequence: number
+    }
+
+    expect(session.transcript).toEqual([
+      {
+        id: asked.eventId,
+        speaker: 'reviewer',
+        text: 'Why is option B cheaper?',
+      },
+      {
+        id: identifier(3),
+        speaker: 'agent',
+        text: 'It reuses the intake path.',
+      },
+    ])
+    expect(session.lastSequence).toBe(1)
+  })
+
+  it('restores a selected choice by the label the reviewer read', async () => {
+    const server = await start()
+    const capability = await capabilityOf(server)
+    const { cookie } = await bootstrap(server)
+    const socket = await openBrowserSocket(server, cookie)
+    const asked = await sendChat(socket, 'Which option?')
+    await postResponse(server, capability, {
+      format: 'yarramate/visual-response/v1',
+      sessionId: server.started.sessionId,
+      responseId: identifier(4),
+      eventId: asked.eventId,
+      type: 'choice.present',
+      timestamp: '2026-08-08T00:00:02.000Z',
+      payload: {
+        choiceId: 'delivery',
+        question: 'Which delivery design should we keep?',
+        options: [
+          { id: 'shared-queue', label: 'Shared queue' },
+          { id: 'isolated-worker', label: 'Isolated worker' },
+        ],
+      },
+    })
+    const chosen = nextFrame(socket, 'accepted')
+    socket.send(
+      JSON.stringify({
+        type: 'choice.selected',
+        lastAcknowledgedSequence: 1,
+        payload: { choiceId: 'delivery', optionId: 'shared-queue' },
+      }),
+    )
+    await chosen
+    socket.close()
+
+    const session = (await (
+      await fetch(`${server.started.origin}/api/session`, {
+        headers: { Cookie: cookie },
+      })
+    ).json()) as {
+      readonly transcript: readonly { readonly text: string }[]
+    }
+    // The record says what the reviewer chose, not the identifier they clicked.
+    expect(session.transcript.at(-1)).toMatchObject({
+      speaker: 'reviewer',
+      text: 'Shared queue',
+    })
+  })
+
+  it('never puts model sources or credentials in a restored conversation', async () => {
+    const server = await start()
+    const { cookie } = await bootstrap(server)
+    const socket = await openBrowserSocket(server, cookie)
+    await sendChat(socket, 'anything')
+    socket.close()
+    const body = await (
+      await fetch(`${server.started.origin}/api/session`, {
+        headers: { Cookie: cookie },
+      })
+    ).text()
+    expect(body).not.toContain('model.likec4')
+    expect(body).not.toContain(await capabilityOf(server))
+    const secret = cookie.split('=')[1] ?? ''
+    expect(secret.length).toBeGreaterThan(0)
+    expect(body).not.toContain(secret)
   })
 
   it('rejects a request whose Host header is not the bound loopback authority', async () => {
@@ -1332,13 +1474,13 @@ describe('startVisualServer shutdown and admission races', () => {
   it('tells the browser when admitting its frame fails', async () => {
     let narrow = 0
     const server = await start({
-      // 16-byte draws mint the session id, then the connection id, then event
-      // identifiers; failing from the first event id makes admission throw
-      // inside the socket's own fire-and-forget handler.
+      // 16-byte draws mint the session id, the style nonce, then the
+      // connection id, then event identifiers; failing from the first event id
+      // makes admission throw inside the socket's own fire-and-forget handler.
       randomBytes: (size: number) => {
         if (size !== 16) return randomBytes(size)
         narrow += 1
-        if (narrow >= 3) throw new Error('random source unavailable')
+        if (narrow >= 4) throw new Error('random source unavailable')
         return randomBytes(16)
       },
     })

@@ -51,12 +51,18 @@ import type {
   VisualRenderedModel,
   VisualServerFrame,
   VisualSessionSnapshot,
+  VisualTranscriptRecord,
 } from './wire.js'
 
 // The browser application imports these from `./wire.js`; the server keeps
 // publishing them so one import still covers the whole transport for an
 // agent-side consumer.
-export type { VisualRenderedModel, VisualServerFrame, VisualSessionSnapshot }
+export type {
+  VisualRenderedModel,
+  VisualServerFrame,
+  VisualSessionSnapshot,
+  VisualTranscriptRecord,
+}
 
 /**
  * Document name reported by diagnostics the server itself raises — a refused
@@ -71,11 +77,19 @@ export const VISUAL_SERVER_DOCUMENT = 'visual-session-server'
  * and the page can be neither framed nor used as a base for relative fetches.
  */
 export const VISUAL_BROWSER_HEADERS = {
-  'Content-Security-Policy': `default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'`,
   'Referrer-Policy': 'no-referrer',
   'X-Content-Type-Options': 'nosniff',
   'Cache-Control': 'no-store',
 } as const
+
+/**
+ * This session's content policy. Every source stays `'self'`; the one addition
+ * is a per-session nonce for inline style, because the diagram renderer injects
+ * its own stylesheets at runtime. A nonce admits exactly the styles this
+ * application emits, where `'unsafe-inline'` would admit anyone's.
+ */
+export const visualContentSecurityPolicy = (styleNonce: string) =>
+  `default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'nonce-${styleNonce}'; script-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'`
 
 export const VISUAL_SERVER_LIMITS = {
   /** WebSocket frame ceiling: one 64 KiB chat message plus its envelope. */
@@ -371,6 +385,12 @@ export const startVisualServer = async (
   const paths = session.paths
   const sessionId = basename(paths.root)
   const cookieSecret = drawHex(32)
+  // Not a credential: it authorises inline style for this page, nothing else.
+  const styleNonce = drawHex(16)
+  const browserHeaders = {
+    ...VISUAL_BROWSER_HEADERS,
+    'Content-Security-Policy': visualContentSecurityPolicy(styleNonce),
+  }
 
   // Past this point a session directory exists on disk; a failed start must not
   // leave one behind for the next run to prune.
@@ -419,6 +439,14 @@ export const startVisualServer = async (
   let inFlight: VisualEvent | undefined
   let lastSeenAt: string | undefined
   let pending: VisualEvent[] = []
+  /**
+   * What the browser has seen said, in order. It is derived from the same
+   * events and responses the journal takes, so a browser that reloads inside
+   * the grace is handed back the conversation it left rather than a blank one.
+   */
+  const transcript: VisualTranscriptRecord[] = []
+  /** Option labels the agent presented, so a selection restores as its label. */
+  const choiceLabels = new Map<string, Map<string, string>>()
   const connections = new Map<string, WebSocket>()
   const polls = new Set<PendingPoll>()
   const httpSockets = new Set<Socket>()
@@ -451,6 +479,50 @@ export const startVisualServer = async (
     frozen ??= reason
   }
 
+  /** A journaled browser event, as the line the reviewer sees. */
+  const recordEvent = (event: VisualEvent) => {
+    if (event.type === 'chat.message') {
+      transcript.push({
+        id: event.eventId,
+        speaker: 'reviewer',
+        text: event.payload.text,
+      })
+      return
+    }
+    if (event.type !== 'choice.selected') return
+    // The reviewer chose a label, not an identifier, so that is what the
+    // restored conversation says they chose.
+    const label = choiceLabels
+      .get(event.payload.choiceId)
+      ?.get(event.payload.optionId)
+    transcript.push({
+      id: event.eventId,
+      speaker: 'reviewer',
+      text: label ?? event.payload.optionId,
+    })
+  }
+
+  /** An accepted agent response, as the line the reviewer sees. */
+  const recordResponse = (response: VisualResponse) => {
+    if (response.type === 'choice.present') {
+      choiceLabels.set(
+        response.payload.choiceId,
+        new Map(
+          response.payload.options.map((option) => [option.id, option.label]),
+        ),
+      )
+      return
+    }
+    const text =
+      response.type === 'chat.response'
+        ? response.payload.text
+        : response.type === 'handoff.complete'
+          ? response.payload.summary
+          : undefined
+    if (text === undefined) return
+    transcript.push({ id: response.responseId, speaker: 'agent', text })
+  }
+
   const snapshot = (): VisualSessionSnapshot => ({
     protocolVersion: VISUAL_PROTOCOL_VERSION,
     sessionId,
@@ -461,6 +533,8 @@ export const startVisualServer = async (
     capabilities,
     webSocketUrl,
     model: rendered,
+    transcript: [...transcript],
+    styleNonce,
     lastSequence,
     frozen: frozen !== undefined,
   })
@@ -605,7 +679,7 @@ export const startVisualServer = async (
     contentType: string,
   ) => {
     server.writeHead(code, {
-      ...VISUAL_BROWSER_HEADERS,
+      ...browserHeaders,
       'Content-Type': contentType,
       'Content-Length': Buffer.byteLength(body),
       // A draining session must not leave a pooled connection behind that
@@ -738,6 +812,7 @@ export const startVisualServer = async (
       }
       lastSequence = appended.lastSequence
       transcriptBytes = appended.transcriptBytes
+      recordEvent(event)
       if (actionable) pending.push(event)
       // A journaled end is the last input this session takes. The agent still
       // has to see it, so the queue freezes rather than the socket closing.
@@ -942,6 +1017,7 @@ export const startVisualServer = async (
             },
           }
         }
+        recordResponse(response)
         broadcast({ kind: 'response', response })
         const replaced =
           response.type === 'model.replace'
@@ -1086,7 +1162,7 @@ export const startVisualServer = async (
     // and a leaked cookie cannot be pasted into an address bar.
     bootstrapSpent = true
     server.writeHead(303, {
-      ...VISUAL_BROWSER_HEADERS,
+      ...browserHeaders,
       Location: '/',
       'Set-Cookie': `${COOKIE_NAME}=${cookieSecret}; HttpOnly; SameSite=Strict; Path=/`,
       'Content-Length': 0,
