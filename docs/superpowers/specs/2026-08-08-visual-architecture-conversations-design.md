@@ -147,11 +147,11 @@ yarramate-visual stop <session-descriptor.json>
 
 All machine-readable output uses versioned JSON documents. Commands return non-zero with a versioned diagnostic result on failure.
 
-`start` runs in the foreground so the harness can own the process tree. It writes the session descriptor as its first JSON line, then serves until `stop` or a termination signal. The skill must launch it through the harness's managed long-running-process facility rather than relying on daemonization.
+`start` runs in the foreground so the harness can own the process tree. Its first JSON line is a public `yarramate/visual-session-started/v1` result containing the session ID, authenticated browser URL, private descriptor path, protocol version, and capabilities; it never contains the agent capability. The private `yarramate/visual-session-descriptor/v1` file is mode `0600` and contains the local agent credential used by the one-shot commands. After emitting the public result, `start` serves until `stop` or a termination signal. The skill must launch it through the harness's managed long-running-process facility rather than relying on daemonization.
 
 The `yarramate/visual-session-request/v1` input contains the authority mode (`canonical` or `ad-hoc`), title and description, initial complete model, chat-enabled flag, trusted LikeC4 compiler command vector, and source digests for canonical input. Browser URLs, session identifiers, capabilities, ports, and filesystem locations are runtime outputs and cannot be supplied by the browser.
 
-- `start` creates the permission-restricted temporary session, starts the foreground localhost server, and emits a session descriptor containing the session ID, authenticated URL, protocol version, and capability metadata.
+- `start` creates the permission-restricted temporary session, starts the foreground localhost server, emits the public started result, and writes the private session descriptor.
 - `wait` blocks until the next event after the supplied sequence or until a terminal/timeout condition.
 - `respond` publishes an agent message, status update, choice set, or complete rendered-model revision correlated to one browser event.
 - `status` reports server, browser, child-agent, queue, and lifecycle state without mutation.
