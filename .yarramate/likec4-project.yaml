@@ -24,6 +24,8 @@ views:
   # --- 2 · The agent contract -----------------------------------------
   - projection: projections/seven-verb-surface.yaml
     folder: "2 · Agent contract"
+  - projection: projections/visual-conversation-path.yaml
+    folder: "2 · Agent contract"
   # --- 3 · Engine internals -------------------------------------------
   - projection: projections/engine-components.yaml
     folder: "3 · Engine internals"

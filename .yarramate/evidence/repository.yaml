@@ -361,6 +361,10 @@ observations:
     result: confirmed
     evidence:
       uri: repo:src/reconciliation.ts
+  - subject: yarramate-engine#recover-visual-session
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/visual/session-store.ts
   - subject: yarramate-engine#relationship-policy-catalogue
     result: confirmed
     evidence:
@@ -369,6 +373,10 @@ observations:
     result: confirmed
     evidence:
       uri: repo:src/adapters/likec4-export.ts
+  - subject: yarramate-engine#render-visual-model
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/visual/likec4-compiler.ts
   - subject: yarramate-engine#requirements-traceability-matrix
     result: confirmed
     evidence:
@@ -409,6 +417,26 @@ observations:
     result: confirmed
     evidence:
       uri: repo:src/compiler.ts
+  - subject: yarramate-engine#visual-browser
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/App.tsx
+  - subject: yarramate-engine#visual-handoff
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-visual-handoff.schema.json
+  - subject: yarramate-engine#visual-runtime
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/visual/session-server.ts
+  - subject: yarramate-engine#visual-session-protocol
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/visual/protocol.ts
+  - subject: yarramate-engine#visual-session-service
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/visual-cli.ts
   - subject: yarramate-engine#workspace-loader
     result: confirmed
     evidence:
@@ -665,6 +693,74 @@ observations:
     result: confirmed
     evidence:
       uri: repo:schema/yarramate-state-comparison.schema.json
+  - subject: yarramate-repository#visual-browser-shell
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/index.html
+  - subject: yarramate-repository#visual-browser-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/App.tsx
+  - subject: yarramate-repository#visual-browser-tests
+    result: confirmed
+    evidence:
+      uri: repo:test/visual-app-state.test.ts
+  - subject: yarramate-repository#visual-cli-source
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/visual-cli.ts
+  - subject: yarramate-repository#visual-cli-tests
+    result: confirmed
+    evidence:
+      uri: repo:test/visual-cli.test.ts
+  - subject: yarramate-repository#visual-event-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-visual-event.schema.json
+  - subject: yarramate-repository#visual-handoff-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-visual-handoff.schema.json
+  - subject: yarramate-repository#visual-journey-tests
+    result: confirmed
+    evidence:
+      uri: repo:test/visual-journey.test.ts
+  - subject: yarramate-repository#visual-likec4-compiler-source
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/visual/likec4-compiler.ts
+  - subject: yarramate-repository#visual-likec4-compiler-tests
+    result: confirmed
+    evidence:
+      uri: repo:test/visual-likec4-compiler.test.ts
+  - subject: yarramate-repository#visual-protocol-source
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/visual/protocol.ts
+  - subject: yarramate-repository#visual-protocol-tests
+    result: confirmed
+    evidence:
+      uri: repo:test/visual-protocol.test.ts
+  - subject: yarramate-repository#visual-session-server-source
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/visual/session-server.ts
+  - subject: yarramate-repository#visual-session-server-tests
+    result: confirmed
+    evidence:
+      uri: repo:test/visual-session-server.test.ts
+  - subject: yarramate-repository#visual-session-store-source
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/visual/session-store.ts
+  - subject: yarramate-repository#visual-session-store-tests
+    result: confirmed
+    evidence:
+      uri: repo:test/visual-session-store.test.ts
+  - subject: yarramate-repository#visual-skill-reference
+    result: confirmed
+    evidence:
+      uri: repo:skills/yarramate-architecture/references/visual-conversations.md
   - subject: yarramate-repository#workspace-schema-source
     result: confirmed
     evidence:
