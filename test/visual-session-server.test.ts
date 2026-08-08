@@ -18,7 +18,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { WebSocket } from 'ws'
 import {
   VISUAL_LIMITS,
+  parseVisualDiagnosticResult,
   parseVisualSessionDescriptor,
+  type VisualDiagnostic,
   type VisualEvent,
   type VisualModel,
   type VisualResponse,
@@ -1340,6 +1342,102 @@ describe('startVisualServer shutdown and admission races', () => {
     })
     await expect(stat(server.started.sessionRoot)).rejects.toThrow()
     expect(await rejections.settled()).toEqual([])
+  })
+})
+
+describe('startVisualServer diagnostic conformance', () => {
+  /**
+   * Every diagnostic the runtime publishes is read back by the one-shot agent
+   * clients inside a `visual-diagnostic-result/v1` document, so each refusal
+   * surface has to emit diagnostics that document already accepts — including
+   * the RFC 6901 pointers it requires.
+   */
+  const publishable = (diagnostics: unknown): readonly VisualDiagnostic[] => {
+    const parsed = parseVisualDiagnosticResult({
+      format: 'yarramate/visual-diagnostic-result/v1',
+      diagnostics,
+    })
+    if (!parsed.ok) {
+      throw new Error(
+        `diagnostics are not publishable: ${JSON.stringify(diagnostics)} (${parsed.diagnostics[0]?.message})`,
+      )
+    }
+    return parsed.value.diagnostics
+  }
+
+  const diagnosticsOf = (document: unknown): unknown => {
+    if (
+      typeof document === 'object' &&
+      document !== null &&
+      'diagnostics' in document
+    ) {
+      return document.diagnostics
+    }
+    throw new Error(`answer carries no diagnostics: ${JSON.stringify(document)}`)
+  }
+
+  it('publishes a schema refusal as a diagnostic result', async () => {
+    const server = await start()
+    const capability = await capabilityOf(server)
+    const empty: VisualResponse = {
+      format: 'yarramate/visual-response/v1',
+      sessionId: server.started.sessionId,
+      responseId: identifier(1),
+      eventId: identifier(9),
+      type: 'chat.response',
+      timestamp: '2026-08-08T00:00:02.000Z',
+      // Empty text violates the schema's minLength, which no type can catch.
+      payload: { text: '' },
+    }
+    const response = await postResponse(server, capability, empty)
+    expect(response.status).toBe(400)
+    expect(
+      publishable(diagnosticsOf(await response.json())).length,
+    ).toBeGreaterThan(0)
+  })
+
+  it('publishes a foreign-session refusal as a diagnostic result', async () => {
+    const server = await start()
+    const capability = await capabilityOf(server)
+    const response = await postResponse(server, capability, {
+      ...chatResponse(server, identifier(9), 1),
+      sessionId: identifier(7),
+    })
+    expect(response.status).toBe(409)
+    const diagnostics = publishable(diagnosticsOf(await response.json()))
+    expect(diagnostics[0]).toMatchObject({
+      code: 'YMVS126',
+      pointer: '/sessionId',
+    })
+  })
+
+  it('publishes a rejected browser frame as a diagnostic result', async () => {
+    const server = await start()
+    const { cookie } = await bootstrap(server)
+    const socket = await openBrowserSocket(server, cookie)
+    const rejected = nextFrame(socket, 'rejected')
+    socket.send(JSON.stringify({ type: 'chat.message', payload: {} }))
+    expect(publishable((await rejected).diagnostics).length).toBeGreaterThan(0)
+    socket.close()
+  })
+
+  it('publishes a frozen-queue refusal as a diagnostic result', async () => {
+    const server = await start()
+    const { cookie } = await bootstrap(server)
+    const socket = await openBrowserSocket(server, cookie)
+    for (let sent = 0; sent < VISUAL_LIMITS.pendingEvents; sent += 1) {
+      await sendChat(socket, `message ${sent}`)
+    }
+    const rejected = nextFrame(socket, 'rejected')
+    socket.send(
+      JSON.stringify({ type: 'chat.message', payload: { text: 'one more' } }),
+    )
+    const diagnostics = publishable((await rejected).diagnostics)
+    expect(diagnostics[0]).toMatchObject({
+      code: 'YMVS305',
+      pointer: '/sequence',
+    })
+    socket.close()
   })
 })
 
