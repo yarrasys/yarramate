@@ -98,6 +98,8 @@ const line = (value: unknown) => `${JSON.stringify(value)}\n`
 let baseDir = ''
 let workDir = ''
 const running: VisualServerHandle[] = []
+/** Browser sockets a test opened, closed once the session behind them is gone. */
+const attached: WebSocket[] = []
 
 const startServer = async (overrides: Partial<VisualServerOptions> = {}) => {
   const handle = await startVisualServer({
@@ -167,6 +169,10 @@ const nextFrame = async <Kind extends VisualServerFrame['kind']>(
  * Drives one real browser input into a session: bootstrap for the cookie,
  * upgrade, send, and wait for the runtime's acknowledgement, so the event is
  * journaled before the CLI is asked for it.
+ *
+ * The socket is left open and closed by the teardown. A session journals a
+ * browser going away, so closing it here would leave every sequence the CLI
+ * then reads racing an append nothing in the test is waiting on.
  */
 const sendBrowserEvent = async (
   started: VisualSessionStarted,
@@ -187,11 +193,10 @@ const sendBrowserEvent = async (
     frames.push(JSON.parse(String(data)) as VisualServerFrame)
   })
   await once(socket, 'open')
+  attached.push(socket)
   const accepted = nextFrame(socket, 'accepted')
   socket.send(JSON.stringify(input))
-  const acknowledged = await accepted
-  socket.close()
-  return acknowledged
+  return accepted
 }
 
 const agentPost = (
@@ -345,6 +350,7 @@ beforeEach(async () => {
 })
 
 afterEach(async () => {
+  for (const socket of attached.splice(0)) socket.close()
   for (const handle of running.splice(0)) {
     await handle.stop('main-cancelled')
   }
@@ -531,7 +537,8 @@ describe('wait', () => {
       format: 'yarramate/visual-event/v1',
       sessionId: handle.started.sessionId,
       type: 'chat.message',
-      sequence: 1,
+      // Sequence 1 is the arrival the runtime journaled for this browser.
+      sequence: 2,
       eventId: acknowledged.eventId,
       payload: { text: chatEventInput.payload.text },
     })
@@ -547,7 +554,7 @@ describe('wait', () => {
       ['wait', handle.started.descriptorPath],
       workDir,
     )
-    expect(JSON.parse(result.stdout)).toMatchObject({ sequence: 1 })
+    expect(JSON.parse(result.stdout)).toMatchObject({ sequence: 2 })
   })
 
   it('reports nothing when the poll window closes idle', async () => {
@@ -565,7 +572,7 @@ describe('wait', () => {
     await sendBrowserEvent(handle.started, chatEventInput)
     await expect(
       runVisualClientCli(
-        ['wait', handle.started.descriptorPath, '--after', '1'],
+        ['wait', handle.started.descriptorPath, '--after', '2'],
         workDir,
       ),
     ).resolves.toEqual({ exitCode: 0, stdout: '', stderr: '' })
@@ -628,7 +635,7 @@ describe('respond', () => {
     expect(JSON.parse(result.stdout)).toMatchObject({
       accepted: true,
       duplicate: false,
-      lastSequence: 1,
+      lastSequence: 2,
     })
     expect(
       await readFile(join(handle.started.sessionRoot, 'journal.jsonl'), 'utf8'),
@@ -762,7 +769,7 @@ describe('status', () => {
       lifecycle: 'running',
       alreadyStopped: false,
       server: { listening: true, origin: handle.started.origin },
-      queue: { pendingEvents: 1, lastSequence: 1, frozen: false },
+      queue: { pendingEvents: 1, lastSequence: 2, frozen: false },
     })
   })
 
@@ -877,9 +884,9 @@ describe('stop', () => {
     expect(JSON.parse(result.stdout)).toMatchObject({
       format: 'yarramate/visual-handoff/v1',
       sessionId: handle.started.sessionId,
-      // The runtime's own terminal event, past the chat message, and the cause
-      // this stop closed the session under.
-      lastSequence: 2,
+      // The runtime's own terminal event, past the arrival and the chat
+      // message, and the cause this stop closed the session under.
+      lastSequence: 3,
       terminationReason: 'main-cancelled',
     })
     // Recovered before cleanup: the summary above came out of a journal the
@@ -1197,7 +1204,7 @@ describe('runVisualStart', () => {
     )
     expect(JSON.parse(waited.stdout)).toMatchObject({
       type: 'chat.message',
-      sequence: 1,
+      sequence: 2,
     })
 
     foreground.signals.emit('SIGTERM')

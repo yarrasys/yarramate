@@ -509,7 +509,8 @@ describe('the complete visual conversation', () => {
     const browser = await connectFixtureBrowser(visual)
 
     send(browser, sessionEnd())
-    const ending = await waitForVisualEvent(visual.descriptorPath, 0)
+    // Sequence 1 is the arrival the runtime journaled for this browser.
+    const ending = await waitForVisualEvent(visual.descriptorPath, 1)
     await sendVisualResponse(
       visual.descriptorPath,
       completeHandoff(ending, {
@@ -552,6 +553,7 @@ describe('the complete visual conversation', () => {
     // The runtime's own terminal record is in the transcript it hands over,
     // and the transcript is the last thing read before the directory goes.
     expect(handoff?.transcript?.map((record) => record.type)).toEqual([
+      'browser.connected',
       'chat.message',
       'session.end',
     ])
@@ -640,8 +642,10 @@ describe('the visual recovery matrix', () => {
 
     // Nothing terminal was journaled, so the reviewer can still speak.
     send(second, chatMessage('still here'))
+    // Two arrivals and the departure between them are journaled ahead of it,
+    // so the reviewer's first message is the fourth record either way.
     await expect(nextFrame(second, 'accepted')).resolves.toMatchObject({
-      sequence: 1,
+      sequence: 4,
     })
     expect(visual.handle.status().lifecycle).toBe('running')
     await closeSocket(second)
@@ -945,7 +949,8 @@ describe('the visual recovery matrix', () => {
         .map((record) => record.eventId)
     const inOne = await identifiersOf(one.sessionRoot)
     const inOther = await identifiersOf(other.sessionRoot)
-    expect(inOne).toHaveLength(1)
+    // Every identifier is this session's alone, so the two journals share none.
+    expect(inOne.length).toBeGreaterThan(0)
     expect(inOne.filter((id) => inOther.includes(id))).toEqual([])
 
     // An event identifier is one session's alone: presenting the other's, under
@@ -1004,7 +1009,8 @@ describe('the visual recovery matrix', () => {
 
     // Navigation is the capability a diagram-only session does grant.
     send(browser, viewNavigate('choices'))
-    expect(await nextFrame(browser, 'accepted')).toMatchObject({ sequence: 1 })
+    // Sequence 1 is this browser's arrival, so its first move is the second.
+    expect(await nextFrame(browser, 'accepted')).toMatchObject({ sequence: 2 })
 
     // The agent cannot speak into a session that has no conversation either.
     const refused = await agentFetch(
@@ -1026,8 +1032,11 @@ describe('the visual recovery matrix', () => {
     })
 
     const journal = await journalRecords(visual.sessionRoot)
-    expect(journal).toHaveLength(1)
-    expect(journal[0]).toMatchObject({ type: 'view.navigate' })
+    // The arrival, and the one move the session granted: nothing it refused.
+    expect(journal.map((record) => record.type)).toEqual([
+      'browser.connected',
+      'view.navigate',
+    ])
     await closeSocket(browser)
   })
 })

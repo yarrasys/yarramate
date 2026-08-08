@@ -318,6 +318,58 @@ const journalOf = async (handle: VisualServerHandle) =>
     .filter((line) => line.length > 0)
     .map((line) => JSON.parse(line) as VisualEvent | VisualResponse)
 
+/** One event-loop turn, so an observed in-process condition can be re-read. */
+const tick = async () => {
+  const turn = Promise.withResolvers<void>()
+  setImmediate(turn.resolve)
+  await turn.promise
+}
+
+/**
+ * Resolves once the session has admitted an agent request. Authenticating the
+ * capability and registering the long poll are one synchronous step, so an
+ * attached agent is exactly a poll the server is already holding: an observed
+ * condition in this process rather than a guessed delay, and nothing the
+ * runtime carries for the test.
+ */
+const waitForAttachedAgent = async (handle: VisualServerHandle) => {
+  while (!handle.status().agent.attached) await tick()
+}
+
+/**
+ * Resolves once the session has journaled up to `sequence`. The runtime moves
+ * its own queue cursor as each append lands, so this observes the server that
+ * did the writing rather than racing a watch on the file it wrote.
+ */
+const waitForSequence = async (
+  handle: VisualServerHandle,
+  sequence: number,
+) => {
+  while (handle.status().queue.lastSequence < sequence) await tick()
+}
+
+/**
+ * Rejections raised by fire-and-forget socket work never reach a test's
+ * `await`, so they are collected from the process the way Node would see
+ * them: an empty list is the assertion that nothing crashed the runtime.
+ */
+const collectRejections = () => {
+  const seen: unknown[] = []
+  const observe = (reason: unknown) => seen.push(reason)
+  process.on('unhandledRejection', observe)
+  return {
+    seen,
+    settled: async () => {
+      // A rejection is reported a macrotask after it is raised, so give the
+      // loop two turns before deciding nothing was left unobserved.
+      await tick()
+      await tick()
+      process.off('unhandledRejection', observe)
+      return seen
+    },
+  }
+}
+
 /** Raw request/response text, so Host and unnormalised paths stay verbatim. */
 const rawRequest = (origin: string, lines: readonly string[]) =>
   new Promise<string>((resolve, reject) => {
@@ -363,8 +415,9 @@ describe('startVisualServer bootstrap and browser authentication', () => {
     )
     socket.send(JSON.stringify(chatEventInput))
     await expect(
-      waitForVisualEvent(server.started.descriptorPath, 0),
-    ).resolves.toMatchObject({ type: 'chat.message', sequence: 1 })
+      // Sequence 1 is the connection the runtime journaled for this socket.
+      waitForVisualEvent(server.started.descriptorPath, 1),
+    ).resolves.toMatchObject({ type: 'chat.message', sequence: 2 })
     socket.close()
   })
 
@@ -478,6 +531,9 @@ describe('startVisualServer bootstrap and browser authentication', () => {
       chatResponse(server, asked.eventId, 3, 'It reuses the intake path.'),
     )
     socket.close()
+    // The reload is read after the socket it replaces is journaled as gone, so
+    // the sequence the snapshot reports is settled rather than raced.
+    await waitForSequence(server, 3)
 
     const session = (await (
       await fetch(`${server.started.origin}/api/session`, {
@@ -500,7 +556,7 @@ describe('startVisualServer bootstrap and browser authentication', () => {
         text: 'It reuses the intake path.',
       },
     ])
-    expect(session.lastSequence).toBe(1)
+    expect(session.lastSequence).toBe(3)
   })
 
   it('tells a reconnecting browser whether the agent still owes an answer', async () => {
@@ -906,7 +962,7 @@ describe('startVisualServer event queue and long polling', () => {
     expect(body.waiting).toBe(false)
     expect(body.event).toMatchObject({
       type: 'chat.message',
-      sequence: 1,
+      sequence: 2,
       sessionId: server.started.sessionId,
       payload: { text: 'Compare the two delivery designs' },
     })
@@ -942,9 +998,9 @@ describe('startVisualServer event queue and long polling', () => {
     const first = (await (
       await agentFetch(server, capability, '/api/agent/events?after=0')
     ).json()) as { readonly event: VisualEvent }
-    expect(first.event.sequence).toBe(1)
+    expect(first.event.sequence).toBe(2)
     await expect(
-      (await agentFetch(server, capability, '/api/agent/events?after=1')).json(),
+      (await agentFetch(server, capability, '/api/agent/events?after=2')).json(),
     ).resolves.toMatchObject({ waiting: true })
     expect(server.status().queue.pendingEvents).toBe(2)
     socket.close()
@@ -969,10 +1025,10 @@ describe('startVisualServer event queue and long polling', () => {
     expect(answered.status).toBe(200)
 
     const second = (await (
-      await agentFetch(server, capability, '/api/agent/events?after=1')
+      await agentFetch(server, capability, '/api/agent/events?after=2')
     ).json()) as { readonly waiting: boolean; readonly event: VisualEvent }
     expect(second.waiting).toBe(false)
-    expect(second.event.sequence).toBe(2)
+    expect(second.event.sequence).toBe(3)
     expect(second.event.payload).toEqual({ text: 'second' })
     socket.close()
   })
@@ -994,7 +1050,7 @@ describe('startVisualServer event queue and long polling', () => {
 
     await expect(
       (await agentFetch(server, capability, '/api/agent/events?after=0')).json(),
-    ).resolves.toMatchObject({ waiting: true, lastSequence: 1 })
+    ).resolves.toMatchObject({ waiting: true, lastSequence: 2 })
     const journal = await journalOf(server)
     expect(journal.at(-1)).toMatchObject({ type: 'view.navigate' })
     socket.close()
@@ -1043,7 +1099,7 @@ describe('startVisualServer event queue and long polling', () => {
 
     expect(server.status().queue).toMatchObject({
       pendingEvents: VISUAL_LIMITS.pendingEvents,
-      lastSequence: VISUAL_LIMITS.pendingEvents,
+      lastSequence: VISUAL_LIMITS.pendingEvents + 1,
       frozen: true,
       frozenReason: 'pending-events',
     })
@@ -1108,6 +1164,8 @@ describe('startVisualServer event queue and long polling', () => {
     const server = await start()
     const { cookie } = await bootstrap(server)
     const socket = await openBrowserSocket(server, cookie)
+    // The connection is journaled before the frame that forges one arrives.
+    await nextFrame(socket, 'ready')
     const rejected = nextFrame(socket, 'rejected')
     socket.send(
       JSON.stringify({
@@ -1116,6 +1174,11 @@ describe('startVisualServer event queue and long polling', () => {
       }),
     )
     expect((await rejected).diagnostics[0]?.code).toBe('YMVS109')
+    // The one connection record this session has is the one the runtime wrote.
+    expect(await journalOf(server)).toMatchObject([
+      { type: 'browser.connected' },
+    ])
+    expect(server.status().queue.lastSequence).toBe(1)
     socket.close()
   })
 
@@ -1123,15 +1186,17 @@ describe('startVisualServer event queue and long polling', () => {
     let narrow = 0
     let wide = 0
     const server = await start({
-      // 16-byte draws mint the session id first and every event id after it;
-      // freezing those after the session id forces an identifier collision.
+      // 16-byte draws mint the session id, the style nonce, the connection id,
+      // the record the runtime writes for that connection, and then every
+      // browser event id; pinning the draws from the first browser event
+      // forces an identifier collision.
       randomBytes: (size: number) => {
         if (size !== 16) {
           wide += 1
           return Buffer.alloc(size, wide)
         }
         narrow += 1
-        return Buffer.alloc(16, narrow === 1 ? 0xa1 : 0xb2)
+        return Buffer.alloc(16, Math.min(narrow, 5))
       },
     })
     const { cookie } = await bootstrap(server)
@@ -1167,8 +1232,10 @@ describe('startVisualServer event queue and long polling', () => {
       }),
     )
     expect((await rejected).diagnostics[0]?.code).toBe('YMVS308')
-    expect(await journalOf(server)).toHaveLength(0)
-    expect(server.status().queue.lastSequence).toBe(0)
+    expect(await journalOf(server)).toMatchObject([
+      { type: 'browser.connected' },
+    ])
+    expect(server.status().queue.lastSequence).toBe(1)
     socket.close()
   })
 
@@ -1176,7 +1243,7 @@ describe('startVisualServer event queue and long polling', () => {
     const server = await start()
     const { cookie } = await bootstrap(server)
     const socket = await openBrowserSocket(server, cookie)
-    expect((await sendChat(socket, 'first')).sequence).toBe(1)
+    expect((await sendChat(socket, 'first')).sequence).toBe(2)
 
     // The browser is a sequence behind, which is what a reconnect mid-turn
     // looks like; admission still owns the sequence it assigns.
@@ -1188,9 +1255,157 @@ describe('startVisualServer event queue and long polling', () => {
         payload: { text: 'second' },
       }),
     )
-    expect((await accepted).sequence).toBe(2)
+    expect((await accepted).sequence).toBe(3)
     socket.close()
   })
+})
+
+describe('startVisualServer limit failures', () => {
+  /**
+   * A limit the runtime detects for itself is a runtime that can no longer
+   * carry the conversation, so it takes the same terminal transition every
+   * other cause takes: once, under a reason that is true of it, with every
+   * record the session already accepted left standing.
+   */
+  const terminals = (records: readonly (VisualEvent | VisualResponse)[]) =>
+    records.filter(
+      (record) =>
+        record.format === 'yarramate/visual-event/v1' &&
+        record.type === 'session.end',
+    )
+
+  it('ends a session whose queue reached the pending bound', async () => {
+    const server = await start()
+    const { cookie } = await bootstrap(server)
+    const socket = await openBrowserSocket(server, cookie)
+    const rejections = collectRejections()
+    await nextFrame(socket, 'ready')
+    for (let sent = 0; sent < VISUAL_LIMITS.pendingEvents; sent += 1) {
+      await sendChat(socket, `message ${sent}`)
+    }
+    const rejected = nextFrame(socket, 'rejected')
+    socket.send(
+      JSON.stringify({
+        type: 'chat.message',
+        lastAcknowledgedSequence: 0,
+        payload: { text: 'one more' },
+      }),
+    )
+    expect(await rejected).toMatchObject({ frozen: 'pending-events' })
+
+    // Sequence 1 is the connection, so the bound is reached at 1 + 32 and the
+    // terminal record is the one past it.
+    const terminal = await waitForVisualEvent(
+      server.started.descriptorPath,
+      VISUAL_LIMITS.pendingEvents + 1,
+    )
+    expect(terminal).toMatchObject({
+      type: 'session.end',
+      sequence: VISUAL_LIMITS.pendingEvents + 2,
+      payload: { reason: 'server-failed' },
+    })
+    const journal = await journalOf(server)
+    // Nothing the session had already accepted was lost to the failure, and
+    // the transition ran exactly once.
+    expect(
+      journal.filter((record) => record.type === 'chat.message'),
+    ).toHaveLength(VISUAL_LIMITS.pendingEvents)
+    expect(terminals(journal)).toHaveLength(1)
+
+    const closed = await server.stop('server-failed')
+    expect(closed.handoff).toMatchObject({
+      decision: 'failed',
+      terminationReason: 'server-failed',
+      lastSequence: VISUAL_LIMITS.pendingEvents + 2,
+    })
+    expect(await rejections.settled()).toEqual([])
+  })
+
+  it('unblocks a waiting agent when a browser frame passes the transport ceiling', async () => {
+    // Long enough that a poll the failure never settles cannot pass by timing
+    // out on its own.
+    const server = await start({ agentPollMs: 60_000 })
+    const capability = await capabilityOf(server)
+    const { cookie } = await bootstrap(server)
+    const socket = await openBrowserSocket(server, cookie)
+    const rejections = collectRejections()
+    await nextFrame(socket, 'ready')
+    const polled = agentFetch(server, capability, '/api/agent/events?after=0')
+    await waitForAttachedAgent(server)
+
+    socket.send(
+      JSON.stringify({
+        type: 'chat.message',
+        lastAcknowledgedSequence: 0,
+        payload: { text: 'x'.repeat(VISUAL_SERVER_LIMITS.browserFrameBytes) },
+      }),
+    )
+    const [code] = (await once(socket, 'close')) as [number]
+    expect(code).toBe(1009)
+
+    // The child is not left holding a turn on a session that can no longer
+    // answer it.
+    await expect((await polled).json()).resolves.toMatchObject({
+      waiting: true,
+    })
+    const terminal = await waitForVisualEvent(server.started.descriptorPath, 1)
+    expect(terminal).toMatchObject({
+      type: 'session.end',
+      sequence: 2,
+      payload: { reason: 'server-failed' },
+    })
+    expect(server.status().queue.frozenReason).toBe('message-bytes')
+    // The socket the ceiling closed is shutdown, not conversation.
+    expect(
+      (await journalOf(server)).filter(
+        (record) => record.type === 'browser.disconnected',
+      ),
+    ).toHaveLength(0)
+    expect(await rejections.settled()).toEqual([])
+  })
+
+  it('ends a session whose journal refuses another response', async () => {
+    const server = await start()
+    const capability = await capabilityOf(server)
+    const { cookie } = await bootstrap(server)
+    const socket = await openBrowserSocket(server, cookie)
+    const rejections = collectRejections()
+    const asked = await sendChat(socket, 'fill the journal')
+
+    // Responses are the only record a session can grow without bound: the
+    // pending queue stops the browser long before 5 MiB of chat.
+    const filler = 'x'.repeat(VISUAL_LIMITS.messageBytes)
+    let refused: Response | undefined
+    for (let index = 0; refused === undefined && index < 128; index += 1) {
+      const posted = await postResponse(
+        server,
+        capability,
+        chatResponse(server, asked.eventId, 1000 + index, filler),
+      )
+      if (posted.status === 200) await posted.json()
+      else refused = posted
+    }
+    expect(refused?.status).toBe(409)
+    await expect(refused?.json()).resolves.toMatchObject({
+      accepted: false,
+      diagnostics: [{ code: 'YMVS122' }],
+    })
+
+    const terminal = await waitForVisualEvent(server.started.descriptorPath, 2)
+    expect(terminal).toMatchObject({
+      type: 'session.end',
+      sequence: 3,
+      payload: { reason: 'server-failed' },
+    })
+    expect(server.status().queue.frozenReason).toBe('transcript-bytes')
+    const closed = await server.stop('server-failed')
+    expect(closed.handoff).toMatchObject({
+      decision: 'failed',
+      terminationReason: 'server-failed',
+    })
+    expect(await rejections.settled()).toEqual([])
+    socket.close()
+  }, 120_000)
 })
 
 describe('startVisualServer agent responses', () => {
@@ -1322,7 +1537,8 @@ describe('startVisualServer agent responses', () => {
       accepted: false,
       diagnostics: [{ code: 'YMVS131', pointer: '/eventId' }],
     })
-    expect(await journalOf(server)).toHaveLength(1)
+    // The connection this browser opened, and the one message it sent.
+    expect(await journalOf(server)).toHaveLength(2)
     socket.close()
   })
 
@@ -1420,7 +1636,7 @@ describe('startVisualServer agent responses', () => {
     expect(server.status().agent.inFlightEventId).toBe(null)
     await sendChat(socket, 'try the other one')
     const next = (await (
-      await agentFetch(server, capability, '/api/agent/events?after=1')
+      await agentFetch(server, capability, '/api/agent/events?after=2')
     ).json()) as { readonly waiting: boolean; readonly event: VisualEvent }
     expect(next.waiting).toBe(false)
     expect(next.event.payload).toEqual({ text: 'try the other one' })
@@ -1600,15 +1816,14 @@ describe('startVisualServer lifecycle', () => {
   })
 
   it('settles a waiting long poll when the session stops', async () => {
-    const server = await start()
+    // Long enough that a poll the stop never settles cannot pass by timing out.
+    const server = await start({ agentPollMs: 60_000 })
     const capability = await capabilityOf(server)
     const polled = agentFetch(server, capability, '/api/agent/events?after=0')
-    // A real long poll has to reach the server before the stop does, and the
-    // request is in undici's hands until then: there is no in-process signal to
-    // await, and a fake clock cannot move a socket.
-    const onTheWire = Promise.withResolvers<void>()
-    setTimeout(onTheWire.resolve, 20)
-    await onTheWire.promise
+    // The poll has to be registered before the stop reaches it. Authenticating
+    // the capability and adding the poll are one synchronous step, so an
+    // attached agent is that registration, observed in this process.
+    await waitForAttachedAgent(server)
     await server.stop('main-cancelled')
     await expect((await polled).json()).resolves.toMatchObject({
       waiting: true,
@@ -1626,56 +1841,95 @@ describe('startVisualServer lifecycle', () => {
     await ended
   })
 
-  it('reports browser attachment without spending a sequence number', async () => {
+  it('journals the browser connection the runtime admitted', async () => {
     const server = await start()
     const { cookie } = await bootstrap(server)
     const socket = await openBrowserSocket(server, cookie)
     const ready = await nextFrame(socket, 'ready')
-    expect(ready.snapshot.lastSequence).toBe(0)
+    // The record is journaled before the snapshot is handed over, so the
+    // sequence the browser starts from already counts its own arrival.
+    expect(ready.snapshot.lastSequence).toBe(1)
     expect(server.status().browser).toMatchObject({
       connected: true,
       connections: 1,
     })
+    const opened = await journalOf(server)
+    const connected = opened[0]
+    if (
+      connected?.format !== 'yarramate/visual-event/v1' ||
+      connected.type !== 'browser.connected'
+    ) {
+      throw new Error('the session journaled no browser connection')
+    }
+    expect(connected).toMatchObject({
+      sessionId: server.started.sessionId,
+      sequence: 1,
+    })
+    // Every field the browser is not allowed to choose was minted here.
+    expect(connected.eventId).toMatch(/^[0-9a-f]{32}$/)
+    expect(connected.timestamp).toMatch(
+      /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z$/,
+    )
 
     socket.close(1000)
     await once(socket, 'close')
-    // Connection churn is transport state, not conversation: the first
-    // journaled event is still the browser's first message.
-    expect(await journalOf(server)).toHaveLength(0)
+    await waitForSequence(server, 2)
+
+    const journal = await journalOf(server)
+    expect(journal).toHaveLength(2)
+    // One connection, one identifier: the pair names the same socket, and the
+    // close code the transport reported is the one the record carries.
+    expect(journal[1]).toMatchObject({
+      format: 'yarramate/visual-event/v1',
+      type: 'browser.disconnected',
+      sequence: 2,
+      payload: { connectionId: connected.payload.connectionId, code: 1000 },
+    })
     const idle = server.status()
     expect(idle.browser).toMatchObject({ connected: false, connections: 0 })
     expect(idle.browser.graceExpiresAt).toMatch(
       /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z$/,
     )
   })
+
+  it('never opens an agent turn for a browser lifecycle record', async () => {
+    const server = await start({ agentPollMs: 60 })
+    const capability = await capabilityOf(server)
+    const { cookie } = await bootstrap(server)
+    const socket = await openBrowserSocket(server, cookie)
+    await nextFrame(socket, 'ready')
+    socket.close(1000)
+    await once(socket, 'close')
+    await waitForSequence(server, 2)
+
+    await expect(
+      (await agentFetch(server, capability, '/api/agent/events?after=0')).json(),
+    ).resolves.toEqual({ waiting: true, lastSequence: 2, pendingEvents: 0 })
+    expect(server.status()).toMatchObject({
+      agent: { attached: true, inFlightEventId: null },
+      queue: { pendingEvents: 0, lastSequence: 2, frozen: false },
+    })
+  })
+
+  it('journals no disconnection for a socket the shutdown closed', async () => {
+    const server = await start({ includeTranscript: true })
+    const { cookie } = await bootstrap(server)
+    const socket = await openBrowserSocket(server, cookie)
+    await nextFrame(socket, 'ready')
+    const ended = once(socket, 'close')
+
+    const closed = await server.stop('user-ended')
+    await ended
+
+    // The transcript recovery read is the whole record: one arrival, then the
+    // record that closed the session, and no shutdown noise behind it.
+    expect(
+      (closed.handoff?.transcript ?? []).map((record) => record.type),
+    ).toEqual(['browser.connected', 'session.end'])
+  })
 })
 
 describe('startVisualServer shutdown and admission races', () => {
-  /**
-   * Rejections raised by fire-and-forget socket work never reach a test's
-   * `await`, so they are collected from the process the way Node would see
-   * them: an empty list is the assertion that nothing crashed the runtime.
-   */
-  const collectRejections = () => {
-    const seen: unknown[] = []
-    const observe = (reason: unknown) => seen.push(reason)
-    process.on('unhandledRejection', observe)
-    return {
-      seen,
-      settled: async () => {
-        // A rejection is reported a macrotask after it is raised, so give the
-        // loop two turns before deciding nothing was left unobserved.
-        for (let turn = 0; turn < 2; turn += 1) {
-          const tick = Promise.withResolvers<void>()
-          setImmediate(tick.resolve)
-          await tick.promise
-        }
-        process.off('unhandledRejection', observe)
-        return seen
-      },
-    }
-  }
-
   it('never journals a browser frame that raced the stop it lost', async () => {
     const server = await start({ includeTranscript: true })
     const { cookie } = await bootstrap(server)
@@ -1725,13 +1979,14 @@ describe('startVisualServer shutdown and admission races', () => {
   it('tells the browser when admitting its frame fails', async () => {
     let narrow = 0
     const server = await start({
-      // 16-byte draws mint the session id, the style nonce, then the
-      // connection id, then event identifiers; failing from the first event id
-      // makes admission throw inside the socket's own fire-and-forget handler.
+      // 16-byte draws mint the session id, the style nonce, the connection id,
+      // the record the runtime writes for that connection, then browser event
+      // identifiers; failing from the first of those makes admission throw
+      // inside the socket's own fire-and-forget handler.
       randomBytes: (size: number) => {
         if (size !== 16) return randomBytes(size)
         narrow += 1
-        if (narrow >= 4) throw new Error('random source unavailable')
+        if (narrow >= 5) throw new Error('random source unavailable')
         return randomBytes(16)
       },
     })
@@ -1749,7 +2004,10 @@ describe('startVisualServer shutdown and admission races', () => {
     )
 
     expect((await rejected).diagnostics[0]?.code).toBe('YMVS307')
-    expect(await journalOf(server)).toHaveLength(0)
+    // Nothing but the connection the runtime journaled for itself.
+    expect(await journalOf(server)).toMatchObject([
+      { type: 'browser.connected' },
+    ])
     // The session survives a failed admission and still answers.
     expect(server.status().lifecycle).toBe('running')
     expect(await rejections.settled()).toEqual([])
