@@ -1,0 +1,217 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yarramate.org/schema/visual-event/v1",
+  "title": "YarraMate visual session event",
+  "description": "One journaled browser or runtime event. Sequence, identifiers, and timestamps are runtime outputs; the browser supplies only the untrusted input in $defs/browserInput.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "sessionId",
+    "sequence",
+    "eventId",
+    "type",
+    "timestamp",
+    "payload"
+  ],
+  "properties": {
+    "format": {
+      "const": "yarramate/visual-event/v1"
+    },
+    "sessionId": {
+      "$ref": "#/$defs/identifier"
+    },
+    "sequence": {
+      "$ref": "#/$defs/sequence"
+    },
+    "eventId": {
+      "$ref": "#/$defs/identifier"
+    },
+    "type": {
+      "enum": [
+        "chat.message",
+        "choice.selected",
+        "view.navigate",
+        "session.end",
+        "browser.connected",
+        "browser.disconnected"
+      ]
+    },
+    "timestamp": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "payload": {
+      "type": "object"
+    }
+  },
+  "oneOf": [
+    {
+      "type": "object",
+      "required": ["type", "payload"],
+      "properties": {
+        "type": { "const": "chat.message" },
+        "payload": { "$ref": "#/$defs/chatMessagePayload" }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["type", "payload"],
+      "properties": {
+        "type": { "const": "choice.selected" },
+        "payload": { "$ref": "#/$defs/choiceSelectedPayload" }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["type", "payload"],
+      "properties": {
+        "type": { "const": "view.navigate" },
+        "payload": { "$ref": "#/$defs/viewNavigatePayload" }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["type", "payload"],
+      "properties": {
+        "type": { "const": "session.end" },
+        "payload": { "$ref": "#/$defs/sessionEndPayload" }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["type", "payload"],
+      "properties": {
+        "type": { "const": "browser.connected" },
+        "payload": { "$ref": "#/$defs/browserConnectedPayload" }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["type", "payload"],
+      "properties": {
+        "type": { "const": "browser.disconnected" },
+        "payload": { "$ref": "#/$defs/browserDisconnectedPayload" }
+      }
+    }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"
+    },
+    "shortId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    },
+    "chatMessagePayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 65536
+        }
+      }
+    },
+    "choiceSelectedPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["choiceId", "optionId"],
+      "properties": {
+        "choiceId": { "$ref": "#/$defs/shortId" },
+        "optionId": { "$ref": "#/$defs/shortId" }
+      }
+    },
+    "viewNavigatePayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["viewId", "requiresAttention"],
+      "properties": {
+        "viewId": {
+          "$ref": "https://yarramate.org/schema/visual-model/v1#/$defs/viewId"
+        },
+        "requiresAttention": { "type": "boolean" }
+      }
+    },
+    "sessionEndPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reason"],
+      "properties": {
+        "reason": { "enum": ["user-ended", "browser-timeout"] }
+      }
+    },
+    "browserConnectedPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["connectionId"],
+      "properties": {
+        "connectionId": { "$ref": "#/$defs/shortId" }
+      }
+    },
+    "browserDisconnectedPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["connectionId", "code"],
+      "properties": {
+        "connectionId": { "$ref": "#/$defs/shortId" },
+        "code": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 4999
+        }
+      }
+    },
+    "browserInput": {
+      "description": "Untrusted browser message. It carries only a discriminant and payload; session identifiers, sequences, timestamps, and runtime-only event types are rejected.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "payload"],
+          "properties": {
+            "type": { "const": "chat.message" },
+            "payload": { "$ref": "#/$defs/chatMessagePayload" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "payload"],
+          "properties": {
+            "type": { "const": "choice.selected" },
+            "payload": { "$ref": "#/$defs/choiceSelectedPayload" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "payload"],
+          "properties": {
+            "type": { "const": "view.navigate" },
+            "payload": { "$ref": "#/$defs/viewNavigatePayload" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "payload"],
+          "properties": {
+            "type": { "const": "session.end" },
+            "payload": { "$ref": "#/$defs/sessionEndPayload" }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -61,6 +61,7 @@
 - `schema/yarramate-visual-model.schema.json`
 - `schema/yarramate-visual-handoff.schema.json`
 - `schema/yarramate-visual-status.schema.json`
+- `schema/yarramate-visual-diagnostic-result.schema.json`
 
 ### Tests and fixtures
 
@@ -103,6 +104,7 @@
 - Create: `schema/yarramate-visual-model.schema.json`
 - Create: `schema/yarramate-visual-handoff.schema.json`
 - Create: `schema/yarramate-visual-status.schema.json`
+- Create: `schema/yarramate-visual-diagnostic-result.schema.json`
 - Create: `test/visual-protocol.test.ts`
 - Modify: `package.json:35-75`
 
@@ -168,7 +170,7 @@ Run: `pnpm exec vitest run test/visual-protocol.test.ts`
 
 Expected: FAIL because `src/adapters/visual/protocol.ts` and schemas do not exist.
 
-- [ ] **Step 3: Add the eight strict JSON Schemas and TypeScript validators**
+- [ ] **Step 3: Add the nine strict JSON Schemas and TypeScript validators**
 
 Use Draft 2020-12, `additionalProperties: false`, exact `format` constants, discriminated `oneOf` payloads, and `$defs` for reusable IDs, sequence numbers, capabilities, compiler vectors, diagnostics, and handoff decisions. Export every schema through `package.json` under `./schema/visual-*`.
 

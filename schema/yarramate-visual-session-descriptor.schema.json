@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yarramate.org/schema/visual-session-descriptor/v1",
+  "title": "YarraMate visual session descriptor",
+  "description": "Private mode 0600 file that carries the local agent credential used by the one-shot `yarramate-visual` commands.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "protocolVersion",
+    "sessionId",
+    "origin",
+    "agentCapability",
+    "sessionRoot",
+    "journalPath",
+    "createdAt"
+  ],
+  "properties": {
+    "format": {
+      "const": "yarramate/visual-session-descriptor/v1"
+    },
+    "protocolVersion": {
+      "const": "yarramate/visual-protocol/v1"
+    },
+    "sessionId": {
+      "$ref": "https://yarramate.org/schema/visual-event/v1#/$defs/identifier"
+    },
+    "origin": {
+      "$ref": "https://yarramate.org/schema/visual-session-started/v1#/$defs/localOrigin"
+    },
+    "agentCapability": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "sessionRoot": {
+      "$ref": "https://yarramate.org/schema/visual-session-started/v1#/$defs/absolutePath"
+    },
+    "journalPath": {
+      "$ref": "https://yarramate.org/schema/visual-session-started/v1#/$defs/absolutePath"
+    },
+    "createdAt": {
+      "$ref": "https://yarramate.org/schema/visual-event/v1#/$defs/timestamp"
+    }
+  }
+}

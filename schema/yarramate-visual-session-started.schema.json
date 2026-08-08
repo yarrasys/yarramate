@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yarramate.org/schema/visual-session-started/v1",
+  "title": "YarraMate visual session started",
+  "description": "Public first line printed by `yarramate-visual start`. It never carries the private agent capability.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "protocolVersion",
+    "sessionId",
+    "authority",
+    "title",
+    "chatEnabled",
+    "browserUrl",
+    "webSocketUrl",
+    "origin",
+    "descriptorPath",
+    "sessionRoot",
+    "capabilities",
+    "startedAt"
+  ],
+  "properties": {
+    "format": {
+      "const": "yarramate/visual-session-started/v1"
+    },
+    "protocolVersion": {
+      "const": "yarramate/visual-protocol/v1"
+    },
+    "sessionId": {
+      "$ref": "https://yarramate.org/schema/visual-event/v1#/$defs/identifier"
+    },
+    "authority": {
+      "$ref": "https://yarramate.org/schema/visual-model/v1#/$defs/authority"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "chatEnabled": {
+      "type": "boolean"
+    },
+    "browserUrl": {
+      "type": "string",
+      "pattern": "^http://127\\.0\\.0\\.1:[0-9]{1,5}/bootstrap\\?key=[0-9a-f]{16,}$"
+    },
+    "webSocketUrl": {
+      "type": "string",
+      "pattern": "^ws://127\\.0\\.0\\.1:[0-9]{1,5}/[A-Za-z0-9._/-]*$"
+    },
+    "origin": {
+      "$ref": "#/$defs/localOrigin"
+    },
+    "descriptorPath": {
+      "$ref": "#/$defs/absolutePath"
+    },
+    "sessionRoot": {
+      "$ref": "#/$defs/absolutePath"
+    },
+    "capabilities": {
+      "$ref": "#/$defs/capabilities"
+    },
+    "startedAt": {
+      "$ref": "https://yarramate.org/schema/visual-event/v1#/$defs/timestamp"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "type": "object",
+        "required": ["chatEnabled"],
+        "properties": {
+          "chatEnabled": { "const": false }
+        }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "capabilities": {
+            "type": "object",
+            "properties": {
+              "chat": { "const": false }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "localOrigin": {
+      "type": "string",
+      "pattern": "^http://127\\.0\\.0\\.1:[0-9]{1,5}$"
+    },
+    "absolutePath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096,
+      "pattern": "^/[^\\u0000]*$"
+    },
+    "capabilities": {
+      "description": "Features the browser session may use. Diagram-only mode disables chat.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "chat",
+        "choices",
+        "navigation",
+        "modelReplacement",
+        "transcript"
+      ],
+      "properties": {
+        "chat": { "type": "boolean" },
+        "choices": { "type": "boolean" },
+        "navigation": { "type": "boolean" },
+        "modelReplacement": { "type": "boolean" },
+        "transcript": { "type": "boolean" }
+      }
+    }
+  }
+}
