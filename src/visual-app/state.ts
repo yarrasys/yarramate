@@ -56,6 +56,7 @@ export interface VisualAppSnapshot {
   readonly model: VisualRenderedModel
   readonly transcript: readonly VisualTranscriptRecord[]
   readonly agentTurnOpen: boolean
+  readonly choices: VisualChoicePresentPayload | null
   readonly styleNonce: string
   readonly lastSequence: number
   readonly frozen: boolean
@@ -155,6 +156,7 @@ export const visualAppSnapshotFrom = (
   model: snapshot.model,
   transcript: snapshot.transcript,
   agentTurnOpen: snapshot.agentTurnOpen,
+  choices: snapshot.pendingChoice,
   styleNonce: snapshot.styleNonce,
   lastSequence: snapshot.lastSequence,
   frozen: snapshot.frozen,

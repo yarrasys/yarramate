@@ -2,6 +2,7 @@ import type {
   VISUAL_PROTOCOL_VERSION,
   VisualAuthority,
   VisualCapabilities,
+  VisualChoicePresentPayload,
   VisualDiagnostic,
   VisualFreezeReason,
   VisualResponse,
@@ -65,6 +66,13 @@ export interface VisualSessionSnapshot {
    * from the transcript, so a reply it never saw does not leave it waiting.
    */
   readonly agentTurnOpen: boolean
+  /**
+   * The structured choice the agent is still waiting on, or `null`. The
+   * question lives in the agent's response and never in the transcript, so a
+   * browser that reloads or reconnects reads it here; without it the reviewer
+   * comes back to a session waiting on a selection they can no longer make.
+   */
+  readonly pendingChoice: VisualChoicePresentPayload | null
   /**
    * Nonce this session's policy admits for the inline styles the diagram
    * renderer injects. It authorises styling and nothing else, and it is not a
