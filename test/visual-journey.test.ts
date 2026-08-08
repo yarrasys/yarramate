@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto'
 import { once } from 'node:events'
-import { existsSync } from 'node:fs'
+import { existsSync, watch as watchEagerly } from 'node:fs'
 import {
   mkdtemp,
   readdir,
@@ -357,43 +357,58 @@ const journalRecords = async (
     .map((line) => JSON.parse(line) as VisualEvent | VisualResponse)
 
 /**
- * Waits for the journal a descriptor names to carry an event past `after`. The
+ * Waits for the next event the journal a descriptor names carries past `after`,
+ * and answers only if it is the `type` the caller is correlating against. The
  * journal is the record an out-of-process agent reads, so the wait is on the
  * file's own change events rather than on a guessed delay.
+ *
+ * Naming the type is what makes the wait a correlation rather than a cursor.
+ * The runtime journals records of its own — a browser arriving, a browser
+ * leaving — and a wait that took whatever came next would hand one of those
+ * back as the event a response is about to answer, which the store accepts and
+ * nothing downstream could tell apart from the reviewer's own turn.
  */
-const waitForVisualEvent = async (
+const waitForVisualEvent = async <Type extends VisualEvent['type']>(
   descriptorPath: string,
   after: number,
-): Promise<VisualEvent> => {
+  type: Type,
+): Promise<Extract<VisualEvent, { readonly type: Type }>> => {
   const { journalPath } = await descriptorAt(descriptorPath)
-  // The journal exists from session creation, and the watcher buffers from
-  // here, so an append racing the first read is still delivered below.
-  const changes = watch(journalPath)
-  const journaled = async () => {
-    const lines = (await readFile(journalPath, 'utf8'))
-      .split('\n')
-      .filter((line) => line.length > 0)
-    for (const line of lines) {
-      const record = JSON.parse(line) as VisualEvent | VisualResponse
-      if (
-        record.format === 'yarramate/visual-event/v1' &&
-        record.sequence > after
-      ) {
-        return record
+  // The callback watcher, not `fs/promises.watch`: the promise form is an async
+  // generator that registers nothing until its first iteration, so it cannot be
+  // armed ahead of the read. This one is watching from the moment it is
+  // constructed, and every change it sees is counted, so an append landing
+  // during the read below is observed rather than lost.
+  let changes = 0
+  let changed = Promise.withResolvers<void>()
+  const watcher = watchEagerly(journalPath, () => {
+    changes += 1
+    changed.resolve()
+    changed = Promise.withResolvers<void>()
+  })
+  try {
+    for (;;) {
+      const seen = changes
+      const lines = (await readFile(journalPath, 'utf8'))
+        .split('\n')
+        .filter((line) => line.length > 0)
+      for (const line of lines) {
+        const record = JSON.parse(line) as VisualEvent | VisualResponse
+        if (record.format !== 'yarramate/visual-event/v1') continue
+        if (record.sequence <= after) continue
+        if (record.type !== type) {
+          throw new Error(
+            `journal holds ${record.type} at sequence ${record.sequence}, not the ${type} this wait is for`,
+          )
+        }
+        return record as Extract<VisualEvent, { readonly type: Type }>
       }
+      // Nothing since the read began, so there is a change worth waiting for.
+      if (changes === seen) await changed.promise
     }
-    return undefined
+  } finally {
+    watcher.close()
   }
-  const already = await journaled()
-  if (already !== undefined) {
-    await changes.return?.(undefined)
-    return already
-  }
-  for await (const _change of changes) {
-    const appended = await journaled()
-    if (appended !== undefined) return appended
-  }
-  throw new Error(`no event past ${after} in "${journalPath}"`)
 }
 
 /**
@@ -453,21 +468,35 @@ describe('the complete visual conversation', () => {
     const visual = await startVisualFixture({ chatEnabled: true })
     const browser = await connectFixtureBrowser(visual)
 
+    // The runtime journals this browser's arrival, so the conversation the
+    // reviewer drives starts past it.
+    const arrival = (await nextFrame(browser, 'ready')).snapshot.lastSequence
+
     send(browser, chatMessage('Explain option B'))
-    const message = await waitForVisualEvent(visual.descriptorPath, 0)
+    const message = await waitForVisualEvent(
+      visual.descriptorPath,
+      arrival,
+      'chat.message',
+    )
     await sendVisualResponse(
       visual.descriptorPath,
       chatReply(message, 'Option B isolates rendering.'),
     )
 
     send(browser, choiceSelected('option-b'))
-    await sendVisualResponse(
+    const chose = await waitForVisualEvent(
       visual.descriptorPath,
-      choiceAcknowledged(await waitForVisualEvent(visual.descriptorPath, 1)),
+      message.sequence,
+      'choice.selected',
     )
+    await sendVisualResponse(visual.descriptorPath, choiceAcknowledged(chose))
 
     send(browser, sessionEnd())
-    const ending = await waitForVisualEvent(visual.descriptorPath, 2)
+    const ending = await waitForVisualEvent(
+      visual.descriptorPath,
+      chose.sequence,
+      'session.end',
+    )
     await sendVisualResponse(
       visual.descriptorPath,
       completeHandoff(ending, {
@@ -508,9 +537,13 @@ describe('the complete visual conversation', () => {
     const visual = await startVisualFixture()
     const browser = await connectFixtureBrowser(visual)
 
+    const arrival = (await nextFrame(browser, 'ready')).snapshot.lastSequence
     send(browser, sessionEnd())
-    // Sequence 1 is the arrival the runtime journaled for this browser.
-    const ending = await waitForVisualEvent(visual.descriptorPath, 1)
+    const ending = await waitForVisualEvent(
+      visual.descriptorPath,
+      arrival,
+      'session.end',
+    )
     await sendVisualResponse(
       visual.descriptorPath,
       completeHandoff(ending, {
@@ -569,9 +602,13 @@ describe('the visual recovery matrix', () => {
     const browser = await connectFixtureBrowser(visual)
 
     send(browser, viewNavigate('option-b'))
-    await nextFrame(browser, 'accepted')
+    const visited = await nextFrame(browser, 'accepted')
     send(browser, chatMessage('Why option B?'))
-    await waitForVisualEvent(visual.descriptorPath, 1)
+    await waitForVisualEvent(
+      visual.descriptorPath,
+      visited.sequence,
+      'chat.message',
+    )
 
     // The child died without submitting a handoff, so the main agent closes
     // the session under the reason it observed.
