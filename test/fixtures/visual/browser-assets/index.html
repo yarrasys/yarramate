@@ -1,0 +1,25 @@
+<!doctype html>
+<!--
+  Self-contained stand-in for the browser application the session server ships.
+
+  It exists so the server's static route, security headers, and asset
+  confinement can be exercised for real before the production application is
+  built. It loads only same-origin assets: the Content-Security-Policy the
+  server returns forbids inline script, inline style, and every external
+  origin, so a fixture that needed any of those would prove the wrong thing.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>YarraMate visual session</title>
+    <link rel="stylesheet" href="/assets/app-1a2b3c4d.css" />
+    <script type="module" src="/assets/app-1a2b3c4d.js"></script>
+  </head>
+  <body>
+    <main id="visual-session">
+      <h1>YarraMate visual session</h1>
+      <p id="visual-session-state">Connecting…</p>
+    </main>
+  </body>
+</html>
