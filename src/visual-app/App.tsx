@@ -1,4 +1,4 @@
-import { LikeC4Model } from '@likec4/core/model'
+import { LikeC4Model, type AnyLikeC4Model } from '@likec4/core/model'
 import { LikeC4ModelProvider, ReactLikeC4 } from 'likec4/react'
 import {
   useMemo,
@@ -14,6 +14,7 @@ import type {
 import { useVisualSession } from './session-client.js'
 import {
   visualAuthorityLabel,
+  visualDrawingFor,
   type VisualAppRecord,
   type VisualAppState,
 } from './state.js'
@@ -32,7 +33,7 @@ import {
  * entry point that takes `createRequire` at load and so cannot run in a
  * browser. The compiled document belongs to LikeC4, which reads its own shape.
  */
-const likeC4ModelFrom = (compiled: unknown) =>
+const likeC4ModelFrom = (compiled: unknown): AnyLikeC4Model =>
   LikeC4Model.create(compiled as Parameters<typeof LikeC4Model.create>[0])
 
 const SPEAKERS: Readonly<Record<VisualAppRecord['speaker'], string>> = {
@@ -251,18 +252,16 @@ const ChatPanel = ({
 
 export const App = () => {
   const { state, connected, ask, choose, navigate, end } = useVisualSession()
-  const lastGood = useRef<ReturnType<typeof likeC4ModelFrom> | null>(null)
+  const lastDrawn = useRef<AnyLikeC4Model | null>(null)
 
-  const likec4model = useMemo(() => {
-    if (state.model === null) return lastGood.current
-    try {
-      lastGood.current = likeC4ModelFrom(state.model.compiled)
-    } catch {
-      // A rendering the browser cannot read is the same failure as one that did
-      // not compile: keep the last good drawing on screen.
-      return lastGood.current
-    }
-    return lastGood.current
+  const drawing = useMemo(() => {
+    const next = visualDrawingFor(
+      state.model,
+      likeC4ModelFrom,
+      lastDrawn.current,
+    )
+    lastDrawn.current = next.drawn
+    return next
   }, [state.model])
 
   const reduceGraphics = useMemo(
@@ -272,6 +271,14 @@ export const App = () => {
 
   const authorityLabel = visualAuthorityLabel(state.authority)
   const views = state.model?.views ?? []
+  // A fault already accounts for the empty canvas, and saying there is no model
+  // would contradict the one that arrived and could not be drawn.
+  const waiting =
+    drawing.drawn !== null || drawing.fault !== null
+      ? null
+      : state.lifecycle === 'connecting'
+        ? 'Reading the session'
+        : 'No model to draw'
 
   return (
     <main className="desk">
@@ -285,14 +292,8 @@ export const App = () => {
         </header>
 
         <div className="canvas">
-          {likec4model === null ? (
-            <p className="waiting">
-              {state.lifecycle === 'connecting'
-                ? 'Reading the session'
-                : 'No model to draw'}
-            </p>
-          ) : (
-            <LikeC4ModelProvider likec4model={likec4model}>
+          {drawing.drawn === null ? null : (
+            <LikeC4ModelProvider likec4model={drawing.drawn}>
               <ReactLikeC4
                 viewId={state.activeView}
                 onNavigateTo={(viewId) => navigate(viewId)}
@@ -317,7 +318,16 @@ export const App = () => {
               />
             </LikeC4ModelProvider>
           )}
+          {waiting === null ? null : <p className="waiting">{waiting}</p>}
         </div>
+
+        {drawing.fault === null ? null : (
+          // The renderer's exception describes its own internals and may carry
+          // anything: the reviewer reads this application's words instead.
+          <div className="faults" role="alert">
+            <p className="faults-title">{drawing.fault}</p>
+          </div>
+        )}
 
         {views.length < 2 ? null : (
           <nav className="views" aria-label="Views in this model">

@@ -650,7 +650,7 @@ concepts:
   - id: local-web-browser
     kind: systemSoftware
     name: Local web browser
-    description: The reviewer's own browser on the consumer host. It is the only place the visual conversation presentation runs, and it reaches nothing but the one authenticated loopback origin its session serves.
+    description: The reviewer's own browser on the consumer host. It is the only place the visual conversation presentation runs, and that presentation page reaches nothing but the one authenticated loopback origin its session serves.
     owner: yarramate-product#yarramate-maintainers
     status: current
   - id: npm-package
