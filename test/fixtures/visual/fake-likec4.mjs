@@ -11,7 +11,14 @@
  * file, which keeps every failure mode a property of the model under
  * compilation rather than of a mocked adapter seam.
  */
-import { appendFileSync, readFileSync, readdirSync, writeFileSync, writeSync } from 'node:fs'
+import {
+  appendFileSync,
+  chmodSync,
+  readFileSync,
+  readdirSync,
+  writeFileSync,
+  writeSync,
+} from 'node:fs'
 import { join } from 'node:path'
 
 const argv = process.argv.slice(2)
@@ -122,6 +129,11 @@ if (argv[0] === 'validate') {
     const padded = { ...exported, _padding: 'x'.repeat(64 * 1024) }
     writeFileSync(outfile, JSON.stringify(padded, null, 2))
   } else writeFileSync(outfile, JSON.stringify(exported, null, 2))
+  // The real CLI creates its output under the ambient umask, which on an
+  // ordinary developer or CI account leaves the document group- and
+  // world-readable. Stating the mode here makes the adapter's hardening
+  // observable however restrictive the umask running this suite happens to be.
+  chmodSync(outfile, 0o644)
   exit(0, 1)
 } else {
   exit(64, 2, `fake-likec4: unsupported command "${argv.join(' ')}"\n`)

@@ -8,6 +8,7 @@ import {
   rm,
   stat,
   symlink,
+  utimes,
   writeFile,
 } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -993,11 +994,41 @@ describe('visual session store', () => {
 
   describe('stale pruning', () => {
     const staleNow = new Date('2026-08-09T00:00:00.001Z')
+    const longAgo = '2026-08-01T00:00:00.000Z'
+    const withinBudget = '2026-08-08T12:00:00.000Z'
 
-    it('prunes only marked sessions older than 24 hours', async () => {
+    /**
+     * Pins every artefact of a session to one modification time. Staleness is
+     * a property of the filesystem rather than of the immutable marker, so a
+     * test states activity the same way a live runtime leaves it behind.
+     */
+    const touchSession = async (paths: VisualSessionPaths, when: string) => {
+      const at = new Date(when)
+      for (const path of [
+        paths.root,
+        paths.marker,
+        paths.descriptor,
+        paths.journal,
+        paths.candidates,
+        paths.activeModel,
+      ]) {
+        if (existsSync(path)) await utimes(path, at, at)
+      }
+    }
+
+    const promote = (paths: VisualSessionPaths) =>
+      promoteCompiledModel(paths, {
+        model,
+        now: () => new Date(withinBudget),
+        compile: compilesCleanly,
+      })
+
+    it('prunes only marked sessions untouched for longer than 24 hours', async () => {
       const session = await startSession()
+      await touchSession(session.paths, longAgo)
       const unmarkedDirectory = join(parent, 'unmarked')
       await mkdir(unmarkedDirectory, { mode: 0o700 })
+      await utimes(unmarkedDirectory, new Date(longAgo), new Date(longAgo))
 
       const removed = await pruneStaleVisualSessions(parent, staleNow)
 
@@ -1006,8 +1037,59 @@ describe('visual session store', () => {
       expect(existsSync(session.paths.root)).toBe(false)
     })
 
-    it('keeps a session that is exactly 24 hours old', async () => {
+    it('keeps a long-lived session whose journal was appended within the budget', async () => {
+      const session = await startSession(longAgo)
+      await appendVisualEvent(session.paths, chatEvent)
+      await touchSession(session.paths, longAgo)
+      const active = new Date(withinBudget)
+      await utimes(session.paths.journal, active, active)
+
+      expect(await pruneStaleVisualSessions(parent, staleNow)).toEqual([])
+      expect(existsSync(session.paths.root)).toBe(true)
+    })
+
+    it('keeps a long-lived session whose model was promoted within the budget', async () => {
+      const session = await startSession(longAgo)
+      await promote(session.paths)
+      await touchSession(session.paths, longAgo)
+      const active = new Date(withinBudget)
+      await utimes(session.paths.activeModel, active, active)
+
+      expect(await pruneStaleVisualSessions(parent, staleNow)).toEqual([])
+      expect(existsSync(session.paths.root)).toBe(true)
+    })
+
+    it('keeps a long-lived session that staged a candidate within the budget', async () => {
+      const session = await startSession(longAgo)
+      await promote(session.paths)
+      await touchSession(session.paths, longAgo)
+      // Staging a candidate changes the directory that gains the entry and
+      // nothing above it: POSIX propagates a modification no further, so the
+      // session root alone would report this session as untouched.
+      const active = new Date(withinBudget)
+      await utimes(session.paths.candidates, active, active)
+
+      expect(await pruneStaleVisualSessions(parent, staleNow)).toEqual([])
+      expect(existsSync(session.paths.root)).toBe(true)
+    })
+
+    it('removes a session no artefact has touched for longer than 24 hours', async () => {
       const session = await startSession()
+      await promote(session.paths)
+      await touchSession(session.paths, '2026-08-07T23:59:59.999Z')
+
+      expect(
+        await pruneStaleVisualSessions(
+          parent,
+          new Date('2026-08-09T00:00:00.000Z'),
+        ),
+      ).toEqual([session.paths.root])
+      expect(existsSync(session.paths.root)).toBe(false)
+    })
+
+    it('keeps a session whose newest artefact is exactly 24 hours old', async () => {
+      const session = await startSession(longAgo)
+      await touchSession(session.paths, '2026-08-08T00:00:00.000Z')
 
       expect(
         await pruneStaleVisualSessions(
@@ -1026,9 +1108,10 @@ describe('visual session store', () => {
         // pruning away from it.
         const real = await createVisualSession(request, {
           baseDir: outside,
-          now: () => new Date('2026-08-01T00:00:00.000Z'),
+          now: () => new Date(longAgo),
           randomBytes: (size) => Buffer.alloc(size, 0xab),
         })
+        await touchSession(real.paths, longAgo)
         const link = join(parent, basename(real.paths.root))
         await symlink(real.paths.root, link)
         await writeFile(join(parent, 'stray.json'), 'ignored')
@@ -1041,7 +1124,7 @@ describe('visual session store', () => {
       }
     })
 
-    it('bounds how many stale sessions one pass removes', async () => {
+    it('bounds how many stale sessions one pass removes, oldest activity first', async () => {
       const roots: string[] = []
       for (let index = 1; index <= 3; index += 1) {
         const created = await createVisualSession(request, {
@@ -1049,6 +1132,7 @@ describe('visual session store', () => {
           now: () => new Date(`2026-08-0${index}T00:00:00.000Z`),
           randomBytes: (size) => Buffer.alloc(size, index),
         })
+        await touchSession(created.paths, `2026-08-0${index}T00:00:00.000Z`)
         roots.push(created.paths.root)
       }
 

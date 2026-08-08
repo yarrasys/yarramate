@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process'
 import { existsSync, watch } from 'node:fs'
-import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -40,6 +40,9 @@ interface ExportedProject {
     >
   >
 }
+
+const posixOnly = process.platform !== 'win32'
+const modeOf = async (path: string) => (await stat(path)).mode & 0o777
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url))
 
@@ -254,6 +257,36 @@ describe('trusted LikeC4 compiler adapter', () => {
         'invocations.jsonl',
       ])
     })
+
+    it.skipIf(!posixOnly)(
+      'narrows the exported document to owner-only before reading it',
+      async () => {
+        const session = await startSession()
+
+        const result = await compile(session.paths)
+
+        if (!result.ok) throw new Error('expected a compiled model')
+        // The compiler is a separate process writing under its own umask, so
+        // the rendering it hands back is only private once this adapter says
+        // so — the enclosing 0700 candidate root is not the whole guarantee.
+        expect(await modeOf(result.compiled.exportPath)).toBe(0o600)
+        expect(await modeOf(result.compiled.candidateDir)).toBe(0o700)
+      },
+    )
+
+    it.skipIf(!posixOnly)(
+      'narrows a reduced single-project document to owner-only',
+      async () => {
+        const session = await startSession()
+
+        const result = await compile(session.paths, {
+          model: marked('one-project'),
+        })
+
+        if (!result.ok) throw new Error('expected a compiled model')
+        expect(await modeOf(result.compiled.exportPath)).toBe(0o600)
+      },
+    )
   })
 
   describe('compiler rejection', () => {
