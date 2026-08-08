@@ -10,6 +10,8 @@ import type {
 } from '../src/adapters/visual/wire.js'
 import {
   RECONNECT_WINDOW_MS,
+  VISUAL_DRAW_FAULT_BARE,
+  VISUAL_DRAW_FAULT_KEPT,
   VISUAL_END_NOTICE,
   canReconnect,
   initialVisualAppState,
@@ -18,6 +20,7 @@ import {
   visualAppSnapshotFrom,
   visualAuthorityLabel,
   visualBrowserInputFor,
+  visualDrawingFor,
   type VisualAppState,
 } from '../src/visual-app/state.js'
 
@@ -80,6 +83,34 @@ const compileDiagnostic = {
   line: 2,
   column: 5,
 } as const
+
+/** A second fault of the same failure, so dropping one of them is visible. */
+const secondDiagnostic = {
+  ...compileDiagnostic,
+  code: 'YMVS202',
+  message: 'Unresolved reference "phantom"',
+  line: 9,
+} as const
+
+const responseEnvelope = {
+  format: 'yarramate/visual-response/v1',
+  sessionId: '0'.repeat(32),
+  responseId: 'a'.repeat(32),
+  eventId: 'b'.repeat(32),
+  timestamp: '2026-08-08T00:00:01.000Z',
+} as const
+
+/**
+ * One frame as the reviewer ends up seeing it: every action it means, in order.
+ */
+const applyFrame = (
+  state: VisualAppState,
+  frame: VisualServerFrame,
+): VisualAppState =>
+  visualAppActionsForFrame(frame).reduce(
+    (carried, action) => visualAppReducer(carried, action),
+    state,
+  )
 
 describe('visualAppReducer session lifecycle', () => {
   it('starts connecting with nothing to draw and no way to type', () => {
@@ -305,7 +336,7 @@ describe('visualAppReducer model rendering', () => {
   it('renders a replacement model and clears the diagnostics it answers', () => {
     const failed = visualAppReducer(activeState, {
       type: 'diagnostic.received',
-      diagnostic: compileDiagnostic,
+      diagnostics: [compileDiagnostic],
     })
     const next = visualAppReducer(failed, {
       type: 'model.received',
@@ -318,10 +349,25 @@ describe('visualAppReducer model rendering', () => {
   it('keeps the last rendered model when compilation fails', () => {
     const next = visualAppReducer(activeState, {
       type: 'diagnostic.received',
-      diagnostic: compileDiagnostic,
+      diagnostics: [compileDiagnostic],
     })
     expect(next.model).toBe(activeState.model)
     expect(next.diagnostics).toEqual([compileDiagnostic])
+  })
+
+  it('shows every fault of one failed compilation, not only the last', () => {
+    // A compilation fails for several reasons at once, and the reviewer has to
+    // read all of them: a frame is one failure, not a queue of replacements.
+    const next = applyFrame(activeState, {
+      kind: 'response',
+      response: {
+        ...responseEnvelope,
+        type: 'diagnostic',
+        payload: { diagnostics: [compileDiagnostic, secondDiagnostic] },
+      },
+    })
+    expect(next.diagnostics).toEqual([compileDiagnostic, secondDiagnostic])
+    expect(next.model).toBe(activeState.model)
   })
 
   it('keeps the reviewer on the view they were reading', () => {
@@ -521,7 +567,7 @@ describe('visualAppReducer conversation', () => {
     expect(
       visualAppReducer(thinking, {
         type: 'diagnostic.received',
-        diagnostic: compileDiagnostic,
+        diagnostics: [compileDiagnostic],
       }).agentStatus,
     ).toBe(null)
   })
@@ -564,7 +610,7 @@ describe('visualAppReducer acknowledgement and refusal', () => {
   it('shuts the composer for good when the server freezes input', () => {
     const next = visualAppReducer(activeState, {
       type: 'input.refused',
-      diagnostic: compileDiagnostic,
+      diagnostics: [compileDiagnostic],
       frozen: true,
     })
     expect(next.frozen).toBe(true)
@@ -575,11 +621,22 @@ describe('visualAppReducer acknowledgement and refusal', () => {
   it('leaves the composer open when a single frame was refused', () => {
     const next = visualAppReducer(activeState, {
       type: 'input.refused',
-      diagnostic: compileDiagnostic,
+      diagnostics: [compileDiagnostic],
       frozen: false,
     })
     expect(next.frozen).toBe(false)
     expect(next.composerEnabled).toBe(true)
+  })
+
+  it('shows every reason one frame was refused, not only the last', () => {
+    const next = applyFrame(activeState, {
+      kind: 'rejected',
+      diagnostics: [compileDiagnostic, secondDiagnostic],
+      frozen: 'pending-events',
+    })
+    expect(next.diagnostics).toEqual([compileDiagnostic, secondDiagnostic])
+    expect(next.frozen).toBe(true)
+    expect(next.composerEnabled).toBe(false)
   })
 })
 
@@ -661,20 +718,26 @@ describe('visualAppActionsForFrame', () => {
         frozen: 'pending-events',
       }),
     ).toEqual([
-      { type: 'input.refused', diagnostic: compileDiagnostic, frozen: true },
+      {
+        type: 'input.refused',
+        diagnostics: [compileDiagnostic],
+        frozen: true,
+      },
     ])
   })
 
-  it('keeps every diagnostic of a refused frame in the record', () => {
-    const second = { ...compileDiagnostic, code: 'YMVS202', line: 9 }
+  it('carries every diagnostic of a refused frame in one refusal', () => {
     expect(
       actionsFor({
         kind: 'rejected',
-        diagnostics: [compileDiagnostic, second],
+        diagnostics: [compileDiagnostic, secondDiagnostic],
       }),
     ).toEqual([
-      { type: 'input.refused', diagnostic: compileDiagnostic, frozen: false },
-      { type: 'input.refused', diagnostic: second, frozen: false },
+      {
+        type: 'input.refused',
+        diagnostics: [compileDiagnostic, secondDiagnostic],
+        frozen: false,
+      },
     ])
   })
 
@@ -692,18 +755,11 @@ describe('visualAppActionsForFrame', () => {
   })
 
   it('turns each agent response into the record it belongs to', () => {
-    const envelope = {
-      format: 'yarramate/visual-response/v1',
-      sessionId: '0'.repeat(32),
-      responseId: 'a'.repeat(32),
-      eventId: 'b'.repeat(32),
-      timestamp: '2026-08-08T00:00:01.000Z',
-    } as const
     expect(
       actionsFor({
         kind: 'response',
         response: {
-          ...envelope,
+          ...responseEnvelope,
           type: 'chat.response',
           payload: { text: 'Option B reuses the queue' },
         },
@@ -711,7 +767,7 @@ describe('visualAppActionsForFrame', () => {
     ).toEqual([
       {
         type: 'chat.received',
-        id: envelope.responseId,
+        id: responseEnvelope.responseId,
         text: 'Option B reuses the queue',
       },
     ])
@@ -719,7 +775,7 @@ describe('visualAppActionsForFrame', () => {
       actionsFor({
         kind: 'response',
         response: {
-          ...envelope,
+          ...responseEnvelope,
           type: 'agent.status',
           payload: { state: 'thinking' },
         },
@@ -729,12 +785,14 @@ describe('visualAppActionsForFrame', () => {
       actionsFor({
         kind: 'response',
         response: {
-          ...envelope,
+          ...responseEnvelope,
           type: 'diagnostic',
           payload: { diagnostics: [compileDiagnostic] },
         },
       }),
-    ).toEqual([{ type: 'diagnostic.received', diagnostic: compileDiagnostic }])
+    ).toEqual([
+      { type: 'diagnostic.received', diagnostics: [compileDiagnostic] },
+    ])
   })
 
   it('ignores a model replacement response, because the model frame carries it', () => {
@@ -783,5 +841,66 @@ describe('visualAuthorityLabel', () => {
   it('names a checked model and an ad hoc one in the reviewer’s words', () => {
     expect(visualAuthorityLabel('canonical')).toBe('Checked YarraMate model')
     expect(visualAuthorityLabel('ad-hoc')).toBe('Ad hoc · non-canonical')
+  })
+})
+
+describe('visualDrawingFor', () => {
+  /** A renderer stands for its drawing: what it read is what is on screen. */
+  const drawn = (model: VisualRenderedModel) => ({ read: model.compiled })
+  const readable = (compiled: unknown) => ({ read: compiled })
+  const unreadable = () => {
+    throw new Error('Invalid element kind "ghost" in views/choices')
+  }
+
+  it('draws a rendering the renderer can read', () => {
+    const rendered = model('000002', 'choices')
+    expect(visualDrawingFor(rendered, readable, null)).toEqual({
+      drawn: { read: rendered.compiled },
+      fault: null,
+    })
+  })
+
+  it('keeps the drawing on screen while the session has no model', () => {
+    const kept = drawn(model('000001', 'choices'))
+    expect(visualDrawingFor(null, unreadable, kept)).toEqual({
+      drawn: kept,
+      fault: null,
+    })
+  })
+
+  it('keeps the last good drawing and says so when a replacement cannot be drawn', () => {
+    const kept = drawn(model('000001', 'choices'))
+    const drawing = visualDrawingFor(
+      model('000002', 'choices'),
+      unreadable,
+      kept,
+    )
+    expect(drawing.drawn).toBe(kept)
+    expect(drawing.fault).toBe(VISUAL_DRAW_FAULT_KEPT)
+  })
+
+  it('says nothing could be drawn when the first model cannot be drawn', () => {
+    const drawing = visualDrawingFor(
+      model('000001', 'choices'),
+      unreadable,
+      null,
+    )
+    expect(drawing.drawn).toBe(null)
+    expect(drawing.fault).toBe(VISUAL_DRAW_FAULT_BARE)
+  })
+
+  it('never puts the renderer’s own exception in front of the reviewer', () => {
+    // The words the reviewer reads are this application's, in every case: a
+    // renderer's internals are not an explanation and may carry anything.
+    for (const lastDrawn of [null, drawn(model('000001', 'choices'))]) {
+      const { fault } = visualDrawingFor(
+        model('000002', 'choices'),
+        unreadable,
+        lastDrawn,
+      )
+      expect(fault).not.toBe(null)
+      expect(fault).not.toContain('ghost')
+      expect(fault).not.toContain('Invalid element kind')
+    }
   })
 })

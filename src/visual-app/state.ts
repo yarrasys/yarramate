@@ -30,6 +30,19 @@ export const RECONNECT_WINDOW_MS = VISUAL_LIMITS.reconnectMs
 /** Shown the moment End is requested, and kept in the record. */
 export const VISUAL_END_NOTICE = 'Returning control to the main agent'
 
+/**
+ * What the reviewer is told when a rendering the server compiled is one this
+ * browser's renderer cannot read: one for a canvas that still has the drawing
+ * before it, one for a canvas that has nothing to keep. The renderer's own
+ * exception names its internals and may carry anything, so it never reaches the
+ * page; these are the only words for that failure.
+ */
+export const VISUAL_DRAW_FAULT_KEPT =
+  'The latest model could not be drawn. The diagram still shows the last one that could.'
+
+export const VISUAL_DRAW_FAULT_BARE =
+  'The model could not be drawn. Nothing is on the canvas until one that can be drawn arrives.'
+
 export type VisualAppLifecycle =
   | 'connecting'
   | 'active'
@@ -91,7 +104,7 @@ export type VisualAppAction =
   | { readonly type: 'model.received'; readonly model: VisualRenderedModel }
   | {
       readonly type: 'diagnostic.received'
-      readonly diagnostic: VisualDiagnostic
+      readonly diagnostics: readonly VisualDiagnostic[]
     }
   | { readonly type: 'chat.sent'; readonly text: string }
   | {
@@ -117,7 +130,7 @@ export type VisualAppAction =
   | { readonly type: 'event.acknowledged'; readonly sequence: number }
   | {
       readonly type: 'input.refused'
-      readonly diagnostic: VisualDiagnostic
+      readonly diagnostics: readonly VisualDiagnostic[]
       readonly frozen: boolean
     }
   | { readonly type: 'end.requested' }
@@ -173,6 +186,39 @@ export const visualAuthorityLabel = (authority: VisualAuthority): string =>
  */
 export const canReconnect = (lostAt: number, now: number): boolean =>
   now - lostAt < RECONNECT_WINDOW_MS
+
+/** What is on the canvas, and why nothing newer is. */
+export interface VisualDrawing<TDrawing> {
+  /** The rendering to draw: the new one, or the last one that could be drawn. */
+  readonly drawn: TDrawing | null
+  /** Why the newest rendering is not on screen, in this application's words. */
+  readonly fault: string | null
+}
+
+/**
+ * The candidate as a drawing, or the last good drawing and a fault.
+ *
+ * A rendering the server compiled can still be one the renderer here refuses,
+ * and a desk that answers that by blanking the canvas has taken away the
+ * reviewer's place for a reason only a console would hold. The failed candidate
+ * is dropped; the drawing that worked is not, and the reviewer is told why.
+ */
+export const visualDrawingFor = <TDrawing>(
+  model: VisualRenderedModel | null,
+  draw: (compiled: unknown) => TDrawing,
+  lastDrawn: TDrawing | null,
+): VisualDrawing<TDrawing> => {
+  if (model === null) return { drawn: lastDrawn, fault: null }
+  try {
+    return { drawn: draw(model.compiled), fault: null }
+  } catch {
+    return {
+      drawn: lastDrawn,
+      fault:
+        lastDrawn === null ? VISUAL_DRAW_FAULT_BARE : VISUAL_DRAW_FAULT_KEPT,
+    }
+  }
+}
 
 /**
  * A record this browser wrote itself, keyed by a counter rather than by
@@ -249,9 +295,11 @@ const transition = (
       }
     case 'diagnostic.received':
       // The candidate that failed is gone; what is on screen still compiled.
+      // One failure has as many reasons as it has, and the reviewer reads all
+      // of them: keeping only the last would hide the one they need.
       return {
         ...state,
-        diagnostics: [action.diagnostic],
+        diagnostics: action.diagnostics,
         ...turnAnswered,
       }
     case 'chat.sent':
@@ -319,7 +367,7 @@ const transition = (
     case 'input.refused':
       return {
         ...state,
-        diagnostics: [action.diagnostic],
+        diagnostics: action.diagnostics,
         frozen: state.frozen || action.frozen,
         ...turnAnswered,
       }
@@ -429,11 +477,14 @@ export const visualAppActionsForFrame = (
     case 'accepted':
       return [{ type: 'event.acknowledged', sequence: frame.sequence }]
     case 'rejected':
-      return frame.diagnostics.map((diagnostic) => ({
-        type: 'input.refused',
-        diagnostic,
-        frozen: frame.frozen !== undefined,
-      }))
+      // One refusal, however many reasons it carries.
+      return [
+        {
+          type: 'input.refused',
+          diagnostics: frame.diagnostics,
+          frozen: frame.frozen !== undefined,
+        },
+      ]
     case 'model':
       return [{ type: 'model.received', model: frame.model }]
     case 'closing':
@@ -461,10 +512,12 @@ export const visualAppActionsForFrame = (
             },
           ]
         case 'diagnostic':
-          return frame.response.payload.diagnostics.map((diagnostic) => ({
-            type: 'diagnostic.received',
-            diagnostic,
-          }))
+          return [
+            {
+              type: 'diagnostic.received',
+              diagnostics: frame.response.payload.diagnostics,
+            },
+          ]
         case 'model.replace':
           // The promoted candidate arrives as its own frame, compiled. The
           // response is the journal's copy of the request, not a rendering.
