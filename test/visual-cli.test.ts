@@ -8,6 +8,7 @@ import {
   readdir,
   rm,
   symlink,
+  utimes,
   writeFile,
 } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -1298,16 +1299,26 @@ describe('runVisualStart', () => {
   it('prunes a session a previous runtime abandoned', async () => {
     const stale = identifier(0x5747)
     const root = join(workDir, VISUAL_SESSION_DIRECTORY, stale)
+    const abandonedAt = new Date(
+      Date.now() - VISUAL_LIMITS.staleSessionMs - 60_000,
+    )
     await mkdir(root, { recursive: true, mode: 0o700 })
     await writeJson(join(root, 'session.json'), {
       format: 'yarramate/visual-session-marker/v1',
       id: stale,
-      createdAt: new Date(
-        Date.now() - VISUAL_LIMITS.staleSessionMs - 60_000,
-      ).toISOString(),
+      createdAt: abandonedAt.toISOString(),
       authority: 'ad-hoc',
     })
     await writeFile(join(root, 'journal.jsonl'), '', { mode: 0o600 })
+    // Collection follows what nothing has written to, so the abandonment has
+    // to be on the filesystem and not only in the marker.
+    for (const artefact of [
+      join(root, 'journal.jsonl'),
+      join(root, 'session.json'),
+      root,
+    ]) {
+      await utimes(artefact, abandonedAt, abandonedAt)
+    }
 
     const foreground = startForeground(await writeRequest(), workDir)
     const started = await foreground.started

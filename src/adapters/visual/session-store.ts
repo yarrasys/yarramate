@@ -989,9 +989,50 @@ export const removeVisualSession = async (
 }
 
 /**
+ * Newest modification time across a session's artefacts, or `undefined` when
+ * none of them could be measured.
+ *
+ * POSIX updates a directory's modification time only when its own entries
+ * change, so the session root records nothing about an appended journal, and
+ * the candidates directory records nothing about a promoted pointer. Every
+ * artefact that can carry activity is therefore measured directly; the
+ * optional ones are simply absent until a session produces them. `lstat`
+ * keeps a symlinked artefact from reporting some other file's activity.
+ */
+const lastActivityMs = async (
+  paths: VisualSessionPaths,
+): Promise<number | undefined> => {
+  let newest: number | undefined
+  for (const path of [
+    paths.root,
+    paths.marker,
+    paths.descriptor,
+    paths.journal,
+    paths.candidates,
+    paths.activeModel,
+  ]) {
+    let entry
+    try {
+      entry = await lstat(path)
+    } catch {
+      continue
+    }
+    if (newest === undefined || entry.mtimeMs > newest) {
+      newest = entry.mtimeMs
+    }
+  }
+  return newest
+}
+
+/**
  * Removes orphaned sessions a previous runtime left behind. Only directories
  * carrying a marker that names them are touched, and never more than `limit`
- * per pass; the oldest go first.
+ * per pass; the least recently active go first.
+ *
+ * Staleness is measured against what the session last wrote, not against the
+ * marker's creation time: a conversation that has run for two days is the
+ * working case, and deleting it under a live runtime would destroy the
+ * transcript the agent is still appending to.
  */
 export const pruneStaleVisualSessions = async (
   baseDir: string,
@@ -1004,7 +1045,7 @@ export const pruneStaleVisualSessions = async (
   } catch {
     return []
   }
-  const stale: { readonly root: string; readonly createdAt: number }[] = []
+  const stale: { readonly root: string; readonly activeAt: number }[] = []
   for (const entry of entries) {
     // Dirent reflects lstat, so a symlink pointing at a directory outside the
     // base directory is never a candidate for removal.
@@ -1012,21 +1053,28 @@ export const pruneStaleVisualSessions = async (
       continue
     }
     const paths = visualSessionPaths(join(baseDir, entry.name))
-    let marker
     try {
-      marker = await readSessionMarker(paths)
+      // Authorisation only: the marker says this directory is a session of
+      // ours and names itself. What it says about creation time is not what
+      // makes it collectable.
+      await readSessionMarker(paths)
     } catch {
       continue
     }
-    const createdAt = Date.parse(marker.createdAt)
-    if (now.getTime() - createdAt <= VISUAL_LIMITS.staleSessionMs) {
+    // A session whose activity cannot be measured is left alone rather than
+    // assumed abandoned.
+    const activeAt = await lastActivityMs(paths)
+    if (
+      activeAt === undefined ||
+      now.getTime() - activeAt <= VISUAL_LIMITS.staleSessionMs
+    ) {
       continue
     }
-    stale.push({ root: paths.root, createdAt })
+    stale.push({ root: paths.root, activeAt })
   }
   stale.sort(
     (left, right) =>
-      left.createdAt - right.createdAt || left.root.localeCompare(right.root),
+      left.activeAt - right.activeAt || left.root.localeCompare(right.root),
   )
   const removed: string[] = []
   for (const candidate of stale.slice(0, Math.max(0, limit))) {

@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { readFile, writeFile } from 'node:fs/promises'
+import { open, writeFile } from 'node:fs/promises'
 import { extname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import type { Readable } from 'node:stream'
 import type {
@@ -483,7 +483,18 @@ const exportViews = async (
 
   let raw: Buffer
   try {
-    raw = await readFile(exportPath)
+    // The compiler is a separate process, so it creates the export with its
+    // own umask and typically leaves it group- and world-readable. The
+    // document is narrowed through the descriptor it is read from, so no
+    // widely readable rendering exists at any point between the export and
+    // the promotion, and no path is resolved twice in between.
+    const handle = await open(exportPath, 'r')
+    try {
+      await handle.chmod(0o600)
+      raw = await handle.readFile()
+    } finally {
+      await handle.close()
+    }
   } catch {
     return {
       diagnostics: [
@@ -528,11 +539,11 @@ const exportViews = async (
     }
   }
   // The promoted artefact is always one project document, because that is what
-  // the browser's model factory reads.
+  // the browser's model factory reads. Truncating in place keeps the 0600 the
+  // read above imposed; a create-time mode would not apply to a file that the
+  // compiler already wrote.
   if (sole.document !== exported) {
-    await writeFile(exportPath, JSON.stringify(sole.document, null, 2), {
-      mode: 0o600,
-    })
+    await writeFile(exportPath, JSON.stringify(sole.document, null, 2))
   }
   const views = plainFields(sole.document).views
   if (!isPlainObject(views)) {
