@@ -54,6 +54,7 @@ const serverSnapshot: VisualSessionSnapshot = {
   webSocketUrl: 'ws://127.0.0.1:4321/socket',
   model: model('000001', 'choices', 'option-b'),
   transcript: [],
+  agentTurnOpen: false,
   styleNonce: 'a'.repeat(32),
   lastSequence: 0,
   frozen: false,
@@ -100,6 +101,75 @@ describe('visualAppReducer session lifecycle', () => {
       composerEnabled: true,
     })
     expect(activeState.model?.candidate).toBe('000001')
+  })
+
+  it('keeps input shut when the turn was still open at reconnect', () => {
+    const asked = visualAppReducer(
+      visualAppReducer(activeState, { type: 'chat.sent', text: 'Why B?' }),
+      { type: 'status.received', status: { state: 'thinking' } },
+    )
+    const reconnected = visualAppReducer(asked, {
+      type: 'session.loaded',
+      snapshot: visualAppSnapshotFrom({
+        ...serverSnapshot,
+        transcript: [{ id: 'e1', speaker: 'reviewer', text: 'Why B?' }],
+        agentTurnOpen: true,
+        lastSequence: 1,
+      }),
+    })
+    expect(reconnected.composerEnabled).toBe(false)
+    expect(reconnected.agentStatus).toEqual({ state: 'thinking' })
+  })
+
+  it('reopens input when the agent answered while the browser was away', () => {
+    const asked = visualAppReducer(
+      visualAppReducer(activeState, { type: 'chat.sent', text: 'Why B?' }),
+      { type: 'status.received', status: { state: 'thinking' } },
+    )
+    const lost = visualAppReducer(asked, { type: 'connection.lost' })
+    const reconnected = visualAppReducer(lost, {
+      type: 'session.loaded',
+      snapshot: visualAppSnapshotFrom({
+        ...serverSnapshot,
+        transcript: [
+          { id: 'e1', speaker: 'reviewer', text: 'Why B?' },
+          { id: 'r1', speaker: 'agent', text: 'It reuses the intake path.' },
+        ],
+        agentTurnOpen: false,
+        lastSequence: 1,
+      }),
+    })
+    expect(reconnected.lifecycle).toBe('active')
+    expect(reconnected.composerEnabled).toBe(true)
+    expect(reconnected.agentStatus).toBe(null)
+    expect(reconnected.transcript).toHaveLength(2)
+
+    // The server may replay the response this browser missed; the record it
+    // already holds is the same record, not a second one.
+    const replayed = visualAppReducer(reconnected, {
+      type: 'chat.received',
+      id: 'r1',
+      text: 'It reuses the intake path.',
+    })
+    expect(replayed.transcript).toHaveLength(2)
+    expect(replayed.composerEnabled).toBe(true)
+  })
+
+  it('never reuses a record key across a restored conversation', () => {
+    const ending = visualAppReducer(activeState, { type: 'end.requested' })
+    const restored = visualAppReducer(ending, {
+      type: 'session.loaded',
+      snapshot: visualAppSnapshotFrom({
+        ...serverSnapshot,
+        transcript: [
+          { id: 'e1', speaker: 'reviewer', text: 'one' },
+          { id: 'r1', speaker: 'agent', text: 'two' },
+        ],
+      }),
+    })
+    const asked = visualAppReducer(restored, { type: 'chat.sent', text: 'next' })
+    const keys = asked.transcript.map((record) => record.id)
+    expect(new Set(keys).size).toBe(keys.length)
   })
 
   it('carries the session style nonce to the renderer', () => {

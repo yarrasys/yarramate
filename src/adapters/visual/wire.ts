@@ -60,6 +60,12 @@ export interface VisualSessionSnapshot {
   readonly model: VisualRenderedModel
   readonly transcript: readonly VisualTranscriptRecord[]
   /**
+   * Whether the agent still owes an answer to something the reviewer sent. A
+   * browser that reconnects mid-turn reads this rather than inferring the turn
+   * from the transcript, so a reply it never saw does not leave it waiting.
+   */
+  readonly agentTurnOpen: boolean
+  /**
    * Nonce this session's policy admits for the inline styles the diagram
    * renderer injects. It authorises styling and nothing else, and it is not a
    * credential: the session cookie is what authenticates this snapshot.
