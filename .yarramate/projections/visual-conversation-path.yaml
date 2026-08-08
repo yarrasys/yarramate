@@ -1,0 +1,46 @@
+format: yarramate/projection/v1
+id: visual-conversation-path
+version: "1.0"
+query:
+  subjects:
+    - yarramate-engine#visual-runtime
+    - yarramate-engine#visual-browser
+    - yarramate-engine#visual-session-service
+    - yarramate-engine#visual-session-protocol
+    - yarramate-engine#visual-handoff
+    - yarramate-engine#render-visual-model
+    - yarramate-engine#recover-visual-session
+    - yarramate-product#agent-harness
+    - yarramate-repository#agent-skill-source
+    - yarramate-repository#visual-skill-reference
+    - yarramate-repository#visual-session-server-source
+    - yarramate-repository#visual-session-store-source
+    - yarramate-repository#visual-likec4-compiler-source
+    - yarramate-repository#visual-protocol-source
+    - yarramate-repository#visual-cli-source
+    - yarramate-repository#visual-browser-source
+    - yarramate-repository#visual-browser-shell
+    - yarramate-repository#visual-event-schema-source
+    - yarramate-repository#visual-handoff-schema-source
+    - yarramate-repository#visual-session-server-tests
+    - yarramate-repository#visual-session-store-tests
+    - yarramate-repository#visual-likec4-compiler-tests
+    - yarramate-repository#visual-protocol-tests
+    - yarramate-repository#visual-cli-tests
+    - yarramate-repository#visual-browser-tests
+    - yarramate-repository#visual-journey-tests
+  relationships: between
+presentation:
+  title: Visual architecture conversation
+  description: >-
+    One temporary local session the agent harness owns end to end. The
+    canonical skill and its visual-conversations reference set the authority
+    label and the mode, then drive the visual session command: the runtime
+    provides that command, renders the temporary model, serves the browser,
+    and derives the handoff on End or failure. Delegated path - a child agent
+    answers browser events over the versioned session protocol. Diagram-only
+    path - no child, the browser just navigates views and the conversation
+    stays in the main harness. Both end at the same recovered handoff. The
+    browser exchanges session protocol documents and nothing else: no
+    authority over canonical documents or repository files, and no model
+    provider inside the runtime.

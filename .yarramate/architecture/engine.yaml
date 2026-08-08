@@ -702,6 +702,46 @@ concepts:
     description: Rendered a projection result as deterministic Markdown for reviewers, the human-facing counterpart to the JSON context of the same projection.
     owner: yarramate-product#yarramate-maintainers
     status: retired
+  - id: visual-runtime
+    kind: applicationComponent
+    name: Visual conversation runtime
+    description: Serves authenticated temporary LikeC4 explanations, browser chat transport, recovery, and cleanup without invoking a model provider.
+    owner: yarramate-product#yarramate-maintainers
+    status: current
+  - id: visual-browser
+    kind: applicationComponent
+    name: Visual conversation browser
+    description: Custom React and LikeC4 presentation for diagrams, descriptions, choices, chat, status, and End.
+    owner: yarramate-product#yarramate-maintainers
+    status: current
+  - id: visual-session-service
+    kind: applicationService
+    name: Visual session command
+    description: Starts, waits on, responds to, inspects, recovers, and stops one local visual conversation.
+    owner: yarramate-product#yarramate-maintainers
+    status: current
+  - id: visual-session-protocol
+    kind: dataObject
+    name: Visual session protocol
+    description: Versioned browser, delegated-agent, model, status, and handoff documents for one temporary session.
+    owner: yarramate-product#yarramate-maintainers
+    status: current
+  - id: visual-handoff
+    kind: dataObject
+    name: Visual conversation handoff
+    description: Recoverable summary of confirmed decisions, requested changes, unresolved questions, final views, termination, and optional transcript access.
+    owner: yarramate-product#yarramate-maintainers
+    status: current
+  - id: render-visual-model
+    kind: applicationFunction
+    name: Render temporary visual model
+    description: Validates, compiles, and atomically promotes a complete grounded or explicitly ad hoc LikeC4 model.
+    status: current
+  - id: recover-visual-session
+    kind: applicationFunction
+    name: Recover visual conversation
+    description: Derives the main-agent handoff from the append-only journal before shutdown or after failure.
+    status: current
 relationships:
   - id: core-contract-checker-loads-contract
     kind: assignment
@@ -1532,3 +1572,41 @@ relationships:
     from: view-command
     to: yarramate-product#agent-harness
     status: retired
+  - id: visual-runtime-renders-model
+    kind: assignment
+    from: visual-runtime
+    to: render-visual-model
+  - id: visual-runtime-recovers-session
+    kind: assignment
+    from: visual-runtime
+    to: recover-visual-session
+  - id: visual-runtime-provides-session-command
+    kind: implements
+    from: visual-runtime
+    to: visual-session-service
+    description: yarramate-visual is a sibling presentation binary beside yarramate-likec4, never a subcommand of the semantic CLI.
+  - id: visual-session-serves-agent-harness
+    kind: serving
+    from: visual-session-service
+    to: yarramate-product#agent-harness
+  - id: visual-runtime-serves-browser
+    kind: serving
+    from: visual-runtime
+    to: visual-browser
+    description: The runtime serves the browser over one authenticated local origin; in diagram-only mode this is the whole session and the conversation stays in the main harness.
+  - id: visual-rendering-reads-protocol
+    kind: access
+    from: render-visual-model
+    to: visual-session-protocol
+    mode: read
+  - id: visual-browser-exchanges-protocol
+    kind: access
+    from: visual-browser
+    to: visual-session-protocol
+    mode: read-write
+    description: The browser exchanges only versioned session documents. It cannot reach .yarramate, repository files, or the trusted compiler command vector, and no model provider is reachable from it.
+  - id: visual-recovery-writes-handoff
+    kind: access
+    from: recover-visual-session
+    to: visual-handoff
+    mode: write
