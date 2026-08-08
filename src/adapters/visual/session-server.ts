@@ -235,10 +235,15 @@ type BodyResult =
 const serverError = (code: string, message: string) =>
   new Error(`${code}: ${message}`)
 
+/**
+ * `pointer` is an RFC 6901 pointer into the document being refused, rooted at
+ * `/`, because these diagnostics are published in `visual-diagnostic-result/v1`
+ * documents and read back by the one-shot agent clients.
+ */
 const serverDiagnostic = (
   code: string,
   message: string,
-  pointer = '#',
+  pointer = '/',
 ): VisualDiagnostic => ({
   severity: 'error',
   code,
@@ -715,7 +720,7 @@ export const startVisualServer = async (
             serverDiagnostic(
               'YMVS305',
               `Queue already holds the ${VISUAL_LIMITS.pendingEvents} event maximum`,
-              '#/sequence',
+              '/sequence',
             ),
           ],
         })
@@ -893,7 +898,7 @@ export const startVisualServer = async (
           serverDiagnostic(
             'YMVS126',
             `Response belongs to session "${response.sessionId}", not "${sessionId}"`,
-            '#/sessionId',
+            '/sessionId',
           ),
         ],
       } satisfies VisualResponseAcceptance)
