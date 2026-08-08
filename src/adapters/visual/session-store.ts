@@ -85,6 +85,13 @@ export interface SessionDependencies {
 }
 
 /**
+ * What the runtime needs to mint one terminal event. It is the same clock and
+ * the same random source the session was created with, so a test drives the
+ * closing record exactly as it drives every other one.
+ */
+export type TerminalEventDependencies = Omit<SessionDependencies, 'baseDir'>
+
+/**
  * The only session state that outlives the runtime process. Recovery never
  * resumes the server or the compiler, so the marker carries the session
  * identity, its age for pruning, and the authority label the handoff must
@@ -152,6 +159,11 @@ interface JournalState {
   readonly eventIds: Set<string>
   readonly responseIds: Set<string>
   readonly sessionId: string
+  /**
+   * The one `session.end` this journal carries, once it carries it. A session
+   * ends exactly once, and nothing may be journaled behind that record.
+   */
+  terminal: VisualEvent | undefined
 }
 
 interface JournalRead {
@@ -425,6 +437,11 @@ const syncState = async (paths: VisualSessionPaths): Promise<JournalState> => {
         .map((record) => record.responseId),
     ),
     sessionId: marker.id,
+    terminal: journal.records.find(
+      (record): record is VisualEvent =>
+        record.format === 'yarramate/visual-event/v1' &&
+        record.type === 'session.end',
+    ),
   }
   states.set(paths.journal, state)
   return state
@@ -569,6 +586,22 @@ export const appendVisualEvent = async (
         ],
       }
     }
+    // A session ends once. Nothing may be journaled behind the terminal event,
+    // because recovery has already read the journal as the whole conversation.
+    if (state.terminal !== undefined) {
+      return {
+        ok: false,
+        freeze: 'terminal-event',
+        diagnostics: [
+          storeDiagnostic(
+            'YMVS130',
+            `Session "${state.sessionId}" ended at sequence ${state.terminal.sequence} and takes no further event`,
+            paths.journal,
+            '#/type',
+          ),
+        ],
+      }
+    }
     if (record.sequence <= state.lastSequence) {
       return {
         ok: false,
@@ -592,6 +625,7 @@ export const appendVisualEvent = async (
     state.bytes += bytes
     state.lastSequence = record.sequence
     state.eventIds.add(record.eventId)
+    if (record.type === 'session.end') state.terminal = record
     return {
       ok: true,
       lastSequence: state.lastSequence,
@@ -653,6 +687,54 @@ export const appendVisualResponse = async (
   })
 }
 
+/**
+ * Journals the one record that closes a session, and answers with the record a
+ * session already has. Every terminal cause — a reviewer's End, a failed child,
+ * a browser that never came back, a cancellation, a restart collecting what a
+ * dead runtime left — converges here, so a session ends exactly once no matter
+ * how many of them fire.
+ */
+export const appendTerminalEvent = async (
+  paths: VisualSessionPaths,
+  reason: VisualTerminationReason,
+  deps: TerminalEventDependencies,
+): Promise<VisualEvent> =>
+  serialize(paths.journal, async () => {
+    const state = await syncState(paths)
+    if (state.terminal !== undefined) return state.terminal
+    const event: VisualEvent = {
+      format: 'yarramate/visual-event/v1',
+      sessionId: state.sessionId,
+      sequence: state.lastSequence + 1,
+      eventId: drawHex(deps.randomBytes, 16),
+      type: 'session.end',
+      timestamp: deps.now().toISOString(),
+      payload: { reason },
+    }
+    // The runtime composed this record, so a violation is a defect here rather
+    // than untrusted input, and it must not reach the journal.
+    const validated = parseVisualEvent(event)
+    if (!validated.ok) {
+      const first = validated.diagnostics[0]
+      throw storeError(
+        first?.code ?? 'YMVS104',
+        `Terminal event for "${paths.root}" is invalid: ${
+          first?.message ?? 'unknown violation'
+        }`,
+      )
+    }
+    const line = `${JSON.stringify(event)}\n`
+    // Deliberately exempt from the transcript ceiling: a session that reached
+    // its byte limit is exactly the one that has to be closable, and the
+    // closing record is bounded and written once.
+    await writeJournalLine(paths.journal, line)
+    state.bytes += Buffer.byteLength(line, 'utf8')
+    state.lastSequence = event.sequence
+    state.eventIds.add(event.eventId)
+    state.terminal = event
+    return event
+  })
+
 export const readActionableEventsAfter = async (
   paths: VisualSessionPaths,
   sequence: number,
@@ -674,7 +756,7 @@ export const recoverVisualSession = async (
   const journal = await readJournal(paths.journal)
 
   let summary: VisualHandoffSummary | undefined
-  let endReason: 'user-ended' | 'browser-timeout' | undefined
+  let endReason: VisualTerminationReason | undefined
   const visited: string[] = []
   for (const record of journal.records) {
     if (
@@ -696,17 +778,16 @@ export const recoverVisualSession = async (
     }
   }
 
-  // Every combination below satisfies the protocol's cross-field rule: only a
-  // completed handoff may report `user-ended`, and that requires a summary the
-  // child actually submitted.
+  // The terminal event names the cause; a journal without one lost its runtime
+  // before it could say why. Every combination below satisfies the protocol's
+  // cross-field rule: only a completed handoff may report `user-ended`, and
+  // that requires a summary the child actually submitted.
   const terminationReason: VisualTerminationReason =
-    endReason === 'browser-timeout'
-      ? 'browser-timeout'
-      : endReason === 'user-ended' && summary !== undefined
-        ? 'user-ended'
-        : endReason === 'user-ended'
-          ? 'child-failed'
-          : 'server-failed'
+    endReason === undefined
+      ? 'server-failed'
+      : endReason === 'user-ended' && summary === undefined
+        ? 'child-failed'
+        : endReason
   const decision: VisualHandoffDecision =
     summary === undefined
       ? 'failed'

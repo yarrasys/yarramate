@@ -26,6 +26,7 @@ import {
   parseVisualHandoff,
   parseVisualSessionStarted,
   parseVisualStatus,
+  type VisualBrowserInput,
   type VisualEvent,
   type VisualHandoff,
   type VisualModel,
@@ -167,7 +168,7 @@ const nextFrame = async <Kind extends VisualServerFrame['kind']>(
  */
 const sendBrowserEvent = async (
   started: VisualSessionStarted,
-  input: typeof chatEventInput,
+  input: VisualBrowserInput,
 ) => {
   const bootstrapped = await fetch(started.browserUrl, { redirect: 'manual' })
   const header = bootstrapped.headers.get('set-cookie')
@@ -855,7 +856,10 @@ describe('stop', () => {
     expect(JSON.parse(result.stdout)).toMatchObject({
       format: 'yarramate/visual-handoff/v1',
       sessionId: handle.started.sessionId,
-      lastSequence: 1,
+      // The runtime's own terminal event, past the chat message, and the cause
+      // this stop closed the session under.
+      lastSequence: 2,
+      terminationReason: 'main-cancelled',
     })
     // Recovered before cleanup: the summary above came out of a journal the
     // same command then deleted.
@@ -1105,6 +1109,34 @@ describe('runVisualStart', () => {
     expect(refusalCodes(result)).toEqual(['YMVS409'])
     expect(existsSync(started.sessionRoot)).toBe(false)
     expect(foreground.signals.listenerCount('SIGTERM')).toBe(0)
+  })
+
+  it('reports a reviewer End the child never answered as a failed session', async () => {
+    const foreground = startForeground(await writeRequest(), workDir)
+    const started = await foreground.started
+    await sendBrowserEvent(started, {
+      type: 'session.end',
+      lastAcknowledgedSequence: 0,
+      payload: { reason: 'user-ended' },
+    })
+
+    // The child died before submitting its handoff, so the main agent closes
+    // the session under its own cancellation.
+    const stopped = await runVisualClientCli(
+      ['stop', started.descriptorPath],
+      workDir,
+    )
+    expect(stopped.exitCode).toBe(0)
+    expect(JSON.parse(stopped.stdout)).toMatchObject({
+      decision: 'failed',
+      terminationReason: 'child-failed',
+    })
+
+    // The journal, not the reason someone asked to stop under, is what says
+    // whether this session did what it was opened to do.
+    const result = await foreground.result
+    expect(result).toMatchObject({ exitCode: 1, stdout: '' })
+    expect(refusalCodes(result)).toEqual(['YMVS409'])
   })
 
   it('refuses a request document that is not there', async () => {
