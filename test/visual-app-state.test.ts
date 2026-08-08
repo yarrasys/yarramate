@@ -53,6 +53,8 @@ const serverSnapshot: VisualSessionSnapshot = {
   },
   webSocketUrl: 'ws://127.0.0.1:4321/socket',
   model: model('000001', 'choices', 'option-b'),
+  transcript: [],
+  styleNonce: 'a'.repeat(32),
   lastSequence: 0,
   frozen: false,
 }
@@ -98,6 +100,41 @@ describe('visualAppReducer session lifecycle', () => {
       composerEnabled: true,
     })
     expect(activeState.model?.candidate).toBe('000001')
+  })
+
+  it('carries the session style nonce to the renderer', () => {
+    expect(activeState.styleNonce).toBe('a'.repeat(32))
+  })
+
+  it('restores the conversation the session already holds', () => {
+    const restored = loaded({
+      transcript: [
+        { id: 'e1', speaker: 'reviewer', text: 'Why option B?' },
+        { id: 'r1', speaker: 'agent', text: 'It reuses the intake path.' },
+      ],
+      lastSequence: 1,
+    })
+    expect(restored.transcript).toEqual([
+      { id: 'e1', speaker: 'reviewer', text: 'Why option B?' },
+      { id: 'r1', speaker: 'agent', text: 'It reuses the intake path.' },
+    ])
+    expect(restored.lastSequence).toBe(1)
+  })
+
+  it('keeps its own session notices when the server restores the record', () => {
+    const ending = visualAppReducer(activeState, { type: 'end.requested' })
+    const restored = visualAppReducer(ending, {
+      type: 'session.loaded',
+      snapshot: visualAppSnapshotFrom({
+        ...serverSnapshot,
+        transcript: [{ id: 'e1', speaker: 'reviewer', text: 'Why option B?' }],
+      }),
+    })
+    // The server owns what was said; the browser owns what it told the reviewer.
+    expect(restored.transcript).toEqual([
+      { id: 'e1', speaker: 'reviewer', text: 'Why option B?' },
+      { id: 'local-0', speaker: 'session', text: VISUAL_END_NOTICE },
+    ])
   })
 
   it('leaves the composer shut when the session arrives already frozen', () => {
