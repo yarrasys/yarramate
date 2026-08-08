@@ -1,0 +1,86 @@
+{
+  "_stage": "layouted",
+  "projectId": "visual",
+  "project": {
+    "id": "visual",
+    "title": "visual"
+  },
+  "specification": {
+    "tags": {},
+    "elements": {
+      "system": {
+        "style": {}
+      }
+    },
+    "relationships": {},
+    "deployments": {},
+    "customColors": {}
+  },
+  "elements": {
+    "system": {
+      "style": {},
+      "title": "System",
+      "kind": "system",
+      "id": "system"
+    }
+  },
+  "relations": {},
+  "globals": {
+    "predicates": {},
+    "dynamicPredicates": {},
+    "styles": {}
+  },
+  "views": {
+    "choices": {
+      "_type": "element",
+      "_stage": "layouted",
+      "id": "choices",
+      "title": null,
+      "description": null,
+      "tags": null,
+      "links": null,
+      "sourcePath": "views/choices.likec4",
+      "autoLayout": {
+        "direction": "TB"
+      },
+      "hash": "w_sb3-EaQesp_nbNDKqaYUVIin1fRfjw7nrVhyJO-B8",
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 320,
+        "height": 180
+      },
+      "nodes": [
+        {
+          "id": "system",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [],
+          "outEdges": [],
+          "title": "System",
+          "modelRef": "system",
+          "shape": "rectangle",
+          "color": "primary",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "tags": [],
+          "kind": "system",
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 180,
+          "labelBBox": {
+            "x": 125,
+            "y": 76,
+            "width": 71,
+            "height": 24
+          }
+        }
+      ],
+      "edges": []
+    }
+  }
+}
