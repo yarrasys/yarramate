@@ -1123,6 +1123,30 @@ describe('startVisualServer agent responses', () => {
     expect(await journalOf(server)).toHaveLength(0)
   })
 
+  it('rejects a response that answers an event this session never journaled', async () => {
+    const server = await start()
+    const capability = await capabilityOf(server)
+    const { cookie } = await bootstrap(server)
+    const socket = await openBrowserSocket(server, cookie)
+    await sendChat(socket, 'first')
+
+    // The capability is this session's, and so is the session id; the event
+    // being answered is not.
+    const response = await postResponse(
+      server,
+      capability,
+      chatResponse(server, identifier(0xbad), 1),
+    )
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toMatchObject({
+      accepted: false,
+      diagnostics: [{ code: 'YMVS131', pointer: '#/eventId' }],
+    })
+    expect(await journalOf(server)).toHaveLength(1)
+    socket.close()
+  })
+
   it('promotes a valid model replacement and tells the browser', async () => {
     const server = await start()
     const capability = await capabilityOf(server)
