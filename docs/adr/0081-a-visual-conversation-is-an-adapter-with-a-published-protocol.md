@@ -127,10 +127,22 @@ conversation back through a context window.
 ## Consequences
 
 The nine documents and the `yarramate-visual` binary are public surface
-from this point. An incompatible change to any of them is a new version,
-not an edit: `yarramate/visual-event/v2` beside v1, on the ADR 0018 rule.
-Additive optional fields remain additive, and consumers are expected to
-ignore what they do not recognize.
+from this point, and every one of the nine is closed:
+`additionalProperties: false` throughout, enforced by Ajv in the runtime,
+which parses every browser event, agent response, model, and handoff before
+accepting it. Nothing silently ignores a field it does not recognize, so
+there is no such thing as a quietly additive change here. Any change to a
+v1 field set — adding an optional field included — is
+compatibility-significant and lands as a coordinated schema-and-parser
+update across the parties that read it. Changes that cannot be made
+compatibly mint a new version beside v1: `yarramate/visual-event/v2` next
+to `yarramate/visual-event/v1`, on the ADR 0018 rule.
+
+Closing the schemas was the deliberate side of that trade. An open envelope
+would buy tolerant readers at the cost of accepting a typo'd field name as
+an unremarkable extension, in a protocol whose events are the recovery
+record. The cost is paid in release coordination, which is visible, rather
+than in silently dropped payloads, which is not.
 
 Core stays unaware of any of it. Nothing in the semantic CLI, the graph, or
 the native document format references a visual session, so the runtime can
@@ -139,7 +151,7 @@ property the sibling-binary boundary was chosen to buy.
 
 The deferred surface is deliberate and named in the design: one session per
 conversation, one child, one in-flight turn, whole-model replacement,
-localhost only. Each of those becomes reachable additively if it earns its
-way in. Partial model patches are the one that would be felt first, and
-they were excluded so that validation and recovery both operate on a single
-atomic replacement rather than on a history of diffs.
+localhost only. Each is reachable later under the versioning rule above.
+Partial model patches are the one that would be felt first, and they were
+excluded so that validation and recovery both operate on a single atomic
+replacement rather than on a history of diffs.
