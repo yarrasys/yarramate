@@ -1,11 +1,15 @@
 import { LikeC4Model, type AnyLikeC4Model } from '@likec4/core/model'
 import { LikeC4ModelProvider, ReactLikeC4 } from 'likec4/react'
 import {
+  useEffect,
   useMemo,
+  useReducer,
   useRef,
   useState,
+  type CSSProperties,
   type FormEvent,
   type KeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
 } from 'react'
 import type {
   VisualChoicePresentPayload,
@@ -17,11 +21,18 @@ import {
   visualDrawingFor,
   type VisualAppRecord,
   type VisualAppState,
+  type VisualDrawing,
 } from './state.js'
+import {
+  conversationWidthBounds,
+  createVisualWorkspaceState,
+  visualWorkspaceReducer,
+} from './workspace-state.js'
 
 /**
- * The review desk: the diagram the reviewer is judging, the rail that carries
- * the four facts they have to trust, and the conversation they answer in.
+ * A drawing board, not a document: the diagram holds the workspace, one compact
+ * strip carries the facts and the controls above it, and the conversation is a
+ * panel the reviewer sizes or puts away without losing what it holds.
  */
 
 /**
@@ -66,47 +77,83 @@ const connectionOf = (state: VisualAppState, connected: boolean): string => {
   }
 }
 
-const Rail = ({
-  authority,
+const CommandStrip = ({
+  state,
   connection,
-  view,
+  views,
+  detailsOpen,
+  conversationOpen,
+  unread,
+  onNavigate,
+  onToggleDetails,
+  onToggleConversation,
   onEnd,
-  endEnabled,
 }: {
-  readonly authority: 'canonical' | 'ad-hoc'
+  readonly state: VisualAppState
   readonly connection: string
-  readonly view: string
+  readonly views: readonly string[]
+  readonly detailsOpen: boolean
+  readonly conversationOpen: boolean
+  readonly unread: number
+  readonly onNavigate: (viewId: string) => void
+  readonly onToggleDetails: () => void
+  readonly onToggleConversation: () => void
   readonly onEnd: () => void
-  readonly endEnabled: boolean
 }) => (
-  <div className={`rail rail-${authority}`}>
-    <p className="station station-authority">
-      <span className="tick" />
-      <span className="value">
-        {authority === 'canonical' ? 'Checked' : 'Ad hoc'}
+  <header className="command-strip">
+    <div className="command-identity">
+      <h1>{state.title === '' ? 'Opening the session' : state.title}</h1>
+      <span className={`authority authority-${state.authority}`}>
+        {visualAuthorityLabel(state.authority)}
       </span>
-    </p>
-    <p
-      className={`station station-link link-${connection.toLowerCase()}`}
-      role="status"
+      <span className="connection-state">{connection}</span>
+    </div>
+    <div className="command-actions">
+      <label className="offscreen" htmlFor="active-view">Active view</label>
+      <select
+        id="active-view"
+        value={state.activeView}
+        onChange={(event) => onNavigate(event.target.value)}
+        disabled={views.length < 2}
+      >
+        {views.map((viewId) => (
+          <option key={viewId} value={viewId}>{viewId}</option>
+        ))}
+      </select>
+      <button
+        type="button"
+        aria-expanded={detailsOpen}
+        aria-controls="session-details"
+        onClick={onToggleDetails}
+      >
+        Details
+      </button>
+      <button
+        type="button"
+        aria-expanded={conversationOpen}
+        aria-controls="conversation-panel"
+        onClick={onToggleConversation}
+      >
+        Conversation
+        {unread === 0 ? null : <span className="attention-count">{unread}</span>}
+      </button>
+      <button
+        type="button"
+        className="end-session"
+        onClick={onEnd}
+        disabled={state.lifecycle !== 'active'}
+      >
+        End
+      </button>
+    </div>
+    <div
+      id="session-details"
+      className="session-details"
+      hidden={!detailsOpen}
     >
-      <span className="tick" />
-      <span className="value">{connection}</span>
-    </p>
-    <p className="station station-view">
-      <span className="tick" />
-      <span className="value">{view === '' ? 'No view' : view}</span>
-    </p>
-    <button
-      type="button"
-      className="end"
-      onClick={onEnd}
-      disabled={!endEnabled}
-      aria-label="End the review and return control to the main agent"
-    >
-      End
-    </button>
-  </div>
+      <p>{state.description}</p>
+    </div>
+  </header>
 )
 
 const Faults = ({
@@ -163,13 +210,71 @@ const Choices = ({
   </div>
 )
 
-const ChatPanel = ({
+const DiagramWorkspace = ({
   state,
+  drawing,
+  waiting,
+  reduceGraphics,
+  onNavigate,
+}: {
+  readonly state: VisualAppState
+  readonly drawing: VisualDrawing<AnyLikeC4Model>
+  readonly waiting: string | null
+  readonly reduceGraphics: boolean
+  readonly onNavigate: (viewId: string) => void
+}) => (
+  <section className="diagram-workspace" aria-label="Architecture diagram">
+    <div className="canvas">
+      {drawing.drawn === null ? null : (
+        <LikeC4ModelProvider likec4model={drawing.drawn}>
+          <ReactLikeC4
+            viewId={state.activeView}
+            onNavigateTo={(viewId) => onNavigate(viewId)}
+            injectFontCss={false}
+            colorScheme="light"
+            background="dots"
+            controls
+            pannable
+            zoomable
+            fitView
+            keepAspectRatio={false}
+            // The custom inspector is the only details surface, so the
+            // renderer's own overlays stay shut.
+            enableElementDetails={false}
+            enableRelationshipDetails={false}
+            enableNotes
+            enableSearch={false}
+            // The renderer injects its own stylesheets; this session's
+            // policy admits them under this nonce and nothing else.
+            styleNonce={state.styleNonce}
+            showNavigationButtons
+            reduceGraphics={reduceGraphics ? true : 'auto'}
+            className="diagram"
+          />
+        </LikeC4ModelProvider>
+      )}
+      {waiting === null ? null : <p className="waiting">{waiting}</p>}
+    </div>
+
+    {drawing.fault === null ? null : (
+      // The renderer's exception describes its own internals and may carry
+      // anything: the reviewer reads this application's words instead.
+      <div className="faults" role="alert">
+        <p className="faults-title">{drawing.fault}</p>
+      </div>
+    )}
+  </section>
+)
+
+const ConversationPanel = ({
+  state,
+  hidden,
   disabled,
   onSend,
   onChoice,
 }: {
   readonly state: VisualAppState
+  readonly hidden: boolean
   readonly disabled: boolean
   readonly onSend: (text: string) => void
   readonly onChoice: (optionId: string) => void
@@ -191,31 +296,38 @@ const ChatPanel = ({
   }
 
   return (
-    <section className="talk" aria-label="Conversation">
-      <ol className="ledger" role="log" aria-live="polite">
-        {state.transcript.length === 0 ? (
-          <li className="empty">
-            <p>Nothing asked yet. Question anything on the diagram.</p>
-          </li>
-        ) : (
-          state.transcript.map((record) => (
-            <li key={record.id} className={`said said-${record.speaker}`}>
-              <p className="who">{SPEAKERS[record.speaker]}</p>
-              <p className="words">{record.text}</p>
+    <section
+      id="conversation-panel"
+      className="talk"
+      aria-label="Conversation"
+      hidden={hidden}
+    >
+      <div className="conversation-scroll">
+        <ol className="ledger" role="log" aria-live="polite">
+          {state.transcript.length === 0 ? (
+            <li className="empty">
+              <p>Nothing asked yet. Question anything on the diagram.</p>
             </li>
-          ))
+          ) : (
+            state.transcript.map((record) => (
+              <li key={record.id} className={`said said-${record.speaker}`}>
+                <p className="who">{SPEAKERS[record.speaker]}</p>
+                <p className="words">{record.text}</p>
+              </li>
+            ))
+          )}
+        </ol>
+
+        <Faults diagnostics={state.diagnostics} />
+
+        {state.choices === null ? null : (
+          <Choices
+            choices={state.choices}
+            disabled={disabled}
+            onChoice={onChoice}
+          />
         )}
-      </ol>
-
-      <Faults diagnostics={state.diagnostics} />
-
-      {state.choices === null ? null : (
-        <Choices
-          choices={state.choices}
-          disabled={disabled}
-          onChoice={onChoice}
-        />
-      )}
+      </div>
 
       <form className="composer" onSubmit={submit}>
         <label className="offscreen" htmlFor="composer-text">
@@ -250,9 +362,123 @@ const ChatPanel = ({
   )
 }
 
+const ConversationSeparator = ({
+  width,
+  onResize,
+}: {
+  readonly width: number
+  readonly onResize: (width: number, viewportWidth: number) => void
+}) => {
+  const bounds = conversationWidthBounds(window.innerWidth)
+  const drag = useRef<{
+    readonly pointerId: number
+    readonly startX: number
+    readonly startWidth: number
+  } | null>(null)
+  const pointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const active = drag.current
+    if (active?.pointerId !== event.pointerId) return
+    onResize(
+      active.startWidth + active.startX - event.clientX,
+      window.innerWidth,
+    )
+  }
+  const pointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    drag.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startWidth: width,
+    }
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+  const pointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (drag.current?.pointerId !== event.pointerId) return
+    drag.current = null
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+  }
+  const keyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+    event.preventDefault()
+    const step = event.shiftKey ? 32 : 8
+    onResize(
+      width + (event.key === 'ArrowLeft' ? step : -step),
+      window.innerWidth,
+    )
+  }
+  return (
+    <div
+      className="conversation-separator"
+      role="separator"
+      aria-label="Resize conversation"
+      aria-orientation="vertical"
+      aria-valuemin={bounds.min}
+      aria-valuemax={bounds.max}
+      aria-valuenow={Math.round(width)}
+      tabIndex={0}
+      onPointerDown={pointerDown}
+      onPointerMove={pointerMove}
+      onPointerUp={pointerUp}
+      onPointerCancel={pointerUp}
+      onKeyDown={keyDown}
+    />
+  )
+}
+
 export const App = () => {
   const { state, connected, ask, choose, navigate, end } = useVisualSession()
   const lastDrawn = useRef<AnyLikeC4Model | null>(null)
+
+  const [workspace, dispatchWorkspace] = useReducer(
+    visualWorkspaceReducer,
+    window.innerWidth,
+    createVisualWorkspaceState,
+  )
+
+  useEffect(() => {
+    const resized = () =>
+      dispatchWorkspace({
+        type: 'viewport.resized',
+        viewportWidth: window.innerWidth,
+      })
+    window.addEventListener('resize', resized)
+    return () => window.removeEventListener('resize', resized)
+  }, [])
+
+  // Only what arrived from the agent counts as attention: everything the
+  // reviewer did themselves is already in front of them.
+  const attention = useRef({
+    transcriptLength: state.transcript.length,
+    choices: state.choices,
+    diagnostics: state.diagnostics,
+  })
+
+  useEffect(() => {
+    const previous = attention.current
+    let receivedTranscript = false
+    for (
+      let index = previous.transcriptLength;
+      index < state.transcript.length;
+      index += 1
+    ) {
+      if (state.transcript[index]?.speaker === 'agent') {
+        receivedTranscript = true
+        break
+      }
+    }
+    const received =
+      receivedTranscript ||
+      (state.choices !== null && state.choices !== previous.choices) ||
+      (state.diagnostics.length > 0 &&
+        state.diagnostics !== previous.diagnostics)
+    attention.current = {
+      transcriptLength: state.transcript.length,
+      choices: state.choices,
+      diagnostics: state.diagnostics,
+    }
+    if (received) dispatchWorkspace({ type: 'attention.received' })
+  }, [state.transcript.length, state.choices, state.diagnostics])
 
   const drawing = useMemo(() => {
     const next = visualDrawingFor(
@@ -269,8 +495,6 @@ export const App = () => {
     [],
   )
 
-  const authorityLabel = visualAuthorityLabel(state.authority)
-  const views = state.model?.views ?? []
   // A fault already accounts for the empty canvas, and saying there is no model
   // would contradict the one that arrived and could not be drawn.
   const waiting =
@@ -280,88 +504,59 @@ export const App = () => {
         ? 'Reading the session'
         : 'No model to draw'
 
+  const conversationOpen = workspace.conversation.mode === 'open'
+  const shellStyle = {
+    '--conversation-width': `${workspace.conversation.width}px`,
+  } as CSSProperties
+
   return (
-    <main className="desk">
-      <section className="plan" aria-label="Architecture diagram">
-        <header>
-          <p className={`authority authority-${state.authority}`}>
-            {authorityLabel}
-          </p>
-          <h1>{state.title === '' ? 'Opening the session' : state.title}</h1>
-          <p className="lede">{state.description}</p>
-        </header>
-
-        <div className="canvas">
-          {drawing.drawn === null ? null : (
-            <LikeC4ModelProvider likec4model={drawing.drawn}>
-              <ReactLikeC4
-                viewId={state.activeView}
-                onNavigateTo={(viewId) => navigate(viewId)}
-                injectFontCss={false}
-                colorScheme="light"
-                background="dots"
-                controls
-                pannable
-                zoomable
-                fitView
-                keepAspectRatio={false}
-                enableElementDetails
-                enableRelationshipDetails
-                enableNotes
-                enableSearch={false}
-                // The renderer injects its own stylesheets; this session's
-                // policy admits them under this nonce and nothing else.
-                styleNonce={state.styleNonce}
-                showNavigationButtons
-                reduceGraphics={reduceGraphics ? true : 'auto'}
-                className="diagram"
-              />
-            </LikeC4ModelProvider>
-          )}
-          {waiting === null ? null : <p className="waiting">{waiting}</p>}
-        </div>
-
-        {drawing.fault === null ? null : (
-          // The renderer's exception describes its own internals and may carry
-          // anything: the reviewer reads this application's words instead.
-          <div className="faults" role="alert">
-            <p className="faults-title">{drawing.fault}</p>
-          </div>
-        )}
-
-        {views.length < 2 ? null : (
-          <nav className="views" aria-label="Views in this model">
-            <ul>
-              {views.map((viewId) => (
-                <li key={viewId}>
-                  <button
-                    type="button"
-                    onClick={() => navigate(viewId)}
-                    aria-current={viewId === state.activeView ? 'true' : undefined}
-                  >
-                    {viewId}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </nav>
-        )}
-      </section>
-
-      <Rail
-        authority={state.authority}
-        connection={connectionOf(state, connected)}
-        view={state.activeView}
-        onEnd={end}
-        endEnabled={state.lifecycle === 'active'}
-      />
-
-      <ChatPanel
+    <main className="visual-shell" style={shellStyle}>
+      <CommandStrip
         state={state}
-        disabled={!state.composerEnabled}
-        onSend={ask}
-        onChoice={choose}
+        connection={connectionOf(state, connected)}
+        views={state.model?.views ?? []}
+        detailsOpen={workspace.detailsOpen}
+        conversationOpen={conversationOpen}
+        unread={workspace.conversation.unread}
+        onNavigate={navigate}
+        onToggleDetails={() => dispatchWorkspace({ type: 'details.toggled' })}
+        onToggleConversation={() =>
+          dispatchWorkspace({ type: 'conversation.toggled' })
+        }
+        onEnd={end}
       />
+      <div
+        className={`workspace workspace-conversation-${
+          conversationOpen ? 'open' : 'closed'
+        }`}
+      >
+        <DiagramWorkspace
+          state={state}
+          drawing={drawing}
+          waiting={waiting}
+          reduceGraphics={reduceGraphics}
+          onNavigate={navigate}
+        />
+        {conversationOpen ? (
+          <ConversationSeparator
+            width={workspace.conversation.width}
+            onResize={(width, viewportWidth) =>
+              dispatchWorkspace({
+                type: 'conversation.resized',
+                width,
+                viewportWidth,
+              })
+            }
+          />
+        ) : null}
+        <ConversationPanel
+          state={state}
+          hidden={!conversationOpen}
+          disabled={!state.composerEnabled}
+          onSend={ask}
+          onChoice={choose}
+        />
+      </div>
     </main>
   )
 }

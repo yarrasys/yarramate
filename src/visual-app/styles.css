@@ -1,7 +1,7 @@
 /*
  * A drafting desk, not a dashboard: paper ground, charcoal ink, hairline rules,
- * and one signature — the handoff rail that joins the drawing to the
- * conversation and ends at the control that hands the review back.
+ * and one signature — the diagram holds the whole workspace, with a single
+ * compact strip above it and a conversation the reviewer sizes or puts away.
  *
  * Every face is a system stack, every colour is one of the six the session
  * speaks in, and nothing is loaded from anywhere but this origin.
@@ -65,28 +65,55 @@ body {
   white-space: nowrap;
 }
 
-/* ------------------------------------------------------------------ desk */
+/* ----------------------------------------------------------------- shell */
 
-.desk {
+.visual-shell {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 3.5rem minmax(21rem, 26vw);
+  grid-template-rows: auto minmax(0, 1fr);
+  min-width: 0;
   height: 100dvh;
   overflow: hidden;
+  background: var(--paper);
+  color: var(--ink);
 }
 
-/* ------------------------------------------------------------------ plan */
+/* --------------------------------------------------------- command strip */
 
-.plan {
+.command-strip {
+  position: relative;
+  z-index: 10;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  min-width: 0;
-  min-height: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: calc(var(--step) * 2);
+  min-height: 48px;
+  padding: calc(var(--step) * 0.75) calc(var(--step) * 2);
+  border-bottom: 1px solid var(--rule);
   background: var(--sheet);
 }
 
-.plan > header {
-  padding: calc(var(--step) * 3) calc(var(--step) * 3) calc(var(--step) * 2);
-  border-bottom: 1px solid var(--rule);
+.command-identity,
+.command-actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--step);
+}
+
+.command-identity h1 {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-family: var(--display);
+  font-size: 15px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.command-actions select,
+.command-actions button {
+  min-height: 32px;
 }
 
 .authority {
@@ -112,35 +139,96 @@ body {
   color: var(--ochre);
 }
 
-.plan h1 {
-  margin: calc(var(--step) * 1.25) 0 0;
-  font-family: var(--display);
-  font-size: clamp(1.5rem, 1.1rem + 1.2vw, 2.15rem);
-  font-weight: 400;
-  letter-spacing: -0.01em;
-  line-height: 1.15;
+.session-details {
+  grid-column: 1 / -1;
+  padding-top: var(--step);
+  border-top: 1px solid var(--rule);
 }
 
-.lede {
-  margin: calc(var(--step) * 0.75) 0 0;
-  max-width: 62ch;
+.session-details p {
+  max-width: 90ch;
+  margin: 0;
   color: var(--quiet);
 }
 
-.canvas {
-  position: relative;
+.attention-count {
+  min-width: 1.25rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--cobalt);
+  color: white;
+  font-size: 11px;
+  text-align: center;
+}
+
+/* ------------------------------------------------------------- workspace */
+
+.workspace {
+  display: grid;
+  min-width: 0;
   min-height: 0;
-  padding: var(--step);
+  overflow: hidden;
+}
+
+.workspace-conversation-open {
+  grid-template-columns: minmax(0, 1fr) auto var(--conversation-width);
+}
+
+.workspace-conversation-closed {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.diagram-workspace {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--paper);
 }
 
 /* The diagram owns its box. LikeC4 sizes its shadow host from a stylesheet it
    injects at runtime, which this page's policy does not admit, so the host is
    sized from here instead. Only the host: the blocked <style> element is a
    sibling, and a display rule would put its source text on the page. */
-.canvas > .diagram {
-  display: block;
+.canvas,
+.diagram {
   width: 100%;
   height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* The canvas fills the workspace, so the renderer's own fault is laid over the
+   drawing it could not replace rather than clipped out of the page. */
+.diagram-workspace > .faults {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 4;
+  max-height: 50%;
+  overflow: auto;
+}
+
+.conversation-separator {
+  position: relative;
+  z-index: 3;
+  width: 10px;
+  height: 100%;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.conversation-separator::before {
+  position: absolute;
+  inset: 0 auto 0 4px;
+  width: 1px;
+  background: var(--rule);
+  content: '';
+}
+
+.conversation-separator:hover::before,
+.conversation-separator:focus-visible::before {
+  width: 2px;
+  background: var(--cobalt);
 }
 
 .waiting {
@@ -153,170 +241,33 @@ body {
   color: var(--quiet);
 }
 
-.views {
-  border-top: 1px solid var(--rule);
-  padding: var(--step) calc(var(--step) * 3);
-}
-
-.views ul {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--step);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.views button {
-  font-family: var(--utility);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  color: var(--quiet);
-  background: transparent;
-  border: 1px solid var(--rule);
-  border-radius: 0;
-  padding: 0.3rem 0.6rem;
-  cursor: pointer;
-}
-
-.views button:hover {
-  color: var(--ink);
-  border-color: var(--rule-firm);
-}
-
-.views button[aria-current] {
-  color: var(--paper);
-  background: var(--ink);
-  border-color: var(--ink);
-}
-
-/* --------------------------------------------------------------- the rail */
-
-.rail {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: calc(var(--step) * 3);
-  padding: calc(var(--step) * 2) 0;
-  border-left: 1px solid var(--rule);
-  border-right: 1px solid var(--rule);
-  background: var(--paper);
-}
-
-/* The spine: one hairline joining authority, connection, view, and End. */
-.rail::before {
-  content: '';
-  position: absolute;
-  top: calc(var(--step) * 2);
-  bottom: calc(var(--step) * 2);
-  left: 50%;
-  width: 1px;
-  background: var(--rule-firm);
-}
-
-.station {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--step);
-  margin: 0;
-  font-family: var(--utility);
-  font-size: 10px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--quiet);
-}
-
-.station .value {
-  writing-mode: vertical-rl;
-  max-height: 11rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.station .tick {
-  width: 9px;
-  height: 9px;
-  background: var(--paper);
-  border: 1px solid var(--rule-firm);
-}
-
-.rail-canonical .station-authority .tick {
-  background: var(--eucalyptus);
-  border-color: var(--eucalyptus);
-}
-
-.rail-ad-hoc .station-authority .tick {
-  background: var(--ochre);
-  border-color: var(--ochre);
-}
-
-.station-link.link-live .tick {
-  background: var(--cobalt);
-  border-color: var(--cobalt);
-}
-
-.station-link.link-reconnecting .tick,
-.station-link.link-closed .tick {
-  background: var(--failure);
-  border-color: var(--failure);
-}
-
-.station-link.link-ending .tick {
-  background: var(--ink);
-  border-color: var(--ink);
-}
-
-.station-view .tick {
-  background: var(--ink);
-  border-color: var(--ink);
-}
-
-.rail .end {
-  position: relative;
-  margin-top: auto;
-  padding: 0.55rem 0.4rem;
-  min-width: 2.5rem;
-  font-family: var(--utility);
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  color: var(--paper);
-  background: var(--ink);
-  border: 1px solid var(--ink);
-  border-radius: 0;
-  cursor: pointer;
-}
-
-.rail .end:hover:enabled {
-  background: var(--failure);
-  border-color: var(--failure);
-}
-
-.rail .end:disabled {
-  color: var(--quiet);
-  background: transparent;
-  border-color: var(--rule-firm);
-  cursor: not-allowed;
-}
-
 /* ------------------------------------------------------------------ talk */
 
 .talk {
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto auto auto;
+  grid-template-rows: minmax(0, 1fr) auto;
   min-width: 0;
   min-height: 0;
+  overflow: hidden;
+  border-left: 1px solid var(--rule);
   background: var(--sheet);
+}
+
+.talk[hidden] {
+  display: none;
+}
+
+.conversation-scroll {
+  min-height: 0;
+  overflow: auto;
 }
 
 .ledger {
   margin: 0;
   padding: calc(var(--step) * 2) calc(var(--step) * 2.5);
   list-style: none;
-  overflow-y: auto;
+  min-height: 0;
+  overflow: visible;
 }
 
 .ledger .empty p {
@@ -502,70 +453,38 @@ body {
 
 /* ---------------------------------------------------------------- narrow */
 
-@media (max-width: 900px) {
-  .desk {
+@media (max-width: 899px) {
+  .command-strip {
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto minmax(0, 1fr);
-    height: auto;
-    min-height: 100dvh;
-    overflow: visible;
+    gap: calc(var(--step) * 0.5);
+    padding-inline: var(--step);
   }
 
-  .plan {
-    grid-template-rows: auto 45vh auto;
+  .command-identity,
+  .command-actions {
+    gap: calc(var(--step) * 0.5);
   }
 
-  .plan > header {
-    padding: calc(var(--step) * 2);
+  .command-actions {
+    overflow-x: auto;
   }
 
-  /* The rail turns with the layout and stays in reach: authority, connection,
-     view, and End remain one strip, pinned while the conversation scrolls. */
-  .rail {
-    position: sticky;
-    top: 0;
-    z-index: 5;
-    flex-direction: row;
-    align-items: center;
-    gap: calc(var(--step) * 2);
-    padding: var(--step) calc(var(--step) * 2);
-    border-left: 0;
-    border-right: 0;
-    border-top: 1px solid var(--rule);
-    border-bottom: 1px solid var(--rule);
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    min-height: 0;
   }
 
-  .rail::before {
-    top: 50%;
-    bottom: auto;
-    left: calc(var(--step) * 2);
-    right: calc(var(--step) * 2);
-    width: auto;
-    height: 1px;
-  }
-
-  .station {
-    flex-direction: row;
-  }
-
-  .station .value {
-    writing-mode: horizontal-tb;
-    max-height: none;
-    max-width: 9rem;
-  }
-
-  .rail .end {
-    margin-top: 0;
-    margin-left: auto;
-    padding: 0.5rem 1rem;
+  .conversation-separator {
+    display: none;
   }
 
   .talk {
-    grid-template-rows: auto auto auto auto;
-  }
-
-  .ledger {
-    overflow-y: visible;
+    max-height: 56dvh;
+    border-top: 1px solid var(--rule);
+    border-left: 0;
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 -12px 36px rgb(19 35 57 / 14%);
   }
 }
 
