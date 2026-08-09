@@ -174,7 +174,7 @@ Relationship context shows:
 
 Descriptions show three lines by default. **Show more** expands the full text and **Show less** returns height to the transcript. The inspector has an explicit clear action.
 
-Selection survives view navigation within one rendered model. It clears when the user clears it, the model is replaced, or the session closes. A closed or read-only session remains inspectable while the composer stays disabled.
+Selection survives view navigation within one rendered model. It clears when the user clears it or a model replacement becomes active. Ending or closing the session preserves the current selection and permits further local inspection of the retained diagram, while the composer stays disabled.
 
 ## Contextual questions
 
@@ -251,8 +251,12 @@ submit with selected subject
   → existing ask(text)
   → existing chat.message/v1
 
-model replacement or session close
+model replacement
   → clear selected subject
+
+session close
+  → preserve local inspection
+  → disable contextual submission
 ```
 
 ## Failure and edge handling
@@ -303,7 +307,7 @@ Focused tests for `workspace-state.ts` cover:
 - relationship normalization, endpoint fallback, and aggregate count;
 - missing and flattened descriptions;
 - selection retained across view navigation;
-- selection cleared on model replacement and session close;
+- selection preserved for inspection but not submission after session close;
 - contextual element and relationship question formatting;
 - chip removal preserving the original question.
 
@@ -344,7 +348,7 @@ Run the focused browser/state checks, typecheck both TypeScript programs, build 
 7. Long descriptions expand on demand and missing descriptions are explicit.
 8. Selected-subject questions show exactly what context the visual agent receives.
 9. A click alone is browser-local and does not change the v1 journal.
-10. Selection cannot survive an active-model replacement or closed session.
+10. Active-model replacement clears selection; session close preserves inspection while preventing submission.
 11. The mobile layout preserves the canvas and uses an accessible non-modal bottom sheet.
 12. The nine v1 schemas, runtime behavior, recovery, and security boundaries remain unchanged.
 13. Focused state checks, browser verification, the visual suite, and repository verification pass.
