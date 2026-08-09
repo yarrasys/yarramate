@@ -82,7 +82,7 @@ export const normalizeSelectedElement = (
     id: String(node.id),
     modelRef,
     deploymentRef,
-    identity: modelRef ?? deploymentRef ?? String(node.id),
+    identity: deploymentRef ?? modelRef ?? String(node.id),
     title: node.title,
     kind: optionalText(node.kind),
     description: visualDescriptionText(node.description),

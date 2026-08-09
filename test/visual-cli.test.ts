@@ -1016,6 +1016,14 @@ describe('stop', () => {
     expect(refusalCodes(stray)).toEqual(['YMVS401'])
   })
 
+  it('does not call an arbitrary missing parent an already-stopped session', async () => {
+    const missing = join(workDir, 'missing', 'parent', 'descriptor.json')
+    const result = await runVisualClientCli(['stop', missing], workDir)
+
+    expect(result.exitCode).toBe(1)
+    expect(refusalCodes(result)).toEqual(['YMVS401'])
+  })
+
   it('never deletes a directory whose marker names another session', async () => {
     const { descriptorPath, root } = await plantSession({
       marker: {
@@ -1278,27 +1286,28 @@ describe('runVisualStart', () => {
     await expect(foreground.result).resolves.toMatchObject({ exitCode: 0 })
   })
 
-  it('exits non-zero when the session ends in a failure state', async () => {
-    const foreground = startForeground(await writeRequest(), workDir)
-    const started = await foreground.started
-    const descriptor = await readDescriptorFile(started.descriptorPath)
+  it.each(['child-failed', 'browser-timeout'] as const)(
+    'exits non-zero when the session ends as %s',
+    async (reason) => {
+      const foreground = startForeground(await writeRequest(), workDir)
+      const started = await foreground.started
+      const descriptor = await readDescriptorFile(started.descriptorPath)
 
-    const stopped = await agentPost(descriptor, '/api/agent/stop', {
-      reason: 'child-failed',
-    })
-    expect(stopped.status).toBe(200)
-    // The runtime recovered the handoff before it deleted the session.
-    expect(await stopped.json()).toMatchObject({
-      reason: 'child-failed',
-      handoff: { format: 'yarramate/visual-handoff/v1' },
-    })
+      const stopped = await agentPost(descriptor, '/api/agent/stop', { reason })
+      expect(stopped.status).toBe(200)
+      // The runtime recovered the handoff before it deleted the session.
+      expect(await stopped.json()).toMatchObject({
+        reason,
+        handoff: { format: 'yarramate/visual-handoff/v1' },
+      })
 
-    const result = await foreground.result
-    expect(result).toMatchObject({ exitCode: 1, stdout: '' })
-    expect(refusalCodes(result)).toEqual(['YMVS409'])
-    expect(existsSync(started.sessionRoot)).toBe(false)
-    expect(foreground.signals.listenerCount('SIGTERM')).toBe(0)
-  })
+      const result = await foreground.result
+      expect(result).toMatchObject({ exitCode: 1, stdout: '' })
+      expect(refusalCodes(result)).toEqual(['YMVS409'])
+      expect(existsSync(started.sessionRoot)).toBe(false)
+      expect(foreground.signals.listenerCount('SIGTERM')).toBe(0)
+    },
+  )
 
   it('reports a reviewer End the child never answered as a failed session', async () => {
     const foreground = startForeground(await writeRequest(), workDir)

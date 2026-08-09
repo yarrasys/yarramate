@@ -647,21 +647,22 @@ describe('the visual recovery matrix', () => {
     )
 
     await visual.expireGrace()
+    const closed = await visual.handle.closed
 
-    expect((await journalRecords(visual.sessionRoot)).at(-1)).toMatchObject({
-      format: 'yarramate/visual-event/v1',
-      type: 'session.end',
-      payload: { reason: 'browser-timeout' },
+    expect(closed).toMatchObject({
+      reason: 'browser-timeout',
+      handoff: { terminationReason: 'browser-timeout' },
     })
+    expect(existsSync(visual.sessionRoot)).toBe(false)
     expect(visual.handle.status().queue).toMatchObject({
       frozen: true,
       frozenReason: 'terminal-event',
     })
     // The window is spent, so the session no longer claims to be holding one.
     expect(visual.handle.status().browser.graceExpiresAt).toBeUndefined()
-    expect(
-      await recoverVisualSessionClient(visual.descriptorPath),
-    ).toMatchObject({ terminationReason: 'browser-timeout' })
+    expect(closed.handoff).toMatchObject({
+      terminationReason: 'browser-timeout',
+    })
   })
 
   it('cancels the disconnect grace when the browser reconnects inside it', async () => {
@@ -846,7 +847,7 @@ describe('the visual recovery matrix', () => {
     expect(existsSync(visual.descriptorPath)).toBe(false)
   })
 
-  it('refuses every write once the runtime has taken the session terminal', async () => {
+  it('closes every write path once the reconnect window expires', async () => {
     const visual = await startVisualFixture()
     const browser = await connectFixtureBrowser(visual)
     await nextFrame(browser, 'ready')
@@ -854,23 +855,9 @@ describe('the visual recovery matrix', () => {
     await closeSocket(browser)
     await visual.graceScheduled
     await visual.expireGrace()
-    const terminal = await journalRecords(visual.sessionRoot)
+    await visual.handle.closed
 
-    const refused = await agentFetch(
-      visual.descriptorPath,
-      '/api/agent/responses',
-      {
-        format: 'yarramate/visual-response/v1',
-        sessionId: visual.sessionId,
-        responseId: nextResponseId(),
-        eventId: identifier(9),
-        type: 'chat.response',
-        timestamp: '2026-08-08T00:00:09.000Z',
-        payload: { text: 'too late' },
-      },
-    )
-    expect(refused.status).toBe(503)
-    expect(await journalRecords(visual.sessionRoot)).toEqual(terminal)
+    await expect(fetch(`${visual.origin}/api/session`)).rejects.toThrow()
   })
 
   it('gives back the port and the directory when a started session cannot be published', async () => {

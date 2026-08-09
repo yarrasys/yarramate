@@ -319,16 +319,16 @@ const projectDocument = (
   if (projects.length === 1 && only !== undefined) {
     return { ok: true, document: only }
   }
-  const defining = projects.filter(
-    (document) => initialView in plainFields(plainFields(document).views),
+  const defining = projects.filter((document) =>
+    Object.hasOwn(plainFields(plainFields(document).views), initialView),
   )
   const named =
     declared === undefined
       ? []
-      : defining.filter(
+      : projects.filter(
           (document) => plainFields(document).projectId === declared,
         )
-  const resolved = named.length === 1 ? named : defining
+  const resolved = declared === undefined ? defining : named
   const match = resolved[0]
   return resolved.length === 1 && match !== undefined
     ? { ok: true, document: match }
@@ -543,7 +543,18 @@ const exportViews = async (
   // read above imposed; a create-time mode would not apply to a file that the
   // compiler already wrote.
   if (sole.document !== exported) {
-    await writeFile(exportPath, JSON.stringify(sole.document, null, 2))
+    try {
+      await writeFile(exportPath, JSON.stringify(sole.document, null, 2))
+    } catch {
+      return {
+        diagnostics: [
+          compilerDiagnostic(
+            'YMVS207',
+            `LikeC4 export "${VISUAL_COMPILER_EXPORT_FILE}" could not be narrowed`,
+          ),
+        ],
+      }
+    }
   }
   const views = plainFields(sole.document).views
   if (!isPlainObject(views)) {

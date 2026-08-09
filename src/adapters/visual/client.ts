@@ -1,6 +1,6 @@
 import { constants } from 'node:fs'
 import { lstat, open, readFile, stat } from 'node:fs/promises'
-import { dirname, resolve } from 'node:path'
+import { basename, dirname, join, resolve } from 'node:path'
 import {
   VISUAL_PROTOCOL_VERSION,
   parseVisualDiagnosticResult,
@@ -115,24 +115,79 @@ const exists = (path: string) =>
     () => false,
   )
 
+
+const writeStoppedMarker = async (
+  sessionRoot: string,
+  sessionId: string,
+): Promise<void> => {
+  const handle = await open(
+    join(dirname(sessionRoot), `.stopped-${basename(sessionRoot)}.json`),
+    constants.O_WRONLY |
+      constants.O_CREAT |
+      constants.O_TRUNC |
+      (constants.O_NOFOLLOW ?? 0),
+    0o600,
+  )
+  try {
+    await handle.writeFile(
+      JSON.stringify({
+        format: 'yarramate/visual-session-stopped/v1',
+        sessionId,
+      }),
+      'utf8',
+    )
+    await handle.sync()
+  } finally {
+    await handle.close()
+  }
+}
+
+const readsStoppedMarker = async (
+  sessionRoot: string,
+  sessionId: string,
+): Promise<boolean> => {
+  const handle = await open(
+    join(dirname(sessionRoot), `.stopped-${basename(sessionRoot)}.json`),
+    constants.O_RDONLY |
+      constants.O_NONBLOCK |
+      (constants.O_NOFOLLOW ?? 0),
+  ).catch(() => undefined)
+  if (handle === undefined) return false
+  try {
+    const entry = await handle.stat()
+    if (!entry.isFile()) return false
+    const document = documentFields(
+      JSON.parse(await handle.readFile('utf8')) as unknown,
+    )
+    return (
+      document.format === 'yarramate/visual-session-stopped/v1' &&
+      document.sessionId === sessionId
+    )
+  } catch {
+    return false
+  } finally {
+    await handle.close()
+  }
+}
+
 /**
- * Whether a descriptor path is unreadable *because the session it lived in is
- * already stopped*. A completed stop removes the descriptor with the session
- * root that contained it, so the absence of both is the signature that stop
- * leaves behind, and the only unreadable descriptor a repeated stop may treat
- * as benign.
- *
- * Anything else stays fail-closed: a descriptor missing from a directory that
- * still exists is an anomaly rather than a stop, a dangling symlink is a
- * present entry `lstat` sees, and a path in a directory that never held a
- * session reports the ordinary refusal.
+ * Whether an unreadable descriptor belongs to a session this client already
+ * removed. Absence alone is not evidence: the stopped marker is written before
+ * teardown and names the vanished session directory.
  */
 export const visualSessionAlreadyStopped = async (
   path: string,
   cwd: string = process.cwd(),
 ): Promise<boolean> => {
   const target = resolve(cwd, path)
-  return !(await exists(target)) && !(await exists(dirname(target)))
+  const sessionRoot = dirname(target)
+  const sessionId = basename(sessionRoot)
+  return (
+    basename(target) === 'descriptor.json' &&
+    !(await exists(target)) &&
+    !(await exists(sessionRoot)) &&
+    (await readsStoppedMarker(sessionRoot, sessionId))
+  )
 }
 
 /**
@@ -541,6 +596,7 @@ export const stopVisualSessionClient = async (
   }
   const terminal = answered.ok ? closedHandoff(answered.value) : undefined
   try {
+    await writeStoppedMarker(paths.root, descriptor.sessionId)
     await removeVisualSession(paths, includeTranscript)
   } catch (cause) {
     return refused(visualFailureDiagnostics(cause))

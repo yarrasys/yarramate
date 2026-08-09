@@ -665,7 +665,7 @@ export const startVisualServer = async (
     cancelGrace = schedule(async () => {
       cancelGrace = undefined
       if (connections.size > 0 || active.lifecycle !== 'running') return
-      await terminateVisualSession(active, 'browser-timeout')
+      await stop('browser-timeout')
     }, VISUAL_LIMITS.reconnectMs)
   }
   const disarmGrace = () => {
@@ -1082,9 +1082,10 @@ export const startVisualServer = async (
   const journalConnection = (
     connectionId: string,
     closedWith?: number,
-  ): Promise<void> =>
+    onJournaled?: () => void,
+  ): Promise<boolean> =>
     admit(async () => {
-      if (active.lifecycle !== 'running' || frozen !== undefined) return
+      if (active.lifecycle !== 'running' || frozen !== undefined) return false
       const envelope = {
         format: 'yarramate/visual-event/v1',
         sessionId,
@@ -1103,18 +1104,17 @@ export const startVisualServer = async (
       const appended = await appendVisualEvent(paths, event)
       if (!appended.ok) {
         if (appended.freeze !== undefined) freeze(appended.freeze)
-        return
+        return false
       }
       lastSequence = appended.lastSequence
       transcriptBytes = appended.transcriptBytes
-    }).catch(() => undefined)
+      onJournaled?.()
+      return true
+    }).catch(() => false)
 
   const attachBrowser = (socket: WebSocket) => {
     const connectionId = drawHex(16)
-    // The reviewer is back inside the window, so the session it was holding
-    // open for them is not going to end.
-    disarmGrace()
-    connections.set(connectionId, socket)
+    let registered = false
     lastSeenAt = stamp()
     socket.on('message', (raw, binary) => {
       // Nothing awaits this handler, so a rejection here would reach the
@@ -1150,6 +1150,7 @@ export const startVisualServer = async (
       }
     })
     socket.on('close', (code: number) => {
+      if (!registered) return
       connections.delete(connectionId)
       lastSeenAt = stamp()
       // The code the transport reported, held inside the range the journal
@@ -1161,12 +1162,19 @@ export const startVisualServer = async (
       )
       if (connections.size === 0) armGrace()
     })
-    // The arrival is journaled before the snapshot is handed over, so the
-    // sequence the browser starts from already counts it, and a reload cannot
-    // be told it acknowledged a sequence the journal never reached.
-    void journalConnection(connectionId)
-      .then(() => sendFrame(socket, { kind: 'ready', snapshot: snapshot() }))
-      .catch(() => socket.close(1011))
+    // Admission is one serialized operation: the connection is visible only
+    // after its event is durable, so no frame can be accepted against a
+    void journalConnection(connectionId, undefined, () => {
+      registered = true
+      connections.set(connectionId, socket)
+      disarmGrace()
+    }).then((journaled) => {
+      if (!journaled || socket.readyState !== socket.OPEN) {
+        socket.close(1011)
+        return
+      }
+      sendFrame(socket, { kind: 'ready', snapshot: snapshot() })
+    })
   }
 
   // ------------------------------------------------------------- agent routes

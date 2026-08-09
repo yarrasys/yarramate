@@ -1872,6 +1872,7 @@ describe('startVisualServer lifecycle', () => {
     const server = await start()
     const { cookie } = await bootstrap(server)
     const socket = await openBrowserSocket(server, cookie)
+    await nextFrame(socket, 'ready')
     const closing = nextFrame(socket, 'closing')
     const ended = once(socket, 'close')
     await server.stop('main-cancelled')
@@ -1928,6 +1929,21 @@ describe('startVisualServer lifecycle', () => {
     expect(idle.browser.graceExpiresAt).toMatch(
       /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z$/,
     )
+  })
+
+  it('does not admit a browser whose connected event cannot be journaled', async () => {
+    const server = await start()
+    const { cookie } = await bootstrap(server)
+    await chmod(join(server.started.sessionRoot, 'journal.jsonl'), 0o400)
+
+    const socket = await openBrowserSocket(server, cookie)
+    await once(socket, 'close')
+
+    expect(server.status()).toMatchObject({
+      browser: { connected: false, connections: 0 },
+      queue: { lastSequence: 0 },
+    })
+    expect(await journalOf(server)).toEqual([])
   })
 
   it('never opens an agent turn for a browser lifecycle record', async () => {

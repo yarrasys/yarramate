@@ -108,6 +108,18 @@ if (argv[0] === 'validate') {
         2,
       ),
     )
+  } else if (marker === 'misowned-project') {
+    writeFileSync(
+      outfile,
+      JSON.stringify(
+        [
+          { ...exported, projectId: 'visual', views: {} },
+          { ...exported, projectId: 'other' },
+        ],
+        null,
+        2,
+      ),
+    )
   } else if (marker === 'ambiguous-projects') {
     writeFileSync(
       outfile,

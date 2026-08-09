@@ -187,6 +187,48 @@ describe('visual protocol', () => {
     ).toMatchObject({ ok: true })
   })
 
+  it('accepts pinned npm package arguments without weakening NUL rejection', () => {
+    expect(
+      parseVisualSessionRequest({
+        ...sessionRequest,
+        compiler: {
+          command: '/usr/bin/npx',
+          args: ['--yes', 'likec4@1.59.2'],
+        },
+      }),
+    ).toMatchObject({ ok: true })
+    expect(
+      parseVisualSessionRequest({
+        ...sessionRequest,
+        compiler: {
+          command: '/usr/bin/npx',
+          args: ['likec4@1.59.2\u0000--project=other'],
+        },
+      }),
+    ).toMatchObject({ ok: false })
+  })
+
+  it('accepts LikeC4 source text containing @ and rejects NUL', () => {
+    expect(
+      parseVisualModel({
+        ...model,
+        files: {
+          ...model.files,
+          'model.likec4': 'model { system = system "ops@example.com" }',
+        },
+      }),
+    ).toMatchObject({ ok: true })
+    expect(
+      parseVisualModel({
+        ...model,
+        files: {
+          ...model.files,
+          'model.likec4': 'model\u0000hidden',
+        },
+      }),
+    ).toMatchObject({ ok: false })
+  })
+
   it.each(['../secret.likec4', '/tmp/secret.likec4', 'asset.js'])(
     'rejects unsafe model file %s',
     (path) => {

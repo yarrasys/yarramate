@@ -419,6 +419,20 @@ describe('trusted LikeC4 compiler adapter', () => {
       })
     })
 
+    it('does not borrow the requested view from a different project', async () => {
+      const session = await startSession()
+
+      const result = await compile(session.paths, {
+        model: marked('misowned-project'),
+      })
+
+      expect(result).toMatchObject({ ok: false })
+      expect(result.diagnostics).toMatchObject([
+        { code: 'YMVS208', message: expect.stringContaining('no views') },
+      ])
+      expect(existsSync(session.paths.activeModel)).toBe(false)
+    })
+
     it('refuses an export where more than one project defines the view', async () => {
       const session = await startSession()
 

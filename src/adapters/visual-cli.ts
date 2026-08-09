@@ -45,6 +45,7 @@ const FAILED_TERMINATION: Readonly<
   Partial<Record<VisualTerminationReason, true>>
 > = {
   'child-failed': true,
+  'browser-timeout': true,
   'server-failed': true,
   'compiler-failed': true,
 }
