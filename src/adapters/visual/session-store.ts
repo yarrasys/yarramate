@@ -678,6 +678,15 @@ export const appendVisualResponse = async (
     }
     // A response the runtime already journaled must not be written twice: the
     // broadcast may be retried after a partial failure.
+    //
+    // `responseId` is deliberately the only idempotency key. Binding an event
+    // to one answer instead would refuse the multi-part answer the browser
+    // already renders — `recordResponse` appends a transcript line per accepted
+    // response — and would turn previously accepted input into a refusal on a
+    // wire four independently shipped parties read (ADR 0081). An agent that
+    // regenerates identifiers therefore shows the reviewer a second answer;
+    // that is visible, bounded, and does not touch recovery, which takes its
+    // summary from `handoff.complete`.
     if (state.responseIds.has(record.responseId)) {
       return {
         ok: true,
@@ -775,6 +784,15 @@ export const recoverVisualSession = async (
   let summary: VisualHandoffSummary | undefined
   let endReason: VisualTerminationReason | undefined
   const visited: string[] = []
+  // The last journaled `handoff.complete` is the summary, whether or not a
+  // terminal event precedes it. Requiring the terminal event first would drop
+  // the real summary in the two paths that matter most: the mandated
+  // recover-before-stop, which runs while the session is still live, and the
+  // child that publishes its handoff after a terminal diagnostic rather than
+  // after a journaled `session.end`. A premature handoff can therefore shape a
+  // mid-session recovery, which is bounded by the trust model — the same agent
+  // capability authors the genuine handoff, the journal it is read from is
+  // intact, and the terminal handoff supersedes it.
   for (const record of journal.records) {
     if (
       record.format === 'yarramate/visual-response/v1' &&
