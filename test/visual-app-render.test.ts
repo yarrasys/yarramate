@@ -118,4 +118,30 @@ describe('visual conversation rendering', () => {
       'Visual conversation ended. Continue in the main agent.',
     )
   })
+
+  it.each(['connecting', 'disconnected'] as const)(
+    'keeps the End label before an End request while %s',
+    (lifecycle) => {
+      const markup = renderSession({ lifecycle })
+
+      expect(markup).toContain('>End</button>')
+      expect(markup).not.toContain('>Ending…</button>')
+    },
+  )
+
+  it.each(['ending', 'closed'] as const)(
+    'stops showing an active agent wait while %s',
+    (lifecycle) => {
+      const markup = renderSession({
+        lifecycle,
+        awaitingAgent: true,
+        agentStatus: { state: 'thinking' },
+      })
+
+      expect(markup).toContain('aria-busy="false"')
+      expect(markup).not.toContain('class="agent-spinner"')
+      expect(markup).not.toContain('Awaiting agent response')
+      expect(markup).not.toContain('Agent is thinking')
+    },
+  )
 })

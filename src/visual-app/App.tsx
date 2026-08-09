@@ -167,7 +167,9 @@ const CommandStrip = ({
         onClick={onEnd}
         disabled={state.lifecycle !== 'active'}
       >
-        {state.lifecycle === 'active' ? 'End' : 'Ending…'}
+        {state.lifecycle === 'ending' || state.lifecycle === 'closed'
+          ? 'Ending…'
+          : 'End'}
       </button>
     </div>
     {/* Static prose is not worth the canvas: the disclosure is laid over the
@@ -521,6 +523,10 @@ const ConversationPanel = ({
   readonly onNavigate: (viewId: string) => void
 }) => {
   const [draft, setDraft] = useState('')
+  const agentWaiting =
+    state.lifecycle === 'active' && state.awaitingAgent
+  const visibleAgentStatus =
+    state.lifecycle === 'active' ? state.agentStatus : null
 
   const submit = (event: FormEvent) => {
     event.preventDefault()
@@ -623,17 +629,17 @@ const ConversationPanel = ({
             className="agent-status"
             role="status"
             aria-live="polite"
-            aria-busy={state.awaitingAgent}
+            aria-busy={agentWaiting}
           >
-            {state.awaitingAgent ? (
+            {agentWaiting ? (
               <span className="agent-spinner" aria-hidden="true" />
             ) : null}
             <span>
-              {state.agentStatus === null
-                ? state.awaitingAgent
+              {visibleAgentStatus === null
+                ? agentWaiting
                   ? 'Awaiting agent response'
                   : '\u00a0'
-                : (STATUS_WORDS[state.agentStatus.state] ?? '\u00a0')}
+                : (STATUS_WORDS[visibleAgentStatus.state] ?? '\u00a0')}
             </span>
           </p>
           <button type="submit" disabled={disabled || draft.trim() === ''}>
