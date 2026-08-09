@@ -939,14 +939,52 @@ describe('stop', () => {
     })
   })
 
-  it('reports a vanished descriptor rather than a second stop', async () => {
-    const { descriptorPath } = await plantSession()
+  it('reports the already-stopped state when the stop is repeated', async () => {
+    const { descriptorPath, root } = await plantSession()
     expect(
       (await runVisualClientCli(['stop', descriptorPath], workDir)).exitCode,
     ).toBe(0)
-    const repeated = await runVisualClientCli(['stop', descriptorPath], workDir)
-    expect(repeated.exitCode).toBe(1)
-    expect(refusalCodes(repeated)).toEqual(['YMVS401'])
+    expect(existsSync(root)).toBe(false)
+
+    // The first stop took the descriptor and the session root together, which
+    // is the one shape of unreadable descriptor that means "already stopped".
+    await expect(
+      runVisualClientCli(['stop', descriptorPath], workDir),
+    ).resolves.toEqual({ exitCode: 0, stdout: '', stderr: '' })
+    await expect(
+      runVisualClientCli(['stop', descriptorPath, '--transcript'], workDir),
+    ).resolves.toEqual({ exitCode: 0, stdout: '', stderr: '' })
+  })
+
+  it('keeps a descriptor missing from a live session root fail-closed', async () => {
+    const { descriptorPath, root } = await plantSession()
+    await rm(descriptorPath)
+
+    const orphaned = await runVisualClientCli(['stop', descriptorPath], workDir)
+
+    expect(orphaned.exitCode).toBe(1)
+    expect(refusalCodes(orphaned)).toEqual(['YMVS401'])
+    // Nothing was torn down on the strength of a descriptor that never read.
+    expect(existsSync(root)).toBe(true)
+  })
+
+  it('refuses an unreadable descriptor rather than calling it stopped', async () => {
+    const { descriptorPath } = await plantSession()
+    await writeFile(descriptorPath, '{"format":')
+
+    const corrupt = await runVisualClientCli(['stop', descriptorPath], workDir)
+
+    expect(corrupt.exitCode).toBe(1)
+    expect(refusalCodes(corrupt)).toEqual(['YMVS402'])
+
+    // A path that never was a session directory is not a stop either: only
+    // commands aimed at a vanished session root report the benign state.
+    const stray = await runVisualClientCli(
+      ['stop', join(workDir, 'stray.json')],
+      workDir,
+    )
+    expect(stray.exitCode).toBe(1)
+    expect(refusalCodes(stray)).toEqual(['YMVS401'])
   })
 
   it('never deletes a directory whose marker names another session', async () => {

@@ -210,7 +210,7 @@ disposable.
 ```sh
 yarramate-visual recover <descriptor.json>              # structured handoff
 yarramate-visual recover <descriptor.json> --transcript # only if the summary is not enough
-yarramate-visual stop <descriptor.json>                 # shuts down, then deletes
+yarramate-visual stop <descriptor.json>                 # shuts down, prints the handoff, then deletes
 ```
 
 1. `recover` first, always, before anything is torn down. It returns
@@ -221,9 +221,14 @@ yarramate-visual stop <descriptor.json>                 # shuts down, then delet
 2. Request `--transcript` only when the summary leaves a question open. It is
    available until you stop the session.
 3. `stop` performs recoverable shutdown, terminates the server process tree,
-   and deletes the session directory itself. Do not delete `sessionRoot`, and
-   do not signal the process tree by hand — `stop` owns both. A repeated `stop`
-   reports the already-stopped state.
+   and deletes the session directory itself. It prints the terminal
+   `yarramate/visual-handoff/v1` document on the way out — the runtime's own,
+   journaled terminal event and all — so recovering first is still the rule but
+   the stop is not silent. Do not delete `sessionRoot`, and do not signal the
+   process tree by hand — `stop` owns both. A repeated `stop` reports the
+   already-stopped state: exit 0 with no document, because the session it would
+   hand off is gone. A descriptor that is unreadable for any other reason still
+   fails.
 4. Stop the managed process by its registered name.
 5. Resume the main conversation. Report the handoff, then treat
    `requestedChanges` as proposals for the ordinary journeys — never as edits

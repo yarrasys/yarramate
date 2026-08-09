@@ -11,6 +11,7 @@ import {
   stopVisualSessionClient,
   visualClientDiagnostic,
   visualFailureDiagnostics,
+  visualSessionAlreadyStopped,
   waitForVisualEvent,
 } from './visual/client.js'
 import {
@@ -164,6 +165,20 @@ const recoverCliCommand = async (
   return { exitCode: 0, stdout: documentLine(handoff.value), stderr: '' }
 }
 
+/**
+ * Converges the session on stopped, and says so however many times it is asked.
+ * The design's failure table requires a repeated stop to report the
+ * already-stopped state, and the first stop takes the descriptor with the
+ * session root, so the second invocation has nothing left to read. That one
+ * shape — descriptor and session root both gone — reports the same benign
+ * already-stopped result the client returns for a retained descriptor: exit 0,
+ * no handoff document, because there is no session left to hand off.
+ *
+ * Every other unreadable descriptor still refuses. Nothing weakens: no
+ * credential is retained, no directory is removed on the strength of a
+ * descriptor that did not parse, and a corrupt, redirected, or foreign
+ * descriptor fails exactly as before.
+ */
 const stopCliCommand = async (
   descriptorPath: string,
   rest: readonly string[],
@@ -172,7 +187,11 @@ const stopCliCommand = async (
   const includeTranscript = transcriptFlag(rest)
   if (includeTranscript === undefined) return usageResult
   const descriptor = await readVisualSessionDescriptor(descriptorPath, cwd)
-  if (!descriptor.ok) return refusalResult(descriptor.diagnostics)
+  if (!descriptor.ok) {
+    return (await visualSessionAlreadyStopped(descriptorPath, cwd))
+      ? { exitCode: 0, stdout: '', stderr: '' }
+      : refusalResult(descriptor.diagnostics)
+  }
   const stopped = await stopVisualSessionClient(
     descriptor.value,
     includeTranscript,

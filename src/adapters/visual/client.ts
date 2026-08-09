@@ -1,5 +1,6 @@
-import { lstat, readFile, stat } from 'node:fs/promises'
-import { resolve } from 'node:path'
+import { constants } from 'node:fs'
+import { lstat, open, readFile, stat } from 'node:fs/promises'
+import { dirname, resolve } from 'node:path'
 import {
   VISUAL_PROTOCOL_VERSION,
   parseVisualDiagnosticResult,
@@ -115,6 +116,26 @@ const exists = (path: string) =>
   )
 
 /**
+ * Whether a descriptor path is unreadable *because the session it lived in is
+ * already stopped*. A completed stop removes the descriptor with the session
+ * root that contained it, so the absence of both is the signature that stop
+ * leaves behind, and the only unreadable descriptor a repeated stop may treat
+ * as benign.
+ *
+ * Anything else stays fail-closed: a descriptor missing from a directory that
+ * still exists is an anomaly rather than a stop, a dangling symlink is a
+ * present entry `lstat` sees, and a path in a directory that never held a
+ * session reports the ordinary refusal.
+ */
+export const visualSessionAlreadyStopped = async (
+  path: string,
+  cwd: string = process.cwd(),
+): Promise<boolean> => {
+  const target = resolve(cwd, path)
+  return !(await exists(target)) && !(await exists(dirname(target)))
+}
+
+/**
  * The agent's entry point into one live session, read the way a hostile file
  * has to be read. The descriptor is the only file carrying the agent
  * capability, so a redirected or planted one must never be spent.
@@ -125,9 +146,25 @@ export const readVisualSessionDescriptor = async (
 ): Promise<ParseResult<VisualSessionDescriptor>> => {
   const target = resolve(cwd, path)
   let raw: string
+  // One handle, opened once: the descriptor is the only file carrying the agent
+  // capability, so the thing that is checked has to be the thing that is read.
+  // `O_NOFOLLOW` refuses a symlinked capability in the open itself, and the
+  // file kind is taken from the open handle, leaving no window between the
+  // check and the read for the path to be swapped.
+  const handle = await open(
+    target,
+    constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0),
+  ).catch(() => undefined)
+  if (handle === undefined) {
+    return refused([
+      visualClientDiagnostic(
+        'YMVS401',
+        `Session descriptor "${target}" cannot be read`,
+      ),
+    ])
+  }
   try {
-    // lstat, never stat: a symlinked descriptor is a redirected capability.
-    const entry = await lstat(target)
+    const entry = await handle.stat()
     if (!entry.isFile()) {
       return refused([
         visualClientDiagnostic(
@@ -136,7 +173,7 @@ export const readVisualSessionDescriptor = async (
         ),
       ])
     }
-    raw = await readFile(target, 'utf8')
+    raw = await handle.readFile('utf8')
   } catch {
     return refused([
       visualClientDiagnostic(
@@ -144,6 +181,8 @@ export const readVisualSessionDescriptor = async (
         `Session descriptor "${target}" cannot be read`,
       ),
     ])
+  } finally {
+    await handle.close()
   }
   let document: unknown
   try {

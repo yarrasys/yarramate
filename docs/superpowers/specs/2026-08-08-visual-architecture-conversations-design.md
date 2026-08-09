@@ -312,7 +312,7 @@ The raw transcript is returned only on demand and remains available until the ma
 | Browser disconnects | Retain the session for five minutes; do not infer End or approval. Recover and stop when the grace period expires. |
 | Runtime process exits | Recover from the append-only journal in the session directory. |
 | Main agent interrupts | Cancel child, recover confirmed state, then stop. |
-| Stop is repeated | Be idempotent and report the already-stopped state. |
+| Stop is repeated | Be idempotent and report the already-stopped state. A completed stop takes the descriptor with the session root, so a stop whose descriptor path **and** its containing session root are both absent reports that state: exit 0, no handoff document, because no session remains to hand one off. Every other unreadable, corrupt, redirected, or foreign descriptor still refuses. The fail-closed read is not relaxed to buy idempotency, and no credential is retained to make a later stop readable. |
 | Orphan session remains | Prune it when a later `start` finds it older than 24 hours. |
 
 Normal shutdown deletes immediately. A hard-killed process may leave a temporary directory; a later start removes it once its modification time is more than 24 hours old. The prune operation is confined to directories carrying a valid YarraMate visual-session marker.
