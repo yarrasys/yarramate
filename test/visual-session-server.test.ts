@@ -445,6 +445,22 @@ describe('startVisualServer bootstrap and browser authentication', () => {
     expect(cookie).not.toContain(token as string)
   })
 
+  it('stores only a derived browser authenticator in the cookie', async () => {
+    const generatedSecrets: string[] = []
+    let draw = 0
+    const server = await start({
+      randomBytes: (size) => {
+        draw += 1
+        const secret = Buffer.alloc(size, draw)
+        generatedSecrets.push(secret.toString('hex'))
+        return secret
+      },
+    })
+    const { cookie } = await bootstrap(server)
+    const value = cookie.slice('ym_visual='.length)
+    expect(generatedSecrets).not.toContain(value)
+  })
+
   it('refuses a replayed bootstrap token', async () => {
     const server = await start()
     await bootstrap(server)

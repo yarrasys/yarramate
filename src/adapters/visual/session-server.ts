@@ -1,5 +1,6 @@
 import {
   createHash,
+  createHmac,
   randomBytes as randomSource,
   timingSafeEqual,
 } from 'node:crypto'
@@ -477,7 +478,12 @@ export const startVisualServer = async (
   })
   const paths = session.paths
   const sessionId = basename(paths.root)
-  const cookieSecret = drawHex(32)
+  const cookieSigningKey = drawHex(32)
+  // The browser stores only a derived bearer value; the signing key stays in
+  // this server process and disappears with the session.
+  const browserAuthenticator = createHmac('sha256', cookieSigningKey)
+    .update(sessionId)
+    .digest('hex')
   // Not a credential: it authorises inline style for this page, nothing else.
   const styleNonce = drawHex(16)
   const browserHeaders = {
@@ -1519,7 +1525,7 @@ export const startVisualServer = async (
     server.writeHead(303, {
       ...browserHeaders,
       Location: '/',
-      'Set-Cookie': `${COOKIE_NAME}=${cookieSecret}; HttpOnly; SameSite=Strict; Secure; Path=/`,
+      'Set-Cookie': `${COOKIE_NAME}=${browserAuthenticator}; HttpOnly; SameSite=Strict; Secure; Path=/`,
       'Content-Length': 0,
     })
     server.end()
@@ -1546,7 +1552,7 @@ export const startVisualServer = async (
     }
     if (
       !secretEquals(
-        cookieSecret,
+        browserAuthenticator,
         cookieValue(incoming.headers.cookie, COOKIE_NAME),
       )
     ) {
@@ -1609,7 +1615,7 @@ export const startVisualServer = async (
     if (rawPath !== VISUAL_SOCKET_PATH) return deny(404, 'Not Found')
     if (
       !secretEquals(
-        cookieSecret,
+        browserAuthenticator,
         cookieValue(incoming.headers.cookie, COOKIE_NAME),
       )
     ) {
