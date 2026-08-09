@@ -2,6 +2,7 @@ import { LikeC4Model, type AnyLikeC4Model } from '@likec4/core/model'
 import { LikeC4ModelProvider, ReactLikeC4 } from 'likec4/react'
 import {
   useEffect,
+  useLayoutEffect,
   useMemo,
   useReducer,
   useRef,
@@ -26,7 +27,11 @@ import {
 import {
   conversationWidthBounds,
   createVisualWorkspaceState,
+  formatContextualQuestion,
+  normalizeSelectedElement,
+  normalizeSelectedRelationship,
   visualWorkspaceReducer,
+  type SelectedDiagramSubject,
 } from './workspace-state.js'
 
 /**
@@ -216,53 +221,245 @@ const DiagramWorkspace = ({
   waiting,
   reduceGraphics,
   onNavigate,
+  onSelect,
 }: {
   readonly state: VisualAppState
   readonly drawing: VisualDrawing<AnyLikeC4Model>
   readonly waiting: string | null
   readonly reduceGraphics: boolean
   readonly onNavigate: (viewId: string) => void
-}) => (
-  <section className="diagram-workspace" aria-label="Architecture diagram">
-    <div className="canvas">
-      {drawing.drawn === null ? null : (
-        <LikeC4ModelProvider likec4model={drawing.drawn}>
-          <ReactLikeC4
-            viewId={state.activeView}
-            onNavigateTo={(viewId) => onNavigate(viewId)}
-            injectFontCss={false}
-            colorScheme="light"
-            background="dots"
-            controls
-            pannable
-            zoomable
-            fitView
-            keepAspectRatio={false}
-            // The custom inspector is the only details surface, so the
-            // renderer's own overlays stay shut.
-            enableElementDetails={false}
-            enableRelationshipDetails={false}
-            enableNotes
-            enableSearch={false}
-            // The renderer injects its own stylesheets; this session's
-            // policy admits them under this nonce and nothing else.
-            styleNonce={state.styleNonce}
-            showNavigationButtons
-            reduceGraphics={reduceGraphics ? true : 'auto'}
-            className="diagram"
-          />
-        </LikeC4ModelProvider>
+  readonly onSelect: (subject: SelectedDiagramSubject) => void
+}) => {
+  // An edge names its endpoints by node id; the reviewer reads titles. The
+  // rendering model the renderer itself draws answers that, so nothing here
+  // reaches into the compiled document.
+  const activeRenderedView = useMemo(
+    () => drawing.drawn?.findView(state.activeView)?.$layouted ?? null,
+    [drawing.drawn, state.activeView],
+  )
+  const nodeTitles = useMemo(
+    () =>
+      new Map(
+        (activeRenderedView?.nodes ?? []).map(
+          (node) => [String(node.id), node.title] as const,
+        ),
+      ),
+    [activeRenderedView],
+  )
+
+  return (
+    <section className="diagram-workspace" aria-label="Architecture diagram">
+      <div className="canvas">
+        {drawing.drawn === null ? null : (
+          <LikeC4ModelProvider likec4model={drawing.drawn}>
+            <ReactLikeC4
+              viewId={state.activeView}
+              onNodeClick={(node) => onSelect(normalizeSelectedElement(node))}
+              onEdgeClick={(edge) =>
+                onSelect(normalizeSelectedRelationship(edge, nodeTitles))
+              }
+              onNavigateTo={(viewId, _event, node) => {
+                if (node !== undefined) onSelect(normalizeSelectedElement(node))
+                onNavigate(viewId)
+              }}
+              injectFontCss={false}
+              colorScheme="light"
+              background="dots"
+              controls
+              pannable
+              zoomable
+              fitView
+              keepAspectRatio={false}
+              // The custom inspector is the only details surface, so the
+              // renderer's own overlays stay shut.
+              enableElementDetails={false}
+              enableRelationshipDetails={false}
+              enableNotes
+              enableSearch={false}
+              // The renderer injects its own stylesheets; this session's
+              // policy admits them under this nonce and nothing else.
+              styleNonce={state.styleNonce}
+              showNavigationButtons
+              reduceGraphics={reduceGraphics ? true : 'auto'}
+              className="diagram"
+            />
+          </LikeC4ModelProvider>
+        )}
+        {waiting === null ? null : <p className="waiting">{waiting}</p>}
+      </div>
+
+      {drawing.fault === null ? null : (
+        // The renderer's exception describes its own internals and may carry
+        // anything: the reviewer reads this application's words instead.
+        <div className="faults" role="alert">
+          <p className="faults-title">{drawing.fault}</p>
+        </div>
       )}
-      {waiting === null ? null : <p className="waiting">{waiting}</p>}
+    </section>
+  )
+}
+
+/**
+ * A description is worth reading in full and worth not burying the rest of the
+ * panel under. Three lines are the default; the disclosure appears only when
+ * the browser actually clipped something, measured rather than guessed, because
+ * panel width and font metrics both move.
+ */
+const ExpandableDescription = ({
+  text,
+  expanded,
+  onToggle,
+}: {
+  readonly text: string | null
+  readonly expanded: boolean
+  readonly onToggle: () => void
+}) => {
+  const description = text ?? 'No description declared in this model'
+  const body = useRef<HTMLParagraphElement>(null)
+  const [canExpand, setCanExpand] = useState(false)
+
+  useLayoutEffect(() => {
+    const element = body.current
+    if (element === null || expanded) return
+    const measure = () =>
+      setCanExpand(element.scrollHeight > element.clientHeight + 1)
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [description, expanded])
+
+  return (
+    <div className="subject-description">
+      <p
+        ref={body}
+        className={expanded ? 'description-expanded' : 'description-clamped'}
+      >
+        {description}
+      </p>
+      {canExpand || expanded ? (
+        <button type="button" aria-expanded={expanded} onClick={onToggle}>
+          {expanded ? 'Show less' : 'Show more'}
+        </button>
+      ) : null}
+    </div>
+  )
+}
+
+/**
+ * What the reviewer clicked, said back to them in the model's own words: the
+ * facts the diagram cannot fit, and nothing the renderer would have to be
+ * trusted to render.
+ */
+const SelectedSubjectInspector = ({
+  subject,
+  expanded,
+  onToggleDescription,
+  onClear,
+  onNavigate,
+}: {
+  readonly subject: SelectedDiagramSubject
+  readonly expanded: boolean
+  readonly onToggleDescription: () => void
+  readonly onClear: () => void
+  readonly onNavigate: (viewId: string) => void
+}) => (
+  <section className="subject-inspector" aria-labelledby="subject-heading">
+    <div className="subject-heading-row">
+      <div>
+        <p className="subject-type">
+          {subject.type === 'element'
+            ? 'Selected element'
+            : 'Selected relationship'}
+        </p>
+        <h2 id="subject-heading">
+          {subject.type === 'element'
+            ? subject.title
+            : `${subject.sourceTitle} → ${subject.targetTitle}`}
+        </h2>
+      </div>
+      <button type="button" className="subject-clear" onClick={onClear}>
+        Clear
+      </button>
     </div>
 
-    {drawing.fault === null ? null : (
-      // The renderer's exception describes its own internals and may carry
-      // anything: the reviewer reads this application's words instead.
-      <div className="faults" role="alert">
-        <p className="faults-title">{drawing.fault}</p>
-      </div>
+    {subject.type === 'element' ? (
+      <dl className="subject-facts">
+        <div>
+          <dt>Identity</dt>
+          <dd>
+            <code>{subject.identity}</code>
+          </dd>
+        </div>
+        {subject.kind === null ? null : (
+          <div>
+            <dt>Kind</dt>
+            <dd>{subject.kind}</dd>
+          </div>
+        )}
+        {subject.technology === null ? null : (
+          <div>
+            <dt>Technology</dt>
+            <dd>{subject.technology}</dd>
+          </div>
+        )}
+        {subject.tags.length === 0 ? null : (
+          <div>
+            <dt>Tags</dt>
+            <dd>{subject.tags.join(', ')}</dd>
+          </div>
+        )}
+      </dl>
+    ) : (
+      <dl className="subject-facts">
+        <div>
+          <dt>Label</dt>
+          <dd>{subject.label ?? 'Unlabelled relationship'}</dd>
+        </div>
+        {subject.kind === null ? null : (
+          <div>
+            <dt>Kind</dt>
+            <dd>{subject.kind}</dd>
+          </div>
+        )}
+        {subject.technology === null ? null : (
+          <div>
+            <dt>Technology</dt>
+            <dd>{subject.technology}</dd>
+          </div>
+        )}
+        {subject.notation === null ? null : (
+          <div>
+            <dt>Notation</dt>
+            <dd>{subject.notation}</dd>
+          </div>
+        )}
+        <div>
+          <dt>Model relations</dt>
+          <dd>{subject.aggregateCount}</dd>
+        </div>
+      </dl>
     )}
+
+    <ExpandableDescription
+      text={subject.description}
+      expanded={expanded}
+      onToggle={onToggleDescription}
+    />
+
+    {subject.type === 'element' && subject.navigateTo !== null ? (
+      <button
+        type="button"
+        className="subject-navigate"
+        onClick={() => {
+          if (subject.type === 'element' && subject.navigateTo !== null) {
+            onNavigate(subject.navigateTo)
+          }
+        }}
+      >
+        Open related view
+      </button>
+    ) : null}
   </section>
 )
 
@@ -270,14 +467,24 @@ const ConversationPanel = ({
   state,
   hidden,
   disabled,
+  selectedSubject,
+  descriptionExpanded,
   onSend,
   onChoice,
+  onToggleDescription,
+  onClearSubject,
+  onNavigate,
 }: {
   readonly state: VisualAppState
   readonly hidden: boolean
   readonly disabled: boolean
+  readonly selectedSubject: SelectedDiagramSubject | null
+  readonly descriptionExpanded: boolean
   readonly onSend: (text: string) => void
   readonly onChoice: (optionId: string) => void
+  readonly onToggleDescription: () => void
+  readonly onClearSubject: () => void
+  readonly onNavigate: (viewId: string) => void
 }) => {
   const [draft, setDraft] = useState('')
 
@@ -303,6 +510,16 @@ const ConversationPanel = ({
       hidden={hidden}
     >
       <div className="conversation-scroll">
+        {selectedSubject === null ? null : (
+          <SelectedSubjectInspector
+            subject={selectedSubject}
+            expanded={descriptionExpanded}
+            onToggleDescription={onToggleDescription}
+            onClear={onClearSubject}
+            onNavigate={onNavigate}
+          />
+        )}
+
         <ol className="ledger" role="log" aria-live="polite">
           {state.transcript.length === 0 ? (
             <li className="empty">
@@ -330,6 +547,22 @@ const ConversationPanel = ({
       </div>
 
       <form className="composer" onSubmit={submit}>
+        {selectedSubject === null ? null : (
+          <div className="subject-chip">
+            <span>
+              {selectedSubject.type === 'element'
+                ? selectedSubject.title
+                : `${selectedSubject.sourceTitle} → ${selectedSubject.targetTitle}`}
+            </span>
+            <button
+              type="button"
+              aria-label="Remove selected diagram context"
+              onClick={onClearSubject}
+            >
+              Remove
+            </button>
+          </div>
+        )}
         <label className="offscreen" htmlFor="composer-text">
           Ask about this design
         </label>
@@ -340,9 +573,13 @@ const ConversationPanel = ({
           value={draft}
           disabled={disabled}
           placeholder={
-            state.chatEnabled
-              ? 'Ask about this design'
-              : 'This session is read-only'
+            !state.chatEnabled
+              ? 'This session is read-only'
+              : selectedSubject?.type === 'element'
+                ? 'Ask about this element'
+                : selectedSubject?.type === 'relationship'
+                  ? 'Ask about this relationship'
+                  : 'Ask about this design'
           }
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={keyDown}
@@ -495,6 +732,18 @@ export const App = () => {
     [],
   )
 
+  // Promotion replaces the model the reviewer was pointing at, so a subject
+  // held from the old one no longer describes anything. Views and lifecycle
+  // change under the same model and must leave the selection alone.
+  const activeCandidate = useRef(state.model?.candidate ?? null)
+  useEffect(() => {
+    const candidate = state.model?.candidate ?? null
+    if (candidate !== activeCandidate.current) {
+      activeCandidate.current = candidate
+      dispatchWorkspace({ type: 'model.replaced' })
+    }
+  }, [state.model?.candidate])
+
   // A fault already accounts for the empty canvas, and saying there is no model
   // would contradict the one that arrived and could not be drawn.
   const waiting =
@@ -536,6 +785,9 @@ export const App = () => {
           waiting={waiting}
           reduceGraphics={reduceGraphics}
           onNavigate={navigate}
+          onSelect={(subject) =>
+            dispatchWorkspace({ type: 'subject.selected', subject })
+          }
         />
         {conversationOpen ? (
           <ConversationSeparator
@@ -553,8 +805,17 @@ export const App = () => {
           state={state}
           hidden={!conversationOpen}
           disabled={!state.composerEnabled}
-          onSend={ask}
+          selectedSubject={workspace.selectedSubject}
+          descriptionExpanded={workspace.descriptionExpanded}
+          onSend={(text) =>
+            ask(formatContextualQuestion(text, workspace.selectedSubject))
+          }
           onChoice={choose}
+          onToggleDescription={() =>
+            dispatchWorkspace({ type: 'description.toggled' })
+          }
+          onClearSubject={() => dispatchWorkspace({ type: 'subject.cleared' })}
+          onNavigate={navigate}
         />
       </div>
     </main>

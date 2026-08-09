@@ -35,7 +35,7 @@
     "streaming": {
       "style": {},
       "description": {
-        "txt": "Each change is published as an event and applied as it arrives."
+        "txt": "This option delivers each committed change as an event and applies it as it arrives. The path favors fast feedback over batch coordination. Operators can replay the event stream after an interruption. Literal safety probe: <img src=x onerror=window.visualSubjectPwned=true>."
       },
       "title": "Option 1 - Event-driven delivery",
       "kind": "option",
@@ -114,7 +114,10 @@
       "target": {
         "model": "streaming"
       },
-      "id": "5l0pi9"
+      "id": "5l0pi9",
+      "description": {
+        "txt": "The review compares an event-driven delivery path with the current decision context. This relationship exists only in the temporary explanatory model."
+      }
     },
     "191xp83": {
       "title": "compares",
@@ -247,7 +250,7 @@
             "size": "md"
           },
           "description": {
-            "txt": "Each change is published as an event and applied as it arrives."
+            "txt": "This option delivers each committed change as an event and applies it as it arrives. The path favors fast feedback over batch coordination. Operators can replay the event stream after an interruption. Literal safety probe: <img src=x onerror=window.visualSubjectPwned=true>."
           },
           "tags": [],
           "kind": "option",
@@ -334,7 +337,10 @@
           ],
           "color": "gray",
           "line": "dashed",
-          "head": "normal"
+          "head": "normal",
+          "description": {
+            "txt": "The review compares an event-driven delivery path with the current decision context. This relationship exists only in the temporary explanatory model."
+          }
         },
         {
           "id": "19v07zu",
@@ -449,7 +455,7 @@
             "size": "md"
           },
           "description": {
-            "txt": "Each change is published as an event and applied as it arrives."
+            "txt": "This option delivers each committed change as an event and applies it as it arrives. The path favors fast feedback over batch coordination. Operators can replay the event stream after an interruption. Literal safety probe: <img src=x onerror=window.visualSubjectPwned=true>."
           },
           "tags": [],
           "kind": "option",
@@ -536,7 +542,10 @@
           ],
           "color": "gray",
           "line": "dashed",
-          "head": "normal"
+          "head": "normal",
+          "description": {
+            "txt": "The review compares an event-driven delivery path with the current decision context. This relationship exists only in the temporary explanatory model."
+          }
         },
         {
           "id": "19v07zu",
@@ -620,7 +629,7 @@
             "size": "md"
           },
           "description": {
-            "txt": "Each change is published as an event and applied as it arrives."
+            "txt": "This option delivers each committed change as an event and applies it as it arrives. The path favors fast feedback over batch coordination. Operators can replay the event stream after an interruption. Literal safety probe: <img src=x onerror=window.visualSubjectPwned=true>."
           },
           "tags": [],
           "kind": "option",

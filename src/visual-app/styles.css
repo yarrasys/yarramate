@@ -262,6 +262,78 @@ body {
   overflow: auto;
 }
 
+.subject-inspector {
+  padding: calc(var(--step) * 1.5);
+  border-bottom: 1px solid var(--rule);
+  background: color-mix(in srgb, var(--sheet) 92%, var(--cobalt) 8%);
+}
+
+.subject-heading-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--step);
+}
+
+.subject-type {
+  margin: 0 0 calc(var(--step) * 0.25);
+  color: var(--quiet);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.subject-heading-row h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.subject-facts {
+  display: grid;
+  gap: calc(var(--step) * 0.5);
+  margin: var(--step) 0;
+}
+
+.subject-facts > div {
+  display: grid;
+  grid-template-columns: minmax(5.5rem, auto) minmax(0, 1fr);
+  gap: var(--step);
+}
+
+.subject-facts dt {
+  color: var(--quiet);
+  font-size: 11px;
+}
+
+.subject-facts dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.subject-description p {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.description-clamped {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.subject-description button,
+.subject-navigate,
+.subject-clear {
+  margin-top: calc(var(--step) * 0.5);
+  min-height: 28px;
+}
+
 .ledger {
   margin: 0;
   padding: calc(var(--step) * 2) calc(var(--step) * 2.5);
@@ -449,6 +521,34 @@ body {
   background: transparent;
   border-color: var(--rule-firm);
   cursor: not-allowed;
+}
+
+.subject-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--step);
+  margin-bottom: calc(var(--step) * 0.75);
+  padding: calc(var(--step) * 0.5) calc(var(--step) * 0.75);
+  border: 1px solid var(--cobalt);
+  border-radius: 999px;
+  color: var(--cobalt);
+}
+
+.subject-chip span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subject-chip button {
+  flex: none;
+  min-height: 24px;
+  padding: 0 calc(var(--step) * 0.5);
+  border: 0;
+  background: transparent;
+  color: inherit;
 }
 
 /* ---------------------------------------------------------------- narrow */
