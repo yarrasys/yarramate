@@ -148,12 +148,15 @@ export const readVisualSessionDescriptor = async (
   let raw: string
   // One handle, opened once: the descriptor is the only file carrying the agent
   // capability, so the thing that is checked has to be the thing that is read.
-  // `O_NOFOLLOW` refuses a symlinked capability in the open itself, and the
-  // file kind is taken from the open handle, leaving no window between the
-  // check and the read for the path to be swapped.
+  // `O_NOFOLLOW` refuses a symlinked capability in the open itself,
+  // `O_NONBLOCK` prevents a planted FIFO from hanging the open, and the file
+  // kind is taken from the open handle, leaving no window between the check
+  // and the read for the path to be swapped.
   const handle = await open(
     target,
-    constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0),
+    constants.O_RDONLY |
+      constants.O_NONBLOCK |
+      (constants.O_NOFOLLOW ?? 0),
   ).catch(() => undefined)
   if (handle === undefined) {
     return refused([

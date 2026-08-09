@@ -1,3 +1,4 @@
+import { execFileSync, spawnSync } from 'node:child_process'
 import { EventEmitter, once } from 'node:events'
 import { existsSync } from 'node:fs'
 import {
@@ -54,6 +55,7 @@ import {
 } from '../src/adapters/visual-cli.js'
 import { packageVersion, type CliResult } from '../src/cli-support.js'
 
+const repositoryRoot = fileURLToPath(new URL('..', import.meta.url))
 const fixtures = fileURLToPath(new URL('./fixtures/visual/', import.meta.url))
 const fakeCompiler = join(fixtures, 'fake-likec4.mjs')
 const assetRoot = join(fixtures, 'browser-assets')
@@ -463,6 +465,33 @@ describe('descriptor confinement', () => {
     expect(result.exitCode).toBe(1)
     expect(refusalCodes(result)).toEqual(['YMVS401'])
   })
+
+  it.runIf(process.platform !== 'win32')(
+    'refuses a FIFO descriptor without waiting for a writer',
+    () => {
+      const fifo = join(workDir, 'descriptor.fifo')
+      execFileSync('mkfifo', [fifo])
+
+      const result = spawnSync(
+        process.execPath,
+        ['dist/adapters/visual-cli.js', 'status', fifo],
+        {
+          cwd: repositoryRoot,
+          encoding: 'utf8',
+          timeout: 1000,
+        },
+      )
+
+      expect(result.signal).toBeNull()
+      expect(result.status).toBe(1)
+      expect(
+        parseVisualDiagnosticResult(JSON.parse(result.stderr)),
+      ).toMatchObject({
+        ok: true,
+        value: { diagnostics: [{ code: 'YMVS401' }] },
+      })
+    },
+  )
 
   it('refuses a descriptor that is not JSON', async () => {
     const path = join(workDir, 'descriptor.json')
