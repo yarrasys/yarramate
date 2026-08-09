@@ -87,7 +87,16 @@ describe('visual workspace state', () => {
     const state = createVisualWorkspaceState(1568)
     expect(state.conversation).toEqual({
       mode: 'auto',
-      width: 439.04,
+      width: expect.closeTo(439.04, 2),
+      unread: 0,
+    })
+  })
+
+  it('caps the default width at 480px on wide viewports', () => {
+    const state = createVisualWorkspaceState(1920)
+    expect(state.conversation).toEqual({
+      mode: 'auto',
+      width: 480,
       unread: 0,
     })
   })
@@ -429,12 +438,24 @@ const clampConversationWidth = (width: number, viewportWidth: number) => {
   return Math.min(max, Math.max(min, width))
 }
 
+// Initial width follows `clamp(320px, 28vw, 480px)` per the approved design;
+// only a manual drag may widen the panel up to CONVERSATION_MAX_WIDTH (640).
+const CONVERSATION_DEFAULT_MAX_WIDTH = 480
+
+const clampInitialConversationWidth = (
+  width: number,
+  viewportWidth: number,
+) => {
+  const { min, max } = conversationWidthBounds(viewportWidth)
+  return Math.min(Math.min(max, CONVERSATION_DEFAULT_MAX_WIDTH), Math.max(min, width))
+}
+
 export const createVisualWorkspaceState = (
   viewportWidth: number,
 ): VisualWorkspaceState => ({
   conversation: {
     mode: 'auto',
-    width: clampConversationWidth(viewportWidth * 0.28, viewportWidth),
+    width: clampInitialConversationWidth(viewportWidth * 0.28, viewportWidth),
     unread: 0,
   },
   selectedSubject: null,
