@@ -80,14 +80,14 @@ describe('visual workspace state', () => {
     expect(replaced.conversation.mode).toBe('open')
   })
 
-  it('clamps width to both the panel maximum and the canvas floor', () => {
+  it('clamps width to the design maximum of min(45vw, 640px)', () => {
     expect(conversationWidthBounds(1568)).toEqual({ min: 320, max: 640 })
-    expect(conversationWidthBounds(900)).toEqual({ min: 320, max: 370 })
+    expect(conversationWidthBounds(900)).toEqual({ min: 320, max: 405 })
+    expect(conversationWidthBounds(600)).toEqual({ min: 320, max: 320 })
 
     const widened = visualWorkspaceReducer(createVisualWorkspaceState(1568), {
       type: 'conversation.resized',
       width: 900,
-      viewportWidth: 1568,
     })
     expect(widened.conversation.width).toBe(640)
 
@@ -95,7 +95,28 @@ describe('visual workspace state', () => {
       type: 'viewport.resized',
       viewportWidth: 900,
     })
-    expect(narrowedViewport.conversation.width).toBe(370)
+    expect(narrowedViewport.conversation.width).toBe(405)
+  })
+
+  // The separator reads its aria bounds from this state, so a viewport change
+  // that leaves the panel width alone must still be observable.
+  it('tracks the viewport width even when the clamped panel width is unchanged', () => {
+    const initial = createVisualWorkspaceState(1568)
+    expect(initial.viewportWidth).toBe(1568)
+
+    const wider = visualWorkspaceReducer(initial, {
+      type: 'viewport.resized',
+      viewportWidth: 1600,
+    })
+    expect(wider.conversation.width).toBe(initial.conversation.width)
+    expect(wider.viewportWidth).toBe(1600)
+
+    // A drag clamps against the viewport the state already knows.
+    const dragged = visualWorkspaceReducer(
+      visualWorkspaceReducer(wider, { type: 'viewport.resized', viewportWidth: 900 }),
+      { type: 'conversation.resized', width: 900 },
+    )
+    expect(dragged.conversation.width).toBe(405)
   })
 })
 
@@ -166,7 +187,7 @@ describe('selected diagram subjects', () => {
 
   it('formats the exact visible text sent through the existing chat seam', () => {
     expect(formatContextualQuestion('What owns this?', elementSubject)).toBe(
-      'About “API” (system.api): What owns this?',
+      'About element “API” (system.api): What owns this?',
     )
 
     const relationship = normalizeSelectedRelationship(

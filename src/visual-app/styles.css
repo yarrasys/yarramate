@@ -114,6 +114,55 @@ body {
 .command-actions select,
 .command-actions button {
   min-height: 32px;
+  padding: 0 0.7rem;
+  font-family: var(--utility);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule-firm);
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.command-actions select {
+  /* The native arrow is the one piece of OS chrome worth keeping: it is the
+     only affordance saying this control has a list behind it. */
+  padding-right: 0.35rem;
+}
+
+.command-actions select:hover:enabled,
+.command-actions button:hover:enabled {
+  border-color: var(--cobalt);
+}
+
+.command-actions select:disabled,
+.command-actions button:disabled {
+  color: var(--quiet);
+  background: transparent;
+  border-color: var(--rule);
+  cursor: not-allowed;
+}
+
+.command-actions button[aria-expanded='true'] {
+  color: var(--paper);
+  background: var(--cobalt);
+  border-color: var(--cobalt);
+}
+
+.command-actions .end-session:hover:enabled {
+  color: var(--paper);
+  background: var(--failure);
+  border-color: var(--failure);
+}
+
+.connection-state {
+  flex: none;
+  font-family: var(--utility);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--quiet);
 }
 
 .authority {
@@ -139,16 +188,50 @@ body {
   color: var(--ochre);
 }
 
+/* Laid over the workspace, never in it: static prose must not cost the diagram
+   a single pixel of height, so the disclosure hangs off the strip instead of
+   taking a row in the shell grid. */
 .session-details {
-  grid-column: 1 / -1;
-  padding-top: var(--step);
-  border-top: 1px solid var(--rule);
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: calc(var(--step) * 2);
+  padding: var(--step) calc(var(--step) * 2) calc(var(--step) * 1.5);
+  border-bottom: 1px solid var(--rule);
+  background: var(--sheet);
+  box-shadow: 0 12px 28px rgb(19 35 57 / 12%);
+}
+
+.session-details[hidden] {
+  display: none;
 }
 
 .session-details p {
   max-width: 90ch;
   margin: 0;
   color: var(--quiet);
+}
+
+.details-close {
+  flex: none;
+  margin-left: auto;
+  min-height: 28px;
+  padding: 0 0.6rem;
+  font-family: var(--utility);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule-firm);
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.details-close:hover {
+  border-color: var(--cobalt);
 }
 
 .attention-count {

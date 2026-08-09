@@ -151,6 +151,14 @@ The browser uses LikeC4's public callbacks:
 - `onEdgeClick(edge, event)` selects a relationship;
 - `onNavigateTo(viewId, event, node)` preserves the originating element before navigating when present.
 
+LikeC4 1.59.2 declares `onNavigateTo`'s originating node optional and never
+passes it: the renderer emits `navigateTo` with `viewId` alone. Against the
+pinned renderer the node branch is therefore dead, and a selection survives
+navigation because the reducer keeps it, not because the callback restores it.
+The branch stays because the declared contract allows the node; a renderer bump
+that starts passing it changes behaviour from "keep the prior selection" to
+"select the navigated node".
+
 A click changes only local workspace state. It emits no `VisualBrowserInput`, consumes no queue capacity, and adds no journal record.
 
 ### Inspector

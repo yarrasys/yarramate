@@ -18,7 +18,7 @@
 - One rendered edge may aggregate multiple model relationships; expose the count without inventing a canonical relationship ID.
 - Flatten LikeC4 `MarkdownOrString` descriptions to plain text and render them through React text nodes. Never inject HTML.
 - Description copy is three lines by default with real **Show more** and **Show less** controls when truncation is possible.
-- The desktop conversation width defaults to `clamp(320px, 28vw, 480px)`, has a 320px minimum and 640px maximum, and must leave at least 520px for the canvas.
+- The desktop conversation width defaults to `clamp(320px, 28vw, 480px)` and resizes between a 320px minimum and the design's `min(45vw, 640px)` maximum.
 - Below 900px, use a non-modal bottom sheet and remove the desktop resize separator.
 - Empty sessions start with conversation mode `auto` and visually collapsed. A direct subject click or explicit toggle opens it.
 - A manual close survives background chat, choices, and diagnostics; these increment an unread count instead of reopening the panel.
@@ -137,14 +137,14 @@ describe('visual workspace state', () => {
     expect(replaced.conversation.mode).toBe('open')
   })
 
-  it('clamps width to both the panel maximum and the canvas floor', () => {
+  it('clamps width to the design maximum of min(45vw, 640px)', () => {
     expect(conversationWidthBounds(1568)).toEqual({ min: 320, max: 640 })
-    expect(conversationWidthBounds(900)).toEqual({ min: 320, max: 370 })
+    expect(conversationWidthBounds(900)).toEqual({ min: 320, max: 405 })
+    expect(conversationWidthBounds(600)).toEqual({ min: 320, max: 320 })
 
     const widened = visualWorkspaceReducer(createVisualWorkspaceState(1568), {
       type: 'conversation.resized',
       width: 900,
-      viewportWidth: 1568,
     })
     expect(widened.conversation.width).toBe(640)
 
@@ -152,7 +152,19 @@ describe('visual workspace state', () => {
       type: 'viewport.resized',
       viewportWidth: 900,
     })
-    expect(narrowedViewport.conversation.width).toBe(370)
+    expect(narrowedViewport.conversation.width).toBe(405)
+  })
+
+  it('tracks the viewport width even when the clamped panel width is unchanged', () => {
+    const initial = createVisualWorkspaceState(1568)
+    expect(initial.viewportWidth).toBe(1568)
+
+    const wider = visualWorkspaceReducer(initial, {
+      type: 'viewport.resized',
+      viewportWidth: 1600,
+    })
+    expect(wider.conversation.width).toBe(initial.conversation.width)
+    expect(wider.viewportWidth).toBe(1600)
   })
 })
 ```
@@ -229,7 +241,7 @@ describe('selected diagram subjects', () => {
 
   it('formats the exact visible text sent through the existing chat seam', () => {
     expect(formatContextualQuestion('What owns this?', elementSubject)).toBe(
-      'About “API” (system.api): What owns this?',
+      'About element “API” (system.api): What owns this?',
     )
 
     const relationship = normalizeSelectedRelationship(
@@ -397,8 +409,8 @@ Continue the same module with the exact actions below. Keep model replacement in
 ```ts
 export const CONVERSATION_MIN_WIDTH = 320
 export const CONVERSATION_MAX_WIDTH = 640
-export const CANVAS_MIN_WIDTH = 520
-const CONVERSATION_SEPARATOR_WIDTH = 10
+/** The share of the viewport the approved design lets the conversation take. */
+const CONVERSATION_MAX_VIEWPORT_SHARE = 0.45
 
 export interface VisualWorkspaceState {
   readonly conversation: {
@@ -406,6 +418,12 @@ export interface VisualWorkspaceState {
     readonly width: number
     readonly unread: number
   }
+  /**
+   * The viewport this state was last clamped against. Presentation reads its
+   * resize bounds from here rather than from `window`, so every viewport change
+   * reaches the separator's reported minimum and maximum.
+   */
+  readonly viewportWidth: number
   readonly selectedSubject: SelectedDiagramSubject | null
   readonly descriptionExpanded: boolean
   readonly detailsOpen: boolean
@@ -413,7 +431,7 @@ export interface VisualWorkspaceState {
 
 export type VisualWorkspaceAction =
   | { readonly type: 'conversation.toggled' }
-  | { readonly type: 'conversation.resized'; readonly width: number; readonly viewportWidth: number }
+  | { readonly type: 'conversation.resized'; readonly width: number }
   | { readonly type: 'viewport.resized'; readonly viewportWidth: number }
   | { readonly type: 'attention.received' }
   | { readonly type: 'subject.selected'; readonly subject: SelectedDiagramSubject }
@@ -422,13 +440,14 @@ export type VisualWorkspaceAction =
   | { readonly type: 'details.toggled' }
   | { readonly type: 'model.replaced' }
 
+// `min(45vw, 640px)`, never below the 320px floor the panel is usable at.
 export const conversationWidthBounds = (viewportWidth: number) => ({
   min: CONVERSATION_MIN_WIDTH,
   max: Math.max(
     CONVERSATION_MIN_WIDTH,
     Math.min(
       CONVERSATION_MAX_WIDTH,
-      viewportWidth - CANVAS_MIN_WIDTH - CONVERSATION_SEPARATOR_WIDTH,
+      viewportWidth * CONVERSATION_MAX_VIEWPORT_SHARE,
     ),
   ),
 })
@@ -458,6 +477,7 @@ export const createVisualWorkspaceState = (
     width: clampInitialConversationWidth(viewportWidth * 0.28, viewportWidth),
     unread: 0,
   },
+  viewportWidth,
   selectedSubject: null,
   descriptionExpanded: false,
   detailsOpen: false,
@@ -479,16 +499,25 @@ export const visualWorkspaceReducer = (
         },
       }
     }
-    case 'conversation.resized':
-    case 'viewport.resized': {
-      const requested =
-        action.type === 'conversation.resized'
-          ? action.width
-          : state.conversation.width
-      const width = clampConversationWidth(requested, action.viewportWidth)
+    case 'conversation.resized': {
+      const width = clampConversationWidth(action.width, state.viewportWidth)
       return width === state.conversation.width
         ? state
         : { ...state, conversation: { ...state.conversation, width } }
+    }
+    case 'viewport.resized': {
+      const width = clampConversationWidth(
+        state.conversation.width,
+        action.viewportWidth,
+      )
+      return width === state.conversation.width &&
+        action.viewportWidth === state.viewportWidth
+        ? state
+        : {
+            ...state,
+            conversation: { ...state.conversation, width },
+            viewportWidth: action.viewportWidth,
+          }
     }
     case 'attention.received':
       if (state.conversation.mode === 'open') return state
@@ -536,7 +565,7 @@ export const formatContextualQuestion = (
   const text = question.trim()
   if (subject === null) return text
   if (subject.type === 'element') {
-    return `About “${subject.title}” (${subject.identity}): ${text}`
+    return `About element “${subject.title}” (${subject.identity}): ${text}`
   }
   const route = `${subject.sourceTitle} → ${subject.targetTitle}`
   const name = subject.label === null ? route : `${route} — ${subject.label}`
@@ -655,7 +684,7 @@ const CommandStrip = ({
       <span className={`authority authority-${state.authority}`}>
         {visualAuthorityLabel(state.authority)}
       </span>
-      <span className="connection-state">{connection}</span>
+      <span className="connection-state" role="status">{connection}</span>
     </div>
     <div className="command-actions">
       <label className="offscreen" htmlFor="active-view">Active view</label>
@@ -695,12 +724,18 @@ const CommandStrip = ({
         End
       </button>
     </div>
+    {/* Static prose is not worth the canvas: the disclosure is laid over the
+        workspace from the strip rather than taking a row of its own, so opening
+        it never reflows the diagram or the conversation. */}
     <div
       id="session-details"
       className="session-details"
       hidden={!detailsOpen}
     >
       <p>{state.description}</p>
+      <button type="button" className="details-close" onClick={onToggleDetails}>
+        Close details
+      </button>
     </div>
   </header>
 )
@@ -777,12 +812,17 @@ Add a private `ConversationSeparator`. Track the pointer-down coordinate and sta
 ```tsx
 const ConversationSeparator = ({
   width,
+  viewportWidth,
   onResize,
 }: {
   readonly width: number
-  readonly onResize: (width: number, viewportWidth: number) => void
+  readonly viewportWidth: number
+  readonly onResize: (width: number) => void
 }) => {
-  const bounds = conversationWidthBounds(window.innerWidth)
+  // From the state the reducer clamped against, never from `window`: a resize
+  // that leaves the panel width alone still changes what this may be dragged
+  // to, and a render that read the live global would only say so by accident.
+  const bounds = conversationWidthBounds(viewportWidth)
   const drag = useRef<{
     readonly pointerId: number
     readonly startX: number
@@ -791,10 +831,7 @@ const ConversationSeparator = ({
   const pointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     const active = drag.current
     if (active?.pointerId !== event.pointerId) return
-    onResize(
-      active.startWidth + active.startX - event.clientX,
-      window.innerWidth,
-    )
+    onResize(active.startWidth + active.startX - event.clientX)
   }
   const pointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     drag.current = {
@@ -815,10 +852,7 @@ const ConversationSeparator = ({
     if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
     event.preventDefault()
     const step = event.shiftKey ? 32 : 8
-    onResize(
-      width + (event.key === 'ArrowLeft' ? step : -step),
-      window.innerWidth,
-    )
+    onResize(width + (event.key === 'ArrowLeft' ? step : -step))
   }
   return (
     <div
@@ -879,12 +913,9 @@ return (
       {conversationOpen ? (
         <ConversationSeparator
           width={workspace.conversation.width}
-          onResize={(width, viewportWidth) =>
-            dispatchWorkspace({
-              type: 'conversation.resized',
-              width,
-              viewportWidth,
-            })
+          viewportWidth={workspace.viewportWidth}
+          onResize={(width) =>
+            dispatchWorkspace({ type: 'conversation.resized', width })
           }
         />
       ) : null}
@@ -950,18 +981,101 @@ Keep the existing font imports, color tokens, reset, button/input typography, tr
 .command-actions select,
 .command-actions button {
   min-height: 32px;
+  padding: 0 0.7rem;
+  font-family: var(--utility);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule-firm);
+  border-radius: 0;
+  cursor: pointer;
 }
 
+.command-actions select {
+  /* The native arrow is the one piece of OS chrome worth keeping: it is the
+     only affordance saying this control has a list behind it. */
+  padding-right: 0.35rem;
+}
+
+.command-actions select:hover:enabled,
+.command-actions button:hover:enabled {
+  border-color: var(--cobalt);
+}
+
+.command-actions select:disabled,
+.command-actions button:disabled {
+  color: var(--quiet);
+  background: transparent;
+  border-color: var(--rule);
+  cursor: not-allowed;
+}
+
+.command-actions button[aria-expanded='true'] {
+  color: var(--paper);
+  background: var(--cobalt);
+  border-color: var(--cobalt);
+}
+
+.command-actions .end-session:hover:enabled {
+  color: var(--paper);
+  background: var(--failure);
+  border-color: var(--failure);
+}
+
+.connection-state {
+  flex: none;
+  font-family: var(--utility);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--quiet);
+}
+
+/* Laid over the workspace, never in it: static prose must not cost the diagram
+   a single pixel of height, so the disclosure hangs off the strip instead of
+   taking a row in the shell grid. */
 .session-details {
-  grid-column: 1 / -1;
-  padding-top: var(--step);
-  border-top: 1px solid var(--rule);
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: calc(var(--step) * 2);
+  padding: var(--step) calc(var(--step) * 2) calc(var(--step) * 1.5);
+  border-bottom: 1px solid var(--rule);
+  background: var(--sheet);
+  box-shadow: 0 12px 28px rgb(19 35 57 / 12%);
+}
+
+.session-details[hidden] {
+  display: none;
 }
 
 .session-details p {
   max-width: 90ch;
   margin: 0;
   color: var(--quiet);
+}
+
+.details-close {
+  flex: none;
+  margin-left: auto;
+  min-height: 28px;
+  padding: 0 0.6rem;
+  font-family: var(--utility);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule-firm);
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.details-close:hover {
+  border-color: var(--cobalt);
 }
 
 .attention-count {
@@ -1098,10 +1212,10 @@ Rebuild, start the request from Step 1, and drive the page with the Browser tool
 2. Confirm no large title/description header or vertical fact rail remains.
 3. Confirm the diagram fills the viewport outside the open conversation.
 4. Collapse Conversation and confirm the canvas consumes the reclaimed width.
-5. Reopen it; pointer-drag the separator beyond both limits and confirm it settles within 320–640px while preserving at least 520px canvas.
+5. Reopen it; pointer-drag the separator beyond both limits and confirm it settles within 320px and `min(45vw, 640px)`.
 6. Focus the separator; verify ArrowLeft/ArrowRight move 8px and Shift+Arrow moves 32px within bounds.
 7. Close the panel, create background choice/diagnostic activity through the running visual session, and confirm an attention count appears without reopening the panel.
-8. Toggle Details and confirm the session description expands and collapses.
+8. Toggle Details and confirm the description is laid over the workspace, that the diagram and conversation keep the exact heights they had before the toggle, and that its labelled **Close details** action shuts it.
 
 Resize the same browser to 390×844 and confirm the open conversation is a bottom sheet, the separator is absent, the canvas remains the primary row, controls remain reachable, and `document.documentElement.scrollWidth === document.documentElement.clientWidth`.
 
@@ -1185,6 +1299,9 @@ This uses LikeC4's public `findView(viewId).$layouted` rendering model and never
   onEdgeClick={(edge) =>
     onSelect(normalizeSelectedRelationship(edge, nodeTitles))
   }
+  // LikeC4 1.59.2 never passes the originating node — it emits `navigateTo`
+  // with `viewId` alone — so this branch is dead against the pinned renderer
+  // and retention comes from the reducer keeping the prior selection.
   onNavigateTo={(viewId, _event, node) => {
     if (node !== undefined) onSelect(normalizeSelectedElement(node))
     onNavigate(viewId)

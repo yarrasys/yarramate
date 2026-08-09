@@ -111,7 +111,7 @@ const CommandStrip = ({
       <span className={`authority authority-${state.authority}`}>
         {visualAuthorityLabel(state.authority)}
       </span>
-      <span className="connection-state">{connection}</span>
+      <span className="connection-state" role="status">{connection}</span>
     </div>
     <div className="command-actions">
       <label className="offscreen" htmlFor="active-view">Active view</label>
@@ -151,12 +151,18 @@ const CommandStrip = ({
         End
       </button>
     </div>
+    {/* Static prose is not worth the canvas: the disclosure is laid over the
+        workspace from the strip rather than taking a row of its own, so opening
+        it never reflows the diagram or the conversation. */}
     <div
       id="session-details"
       className="session-details"
       hidden={!detailsOpen}
     >
       <p>{state.description}</p>
+      <button type="button" className="details-close" onClick={onToggleDetails}>
+        Close details
+      </button>
     </div>
   </header>
 )
@@ -258,6 +264,15 @@ const DiagramWorkspace = ({
               onEdgeClick={(edge) =>
                 onSelect(normalizeSelectedRelationship(edge, nodeTitles))
               }
+              // LikeC4 1.59.2 declares the originating node optional and never
+              // passes it: the runtime emits `navigateTo` with `viewId` alone,
+              // so this branch is dead against the pinned renderer and the
+              // subject the reviewer clicked is what the reducer keeps across
+              // the navigation. The branch stays because the declared contract
+              // allows the node, but a renderer bump that starts passing it
+              // changes the behaviour from "keep the prior selection" to
+              // "select the navigated node" — a visible change, not a silent
+              // one, and this is where it lands.
               onNavigateTo={(viewId, _event, node) => {
                 if (node !== undefined) onSelect(normalizeSelectedElement(node))
                 onNavigate(viewId)
@@ -601,12 +616,17 @@ const ConversationPanel = ({
 
 const ConversationSeparator = ({
   width,
+  viewportWidth,
   onResize,
 }: {
   readonly width: number
-  readonly onResize: (width: number, viewportWidth: number) => void
+  readonly viewportWidth: number
+  readonly onResize: (width: number) => void
 }) => {
-  const bounds = conversationWidthBounds(window.innerWidth)
+  // From the state the reducer clamped against, never from `window`: a resize
+  // that leaves the panel width alone still changes what this may be dragged
+  // to, and a render that read the live global would only say so by accident.
+  const bounds = conversationWidthBounds(viewportWidth)
   const drag = useRef<{
     readonly pointerId: number
     readonly startX: number
@@ -615,10 +635,7 @@ const ConversationSeparator = ({
   const pointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     const active = drag.current
     if (active?.pointerId !== event.pointerId) return
-    onResize(
-      active.startWidth + active.startX - event.clientX,
-      window.innerWidth,
-    )
+    onResize(active.startWidth + active.startX - event.clientX)
   }
   const pointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     drag.current = {
@@ -639,10 +656,7 @@ const ConversationSeparator = ({
     if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
     event.preventDefault()
     const step = event.shiftKey ? 32 : 8
-    onResize(
-      width + (event.key === 'ArrowLeft' ? step : -step),
-      window.innerWidth,
-    )
+    onResize(width + (event.key === 'ArrowLeft' ? step : -step))
   }
   return (
     <div
@@ -792,12 +806,9 @@ export const App = () => {
         {conversationOpen ? (
           <ConversationSeparator
             width={workspace.conversation.width}
-            onResize={(width, viewportWidth) =>
-              dispatchWorkspace({
-                type: 'conversation.resized',
-                width,
-                viewportWidth,
-              })
+            viewportWidth={workspace.viewportWidth}
+            onResize={(width) =>
+              dispatchWorkspace({ type: 'conversation.resized', width })
             }
           />
         ) : null}

@@ -119,8 +119,8 @@ export const normalizeSelectedRelationship = (
 
 export const CONVERSATION_MIN_WIDTH = 320
 export const CONVERSATION_MAX_WIDTH = 640
-export const CANVAS_MIN_WIDTH = 520
-const CONVERSATION_SEPARATOR_WIDTH = 10
+/** The share of the viewport the approved design lets the conversation take. */
+const CONVERSATION_MAX_VIEWPORT_SHARE = 0.45
 
 export interface VisualWorkspaceState {
   readonly conversation: {
@@ -128,6 +128,12 @@ export interface VisualWorkspaceState {
     readonly width: number
     readonly unread: number
   }
+  /**
+   * The viewport this state was last clamped against. Presentation reads its
+   * resize bounds from here rather than from `window`, so every viewport change
+   * reaches the separator's reported minimum and maximum.
+   */
+  readonly viewportWidth: number
   readonly selectedSubject: SelectedDiagramSubject | null
   readonly descriptionExpanded: boolean
   readonly detailsOpen: boolean
@@ -135,7 +141,7 @@ export interface VisualWorkspaceState {
 
 export type VisualWorkspaceAction =
   | { readonly type: 'conversation.toggled' }
-  | { readonly type: 'conversation.resized'; readonly width: number; readonly viewportWidth: number }
+  | { readonly type: 'conversation.resized'; readonly width: number }
   | { readonly type: 'viewport.resized'; readonly viewportWidth: number }
   | { readonly type: 'attention.received' }
   | { readonly type: 'subject.selected'; readonly subject: SelectedDiagramSubject }
@@ -144,13 +150,14 @@ export type VisualWorkspaceAction =
   | { readonly type: 'details.toggled' }
   | { readonly type: 'model.replaced' }
 
+// `min(45vw, 640px)`, never below the 320px floor the panel is usable at.
 export const conversationWidthBounds = (viewportWidth: number) => ({
   min: CONVERSATION_MIN_WIDTH,
   max: Math.max(
     CONVERSATION_MIN_WIDTH,
     Math.min(
       CONVERSATION_MAX_WIDTH,
-      viewportWidth - CANVAS_MIN_WIDTH - CONVERSATION_SEPARATOR_WIDTH,
+      viewportWidth * CONVERSATION_MAX_VIEWPORT_SHARE,
     ),
   ),
 })
@@ -180,6 +187,7 @@ export const createVisualWorkspaceState = (
     width: clampInitialConversationWidth(viewportWidth * 0.28, viewportWidth),
     unread: 0,
   },
+  viewportWidth,
   selectedSubject: null,
   descriptionExpanded: false,
   detailsOpen: false,
@@ -201,16 +209,25 @@ export const visualWorkspaceReducer = (
         },
       }
     }
-    case 'conversation.resized':
-    case 'viewport.resized': {
-      const requested =
-        action.type === 'conversation.resized'
-          ? action.width
-          : state.conversation.width
-      const width = clampConversationWidth(requested, action.viewportWidth)
+    case 'conversation.resized': {
+      const width = clampConversationWidth(action.width, state.viewportWidth)
       return width === state.conversation.width
         ? state
         : { ...state, conversation: { ...state.conversation, width } }
+    }
+    case 'viewport.resized': {
+      const width = clampConversationWidth(
+        state.conversation.width,
+        action.viewportWidth,
+      )
+      return width === state.conversation.width &&
+        action.viewportWidth === state.viewportWidth
+        ? state
+        : {
+            ...state,
+            conversation: { ...state.conversation, width },
+            viewportWidth: action.viewportWidth,
+          }
     }
     case 'attention.received':
       if (state.conversation.mode === 'open') return state
@@ -258,7 +275,7 @@ export const formatContextualQuestion = (
   const text = question.trim()
   if (subject === null) return text
   if (subject.type === 'element') {
-    return `About “${subject.title}” (${subject.identity}): ${text}`
+    return `About element “${subject.title}” (${subject.identity}): ${text}`
   }
   const route = `${subject.sourceTitle} → ${subject.targetTitle}`
   const name = subject.label === null ? route : `${route} — ${subject.label}`
