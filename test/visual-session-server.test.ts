@@ -422,7 +422,7 @@ describe('startVisualServer bootstrap and browser authentication', () => {
     expect(response.status).toBe(303)
     expect(response.headers.get('location')).toBe('/')
     expect(response.headers.get('set-cookie')).toMatch(
-      /^ym_visual=[^;]+; HttpOnly; SameSite=Strict; Path=\/$/,
+      /^ym_visual=[^;]+; HttpOnly; SameSite=Strict; Secure; Path=\/$/,
     )
 
     const socket = await openBrowserSocket(

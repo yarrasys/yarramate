@@ -1519,7 +1519,7 @@ export const startVisualServer = async (
     server.writeHead(303, {
       ...browserHeaders,
       Location: '/',
-      'Set-Cookie': `${COOKIE_NAME}=${cookieSecret}; HttpOnly; SameSite=Strict; Path=/`,
+      'Set-Cookie': `${COOKIE_NAME}=${cookieSecret}; HttpOnly; SameSite=Strict; Secure; Path=/`,
       'Content-Length': 0,
     })
     server.end()
