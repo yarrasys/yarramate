@@ -165,6 +165,18 @@ body {
   color: var(--quiet);
 }
 
+.end-transition-status {
+  max-width: 28rem;
+  font-family: var(--utility);
+  font-size: 11px;
+  line-height: 1.25;
+  color: var(--quiet);
+}
+
+.end-transition-status:empty {
+  display: none;
+}
+
 .authority {
   margin: 0;
   font-family: var(--utility);
@@ -579,12 +591,31 @@ body {
 }
 
 .agent-status {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--step) * 0.5);
   margin: 0;
   font-family: var(--utility);
   font-size: 10px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--quiet);
+}
+
+.agent-spinner {
+  width: 0.75rem;
+  height: 0.75rem;
+  flex: none;
+  border: 1px solid currentcolor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: agent-spinner-turn 700ms linear infinite;
+}
+
+@keyframes agent-spinner-turn {
+  to {
+    transform: rotate(1turn);
+  }
 }
 
 .composer button {

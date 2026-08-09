@@ -82,6 +82,17 @@ const connectionOf = (state: VisualAppState, connected: boolean): string => {
   }
 }
 
+const endTransitionStatus = (state: VisualAppState): string => {
+  if (state.lifecycle === 'closed') {
+    return 'Visual conversation ended. Continue in the main agent.'
+  }
+  if (state.lifecycle !== 'ending') return ''
+  if (state.handoff !== null) {
+    return 'Handoff ready — returning control to the main agent.'
+  }
+  return 'Ending conversation — preparing a handoff for the main agent.'
+}
+
 const CommandStrip = ({
   state,
   connection,
@@ -114,6 +125,14 @@ const CommandStrip = ({
       <span className="connection-state" role="status">{connection}</span>
     </div>
     <div className="command-actions">
+      <span
+        className="end-transition-status"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {endTransitionStatus(state)}
+      </span>
       <label className="offscreen" htmlFor="active-view">Active view</label>
       <select
         id="active-view"
@@ -148,7 +167,7 @@ const CommandStrip = ({
         onClick={onEnd}
         disabled={state.lifecycle !== 'active'}
       >
-        End
+        {state.lifecycle === 'active' ? 'End' : 'Ending…'}
       </button>
     </div>
     {/* Static prose is not worth the canvas: the disclosure is laid over the
@@ -600,10 +619,22 @@ const ConversationPanel = ({
           onKeyDown={keyDown}
         />
         <div className="composer-foot">
-          <p className="agent-status">
-            {state.agentStatus === null
-              ? '\u00a0'
-              : (STATUS_WORDS[state.agentStatus.state] ?? '\u00a0')}
+          <p
+            className="agent-status"
+            role="status"
+            aria-live="polite"
+            aria-busy={state.awaitingAgent}
+          >
+            {state.awaitingAgent ? (
+              <span className="agent-spinner" aria-hidden="true" />
+            ) : null}
+            <span>
+              {state.agentStatus === null
+                ? state.awaitingAgent
+                  ? 'Awaiting agent response'
+                  : '\u00a0'
+                : (STATUS_WORDS[state.agentStatus.state] ?? '\u00a0')}
+            </span>
           </p>
           <button type="submit" disabled={disabled || draft.trim() === ''}>
             Send
