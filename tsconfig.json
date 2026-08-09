@@ -13,5 +13,8 @@
   "include": ["src/**/*.ts", "test/**/*.ts"],
   // The browser application is a separate program with its own libs and
   // its own build: `tsconfig.visual.json` owns it.
-  "exclude": ["src/visual-app"]
+  "exclude": [
+    "src/visual-app",
+    "test/visual-workspace-state.test.ts"
+  ]
 }

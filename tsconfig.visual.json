@@ -17,6 +17,7 @@
   "include": [
     "src/visual-app/**/*.ts",
     "src/visual-app/**/*.tsx",
-    "vite.visual.config.ts"
+    "vite.visual.config.ts",
+    "test/visual-workspace-state.test.ts"
   ]
 }
