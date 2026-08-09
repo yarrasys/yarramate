@@ -155,3 +155,29 @@ localhost only. Each is reachable later under the versioning rule above.
 Partial model patches are the one that would be felt first, and they were
 excluded so that validation and recovery both operate on a single atomic
 replacement rather than on a history of diffs.
+
+## What the schemas alone do not say
+
+Two invariants of this contract are not expressible in JSON Schema, and a
+consumer validating a document with the published schema and nothing else
+is holding a looser check than the runtime's:
+
+- **The 64 KiB chat bound is bytes, not characters.** `maxLength: 65536` on
+  `chatMessagePayload.text` counts Unicode characters, so a multi-byte
+  message can pass the schema at roughly three times the intended size. The
+  schema bound is a backstop; `VISUAL_LIMITS.messageBytes` measured with
+  `Buffer.byteLength` is the real limit, and the runtime enforces it on
+  every browser input, event, and response it parses. The same holds for
+  the 5 MiB model and transcript ceilings.
+- **A handoff's transcript belongs to the handoff's own session.** Each
+  entry validates independently as `visual-event/v1` or
+  `visual-response/v1`; nothing in the document relates it to the
+  `sessionId` that carries it. The runtime refuses a foreign entry, and
+  that is the one cross-session check no schema in the set can make.
+
+Both are enforced in `protocol.ts` beside the Ajv validators, so a document
+that reaches the runtime is held to the tighter rule. Tightening either
+schema would not be a clarification: byte length and cross-field ownership
+are not schema keywords, and inventing an approximation would refuse valid
+documents. A consumer that validates independently should measure bytes and
+check transcript ownership itself.

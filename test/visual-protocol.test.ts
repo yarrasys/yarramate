@@ -506,6 +506,34 @@ describe('visual protocol', () => {
     ).toMatchObject({ ok: true })
   })
 
+  it('refuses a transcript entry belonging to another session', () => {
+    const foreign = {
+      ...visualEvent('chat.message', eventPayloads['chat.message']),
+      sessionId: '00000000000000000000000000000000',
+    }
+    expect(
+      parseVisualHandoff({ ...handoff, transcript: [foreign] }),
+    ).toMatchObject({
+      ok: false,
+      diagnostics: [{ code: 'YMVS116', pointer: '/transcript/0/sessionId' }],
+    })
+    expect(
+      parseVisualHandoff({
+        ...handoff,
+        transcript: [
+          visualEvent('chat.message', eventPayloads['chat.message']),
+          {
+            ...visualResponse('chat.response', responsePayloads['chat.response']),
+            sessionId: '00000000000000000000000000000000',
+          },
+        ],
+      }),
+    ).toMatchObject({
+      ok: false,
+      diagnostics: [{ code: 'YMVS116', pointer: '/transcript/1/sessionId' }],
+    })
+  })
+
   it('ties the handoff decision to the termination reason', () => {
     expect(parseVisualHandoff({ ...handoff, decision: 'failed' })).toMatchObject(
       { ok: false },

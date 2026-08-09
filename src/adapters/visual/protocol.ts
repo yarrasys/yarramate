@@ -327,25 +327,45 @@ const responseSemantics = (
   return []
 }
 
+/**
+ * A handoff is one session's record. The schema validates each transcript entry
+ * as a well-formed event or response but cannot relate it to the document that
+ * carries it, so the one cross-session check the nine documents would otherwise
+ * be missing is made here: every entry names the session the handoff does.
+ */
 const handoffSemantics = (
   input: unknown,
   path: string,
 ): readonly VisualDiagnostic[] => {
-  const transcript = documentFields(input).transcript
-  if (
-    transcript === undefined ||
-    jsonBytes(transcript) <= VISUAL_LIMITS.transcriptBytes
-  ) {
-    return []
+  const fields = documentFields(input)
+  const transcript = fields.transcript
+  if (transcript === undefined) return []
+  const diagnostics: VisualDiagnostic[] = []
+  if (jsonBytes(transcript) > VISUAL_LIMITS.transcriptBytes) {
+    diagnostics.push(
+      visualDiagnostic(
+        'YMVS115',
+        `A raw transcript must not exceed ${VISUAL_LIMITS.transcriptBytes} bytes`,
+        path,
+        '/transcript',
+      ),
+    )
   }
-  return [
-    visualDiagnostic(
-      'YMVS115',
-      `A raw transcript must not exceed ${VISUAL_LIMITS.transcriptBytes} bytes`,
-      path,
-      '/transcript',
-    ),
-  ]
+  if (Array.isArray(transcript)) {
+    for (const [index, entry] of transcript.entries()) {
+      const owner = documentFields(entry).sessionId
+      if (owner === fields.sessionId) continue
+      diagnostics.push(
+        visualDiagnostic(
+          'YMVS116',
+          `Transcript entry ${index} belongs to session "${String(owner)}", not "${String(fields.sessionId)}"`,
+          path,
+          `/transcript/${index}/sessionId`,
+        ),
+      )
+    }
+  }
+  return diagnostics
 }
 
 type DocumentSemantics = (
