@@ -76,6 +76,12 @@ guarantees rather than its name:
 3. child completion is delivered back to this parent conversation;
 4. this parent stays interruptible and recoverable while the child runs.
 
+`chatEnabled: true` also means the parent will attach the delegated visual LLM
+agent described below. A canned, scripted, or transport-only responder may test
+the wire, but it does not satisfy this capability gate and must not be presented
+to the user as embedded chat. If no delegated LLM child will own the
+`wait`/`respond` loop, use diagram-only mode.
+
 A delegation tool alone is not enough. If any one is false, set
 `chatEnabled: false`: the browser opens in **diagram-only mode**, the user
 navigates views, and the conversation continues here in the main harness. Say
@@ -155,6 +161,10 @@ Pass the descriptor **path** to the child, never its contents.
 
 Capable harness only. One main conversation owns at most one session, one
 child, and one in-flight turn. The child prompt states its authority verbatim:
+
+Do not replace this child with a fixed-response script: the protocol is
+model-provider-neutral, but the embedded conversation still requires the
+harness's delegated LLM.
 
 ```text
 You are the delegated YarraMate visual agent for one session.
