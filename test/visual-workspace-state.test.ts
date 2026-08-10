@@ -121,7 +121,7 @@ describe('visual workspace state', () => {
 })
 
 describe('selected diagram subjects', () => {
-  it('prefers deployment identity for deployment nodes and flattens descriptions', () => {
+  it('prefers model identity for deployment nodes and flattens descriptions', () => {
     const selected = normalizeSelectedElement({
       id: 'rendered-node',
       modelRef: 'system.api',
@@ -135,7 +135,7 @@ describe('selected diagram subjects', () => {
       metadata: { owner: 'platform' },
     })
     expect(selected).toMatchObject({
-      identity: 'prod.api',
+      identity: 'system.api',
       description: 'Handles requests.',
       modelRef: 'system.api',
       deploymentRef: 'prod.api',

@@ -273,10 +273,29 @@ const DiagramWorkspace = ({
       ),
     [activeRenderedView],
   )
+  const canvas = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const host = canvas.current?.querySelector<HTMLElement>(
+      '[data-likec4-instance]',
+    )
+    const sheet = host?.shadowRoot?.adoptedStyleSheets[0]
+    if (
+      sheet === undefined ||
+      [...sheet.cssRules].some((rule) =>
+        rule.cssText.includes('--yarramate-focus-ring'),
+      )
+    ) {
+      return
+    }
+    sheet.insertRule(
+      ':focus-visible { outline: var(--yarramate-focus-ring, 3px solid #2457a6) !important; outline-offset: 3px !important; }',
+      sheet.cssRules.length,
+    )
+  }, [drawing.drawn, state.activeView])
 
   return (
     <section className="diagram-workspace" aria-label="Architecture diagram">
-      <div className="canvas">
+      <div className="canvas" ref={canvas}>
         {drawing.drawn === null ? null : (
           <LikeC4ModelProvider likec4model={drawing.drawn}>
             <ReactLikeC4

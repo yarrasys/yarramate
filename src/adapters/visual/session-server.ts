@@ -568,8 +568,11 @@ export const startVisualServer = async (
    */
   let choicesClosed = false
   const connections = new Map<string, WebSocket>()
+  let browserConnectionReservations = 0
   const polls = new Set<PendingPoll>()
   const httpSockets = new Set<Socket>()
+  const unclassifiedHttpSockets = new Set<Socket>()
+  const stopResponseSockets = new Set<Socket>()
 
   /** Every sequence assignment and queue mutation runs in call order. */
   let admission: Promise<unknown> = Promise.resolve()
@@ -851,7 +854,12 @@ export const startVisualServer = async (
   const httpServer = createServer()
   httpServer.on('connection', (socket) => {
     httpSockets.add(socket)
-    socket.on('close', () => httpSockets.delete(socket))
+    unclassifiedHttpSockets.add(socket)
+    socket.on('close', () => {
+      httpSockets.delete(socket)
+      unclassifiedHttpSockets.delete(socket)
+      stopResponseSockets.delete(socket)
+    })
   })
   httpServer.on('clientError', (_error, socket) => socket.destroy())
 
@@ -1112,7 +1120,10 @@ export const startVisualServer = async (
       return true
     }).catch(() => false)
 
-  const attachBrowser = (socket: WebSocket) => {
+  const attachBrowser = (
+    socket: WebSocket,
+    releaseReservation: () => void,
+  ) => {
     const connectionId = drawHex(16)
     let registered = false
     lastSeenAt = stamp()
@@ -1169,6 +1180,7 @@ export const startVisualServer = async (
       connections.set(connectionId, socket)
       disarmGrace()
     }).then((journaled) => {
+      releaseReservation()
       if (!journaled || socket.readyState !== socket.OPEN) {
         socket.close(1011)
         return
@@ -1405,6 +1417,7 @@ export const startVisualServer = async (
     server: ServerResponse,
     incoming: IncomingMessage,
   ) => {
+    const responseSocket = incoming.socket
     const body = await readJsonBody(
       incoming,
       VISUAL_SERVER_LIMITS.agentControlBytes,
@@ -1429,14 +1442,14 @@ export const startVisualServer = async (
       refuse(server, 400, 'Stop takes a boolean "includeTranscript" or none')
       return
     }
-    // The socket answering the stop is the one connection shutdown may not end
-    // before it has been written to.
+    // Every stop response already in flight is protected from the shared
+    // teardown. The response that wins the stop does not get to close its
+    // concurrent callers before they can observe the same result.
     const closed = await stop(
       reason as VisualTerminationReason,
-      incoming.socket,
       asked.includeTranscript,
     )
-    server.on('finish', () => incoming.socket.end())
+    server.on('finish', () => responseSocket.end())
     respondJson(server, 200, closed)
   }
 
@@ -1575,6 +1588,16 @@ export const startVisualServer = async (
   }
 
   httpServer.on('request', (incoming, server) => {
+    const responseSocket = incoming.socket
+    unclassifiedHttpSockets.delete(responseSocket)
+    if ((incoming.url ?? '/').split('?')[0] === '/api/agent/stop') {
+      stopResponseSockets.add(responseSocket)
+      const releaseResponseSocket = () => {
+        stopResponseSockets.delete(responseSocket)
+      }
+      server.once('finish', releaseResponseSocket)
+      server.once('close', releaseResponseSocket)
+    }
     void (async () => {
       try {
         // Rebinding defence: a request that reached this port under any other
@@ -1629,10 +1652,23 @@ export const startVisualServer = async (
     ) {
       return deny(401, 'Unauthorized')
     }
-    if (connections.size >= VISUAL_SERVER_LIMITS.browserConnections) {
+    if (
+      connections.size + browserConnectionReservations >=
+      VISUAL_SERVER_LIMITS.browserConnections
+    ) {
       return deny(503, 'Service Unavailable')
     }
-    sockets.handleUpgrade(incoming, socket, head, attachBrowser)
+    browserConnectionReservations += 1
+    try {
+      sockets.handleUpgrade(incoming, socket, head, (browser) => {
+        attachBrowser(browser, () => {
+          browserConnectionReservations -= 1
+        })
+      })
+    } catch (cause) {
+      browserConnectionReservations -= 1
+      throw cause
+    }
   })
 
   // ----------------------------------------------------------------- shutdown
@@ -1643,7 +1679,6 @@ export const startVisualServer = async (
 
   const stop = async (
     reason: VisualTerminationReason,
-    exempt?: Socket,
     includeTranscript = options.includeTranscript ?? false,
   ): Promise<VisualServerClosed> => {
     if (stopping !== undefined) {
@@ -1655,7 +1690,6 @@ export const startVisualServer = async (
       active.lifecycle = 'draining'
       listening = false
       disarmGrace()
-      httpServer.close()
       // Waiting agents are answered before any socket is torn down, so a poll
       // in flight during a stop still receives its non-terminal idle result.
       settleAllPolls()
@@ -1669,10 +1703,19 @@ export const startVisualServer = async (
       // anything, so shutdown can never be the step that loses confirmed state.
       // A session that already ended answers with the handoff it ended with.
       const terminal = await terminateVisualSession(active, reason)
-      // Only now: an in-flight agent request has had its answer written, so
-      // ending its connection cannot swallow the refusal it was owed.
+      // Keep the listener alive while stop requests already reaching the port
+      // join the shared attempt. Closing it earlier resets accepted idle
+      // sockets before Node has emitted their request events.
+      httpServer.close()
+      // Stop requests already on the wire, including accepted sockets whose
+      // request event has not fired yet, must survive long enough to answer.
       for (const socket of httpSockets) {
-        if (socket !== exempt) socket.end()
+        if (
+          !stopResponseSockets.has(socket) &&
+          !unclassifiedHttpSockets.has(socket)
+        ) {
+          socket.end()
+        }
       }
       // The transcript is read once, here, and only if this stop asked for it;
       // the same read is what removes the marked root.

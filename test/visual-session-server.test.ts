@@ -853,6 +853,40 @@ describe('startVisualServer bootstrap and browser authentication', () => {
     expect(error.message).toContain('403')
   })
 
+  it('reserves the browser connection limit before journaling admission', async () => {
+    const server = await start()
+    const { cookie } = await bootstrap(server)
+    const opened: WebSocket[] = []
+    const attempts = Array.from(
+      { length: VISUAL_SERVER_LIMITS.browserConnections + 4 },
+      () =>
+        new Promise<number>((resolve, reject) => {
+          const socket = new WebSocket(server.started.webSocketUrl, {
+            headers: { Cookie: cookie, Origin: server.started.origin },
+          })
+          socket.once('open', () => {
+            opened.push(socket)
+            resolve(101)
+          })
+          socket.once('unexpected-response', (_request, response) => {
+            response.resume()
+            resolve(response.statusCode ?? 0)
+          })
+          socket.once('error', reject)
+        }),
+    )
+
+    const outcomes = await Promise.all(attempts)
+    for (const socket of opened) socket.close()
+
+    expect(outcomes.filter((status) => status === 101)).toHaveLength(
+      VISUAL_SERVER_LIMITS.browserConnections,
+    )
+    expect(outcomes.filter((status) => status !== 101)).toEqual(
+      Array(4).fill(503),
+    )
+  })
+
   it('rejects a cookie minted by another session', async () => {
     const first = await start()
     const second = await start()
@@ -1851,6 +1885,57 @@ describe('startVisualServer lifecycle', () => {
     await expect(
       fetch(`${server.started.origin}/api/agent/status`),
     ).rejects.toThrow()
+  })
+
+  it('answers every concurrent agent stop request before closing sockets', async () => {
+    const server = await start()
+    const capability = await capabilityOf(server)
+    const port = Number(new URL(server.started.origin).port)
+    const sockets = Array.from({ length: 4 }, () =>
+      connect(port, '127.0.0.1'),
+    )
+    await Promise.all(sockets.map((socket) => once(socket, 'connect')))
+    const body = JSON.stringify({ reason: 'user-ended' })
+    const responses = sockets.map(
+      (socket) =>
+        new Promise<string>((resolve, reject) => {
+          let response = ''
+          socket.setEncoding('utf8')
+          socket.on('data', (chunk) => {
+            response += chunk
+          })
+          socket.on('end', () => resolve(response))
+          socket.on('error', reject)
+          socket.write(
+            [
+              'POST /api/agent/stop HTTP/1.1',
+              `Host: 127.0.0.1:${port}`,
+              `Authorization: Bearer ${capability}`,
+              'Content-Type: application/json',
+              `Content-Length: ${Buffer.byteLength(body)}`,
+              'Connection: close',
+              '',
+              body,
+            ].join('\r\n'),
+          )
+        }),
+    )
+
+    const raw = await Promise.all(responses)
+    expect(raw.map((response) => response.split('\r\n')[0])).toEqual([
+      'HTTP/1.1 200 OK',
+      'HTTP/1.1 200 OK',
+      'HTTP/1.1 200 OK',
+      'HTTP/1.1 200 OK',
+    ])
+    const results = raw.map(
+      (response) =>
+        JSON.parse(response.split('\r\n\r\n')[1] ?? '{}') as {
+          readonly alreadyStopped: boolean
+        },
+    )
+    expect(results.filter((result) => !result.alreadyStopped)).toHaveLength(1)
+    expect(results.filter((result) => result.alreadyStopped)).toHaveLength(3)
   })
 
   it('settles a waiting long poll when the session stops', async () => {
