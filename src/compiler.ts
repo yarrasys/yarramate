@@ -198,7 +198,25 @@ export type ContextualCompilationResult =
       readonly graph: SemanticGraph
       readonly profileContext: ResolvedProfileContext
     }
+
   | { readonly ok: false; readonly diagnostics: readonly Diagnostic[] }
+const immutableMap = <K, V>(
+  entries: Iterable<readonly [K, V]>,
+): ReadonlyMap<K, V> => {
+  const backing = new Map(entries)
+  return Object.freeze({
+    get: backing.get.bind(backing),
+    has: backing.has.bind(backing),
+    forEach: backing.forEach.bind(backing),
+    entries: backing.entries.bind(backing),
+    keys: backing.keys.bind(backing),
+    values: backing.values.bind(backing),
+    [Symbol.iterator]: backing[Symbol.iterator].bind(backing),
+    get size() {
+      return backing.size
+    },
+  })
+}
 
 const compareById = <T extends { readonly id: string }>(left: T, right: T) =>
   left.id.localeCompare(right.id)
@@ -1843,12 +1861,10 @@ function compileWorkspaceResolved(
           .sort(([left], [right]) => left.localeCompare(right))
           .map(([identity, kind]) => [identity, kind.lineage]),
       ),
-      conceptKindLayers: Object.freeze(
-        new Map(
-          [...conceptKindByIdentity]
-            .sort(([left], [right]) => left.localeCompare(right))
-            .map(([identity, kind]) => [identity, kind.layer]),
-        ),
+      conceptKindLayers: immutableMap(
+        [...conceptKindByIdentity]
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([identity, kind]) => [identity, kind.layer] as const),
       ),
     },
     graph: {

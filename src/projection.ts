@@ -81,28 +81,42 @@ export function loadProjection(source: WorkspaceSource): ProjectionLoadResult {
 export function canonicalProjection(
   projection: ProjectionDefinition,
 ): ProjectionDefinition {
-  const query = Object.fromEntries(
-    Object.entries(projection.query)
-      .filter(([, value]) => value !== undefined)
-      .map(([key, value]) => [
-        key,
-        Array.isArray(value) ? [...value].sort() : value,
-      ]),
-  ) as ProjectionDefinition['query']
-  const presentation =
-    projection.presentation === undefined
-      ? undefined
-      : (Object.fromEntries(
-          Object.entries(projection.presentation).filter(
-            ([, value]) => value !== undefined,
-          ),
-        ) as ProjectionDefinition['presentation'])
+  const query = projection.query
+  const presentation = projection.presentation
   return {
     format: projection.format,
     id: projection.id,
     version: projection.version,
-    query,
-    ...(presentation === undefined ? {} : { presentation }),
+    query: {
+      ...(query.subjects === undefined ? {} : { subjects: [...query.subjects].sort() }),
+      ...(query.documents === undefined ? {} : { documents: [...query.documents].sort() }),
+      ...(query.kinds === undefined ? {} : { kinds: [...query.kinds].sort() }),
+      ...(query.layers === undefined ? {} : { layers: [...query.layers].sort() }),
+      ...(query.statuses === undefined ? {} : { statuses: [...query.statuses].sort() }),
+      ...(query.excludeStatuses === undefined ? {} : { excludeStatuses: [...query.excludeStatuses].sort() }),
+      ...(query.states === undefined ? {} : { states: [...query.states].sort() }),
+      ...(query.owners === undefined ? {} : { owners: [...query.owners].sort() }),
+      ...(query.constraints === undefined ? {} : { constraints: [...query.constraints].sort() }),
+      ...(query.relationshipKinds === undefined ? {} : { relationshipKinds: [...query.relationshipKinds].sort() }),
+      ...(query.kindMatching === undefined ? {} : { kindMatching: query.kindMatching }),
+      ...(query.relationships === undefined ? {} : { relationships: query.relationships }),
+      ...(query.isolatedConcepts === undefined ? {} : { isolatedConcepts: query.isolatedConcepts }),
+      ...(query.connected === undefined ? {} : { connected: { depth: query.connected.depth, direction: query.connected.direction } }),
+    },
+    ...(presentation === undefined
+      ? {}
+      : {
+          presentation: {
+            ...(presentation.title === undefined ? {} : { title: presentation.title }),
+            ...(presentation.description === undefined ? {} : { description: presentation.description }),
+            ...(presentation.layout === undefined ? {} : { layout: presentation.layout }),
+            ...(presentation.direction === undefined ? {} : { direction: presentation.direction }),
+            ...(presentation.seed === undefined ? {} : { seed: presentation.seed }),
+            ...(presentation.showLifecycle === undefined ? {} : { showLifecycle: presentation.showLifecycle }),
+            ...(presentation.showEvidence === undefined ? {} : { showEvidence: presentation.showEvidence }),
+            ...(presentation.showOwnership === undefined ? {} : { showOwnership: presentation.showOwnership }),
+          },
+        }),
   }
 }
 
@@ -249,7 +263,9 @@ export function evaluateProjection(
         .filter(({ type }) => type === 'relationship')
         .map(({ id }) => graph.claims.find((claim) => claim.id === id))
         .filter(
-          (claim): claim is GraphClaim =>
+          (
+            claim,
+          ): claim is GraphClaim & { readonly object: { readonly ref: string } } =>
             claim !== undefined && 'ref' in claim.object,
         )
         .sort((left, right) => left.id.localeCompare(right.id))

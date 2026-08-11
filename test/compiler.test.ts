@@ -83,6 +83,14 @@ relationships: []
       'example/layered@1.0#inherited-capability',
     )).toBe('strategy')
     expect(Object.isFrozen(result.profileContext.conceptKindLayers)).toBe(true)
+    expect(() =>
+      (
+        result.profileContext.conceptKindLayers as unknown as Map<string, string>
+      ).set('example/layered@1.0#application-capability', 'business'),
+    ).toThrow()
+    expect(result.profileContext.conceptKindLayers.get(
+      'example/layered@1.0#application-capability',
+    )).toBe('application')
   })
 
   it('compiles architecture states and concise subject presence into claims', () => {
