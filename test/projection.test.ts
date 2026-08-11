@@ -290,23 +290,16 @@ query:
     })
   })
 
-  it('round-trips layer, bounded connected, and deterministic presentation selectors canonically', () => {
+  it('round-trips layer and portable presentation selectors canonically', () => {
     const source = `format: yarramate/projection/v1
 id: layered-connected
 version: "1.0"
 query:
   layers: [application, business]
-  connected:
-    depth: 2
-    direction: outgoing
   relationships: connected
 presentation:
-  layout: layered
-  direction: left-right
-  seed: stable-layout
-  showLifecycle: true
-  showEvidence: false
-  showOwnership: true
+  title: Layered context
+  description: Application and business concepts
 `
     const loaded = loadProjection({
       path: 'layered-connected.projection.yaml',
@@ -321,16 +314,11 @@ presentation:
       version: '1.0',
       query: {
         layers: ['application', 'business'],
-        connected: { depth: 2, direction: 'outgoing' },
         relationships: 'connected',
       },
       presentation: {
-        layout: 'layered',
-        direction: 'left-right',
-        seed: 'stable-layout',
-        showLifecycle: true,
-        showEvidence: false,
-        showOwnership: true,
+        title: 'Layered context',
+        description: 'Application and business concepts',
       },
     })
     const reloaded = loadProjection({
@@ -344,20 +332,13 @@ presentation:
     )
   })
 
-  it('rejects unsupported fields, invalid connected expansion, and unseeded layouts', () => {
+  it('rejects unsupported fields', () => {
     for (const source of [
       `format: yarramate/projection/v1
 id: invalid-connected
 version: "1.0"
 query:
-  relationships: none
   connected: { depth: 1, direction: both }
-`,
-      `format: yarramate/projection/v1
-id: invalid-depth
-version: "1.0"
-query:
-  connected: { depth: 3, direction: both }
 `,
       `format: yarramate/projection/v1
 id: invalid-layout
@@ -457,6 +438,57 @@ relationships:
       { id: 'roadmap#modern', type: 'concept' },
       { id: 'roadmap#modern-uses-shared', type: 'relationship' },
       { id: 'roadmap#shared', type: 'concept' },
+    ])
+  })
+
+  it('does not expand through concepts outside the selected state', () => {
+    const compilation = compileWorkspace([
+      {
+        path: 'roadmap.yaml',
+        source: `format: yarramate/v1
+id: roadmap
+profile: yarramate/core@0.1
+states:
+  - id: baseline
+    kind: baseline
+    name: Baseline
+  - id: target
+    kind: target
+    name: Target
+    after: baseline
+concepts:
+  - id: legacy
+    kind: applicationComponent
+    name: Legacy service
+    presentIn: [baseline]
+  - id: modern
+    kind: applicationComponent
+    name: Modern service
+    presentIn: [target]
+relationships:
+  - id: modern-replaces-legacy
+    kind: serving
+    from: modern
+    to: legacy
+`,
+      },
+    ])
+    expect(compilation.ok).toBe(true)
+    if (!compilation.ok) return
+
+    const result = evaluateProjection(compilation.graph, {
+      format: 'yarramate/projection/v1',
+      id: 'target-connected',
+      version: '1.0',
+      query: {
+        subjects: ['roadmap#modern'],
+        states: ['roadmap#target'],
+        relationships: 'connected',
+      },
+    })
+
+    expect(result.subjects).toEqual([
+      { id: 'roadmap#modern', type: 'concept' },
     ])
   })
 
@@ -634,14 +666,26 @@ query:
         'query: {}\n' +
         'presentation:\n' +
         '  title: Reordered\n' +
-        '  description: Stable output\n',
+        '  description: Stable output\n' +
+        '  layout: layered\n' +
+        '  direction: top-down\n' +
+        '  seed: stable-layout\n' +
+        '  showLifecycle: true\n' +
+        '  showEvidence: false\n' +
+        '  showOwnership: true\n',
     })
     const second = loadProjection({
       path: 'second.projection.yaml',
       source:
         'presentation:\n' +
+        '  showOwnership: true\n' +
+        '  seed: stable-layout\n' +
         '  description: Stable output\n' +
+        '  showEvidence: false\n' +
+        '  direction: top-down\n' +
         '  title: Reordered\n' +
+        '  showLifecycle: true\n' +
+        '  layout: layered\n' +
         'query: {}\n' +
         'version: "1.0"\n' +
         'id: reordered\n' +
@@ -660,6 +704,42 @@ query:
         evaluateProjection(compilation.graph, second.projection),
       ),
     )
+  })
+
+  it('keeps portable presentation metadata out of projection membership', () => {
+    const compilation = compileWorkspace([
+      { path: 'projection-model.yaml', source },
+    ])
+    expect(compilation.ok).toBe(true)
+    if (!compilation.ok) return
+    const definition: ProjectionDefinition = {
+      format: 'yarramate/projection/v1',
+      id: 'presentation-isolation',
+      version: '1.0',
+      query: {
+        kinds: ['yarramate/core@0.1#capability'],
+        relationships: 'connected',
+      },
+    }
+
+    const plain = evaluateProjection(compilation.graph, definition)
+    const presented = evaluateProjection(compilation.graph, {
+      ...definition,
+      presentation: {
+        title: 'Capabilities',
+        description: 'Current capability context',
+        layout: 'radial',
+        direction: 'top-down',
+        seed: 'capabilities',
+        showLifecycle: true,
+        showEvidence: true,
+        showOwnership: true,
+      },
+    })
+
+    expect(presented.documents).toEqual(plain.documents)
+    expect(presented.subjects).toEqual(plain.subjects)
+    expect(presented.claims).toEqual(plain.claims)
   })
 
   it('emits results conforming to the normative result schema', () => {

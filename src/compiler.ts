@@ -1854,15 +1854,21 @@ function compileWorkspaceResolved(
   return {
     ok: true,
     profileContext: {
-      conceptKindLineages: new Map(
+      conceptKindLineages: immutableMap(
         [...conceptKindByIdentity]
           .sort(([left], [right]) => left.localeCompare(right))
-          .map(([identity, kind]) => [identity, kind.lineage]),
+          .map(([identity, kind]) => [
+            identity,
+            Object.freeze([...kind.lineage]),
+          ] as const),
       ),
-      relationshipKindLineages: new Map(
+      relationshipKindLineages: immutableMap(
         [...relationshipKindByIdentity]
           .sort(([left], [right]) => left.localeCompare(right))
-          .map(([identity, kind]) => [identity, kind.lineage]),
+          .map(([identity, kind]) => [
+            identity,
+            Object.freeze([...kind.lineage]),
+          ] as const),
       ),
       conceptKindLayers: immutableMap(
         [...conceptKindByIdentity]

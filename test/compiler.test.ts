@@ -97,6 +97,26 @@ relationships: []
     expect(result.profileContext.conceptKindLayers.get(
       'example/layered@1.0#application-capability',
     )).toBe('application')
+    for (const map of [
+      result.profileContext.conceptKindLineages,
+      result.profileContext.relationshipKindLineages,
+    ]) {
+      expect(Object.isFrozen(map)).toBe(true)
+      expect(() =>
+        (map as unknown as Map<string, readonly string[]>).clear(),
+      ).toThrow()
+      map.forEach((lineage, key, exposedMap) => {
+        expect(Object.isFrozen(lineage)).toBe(true)
+        expect(() =>
+          (lineage as unknown as string[]).push('mutated'),
+        ).toThrow()
+        expect(() =>
+          (
+            exposedMap as unknown as Map<string, readonly string[]>
+          ).delete(key),
+        ).toThrow()
+      })
+    }
   })
 
   it('compiles architecture states and concise subject presence into claims', () => {
