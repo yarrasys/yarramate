@@ -270,6 +270,43 @@ export function evaluateProjection(
         )
         .sort((left, right) => left.id.localeCompare(right.id))
       for (const edge of edges) {
+        const relationshipStatus = claimValue(
+          graph.claims,
+          edge.id,
+          'yarramate/lifecycle/status',
+        )
+        const endpointExcluded = (id: string) => {
+          const status = claimValue(
+            graph.claims,
+            id,
+            'yarramate/lifecycle/status',
+          )
+          return (
+            status !== undefined &&
+            projection.query.excludeStatuses?.includes(
+              status as LifecycleStatus,
+            ) === true
+          )
+        }
+        if (
+          (projection.query.excludeStatuses?.includes(
+            relationshipStatus as LifecycleStatus,
+          ) === true) ||
+          (projection.query.relationshipKinds !== undefined &&
+            !projection.query.relationshipKinds.some(
+              (selectedKind) =>
+                selectedKind === edge.predicate ||
+                (projection.query.kindMatching === 'descendants' &&
+                  profileContext?.relationshipKindLineages
+                    .get(edge.predicate)
+                    ?.includes(selectedKind) === true),
+            )) ||
+          !participatesInSelectedState(edge.id) ||
+          endpointExcluded(edge.subject) ||
+          endpointExcluded(edge.object.ref)
+        ) {
+          continue
+        }
         const outgoing =
           (direction === 'outgoing' || direction === 'both') &&
           frontier.has(edge.subject)
