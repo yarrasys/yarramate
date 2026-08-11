@@ -27,6 +27,7 @@ export interface ProjectionDefinition {
     readonly subjects?: readonly string[]
     readonly documents?: readonly string[]
     readonly kinds?: readonly string[]
+    readonly layers?: readonly string[]
     readonly statuses?: readonly LifecycleStatus[]
     readonly excludeStatuses?: readonly LifecycleStatus[]
     readonly states?: readonly string[]
@@ -35,11 +36,21 @@ export interface ProjectionDefinition {
     readonly relationshipKinds?: readonly string[]
     readonly kindMatching?: 'exact' | 'descendants'
     readonly relationships?: 'between' | 'connected' | 'none'
+    readonly connected?: {
+      readonly depth: 1 | 2
+      readonly direction: 'incoming' | 'outgoing' | 'both'
+    }
     readonly isolatedConcepts?: 'include' | 'exclude'
   }
   readonly presentation?: {
     readonly title?: string
     readonly description?: string
+    readonly layout?: 'layered' | 'radial' | 'force'
+    readonly direction?: 'top-down' | 'left-right'
+    readonly seed?: string
+    readonly showLifecycle?: boolean
+    readonly showEvidence?: boolean
+    readonly showOwnership?: boolean
   }
 }
 
@@ -65,6 +76,34 @@ export function loadProjection(source: WorkspaceSource): ProjectionLoadResult {
   return loaded.ok
     ? { ok: true, projection: loaded.document.value }
     : loaded
+}
+
+export function canonicalProjection(
+  projection: ProjectionDefinition,
+): ProjectionDefinition {
+  const query = Object.fromEntries(
+    Object.entries(projection.query)
+      .filter(([, value]) => value !== undefined)
+      .map(([key, value]) => [
+        key,
+        Array.isArray(value) ? [...value].sort() : value,
+      ]),
+  ) as ProjectionDefinition['query']
+  const presentation =
+    projection.presentation === undefined
+      ? undefined
+      : (Object.fromEntries(
+          Object.entries(projection.presentation).filter(
+            ([, value]) => value !== undefined,
+          ),
+        ) as ProjectionDefinition['presentation'])
+  return {
+    format: projection.format,
+    id: projection.id,
+    version: projection.version,
+    query,
+    ...(presentation === undefined ? {} : { presentation }),
+  }
 }
 
 const claimValue = (
@@ -174,6 +213,12 @@ export function evaluateProjection(
                       .get(kind)
                       ?.includes(selectedKind) === true),
               ))) &&
+          (projection.query.layers === undefined ||
+            (kind !== undefined &&
+              profileContext?.conceptKindLayers.get(kind) !== undefined &&
+              projection.query.layers.includes(
+                profileContext.conceptKindLayers.get(kind)!,
+              ))) &&
           (projection.query.statuses === undefined ||
             (status !== undefined &&
               projection.query.statuses.includes(status as LifecycleStatus))) &&
@@ -194,6 +239,38 @@ export function evaluateProjection(
       .map(({ id }) => id),
   )
   const selectedConceptIds = new Set(initiallySelectedConceptIds)
+  const expandedRelationshipIds = new Set<string>()
+  if (projection.query.connected !== undefined) {
+    const { depth, direction } = projection.query.connected
+    const frontier = new Set(initiallySelectedConceptIds)
+    for (let step = 0; step < depth; step += 1) {
+      const next = new Set<string>()
+      const edges = graph.subjects
+        .filter(({ type }) => type === 'relationship')
+        .map(({ id }) => graph.claims.find((claim) => claim.id === id))
+        .filter(
+          (claim): claim is GraphClaim =>
+            claim !== undefined && 'ref' in claim.object,
+        )
+        .sort((left, right) => left.id.localeCompare(right.id))
+      for (const edge of edges) {
+        const outgoing =
+          (direction === 'outgoing' || direction === 'both') &&
+          frontier.has(edge.subject)
+        const incoming =
+          (direction === 'incoming' || direction === 'both') &&
+          frontier.has(edge.object.ref)
+        if (!outgoing && !incoming) continue
+        const neighbour = outgoing ? edge.object.ref : edge.subject
+        if (!selectedConceptIds.has(neighbour)) next.add(neighbour)
+        expandedRelationshipIds.add(edge.id)
+      }
+      for (const id of next) selectedConceptIds.add(id)
+      frontier.clear()
+      for (const id of next) frontier.add(id)
+      if (frontier.size === 0) break
+    }
+  }
 
   const selectedRelationshipIds = new Set<string>()
   const relationshipMode = projection.query.relationships ?? 'between'
@@ -203,6 +280,7 @@ export function evaluateProjection(
       const relationship = graph.claims.find(
         (claim) => claim.id === subject.id,
       )
+
       const relationshipStatus = claimValue(
         graph.claims,
         subject.id,
@@ -259,6 +337,7 @@ export function evaluateProjection(
         continue
       }
       if (
+        expandedRelationshipIds.has(subject.id) ||
         (relationshipMode === 'between' &&
           sourceSelected &&
           targetSelected) ||
@@ -266,7 +345,10 @@ export function evaluateProjection(
           (sourceSelected || targetSelected))
       ) {
         selectedRelationshipIds.add(subject.id)
-        if (relationshipMode === 'connected') {
+        if (
+          relationshipMode === 'connected' &&
+          projection.query.connected === undefined
+        ) {
           selectedConceptIds.add(relationship.subject)
           selectedConceptIds.add(relationship.object.ref)
         }
@@ -317,16 +399,7 @@ export function evaluateProjection(
     projection: `${projection.id}@${projection.version}`,
     ...(projection.presentation === undefined
       ? {}
-      : {
-          presentation: {
-            ...(projection.presentation.title === undefined
-              ? {}
-              : { title: projection.presentation.title }),
-            ...(projection.presentation.description === undefined
-              ? {}
-              : { description: projection.presentation.description }),
-          },
-        }),
+      : { presentation: { ...projection.presentation } }),
     documents: graph.documents.filter(({ id }) => selectedDocuments.has(id)),
     subjects,
     claims,

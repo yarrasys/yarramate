@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import Ajv2020Module from 'ajv/dist/2020.js'
 import {
+  canonicalProjection,
   compileWorkspace,
   compileWorkspaceWithProfileContext,
   evaluateProjection,
@@ -287,6 +288,120 @@ query:
         },
       },
     })
+  })
+
+  it('round-trips layer, bounded connected, and deterministic presentation selectors canonically', () => {
+    const source = `format: yarramate/projection/v1
+id: layered-connected
+version: "1.0"
+query:
+  layers: [application, business]
+  connected:
+    depth: 2
+    direction: outgoing
+  relationships: connected
+presentation:
+  layout: layered
+  direction: left-right
+  seed: stable-layout
+  showLifecycle: true
+  showEvidence: false
+  showOwnership: true
+`
+    const loaded = loadProjection({
+      path: 'layered-connected.projection.yaml',
+      source,
+    })
+
+    expect(loaded.ok).toBe(true)
+    if (!loaded.ok) return
+    expect(canonicalProjection(loaded.projection)).toEqual({
+      format: 'yarramate/projection/v1',
+      id: 'layered-connected',
+      version: '1.0',
+      query: {
+        layers: ['application', 'business'],
+        connected: { depth: 2, direction: 'outgoing' },
+        relationships: 'connected',
+      },
+      presentation: {
+        layout: 'layered',
+        direction: 'left-right',
+        seed: 'stable-layout',
+        showLifecycle: true,
+        showEvidence: false,
+        showOwnership: true,
+      },
+    })
+    const reloaded = loadProjection({
+      path: 'reloaded.projection.yaml',
+      source,
+    })
+    expect(reloaded.ok).toBe(true)
+    if (!reloaded.ok) return
+    expect(canonicalProjection(loaded.projection)).toEqual(
+      canonicalProjection(reloaded.projection),
+    )
+  })
+
+  it('rejects unsupported fields, invalid connected expansion, and unseeded layouts', () => {
+    for (const source of [
+      `format: yarramate/projection/v1
+id: invalid-connected
+version: "1.0"
+query:
+  relationships: none
+  connected: { depth: 1, direction: both }
+`,
+      `format: yarramate/projection/v1
+id: invalid-depth
+version: "1.0"
+query:
+  connected: { depth: 3, direction: both }
+`,
+      `format: yarramate/projection/v1
+id: invalid-layout
+version: "1.0"
+query: {}
+presentation:
+  layout: force
+`,
+      `format: yarramate/projection/v1
+id: invalid-unknown
+version: "1.0"
+query:
+  layers: [application]
+  unexpected: true
+`,
+    ]) {
+      expect(loadProjection({ path: 'invalid.projection.yaml', source }).ok).toBe(
+        false,
+      )
+    }
+  })
+
+  it('preserves legacy projection omission semantics through canonical serialization', () => {
+    const loaded = loadProjection({
+      path: 'legacy.projection.yaml',
+      source: `format: yarramate/projection/v1
+id: legacy
+version: "1.0"
+query:
+  kinds: [yarramate/core@0.1#capability]
+`,
+    })
+
+    expect(loaded).toEqual({
+      ok: true,
+      projection: {
+        format: 'yarramate/projection/v1',
+        id: 'legacy',
+        version: '1.0',
+        query: { kinds: ['yarramate/core@0.1#capability'] },
+      },
+    })
+    if (!loaded.ok) return
+    expect(canonicalProjection(loaded.projection)).toEqual(loaded.projection)
   })
 
   it('selects scoped and unscoped subjects in an architecture state', () => {

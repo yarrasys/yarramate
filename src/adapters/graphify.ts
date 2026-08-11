@@ -2,12 +2,19 @@ import type {
   AdapterMapping,
   AdapterSubjectMapping,
 } from '../adapter-mapping.js'
+import type { ProjectionResult } from '../projection.js'
 import type { EvidenceDocument, EvidenceObservation } from '../evidence.js'
 
 export interface GraphifyGraph {
   readonly nodes: readonly {
     readonly id: string
   }[]
+  readonly edges?: readonly {
+    readonly id: string
+    readonly source: string
+    readonly target: string
+  }[]
+  readonly presentation?: ProjectionResult['presentation']
 }
 
 export interface GraphifyObservationIssue {
@@ -20,6 +27,31 @@ export type GraphifyObservationResult =
   | { readonly ok: true; readonly evidence: EvidenceDocument }
   | { readonly ok: false; readonly issues: readonly GraphifyObservationIssue[] }
 
+
+export function projectGraphify(projection: ProjectionResult): GraphifyGraph {
+  return {
+    nodes: projection.subjects
+      .filter(({ type }) => type === 'concept')
+      .map(({ id }) => ({ id })),
+    edges: projection.subjects
+      .filter(({ type }) => type === 'relationship')
+      .flatMap((relationship) => {
+        const claim = projection.claims.find(
+          ({ id, object }) => id === relationship.id && 'ref' in object,
+        )
+        return claim === undefined || !('ref' in claim.object)
+          ? []
+          : [{
+              id: relationship.id,
+              source: claim.subject,
+              target: claim.object.ref,
+            }]
+      }),
+    ...(projection.presentation === undefined
+      ? {}
+      : { presentation: projection.presentation }),
+  }
+}
 export function observeGraphify(
   graph: GraphifyGraph,
   mapping: AdapterMapping,

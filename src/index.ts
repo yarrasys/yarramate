@@ -76,6 +76,7 @@ export type {
   WorkspaceSource,
 } from './compiler.js'
 export {
+  canonicalProjection,
   evaluateProjection,
   loadProjection,
   renderProjectionMarkdown,
