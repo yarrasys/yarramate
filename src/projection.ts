@@ -399,7 +399,34 @@ export function evaluateProjection(
     projection: `${projection.id}@${projection.version}`,
     ...(projection.presentation === undefined
       ? {}
-      : { presentation: { ...projection.presentation } }),
+      : {
+          presentation: {
+            ...(projection.presentation.title === undefined
+              ? {}
+              : { title: projection.presentation.title }),
+            ...(projection.presentation.description === undefined
+              ? {}
+              : { description: projection.presentation.description }),
+            ...(projection.presentation.layout === undefined
+              ? {}
+              : { layout: projection.presentation.layout }),
+            ...(projection.presentation.direction === undefined
+              ? {}
+              : { direction: projection.presentation.direction }),
+            ...(projection.presentation.seed === undefined
+              ? {}
+              : { seed: projection.presentation.seed }),
+            ...(projection.presentation.showLifecycle === undefined
+              ? {}
+              : { showLifecycle: projection.presentation.showLifecycle }),
+            ...(projection.presentation.showEvidence === undefined
+              ? {}
+              : { showEvidence: projection.presentation.showEvidence }),
+            ...(projection.presentation.showOwnership === undefined
+              ? {}
+              : { showOwnership: projection.presentation.showOwnership }),
+          },
+        }),
     documents: graph.documents.filter(({ id }) => selectedDocuments.has(id)),
     subjects,
     claims,

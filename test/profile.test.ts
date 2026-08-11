@@ -8,6 +8,7 @@ import {
   relationshipKinds,
   relationshipPolicies,
 } from '../src/profile.js'
+import { compileWorkspaceWithProfileContext } from '../src/compiler.js'
 
 const specificationPath = fileURLToPath(
   new URL('../assets/likec4/specification.likec4', import.meta.url),
@@ -55,5 +56,44 @@ describe('YarraMate semantic profile', () => {
         inspiredBy.startsWith('ArchiMate-inspired:'),
       ),
     ).toBe(true)
+  })
+
+  it('accepts omitted and explicit profile concept-kind layers', () => {
+    const result = compileWorkspaceWithProfileContext([
+      {
+        path: 'layered.profile.yaml',
+        source: `format: yarramate/profile/v1
+id: example/layers
+version: "1.0"
+extends: yarramate/core@0.1
+conceptKinds:
+  - id: inherited
+    name: Inherited
+    parent: yarramate/core@0.1#capability
+  - id: explicit
+    name: Explicit
+    parent: yarramate/core@0.1#capability
+    layer: application
+relationshipKinds: []
+`,
+      },
+      {
+        path: 'layered.yaml',
+        source: `format: yarramate/v1
+id: layered
+profile: example/layers@1.0
+concepts: []
+relationships: []
+`,
+      },
+    ])
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.profileContext.conceptKindLayers.get(
+      'example/layers@1.0#inherited',
+    )).toBe('strategy')
+    expect(result.profileContext.conceptKindLayers.get(
+      'example/layers@1.0#explicit',
+    )).toBe('application')
   })
 })
