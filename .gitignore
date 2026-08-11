@@ -13,3 +13,4 @@ graphify-out/
 
 # Agent worktrees are ephemeral checkouts of this repository
 .claude/worktrees/
+.worktrees/

@@ -41,6 +41,64 @@ relationships: []
     )).toEqual(['yarramate/core@0.1#applicationService'])
   })
 
+  it('resolves inherited and explicit concept kind layers into a frozen qualified-kind map', () => {
+    const result = compileWorkspaceWithProfileContext([
+      {
+        path: 'layered-profile.yaml',
+        source: `format: yarramate/profile/v1
+id: example/layered
+version: "1.0"
+extends: yarramate/core@0.1
+conceptKinds:
+  - id: application-capability
+    name: Application capability
+    parent: yarramate/core@0.1#capability
+    layer: application
+  - id: inherited-capability
+    name: Inherited capability
+    parent: yarramate/core@0.1#capability
+relationshipKinds: []
+`,
+      },
+      {
+        path: 'layered.yaml',
+        source: `format: yarramate/v1
+id: layered
+profile: example/layered@1.0
+concepts:
+  - id: capability
+    kind: application-capability
+    name: Capability
+relationships: []
+`,
+      },
+    ])
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.profileContext.conceptKindLayers.get(
+      'example/layered@1.0#application-capability',
+    )).toBe('application')
+    expect(result.profileContext.conceptKindLayers.get(
+      'example/layered@1.0#inherited-capability',
+    )).toBe('strategy')
+    expect(Object.isFrozen(result.profileContext.conceptKindLayers)).toBe(true)
+    expect(() =>
+      (
+        result.profileContext.conceptKindLayers as unknown as Map<string, string>
+      ).set('example/layered@1.0#application-capability', 'business'),
+    ).toThrow()
+    expect(result.profileContext.conceptKindLayers.get(
+      'example/layered@1.0#application-capability',
+    )).toBe('application')
+    result.profileContext.conceptKindLayers.forEach((_, key, map) => {
+      expect(() => (map as unknown as Map<string, string>).set(key, 'business')).toThrow()
+    })
+    expect(result.profileContext.conceptKindLayers.get(
+      'example/layered@1.0#application-capability',
+    )).toBe('application')
+  })
+
   it('compiles architecture states and concise subject presence into claims', () => {
     const result = compileWorkspace([
       {

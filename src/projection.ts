@@ -27,6 +27,7 @@ export interface ProjectionDefinition {
     readonly subjects?: readonly string[]
     readonly documents?: readonly string[]
     readonly kinds?: readonly string[]
+    readonly layers?: readonly string[]
     readonly statuses?: readonly LifecycleStatus[]
     readonly excludeStatuses?: readonly LifecycleStatus[]
     readonly states?: readonly string[]
@@ -35,11 +36,21 @@ export interface ProjectionDefinition {
     readonly relationshipKinds?: readonly string[]
     readonly kindMatching?: 'exact' | 'descendants'
     readonly relationships?: 'between' | 'connected' | 'none'
+    readonly connected?: {
+      readonly depth: 1 | 2
+      readonly direction: 'incoming' | 'outgoing' | 'both'
+    }
     readonly isolatedConcepts?: 'include' | 'exclude'
   }
   readonly presentation?: {
     readonly title?: string
     readonly description?: string
+    readonly layout?: 'layered' | 'radial' | 'force'
+    readonly direction?: 'top-down' | 'left-right'
+    readonly seed?: string
+    readonly showLifecycle?: boolean
+    readonly showEvidence?: boolean
+    readonly showOwnership?: boolean
   }
 }
 
@@ -65,6 +76,48 @@ export function loadProjection(source: WorkspaceSource): ProjectionLoadResult {
   return loaded.ok
     ? { ok: true, projection: loaded.document.value }
     : loaded
+}
+
+export function canonicalProjection(
+  projection: ProjectionDefinition,
+): ProjectionDefinition {
+  const query = projection.query
+  const presentation = projection.presentation
+  return {
+    format: projection.format,
+    id: projection.id,
+    version: projection.version,
+    query: {
+      ...(query.subjects === undefined ? {} : { subjects: [...query.subjects].sort() }),
+      ...(query.documents === undefined ? {} : { documents: [...query.documents].sort() }),
+      ...(query.kinds === undefined ? {} : { kinds: [...query.kinds].sort() }),
+      ...(query.layers === undefined ? {} : { layers: [...query.layers].sort() }),
+      ...(query.statuses === undefined ? {} : { statuses: [...query.statuses].sort() }),
+      ...(query.excludeStatuses === undefined ? {} : { excludeStatuses: [...query.excludeStatuses].sort() }),
+      ...(query.states === undefined ? {} : { states: [...query.states].sort() }),
+      ...(query.owners === undefined ? {} : { owners: [...query.owners].sort() }),
+      ...(query.constraints === undefined ? {} : { constraints: [...query.constraints].sort() }),
+      ...(query.relationshipKinds === undefined ? {} : { relationshipKinds: [...query.relationshipKinds].sort() }),
+      ...(query.kindMatching === undefined ? {} : { kindMatching: query.kindMatching }),
+      ...(query.relationships === undefined ? {} : { relationships: query.relationships }),
+      ...(query.isolatedConcepts === undefined ? {} : { isolatedConcepts: query.isolatedConcepts }),
+      ...(query.connected === undefined ? {} : { connected: { depth: query.connected.depth, direction: query.connected.direction } }),
+    },
+    ...(presentation === undefined
+      ? {}
+      : {
+          presentation: {
+            ...(presentation.title === undefined ? {} : { title: presentation.title }),
+            ...(presentation.description === undefined ? {} : { description: presentation.description }),
+            ...(presentation.layout === undefined ? {} : { layout: presentation.layout }),
+            ...(presentation.direction === undefined ? {} : { direction: presentation.direction }),
+            ...(presentation.seed === undefined ? {} : { seed: presentation.seed }),
+            ...(presentation.showLifecycle === undefined ? {} : { showLifecycle: presentation.showLifecycle }),
+            ...(presentation.showEvidence === undefined ? {} : { showEvidence: presentation.showEvidence }),
+            ...(presentation.showOwnership === undefined ? {} : { showOwnership: presentation.showOwnership }),
+          },
+        }),
+  }
 }
 
 const claimValue = (
@@ -174,6 +227,12 @@ export function evaluateProjection(
                       .get(kind)
                       ?.includes(selectedKind) === true),
               ))) &&
+          (projection.query.layers === undefined ||
+            (kind !== undefined &&
+              profileContext?.conceptKindLayers.get(kind) !== undefined &&
+              projection.query.layers.includes(
+                profileContext.conceptKindLayers.get(kind)!,
+              ))) &&
           (projection.query.statuses === undefined ||
             (status !== undefined &&
               projection.query.statuses.includes(status as LifecycleStatus))) &&
@@ -194,6 +253,77 @@ export function evaluateProjection(
       .map(({ id }) => id),
   )
   const selectedConceptIds = new Set(initiallySelectedConceptIds)
+  const expandedRelationshipIds = new Set<string>()
+  if (projection.query.connected !== undefined) {
+    const { depth, direction } = projection.query.connected
+    const frontier = new Set(initiallySelectedConceptIds)
+    for (let step = 0; step < depth; step += 1) {
+      const next = new Set<string>()
+      const edges = graph.subjects
+        .filter(({ type }) => type === 'relationship')
+        .map(({ id }) => graph.claims.find((claim) => claim.id === id))
+        .filter(
+          (
+            claim,
+          ): claim is GraphClaim & { readonly object: { readonly ref: string } } =>
+            claim !== undefined && 'ref' in claim.object,
+        )
+        .sort((left, right) => left.id.localeCompare(right.id))
+      for (const edge of edges) {
+        const relationshipStatus = claimValue(
+          graph.claims,
+          edge.id,
+          'yarramate/lifecycle/status',
+        )
+        const endpointExcluded = (id: string) => {
+          const status = claimValue(
+            graph.claims,
+            id,
+            'yarramate/lifecycle/status',
+          )
+          return (
+            status !== undefined &&
+            projection.query.excludeStatuses?.includes(
+              status as LifecycleStatus,
+            ) === true
+          )
+        }
+        if (
+          (projection.query.excludeStatuses?.includes(
+            relationshipStatus as LifecycleStatus,
+          ) === true) ||
+          (projection.query.relationshipKinds !== undefined &&
+            !projection.query.relationshipKinds.some(
+              (selectedKind) =>
+                selectedKind === edge.predicate ||
+                (projection.query.kindMatching === 'descendants' &&
+                  profileContext?.relationshipKindLineages
+                    .get(edge.predicate)
+                    ?.includes(selectedKind) === true),
+            )) ||
+          !participatesInSelectedState(edge.id) ||
+          endpointExcluded(edge.subject) ||
+          endpointExcluded(edge.object.ref)
+        ) {
+          continue
+        }
+        const outgoing =
+          (direction === 'outgoing' || direction === 'both') &&
+          frontier.has(edge.subject)
+        const incoming =
+          (direction === 'incoming' || direction === 'both') &&
+          frontier.has(edge.object.ref)
+        if (!outgoing && !incoming) continue
+        const neighbour = outgoing ? edge.object.ref : edge.subject
+        if (!selectedConceptIds.has(neighbour)) next.add(neighbour)
+        expandedRelationshipIds.add(edge.id)
+      }
+      for (const id of next) selectedConceptIds.add(id)
+      frontier.clear()
+      for (const id of next) frontier.add(id)
+      if (frontier.size === 0) break
+    }
+  }
 
   const selectedRelationshipIds = new Set<string>()
   const relationshipMode = projection.query.relationships ?? 'between'
@@ -203,6 +333,7 @@ export function evaluateProjection(
       const relationship = graph.claims.find(
         (claim) => claim.id === subject.id,
       )
+
       const relationshipStatus = claimValue(
         graph.claims,
         subject.id,
@@ -259,6 +390,7 @@ export function evaluateProjection(
         continue
       }
       if (
+        expandedRelationshipIds.has(subject.id) ||
         (relationshipMode === 'between' &&
           sourceSelected &&
           targetSelected) ||
@@ -266,7 +398,10 @@ export function evaluateProjection(
           (sourceSelected || targetSelected))
       ) {
         selectedRelationshipIds.add(subject.id)
-        if (relationshipMode === 'connected') {
+        if (
+          relationshipMode === 'connected' &&
+          projection.query.connected === undefined
+        ) {
           selectedConceptIds.add(relationship.subject)
           selectedConceptIds.add(relationship.object.ref)
         }
@@ -325,6 +460,24 @@ export function evaluateProjection(
             ...(projection.presentation.description === undefined
               ? {}
               : { description: projection.presentation.description }),
+            ...(projection.presentation.layout === undefined
+              ? {}
+              : { layout: projection.presentation.layout }),
+            ...(projection.presentation.direction === undefined
+              ? {}
+              : { direction: projection.presentation.direction }),
+            ...(projection.presentation.seed === undefined
+              ? {}
+              : { seed: projection.presentation.seed }),
+            ...(projection.presentation.showLifecycle === undefined
+              ? {}
+              : { showLifecycle: projection.presentation.showLifecycle }),
+            ...(projection.presentation.showEvidence === undefined
+              ? {}
+              : { showEvidence: projection.presentation.showEvidence }),
+            ...(projection.presentation.showOwnership === undefined
+              ? {}
+              : { showOwnership: projection.presentation.showOwnership }),
           },
         }),
     documents: graph.documents.filter(({ id }) => selectedDocuments.has(id)),

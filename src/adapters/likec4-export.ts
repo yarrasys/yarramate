@@ -435,7 +435,7 @@ export function exportLikeC4(
           }
           return []
         })),
-    '    autoLayout LeftRight',
+    `    autoLayout ${projection.presentation?.direction === 'top-down' ? 'TopBottom' : 'LeftRight'}`,
     '  }',
     '}',
     '',

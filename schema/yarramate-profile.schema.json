@@ -80,6 +80,9 @@
         },
         "rigidity": {
           "$ref": "#/$defs/rigidity"
+        },
+        "layer": {
+          "$ref": "#/$defs/layer"
         }
       }
     },
@@ -115,6 +118,18 @@
           }
         }
       }
-    }
+    },
+    "layer": {
+      "enum": [
+        "motivation",
+        "strategy",
+        "business",
+        "application",
+        "technology",
+        "physical",
+        "implementation",
+        "composite"
+      ]
+  }
   }
 }

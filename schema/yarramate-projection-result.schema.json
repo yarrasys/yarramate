@@ -24,6 +24,25 @@
         "description": {
           "type": "string",
           "minLength": 1
+        },
+        "layout": {
+          "enum": ["layered", "radial", "force"]
+        },
+        "direction": {
+          "enum": ["top-down", "left-right"]
+        },
+        "seed": {
+          "type": "string",
+          "minLength": 1
+        },
+        "showLifecycle": {
+          "type": "boolean"
+        },
+        "showEvidence": {
+          "type": "boolean"
+        },
+        "showOwnership": {
+          "type": "boolean"
         }
       }
     },

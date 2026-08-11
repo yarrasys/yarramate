@@ -3,6 +3,7 @@ import { LineCounter, parseDocument } from 'yaml'
 import {
   conceptKinds,
   relationshipPolicies,
+  type Layer,
   type Rigidity,
 } from './profile.js'
 import {
@@ -110,6 +111,7 @@ interface NativeProfileKind {
 
 interface NativeProfileConceptKind extends NativeProfileKind {
   readonly rigidity?: Rigidity
+  readonly layer?: Layer
 }
 
 interface NativeProfileRelationshipKind extends NativeProfileKind {
@@ -129,6 +131,7 @@ interface NativeProfile {
 interface ResolvedConceptKind {
   readonly identity: string
   readonly aspect: (typeof conceptKinds)[number]['aspect']
+  readonly layer: Layer
   readonly lineage: readonly string[]
   readonly rigidity?: Rigidity
 }
@@ -182,6 +185,7 @@ export interface SemanticGraph {
 export interface ResolvedProfileContext {
   readonly conceptKindLineages: ReadonlyMap<string, readonly string[]>
   readonly relationshipKindLineages: ReadonlyMap<string, readonly string[]>
+  readonly conceptKindLayers: ReadonlyMap<string, string>
 }
 
 export type CompilationResult =
@@ -194,7 +198,28 @@ export type ContextualCompilationResult =
       readonly graph: SemanticGraph
       readonly profileContext: ResolvedProfileContext
     }
+
   | { readonly ok: false; readonly diagnostics: readonly Diagnostic[] }
+const immutableMap = <K, V>(
+  entries: Iterable<readonly [K, V]>,
+): ReadonlyMap<K, V> => {
+  const backing = new Map(entries)
+  const facade: ReadonlyMap<K, V> = {
+    get: backing.get.bind(backing),
+    has: backing.has.bind(backing),
+    forEach(callback, thisArg) {
+      backing.forEach((value, key) => callback.call(thisArg, value, key, facade))
+    },
+    entries: backing.entries.bind(backing),
+    keys: backing.keys.bind(backing),
+    values: backing.values.bind(backing),
+    [Symbol.iterator]: backing[Symbol.iterator].bind(backing),
+    get size() {
+      return backing.size
+    },
+  }
+  return Object.freeze(facade)
+}
 
 const compareById = <T extends { readonly id: string }>(left: T, right: T) =>
   left.id.localeCompare(right.id)
@@ -280,6 +305,7 @@ function compileWorkspaceResolved(
     const resolved = {
       identity: `${coreProfile}#${kind.id}`,
       aspect: kind.aspect,
+      layer: kind.layer,
       lineage: [`${coreProfile}#${kind.id}`],
       ...(kind.rigidity === undefined ? {} : { rigidity: kind.rigidity }),
     } satisfies ResolvedConceptKind
@@ -463,6 +489,7 @@ function compileWorkspaceResolved(
         const resolved = {
           identity: `${identity}#${kind.id}`,
           aspect: parent.aspect,
+          layer: kind.layer ?? parent.layer,
           lineage: [...parent.lineage, `${identity}#${kind.id}`],
           ...(kind.rigidity === undefined ? {} : { rigidity: kind.rigidity }),
         } satisfies ResolvedConceptKind
@@ -1836,6 +1863,11 @@ function compileWorkspaceResolved(
         [...relationshipKindByIdentity]
           .sort(([left], [right]) => left.localeCompare(right))
           .map(([identity, kind]) => [identity, kind.lineage]),
+      ),
+      conceptKindLayers: immutableMap(
+        [...conceptKindByIdentity]
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([identity, kind]) => [identity, kind.layer] as const),
       ),
     },
     graph: {

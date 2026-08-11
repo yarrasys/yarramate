@@ -371,4 +371,26 @@ relationships: []
       `style checkout { color gray }`,
     )
   })
+
+  it('maps supported presentation direction without changing projected members', () => {
+    const compilation = compileWorkspace([{ path: 'payments.yaml', source }])
+    expect(compilation.ok).toBe(true)
+    if (!compilation.ok) return
+    const result = exportLikeC4(
+      evaluateProjection(compilation.graph, {
+        ...projection,
+        presentation: {
+          ...projection.presentation,
+          direction: 'top-down',
+        },
+      }),
+      mapping,
+    )
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.source).toContain('autoLayout TopBottom')
+    expect(result.source).toContain('checkout = applicationComponent')
+    expect(result.source).toContain('ledger = applicationComponent')
+  })
 })
