@@ -103,36 +103,10 @@
         "relationships": {
           "enum": ["between", "connected", "none"]
         },
-        "connected": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["depth", "direction"],
-          "properties": {
-            "depth": {
-              "enum": [1, 2]
-            },
-            "direction": {
-              "enum": ["incoming", "outgoing", "both"]
-            }
-          }
-        },
         "isolatedConcepts": {
           "enum": ["include", "exclude"]
         }
-      },
-      "allOf": [
-        {
-          "if": {
-            "required": ["connected", "relationships"],
-            "properties": {
-              "relationships": {
-                "const": "none"
-              }
-            }
-          },
-          "then": false
-        }
-      ]
+      }
     },
     "presentation": {
       "type": "object",

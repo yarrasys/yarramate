@@ -36,10 +36,6 @@ export interface ProjectionDefinition {
     readonly relationshipKinds?: readonly string[]
     readonly kindMatching?: 'exact' | 'descendants'
     readonly relationships?: 'between' | 'connected' | 'none'
-    readonly connected?: {
-      readonly depth: 1 | 2
-      readonly direction: 'incoming' | 'outgoing' | 'both'
-    }
     readonly isolatedConcepts?: 'include' | 'exclude'
   }
   readonly presentation?: {
@@ -101,7 +97,6 @@ export function canonicalProjection(
       ...(query.kindMatching === undefined ? {} : { kindMatching: query.kindMatching }),
       ...(query.relationships === undefined ? {} : { relationships: query.relationships }),
       ...(query.isolatedConcepts === undefined ? {} : { isolatedConcepts: query.isolatedConcepts }),
-      ...(query.connected === undefined ? {} : { connected: { depth: query.connected.depth, direction: query.connected.direction } }),
     },
     ...(presentation === undefined
       ? {}
@@ -184,6 +179,19 @@ export function evaluateProjection(
       presence.some((state) => selectedStateIds.includes(state))
     )
   }
+  const endpointExcluded = (id: string): boolean => {
+    if (!participatesInSelectedState(id)) return true
+    const status = claimValue(
+      graph.claims,
+      id,
+      'yarramate/lifecycle/status',
+    )
+    return (
+      status !== undefined &&
+      projection.query.excludeStatuses?.includes(status as LifecycleStatus) ===
+        true
+    )
+  }
   const initiallySelectedConceptIds = new Set(
     graph.subjects
       .filter(({ type }) => type === 'concept')
@@ -253,77 +261,6 @@ export function evaluateProjection(
       .map(({ id }) => id),
   )
   const selectedConceptIds = new Set(initiallySelectedConceptIds)
-  const expandedRelationshipIds = new Set<string>()
-  if (projection.query.connected !== undefined) {
-    const { depth, direction } = projection.query.connected
-    const frontier = new Set(initiallySelectedConceptIds)
-    for (let step = 0; step < depth; step += 1) {
-      const next = new Set<string>()
-      const edges = graph.subjects
-        .filter(({ type }) => type === 'relationship')
-        .map(({ id }) => graph.claims.find((claim) => claim.id === id))
-        .filter(
-          (
-            claim,
-          ): claim is GraphClaim & { readonly object: { readonly ref: string } } =>
-            claim !== undefined && 'ref' in claim.object,
-        )
-        .sort((left, right) => left.id.localeCompare(right.id))
-      for (const edge of edges) {
-        const relationshipStatus = claimValue(
-          graph.claims,
-          edge.id,
-          'yarramate/lifecycle/status',
-        )
-        const endpointExcluded = (id: string) => {
-          const status = claimValue(
-            graph.claims,
-            id,
-            'yarramate/lifecycle/status',
-          )
-          return (
-            status !== undefined &&
-            projection.query.excludeStatuses?.includes(
-              status as LifecycleStatus,
-            ) === true
-          )
-        }
-        if (
-          (projection.query.excludeStatuses?.includes(
-            relationshipStatus as LifecycleStatus,
-          ) === true) ||
-          (projection.query.relationshipKinds !== undefined &&
-            !projection.query.relationshipKinds.some(
-              (selectedKind) =>
-                selectedKind === edge.predicate ||
-                (projection.query.kindMatching === 'descendants' &&
-                  profileContext?.relationshipKindLineages
-                    .get(edge.predicate)
-                    ?.includes(selectedKind) === true),
-            )) ||
-          !participatesInSelectedState(edge.id) ||
-          endpointExcluded(edge.subject) ||
-          endpointExcluded(edge.object.ref)
-        ) {
-          continue
-        }
-        const outgoing =
-          (direction === 'outgoing' || direction === 'both') &&
-          frontier.has(edge.subject)
-        const incoming =
-          (direction === 'incoming' || direction === 'both') &&
-          frontier.has(edge.object.ref)
-        if (!outgoing && !incoming) continue
-        const neighbour = outgoing ? edge.object.ref : edge.subject
-        if (!selectedConceptIds.has(neighbour)) next.add(neighbour)
-        expandedRelationshipIds.add(edge.id)
-      }
-      for (const id of next) selectedConceptIds.add(id)
-      frontier.clear()
-      for (const id of next) frontier.add(id)
-      if (frontier.size === 0) break
-    }
-  }
 
   const selectedRelationshipIds = new Set<string>()
   const relationshipMode = projection.query.relationships ?? 'between'
@@ -366,23 +303,6 @@ export function evaluateProjection(
       const targetSelected = initiallySelectedConceptIds.has(
         relationship.object.ref,
       )
-      // excludeStatuses also vetoes connected expansion: an excluded
-      // concept is never pulled in as a neighbour, and edges touching
-      // one are dropped rather than left dangling.
-      const endpointExcluded = (id: string): boolean => {
-        if (projection.query.excludeStatuses === undefined) return false
-        const endpointStatus = claimValue(
-          graph.claims,
-          id,
-          'yarramate/lifecycle/status',
-        )
-        return (
-          endpointStatus !== undefined &&
-          projection.query.excludeStatuses.includes(
-            endpointStatus as LifecycleStatus,
-          )
-        )
-      }
       if (
         endpointExcluded(relationship.subject) ||
         endpointExcluded(relationship.object.ref)
@@ -390,7 +310,6 @@ export function evaluateProjection(
         continue
       }
       if (
-        expandedRelationshipIds.has(subject.id) ||
         (relationshipMode === 'between' &&
           sourceSelected &&
           targetSelected) ||
@@ -398,10 +317,7 @@ export function evaluateProjection(
           (sourceSelected || targetSelected))
       ) {
         selectedRelationshipIds.add(subject.id)
-        if (
-          relationshipMode === 'connected' &&
-          projection.query.connected === undefined
-        ) {
+        if (relationshipMode === 'connected') {
           selectedConceptIds.add(relationship.subject)
           selectedConceptIds.add(relationship.object.ref)
         }

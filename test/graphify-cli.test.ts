@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { runGraphifyCli } from '../src/adapters/graphify-cli.js'
+import type { GraphifyGraph } from '../src/adapters/graphify-entry.js'
 
 const repositoryRoot = fileURLToPath(new URL('..', import.meta.url))
 
@@ -16,6 +17,14 @@ describe('YarraMate Graphify adapter CLI', () => {
     expect(result.exitCode).toBe(0)
     expect(result.stdout).toBe(`yarramate-graphify ${version}\n`)
     expect(result.stderr).toBe('')
+  })
+
+  it('exposes the Graphify graph input type with the evidence adapter', () => {
+    const graph: GraphifyGraph = {
+      nodes: [{ id: 'node-1' }],
+    }
+
+    expect(graph.nodes).toEqual([{ id: 'node-1' }])
   })
 
   it('emits a standard evidence overlay from explicit Graphify node mappings', () => {

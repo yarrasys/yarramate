@@ -1,7 +1,6 @@
 export {
   observeGraphify,
-  projectGraphify,
-  type GraphifyGraph,
   type GraphifyObservationIssue,
+  type GraphifyGraph,
   type GraphifyObservationResult,
 } from './graphify.js'

@@ -372,25 +372,34 @@ relationships: []
     )
   })
 
-  it('maps supported presentation direction without changing projected members', () => {
+  it('maps portable direction metadata without changing projected members', () => {
     const compilation = compileWorkspace([{ path: 'payments.yaml', source }])
     expect(compilation.ok).toBe(true)
     if (!compilation.ok) return
-    const result = exportLikeC4(
-      evaluateProjection(compilation.graph, {
-        ...projection,
-        presentation: {
-          ...projection.presentation,
-          direction: 'top-down',
-        },
-      }),
-      mapping,
-    )
+    const projected = evaluateProjection(compilation.graph, {
+      ...projection,
+      presentation: { direction: 'top-down' },
+    })
+    const result = exportLikeC4(projected, mapping)
 
     expect(result.ok).toBe(true)
     if (!result.ok) return
     expect(result.source).toContain('autoLayout TopBottom')
     expect(result.source).toContain('checkout = applicationComponent')
     expect(result.source).toContain('ledger = applicationComponent')
+  })
+
+  it('defaults LikeC4 layout direction to left-to-right', () => {
+    const compilation = compileWorkspace([{ path: 'payments.yaml', source }])
+    expect(compilation.ok).toBe(true)
+    if (!compilation.ok) return
+    const result = exportLikeC4(
+      evaluateProjection(compilation.graph, projection),
+      mapping,
+    )
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.source).toContain('autoLayout LeftRight')
   })
 })
