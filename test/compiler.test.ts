@@ -91,6 +91,12 @@ relationships: []
     expect(result.profileContext.conceptKindLayers.get(
       'example/layered@1.0#application-capability',
     )).toBe('application')
+    result.profileContext.conceptKindLayers.forEach((_, key, map) => {
+      expect(() => (map as unknown as Map<string, string>).set(key, 'business')).toThrow()
+    })
+    expect(result.profileContext.conceptKindLayers.get(
+      'example/layered@1.0#application-capability',
+    )).toBe('application')
   })
 
   it('compiles architecture states and concise subject presence into claims', () => {

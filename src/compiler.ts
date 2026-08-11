@@ -204,10 +204,12 @@ const immutableMap = <K, V>(
   entries: Iterable<readonly [K, V]>,
 ): ReadonlyMap<K, V> => {
   const backing = new Map(entries)
-  return Object.freeze({
+  const facade: ReadonlyMap<K, V> = {
     get: backing.get.bind(backing),
     has: backing.has.bind(backing),
-    forEach: backing.forEach.bind(backing),
+    forEach(callback, thisArg) {
+      backing.forEach((value, key) => callback.call(thisArg, value, key, facade))
+    },
     entries: backing.entries.bind(backing),
     keys: backing.keys.bind(backing),
     values: backing.values.bind(backing),
@@ -215,7 +217,8 @@ const immutableMap = <K, V>(
     get size() {
       return backing.size
     },
-  })
+  }
+  return Object.freeze(facade)
 }
 
 const compareById = <T extends { readonly id: string }>(left: T, right: T) =>
