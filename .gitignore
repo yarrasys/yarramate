@@ -11,6 +11,7 @@ graphify-out/
 .env.*
 !.env.example
 
-# Agent worktrees are ephemeral checkouts of this repository
-.claude/worktrees/
+# Agent scratch space: ephemeral worktrees, harness settings, skill state
+.claude/
+.superpowers/
 .worktrees/
