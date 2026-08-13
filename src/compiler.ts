@@ -3,6 +3,7 @@ import { LineCounter, parseDocument } from 'yaml'
 import {
   conceptKinds,
   relationshipPolicies,
+  type Aspect,
   type Layer,
   type Rigidity,
 } from './profile.js'
@@ -183,10 +184,23 @@ export interface SemanticGraph {
   readonly claims: readonly GraphClaim[]
 }
 
+// Which endpoint aspects a relationship kind pins, resolved through profile
+// lineage. An absent side is the honest reading: that endpoint accepts any
+// aspect, so a claim of this kind tests nothing about how its subject was
+// classified (ADR 0083).
+export interface RelationshipEndpointAspects {
+  readonly source?: readonly Aspect[]
+  readonly target?: readonly Aspect[]
+}
+
 export interface ResolvedProfileContext {
   readonly conceptKindLineages: ReadonlyMap<string, readonly string[]>
   readonly relationshipKindLineages: ReadonlyMap<string, readonly string[]>
   readonly conceptKindLayers: ReadonlyMap<string, string>
+  readonly relationshipKindEndpointAspects: ReadonlyMap<
+    string,
+    RelationshipEndpointAspects
+  >
 }
 
 export type CompilationResult =
@@ -1937,6 +1951,21 @@ function compileWorkspaceResolved(
         [...conceptKindByIdentity]
           .sort(([left], [right]) => left.localeCompare(right))
           .map(([identity, kind]) => [identity, kind.layer] as const),
+      ),
+      relationshipKindEndpointAspects: immutableMap(
+        [...relationshipKindByIdentity]
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([identity, kind]) => [
+            identity,
+            Object.freeze({
+              ...(kind.sourceAspects === undefined
+                ? {}
+                : { source: Object.freeze([...kind.sourceAspects]) }),
+              ...(kind.targetAspects === undefined
+                ? {}
+                : { target: Object.freeze([...kind.targetAspects]) }),
+            }) as RelationshipEndpointAspects,
+          ] as const),
       ),
     },
     graph: {

@@ -22,12 +22,6 @@ concepts:
     constraints:
       - id: stable-interface
         ref: yarramate-product#stable-cli
-  - id: profile-catalogue
-    kind: compiler-module
-    name: Native profile catalogue
-    description: Supplies known concept kinds and broad relationship policies.
-    owner: yarramate-product#yarramate-maintainers
-    status: current
   - id: workspace-loader
     kind: compiler-module
     name: Workspace manifest loader
@@ -334,6 +328,18 @@ concepts:
     owner: yarramate-product#yarramate-maintainers
     name: Concept kind catalogue
     description: Resolved concept kinds with aspects, lineage, and the optional rigidity meta-property available to a compilation. A rigid kind may not specialize an anti-rigid one, so a profile author who parents a service under a role is told at resolution time instead of inheriting a distinction that cannot hold.
+    status: current
+  - id: profile-catalogue
+    kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
+    name: Native profile catalogue
+    description: The shipped core vocabulary - concept kinds with their aspects and rigidity, and the relationship policies that constrain endpoints. It is data a compilation resolves, not a component that runs.
+    status: current
+  - id: question-catalogue
+    kind: dataObject
+    owner: yarramate-product#yarramate-maintainers
+    name: Shipped question catalogue
+    description: The versioned design-question catalogue evaluated against the compiled graph. It resolves from the installed package by default, so orientation needs no argument, and `--catalogue` substitutes an authored one.
     status: current
   - id: relationship-policy-catalogue
     kind: dataObject
@@ -653,6 +659,16 @@ concepts:
     description: The reviewer's own browser on the consumer host. It is the only place the visual conversation presentation runs, and that presentation page reaches nothing but the one authenticated loopback origin its session serves.
     owner: yarramate-product#yarramate-maintainers
     status: current
+  - id: execute-shipped-binaries
+    kind: technologyFunction
+    name: Execute the shipped binaries
+    description: Runs the CLI, the adapters, and the visual session server as ordinary Node processes on the consumer host.
+    status: current
+  - id: render-visual-session-page
+    kind: technologyFunction
+    name: Render the visual session page
+    description: Loads the session bundle from its authenticated loopback origin and runs the presentation, transport included, as an ordinary web page.
+    status: current
   - id: npm-package
     kind: artifact
     name: npm package
@@ -752,6 +768,11 @@ concepts:
     kind: applicationFunction
     name: Present the visual conversation
     description: Draws the promoted views, the authority and connection state, the transcript, the structured choices, and End, and turns what the reviewer does with them into session events.
+    status: current
+  - id: expose-cli-over-mcp
+    kind: applicationFunction
+    name: Expose the CLI over MCP
+    description: Advertises the read-only CLI verbs as stdio Model Context Protocol tools and forwards each call to the same command surface a human runs.
     status: current
 relationships:
   - id: core-contract-checker-loads-contract
@@ -1181,15 +1202,13 @@ relationships:
     to: adapter-mapping-schema
     mode: read
   - id: profile-supplies-kinds
-    kind: access
+    kind: composition
     from: profile-catalogue
     to: kind-catalogue
-    mode: write
   - id: profile-supplies-policies
-    kind: access
+    kind: composition
     from: profile-catalogue
     to: relationship-policy-catalogue
-    mode: write
   - id: init-command-serves-agent-harness
     kind: serving
     from: init-command
@@ -1288,6 +1307,10 @@ relationships:
     kind: serving
     from: mcp-adapter
     to: yarramate-product#agent-harness
+  - id: mcp-adapter-exposes-cli-surface
+    kind: assignment
+    from: mcp-adapter
+    to: expose-cli-over-mcp
   - id: mcp-adapter-uses-cli
     kind: serving
     from: cli
@@ -1387,10 +1410,17 @@ relationships:
     to: design-step-schema
     mode: read
   - id: design-command-reads-profile-catalogue
-    kind: association
+    kind: access
     from: design-command
     to: profile-catalogue
-    description: The shipped question catalogue is internal data resolved from the installed package, never a harness argument.
+    mode: read
+    description: The interview resolves kinds and relationship policies from the same shipped vocabulary the compiler resolved.
+  - id: design-command-reads-question-catalogue
+    kind: access
+    from: design-command
+    to: question-catalogue
+    mode: read
+    description: The catalogue the interview asks from is internal data resolved from the installed package unless --catalogue names another.
   - id: cli-provides-ask
     kind: implements
     from: cli
@@ -1410,10 +1440,17 @@ relationships:
     to: ask-result-schema
     mode: read
   - id: ask-command-reads-profile-catalogue
-    kind: association
+    kind: access
     from: ask-command
     to: profile-catalogue
-    description: The same internal question catalogue design interviews from - ask reads what design asks, so orientation counts, --open, and --advise see identical open questions.
+    mode: read
+    description: Catalogue subject selectors resolve through profile lineage, so ask reads the same kinds the compiler resolved.
+  - id: ask-command-reads-question-catalogue
+    kind: access
+    from: ask-command
+    to: question-catalogue
+    mode: read
+    description: The same catalogue design interviews from - ask reads what design asks, so orientation counts, --open, and --advise see identical open questions.
   - id: cli-provides-export
     kind: implements
     from: cli
@@ -1451,6 +1488,10 @@ relationships:
     kind: realization
     from: npm-package
     to: cli
+  - id: runtime-executes-binaries
+    kind: assignment
+    from: nodejs-runtime
+    to: execute-shipped-binaries
   - id: runtime-serves-cli
     kind: serving
     from: nodejs-runtime
@@ -1476,6 +1517,10 @@ relationships:
     from: local-web-browser
     to: visual-browser
     description: The presentation runs in the reviewer's own browser on the same host; nothing about it is deployed anywhere else.
+  - id: web-browser-renders-session-page
+    kind: assignment
+    from: local-web-browser
+    to: render-visual-session-page
   - id: export-command-serves-traceability-matrix
     kind: serving
     from: export-command
