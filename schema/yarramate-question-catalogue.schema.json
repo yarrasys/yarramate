@@ -399,9 +399,9 @@
           "$ref": "#/$defs/nonEmptyText"
         },
         "authority": {
-          "description": "Who may answer. evidence: an agent may propose the answer from repository evidence (still lands as a reviewable diff). human: a genuine design decision that must be escalated. either: evidence may propose, human confirms.",
+          "description": "Who may answer. A label carried into reports, never a gate (ADR 0082). agent: an agent may propose the answer from repository evidence (still lands as a reviewable diff). human: a genuine design decision that must be escalated. either: an agent may propose, a human confirms.",
           "enum": [
-            "evidence",
+            "agent",
             "human",
             "either"
           ]
