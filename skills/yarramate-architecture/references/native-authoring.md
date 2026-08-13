@@ -208,8 +208,9 @@ identified references, not a policy engine or free-form metadata bag.
   name: Shared architecture context
   attestations:
     - topic: adequacy
-      by: reviewer-name
+      by: review-board
       on: "2026-08-01"
+      recordedBy: claude-fable-5
 ```
 
 An attestation records that an authority accepted the subject as adequate
@@ -219,12 +220,23 @@ outside the engine — only the claim's existence is checked. Revoke by
 deleting the entry; both signing and revoking are reviewed at the Git
 boundary (ADR 0056).
 
+`by` is a subject reference, resolved like `owner`: it names a concept the
+model already holds, and an unresolved one is `YM304`, a hard error. A name
+nobody modelled is not an authority. When you write the entry on someone
+else's judgment, name yourself in `recordedBy` rather than putting your own
+handle in `by` — `apply` requires `recordedBy` on every attestation an
+operations batch writes, because a batch is a machine transcribing a
+judgment it did not make (ADR 0082). `reconcile` then reports an
+`unconfirmed-attestation` finding for each record whose recorder is not its
+authority: the sign-off stands, and the report says out loud that a machine
+wrote it down.
+
 A sign-off covers the wording it read. If the subject's `name` or
 `description` changes in a commit after the attestation's `on` date,
 `yarramate reconcile` reports a `stale-attestation` finding naming the
 attestation and the commit that reworded the subject (ADR 0074). Renew
-the sign-off by updating `on` after the rewording. This is a report, not
-a gate: `check --strict` is unaffected.
+the sign-off by updating `on` after the rewording. Neither finding is a
+gate: `check --strict` is unaffected.
 
 ## Rationale and citations
 

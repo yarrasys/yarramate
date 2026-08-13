@@ -49,7 +49,10 @@ questions. Each question binds:
 - a **materiality** statement — the decision its answer changes. A question
   that cannot state one is deleted, not softened;
 - an **authority** — `human`, `agent`, or `either` — declaring who may
-  answer;
+  answer. It is a label carried into reports, not a gate: nothing stops
+  an agent writing the attestation that closes a `human` question, so the
+  record names the authority in `by` and the writer in `recordedBy`, and
+  `reconcile` reports the two disagreeing (ADR 0082);
 - a **resolution** hint — how an answer is typically modelled;
 - a **question** phrasing interpolating `{subject.id}` and
   `{subject.name}`, plus `{counterparts}` for questions whose trigger

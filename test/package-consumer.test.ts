@@ -17,6 +17,23 @@ import { describe, expect, it } from 'vitest'
 
 const repositoryRoot = fileURLToPath(new URL('..', import.meta.url))
 
+// `npm pack --json` runs the `prepack` build, whose pnpm and vite output
+// shares stdout with the JSON report, so parse from the array delimiter
+// rather than the first byte. Returns the packed tarball path.
+const packTarball = (destination: string): string => {
+  const stdout = execFileSync(
+    'npm',
+    ['pack', '--json', '--pack-destination', destination],
+    {
+      cwd: repositoryRoot,
+      encoding: 'utf8',
+      env: { ...process.env, npm_config_cache: join(destination, 'npm-cache') },
+    },
+  )
+  const report = JSON.parse(stdout.slice(stdout.indexOf('[')))
+  return join(destination, report[0].filename)
+}
+
 describe('consumer package contract', () => {
   it('declares a narrow runtime, schema, skill, and consumer-document surface', () => {
     const packageJson = JSON.parse(
@@ -77,21 +94,7 @@ describe('consumer package contract', () => {
   it('packs only a self-contained consumer surface', { timeout: 30_000 }, () => {
     const parent = mkdtempSync(join(tmpdir(), 'yarramate-package-'))
     try {
-      const packed = JSON.parse(
-        execFileSync(
-          'npm',
-          ['pack', '--json', '--pack-destination', parent],
-          {
-            cwd: repositoryRoot,
-            encoding: 'utf8',
-            env: {
-              ...process.env,
-              npm_config_cache: join(parent, 'npm-cache'),
-            },
-          },
-        ),
-      )
-      const archive = join(parent, packed[0].filename)
+      const archive = packTarball(parent)
       const files = execFileSync('tar', ['-tzf', archive], {
         encoding: 'utf8',
       }).trim().split('\n')
@@ -153,27 +156,14 @@ describe('consumer package contract', () => {
       join(repositoryRoot, 'node_modules/.yarramate-consumer-'),
     )
     try {
-      const packed = JSON.parse(
-        execFileSync(
-          'npm',
-          ['pack', '--json', '--pack-destination', consumer],
-          {
-            cwd: repositoryRoot,
-            encoding: 'utf8',
-            env: {
-              ...process.env,
-              npm_config_cache: join(consumer, 'npm-cache'),
-            },
-          },
-        ),
-      )
+      const archive = packTarball(consumer)
       const packagePath = join(consumer, 'node_modules/yarramate')
       mkdirSync(packagePath, { recursive: true })
       execFileSync(
         'tar',
         [
           '-xzf',
-          join(consumer, packed[0].filename),
+          archive,
           '-C',
           packagePath,
           '--strip-components=1',

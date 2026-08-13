@@ -932,6 +932,10 @@
         "subjectsWithoutEvidence": {
           "type": "integer"
         },
+        "unconfirmedAttestations": {
+          "type": "integer",
+          "minimum": 0
+        },
         "expectationsCompared": {
           "type": "integer"
         },

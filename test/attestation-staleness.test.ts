@@ -48,11 +48,18 @@ const manifest =
   'adapterMappings: []\n' +
   'evidence: []\n'
 
-const document = (description: string, attestedOn: string) =>
+const document = (
+  description: string,
+  attestedOn: string,
+  recordedBy?: string,
+) =>
   'format: yarramate/v1\n' +
   'id: policy\n' +
   'profile: yarramate/core@0.1\n' +
   'concepts:\n' +
+  '  - id: dana-okafor\n' +
+  '    kind: stakeholder\n' +
+  '    name: Dana Okafor\n' +
   '  - id: refund-rule\n' +
   '    kind: businessProcess\n' +
   '    name: Refund rule\n' +
@@ -60,7 +67,8 @@ const document = (description: string, attestedOn: string) =>
   `    description: ${description}\n` +
   '    attestations:\n' +
   '      - topic: signed-off\n' +
-  '        by: Dana Okafor\n' +
+  '        by: dana-okafor\n' +
+  (recordedBy === undefined ? '' : `        recordedBy: ${recordedBy}\n`) +
   `        on: "${attestedOn}"\n` +
   'relationships: []\n'
 
@@ -72,6 +80,7 @@ const buildFixture = (options: {
   readonly attestedOn: string
   readonly baseAt: string
   readonly changedAt?: string
+  readonly recordedBy?: string
 }): string => {
   const workspace = mkdtempSync(join(tmpdir(), 'yarramate-attest-'))
   workspaces.push(workspace)
@@ -79,7 +88,11 @@ const buildFixture = (options: {
   writeFileSync(join(workspace, 'workspace.yaml'), manifest, 'utf8')
   writeFileSync(
     join(workspace, 'architecture/policy.yaml'),
-    document('Refunds are approved by a human.', options.attestedOn),
+    document(
+      'Refunds are approved by a human.',
+      options.attestedOn,
+      options.recordedBy,
+    ),
     'utf8',
   )
   git(workspace, undefined, 'init', '-q')
@@ -88,7 +101,11 @@ const buildFixture = (options: {
   if (options.changedAt !== undefined) {
     writeFileSync(
       join(workspace, 'architecture/policy.yaml'),
-      document('Refunds under $50 are approved automatically.', options.attestedOn),
+      document(
+        'Refunds under $50 are approved automatically.',
+        options.attestedOn,
+        options.recordedBy,
+      ),
       'utf8',
     )
     git(workspace, undefined, 'add', '-A')
@@ -97,26 +114,54 @@ const buildFixture = (options: {
   return workspace
 }
 
-const reconcile = (workspace: string) => {
+interface Finding {
+  readonly target: { readonly type: string; readonly id: string }
+  readonly result: string
+  readonly provider: string
+  readonly changedAt?: string
+  readonly attestation?: {
+    readonly topic: string
+    readonly by: string
+    readonly recordedBy?: string
+    readonly on: string
+  }
+  readonly declared?: {
+    readonly document: string
+    readonly path: string
+    readonly pointer: string
+    readonly line: number
+    readonly column: number
+  }
+  readonly evidence?: { readonly uri: string; readonly message?: string }
+}
+
+// Git-provided findings always carry evidence; narrowing here keeps the
+// assertions below reading it without a cast.
+interface EvidencedFinding extends Finding {
+  readonly evidence: { readonly uri: string; readonly message?: string }
+}
+
+interface ReconcileReport {
+  readonly summary: Record<string, number>
+  readonly findings: readonly Finding[]
+  readonly notes?: readonly string[]
+}
+
+const reconcile = (workspace: string): ReconcileReport => {
   const result = runCli(['reconcile', 'workspace.yaml'], workspace)
   expect(result.stderr).toBe('')
   expect(result.exitCode).toBe(0)
-  return JSON.parse(result.stdout) as {
-    summary: Record<string, number>
-    findings: ReadonlyArray<{
-      target: { type: string; id: string }
-      result: string
-      provider: string
-      changedAt?: string
-      attestation?: { topic: string; by: string; on: string }
-      evidence: { uri: string; message?: string }
-    }>
-    notes?: readonly string[]
-  }
+  return JSON.parse(result.stdout) as ReconcileReport
 }
 
-const staleFindings = (report: ReturnType<typeof reconcile>) =>
-  report.findings.filter(({ result }) => result === 'stale-attestation')
+const staleFindings = (report: ReconcileReport): readonly EvidencedFinding[] =>
+  report.findings.filter(
+    (finding): finding is EvidencedFinding =>
+      finding.result === 'stale-attestation',
+  )
+
+const unconfirmedFindings = (report: ReconcileReport): readonly Finding[] =>
+  report.findings.filter(({ result }) => result === 'unconfirmed-attestation')
 
 afterEach(() => {
   while (workspaces.length > 0) {
@@ -140,14 +185,14 @@ describe('stale attestations', () => {
     expect(finding.provider).toBe('git')
     expect(finding.attestation).toEqual({
       topic: 'signed-off',
-      by: 'Dana Okafor',
+      by: 'policy#dana-okafor',
       on: '2026-01-15',
     })
     // The commit date of the later change is named, not guessed.
     expect(finding.changedAt).toMatch(/^2026-06-01T12:00:00/)
     expect(finding.evidence.uri).toMatch(/^git:[0-9a-f]{40}$/)
     expect(finding.evidence.message).toContain(
-      'Attestation "signed-off" by Dana Okafor on 2026-01-15 predates the current wording of policy#refund-rule',
+      'Attestation "signed-off" by policy#dana-okafor on 2026-01-15 predates the current wording of policy#refund-rule',
     )
     expect(finding.evidence.message).toContain('the description changed in commit')
     expect(report.summary.staleAttestations).toBe(1)
@@ -300,7 +345,7 @@ describe('stale attestations', () => {
         '    description: Not committed yet.\n' +
         '    attestations:\n' +
         '      - topic: signed-off\n' +
-        '        by: Dana Okafor\n' +
+        '        by: policy#dana-okafor\n' +
         '        on: "2026-01-15"\n' +
         'relationships: []\n',
       'utf8',
@@ -365,6 +410,79 @@ describe('stale attestations', () => {
       attestedOn: '2026-01-15',
       baseAt: '2026-01-15T09:00:00+0000',
       changedAt: '2026-06-01T12:00:00+0000',
+    })
+    const strict = runCli(
+      ['check', 'workspace.yaml', '--strict', '--json'],
+      workspace,
+    )
+
+    expect(strict.exitCode).toBe(0)
+    expect(JSON.parse(strict.stdout).ok).toBe(true)
+  })
+})
+
+// A machine's transcription is not the act the authority performed: the
+// recorder is named in the model, so the gap between whose judgment the
+// record claims to be and whose hand wrote it is derivable (ADR 0082).
+describe('unconfirmed attestations', () => {
+  it('reports a sign-off an agent recorded on the authority behalf', () => {
+    const workspace = buildFixture({
+      attestedOn: '2026-01-15',
+      baseAt: '2026-01-15T09:00:00+0000',
+      recordedBy: 'claude-fable-5',
+    })
+    const report = reconcile(workspace)
+    const unconfirmed = unconfirmedFindings(report)
+
+    expect(unconfirmed).toHaveLength(1)
+    const finding = unconfirmed[0]!
+    expect(finding.target).toEqual({ type: 'subject', id: 'policy#refund-rule' })
+    // The model alone answers this: no evidence provider is consulted.
+    expect(finding.provider).toBe('model')
+    expect(finding.evidence).toBeUndefined()
+    expect(finding.attestation).toEqual({
+      topic: 'signed-off',
+      by: 'policy#dana-okafor',
+      recordedBy: 'claude-fable-5',
+      on: '2026-01-15',
+    })
+    expect(finding.declared?.path).toBe('architecture/policy.yaml')
+    expect(finding.declared?.pointer).toBe('/concepts/1/attestations/0/topic')
+    expect(report.summary.unconfirmedAttestations).toBe(1)
+    expect(
+      validateReconciliation(report),
+      JSON.stringify(validateReconciliation.errors),
+    ).toBe(true)
+  })
+
+  it('stays silent when the authority held the pen', () => {
+    const selfRecorded = buildFixture({
+      attestedOn: '2026-01-15',
+      baseAt: '2026-01-15T09:00:00+0000',
+      recordedBy: 'dana-okafor',
+    })
+    const report = reconcile(selfRecorded)
+
+    expect(unconfirmedFindings(report)).toEqual([])
+    expect(report.summary.unconfirmedAttestations).toBe(0)
+  })
+
+  it('stays silent for a hand-written sign-off with no recorder', () => {
+    const handWritten = buildFixture({
+      attestedOn: '2026-01-15',
+      baseAt: '2026-01-15T09:00:00+0000',
+    })
+    const report = reconcile(handWritten)
+
+    expect(unconfirmedFindings(report)).toEqual([])
+    expect(report.summary.unconfirmedAttestations).toBe(0)
+  })
+
+  it('leaves the check gate untouched: a recorder is not a contradiction', () => {
+    const workspace = buildFixture({
+      attestedOn: '2026-01-15',
+      baseAt: '2026-01-15T09:00:00+0000',
+      recordedBy: 'claude-fable-5',
     })
     const strict = runCli(
       ['check', 'workspace.yaml', '--strict', '--json'],

@@ -356,7 +356,7 @@ and one-based line and column.
 | --- | --- | --- |
 | `YM1xx` | YAML parsing | `YM101` malformed YAML |
 | `YM2xx` | Document structure | `YM201` JSON Schema violation |
-| `YM3xx` | Identity and references | `YM301` duplicate local ID; `YM302` unresolved concept reference; `YM303` duplicate document ID; `YM304` unresolved owner; `YM305` unresolved constraint; `YM306` duplicate constraint ID; `YM307` unresolved architecture state; `YM308` unresolved subject reference; `YM309` duplicate reference ID; `YM310` unresolved distinct-from reference; `YM311` self-referential distinct-from; `YM312` unresolved succession reference; `YM313` self-referential succession |
+| `YM3xx` | Identity and references | `YM301` duplicate local ID; `YM302` unresolved concept reference; `YM303` duplicate document ID; `YM304` unresolved owner or attestation authority; `YM305` unresolved constraint; `YM306` duplicate constraint ID; `YM307` unresolved architecture state; `YM308` unresolved subject reference; `YM309` duplicate reference ID; `YM310` unresolved distinct-from reference; `YM311` self-referential distinct-from; `YM312` unresolved succession reference; `YM313` self-referential succession |
 | `YM4xx` | Profile conformance | `YM401` unknown concept kind; `YM402` unknown relationship kind; `YM403` unavailable profile; `YM404` incompatible endpoint; `YM405` misplaced controlled field; `YM406` unavailable parent profile; `YM407`/`YM408` unavailable semantic parent; `YM409`/`YM410` inherited-name collision; `YM411` duplicate profile; `YM412` broadened constraint; `YM413` rigid kind specializing an anti-rigid one |
 | `YM5xx` | Claim consistency | `YM501` competing whole-part claims; `YM502` cyclic state ordering; `YM503` relationship present without an endpoint; `YM504` cyclic succession |
 | `YM6xx` | Adapter mapping integrity | `YM601` unknown native subject; `YM602` subject type mismatch; `YM603` duplicate native mapping; `YM604` duplicate external mapping; `YM605` duplicate versioned mapping |
@@ -438,7 +438,7 @@ The operations are `add-concept`, `add-relationship`, `update-concept`,
 and relationship records accept the same
 optional fields as the authoring format — for example `status`,
 `description`, `aka`, `owner`, `distinctFrom`, `supersedes`,
-`constraints`, `references`, `presentIn`, and the
+`constraints`, `references`, `presentIn`, `attestations`, and the
 controlled `mode` and `content` fields. `apply` writes by splicing minimal
 text edits into the authored source, so bytes an operation never touched —
 including folded prose and comments — stay byte-identical (ADR 0062). It
@@ -456,6 +456,11 @@ Integrity is evaluated against the post-batch state, so a concept and its
 referring relationships can leave in one batch (ADR 0069). Retirement
 (`status: retired`) remains the descoping path; delete only when the
 history itself is noise.
+
+An `attestations` entry an operation writes must carry `recordedBy`, even
+though a hand-authored document may omit it: a batch is a machine's
+transcription of someone's judgment, so the operations contract names the
+hand that held the pen where git already names the committer (ADR 0082).
 
 The workspace manifest supplies the extension profiles and documents needed
 for qualified references. This explicit input contract matches

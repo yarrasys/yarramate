@@ -114,9 +114,9 @@ schema is `schema/yarramate-reconciliation-report.schema.json`.
 
 The summary counts all observations. The `findings` array contains only
 `contradicted`, `unknown`, and `not-observed` results, ordered by target and
-provider, plus the `stale-attestation` findings described below. Confirmed
-observations remain summarized rather than repeated so a reviewer or agent
-can focus on unresolved evidence.
+provider, plus the `stale-attestation` and `unconfirmed-attestation`
+findings described below. Confirmed observations remain summarized rather
+than repeated so a reviewer or agent can focus on unresolved evidence.
 
 When a finding targets the primary claim of a declared relationship, it also
 carries an optional `asserted` object with the declared `from`, `to`, and
@@ -224,14 +224,14 @@ and `description` spans; if the wording changed later, it emits a
   "result": "stale-attestation",
   "attestation": {
     "topic": "signed-off",
-    "by": "Dana Okafor",
+    "by": "policy#compliance-lead",
     "on": "2026-01-15"
   },
   "provider": "git",
   "changedAt": "2026-06-01T12:00:00+00:00",
   "evidence": {
     "uri": "git:9f2c1ab…",
-    "message": "Attestation \"signed-off\" by Dana Okafor on 2026-01-15 predates the current wording of policy#refund-rule: the description changed in commit 9f2c1ab on 2026-06-01T12:00:00+00:00."
+    "message": "Attestation \"signed-off\" by policy#compliance-lead on 2026-01-15 predates the current wording of policy#refund-rule: the description changed in commit 9f2c1ab on 2026-06-01T12:00:00+00:00."
   }
 }
 ```
@@ -264,6 +264,51 @@ was assessed, so a report that never looked is distinguishable from one
 that looked and found nothing. `check --strict` is unaffected: staleness
 is a freshness signal about a human process, not a contradiction between
 the model and observed reality, so it reports rather than gates.
+
+## Unconfirmed attestations
+
+`by` names the authority a judgment belongs to, resolved against the
+model as a subject reference; `recordedBy` names whoever actually
+wrote the record, when that is not the authority's own hand (ADR
+0082). `reconcile` reports when the two disagree — a recorder is
+present and names someone other than the authority itself — as an
+`unconfirmed-attestation` finding:
+
+```json
+{
+  "target": { "type": "subject", "id": "policy#refund-rule" },
+  "result": "unconfirmed-attestation",
+  "attestation": {
+    "topic": "signed-off",
+    "by": "policy#compliance-lead",
+    "recordedBy": "yarramate-apply-agent",
+    "on": "2026-01-15"
+  },
+  "provider": "model",
+  "declared": {
+    "document": "policy",
+    "path": "architecture/policy.yaml",
+    "pointer": "/concepts/1/attestations/0/topic",
+    "line": 24,
+    "column": 16
+  }
+}
+```
+
+This finding kind has no `evidenceDocument` and involves no git
+lookup: its provider is `model`, because the disagreement is legible
+from the attestation claim alone. `declared` locates the authored
+attestation entry — the same source location the claim carries, its
+`topic` line — rather than an external observation. A recorder that names
+the authority itself — by its qualified id or its document-local
+form — is a self-recorded sign-off and produces no finding.
+
+The `summary.unconfirmedAttestations` counter is present whenever a
+graph was compiled, so a report that found nothing unconfirmed is
+distinguishable from one that never had a graph to check against.
+`check --strict` is unaffected: an unconfirmed recorder is a fact
+about who wrote a record, not a contradiction between the model and
+observed reality, so it reports rather than gates.
 
 ## Boundary
 

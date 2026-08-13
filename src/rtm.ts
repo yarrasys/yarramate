@@ -3,6 +3,10 @@ import type {
   ResolvedProfileContext,
   SemanticGraph,
 } from './compiler.js'
+import {
+  ATTESTATION_PREDICATE_PREFIX,
+  parseAttestationClaimValue,
+} from './compiler.js'
 import type { EvidenceReport, EvidenceResult } from './evidence.js'
 import { coreLocalKind, isDeclaredNonGoal } from './brief.js'
 import { conceptKinds } from './profile.js'
@@ -57,6 +61,7 @@ export interface RtmRealizer {
 export interface RtmAttestation {
   readonly topic: string
   readonly by: string
+  readonly recordedBy?: string
   readonly on: string
   readonly source: RtmSource
 }
@@ -152,7 +157,7 @@ export function buildRtm(
   const attestationClaims = new Map<string, GraphClaim[]>()
   for (const claim of graph.claims) {
     if (!('value' in claim.object)) continue
-    if (claim.predicate.startsWith('yarramate/attestation/')) {
+    if (claim.predicate.startsWith(ATTESTATION_PREDICATE_PREFIX)) {
       attestationClaims.set(claim.subject, [
         ...(attestationClaims.get(claim.subject) ?? []),
         claim,
@@ -372,15 +377,12 @@ export function buildRtm(
     )
       .flatMap((claim) => {
         if (!('value' in claim.object)) return []
-        const match = /^(.*) ([0-9]{4}-[0-9]{2}-[0-9]{2})$/.exec(
-          claim.object.value,
-        )
-        if (match === null) return []
+        const parts = parseAttestationClaimValue(claim.object.value)
+        if (parts === undefined) return []
         return [
           {
-            topic: claim.predicate.slice('yarramate/attestation/'.length),
-            by: match[1]!,
-            on: match[2]!,
+            topic: claim.predicate.slice(ATTESTATION_PREDICATE_PREFIX.length),
+            ...parts,
             source: citation(claim),
           },
         ]
@@ -529,7 +531,11 @@ export function renderRtmMarkdown(
             .map(
               (attestation) =>
                 escapeCell(
-                  `${attestation.topic}: ${attestation.by} on ${attestation.on}`,
+                  `${attestation.topic}: ${attestation.by} on ${attestation.on}${
+                    attestation.recordedBy === undefined
+                      ? ''
+                      : `, recorded by ${attestation.recordedBy}`
+                  }`,
                 ) + ` (${cite(attestation.source)})`,
             )
             .join('<br>')

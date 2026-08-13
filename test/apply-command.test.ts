@@ -27,6 +27,9 @@ concepts:
   - id: user
     kind: businessActor
     name: User
+  - id: reviewer
+    kind: stakeholder
+    name: Reviewer
 relationships: []
 `
 
@@ -64,6 +67,7 @@ operations:
       attestations:
         - topic: adequacy
           by: reviewer
+          recordedBy: agent-under-test
           on: "2026-08-01"
 `
 

@@ -390,6 +390,86 @@ relationships:
     })
   })
 
+  it('reports an unresolved attestation authority at the authored reference', () => {
+    const result = compileWorkspace([
+      {
+        path: 'adequacy.yaml',
+        source:
+          'format: yarramate/v1\n' +
+          'id: adequacy\n' +
+          'profile: yarramate/core@0.1\n' +
+          'concepts:\n' +
+          '  - id: payments-api\n' +
+          '    kind: applicationService\n' +
+          '    name: Payments API\n' +
+          '    attestations:\n' +
+          '      - topic: adequacy\n' +
+          '        by: missing-reviewer\n' +
+          '        on: "2026-08-01"\n' +
+          'relationships: []\n',
+      },
+    ])
+
+    expect(result).toEqual({
+      ok: false,
+      diagnostics: [
+        {
+          severity: 'error',
+          code: 'YM304',
+          message: 'Unresolved attestation authority reference "missing-reviewer"',
+          path: 'adequacy.yaml',
+          pointer: '/concepts/0/attestations/0/by',
+          line: 10,
+          column: 13,
+        },
+      ],
+    })
+  })
+
+  it('packs the recorder into the attestation claim beside the authority', () => {
+    const result = compileWorkspace([
+      {
+        path: 'adequacy.yaml',
+        source:
+          'format: yarramate/v1\n' +
+          'id: adequacy\n' +
+          'profile: yarramate/core@0.1\n' +
+          'concepts:\n' +
+          '  - id: review-board\n' +
+          '    kind: businessActor\n' +
+          '    name: Review board\n' +
+          '  - id: payments-api\n' +
+          '    kind: applicationService\n' +
+          '    name: Payments API\n' +
+          '    attestations:\n' +
+          '      - topic: adequacy\n' +
+          '        by: review-board\n' +
+          '        recordedBy: claude-fable-5\n' +
+          '        on: "2026-08-01"\n' +
+          'relationships: []\n',
+      },
+    ])
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.graph.claims).toContainEqual({
+      id: 'adequacy#payments-api~attestation-adequacy',
+      subject: 'adequacy#payments-api',
+      predicate: 'yarramate/attestation/adequacy',
+      object: {
+        value: 'adequacy#review-board 2026-08-01 claude-fable-5',
+      },
+      origin: 'declared',
+      source: {
+        document: 'adequacy',
+        path: 'adequacy.yaml',
+        pointer: '/concepts/1/attestations/0/topic',
+        line: 12,
+        column: 16,
+      },
+    })
+  })
+
   it('compiles identified constraints into stable explicit claims', () => {
     const result = compileWorkspace([
       {
