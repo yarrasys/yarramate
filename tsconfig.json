@@ -1,6 +1,8 @@
 {
   "compilerOptions": {
     "target": "ES2022",
+    // Emit stays ES2022; the library surface is what the engines field already
+    // requires (Node >= 22), which is where Promise.withResolvers lives.
     "lib": ["ES2024"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
