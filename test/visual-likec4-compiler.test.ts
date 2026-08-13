@@ -469,12 +469,24 @@ describe('trusted LikeC4 compiler adapter', () => {
       const controller = new AbortController()
       // Cancel only once the fixture compiler has recorded its invocation, so
       // this exercises killing a live child rather than a pre-aborted spawn.
+      // `fs.watch` is not guaranteed to deliver every event on every platform
+      // (see the Node docs' own "Caveats" section), so a short poll runs
+      // alongside it rather than trusting the single watch callback.
       const started = new Promise<void>((resolve) => {
-        const watcher = watch(parent, () => {
-          if (!existsSync(invocations)) return
+        let settled = false
+        const settle = () => {
+          if (settled) return
+          settled = true
           watcher.close()
+          clearInterval(poll)
           resolve()
+        }
+        const watcher = watch(parent, () => {
+          if (existsSync(invocations)) settle()
         })
+        const poll = setInterval(() => {
+          if (existsSync(invocations)) settle()
+        }, 5)
       })
 
       const running = compile(session.paths, {
