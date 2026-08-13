@@ -267,6 +267,9 @@ mappings:
   - native: yarramate-engine#profile-catalogue
     external: engineProfileCatalogue
     type: concept
+  - native: yarramate-engine#question-catalogue
+    external: engineQuestionCatalogue
+    type: concept
   - native: yarramate-engine#projection-definition
     external: engineProjectionDefinition
     type: concept
@@ -1197,6 +1200,12 @@ mappings:
   - native: yarramate-engine#mcp-adapter-uses-cli
     external: mcpAdapterUsesCli
     type: relationship
+  - native: yarramate-engine#expose-cli-over-mcp
+    external: exposeCliOverMcp
+    type: concept
+  - native: yarramate-engine#mcp-adapter-exposes-cli-surface
+    external: mcpAdapterExposesCliSurface
+    type: relationship
   - native: yarramate-engine#new-command
     external: newCommand
     type: concept
@@ -1332,6 +1341,9 @@ mappings:
   - native: yarramate-engine#design-command-reads-profile-catalogue
     external: designCommandReadsProfileCatalogue
     type: relationship
+  - native: yarramate-engine#design-command-reads-question-catalogue
+    external: designCommandReadsQuestionCatalogue
+    type: relationship
   - native: yarramate-engine#design-command-reads-step-schema
     external: designCommandReadsStepSchema
     type: relationship
@@ -1352,6 +1364,9 @@ mappings:
     type: concept
   - native: yarramate-engine#ask-command-reads-profile-catalogue
     external: askCommandReadsProfileCatalogue
+    type: relationship
+  - native: yarramate-engine#ask-command-reads-question-catalogue
+    external: askCommandReadsQuestionCatalogue
     type: relationship
   - native: yarramate-engine#ask-command-reads-result-schema
     external: askCommandReadsResultSchema
@@ -1404,6 +1419,18 @@ mappings:
   - native: yarramate-engine#local-web-browser
     external: localWebBrowser
     type: concept
+  - native: yarramate-engine#execute-shipped-binaries
+    external: executeShippedBinaries
+    type: concept
+  - native: yarramate-engine#render-visual-session-page
+    external: renderVisualSessionPage
+    type: concept
+  - native: yarramate-engine#runtime-executes-binaries
+    external: runtimeExecutesBinaries
+    type: relationship
+  - native: yarramate-engine#web-browser-renders-session-page
+    external: webBrowserRendersSessionPage
+    type: relationship
   - native: yarramate-engine#web-browser-serves-visual-browser
     external: webBrowserServesVisualBrowser
     type: relationship

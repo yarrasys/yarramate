@@ -35,11 +35,15 @@ questions. Each question binds:
   direction, whose counterpart is of a given kind — the linkage-depth
   primitive), `missing-reference` (no reference-bearing claim such as a
   constraint binding, by direction), `missing-attestation` (no
-  recorded `yarramate/attestation/<topic>` claim; see ADR 0056), or
+  recorded `yarramate/attestation/<topic>` claim; see ADR 0056),
   `near-duplicate` (the subject resembles another subject of the same
   kind closely enough to be the same thing under two names, and no
   `yarramate/identity/distinct-from` claim dismisses the pair; the
-  algorithm and its thresholds are stated in ADR 0077).
+  algorithm and its thresholds are stated in ADR 0077), or
+  `unconstrained-kind` (no relationship claim pins the aspect at this
+  subject's end, so its kind is a label no check can contradict — only
+  `assignment`, `access`, `triggering`, and `influence` constrain an
+  endpoint's aspect; see ADR 0083).
   Relationship kinds in conditions resolve through profile lineage by
   default, the same rule as subject selectors;
 - a **scope** — `workspace` (asked once) or `subject` (asked per matching

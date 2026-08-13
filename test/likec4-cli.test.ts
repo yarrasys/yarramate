@@ -1601,7 +1601,7 @@ views:
         "view starter-technology-deployment {\n" +
           "    title '4 · ArchiMate viewpoints / Technology and deployment'\n" +
           "    description 'Technology structure, behavior, services, networks, and deployed artifacts.'\n" +
-          '    include consumerHost, consumerPackage, engineCli, engineGraphifyEvidenceAdapter, likec4ExportAdapter, localWebBrowser, mcpAdapter, nodejsRuntime, npmPackage, packageConsumerTests, productDesignSolutionBeforeBuild, productDiscoverProjectArchitecture, productStableCli, visualBrowser, visualRuntime',
+          '    include consumerHost, consumerPackage, engineCli, engineGraphifyEvidenceAdapter, executeShippedBinaries, likec4ExportAdapter, localWebBrowser, mcpAdapter, nodejsRuntime, npmPackage, packageConsumerTests, productDesignSolutionBeforeBuild, productDiscoverProjectArchitecture, productStableCli, renderVisualSessionPage, visualBrowser, visualRuntime',
       )
       const marker = JSON.parse(
         readFileSync(
@@ -2578,8 +2578,8 @@ mappings:
               'Semantic relationship kind "yarramate/development@1.0#implements" resolves to unsupported bundled LikeC4 kind "implements"',
             subject: 'yarramate-engine#likec4-adapter-provides-export',
             path: '.yarramate/architecture/engine.yaml',
-            pointer: '/relationships/124',
-            line: 1325,
+            pointer: '/relationships/125',
+            line: 1348,
             column: 5,
           },
           {
@@ -2589,8 +2589,8 @@ mappings:
               'Semantic relationship kind "yarramate/development@1.0#implements" resolves to unsupported bundled LikeC4 kind "implements"',
             subject: 'yarramate-engine#likec4-adapter-provides-check',
             path: '.yarramate/architecture/engine.yaml',
-            pointer: '/relationships/125',
-            line: 1329,
+            pointer: '/relationships/126',
+            line: 1352,
             column: 5,
           },
           {

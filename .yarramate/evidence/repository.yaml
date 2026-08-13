@@ -325,6 +325,10 @@ observations:
     result: confirmed
     evidence:
       uri: repo:src/adapters/mcp-cli.ts
+  - subject: yarramate-engine#expose-cli-over-mcp
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/mcp-cli.ts
   - subject: yarramate-engine#native-document
     result: confirmed
     evidence:
@@ -333,10 +337,18 @@ observations:
     result: confirmed
     evidence:
       uri: repo:package.json
+  - subject: yarramate-engine#execute-shipped-binaries
+    result: confirmed
+    evidence:
+      uri: repo:package.json
   - subject: yarramate-engine#local-web-browser
     result: confirmed
     evidence:
       uri: repo:src/visual-app/index.html
+  - subject: yarramate-engine#render-visual-session-page
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/App.tsx
   - subject: yarramate-engine#npm-package
     result: confirmed
     evidence:
@@ -349,6 +361,10 @@ observations:
     result: confirmed
     evidence:
       uri: repo:src/profile.ts
+  - subject: yarramate-engine#question-catalogue
+    result: confirmed
+    evidence:
+      uri: repo:catalogues/core-enrichment.yaml
   - subject: yarramate-engine#projection-result
     result: confirmed
     evidence:

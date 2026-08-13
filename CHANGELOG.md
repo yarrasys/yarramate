@@ -7,6 +7,14 @@
   A catalogue that declared `evidence` passed catalogue validation and then
   produced a report that failed its own schema; the shipped catalogue never
   used the value, so no interview changes.
+- Add the `unconstrained-kind` trigger condition and a `kind-untested` hygiene
+  question (core-enrichment 0.7 → 0.8): a subject whose kind is pinned by no
+  relationship claim could be reclassified freely and still compile, so the
+  interview asks rather than the engine inferring (ADR 0083). 153 of the
+  repository's own 238 concepts carry such a kind; the shipped question is
+  scoped to active-structure, where it opens 4.
+- Publish `relationshipKindEndpointAspects` on `ResolvedProfileContext`, the
+  lineage-resolved table of which endpoints each relationship kind constrains.
 
 ## 0.18.0
 

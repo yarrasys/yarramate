@@ -1,6 +1,6 @@
 format: yarramate/question-catalogue/v1
 id: core-enrichment
-version: "0.7"
+version: "0.8"
 profile: yarramate/core@0.1
 presentation:
   title: Core enrichment interview
@@ -1075,3 +1075,54 @@ questions:
     resolution: >-
       Declare architecture states and mark presence with present-in where the
       distinction carries decisions; explicitly decline states otherwise.
+
+  - id: kind-untested
+    wave: hygiene
+    since: "0.8"
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#resource
+        - yarramate/core@0.1#businessActor
+        - yarramate/core@0.1#businessRole
+        - yarramate/core@0.1#businessCollaboration
+        - yarramate/core@0.1#businessInterface
+        - yarramate/core@0.1#applicationComponent
+        - yarramate/core@0.1#applicationCollaboration
+        - yarramate/core@0.1#applicationInterface
+        - yarramate/core@0.1#node
+        - yarramate/core@0.1#device
+        - yarramate/core@0.1#systemSoftware
+        - yarramate/core@0.1#technologyCollaboration
+        - yarramate/core@0.1#technologyInterface
+        - yarramate/core@0.1#path
+        - yarramate/core@0.1#communicationNetwork
+        - yarramate/core@0.1#equipment
+        - yarramate/core@0.1#facility
+        - yarramate/core@0.1#distributionNetwork
+    trigger:
+      - condition: unconstrained-kind
+    question: >-
+      Nothing in the model tests that {subject.name} is a structural element
+      at all: no behaviour is assigned to it, so reclassifying it as a
+      service, an object, or a goal would compile exactly the same. What
+      does it run, host, or perform?
+    askPlain: >-
+      What does {subject.name} actually do, or what runs on it? The model
+      says what it is but nothing says what it takes part in.
+    materiality: >-
+      A structural kind is a promise that something behaves through this
+      element. Only four relationship kinds constrain the aspect of an
+      endpoint, so where none of them touches the subject the kind is a
+      label no check can contradict — the choice between a node, a piece of
+      system software, and an application component stops carrying
+      information, and diagrams inherit a distinction the model never made.
+    authority: either
+    resolution: >-
+      Assign {subject.name} to the behaviour it performs — the process,
+      function, service, or capability it carries. Assignment is the one
+      claim whose source endpoint must be an active structure, so recording
+      it makes the classification falsifiable. If nothing in scope is
+      assigned to it, reclassify it to a kind that does carry a claim, or
+      retire it with a description saying why it sits outside this
+      architecture.

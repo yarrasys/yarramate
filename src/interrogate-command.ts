@@ -55,6 +55,7 @@ type CatalogueCondition =
     }
   | { readonly condition: 'missing-attestation'; readonly topic: string }
   | { readonly condition: 'near-duplicate' }
+  | { readonly condition: 'unconstrained-kind' }
 
 export interface CatalogueQuestion {
   readonly id: string
@@ -421,6 +422,30 @@ const conditionHolds = (
       // index, so this reads exactly like every other condition: the claim's
       // existence is the whole signal (ADR 0056).
       return (index.nearDuplicates().get(subjectId!) ?? []).length > 0
+    case 'unconstrained-kind': {
+      // A compiled graph already satisfies every aspect rule it is subject to
+      // (YM404), so participation in a kind that pins the aspect at this
+      // subject's end is the whole test: reclassify the subject to another
+      // aspect and the workspace stops compiling. Where no such claim exists
+      // the kind is a label the engine can never contradict (ADR 0083).
+      // Without a profile context the rules are unknown, not absent, so the
+      // condition reports nothing rather than inventing a finding.
+      if (profileContext === undefined) return false
+      return !index.relationshipClaims.some((claim) => {
+        const endpoints = profileContext.relationshipKindEndpointAspects.get(
+          claim.predicate,
+        )
+        if (endpoints === undefined) return false
+        if (endpoints.source !== undefined && claim.subject === subjectId) {
+          return true
+        }
+        return (
+          endpoints.target !== undefined &&
+          'ref' in claim.object &&
+          claim.object.ref === subjectId
+        )
+      })
+    }
   }
 }
 

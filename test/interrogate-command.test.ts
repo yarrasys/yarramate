@@ -470,6 +470,94 @@ describe('ask --open interrogation', () => {
     })
   })
 
+  it('opens a kind nothing constrains and closes it through an inherited endpoint aspect', () => {
+    // ADR 0083: a kind is falsifiable only where some relationship kind pins
+    // the aspect at that subject's end. The fixture's `owns` declares no
+    // `sourceAspects` - it inherits `active-structure` from core
+    // `assignment` - so the pin is only visible through profile lineage.
+    // `association` pins neither end, which is the control: participating in
+    // a relationship is not the test, being constrained by one is.
+    const hygiene =
+      'format: yarramate/question-catalogue/v1\n' +
+      'id: kind-fixture\n' +
+      'version: "1.0"\n' +
+      'profile: yarramate/core@0.1\n' +
+      'waves:\n' +
+      '  - id: hygiene\n' +
+      '    name: Hygiene\n' +
+      'questions:\n' +
+      '  - id: kind-untested\n' +
+      '    wave: hygiene\n' +
+      '    scope: subject\n' +
+      '    subjects:\n' +
+      '      kinds: ["yarramate/core@0.1#businessActor"]\n' +
+      '    trigger:\n' +
+      '      - condition: unconstrained-kind\n' +
+      '    question: Nothing tests that {subject.name} is what its kind says.\n' +
+      '    materiality: A kind no rule can contradict is a label.\n' +
+      '    authority: either\n' +
+      '    resolution: Assign it to the behaviour it performs.\n'
+    const kinded =
+      'format: yarramate/v1\n' +
+      'id: main\n' +
+      'profile: example/platform@1.0\n' +
+      'concepts:\n' +
+      '  - id: platform\n' +
+      '    kind: platform-team\n' +
+      '    name: Platform team\n' +
+      '  - id: customer\n' +
+      '    kind: businessActor\n' +
+      '    name: Customer\n' +
+      '  - id: rollout\n' +
+      '    kind: businessProcess\n' +
+      '    name: Rollout\n' +
+      'relationships: []\n'
+    writeFileSync(join(workspace, 'catalogue.yaml'), hygiene, 'utf8')
+    writeFileSync(join(workspace, 'architecture/main.yaml'), kinded, 'utf8')
+
+    const before = runCli(
+      ['ask', 'workspace.yaml', '--open', '--catalogue', 'catalogue.yaml', '--json'],
+      workspace,
+    )
+    expect(before.exitCode).toBe(0)
+    const opened = JSON.parse(before.stdout).report
+    expect(opened.summary).toEqual({ questions: 1, openQuestions: 1, open: 2 })
+    expect(
+      opened.waves[0].questions[0].subjects.map(
+        (subject: { readonly id: string }) => subject.id,
+      ),
+    ).toEqual(['main#customer', 'main#platform'])
+
+    writeFileSync(
+      join(workspace, 'architecture/main.yaml'),
+      kinded.replace(
+        'relationships: []\n',
+        'relationships:\n' +
+          '  - id: platform-owns-rollout\n' +
+          '    kind: owns\n' +
+          '    from: platform\n' +
+          '    to: rollout\n' +
+          '  - id: customer-associates-rollout\n' +
+          '    kind: association\n' +
+          '    from: customer\n' +
+          '    to: rollout\n',
+      ),
+      'utf8',
+    )
+    const after = runCli(
+      ['ask', 'workspace.yaml', '--open', '--catalogue', 'catalogue.yaml', '--json'],
+      workspace,
+    )
+    expect(after.exitCode).toBe(0)
+    const remaining = JSON.parse(after.stdout).report
+    expect(remaining.summary).toEqual({ questions: 1, openQuestions: 1, open: 1 })
+    expect(
+      remaining.waves[0].questions[0].subjects.map(
+        (subject: { readonly id: string }) => subject.id,
+      ),
+    ).toEqual(['main#customer'])
+  })
+
   it('keeps the shipped catalogue fully closed on the repository self-model', () => {
     const result = runCli(
       ['ask', '.yarramate/workspace.yaml', '--open', '--json'],

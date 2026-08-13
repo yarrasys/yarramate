@@ -346,6 +346,19 @@
               "const": "near-duplicate"
             }
           }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "The subject's kind is never tested by anything the compiler can check: it participates in no relationship whose kind pins the aspect at the subject's end, so reclassifying it to any other kind of any other aspect would still compile. The kind is a label rather than a constraint (ADR 0083).",
+          "required": [
+            "condition"
+          ],
+          "properties": {
+            "condition": {
+              "const": "unconstrained-kind"
+            }
+          }
         }
       ]
     },

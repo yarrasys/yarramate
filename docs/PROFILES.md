@@ -30,6 +30,16 @@ inherits its parent's aspect. A relationship kind inherits its parent's
 endpoint constraints and may narrow them with `sourceAspects` or
 `targetAspects`; it cannot broaden an existing restriction.
 
+Those endpoint constraints are the only thing that makes a concept kind
+checkable. In the core profile just four relationship kinds pin an aspect —
+`assignment` (source: active-structure), `access` (target: passive-structure),
+`triggering` (both ends: behavior), and `influence` (target: motivation) — so
+a subject touched by none of them could be reclassified to almost any other
+kind and the workspace would still compile. `ask` reports that gap through
+the `unconstrained-kind` trigger condition rather than guessing a kind
+(ADR 0083); narrowing aspects on an extension relationship kind, as `owns`
+does above, extends the set of claims that can falsify a classification.
+
 Local kind names may not shadow inherited names. Profiles may extend other
 explicit profiles, and resolution is independent of CLI/source order.
 
