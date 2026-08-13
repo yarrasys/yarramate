@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.19.0
+
+- Rename the question catalogue's `authority: evidence` to `agent`, matching
+  the runtime, `yarramate-interrogation-report/v1`, and `docs/INTERROGATION.md`.
+  A catalogue that declared `evidence` passed catalogue validation and then
+  produced a report that failed its own schema; the shipped catalogue never
+  used the value, so no interview changes.
+
 ## 0.18.0
 
 - Resolve `attestations[].by` as a subject reference, reusing `YM304` when it

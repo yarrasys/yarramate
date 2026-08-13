@@ -20,6 +20,13 @@ const reportSchema = JSON.parse(
   ),
 ) as object
 
+const catalogueSchema = JSON.parse(
+  readFileSync(
+    join(repositoryRoot, 'schema/yarramate-question-catalogue.schema.json'),
+    'utf8',
+  ),
+) as { readonly $defs: { readonly question: { readonly properties: { readonly authority: { readonly enum: readonly string[] } } } } }
+
 const catalogue =
   'format: yarramate/question-catalogue/v1\n' +
   'id: fixture\n' +
@@ -131,6 +138,42 @@ describe('ask --open interrogation', () => {
     expect(after.exitCode).toBe(0)
     expect(after.stdout).toContain('closed goal-missing')
   })
+
+  it.each(catalogueSchema.$defs.question.properties.authority.enum)(
+    'renders a "%s" authority into a schema-valid report',
+    (authority) => {
+      // The catalogue is an input contract and the report is an output one.
+      // An authority a catalogue may legally declare that the report cannot
+      // carry is a vocabulary split that only shows up once someone writes
+      // the catalogue - so every admitted value round-trips here.
+      writeFileSync(
+        join(workspace, 'catalogue.yaml'),
+        catalogue.replace('    authority: human\n', `    authority: ${authority}\n`),
+        'utf8',
+      )
+      const result = runCli(
+        [
+          'ask',
+          'workspace.yaml',
+          '--open',
+          '--catalogue',
+          'catalogue.yaml',
+          '--json',
+        ],
+        workspace,
+      )
+      expect(result.exitCode).toBe(0)
+      const payload = JSON.parse(result.stdout) as {
+        readonly report: unknown
+      }
+      const validate = new Ajv2020({ allErrors: true }).compile(reportSchema)
+      expect({ authority, valid: validate(payload.report), errors: validate.errors }).toEqual({
+        authority,
+        valid: true,
+        errors: null,
+      })
+    },
+  )
 
   it('matches subject selectors through profile lineage by default', () => {
     // platform-team descends from businessActor, so the selector written
