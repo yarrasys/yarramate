@@ -200,6 +200,21 @@ body {
   color: var(--ochre);
 }
 
+/* A static claim about the feature, not a live status — bordered like a tag
+   rather than dot-prefixed like `.authority`, so it never reads as part of
+   the session's own state. */
+.beta-badge {
+  flex: none;
+  padding: 0.05rem 0.4rem;
+  font-family: var(--utility);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ochre);
+  border: 1px solid var(--ochre);
+}
+
 /* Laid over the workspace, never in it: static prose must not cost the diagram
    a single pixel of height, so the disclosure hangs off the strip instead of
    taking a row in the shell grid. */

@@ -119,6 +119,7 @@ const CommandStrip = ({
   <header className="command-strip">
     <div className="command-identity">
       <h1>{state.title === '' ? 'Opening the session' : state.title}</h1>
+      <span className="beta-badge">Beta</span>
       <span className={`authority authority-${state.authority}`}>
         {visualAuthorityLabel(state.authority)}
       </span>

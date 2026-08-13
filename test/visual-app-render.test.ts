@@ -119,6 +119,12 @@ describe('visual conversation rendering', () => {
     )
   })
 
+  it('labels the session Beta in the command strip', () => {
+    const markup = renderSession()
+
+    expect(markup).toContain('class="beta-badge">Beta</span>')
+  })
+
   it.each(['connecting', 'disconnected'] as const)(
     'keeps the End label before an End request while %s',
     (lifecycle) => {

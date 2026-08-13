@@ -1,5 +1,12 @@
 # Visual conversation adapter
 
+> **Beta.** The browser workspace and the delegated-chat journey are new and
+> still settling — expect rougher edges than the rest of YarraMate. The wire
+> stays governed by the versioning rule in
+> [ADR 0081](adr/0081-a-visual-conversation-is-an-adapter-with-a-published-protocol.md):
+> `yarramate/visual-*/v1` is closed and stable now: beta status describes the
+> browser experience, not the published contract.
+
 The optional visual adapter opens one local, loopback-only browser session
 that renders LikeC4 diagrams of a bounded slice and, when the host harness can
 delegate a long-lived child agent, carries a chat conversation about what is

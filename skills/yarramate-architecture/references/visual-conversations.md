@@ -1,5 +1,9 @@
 # Visual architecture conversations
 
+Beta: the browser workspace and delegated-chat journey are new and still
+settling. Tell the user this is a beta feature when you hand over
+`browserUrl` — do not present it as a finished journey.
+
 One local browser session that renders LikeC4 views of a bounded slice, opened
 and owned by you. `yarramate-visual` is a sibling runtime binary beside
 `yarramate-likec4`; it is presentation, never a subcommand of the semantic
@@ -153,8 +157,10 @@ with `nohup`, `setsid`, `&`, `screen`, or a process manager is not the
 substitute — a detached server is one the harness can no longer stop, and
 `stop` is what deletes the session.
 
-Give the user `browserUrl` as soon as the log yields it. The started line never
-carries the agent capability; that lives only in the mode `0600` descriptor.
+Give the user `browserUrl` as soon as the log yields it, alongside a one-line
+beta disclosure — the browser workspace is new and still settling. The
+started line never carries the agent capability; that lives only in the mode
+`0600` descriptor.
 Pass the descriptor **path** to the child, never its contents.
 
 ## 6. Delegate the visual agent
