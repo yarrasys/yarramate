@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { existsSync, watch } from 'node:fs'
+import { existsSync, readFileSync, watch } from 'node:fs'
 import { mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -469,9 +469,15 @@ describe('trusted LikeC4 compiler adapter', () => {
       const controller = new AbortController()
       // Cancel only once the fixture compiler has recorded its invocation, so
       // this exercises killing a live child rather than a pre-aborted spawn.
+      // The gate is a complete record, not the log's existence: the fixture
+      // appends by creating the file and then writing the line, so a kill
+      // inside that window leaves a log that never gets its record at all.
       // `fs.watch` is not guaranteed to deliver every event on every platform
       // (see the Node docs' own "Caveats" section), so a short poll runs
       // alongside it rather than trusting the single watch callback.
+      const recorded = () =>
+        existsSync(invocations) &&
+        readFileSync(invocations, 'utf8').endsWith('\n')
       const started = new Promise<void>((resolve) => {
         let settled = false
         const settle = () => {
@@ -482,10 +488,10 @@ describe('trusted LikeC4 compiler adapter', () => {
           resolve()
         }
         const watcher = watch(parent, () => {
-          if (existsSync(invocations)) settle()
+          if (recorded()) settle()
         })
         const poll = setInterval(() => {
-          if (existsSync(invocations)) settle()
+          if (recorded()) settle()
         }, 5)
       })
 
