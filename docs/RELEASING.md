@@ -37,7 +37,10 @@ either action.
 
 ## Publication
 
-From the tagged, clean checkout:
+From the tagged, clean checkout — `git checkout vX.Y.Z` in a fresh clone, never
+a branch tip. npm stamps the current `HEAD` into the package's `gitHead`, so a
+publish from `main` claims provenance the tag does not carry, even when the
+tarball bytes are identical:
 
 ```sh
 npm publish --access public
@@ -47,8 +50,9 @@ Then create a GitHub release from the same tag and verify:
 
 ```sh
 npm view yarramate version
+npm view yarramate@X.Y.Z gitHead   # must equal `git rev-parse vX.Y.Z^{commit}`
 npx --yes yarramate --help
 ```
 
 Publication is complete only when the npm package and GitHub release identify
-the same source version.
+the same source version, and the published `gitHead` is the tagged commit.
