@@ -26,6 +26,10 @@ const document = `format: yarramate/v1
 id: main
 profile: yarramate/core@0.1
 concepts:
+  - id: reviewer-one
+    kind: stakeholder
+    name: Reviewer One
+    description: Reviews requirement wording before release.
   - id: fast-answers
     kind: driver
     name: Fast answers
@@ -41,7 +45,7 @@ concepts:
     status: current
     attestations:
       - topic: adequacy
-        by: reviewer one
+        by: reviewer-one
         on: "2026-08-01"
   - id: unrealized-need
     kind: requirement
@@ -220,13 +224,13 @@ describe('export rtm', () => {
     expect(storage.attestations).toEqual([
       expect.objectContaining({
         topic: 'adequacy',
-        by: 'reviewer one',
+        by: 'main#reviewer-one',
         on: '2026-08-01',
       }),
     ])
     const markdown = readFileSync(join(workspace, 'out/RTM.md'), 'utf8')
     expect(markdown).toContain('influenced by driver "Fast answers"')
-    expect(markdown).toContain('adequacy: reviewer one on 2026-08-01')
+    expect(markdown).toContain('adequacy: main#reviewer-one on 2026-08-01')
     expect(markdown).toContain('"Todo store": confirmed (fixture)')
   })
 
@@ -289,6 +293,7 @@ describe('export rtm', () => {
     expect(rtm.motivationContext.map(({ subject }) => subject)).toEqual([
       'main#fast-answers',
       'main#reliable-todos',
+      'main#reviewer-one',
     ])
   })
 

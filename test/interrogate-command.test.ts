@@ -394,7 +394,7 @@ describe('ask --open interrogation', () => {
         '    name: Engagement\n' +
         '    attestations:\n' +
         '      - topic: adequacy\n' +
-        '        by: reviewer\n' +
+        '        by: platform\n' +
         '        on: "2026-08-01"\n' +
         '  - id: platform\n' +
         '    kind: platform-team\n' +

@@ -1,4 +1,8 @@
 import type { GraphClaim, SemanticGraph } from './compiler.js'
+import {
+  ATTESTATION_PREDICATE_PREFIX,
+  parseAttestationClaimValue,
+} from './compiler.js'
 import type {
   EvidenceLocator,
   EvidenceReport,
@@ -70,7 +74,30 @@ export interface StaleAttestationFinding {
   readonly evidence: EvidenceLocator
 }
 
-export type ReconciliationFinding = EvidenceFinding | StaleAttestationFinding
+// A sign-off a machine transcribed is not the act the authority
+// performed: the recorder is named in the model, so reconcile reports
+// the gap between whose judgment this claims to be and whose hand wrote
+// it. The model is the witness; no provider observed anything.
+export interface UnconfirmedAttestationFinding {
+  readonly target: {
+    readonly type: 'subject'
+    readonly id: string
+  }
+  readonly result: 'unconfirmed-attestation'
+  readonly attestation: {
+    readonly topic: string
+    readonly by: string
+    readonly recordedBy: string
+    readonly on: string
+  }
+  readonly provider: 'model'
+  readonly declared: DeclaredSource
+}
+
+export type ReconciliationFinding =
+  | EvidenceFinding
+  | StaleAttestationFinding
+  | UnconfirmedAttestationFinding
 
 export interface AttestationStaleness {
   readonly findings: readonly StaleAttestationFinding[]
@@ -90,6 +117,7 @@ export interface ReconciliationReport {
     readonly notObserved: number
     readonly subjectsWithoutEvidence: number
     readonly staleAttestations?: number
+    readonly unconfirmedAttestations?: number
     readonly expectationsCompared: number
     readonly expectationsWithoutObservation: number
   }
@@ -283,6 +311,41 @@ const unobservedCurrentConcepts = (
     .sort((left, right) => left.localeCompare(right))
 }
 
+// A judgment a machine transcribed is not the act the authority
+// performed. The recorder is in the model, so the difference is
+// derivable here: an authority who wrote the record in their own hand
+// names nobody else, and anything else is a claim awaiting confirmation.
+const unconfirmedAttestations = (
+  graph: SemanticGraph | undefined,
+): readonly UnconfirmedAttestationFinding[] => {
+  if (graph === undefined) return []
+  return graph.claims.flatMap((claim) => {
+    if (!claim.predicate.startsWith(ATTESTATION_PREDICATE_PREFIX)) return []
+    if (!('value' in claim.object)) return []
+    const parts = parseAttestationClaimValue(claim.object.value)
+    const recordedBy = parts?.recordedBy
+    if (parts === undefined || recordedBy === undefined) return []
+    // The authority is qualified; a recorder naming the same subject,
+    // long form or short, is that authority signing for themselves.
+    const local = parts.by.slice(parts.by.indexOf('#') + 1)
+    if (recordedBy === parts.by || recordedBy === local) return []
+    return [
+      {
+        target: { type: 'subject', id: claim.subject } as const,
+        result: 'unconfirmed-attestation' as const,
+        attestation: {
+          topic: claim.predicate.slice(ATTESTATION_PREDICATE_PREFIX.length),
+          by: parts.by,
+          recordedBy,
+          on: parts.on,
+        },
+        provider: 'model' as const,
+        declared: claim.source,
+      },
+    ]
+  })
+}
+
 export function reconcileEvidenceReports(
   workspace: string,
   reports: readonly EvidenceReport[],
@@ -292,6 +355,7 @@ export function reconcileEvidenceReports(
   const assertedByClaim = assertedRelationshipsByClaim(graph)
   const unobservedSubjects = unobservedCurrentConcepts(graph, reports)
   const expectations = compareExpectations(graph, reports)
+  const unconfirmed = unconfirmedAttestations(graph)
   const summary = {
     evidenceDocuments: reports.length,
     observations: 0,
@@ -308,10 +372,18 @@ export function reconcileEvidenceReports(
     ...(staleness === undefined
       ? {}
       : { staleAttestations: staleness.findings.length }),
+    // Recorder disagreement is derived from the model alone, so the
+    // counter appears whenever there was a graph to read.
+    ...(graph === undefined
+      ? {}
+      : { unconfirmedAttestations: unconfirmed.length }),
     expectationsCompared: expectations.compared,
     expectationsWithoutObservation: expectations.unobserved.length,
   }
-  const findings: ReconciliationFinding[] = [...(staleness?.findings ?? [])]
+  const findings: ReconciliationFinding[] = [
+    ...(staleness?.findings ?? []),
+    ...unconfirmed,
+  ]
   for (const report of reports) {
     summary.observations += report.observations.length
     for (const observation of report.observations) {

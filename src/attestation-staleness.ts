@@ -84,7 +84,14 @@ const attestedConcepts = (
       }
       const { topic, by, on } = record
       if (topic !== undefined && by !== undefined && on !== undefined) {
-        attestations.push({ topic, by, on })
+        // The authority is a reference; report it in the same qualified form
+        // the compiler resolves, so one sign-off reads identically in a
+        // staleness finding, a reconcile finding, and the RTM.
+        attestations.push({
+          topic,
+          by: by.includes('#') ? by : `${documentId}#${by}`,
+          on,
+        })
       }
     }
     if (attestations.length === 0) continue

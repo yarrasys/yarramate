@@ -57,6 +57,7 @@ interface NativeConcept {
   readonly attestations?: ReadonlyArray<{
     readonly topic: string
     readonly by: string
+    readonly recordedBy?: string
     readonly on: string
   }>
 }
@@ -239,6 +240,40 @@ const distinctFromClaimId = (subject: string, other: string) =>
 
 const supersedesClaimId = (subject: string, predecessor: string) =>
   `${subject}~supersedes-${Buffer.from(predecessor, 'utf8').toString('hex')}`
+
+export const ATTESTATION_PREDICATE_PREFIX = 'yarramate/attestation/'
+
+// An attestation claim packs the authority, the date it was given, and
+// the recorder when a machine held the pen. A reference carries no
+// spaces and the date is fixed width, so the three parse back out of one
+// value unambiguously wherever a reader needs them.
+export const attestationClaimValue = (attestation: {
+  readonly by: string
+  readonly on: string
+  readonly recordedBy?: string
+}): string =>
+  attestation.recordedBy === undefined
+    ? `${attestation.by} ${attestation.on}`
+    : `${attestation.by} ${attestation.on} ${attestation.recordedBy}`
+
+export interface AttestationClaimParts {
+  readonly by: string
+  readonly on: string
+  readonly recordedBy?: string
+}
+
+export const parseAttestationClaimValue = (
+  value: string,
+): AttestationClaimParts | undefined => {
+  const match = /^(\S+) ([0-9]{4}-[0-9]{2}-[0-9]{2})(?: (.+))?$/.exec(value)
+  if (match === null) return undefined
+  const recordedBy = match[3]
+  return {
+    by: match[1]!,
+    on: match[2]!,
+    ...(recordedBy === undefined ? {} : { recordedBy }),
+  }
+}
 
 const describeAspect = (aspect: (typeof conceptKinds)[number]['aspect']) =>
   aspect.replace('-', ' ')
@@ -1626,11 +1661,39 @@ function compileWorkspaceResolved(
       for (const [attestationIndex, attestation] of (
         concept.attestations ?? []
       ).entries()) {
+        // The authority is held to the same rule as ownership: a judgment
+        // is worthless if nobody in the model made it, and a name only the
+        // signer knows cannot be checked by the reviewer reading the diff.
+        const authority = qualifyReference(value.id, attestation.by)
+        if (!conceptByQualifiedId.has(authority)) {
+          const pointer = `/concepts/${index}/attestations/${attestationIndex}/by`
+          const source = location(
+            ['concepts', index, 'attestations', attestationIndex, 'by'],
+            pointer,
+          )
+          diagnostics.push({
+            severity: 'error',
+            code: 'YM304',
+            message: `Unresolved attestation authority reference "${attestation.by}"`,
+            path: input.path,
+            pointer,
+            line: source.line,
+            column: source.column,
+          })
+        }
         claims.push({
           id: `${subject}~attestation-${attestation.topic}`,
           subject,
-          predicate: `yarramate/attestation/${attestation.topic}`,
-          object: { value: `${attestation.by} ${attestation.on}` },
+          predicate: `${ATTESTATION_PREDICATE_PREFIX}${attestation.topic}`,
+          object: {
+            value: attestationClaimValue({
+              by: authority,
+              on: attestation.on,
+              ...(attestation.recordedBy === undefined
+                ? {}
+                : { recordedBy: attestation.recordedBy }),
+            }),
+          },
           origin: 'declared',
           source: location(
             ['concepts', index, 'attestations', attestationIndex, 'topic'],

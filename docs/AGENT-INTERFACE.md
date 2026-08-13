@@ -129,9 +129,11 @@ Exit code is the contract.
 [built, kept separate — decision 2026-07-31] The full intent-vs-
 evidence report: supported, contradicted, unknown, unobserved, plus
 `stale-attestation` (ADR 0074) when a sign-off predates the current
-wording of the subject it accepted. A report, never a gate;
-`check --strict` is the gate form of its contradiction signal, and
-staleness is deliberately not part of that gate.
+wording of the subject it accepted, and `unconfirmed-attestation`
+(ADR 0082) when the record names a recorder other than the attesting
+authority. A report, never a gate; `check --strict` is the gate form
+of its contradiction signal, and neither staleness nor an unconfirmed
+recorder is part of that gate.
 
 - Harness use: trust assessment before relying on a model; the CI
   drift Action's substance.
@@ -172,10 +174,13 @@ extended 2026-08-05), living inside `design`'s internal catalogue:
    caught mechanically.
 2. **Attestation claims** — a question stays open until an authority
    (human, or an LLM acting as named reviewer) records an attestation
-   claim in the model. The judgment lives outside the engine; its
-   record is structural, stateless, git-reviewed, and revocable.
-   Content thinness caught by explicit, auditable sign-off — the engine
-   still never reads words.
+   claim in the model. `by` resolves to that authority as a subject
+   reference, the same rule as `owner`; an agent transcribing on
+   someone else's behalf names itself in `recordedBy` instead of
+   impersonating the authority (ADR 0082). The judgment lives outside
+   the engine; its record is structural, stateless, git-reviewed, and
+   revocable. Content thinness caught by explicit, auditable
+   sign-off — the engine still never reads words.
 
 3. **Distinctness claims**: the same pattern applied to identity
    (ADR 0077). The `near-duplicate` condition opens a hygiene question
@@ -281,8 +286,10 @@ vocabulary as a read.
 
 ## Open questions
 
-- Attestation claim shape: SETTLED (ADR 0056) — `yarramate/attestation/<topic>`
-  claims, deletion-revocation, git-reviewed authority.
+- Attestation claim shape: SETTLED (ADR 0056, refined by ADR 0082) —
+  `yarramate/attestation/<topic>` claims, deletion-revocation, git-reviewed
+  authority resolved as a subject reference, with the recorder carried
+  beside it.
 - Where the standalone `evidence` evaluation lands: SETTLED (ADR 0061) —
   gone as a public surface; `reconcile` reports, `check --strict` gates,
   `yarramate/evidence-report/v1` remains a library-level format.

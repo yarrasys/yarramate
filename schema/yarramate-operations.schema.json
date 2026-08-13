@@ -86,7 +86,8 @@
       "required": [
         "topic",
         "by",
-        "on"
+        "on",
+        "recordedBy"
       ],
       "properties": {
         "topic": {
@@ -94,6 +95,11 @@
           "pattern": "^[a-z][a-z0-9-]*$"
         },
         "by": {
+          "description": "The authority whose judgment this records, resolved against the model as a subject reference once the write lands.",
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "recordedBy": {
+          "description": "Who is writing this record. Required here and optional in a document: a hand-written sign-off already has a committer, whereas a batch names the agent holding the pen, so an authority's judgment and a machine's transcription of one are never the same bytes.",
           "$ref": "#/$defs/nonEmptyText"
         },
         "on": {

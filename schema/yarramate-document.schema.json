@@ -314,6 +314,11 @@
           "pattern": "^[a-z][a-z0-9-]*$"
         },
         "by": {
+          "description": "The authority whose judgment this records, as a subject reference. A sign-off names someone the model already knows, on the same rule as ownership: an authority absent from the model cannot be held to the judgment.",
+          "$ref": "#/$defs/reference"
+        },
+        "recordedBy": {
+          "description": "Who wrote this record, when that is not the attesting authority's own hand. An agent recording a judgment on someone's behalf names itself here, so a sign-off and a transcription of one are never the same bytes.",
           "$ref": "#/$defs/nonEmptyText"
         },
         "on": {

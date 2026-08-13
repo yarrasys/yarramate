@@ -58,9 +58,13 @@ interface ConceptFields {
   readonly constraints?: readonly ConstraintReference[]
   readonly references?: readonly IdentifiedReference[]
   readonly presentIn?: readonly string[]
+  // A batch is a machine's transcription of someone's judgment, so the
+  // operations contract makes the recorder mandatory here even though a
+  // hand-written document may omit it (the committer is the recorder).
   readonly attestations?: ReadonlyArray<{
     readonly topic: string
     readonly by: string
+    readonly recordedBy: string
     readonly on: string
   }>
 }

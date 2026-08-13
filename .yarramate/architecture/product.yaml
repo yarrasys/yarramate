@@ -28,60 +28,67 @@ concepts:
     description: Review, merge, and ADR governance for the YarraMate repository as described in GOVERNANCE.md.
   - id: shared-architecture-context
     kind: goal
-    attestations:
-      - topic: adequacy
-        by: claude-fable-5
-        on: "2026-08-01"
     name: Shared architecture context
     description: People and agents work from the same structured architectural meaning.
+    attestations:
+      - topic: adequacy
+        by: yarramate-maintainers
+        recordedBy: claude-fable-5
+        on: "2026-08-13"
   - id: repository-native-operation
     kind: requirement
-    attestations:
-      - topic: adequacy
-        by: claude-fable-5
-        on: "2026-08-01"
     name: Repository-native operation
     description: Git supplies authorship, review, history, and approval.
+    attestations:
+      - topic: adequacy
+        by: yarramate-maintainers
+        recordedBy: claude-fable-5
+        on: "2026-08-13"
   - id: tool-neutral-core
     kind: requirement
-    attestations:
-      - topic: adequacy
-        by: claude-fable-5
-        on: "2026-08-01"
     name: Tool-neutral core
     description: Core remains independent of authoring, visualization, evidence, and compatibility adapters.
+    attestations:
+      - topic: adequacy
+        by: yarramate-maintainers
+        recordedBy: claude-fable-5
+        on: "2026-08-13"
   - id: native-documents-are-canonical
     kind: requirement
-    attestations:
-      - topic: adequacy
-        by: claude-fable-5
-        on: "2026-08-01"
     name: Native documents are canonical
     description: Versioned YarraMate documents are the committed semantic source of truth.
+    attestations:
+      - topic: adequacy
+        by: yarramate-maintainers
+        recordedBy: claude-fable-5
+        on: "2026-08-13"
   - id: deterministic-correctness
     kind: requirement
-    attestations:
-      - topic: adequacy
-        by: claude-fable-5
-        on: "2026-08-01"
     name: Deterministic correctness
     description: Core validation checks reproducible correctness rather than taste or completeness.
+    attestations:
+      - topic: adequacy
+        by: yarramate-maintainers
+        recordedBy: claude-fable-5
+        on: "2026-08-13"
   - id: stable-cli
     kind: requirement
-    attestations:
-      - topic: adequacy
-        by: claude-fable-5
-        on: "2026-08-01"
     name: Stable CLI
     description: Humans, CI, skills, and agent harnesses share one command interface.
-  - id: evidence-intent-separation
-    kind: requirement
     attestations:
       - topic: adequacy
-        by: claude-fable-5
-        on: "2026-08-01"
+        by: yarramate-maintainers
+        recordedBy: claude-fable-5
+        on: "2026-08-13"
+  - id: evidence-intent-separation
+    kind: requirement
     name: Evidence and intent remain distinct
     description: Observations may support or challenge architecture proposals but cannot silently author declared intent.
+    attestations:
+      - topic: adequacy
+        by: yarramate-maintainers
+        recordedBy: claude-fable-5
+        on: "2026-08-13"
     references:
       - id: governing-decisions
         ref: yarramate-repository#architecture-decisions
