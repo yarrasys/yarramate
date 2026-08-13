@@ -151,6 +151,55 @@ Graphify extraction remains a separate installation and operation. The
 adapter observes only explicitly mapped nodes and never promotes them into
 canonical architecture.
 
+## Visual architecture conversations
+
+Ask the harness to use `$yarramate-architecture` to visually explain the
+architecture, show how a question relates to the model, or compare design
+choices. There is no command to learn: the skill orchestrates the
+`yarramate-visual` runtime that ships in this package, exactly as it
+orchestrates `yarramate` and `yarramate-likec4`.
+
+Installation and runtime stay separate here too. `npm install` provides the
+`yarramate-visual` binary and the prebuilt browser application; the skill
+provides the journey. Neither contains the other.
+
+What the journey guarantees:
+
+- **Authority is labelled.** Repository architecture is rendered only from a
+  workspace that passes `yarramate check`, through
+  `yarramate ask <workspace> "<topic>" --json`. Everything else — general
+  questions, hypotheticals, comparisons of undecided options — is rendered as
+  a temporary `ad-hoc` model the browser labels non-canonical. A choice
+  confirmed in the browser is a recorded selection, not declared intent; it
+  becomes canonical only through the normal design journey and Git review.
+- **The server is local only.** It binds `127.0.0.1` on a random port, issues
+  separate browser and agent credentials, ships no external assets, and stores
+  no provider credentials. Session state lives under the ignored
+  `.yarramate-out/visual/` directory and is never canonical.
+- **The renderer is consented.** The skill prefers a repository-local
+  `likec4` in `>=1.59.2 <1.60.0`. With none available it asks once before
+  resolving the pinned `likec4@1.59.2` runner, which needs Node `>=22.22.3`
+  and adds no dependency to your repository. The semantic binaries keep the
+  package's existing Node contract.
+- **Chat is capability-gated.** Where the harness can delegate a child agent,
+  deliver its completion back, and stay interruptible, the browser carries a
+  chat widget answered by a bounded visual agent. That agent may replace only
+  the temporary session model; it cannot edit repository files, `.yarramate/`,
+  credentials, or harness configuration.
+- **Otherwise you get diagram-only mode.** The same custom renderer and view
+  navigation, with the conversation continuing in the main harness.
+- **Recovery is the main agent's.** On End, cancellation, or any failure the
+  main agent recovers a structured handoff — confirmed decisions, requested
+  changes, unresolved questions, final views, termination reason — before
+  anything is torn down. The raw transcript is returned only on request.
+- **Cleanup is automatic.** Stopping shuts the server process tree down and
+  deletes the temporary session; a later start prunes any orphan older than
+  24 hours.
+
+Consumers validating the protocol can import the versioned documents directly,
+for example `yarramate/schema/visual-handoff` or
+`yarramate/schema/visual-session-request`.
+
 ## MCP server for agent harnesses
 
 Harnesses that load MCP servers can connect the bundled read-only adapter:

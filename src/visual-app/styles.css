@@ -1,0 +1,739 @@
+/*
+ * A drafting desk, not a dashboard: paper ground, charcoal ink, hairline rules,
+ * and one signature — the diagram holds the whole workspace, with a single
+ * compact strip above it and a conversation the reviewer sizes or puts away.
+ *
+ * Every face is a system stack, every colour is one of the six the session
+ * speaks in, and nothing is loaded from anywhere but this origin.
+ */
+
+:root {
+  --paper: #e8eef0;
+  --ink: #182228;
+  --eucalyptus: #416f65;
+  --ochre: #8c4d18;
+  --cobalt: #2457a6;
+  --failure: #a3403a;
+
+  --sheet: color-mix(in oklab, var(--paper) 55%, white);
+  --rule: color-mix(in oklab, var(--ink) 16%, transparent);
+  --rule-firm: color-mix(in oklab, var(--ink) 34%, transparent);
+  --quiet: color-mix(in oklab, var(--ink) 62%, var(--paper));
+
+  --display: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua',
+    Georgia, serif;
+  --body: 'Avenir Next', Avenir, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    system-ui, sans-serif;
+  --utility: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+
+  --step: 0.5rem;
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 3px solid var(--cobalt);
+  outline-offset: 2px;
+}
+
+.offscreen {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ----------------------------------------------------------------- shell */
+
+.visual-shell {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-width: 0;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+/* --------------------------------------------------------- command strip */
+
+.command-strip {
+  position: relative;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: calc(var(--step) * 2);
+  min-height: 48px;
+  padding: calc(var(--step) * 0.75) calc(var(--step) * 2);
+  border-bottom: 1px solid var(--rule);
+  background: var(--sheet);
+}
+
+.command-identity,
+.command-actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--step);
+}
+
+.command-identity h1 {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-family: var(--display);
+  font-size: 15px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.command-actions select,
+.command-actions button {
+  min-height: 32px;
+  padding: 0 0.7rem;
+  font-family: var(--utility);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule-firm);
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.command-actions select {
+  /* The native arrow is the one piece of OS chrome worth keeping: it is the
+     only affordance saying this control has a list behind it. */
+  padding-right: 0.35rem;
+}
+
+.command-actions select:hover:enabled,
+.command-actions button:hover:enabled {
+  border-color: var(--cobalt);
+}
+
+.command-actions select:disabled,
+.command-actions button:disabled {
+  color: var(--quiet);
+  background: transparent;
+  border-color: var(--rule);
+  cursor: not-allowed;
+}
+
+.command-actions button[aria-expanded='true'] {
+  color: var(--paper);
+  background: var(--cobalt);
+  border-color: var(--cobalt);
+}
+
+.command-actions .end-session:hover:enabled {
+  color: var(--paper);
+  background: var(--failure);
+  border-color: var(--failure);
+}
+
+.connection-state {
+  flex: none;
+  font-family: var(--utility);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--quiet);
+}
+
+.end-transition-status {
+  max-width: 28rem;
+  font-family: var(--utility);
+  font-size: 11px;
+  line-height: 1.25;
+  color: var(--quiet);
+}
+
+.end-transition-status:empty {
+  display: none;
+}
+
+.authority {
+  margin: 0;
+  font-family: var(--utility);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--eucalyptus);
+}
+
+.authority::before {
+  content: '';
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.5rem;
+  vertical-align: 0;
+  background: currentColor;
+}
+
+.authority-ad-hoc {
+  color: var(--ochre);
+}
+
+/* A static claim about the feature, not a live status — bordered like a tag
+   rather than dot-prefixed like `.authority`, so it never reads as part of
+   the session's own state. */
+.beta-badge {
+  flex: none;
+  padding: 0.05rem 0.4rem;
+  font-family: var(--utility);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ochre);
+  border: 1px solid var(--ochre);
+}
+
+/* Laid over the workspace, never in it: static prose must not cost the diagram
+   a single pixel of height, so the disclosure hangs off the strip instead of
+   taking a row in the shell grid. */
+.session-details {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: calc(var(--step) * 2);
+  padding: var(--step) calc(var(--step) * 2) calc(var(--step) * 1.5);
+  border-bottom: 1px solid var(--rule);
+  background: var(--sheet);
+  box-shadow: 0 12px 28px rgb(19 35 57 / 12%);
+}
+
+.session-details[hidden] {
+  display: none;
+}
+
+.session-details p {
+  max-width: 90ch;
+  margin: 0;
+  color: var(--quiet);
+}
+
+.details-close {
+  flex: none;
+  margin-left: auto;
+  min-height: 28px;
+  padding: 0 0.6rem;
+  font-family: var(--utility);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule-firm);
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.details-close:hover {
+  border-color: var(--cobalt);
+}
+
+.attention-count {
+  min-width: 1.25rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--cobalt);
+  color: white;
+  font-size: 11px;
+  text-align: center;
+}
+
+/* ------------------------------------------------------------- workspace */
+
+.workspace {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.workspace-conversation-open {
+  grid-template-columns: minmax(0, 1fr) auto var(--conversation-width);
+}
+
+.workspace-conversation-closed {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.diagram-workspace {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--paper);
+}
+
+/* The diagram owns its box. LikeC4 sizes its shadow host from a stylesheet it
+   injects at runtime, which this page's policy does not admit, so the host is
+   sized from here instead. Only the host: the blocked <style> element is a
+   sibling, and a display rule would put its source text on the page. */
+.canvas,
+.diagram {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* The canvas fills the workspace, so the renderer's own fault is laid over the
+   drawing it could not replace rather than clipped out of the page. */
+.diagram-workspace > .faults {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 4;
+  max-height: 50%;
+  overflow: auto;
+}
+
+.conversation-separator {
+  position: relative;
+  z-index: 3;
+  width: 10px;
+  height: 100%;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.conversation-separator::before {
+  position: absolute;
+  inset: 0 auto 0 4px;
+  width: 1px;
+  background: var(--rule);
+  content: '';
+}
+
+.conversation-separator:hover::before,
+.conversation-separator:focus-visible::before {
+  width: 2px;
+  background: var(--cobalt);
+}
+
+.waiting {
+  margin: 0;
+  padding: calc(var(--step) * 4);
+  font-family: var(--utility);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--quiet);
+}
+
+/* ------------------------------------------------------------------ talk */
+
+.talk {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-left: 1px solid var(--rule);
+  background: var(--sheet);
+}
+
+.talk[hidden] {
+  display: none;
+}
+
+.conversation-scroll {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+.subject-inspector {
+  min-width: 0;
+  padding: calc(var(--step) * 1.5);
+  border-bottom: 1px solid var(--rule);
+  background: color-mix(in srgb, var(--sheet) 92%, var(--cobalt) 8%);
+}
+
+.subject-heading-row {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--step);
+}
+
+.subject-heading-row > :first-child,
+.subject-heading-row h2 {
+  min-width: 0;
+}
+
+.subject-type {
+  margin: 0 0 calc(var(--step) * 0.25);
+  color: var(--quiet);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.subject-heading-row h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 16px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.subject-facts {
+  display: grid;
+  gap: calc(var(--step) * 0.5);
+  margin: var(--step) 0;
+}
+
+.subject-facts > div {
+  display: grid;
+  grid-template-columns: minmax(5.5rem, auto) minmax(0, 1fr);
+  gap: var(--step);
+}
+
+.subject-facts dt {
+  color: var(--quiet);
+  font-size: 11px;
+}
+
+.subject-facts dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.subject-description p {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.description-clamped {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.subject-description button,
+.subject-navigate,
+.subject-clear {
+  margin-top: calc(var(--step) * 0.5);
+  min-height: 28px;
+}
+
+.ledger {
+  margin: 0;
+  padding: calc(var(--step) * 2) calc(var(--step) * 2.5);
+  list-style: none;
+  min-height: 0;
+  overflow: visible;
+}
+
+.ledger .empty p {
+  margin: 0;
+  color: var(--quiet);
+  font-family: var(--utility);
+  font-size: 12px;
+}
+
+.said {
+  padding: 0 0 calc(var(--step) * 1.75) calc(var(--step) * 1.5);
+  border-left: 2px solid var(--rule);
+}
+
+.said + .said {
+  padding-top: calc(var(--step) * 1.75);
+}
+
+.said-reviewer {
+  border-left-color: var(--cobalt);
+}
+
+.said-agent {
+  border-left-color: var(--eucalyptus);
+}
+
+.said-session {
+  border-left-color: var(--ochre);
+}
+
+.who {
+  margin: 0 0 0.15rem;
+  font-family: var(--utility);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--quiet);
+}
+
+.words {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.faults {
+  padding: calc(var(--step) * 1.5) calc(var(--step) * 2.5);
+  border-top: 1px solid var(--failure);
+  background: color-mix(in oklab, var(--failure) 8%, var(--sheet));
+}
+
+.faults-title {
+  margin: 0 0 var(--step);
+  font-size: 13px;
+  color: var(--failure);
+}
+
+.faults ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-family: var(--utility);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.faults .code {
+  font-weight: 700;
+}
+
+.faults .where {
+  color: var(--quiet);
+  margin-left: 0.4rem;
+}
+
+.choices {
+  padding: calc(var(--step) * 1.5) calc(var(--step) * 2.5);
+  border-top: 1px solid var(--rule);
+}
+
+.question {
+  margin: 0 0 var(--step);
+  font-family: var(--display);
+  font-size: 1.05rem;
+}
+
+.choices ul {
+  display: grid;
+  gap: var(--step);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.choices button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 0.7rem;
+  font-family: var(--body);
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule-firm);
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.choices button:hover:enabled {
+  border-color: var(--cobalt);
+}
+
+.choices button:disabled {
+  color: var(--quiet);
+  cursor: not-allowed;
+}
+
+.choices .detail {
+  display: block;
+  font-size: 12px;
+  color: var(--quiet);
+}
+
+.composer {
+  padding: calc(var(--step) * 1.5) calc(var(--step) * 2.5)
+    calc(var(--step) * 2);
+  border-top: 1px solid var(--rule);
+}
+
+.composer textarea {
+  display: block;
+  width: 100%;
+  resize: vertical;
+  padding: 0.55rem 0.65rem;
+  font-family: var(--body);
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule-firm);
+  border-radius: 0;
+}
+
+.composer textarea:disabled {
+  color: var(--quiet);
+  background: color-mix(in oklab, var(--paper) 70%, var(--sheet));
+  cursor: not-allowed;
+}
+
+.composer-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--step);
+  margin-top: var(--step);
+}
+
+.agent-status {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--step) * 0.5);
+  margin: 0;
+  font-family: var(--utility);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--quiet);
+}
+
+.agent-spinner {
+  width: 0.75rem;
+  height: 0.75rem;
+  flex: none;
+  border: 1px solid currentcolor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: agent-spinner-turn 700ms linear infinite;
+}
+
+@keyframes agent-spinner-turn {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+.composer button {
+  padding: 0.45rem 1.1rem;
+  font-family: var(--utility);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--paper);
+  background: var(--cobalt);
+  border: 1px solid var(--cobalt);
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.composer button:disabled {
+  color: var(--quiet);
+  background: transparent;
+  border-color: var(--rule-firm);
+  cursor: not-allowed;
+}
+
+.subject-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--step);
+  margin-bottom: calc(var(--step) * 0.75);
+  padding: calc(var(--step) * 0.5) calc(var(--step) * 0.75);
+  border: 1px solid var(--cobalt);
+  border-radius: 999px;
+  color: var(--cobalt);
+}
+
+.subject-chip span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subject-chip button {
+  flex: none;
+  min-height: 24px;
+  padding: 0 calc(var(--step) * 0.5);
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+
+/* ---------------------------------------------------------------- narrow */
+
+@media (max-width: 899px) {
+  .command-strip {
+    grid-template-columns: 1fr;
+    gap: calc(var(--step) * 0.5);
+    padding-inline: var(--step);
+  }
+
+  .command-identity,
+  .command-actions {
+    gap: calc(var(--step) * 0.5);
+  }
+
+  .command-actions {
+    overflow-x: auto;
+  }
+
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    min-height: 0;
+  }
+
+  .conversation-separator {
+    display: none;
+  }
+
+  .talk {
+    max-height: 56dvh;
+    border-top: 1px solid var(--rule);
+    border-left: 0;
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 -12px 36px rgb(19 35 57 / 14%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

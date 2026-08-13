@@ -60,15 +60,25 @@ const coreContractProjection = {
   ),
 }
 
+const repositorySource = (path: string) => ({
+  path,
+  source: readFileSync(
+    fileURLToPath(new URL(`../${path}`, import.meta.url)),
+    'utf8',
+  ),
+})
+
+const selfModelSources = [
+  developmentProfile,
+  model('product'),
+  model('engine'),
+  model('repository'),
+  model('evolution'),
+]
+
 describe('YarraMate repository model', () => {
   it('conforms through the native compiler and exposes core architecture claims', () => {
-    const result = compileWorkspace([
-      developmentProfile,
-      model('product'),
-      model('engine'),
-      model('repository'),
-      model('evolution'),
-    ])
+    const result = compileWorkspace(selfModelSources)
 
     expect(result.ok).toBe(true)
     if (result.ok) {
@@ -183,22 +193,48 @@ describe('YarraMate repository model', () => {
     }
   })
 
+  it('models the recoverable visual conversation path', () => {
+    const result = compileWorkspace(selfModelSources)
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+
+    expect(result.graph.subjects).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'yarramate-engine#visual-runtime' }),
+        expect.objectContaining({
+          id: 'yarramate-engine#visual-session-service',
+        }),
+        expect.objectContaining({ id: 'yarramate-engine#visual-browser' }),
+        expect.objectContaining({
+          id: 'yarramate-engine#visual-session-protocol',
+        }),
+        expect.objectContaining({ id: 'yarramate-engine#visual-handoff' }),
+      ]),
+    )
+
+    const projection = loadProjection(
+      repositorySource('.yarramate/projections/visual-conversation-path.yaml'),
+    )
+    expect(projection.ok).toBe(true)
+    if (!projection.ok) return
+
+    const rendered = evaluateProjection(result.graph, projection.projection)
+    expect(rendered.subjects.map(({ id }) => id)).toEqual(
+      expect.arrayContaining([
+        'yarramate-engine#visual-runtime',
+        'yarramate-engine#visual-browser',
+        'yarramate-engine#visual-session-protocol',
+        'yarramate-engine#visual-handoff',
+        'yarramate-product#agent-harness',
+        'yarramate-repository#agent-skill-source',
+      ]),
+    )
+  })
+
   it('renders its architecture-state change through the optional LikeC4 adapter', () => {
-    const repositorySource = (path: string) => ({
-      path,
-      source: readFileSync(
-        fileURLToPath(new URL(`../${path}`, import.meta.url)),
-        'utf8',
-      ),
-    })
     const result = prepareLikeC4Export({
-      sources: [
-        developmentProfile,
-        model('product'),
-        model('engine'),
-        model('repository'),
-        model('evolution'),
-      ],
+      sources: selfModelSources,
       projection: repositorySource(
         '.yarramate/projections/state-engine-change.yaml',
       ),

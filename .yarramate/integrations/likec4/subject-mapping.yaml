@@ -1392,12 +1392,21 @@ mappings:
   - native: yarramate-engine#consumer-host-composes-runtime
     external: consumerHostComposesRuntime
     type: relationship
+  - native: yarramate-engine#consumer-host-composes-web-browser
+    external: consumerHostComposesWebBrowser
+    type: relationship
   - native: yarramate-engine#consumer-host-deploys-package
     external: consumerHostDeploysPackage
     type: relationship
   - native: yarramate-engine#nodejs-runtime
     external: nodejsRuntime
     type: concept
+  - native: yarramate-engine#local-web-browser
+    external: localWebBrowser
+    type: concept
+  - native: yarramate-engine#web-browser-serves-visual-browser
+    external: webBrowserServesVisualBrowser
+    type: relationship
   - native: yarramate-engine#npm-package
     external: npmPackage
     type: concept
@@ -1406,6 +1415,9 @@ mappings:
     type: relationship
   - native: yarramate-engine#runtime-serves-cli
     external: runtimeServesCli
+    type: relationship
+  - native: yarramate-engine#runtime-serves-visual-runtime
+    external: runtimeServesVisualRuntime
     type: relationship
   - native: yarramate-engine#runtime-serves-graphify-adapter
     external: runtimeServesGraphifyAdapter
@@ -1514,4 +1526,160 @@ mappings:
     type: relationship
   - native: yarramate-engine#compiler-derives-traceability-matrix
     external: compilerDerivesTraceabilityMatrix
+    type: relationship
+  - native: yarramate-engine#recover-visual-session
+    external: recoverVisualSession
+    type: concept
+  - native: yarramate-engine#render-visual-model
+    external: renderVisualModel
+    type: concept
+  - native: yarramate-engine#visual-browser
+    external: visualBrowser
+    type: concept
+  - native: yarramate-engine#present-visual-conversation
+    external: presentVisualConversation
+    type: concept
+  - native: yarramate-engine#visual-browser-presents-conversation
+    external: visualBrowserPresentsConversation
+    type: relationship
+  - native: yarramate-engine#visual-browser-exchanges-protocol
+    external: visualBrowserExchangesProtocol
+    type: relationship
+  - native: yarramate-engine#visual-handoff
+    external: visualHandoff
+    type: concept
+  - native: yarramate-engine#visual-recovery-writes-handoff
+    external: visualRecoveryWritesHandoff
+    type: relationship
+  - native: yarramate-engine#visual-rendering-reads-protocol
+    external: visualRenderingReadsProtocol
+    type: relationship
+  - native: yarramate-engine#visual-runtime
+    external: visualRuntime
+    type: concept
+  - native: yarramate-engine#visual-runtime-provides-session-command
+    external: visualRuntimeProvidesSessionCommand
+    type: relationship
+  - native: yarramate-engine#visual-runtime-recovers-session
+    external: visualRuntimeRecoversSession
+    type: relationship
+  - native: yarramate-engine#visual-runtime-renders-model
+    external: visualRuntimeRendersModel
+    type: relationship
+  - native: yarramate-engine#visual-runtime-serves-browser
+    external: visualRuntimeServesBrowser
+    type: relationship
+  - native: yarramate-engine#visual-session-protocol
+    external: visualSessionProtocol
+    type: concept
+  - native: yarramate-engine#visual-session-serves-agent-harness
+    external: visualSessionServesAgentHarness
+    type: relationship
+  - native: yarramate-engine#visual-session-service
+    external: visualSessionService
+    type: concept
+  - native: yarramate-repository#agent-skill-references-visual-conversations
+    external: agentSkillReferencesVisualConversations
+    type: relationship
+  - native: yarramate-repository#visual-browser-shell
+    external: visualBrowserShell
+    type: concept
+  - native: yarramate-repository#visual-browser-shell-realizes-browser
+    external: visualBrowserShellRealizesBrowser
+    type: relationship
+  - native: yarramate-repository#visual-browser-source
+    external: visualBrowserSource
+    type: concept
+  - native: yarramate-repository#visual-browser-source-realizes-browser
+    external: visualBrowserSourceRealizesBrowser
+    type: relationship
+  - native: yarramate-repository#visual-browser-tests
+    external: visualBrowserTests
+    type: concept
+  - native: yarramate-repository#visual-browser-tests-validate-browser
+    external: visualBrowserTestsValidateBrowser
+    type: relationship
+  - native: yarramate-repository#visual-cli-source
+    external: visualCliSource
+    type: concept
+  - native: yarramate-repository#visual-cli-source-realizes-session-command
+    external: visualCliSourceRealizesSessionCommand
+    type: relationship
+  - native: yarramate-repository#visual-cli-tests
+    external: visualCliTests
+    type: concept
+  - native: yarramate-repository#visual-cli-tests-validate-session-command
+    external: visualCliTestsValidateSessionCommand
+    type: relationship
+  - native: yarramate-repository#visual-compiler-tests-validate-rendering
+    external: visualCompilerTestsValidateRendering
+    type: relationship
+  - native: yarramate-repository#visual-event-schema-realizes-protocol
+    external: visualEventSchemaRealizesProtocol
+    type: relationship
+  - native: yarramate-repository#visual-event-schema-source
+    external: visualEventSchemaSource
+    type: concept
+  - native: yarramate-repository#visual-handoff-schema-realizes-handoff
+    external: visualHandoffSchemaRealizesHandoff
+    type: relationship
+  - native: yarramate-repository#visual-handoff-schema-source
+    external: visualHandoffSchemaSource
+    type: concept
+  - native: yarramate-repository#visual-journey-tests
+    external: visualJourneyTests
+    type: concept
+  - native: yarramate-repository#visual-journey-tests-validate-handoff
+    external: visualJourneyTestsValidateHandoff
+    type: relationship
+  - native: yarramate-repository#visual-likec4-compiler-realizes-rendering
+    external: visualLikec4CompilerRealizesRendering
+    type: relationship
+  - native: yarramate-repository#visual-likec4-compiler-source
+    external: visualLikec4CompilerSource
+    type: concept
+  - native: yarramate-repository#visual-likec4-compiler-tests
+    external: visualLikec4CompilerTests
+    type: concept
+  - native: yarramate-repository#visual-protocol-source
+    external: visualProtocolSource
+    type: concept
+  - native: yarramate-repository#visual-protocol-source-realizes-protocol
+    external: visualProtocolSourceRealizesProtocol
+    type: relationship
+  - native: yarramate-repository#visual-protocol-tests
+    external: visualProtocolTests
+    type: concept
+  - native: yarramate-repository#visual-protocol-tests-validate-protocol
+    external: visualProtocolTestsValidateProtocol
+    type: relationship
+  - native: yarramate-repository#visual-reference-documents-session-command
+    external: visualReferenceDocumentsSessionCommand
+    type: relationship
+  - native: yarramate-repository#visual-server-tests-validate-runtime
+    external: visualServerTestsValidateRuntime
+    type: relationship
+  - native: yarramate-repository#visual-session-server-realizes-runtime
+    external: visualSessionServerRealizesRuntime
+    type: relationship
+  - native: yarramate-repository#visual-session-server-source
+    external: visualSessionServerSource
+    type: concept
+  - native: yarramate-repository#visual-session-server-tests
+    external: visualSessionServerTests
+    type: concept
+  - native: yarramate-repository#visual-session-store-realizes-recovery
+    external: visualSessionStoreRealizesRecovery
+    type: relationship
+  - native: yarramate-repository#visual-session-store-source
+    external: visualSessionStoreSource
+    type: concept
+  - native: yarramate-repository#visual-session-store-tests
+    external: visualSessionStoreTests
+    type: concept
+  - native: yarramate-repository#visual-skill-reference
+    external: visualSkillReference
+    type: concept
+  - native: yarramate-repository#visual-store-tests-validate-recovery
+    external: visualStoreTestsValidateRecovery
     type: relationship

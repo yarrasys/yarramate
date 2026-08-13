@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2022",
+    "lib": ["ES2024"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "strict": true,
@@ -9,5 +10,12 @@
     "resolveJsonModule": true,
     "types": ["node", "vitest/globals"]
   },
-  "include": ["src/**/*.ts", "test/**/*.ts"]
+  "include": ["src/**/*.ts", "test/**/*.ts"],
+  // The browser application is a separate program with its own libs and
+  // its own build: `tsconfig.visual.json` owns it.
+  "exclude": [
+    "src/visual-app",
+    "test/visual-workspace-state.test.ts",
+    "test/visual-app-render.test.ts"
+  ]
 }
