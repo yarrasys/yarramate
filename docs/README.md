@@ -28,6 +28,7 @@
 
 - [Adapter mappings and LikeC4](ADAPTER-MAPPINGS.md)
 - [Graphify evidence adapter](GRAPHIFY-ADAPTER.md)
+- [Visual conversation adapter](VISUAL-ADAPTER.md)
 
 ## Maintainer material
 
