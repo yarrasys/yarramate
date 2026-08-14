@@ -32,7 +32,6 @@
         "chat.response",
         "agent.status",
         "choice.present",
-        "model.replace",
         "handoff.complete",
         "diagnostic"
       ]
@@ -67,14 +66,6 @@
       "properties": {
         "type": { "const": "choice.present" },
         "payload": { "$ref": "#/$defs/choicePresentPayload" }
-      }
-    },
-    {
-      "type": "object",
-      "required": ["type", "payload"],
-      "properties": {
-        "type": { "const": "model.replace" },
-        "payload": { "$ref": "#/$defs/modelReplacePayload" }
       }
     },
     {
@@ -180,16 +171,6 @@
               }
             }
           }
-        }
-      }
-    },
-    "modelReplacePayload": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["model"],
-      "properties": {
-        "model": {
-          "$ref": "https://yarramate.org/schema/visual-model/v1"
         }
       }
     },
