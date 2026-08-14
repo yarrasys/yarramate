@@ -8,6 +8,8 @@
  * contract: it can import these declarations and limits without pulling Ajv,
  * `node:path`, or the schema documents into its bundle.
  */
+import type { CanvasGraph } from '../../graph-projection.js'
+
 export const VISUAL_PROTOCOL_VERSION = 'yarramate/visual-protocol/v1' as const
 
 export const VISUAL_LIMITS = {
@@ -49,12 +51,7 @@ export interface VisualModel {
   readonly authority: VisualAuthority
   readonly initialView: string
   readonly sourceDigests: Readonly<Record<string, string>>
-  readonly files: Readonly<Record<string, string>>
-}
-
-export interface VisualCompilerCommand {
-  readonly command: string
-  readonly args: readonly string[]
+  readonly graph: CanvasGraph
 }
 
 export interface VisualSessionRequest {
@@ -63,7 +60,6 @@ export interface VisualSessionRequest {
   readonly title: string
   readonly description: string
   readonly chatEnabled: boolean
-  readonly compiler: VisualCompilerCommand
   readonly initialModel: VisualModel
 }
 
@@ -206,10 +202,6 @@ export interface VisualChoicePresentPayload {
   readonly options: readonly VisualChoiceOption[]
 }
 
-export interface VisualModelReplacePayload {
-  readonly model: VisualModel
-}
-
 export interface VisualHandoffSummary {
   readonly summary: string
   readonly confirmedDecisions: readonly string[]
@@ -236,7 +228,6 @@ export type VisualResponse =
   | VisualResponseEnvelope<'chat.response', VisualChatResponsePayload>
   | VisualResponseEnvelope<'agent.status', VisualAgentStatusPayload>
   | VisualResponseEnvelope<'choice.present', VisualChoicePresentPayload>
-  | VisualResponseEnvelope<'model.replace', VisualModelReplacePayload>
   | VisualResponseEnvelope<'handoff.complete', VisualHandoffSummary>
   | VisualResponseEnvelope<'diagnostic', VisualDiagnosticPayload>
 

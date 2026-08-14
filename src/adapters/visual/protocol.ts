@@ -145,9 +145,6 @@ const jsonBytes = (value: unknown): number => {
   return Buffer.byteLength(encoded, 'utf8')
 }
 
-const MODEL_ROOT_CONFIG = 'likec4.config.json'
-const MODEL_SOURCE_EXTENSIONS = ['.c4', '.likec4'] as const
-
 /**
  * Relative POSIX path confined to the candidate root. Absolute paths, parent
  * traversal, empty segments, dot-prefixed segments (how a staged symlink or
@@ -164,13 +161,6 @@ const isConfinedRelativePath = (candidate: string): boolean => {
     .every((segment) => segment.length > 0 && !segment.startsWith('.'))
 }
 
-export const isSafeVisualModelPath = (candidate: string): boolean => {
-  if (!isConfinedRelativePath(candidate)) return false
-  if (candidate === MODEL_ROOT_CONFIG) return true
-  const extension = posix.extname(candidate)
-  return MODEL_SOURCE_EXTENSIONS.some((allowed) => allowed === extension)
-}
-
 const modelSemantics = (
   input: unknown,
   path: string,
@@ -178,36 +168,6 @@ const modelSemantics = (
 ): readonly VisualDiagnostic[] => {
   const fields = documentFields(input)
   const diagnostics: VisualDiagnostic[] = []
-
-  const files = documentFields(fields.files)
-  const fileKeys = Object.keys(files)
-  if (fileKeys.length > 0) {
-    let sources = 0
-    for (const key of fileKeys) {
-      if (!isSafeVisualModelPath(key)) {
-        diagnostics.push(
-          visualDiagnostic(
-            'YMVS113',
-            `Model file "${key}" escapes the candidate root or is not a LikeC4 source`,
-            path,
-            `${prefix}/files/${pointerSegment(key)}`,
-          ),
-        )
-        continue
-      }
-      if (key !== MODEL_ROOT_CONFIG) sources += 1
-    }
-    if (sources === 0) {
-      diagnostics.push(
-        visualDiagnostic(
-          'YMVS114',
-          'A visual model requires at least one .c4 or .likec4 source file',
-          path,
-          `${prefix}/files`,
-        ),
-      )
-    }
-  }
 
   const digestKeys = Object.keys(documentFields(fields.sourceDigests))
   for (const key of digestKeys) {
@@ -320,13 +280,6 @@ const responseSemantics = (
   const fields = documentFields(input)
   if (fields.type === 'chat.response') {
     return chatTextSemantics(fields.payload, path, '/payload')
-  }
-  if (fields.type === 'model.replace') {
-    return modelSemantics(
-      documentFields(fields.payload).model,
-      path,
-      '/payload/model',
-    )
   }
   return []
 }
