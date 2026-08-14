@@ -112,7 +112,7 @@ order).
 
 ## Tasks
 
-### 1. `src/graph-projection.ts` — claims → CanvasGraph (pure, no I/O)
+### Task 1: `src/graph-projection.ts` — claims → CanvasGraph (pure, no I/O)
 
 Export `CanvasNode`, `CanvasEdge`, `CanvasGraph`, and
 `projectGraphForCanvas(graph: SemanticGraph, profileContext: ResolvedProfileContext): CanvasGraph`.
@@ -147,7 +147,7 @@ Algorithm:
   must not be hidden behind an empty string.
 - Sort `nodes`/`edges` by `id` before returning.
 
-### 2. `test/graph-projection.test.ts`
+### Task 2: `test/graph-projection.test.ts`
 
 Do not hand-author claims. Build tiny literal `WorkspaceSource` documents (YAML text, one or two documents),
 run them through `compileWorkspace` (already imported/used this way in other adapter tests — check
@@ -165,7 +165,7 @@ into `projectGraphForCanvas`. Cover:
   isn't separately exercised).
 - Two concepts/relationships fed in reverse declaration order come back sorted by id.
 
-### 3. New schema `schema/yarramate-visual-graph.schema.json`
+### Task 3: New schema `schema/yarramate-visual-graph.schema.json`
 
 `$id: https://yarramate.org/schema/visual-graph/v1`, `additionalProperties: false` throughout, mirroring
 `CanvasGraph` exactly (nodes/edges arrays, required fields per the interface above, nullable fields as
@@ -173,22 +173,22 @@ into `projectGraphForCanvas`. Cover:
 as `"./schema/visual-graph": "./schema/yarramate-visual-graph.schema.json"` alongside the other `visual-*`
 schema entries (follow existing naming/ordering convention in that block exactly).
 
-### 4. Edit `schema/yarramate-visual-model.schema.json`
+### Task 4: Edit `schema/yarramate-visual-model.schema.json`
 
 Remove `files`, `modelFilePath`, `textFile` properties/$defs and their `allOf` canonical/ad-hoc constraint on
 `sourceDigests` stays (it is about source-document staleness, not DSL staging — keep it unchanged). Add
 required `graph` property: `{"$ref": "https://yarramate.org/schema/visual-graph/v1"}`. Update `required` array.
 
-### 5. Edit `schema/yarramate-visual-session-request.schema.json`
+### Task 5: Edit `schema/yarramate-visual-session-request.schema.json`
 
 Remove the `compiler` property and its `VisualCompilerCommand`-shaped `$def` entirely. Update `required`.
 
-### 6. Edit `schema/yarramate-visual-response.schema.json`
+### Task 6: Edit `schema/yarramate-visual-response.schema.json`
 
 Remove the `model.replace` branch from the response `oneOf` and its `modelReplacePayload` `$def`. Chat
 responses may no longer carry a model mutation.
 
-### 7. Edit `src/adapters/visual/protocol-contract.ts`
+### Task 7: Edit `src/adapters/visual/protocol-contract.ts`
 
 - Remove `VisualCompilerCommand` interface.
 - `VisualSessionRequest`: remove `compiler` field.
@@ -200,14 +200,14 @@ responses may no longer carry a model mutation.
   `VisualModelReplacePayload`, the `files`/`sourceDigests`-as-pair usage) to catch every call site — this is
   the authoritative check, not grep.
 
-### 8. Delete `src/adapters/visual/likec4-compiler.ts` and `test/visual-likec4-compiler.test.ts`
+### Task 8: Delete `src/adapters/visual/likec4-compiler.ts` and `test/visual-likec4-compiler.test.ts`
 
 Confirm via `xd://lsp` `references` on every exported symbol from `likec4-compiler.ts`
 (`compileVisualModel`, `VISUAL_COMPILER_DOCUMENT`, `VISUAL_COMPILER_EXPORT_FILE`, `VISUAL_COMPILER_LIMITS`,
 `CompileVisualModelOptions`, `CompiledVisualModel`, `LikeC4CompilationResult`) before deleting, and remove
 every call site (expected: `session-server.ts`, possibly `session-store.ts`).
 
-### 9. Edit `src/adapters/visual/session-store.ts`
+### Task 9: Edit `src/adapters/visual/session-store.ts`
 
 Remove `promoteCompiledModel`, `ModelPromotion`, `ModelPromotionResult`, and any `.likec4-export.json`-specific
 path handling (check `xd://lsp` references first, same rule as task 8). Add whatever construction step now
@@ -217,7 +217,7 @@ produce `graph`. On compile failure, surface the existing diagnostic-shaped reje
 error shape — reuse whatever `VisualDiagnostic` construction already exists for compile failures elsewhere in
 this file/`session-server.ts`).
 
-### 10. Edit `src/adapters/visual/session-server.ts`
+### Task 10: Edit `src/adapters/visual/session-server.ts`
 
 Remove the compiler-subprocess wiring: `VISUAL_COMPILER_LIMITS` references, the compile-on-connect subprocess
 call path, `compilerAbort`/its `AbortController`, and the `'model.replace'` case in `acceptResponse`/wherever
@@ -225,7 +225,7 @@ outgoing agent responses are routed to the browser. Keep every other admission/s
 untouched. `xd://lsp` `diagnostics` on this file after edits — it is large (2500+ lines per the earlier grep)
 and easy to leave an unreachable branch or unused import behind.
 
-### 11. Fixtures
+### Task 11: Fixtures
 
 - Delete `test/fixtures/visual/fake-likec4.mjs`.
 - Delete `test/fixtures/visual/model.json` (LikeC4-shaped fake export, no longer meaningful).
@@ -238,7 +238,7 @@ and easy to leave an unreachable branch or unused import behind.
   DSL-staging pair, or exercises `model.replace`, to match the new contract (some of these tests may no
   longer apply at all — e.g. `model.replace` acceptance tests — remove them, don't stub them out).
 
-### 12. Frontend deps
+### Task 12: Frontend deps
 
 Add to `package.json` `devDependencies` (visual-app only consumers, `pnpm typecheck`'s
 `tsconfig.visual.json`/`pnpm build:visual` pull them in): `cytoscape`, `cytoscape-elk`, `elkjs`,
@@ -246,7 +246,7 @@ Add to `package.json` `devDependencies` (visual-app only consumers, `pnpm typech
 `react-dom` stay too (the visual-app shell, chat panel, inspector panel are still React; only the diagram
 canvas itself moves off `ReactLikeC4`).
 
-### 13. `src/visual-app/graph-canvas.tsx`
+### Task 13: `src/visual-app/graph-canvas.tsx`
 
 New component: `GraphCanvas({ graph: CanvasGraph, selectedId, onSelect }: Props)`. Mounts a `cytoscape` instance
 on a ref'd `<div>` inside a `useEffect` (create once, `cy.destroy()` on unmount), registers the `elk` extension
@@ -262,7 +262,7 @@ than re-deriving from memory), runs `cy.layout({ name: 'elk', elk: { algorithm: 
 `node`/`edge` to call `onSelect(id, type)`. No notation toggle, no drag-to-reposition, no edit affordances in
 this component yet — those are later plans.
 
-### 14. Edit `src/visual-app/App.tsx`
+### Task 14: Edit `src/visual-app/App.tsx`
 
 Replace the `LikeC4ModelProvider`/`ReactLikeC4` usage inside `DiagramWorkspace` (`App.tsx:246-393` per the
 earlier structural read) with `<GraphCanvas graph={state.drawing.graph} .../>`. `xd://lsp` `references` on
@@ -271,7 +271,7 @@ depends on them before removing the import lines. Selection callback wiring (`on
 stays structurally the same — only the element/edge id shape it receives changes (real `CanvasNode`/
 `CanvasEdge` ids, not LikeC4 fqn-shaped ids).
 
-### 15. Edit `src/visual-app/workspace-state.ts`
+### Task 15: Edit `src/visual-app/workspace-state.ts`
 
 Replace the LikeC4-shaped `DiagramElementInput`/`DiagramRelationshipInput` interfaces (`modelRef`,
 `deploymentRef`, `technology`, `tags`, `notation`, etc. per the earlier structural read) with fields matching
@@ -283,7 +283,7 @@ parallel shape — `import type { CanvasNode, CanvasEdge } from '../graph-projec
 `description` on `CanvasNode`/`CanvasEdge` are plain strings, not `MarkdownOrString` — confirm and simplify
 those call sites rather than keeping unused markdown-flattening for fields that are no longer markdown-typed).
 
-### 16. `test/visual-app-render.test.ts`, `test/visual-app-state.test.ts`
+### Task 16: `test/visual-app-render.test.ts`, `test/visual-app-state.test.ts`
 
 Update the hoisted `baseState`/session mocks in both files to the new `VisualAppState.drawing`/model shape.
 None of the assertions about session lifecycle labels, End/handoff banners, or the "Beta" command-strip label
@@ -291,7 +291,7 @@ should need behavioral changes — only the fixture data feeding them. If any as
 LikeC4-specific rendering details (element/deployment node shapes, tags), replace it with the equivalent
 assertion against `CanvasNode`/`CanvasEdge` fields, don't delete coverage.
 
-### 17. Audit remaining visual tests
+### Task 17: Audit remaining visual tests
 
 `grep` `test/visual-cli.test.ts`, `test/visual-journey.test.ts`, `test/visual-protocol.test.ts`,
 `test/visual-workspace-state.test.ts` for `compiler`, `files`, `sourceDigests` (as a DSL-staging field, not
