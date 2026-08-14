@@ -8,6 +8,9 @@ import visualDiagnosticResultSchema from '../../../schema/yarramate-visual-diagn
 import visualEventSchema from '../../../schema/yarramate-visual-event.schema.json' with {
   type: 'json',
 }
+import visualGraphSchema from '../../../schema/yarramate-visual-graph.schema.json' with {
+  type: 'json',
+}
 import visualHandoffSchema from '../../../schema/yarramate-visual-handoff.schema.json' with {
   type: 'json',
 }
@@ -53,13 +56,14 @@ const Ajv2020 = Ajv2020Module.default
 const ajv = new Ajv2020({ allErrors: true })
 ajv.addSchema([
   visualDiagnosticResultSchema,
-  visualModelSchema,
   visualEventSchema,
+  visualGraphSchema,
+  visualHandoffSchema,
+  visualModelSchema,
   visualResponseSchema,
+  visualSessionDescriptorSchema,
   visualSessionRequestSchema,
   visualSessionStartedSchema,
-  visualSessionDescriptorSchema,
-  visualHandoffSchema,
   visualStatusSchema,
 ])
 
