@@ -93,11 +93,16 @@ Full shape fidelity, not color-only approximation: cytoscape.js ships the needed
 - **Commit changes** sends the accumulated changeset to the server, which validates and writes files via `yarramate apply` — and stops there. It does not run `git commit`. The result is an ordinary uncommitted working-tree diff, reviewed and committed through normal git flow like any other change today (unchanged from the existing chat-mediated commit behavior).
 - `src/apply-command.ts:478-844`'s `runApplyCommand` is currently CLI-shaped (paths in, `CliResult` out). Extract a programmatic core — `applyOperations(operations, workspacePath) → { written[] } | { diagnostics[] }` — that both the CLI wrapper and the new commit handler call. No shell-out, no temp files, no dependency on process argv.
 
-### Chat
+### Chat (interaction design)
 
-- Chat keeps a narrower, read-only role: explain a node, filter, focus. It can never author a mutation again — `model.replace` from the delegated agent is removed entirely.
-- The existing journal/poll/response loop in `session-server.ts` (`admitBrowserInput`, `deliverable`/`takeDelivery`, `answerPoll`, `acceptResponse`) stays exactly as-is for `chat.message`/`choice.selected`, since chat remains agent-mediated for its narrowed purpose.
-- Chat-as-controller UX (how explain/filter/focus actually manifests on the canvas) is out of scope for this design — a separate follow-up brainstorm, already flagged during design.
+- Chat is a read-only front end onto the same query/filter/focus mechanisms already available to a human via the view picker, structured filter panel, and canvas isolate/focus action — it never triggers a canvas action the user couldn't already trigger by hand, and it can never author a mutation again (`model.replace` from the delegated agent is removed entirely).
+- **Explain:** the delegated agent resolves the request the same way `yarramate ask <workspace> "<free text>"` already does server-side — free text matches concept ids/names/descriptions, seeding a connected slice via `evaluateProjection` with ADR 0070's neighbour cap (`src/ask-command.ts`'s `sliceProjection`). It answers in grounded prose over `chat.response.text`, unchanged shape. No canvas change.
+- **Filter/focus:** the agent additionally resolves the request into a `yarramate/projection/v1` `query` object — the identical object `sliceProjection` already builds internally (`{ subjects: [...seeds], relationships: 'connected' }` for "focus on Checkout Service"; the full 13-dimension query for an explicit filter like "show only the application layer" → `{ layers: ['application'] }`). This is the same engine and schema the Views feature and the existing `yarramate_ask` MCP tool already use — no new interpretation machinery.
+- **Protocol:** `chatResponsePayload` (`schema/yarramate-visual-response.schema.json`) gains one optional field, `appliedQuery: ProjectionQuery` — additive, folded into the already-planned v2 bump, no new response type.
+- Applying `appliedQuery` is not model authority — ADR 0081's closed-contract concern is model canonicity, not view state — so the browser applies it immediately on receipt, same hide/show mechanic as the view picker and structured filter panel (`.hide()`/`.show()`, never dimming), with a visible **"Filtered by chat: `<label>` · Show all"** pill (same precedent as the "Layout saved" pill) so the narrowing is never silent. "Show all", or any manual filter-panel/view-picker action, clears it.
+- Chat-applied filters are always ephemeral: they never write to `.yarramate/projections/`. Keeping one is the existing **Save As** action — identical to saving a manually-built filter.
+- The existing journal/poll/response loop in `session-server.ts` (`admitBrowserInput`, `deliverable`/`takeDelivery`, `answerPoll`, `acceptResponse`) stays exactly as-is for `chat.message`/`choice.selected`; only the response payload the agent constructs gains the optional `appliedQuery` field.
+- No new server-side capability to build: the agent already has `yarramate_ask` as an MCP tool; wiring its resolved query into the visual-response payload is the only change (`session-server.ts` response construction), not a new resolution engine.
 
 ### Layout persistence
 
@@ -129,7 +134,8 @@ Server → browser:
 |---|---|---|
 | `model.snapshot` | **new**, replaces `model.replace` | full graph-v2 JSON + presentation + saved layout for the active projection; sent on connect and after every successful commit |
 | `apply.result` | **new** | reuses `schema/yarramate-apply-result.schema.json` shape: written-file list on success, or validation diagnostics verbatim (ADR 0062 — the browser shows exactly what landed, never an optimistic local guess) |
-| `chat.response`, `choice.present`, `diagnostic`, `handoff.complete` | unchanged | still agent-mediated via the existing journal/poll loop |
+| `chat.response` | payload gains optional `appliedQuery` | narrowed meaning: explain/filter/focus, never mutation; `appliedQuery` (when present) is a `projection.query` the browser applies immediately as an ephemeral, non-saved filter |
+| `choice.present`, `diagnostic`, `handoff.complete` | unchanged | still agent-mediated via the existing journal/poll loop |
 
 `changeset.commit` and `layout.save` are handled synchronously in `session-server.ts`, bypassing the agent poll loop entirely — that loop stays reserved for chat turns.
 
@@ -161,7 +167,6 @@ Validation failures from `applyOperations` return diagnostics in the same shape 
 
 ## Non-goals
 
-- Chat-as-controller interaction design (explain/filter/focus UX) — separate follow-up brainstorm.
 - Inline validation-diagnostic presentation (toast vs. inline vs. panel) — implementation detail, not architecture.
 - Multi-tab/concurrent-edit conflict resolution — not raised; single-writer working-tree model assumed, same as today.
 - Any change to `src/adapters/likec4-cli.ts`/`likec4-export.ts`/`likec4-project.ts`/`likec4-prepare.ts` or the `yarramate export --kind likec4` feature.
