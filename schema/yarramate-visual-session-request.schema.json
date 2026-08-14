@@ -11,7 +11,6 @@
     "title",
     "description",
     "chatEnabled",
-    "compiler",
     "initialModel"
   ],
   "properties": {
@@ -33,9 +32,6 @@
     },
     "chatEnabled": {
       "type": "boolean"
-    },
-    "compiler": {
-      "$ref": "#/$defs/compilerCommand"
     },
     "initialModel": {
       "$ref": "https://yarramate.org/schema/visual-model/v1"
@@ -82,29 +78,5 @@
         }
       }
     }
-  ],
-  "$defs": {
-    "compilerCommand": {
-      "description": "Absolute executable plus argument vector executed without a shell.",
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["command", "args"],
-      "properties": {
-        "command": {
-          "type": "string",
-          "maxLength": 4096,
-          "pattern": "^(?:/|[A-Za-z]:[\\\\/])[^\\u0000]+$"
-        },
-        "args": {
-          "type": "array",
-          "maxItems": 64,
-          "items": {
-            "type": "string",
-            "maxLength": 4096,
-            "pattern": "^[^\\u0000]*$"
-          }
-        }
-      }
-    }
-  }
+  ]
 }
