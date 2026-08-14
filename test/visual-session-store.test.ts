@@ -4,7 +4,6 @@ import {
   mkdir,
   mkdtemp,
   readFile,
-  readdir,
   rm,
   stat,
   symlink,
@@ -29,28 +28,25 @@ import {
   VISUAL_SESSION_PRUNE_LIMIT,
   appendVisualEvent,
   appendVisualResponse,
+  buildVisualModelGraph,
   createVisualSession,
-  promoteCompiledModel,
   pruneStaleVisualSessions,
   readActionableEventsAfter,
-  readActiveVisualModel,
   recoverVisualSession,
   removeVisualSession,
   visualSessionPaths,
   writeVisualSessionDescriptor,
   type VisualSessionPaths,
 } from '../src/adapters/visual/session-store.js'
+import { compileWorkspaceWithProfileContext } from '../src/compiler.js'
+import { projectGraphForCanvas } from '../src/graph-projection.js'
 
 const model: VisualModel = {
   format: 'yarramate/visual-model/v1',
   authority: 'ad-hoc',
   initialView: 'choices',
   sourceDigests: {},
-  files: {
-    'likec4.config.json': '{"name":"visual"}',
-    'model.likec4': 'model { system = system "System" }',
-    'views/choices.likec4': 'views { view choices { include * } }',
-  },
+  graph: { nodes: [], edges: [] },
 }
 
 const request: VisualSessionRequest = {
@@ -59,7 +55,6 @@ const request: VisualSessionRequest = {
   title: 'Choose a delivery design',
   description: 'Temporary non-canonical comparison',
   chatEnabled: true,
-  compiler: { command: '/usr/bin/node', args: ['fake-likec4.mjs'] },
   initialModel: model,
 }
 
@@ -145,8 +140,6 @@ const sessionDeps = (
   now: () => new Date(createdAt),
   randomBytes: () => Buffer.alloc(32, 7),
 })
-
-const compilesCleanly = async () => []
 
 describe('visual session store', () => {
   let parent = ''
@@ -244,7 +237,6 @@ describe('visual session store', () => {
         const session = await startSession()
 
         expect(await modeOf(session.paths.root)).toBe(0o700)
-        expect(await modeOf(session.paths.candidates)).toBe(0o700)
         expect(await modeOf(session.paths.marker)).toBe(0o600)
         expect(await modeOf(session.paths.journal)).toBe(0o600)
       },
@@ -767,177 +759,49 @@ describe('visual session store', () => {
     })
   })
 
-  describe('model promotion', () => {
-    it('advances the active pointer only after compilation succeeds', async () => {
-      const session = await startSession()
+  describe('model graph construction', () => {
+    const source = `format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts:
+  - id: service
+    kind: applicationComponent
+    name: Payments service
+relationships: []
+`
+    const sources = [{ path: 'main.yaml', source }]
 
-      const first = await promoteCompiledModel(session.paths, {
-        model,
-        now: () => new Date('2026-08-08T00:00:05.000Z'),
-        compile: compilesCleanly,
-      })
+    it('builds the canvas graph a session model renders from its workspace sources', () => {
+      const compiled = compileWorkspaceWithProfileContext(sources)
+      expect(compiled.ok).toBe(true)
+      if (!compiled.ok) return
+      const expectedGraph = projectGraphForCanvas(
+        compiled.graph,
+        compiled.profileContext,
+      )
 
-      expect(first).toMatchObject({ promoted: true, candidate: '000001' })
-      expect(await readActiveVisualModel(session.paths)).toMatchObject({
-        candidate: '000001',
-        authority: 'ad-hoc',
-        initialView: 'choices',
-        promotedAt: '2026-08-08T00:00:05.000Z',
-      })
-      expect(
-        await readFile(
-          join(first.candidateDir, 'views/choices.likec4'),
-          'utf8',
-        ),
-      ).toBe(model.files['views/choices.likec4'])
-    })
-
-    it('keeps the last good pointer when a candidate fails to compile', async () => {
-      const session = await startSession()
-      await promoteCompiledModel(session.paths, {
-        model,
-        now: () => new Date('2026-08-08T00:00:05.000Z'),
-        compile: compilesCleanly,
-      })
-      const diagnostic: VisualDiagnostic = {
-        severity: 'error',
-        code: 'YMVS201',
-        message: 'Unknown element',
-        path: 'model.likec4',
-        pointer: '/files/model.likec4',
-        line: 1,
-        column: 1,
-      }
-
-      const rejected = await promoteCompiledModel(session.paths, {
-        model: { ...model, initialView: 'detail' },
-        now: () => new Date('2026-08-08T00:00:09.000Z'),
-        compile: async () => [diagnostic],
-      })
-
-      expect(rejected).toMatchObject({
-        promoted: false,
-        candidate: '000002',
-        diagnostics: [diagnostic],
-      })
-      expect(existsSync(join(rejected.candidateDir, 'model.likec4'))).toBe(true)
-      expect(await readActiveVisualModel(session.paths)).toMatchObject({
-        candidate: '000001',
-        initialView: 'choices',
+      expect(buildVisualModelGraph(sources)).toEqual({
+        ok: true,
+        graph: expectedGraph,
       })
     })
 
-    it('stages each candidate under a fresh monotonic directory', async () => {
-      const session = await startSession()
-      const promote = (iso: string) =>
-        promoteCompiledModel(session.paths, {
-          model,
-          now: () => new Date(iso),
-          compile: compilesCleanly,
-        })
+    it('surfaces the workspace compiler diagnostics unchanged on a failed compile', () => {
+      const broken = [
+        {
+          path: 'main.yaml',
+          source: source.replace('applicationComponent', 'mysteryKind'),
+        },
+      ]
+      const compiled = compileWorkspaceWithProfileContext(broken)
+      expect(compiled.ok).toBe(false)
+      if (compiled.ok) return
 
-      await promote('2026-08-08T00:00:05.000Z')
-      await promote('2026-08-08T00:00:06.000Z')
-      const third = await promote('2026-08-08T00:00:07.000Z')
-
-      expect(third.candidate).toBe('000003')
-      expect((await readdir(session.paths.candidates)).sort()).toEqual([
-        '000001',
-        '000002',
-        '000003',
-      ])
-      expect(await readActiveVisualModel(session.paths)).toMatchObject({
-        candidate: '000003',
+      expect(buildVisualModelGraph(broken)).toEqual({
+        ok: false,
+        diagnostics: compiled.diagnostics,
       })
     })
-
-    it('refuses to stage a model that fails protocol validation', async () => {
-      const session = await startSession()
-
-      await expect(
-        promoteCompiledModel(session.paths, {
-          model: {
-            ...model,
-            files: { ...model.files, '../escape.c4': 'model {}' },
-          },
-          now: () => new Date('2026-08-08T00:00:05.000Z'),
-          compile: async () => {
-            throw new Error('compiler must not run for an invalid candidate')
-          },
-        }),
-      ).rejects.toThrow(/YMVS1/)
-      expect(await readdir(session.paths.candidates)).toEqual([])
-      expect(existsSync(join(parent, 'escape.c4'))).toBe(false)
-    })
-
-    it('reports no active model before the first promotion', async () => {
-      const session = await startSession()
-
-      expect(await readActiveVisualModel(session.paths)).toBeUndefined()
-    })
-
-    it('replaces the pointer without leaving a temporary file behind', async () => {
-      const session = await startSession()
-      await promoteCompiledModel(session.paths, {
-        model,
-        now: () => new Date('2026-08-08T00:00:05.000Z'),
-        compile: compilesCleanly,
-      })
-      await promoteCompiledModel(session.paths, {
-        model,
-        now: () => new Date('2026-08-08T00:00:06.000Z'),
-        compile: compilesCleanly,
-      })
-
-      expect(
-        (await readdir(session.paths.root)).filter((entry) =>
-          entry.includes('.tmp'),
-        ),
-      ).toEqual([])
-    })
-
-    it.skipIf(!posixOnly)(
-      'swaps the pointer by rename rather than rewriting it in place',
-      async () => {
-        const session = await startSession()
-        await promoteCompiledModel(session.paths, {
-          model,
-          now: () => new Date('2026-08-08T00:00:05.000Z'),
-          compile: compilesCleanly,
-        })
-        const before = await stat(session.paths.activeModel)
-
-        await promoteCompiledModel(session.paths, {
-          model,
-          now: () => new Date('2026-08-08T00:00:06.000Z'),
-          compile: compilesCleanly,
-        })
-
-        // A truncate-and-rewrite keeps the inode and is therefore observable as
-        // a partial pointer; a write-then-rename replaces it.
-        expect((await stat(session.paths.activeModel)).ino).not.toBe(before.ino)
-      },
-    )
-
-    it.skipIf(!posixOnly)(
-      'stages candidate directories 0700 and candidate files 0600',
-      async () => {
-        const session = await startSession()
-
-        const promoted = await promoteCompiledModel(session.paths, {
-          model,
-          now: () => new Date('2026-08-08T00:00:05.000Z'),
-          compile: compilesCleanly,
-        })
-
-        expect(await modeOf(promoted.candidateDir)).toBe(0o700)
-        expect(await modeOf(join(promoted.candidateDir, 'views'))).toBe(0o700)
-        expect(await modeOf(join(promoted.candidateDir, 'model.likec4'))).toBe(
-          0o600,
-        )
-        expect(await modeOf(session.paths.activeModel)).toBe(0o600)
-      },
-    )
   })
 
   describe('cleanup', () => {
@@ -1009,19 +873,10 @@ describe('visual session store', () => {
         paths.marker,
         paths.descriptor,
         paths.journal,
-        paths.candidates,
-        paths.activeModel,
       ]) {
         if (existsSync(path)) await utimes(path, at, at)
       }
     }
-
-    const promote = (paths: VisualSessionPaths) =>
-      promoteCompiledModel(paths, {
-        model,
-        now: () => new Date(withinBudget),
-        compile: compilesCleanly,
-      })
 
     it('prunes only marked sessions untouched for longer than 24 hours', async () => {
       const session = await startSession()
@@ -1048,34 +903,8 @@ describe('visual session store', () => {
       expect(existsSync(session.paths.root)).toBe(true)
     })
 
-    it('keeps a long-lived session whose model was promoted within the budget', async () => {
-      const session = await startSession(longAgo)
-      await promote(session.paths)
-      await touchSession(session.paths, longAgo)
-      const active = new Date(withinBudget)
-      await utimes(session.paths.activeModel, active, active)
-
-      expect(await pruneStaleVisualSessions(parent, staleNow)).toEqual([])
-      expect(existsSync(session.paths.root)).toBe(true)
-    })
-
-    it('keeps a long-lived session that staged a candidate within the budget', async () => {
-      const session = await startSession(longAgo)
-      await promote(session.paths)
-      await touchSession(session.paths, longAgo)
-      // Staging a candidate changes the directory that gains the entry and
-      // nothing above it: POSIX propagates a modification no further, so the
-      // session root alone would report this session as untouched.
-      const active = new Date(withinBudget)
-      await utimes(session.paths.candidates, active, active)
-
-      expect(await pruneStaleVisualSessions(parent, staleNow)).toEqual([])
-      expect(existsSync(session.paths.root)).toBe(true)
-    })
-
     it('removes a session no artefact has touched for longer than 24 hours', async () => {
       const session = await startSession()
-      await promote(session.paths)
       await touchSession(session.paths, '2026-08-07T23:59:59.999Z')
 
       expect(

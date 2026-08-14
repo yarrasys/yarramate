@@ -11,12 +11,11 @@ import {
   truncate,
   writeFile,
 } from 'node:fs/promises'
-import { basename, dirname, join, resolve, sep } from 'node:path'
+import { basename, dirname, join, resolve } from 'node:path'
 import {
   VISUAL_LIMITS,
   parseVisualEvent,
   parseVisualHandoff,
-  parseVisualModel,
   parseVisualResponse,
   parseVisualSessionDescriptor,
   parseVisualSessionRequest,
@@ -27,18 +26,19 @@ import {
   type VisualHandoff,
   type VisualHandoffDecision,
   type VisualHandoffSummary,
-  type VisualModel,
   type VisualResponse,
   type VisualSessionDescriptor,
   type VisualSessionRequest,
   type VisualTerminationReason,
 } from './protocol.js'
+import {
+  compileWorkspaceWithProfileContext,
+  type WorkspaceSource,
+} from '../../compiler.js'
+import { projectGraphForCanvas, type CanvasGraph } from '../../graph-projection.js'
 
 export const VISUAL_SESSION_MARKER_FORMAT =
   'yarramate/visual-session-marker/v1' as const
-
-export const VISUAL_ACTIVE_MODEL_FORMAT =
-  'yarramate/visual-active-model/v1' as const
 
 /**
  * Upper bound on how many orphaned sessions one `start` prunes. Cleanup runs on
@@ -47,7 +47,6 @@ export const VISUAL_ACTIVE_MODEL_FORMAT =
  */
 export const VISUAL_SESSION_PRUNE_LIMIT = 64
 
-const CANDIDATE_NAME = /^[0-9]{6}$/
 const IDENTIFIER = /^[0-9a-f]{32}$/
 const TIMESTAMP =
   /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$/
@@ -74,8 +73,6 @@ export interface VisualSessionPaths {
   readonly marker: string
   readonly descriptor: string
   readonly journal: string
-  readonly candidates: string
-  readonly activeModel: string
 }
 
 export interface SessionDependencies {
@@ -104,18 +101,6 @@ export interface VisualSessionMarker {
   readonly authority: VisualAuthority
 }
 
-/**
- * Last-good rendering pointer. It names a staged candidate directory instead of
- * embedding the model so the swap is a single rename of a small file.
- */
-export interface VisualActiveModel {
-  readonly format: typeof VISUAL_ACTIVE_MODEL_FORMAT
-  readonly candidate: string
-  readonly authority: VisualAuthority
-  readonly initialView: string
-  readonly promotedAt: string
-}
-
 export interface VisualSessionCreated {
   readonly paths: VisualSessionPaths
   readonly browserToken: string
@@ -136,21 +121,6 @@ export interface VisualAppendRejected {
 }
 
 export type VisualAppendResult = VisualAppendAccepted | VisualAppendRejected
-
-export interface ModelPromotion {
-  readonly model: VisualModel
-  readonly now: () => Date
-  readonly compile: (
-    candidateDir: string,
-  ) => Promise<readonly VisualDiagnostic[]>
-}
-
-export interface ModelPromotionResult {
-  readonly promoted: boolean
-  readonly candidate: string
-  readonly candidateDir: string
-  readonly diagnostics: readonly VisualDiagnostic[]
-}
 
 /** In-process append state, rebuilt from disk whenever the journal size drifts. */
 interface JournalState {
@@ -224,7 +194,6 @@ const serialize = <T>(key: string, action: () => Promise<T>): Promise<T> => {
 const forget = (paths: VisualSessionPaths) => {
   states.delete(paths.journal)
   queues.delete(paths.journal)
-  queues.delete(paths.candidates)
 }
 
 const drawHex = (
@@ -287,8 +256,6 @@ export const visualSessionPaths = (root: string): VisualSessionPaths => {
     marker: join(base, 'session.json'),
     descriptor: join(base, 'descriptor.json'),
     journal: join(base, 'journal.jsonl'),
-    candidates: join(base, 'candidates'),
-    activeModel: join(base, 'active-model.json'),
   }
 }
 
@@ -502,7 +469,6 @@ export const createVisualSession = async (
     createdAt: deps.now().toISOString(),
     authority: validated.value.authority,
   })
-  await mkdir(paths.candidates, { recursive: false, mode: 0o700 })
   await writeFile(paths.journal, '', { mode: 0o600 })
   await syncDirectory(root)
   return {
@@ -877,104 +843,38 @@ export const recoverVisualSession = async (
   return handoff
 }
 
-export const readActiveVisualModel = async (
-  paths: VisualSessionPaths,
-): Promise<VisualActiveModel | undefined> => {
-  let raw = ''
-  try {
-    raw = await readFile(paths.activeModel, 'utf8')
-  } catch {
-    return undefined
-  }
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(raw)
-  } catch {
-    throw storeError(
-      'YMVS128',
-      `Active model pointer "${paths.activeModel}" is not JSON`,
-    )
-  }
-  const fields = documentFields(parsed)
-  const candidate = fields.candidate
-  const authority = fields.authority
-  const initialView = fields.initialView
-  const promotedAt = fields.promotedAt
-  if (
-    fields.format !== VISUAL_ACTIVE_MODEL_FORMAT ||
-    typeof candidate !== 'string' ||
-    !CANDIDATE_NAME.test(candidate) ||
-    (authority !== 'canonical' && authority !== 'ad-hoc') ||
-    typeof initialView !== 'string' ||
-    typeof promotedAt !== 'string' ||
-    !TIMESTAMP.test(promotedAt)
-  ) {
-    throw storeError(
-      'YMVS128',
-      `Active model pointer "${paths.activeModel}" is not ${VISUAL_ACTIVE_MODEL_FORMAT}`,
-    )
+export type VisualModelGraphResult =
+  | { readonly ok: true; readonly graph: CanvasGraph }
+  | { readonly ok: false; readonly diagnostics: readonly VisualDiagnostic[] }
+
+/**
+ * Builds the `graph` a session's `VisualModel` renders, from the workspace's
+ * own source documents. This is the whole construction step a visual session
+ * needs at start: no subprocess, no staged candidate directory, no on-disk
+ * pointer file — `compileWorkspaceWithProfileContext` and
+ * `projectGraphForCanvas` are both pure, synchronous functions over this
+ * repo's native compiler, so the caller assembles the result directly into
+ * the full `VisualModel` (format, authority, initialView, sourceDigests,
+ * graph) without any session-store I/O.
+ *
+ * A compile failure here is not a runtime defect — it is exactly the
+ * diagnostic-shaped rejection the browser already expects, so the workspace
+ * compiler's own diagnostics are returned unchanged rather than resynthesised.
+ * `Diagnostic` (compiler.ts) and `VisualDiagnostic` (protocol-contract.ts)
+ * already share one shape: severity, code, message, path, pointer, line,
+ * column.
+ */
+export const buildVisualModelGraph = (
+  sources: readonly WorkspaceSource[],
+): VisualModelGraphResult => {
+  const compiled = compileWorkspaceWithProfileContext(sources)
+  if (!compiled.ok) {
+    return { ok: false, diagnostics: compiled.diagnostics }
   }
   return {
-    format: VISUAL_ACTIVE_MODEL_FORMAT,
-    candidate,
-    authority,
-    initialView,
-    promotedAt,
+    ok: true,
+    graph: projectGraphForCanvas(compiled.graph, compiled.profileContext),
   }
-}
-
-export const promoteCompiledModel = async (
-  paths: VisualSessionPaths,
-  promotion: ModelPromotion,
-): Promise<ModelPromotionResult> => {
-  // The runtime has already parsed the `model.replace` response that carried
-  // this model, so a violation here is a runtime defect rather than untrusted
-  // input, and must not be reported to the browser as a candidate diagnostic.
-  const validated = parseVisualModel(promotion.model)
-  if (!validated.ok) {
-    const first = validated.diagnostics[0]
-    throw storeError(
-      first?.code ?? 'YMVS106',
-      `Candidate model is invalid: ${first?.message ?? 'unknown violation'}`,
-    )
-  }
-  const model = validated.value
-  return serialize(paths.candidates, async () => {
-    await readSessionMarker(paths)
-    const existing = await readdir(paths.candidates)
-    const highest = existing
-      .filter((entry) => CANDIDATE_NAME.test(entry))
-      .reduce((max, entry) => Math.max(max, Number(entry)), 0)
-    const candidate = String(highest + 1).padStart(6, '0')
-    const candidateDir = join(paths.candidates, candidate)
-    await mkdir(candidateDir, { recursive: false, mode: 0o700 })
-    for (const [file, contents] of Object.entries(model.files)) {
-      const target = resolve(candidateDir, file)
-      // Confinement is already enforced by the model schema and by the protocol
-      // path check; re-checking the resolved path means neither of those alone
-      // is load-bearing for a write outside the candidate directory.
-      if (!target.startsWith(`${candidateDir}${sep}`)) {
-        throw storeError(
-          'YMVS125',
-          `Candidate file "${file}" resolves outside "${candidateDir}"`,
-        )
-      }
-      await mkdir(dirname(target), { recursive: true, mode: 0o700 })
-      await writePrivateFile(target, contents)
-    }
-    const diagnostics = await promotion.compile(candidateDir)
-    if (diagnostics.length > 0) {
-      return { promoted: false, candidate, candidateDir, diagnostics }
-    }
-    await writePrivateJson(paths.activeModel, {
-      format: VISUAL_ACTIVE_MODEL_FORMAT,
-      candidate,
-      authority: model.authority,
-      initialView: model.initialView,
-      promotedAt: promotion.now().toISOString(),
-    })
-    return { promoted: true, candidate, candidateDir, diagnostics: [] }
-  })
 }
 
 /**
@@ -1011,11 +911,10 @@ export const removeVisualSession = async (
  * none of them could be measured.
  *
  * POSIX updates a directory's modification time only when its own entries
- * change, so the session root records nothing about an appended journal, and
- * the candidates directory records nothing about a promoted pointer. Every
- * artefact that can carry activity is therefore measured directly; the
- * optional ones are simply absent until a session produces them. `lstat`
- * keeps a symlinked artefact from reporting some other file's activity.
+ * change, so the session root records nothing about an appended journal.
+ * Every artefact that can carry activity is therefore measured directly;
+ * `lstat` keeps a symlinked artefact from reporting some other file's
+ * activity.
  */
 const lastActivityMs = async (
   paths: VisualSessionPaths,
@@ -1026,8 +925,6 @@ const lastActivityMs = async (
     paths.marker,
     paths.descriptor,
     paths.journal,
-    paths.candidates,
-    paths.activeModel,
   ]) {
     let entry
     try {
