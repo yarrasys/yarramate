@@ -22,6 +22,46 @@ Replace the LikeC4 DSL/compiler pipeline with direct client-side rendering of th
 - Layout backends map onto the existing `presentation.layout` enum (`schema/yarramate-projection.schema.json`): `cytoscape-elk` for `layered` (Sugiyama family, same as Graphviz `dot` — measured 25% shorter total edge length than `cytoscape-dagre` on an 18-node/24-edge comparison graph), built-in `concentric` for `radial`, `cytoscape-cola` for `force`.
 - Model is confirmed flat (`schema/yarramate-document.schema.json`): composition/aggregation are typed relationship kinds, not containment. No compound/nested cytoscape nodes are needed.
 
+### Notation (ArchiMate-style view mode)
+
+A fourth toggle, orthogonal to the layout-algorithm toggle (`layered`/`radial`/`force`): **Native** (current flat kind-colored render) or **ArchiMate**. Selecting ArchiMate forces the layout backend to `cytoscape-elk` with `elk.layered.direction: DOWN` regardless of the projection's stored `presentation.layout`, because swimlanes only make sense top-down; switching back to Native restores whatever the projection specifies.
+
+**Grounding:** 17 of 19 concept kinds and 9 of 10 relationship kinds in the actual repo graph (`yarramate export graph`) already match ArchiMate 3.2 element/relationship names verbatim (`implements`, the 10th, is already mapped to Realization in `docs/ADAPTER-MAPPINGS.md:291-292`). This is a styling layer on the existing kind vocabulary, not a new modeling concept — no schema change, no new relationship kinds.
+
+**Licensing (`docs/BACKLOG-DISPOSITION.md:56-57`, verified against Open Group terms):** the visual notation itself (shapes, layer colors, line/arrowhead conventions) is freely implementable by anyone. Only the ArchiMate® trademark and "Certified"/conformance claims are restricted. This design implements descriptive ArchiMate-*style* notation only — no certification claim, no "compatibility profile" governance. That larger conversation stays out of scope, per `BACKLOG-DISPOSITION.md`'s existing external-block note.
+
+**Layer bands** (top→bottom row per band, via per-node `elk.partitioning.partition` + `elk.partitioning.activate: true`; `elk.separateConnectedComponents: false` is required — ELK lays out disconnected subgraphs independently by default, which breaks global band ordering on a graph this sparse):
+
+| Band (community color) | Yarramate kinds | Shape |
+|---|---|---|
+| Motivation (purple) | `requirement`, `goal`, `driver` | cut-rectangle |
+| Strategy (tan) | `capability` | round-rectangle |
+| Business (yellow) | `businessActor` (rectangle), `businessFunction` (round-rectangle), `representation` (bottom-round-rectangle) | mixed |
+| Application (blue) | `applicationComponent`/`dataObject` (rectangle), `applicationFunction`/`applicationService` (round-rectangle) | mixed |
+| Technology (green) | `node`/`systemSoftware`/`artifact` (rectangle), `technologyFunction` (round-rectangle) | mixed |
+| Implementation & Migration (pink) | `plateau`, `deliverable` | rectangle |
+| Implementation source (7th band, no ArchiMate equivalent) | `repository-file` (86 instances — the single largest kind), `compiler-module` | rectangle |
+
+Full shape fidelity, not color-only approximation: cytoscape.js ships the needed shapes as built-ins — `rectangle`, `round-rectangle`, `cut-rectangle` (diagonal-cut corner, exact Motivation-layer match), `bottom-round-rectangle` (scalloped-bottom approximation for Representation) (`cytoscape/cytoscape.js` `src/extensions/renderer/base/node-shapes.mjs:444-450` for `bottom-round-rectangle`; full built-in shape enum in `index.d.ts`). No custom shape rendering needed.
+
+**Relationship line/arrowhead mapping** (`source-arrow-shape`/`fill`, `target-arrow-shape`/`fill`, `line-style` — all built-in cytoscape.js edge style properties):
+
+| Relationship kind | Line | Arrowhead |
+|---|---|---|
+| `composition` | solid | filled diamond @ source |
+| `assignment` | solid | filled circle @ target |
+| `realization`, `implements` | dashed | hollow triangle @ target |
+| `serving` | solid | hollow triangle @ target |
+| `access` | dotted | none |
+| `influence` | dashed | hollow vee @ target |
+| `triggering` | solid | filled triangle @ target |
+| `flow` | dashed | filled triangle @ target |
+| `association` | solid | none |
+
+**Icons:** ~19 hand-authored single-color 12×12 SVGs, one per concept kind, composited via `background-image`/`background-position-x/y`/`background-width/height` over the shape fill — not sourced from Archi or a third-party icon set, to avoid an unverified-license dependency for something cheap to own outright.
+
+**Verified against the live model:** rendered the actual 242-concept/330-relationship graph from this repo (`yarramate export graph`) through this exact configuration — zero console errors, all layer bands strictly non-overlapping in the vertical axis (motivation through implementation-source, top to bottom).
+
 ### Editing
 
 - Editing is mechanical: structured operations (rename, retype, edit description, add/remove a relationship, reconnect an edge endpoint) via dropdown-constrained fields, never free text against an LLM.
@@ -99,6 +139,7 @@ Validation failures from `applyOperations` return diagnostics in the same shape 
 - Unit coverage for the extracted `applyOperations` core: same fixtures `runApplyCommand`'s existing tests use, called without going through CLI argv/paths.
 - Protocol-contract tests for `changeset.commit` → `apply.result`/`model.snapshot`, and `layout.save` → sidecar file round-trip, mirroring the existing `chat.message`/`model.replace` test coverage in `src/adapters/visual/`.
 - Browser smoke test: open a session, drag a node, commit a rename through the inspector, confirm the working tree shows exactly the expected file diff and no `git commit` was made, reload the session and confirm the dragged position and the rename both reproduce.
+- Notation-mode smoke test: toggle Native → ArchiMate on a live session, confirm the layout backend switches to `cytoscape-elk`/`DOWN`/partitioned regardless of the projection's stored `presentation.layout`, and confirm layer bands render strictly top-to-bottom with no vertical overlap; toggle back to Native and confirm the projection's own layout setting is restored.
 
 ## Non-goals
 
@@ -106,3 +147,4 @@ Validation failures from `applyOperations` return diagnostics in the same shape 
 - Inline validation-diagnostic presentation (toast vs. inline vs. panel) — implementation detail, not architecture.
 - Multi-tab/concurrent-edit conflict resolution — not raised; single-writer working-tree model assumed, same as today.
 - Any change to `src/adapters/likec4-cli.ts`/`likec4-export.ts`/`likec4-project.ts`/`likec4-prepare.ts` or the `yarramate export --kind likec4` feature.
+- ArchiMate® Tool Certification or any compatibility-profile/conformance claim — this design renders descriptive ArchiMate-*style* notation only, never asserts certified conformance to the Open Group specification.
