@@ -79,6 +79,7 @@
     "./schema/visual-event": "./schema/yarramate-visual-event.schema.json",
     "./schema/visual-response": "./schema/yarramate-visual-response.schema.json",
     "./schema/visual-model": "./schema/yarramate-visual-model.schema.json",
+    "./schema/visual-graph": "./schema/yarramate-visual-graph.schema.json",
     "./schema/visual-handoff": "./schema/yarramate-visual-handoff.schema.json",
     "./schema/visual-status": "./schema/yarramate-visual-status.schema.json",
     "./schema/visual-diagnostic-result": "./schema/yarramate-visual-diagnostic-result.schema.json"

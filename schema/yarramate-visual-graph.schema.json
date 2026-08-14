@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yarramate.org/schema/visual-graph/v1",
+  "title": "YarraMate visual graph",
+  "description": "Canvas-ready projection of a semantic graph into nodes and edges for native rendering.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["nodes", "edges"],
+  "properties": {
+    "nodes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/canvasNode"
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/canvasEdge"
+      }
+    }
+  },
+  "$defs": {
+    "canvasNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "kindLabel",
+        "layer",
+        "name",
+        "description",
+        "aka",
+        "status",
+        "owner",
+        "distinctFrom",
+        "supersedes",
+        "constraints",
+        "references",
+        "presentIn",
+        "attestations"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "kindLabel": {
+          "type": "string"
+        },
+        "layer": {
+          "type": ["string", "null"]
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": ["string", "null"]
+        },
+        "aka": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "status": {
+          "type": ["string", "null"]
+        },
+        "owner": {
+          "type": ["string", "null"]
+        },
+        "distinctFrom": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "supersedes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/constraint"
+          }
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "presentIn": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "attestations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/attestation"
+          }
+        }
+      }
+    },
+    "canvasEdge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "kindLabel",
+        "from",
+        "to",
+        "name",
+        "description",
+        "mode",
+        "content",
+        "status",
+        "references",
+        "presentIn"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "kindLabel": {
+          "type": "string"
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "name": {
+          "type": ["string", "null"]
+        },
+        "description": {
+          "type": ["string", "null"]
+        },
+        "mode": {
+          "type": ["string", "null"]
+        },
+        "content": {
+          "type": ["string", "null"]
+        },
+        "status": {
+          "type": ["string", "null"]
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "presentIn": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "constraint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref", "expects"],
+      "properties": {
+        "ref": {
+          "type": "string"
+        },
+        "expects": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "attestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["topic", "value"],
+      "properties": {
+        "topic": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
