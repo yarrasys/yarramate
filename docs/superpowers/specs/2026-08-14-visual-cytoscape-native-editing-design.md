@@ -62,6 +62,24 @@ Full shape fidelity, not color-only approximation: cytoscape.js ships the needed
 
 **Verified against the live model:** rendered the actual 242-concept/330-relationship graph from this repo (`yarramate export graph`) through this exact configuration — zero console errors, all layer bands strictly non-overlapping in the vertical axis (motivation through implementation-source, top to bottom).
 
+### Views (saved projections)
+
+- Views are yarramate's existing `yarramate/projection/v1` documents (`schema/yarramate-projection.schema.json`) — not a new concept. This repo's `.yarramate/projections/*.yaml` already stores 21 real ones (e.g. `starter-application-cooperation.yaml`). The redesign adds a browser-native way to author, apply, and save them; it introduces no new schema.
+- **View picker:** toolbar dropdown listing `id`/`title`/`description` for every document under `.yarramate/projections/` (session server reads the directory on load, sends `{ id, title, description, query, presentation }` per view to the browser). "All (unfiltered)" is pinned at the top as the non-saved default state.
+- Selecting a view applies its `query` to filter the canvas (same hide/show mechanic the free-text quick-filter already has — `rel:connected`/`rel:between`/`none`, matched-node vs neighbor vs isolate) and applies its `presentation.layout`/`direction` (auto-switches the layout picker to match). Loading a view never mutates the model — filters and layout only.
+- The free-text quick-filter box already in the mockup stays as-is: **client-side, ephemeral** — narrows by name/id substring on top of whatever view is loaded. It is never what gets saved; it's search, not a view definition.
+- A real **structured filter panel** (multi-select, kind-aware) is what actually composes/edits a view's `query` — the schema has 13 typed query dimensions: `subjects`/`documents` (id lists), `kinds`/`relationshipKinds` (qualified-kind strings, `kindMatching: exact|descendants`), `layers`, `statuses`/`excludeStatuses` (`planned|current|retired`), `states`/`owners`/`constraints` (subject-identity lists), `relationships` (`between|connected|none`), `isolatedConcepts` (`include|exclude`). A plain text box can't author this faithfully.
+- **Save As** writes `{id}.projection.yaml` directly to `.yarramate/projections/` — the same direct-filesystem-write precedent already approved for `layout.save`, not routed through `apply`, since projections aren't graph-v2 concepts/relationships. **Save** overwrites the currently loaded view's file. Both are gated behind the same new-file/overwrite confirm affordance as Commit — never silent.
+- `presentation.title`/`description`/`layout`/`direction`/`seed` map onto the Save-As form: the layout/direction pickers already on the toolbar, plus two new text fields (title, description) prompted at Save-As time.
+
+### Status/evidence/ownership badges
+
+- Three `presentation` booleans already exist in the schema, currently unrendered: `showLifecycle`, `showEvidence`, `showOwnership`. This design gives them a renderer: independent per-node badge overlays layered on top of the shape fill and kind glyph.
+- Mechanism, verified in a synthetic harness against representative data (rendered screenshot, zero console errors): cytoscape.js array-valued style properties (`background-image`/`-width`/`-height`/`-position-x/y`/`-image-opacity`, each a same-length array with one entry per badge) layer arbitrary numbers of independent images per node — no compound nodes, no CORS issues (SVG `data:` URIs, not external files).
+- Layout: top-right = kind glyph (always on, existing icon system), top-left = lifecycle dot (green filled = current, hollow ring = planned, gray filled = retired) shown only when `showLifecycle`, bottom-left = evidence check shown only when `showEvidence && attestations.length > 0`, bottom-right = owner-initials chip (colored circle) shown only when `showOwnership && owner` is set. Each badge's opacity is gated independently by its own presentation flag *and* underlying data presence — `showEvidence: true` on a concept with no attestations renders nothing, not an empty slot.
+- The three toggles are Structured-filter-panel checkboxes, not query filters — they're presentation, saved the same way `layout`/`direction` already are.
+- Owner-chip color: deterministic hash of the concept's `owner` field onto the fixed Apple-system palette already used across the mockups (`--accent`/`--success`/`--warning`/`--error` family) — same no-invented-palette discipline as the ArchiMate layer-band colors.
+
 ### Editing
 
 - Editing is mechanical: structured operations (rename, retype, edit description, add/remove a relationship, reconnect an edge endpoint) via dropdown-constrained fields, never free text against an LLM.
