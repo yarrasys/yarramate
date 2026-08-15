@@ -2424,22 +2424,31 @@ evidence: []
     socket.close()
   })
 
-  it('rejects a view whose query violates the projection schema', async () => {
+  it('rejects a view whose query violates the protocol schema', async () => {
+    // query/presentation reuse the exact same $defs as ProjectionDefinition's
+    // (see schema/yarramate-visual-event.schema.json), so any query that
+    // would fail loadProjection's schema check fails the browser-input
+    // schema first. The browser sees a protocol-level 'rejected' frame, not
+    // a 'view-save-result' - loadProjection's own !ok branch in
+    // session-server.ts is unreachable defense-in-depth from a live socket.
     const server = await start()
     const { cookie } = await bootstrap(server)
     const socket = await openBrowserSocket(server, cookie)
 
-    const frame = await sendViewSave(socket, {
-      title: 'Bad Query',
-      description: 'empty subjects',
-      query: { subjects: [] },
-      presentation: {},
-    })
-
-    expect(frame.result.ok).toBe(false)
-    if (frame.result.ok === false) {
-      expect(frame.result.diagnostics.length).toBeGreaterThan(0)
-    }
+    const rejected = nextFrame(socket, 'rejected')
+    socket.send(
+      JSON.stringify({
+        type: 'view.save',
+        lastAcknowledgedSequence: 0,
+        payload: {
+          title: 'Bad Query',
+          description: 'empty subjects',
+          query: { subjects: [] },
+          presentation: {},
+        },
+      }),
+    )
+    expect((await rejected).diagnostics.length).toBeGreaterThan(0)
 
     await expect(
       readFile(join(baseDir, '.yarramate/projections/bad-query.yaml'), 'utf8'),
