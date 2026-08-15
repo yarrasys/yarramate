@@ -1,4 +1,5 @@
-import Ajv2020Module from 'ajv/dist/2020.js'
+import { createRequire } from 'node:module'
+import type Ajv2020Type from 'ajv/dist/2020.js'
 import { LineCounter, parseDocument } from 'yaml'
 import {
   conceptKinds,
@@ -19,7 +20,15 @@ import profileSchema from '../schema/yarramate-profile.schema.json' with {
 }
 
 const coreProfile = 'yarramate/core@0.1'
-const Ajv2020 = Ajv2020Module.default
+// `ajv/dist/2020.js` is CJS. Its default-export shape is resolved
+// differently under this repo's two tsconfigs: NodeNext (root) sees the raw
+// `module.exports` (needs `.default`), Bundler+esModuleInterop
+// (tsconfig.visual.json) sees the already-unwrapped class. `require()`
+// sidesteps the value-level ambiguity; the type is normalized the same way.
+type Ajv2020Ctor = typeof Ajv2020Type extends { default: infer D } ? D : typeof Ajv2020Type
+const require = createRequire(import.meta.url)
+const ajv2020Module = require('ajv/dist/2020.js') as { default?: Ajv2020Ctor } & Ajv2020Ctor
+const Ajv2020 = ajv2020Module.default ?? ajv2020Module
 const validateDocument = new Ajv2020({ allErrors: true }).compile(documentSchema)
 const validateProfile = new Ajv2020({ allErrors: true }).compile(profileSchema)
 
