@@ -392,6 +392,18 @@ before the server-side handler runs, so `filter-result` itself has no separate f
 `view-save-result`, which does). Any protocol-level rejection surfaces through the same `App.tsx` `Faults`
 component (`App.tsx:162-177`, `state.diagnostics`) every other rejected browser input already uses today.
 
+**Correction (field shapes, verified against `src/projection.ts:26-40`): of the 13 fields, 8 are free-text
+multi-select (`subjects`, `documents`, `kinds`, `layers`, `states`, `owners`, `constraints`,
+`relationshipKinds` — string arrays, no fixed vocabulary, render as tag/chip inputs) and 5 are fixed-choice:
+`statuses`/`excludeStatuses` are each a multi-select over the 3-value `LifecycleStatus` enum
+(`'planned'|'current'|'retired'`, `projection.ts:20`), `kindMatching` is a single-select
+`'exact'|'descendants'`, `relationships` is a single-select `'between'|'connected'|'none'`, and
+`isolatedConcepts` is a single-select `'include'|'exclude'`. Render the 5 fixed-choice fields as actual
+`<select>`/radio controls constrained to those literal values, not free-text — the schema's `enum` on those
+`$defs/query` properties means anything else fails Ajv validation at the event layer and surfaces as a
+`Faults` diagnostic instead of a working filter.
+
+
 ### Task 16: Quick-filter text box
 
 Client-side only, wired into `graph-canvas.tsx`'s `applyFilter` per Task 13. Matches against `CanvasNode.name`/
