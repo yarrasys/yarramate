@@ -130,6 +130,28 @@ const STYLESHEET: cytoscape.StylesheetJsonBlock[] = [
     },
   },
   {
+    // Compound container (see resolveCompositionParents below): keeps its own
+    // layer fill/border from the rules above but at low opacity with a dashed
+    // border, so its ArchiMate type stays legible while still reading as a
+    // grouping box rather than a plain node. Label pinned to the top so it
+    // never collides with children stacked underneath it.
+    selector: 'node:parent',
+    style: {
+      shape: 'roundrectangle',
+      'background-opacity': 0.25,
+      'border-width': 2,
+      'border-style': 'dashed',
+      padding: '30px',
+      label: 'data(label)',
+      'font-size': 13,
+      'font-weight': 'bold',
+      'text-halign': 'center',
+      'text-valign': 'top',
+      'text-margin-y': 6,
+      color: '#333333',
+    },
+  },
+  {
     selector: 'node.selected',
     style: {
       'border-color': '#FF6B6B',
@@ -141,7 +163,8 @@ const STYLESHEET: cytoscape.StylesheetJsonBlock[] = [
     style: {
       'line-color': '#999999',
       width: 1.5,
-      'curve-style': 'round-segments',
+      'curve-style': 'round-taxi',
+      'taxi-radius': 25,
       'target-arrow-shape': 'triangle',
       'target-arrow-color': '#999999',
       label: 'data(label)',
@@ -161,10 +184,94 @@ const STYLESHEET: cytoscape.StylesheetJsonBlock[] = [
   },
 ]
 
+// Composition expresses exclusive whole-part structure (ADR 0004: a workspace
+// cannot claim both composition and aggregation over the same ordered pair),
+// which maps 1:1 onto cytoscape's compound `parent` field - the container is
+// the relationship's `from`, the nested child its `to`. Aggregation is
+// deliberately excluded: it allows a part to belong to multiple wholes at
+// once, which a single `parent` field can't represent, so it stays a normal
+// rendered edge like every other relationship kind. Composition edges that
+// are consumed into nesting are never also drawn as a line.
+const COMPOSITION_RELATIONSHIP_KIND = 'yarramate/core@0.1#composition'
+
+// The compiler's YM501 rule only rejects the same (from, to) pair declaring
+// both composition and aggregation - it does not reject two different
+// composition relationships naming the same `to`, which cytoscape's
+// single-parent field can't represent either. Nor does anything upstream
+// reject a composition chain that loops back on itself, which cytoscape's
+// compound nesting must be acyclic to render. Both are real modeling
+// anomalies this layer surfaces rather than silently resolving: affected
+// subjects are left unnested (ordinary top-level nodes) and every
+// composition edge naming them stays drawn as a regular edge, so the
+// conflicting claims stay visible on the canvas instead of one silently
+// winning.
+function resolveCompositionParents(edges: readonly CanvasEdge[]): {
+  readonly parentOf: ReadonlyMap<string, string>
+  readonly consumedEdgeIds: ReadonlySet<string>
+} {
+  const compositionEdges = edges.filter((edge) => edge.kind === COMPOSITION_RELATIONSHIP_KIND)
+
+  const claimsByChild = new Map<string, CanvasEdge[]>()
+  for (const edge of compositionEdges) {
+    const claims = claimsByChild.get(edge.to)
+    if (claims === undefined) {
+      claimsByChild.set(edge.to, [edge])
+    } else {
+      claims.push(edge)
+    }
+  }
+
+  const parentOf = new Map<string, string>()
+  for (const [child, claims] of claimsByChild) {
+    if (claims.length === 1) {
+      parentOf.set(child, claims[0]!.from)
+    } else {
+      console.warn(
+        `Composition conflict: "${child}" is claimed as a part by ${claims.length} different wholes (${claims.map((claim) => claim.from).join(', ')}) - rendering it unnested; every claim stays drawn as a regular edge.`
+      )
+    }
+  }
+
+  // Walk each child's parent chain; a ancestor id revisited before the chain
+  // runs out marks a cycle. Only the cycle itself is unnested, not whatever
+  // leads into it - a straight-line ancestor of a cycle is still validly
+  // nested under its own (non-cyclic) parent.
+  const cycleMembers = new Set<string>()
+  for (const start of parentOf.keys()) {
+    const path: string[] = []
+    const indexInPath = new Map<string, number>()
+    let current: string | undefined = start
+    while (current !== undefined) {
+      const seenAt = indexInPath.get(current)
+      if (seenAt !== undefined) {
+        for (const id of path.slice(seenAt)) cycleMembers.add(id)
+        break
+      }
+      indexInPath.set(current, path.length)
+      path.push(current)
+      current = parentOf.get(current)
+    }
+  }
+  if (cycleMembers.size > 0) {
+    console.warn(`Composition cycle detected among: ${[...cycleMembers].join(', ')} - rendering them unnested.`)
+    for (const id of cycleMembers) parentOf.delete(id)
+  }
+
+  const consumedEdgeIds = new Set<string>()
+  for (const edge of compositionEdges) {
+    if (parentOf.get(edge.to) === edge.from) consumedEdgeIds.add(edge.id)
+  }
+
+  return { parentOf, consumedEdgeIds }
+}
+
 // Convert CanvasGraph nodes and edges to cytoscape ElementDefinition format
 function graphToElements(graph: CanvasGraph): ElementDefinition[] {
-  const nodeElements = graph.nodes.map(
-    (node): ElementDefinition => ({
+  const { parentOf, consumedEdgeIds } = resolveCompositionParents(graph.edges)
+
+  const nodeElements = graph.nodes.map((node): ElementDefinition => {
+    const parent = parentOf.get(node.id)
+    return {
       data: {
         id: node.id,
         label: node.name,
@@ -172,22 +279,25 @@ function graphToElements(graph: CanvasGraph): ElementDefinition[] {
         kindLabel: node.kindLabel,
         layer: node.layer,
         status: node.status,
+        ...(parent === undefined ? {} : { parent }),
       },
       group: 'nodes',
-    })
-  )
+    }
+  })
 
-  const edgeElements = graph.edges.map(
-    (edge): ElementDefinition => ({
-      data: {
-        id: edge.id,
-        source: edge.from,
-        target: edge.to,
-        label: edge.name ?? edge.kindLabel,
-      },
-      group: 'edges',
-    })
-  )
+  const edgeElements = graph.edges
+    .filter((edge) => !consumedEdgeIds.has(edge.id))
+    .map(
+      (edge): ElementDefinition => ({
+        data: {
+          id: edge.id,
+          source: edge.from,
+          target: edge.to,
+          label: edge.name ?? edge.kindLabel,
+        },
+        group: 'edges',
+      })
+    )
 
   return [...nodeElements, ...edgeElements]
 }
@@ -227,6 +337,17 @@ export function applyFilter(
       ? baseNodeIds
       : baseNodeIds.filter(nodeMatchesQuickFilter)
   )
+
+  // A compound child that matches the filter needs its container(s) shown
+  // too, or it renders as a stray top-level node instead of the nested part
+  // the model claims it is - pull in every visible node's ancestor chain.
+  for (const id of [...visibleNodeIds]) {
+    let ancestor = cy.getElementById(id).parent()
+    while (ancestor.nonempty()) {
+      visibleNodeIds.add(ancestor.first().id())
+      ancestor = ancestor.parent()
+    }
+  }
 
   const visibleIds = new Set<string>(visibleNodeIds)
   for (const edge of cy.edges()) {
