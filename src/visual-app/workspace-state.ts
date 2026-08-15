@@ -1,48 +1,13 @@
-import {
-  flattenMarkdownOrString,
-  type MarkdownOrString,
-} from '@likec4/core/types'
+import type { CanvasEdge, CanvasNode } from '../graph-projection.js'
 
 export type ConversationMode = 'auto' | 'open' | 'closed'
-
-export interface DiagramElementInput {
-  readonly id: string
-  readonly modelRef?: string | null
-  readonly deploymentRef?: string | null
-  readonly title: string
-  readonly kind?: string | null
-  readonly description?: MarkdownOrString | null
-  readonly technology?: string | null
-  readonly tags?: readonly string[] | null
-  readonly navigateTo?: string | null
-  readonly metadata?: Readonly<Record<string, unknown>> | null
-}
-
-export interface DiagramRelationshipInput {
-  readonly id: string
-  readonly source: string
-  readonly target: string
-  readonly label?: string | null
-  readonly description?: MarkdownOrString | null
-  readonly kind?: string | null
-  readonly technology?: string | null
-  readonly notation?: string | null
-  readonly relations?: readonly string[] | null
-}
 
 export interface SelectedElement {
   readonly type: 'element'
   readonly id: string
-  readonly modelRef: string | null
-  readonly deploymentRef: string | null
-  readonly identity: string
   readonly title: string
-  readonly kind: string | null
+  readonly kind: string
   readonly description: string | null
-  readonly technology: string | null
-  readonly tags: readonly string[]
-  readonly navigateTo: string | null
-  readonly metadata: Readonly<Record<string, unknown>> | null
 }
 
 export interface SelectedRelationship {
@@ -54,11 +19,7 @@ export interface SelectedRelationship {
   readonly targetTitle: string
   readonly label: string | null
   readonly description: string | null
-  readonly kind: string | null
-  readonly technology: string | null
-  readonly notation: string | null
-  readonly relationshipIds: readonly string[]
-  readonly aggregateCount: number
+  readonly kind: string
 }
 
 export type SelectedDiagramSubject = SelectedElement | SelectedRelationship
@@ -68,52 +29,32 @@ const optionalText = (value: string | null | undefined): string | null => {
   return text === '' ? null : text
 }
 
-export const visualDescriptionText = (
-  value: MarkdownOrString | null | undefined,
-): string | null => optionalText(flattenMarkdownOrString(value))
-
 export const normalizeSelectedElement = (
-  node: DiagramElementInput,
-): SelectedElement => {
-  const modelRef = optionalText(node.modelRef)
-  const deploymentRef = optionalText(node.deploymentRef)
-  return {
-    type: 'element',
-    id: String(node.id),
-    modelRef,
-    deploymentRef,
-    identity: modelRef ?? deploymentRef ?? String(node.id),
-    title: node.title,
-    kind: optionalText(node.kind),
-    description: visualDescriptionText(node.description),
-    technology: optionalText(node.technology),
-    tags: node.tags?.map(String) ?? [],
-    navigateTo: optionalText(node.navigateTo),
-    metadata: node.metadata ?? null,
-  }
-}
+  node: CanvasNode,
+): SelectedElement => ({
+  type: 'element',
+  id: node.id,
+  title: node.name,
+  kind: node.kindLabel,
+  description: optionalText(node.description),
+})
 
 export const normalizeSelectedRelationship = (
-  edge: DiagramRelationshipInput,
+  edge: CanvasEdge,
   nodeTitles: ReadonlyMap<string, string>,
 ): SelectedRelationship => {
-  const sourceId = String(edge.source)
-  const targetId = String(edge.target)
-  const relationshipIds = edge.relations?.map(String) ?? []
+  const sourceId = edge.from
+  const targetId = edge.to
   return {
     type: 'relationship',
-    id: String(edge.id),
+    id: edge.id,
     sourceId,
     sourceTitle: nodeTitles.get(sourceId) ?? sourceId,
     targetId,
     targetTitle: nodeTitles.get(targetId) ?? targetId,
-    label: optionalText(edge.label),
-    description: visualDescriptionText(edge.description),
-    kind: optionalText(edge.kind),
-    technology: optionalText(edge.technology),
-    notation: optionalText(edge.notation),
-    relationshipIds,
-    aggregateCount: relationshipIds.length,
+    label: optionalText(edge.name),
+    description: optionalText(edge.description),
+    kind: edge.kindLabel,
   }
 }
 
@@ -275,13 +216,9 @@ export const formatContextualQuestion = (
   const text = question.trim()
   if (subject === null) return text
   if (subject.type === 'element') {
-    return `About element “${subject.title}” (${subject.identity}): ${text}`
+    return `About element "${subject.title}" (${subject.id}): ${text}`
   }
   const route = `${subject.sourceTitle} → ${subject.targetTitle}`
   const name = subject.label === null ? route : `${route} — ${subject.label}`
-  const aggregate =
-    subject.aggregateCount > 1
-      ? ` (${subject.aggregateCount} model relationships)`
-      : ''
-  return `About relationship “${name}”${aggregate}: ${text}`
+  return `About relationship "${name}": ${text}`
 }
