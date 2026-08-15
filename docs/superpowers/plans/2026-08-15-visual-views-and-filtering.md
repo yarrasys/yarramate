@@ -210,14 +210,32 @@ Wire the built `views` array into `VisualSessionSnapshot`'s new `views` field (T
 Add a case alongside the existing `input.type` switch (`session-server.ts:416-419` area) that, for
 `filter.query`, builds a synthetic `ProjectionDefinition` inline exactly like `ask-command.ts:392-410`'s
 `sliceProjection` does (`{ format: 'yarramate/projection/v1', id: 'ad-hoc', version: '0', query: input.payload
-.query }`), calls `evaluateProjection(graph, synthetic, profileContext)` against the session's already-compiled
-graph/profileContext (same objects `graph-projection.ts`'s `projectGraphForCanvas` was built from — do not
-recompile), extracts subject ids from `ProjectionResult.subjects`, and sends `sendFrame(socket, { kind:
-'filter-result', result: { query: input.payload.query, matchedIds } })` directly — **not** through the
-journal/poll/agent loop (same "bypasses the agent poll loop entirely" rule the design doc states for
-`changeset.commit`/`layout.save`). Still journal the raw browser event for audit (`appendVisualEvent`), matching
-how every other browser input is recorded, but do not mark it actionable (leave `ACTIONABLE_EVENT_TYPES`
-untouched — `filter.query`/`view.save` must not wake the agent).
+.query }`) and calls `evaluateProjection(graph, synthetic, profileContext)`.
+
+**`graph`/`profileContext` do not exist in this process today — Task 7 did not create them.**
+`request.initialModel.graph` (`VisualRenderedModel.graph`) is a `CanvasGraph` (`graph-projection.ts`), a
+browser-shaped node/edge projection already derived *from* a `SemanticGraph` by `projectGraphForCanvas` in a
+separate, earlier process (`buildVisualModelGraph`, `session-store.ts:867-878`) — that `SemanticGraph` and its
+`profileContext` are never passed into `startVisualServer`/`session-server.ts` and are not recoverable from the
+`CanvasGraph`. `evaluateProjection` needs the `SemanticGraph`, not the `CanvasGraph`.
+
+So this task must compile them itself, once, at session start, reusing Task 7's already-resolved
+`resolvedWorkspace` (`resolvedWorkspace.profiles`, `resolvedWorkspace.documents` — both `readonly string[]`
+paths): `compileWorkspaceWithProfileContext([...resolvedWorkspace.profiles, ...resolvedWorkspace.documents]
+.map((path) => ({ path, source: readFileSync(resolve(cwd, path), 'utf8') })))` — the exact same call shape
+`ask-command.ts:840-843` uses. Hold `{ graph, profileContext }` in the session's closure state alongside
+`resolvedWorkspace` (Task 7); do not recompile per `filter.query` frame — compile once, reuse for every query
+in the session. A compile failure, or an ad-hoc session with no resolved workspace (`resolvedWorkspace
+.profiles`/`.documents` both empty per Task 7's degrade path), leaves no graph to filter against: respond `{
+kind: 'filter-result', result: { query: input.payload.query, matchedIds: [] } }` rather than throwing — mirrors
+Task 7's "gracefully degrade, never fail the whole session" precedent for workspace-less sessions.
+
+On success, extract subject ids from `ProjectionResult.subjects` (`result.subjects.map(({ id }) => id)`) and
+send `sendFrame(socket, { kind: 'filter-result', result: { query: input.payload.query, matchedIds } })`
+directly — **not** through the journal/poll/agent loop (same "bypasses the agent poll loop entirely" rule the
+design doc states for `changeset.commit`/`layout.save`). Still journal the raw browser event for audit
+(`appendVisualEvent`), matching how every other browser input is recorded, but do not mark it actionable (leave
+`ACTIONABLE_EVENT_TYPES` untouched — `filter.query`/`view.save` must not wake the agent).
 
 ### Task 9: `session-server.ts` — handle `view.save` synchronously
 
