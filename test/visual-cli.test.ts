@@ -6,7 +6,6 @@ import {
   mkdir,
   mkdtemp,
   readFile,
-  readdir,
   rm,
   symlink,
   utimes,
@@ -57,34 +56,47 @@ import { packageVersion, type CliResult } from '../src/cli-support.js'
 
 const repositoryRoot = fileURLToPath(new URL('..', import.meta.url))
 const fixtures = fileURLToPath(new URL('./fixtures/visual/', import.meta.url))
-const fakeCompiler = join(fixtures, 'fake-likec4.mjs')
 const assetRoot = join(fixtures, 'browser-assets')
 
 /** Nothing listens on port 1, so a client reaches it only to be refused. */
 const CLOSED_PORT = 1
 
-const modelWith = (marker?: string): VisualModel => ({
+const modelWith = (): VisualModel => ({
   format: 'yarramate/visual-model/v1',
   authority: 'ad-hoc',
   initialView: 'choices',
   sourceDigests: {},
-  files: {
-    'likec4.config.json': '{"name":"visual"}',
-    'model.likec4': `model { system = system "System" }${
-      marker === undefined ? '' : `\n// fake:${marker}`
-    }`,
-    'views/choices.likec4': 'views { view choices { include * } }',
+  graph: {
+    nodes: [
+      {
+        id: 'system',
+        kind: 'yarramate/core@0.1#applicationComponent',
+        kindLabel: 'applicationComponent',
+        layer: null,
+        name: 'System',
+        description: null,
+        aka: [],
+        status: null,
+        owner: null,
+        distinctFrom: [],
+        supersedes: [],
+        constraints: [],
+        references: [],
+        presentIn: [],
+        attestations: [],
+      },
+    ],
+    edges: [],
   },
 })
 
-const requestWith = (marker?: string): VisualSessionRequest => ({
+const requestWith = (): VisualSessionRequest => ({
   format: 'yarramate/visual-session-request/v1',
   authority: 'ad-hoc',
   title: 'Choose a delivery design',
   description: 'Temporary non-canonical comparison',
   chatEnabled: true,
-  compiler: { command: process.execPath, args: [fakeCompiler] },
-  initialModel: modelWith(marker),
+  initialModel: modelWith(),
 })
 
 const chatEventInput = {
@@ -137,14 +149,6 @@ const refusalCodes = (result: CliResult): readonly string[] => {
 
 const readDescriptorFile = async (path: string) =>
   JSON.parse(await readFile(path, 'utf8')) as VisualSessionDescriptor
-
-const entriesIn = async (directory: string) => {
-  try {
-    return await readdir(directory)
-  } catch {
-    return []
-  }
-}
 
 // ------------------------------------------------------- live browser traffic
 
@@ -1058,9 +1062,9 @@ describe('stop', () => {
 })
 
 describe('runVisualStart', () => {
-  const writeRequest = async (marker?: string) => {
+  const writeRequest = async () => {
     const path = join(workDir, 'request.json')
-    await writeJson(path, requestWith(marker))
+    await writeJson(path, requestWith())
     return path
   }
 
@@ -1357,26 +1361,11 @@ describe('runVisualStart', () => {
 
   it('refuses an invalid request before any filesystem effect', async () => {
     const requestPath = join(workDir, 'request.json')
-    await writeJson(requestPath, {
-      ...requestWith(),
-      compiler: { command: 'likec4', args: [] },
-    })
+    await writeJson(requestPath, { ...requestWith(), authority: 'canonical' })
     const result = await runVisualCli(['start', requestPath], workDir)
     expect(result.exitCode).toBe(1)
-    expect(refusalCodes(result)).toContain('YMVS101')
+    expect(refusalCodes(result)).toContain('YMVS111')
     expect(existsSync(join(workDir, VISUAL_SESSION_DIRECTORY))).toBe(false)
-  })
-
-  it('leaves no session behind when the initial model does not compile', async () => {
-    const result = await runVisualCli(
-      ['start', await writeRequest('invalid')],
-      workDir,
-    )
-    expect(result).toMatchObject({ exitCode: 1, stdout: '' })
-    expect(refusalCodes(result)).toEqual(['YMVS201'])
-    await expect(
-      entriesIn(join(workDir, VISUAL_SESSION_DIRECTORY)),
-    ).resolves.toEqual([])
   })
 
   it('prunes a session a previous runtime abandoned', async () => {

@@ -400,7 +400,7 @@ observations:
   - subject: yarramate-engine#render-visual-model
     result: confirmed
     evidence:
-      uri: repo:src/adapters/visual/likec4-compiler.ts
+      uri: repo:src/graph-projection.ts
   - subject: yarramate-engine#requirements-traceability-matrix
     result: confirmed
     evidence:
@@ -750,13 +750,15 @@ observations:
     evidence:
       uri: repo:test/visual-journey.test.ts
   - subject: yarramate-repository#visual-likec4-compiler-source
-    result: confirmed
+    result: contradicted
     evidence:
-      uri: repo:src/adapters/visual/likec4-compiler.ts
+      uri: repo:src/graph-projection.ts
+      message: The trusted compiler subprocess was deleted in Task 8; rendering is now a direct in-process projection.
   - subject: yarramate-repository#visual-likec4-compiler-tests
-    result: confirmed
+    result: contradicted
     evidence:
-      uri: repo:test/visual-likec4-compiler.test.ts
+      uri: repo:test/graph-projection.test.ts
+      message: The compiler-subprocess test suite was deleted alongside likec4-compiler.ts in Task 8.
   - subject: yarramate-repository#visual-protocol-source
     result: confirmed
     evidence:

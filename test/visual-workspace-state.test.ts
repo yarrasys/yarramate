@@ -1,28 +1,56 @@
 import { describe, expect, it } from 'vitest'
+import type { CanvasEdge, CanvasNode } from '../src/graph-projection.js'
 import {
   conversationWidthBounds,
   createVisualWorkspaceState,
   formatContextualQuestion,
   normalizeSelectedElement,
   normalizeSelectedRelationship,
-  visualDescriptionText,
   visualWorkspaceReducer,
   type SelectedDiagramSubject,
 } from '../src/visual-app/workspace-state.js'
 
+const canvasNode = (overrides: Partial<CanvasNode> = {}): CanvasNode => ({
+  id: 'system.api',
+  kind: 'yarramate/core@0.1#applicationComponent',
+  kindLabel: 'applicationComponent',
+  layer: 'application',
+  name: 'API',
+  description: 'Handles requests.',
+  aka: [],
+  status: null,
+  owner: null,
+  distinctFrom: [],
+  supersedes: [],
+  constraints: [],
+  references: [],
+  presentIn: [],
+  attestations: [],
+  ...overrides,
+})
+
+const canvasEdge = (overrides: Partial<CanvasEdge> = {}): CanvasEdge => ({
+  id: 'edge-1',
+  kind: 'yarramate/core@0.1#dependency',
+  kindLabel: 'dependency',
+  from: 'web',
+  to: 'api',
+  name: 'calls',
+  description: null,
+  mode: null,
+  content: null,
+  status: null,
+  references: [],
+  presentIn: [],
+  ...overrides,
+})
+
 const elementSubject: SelectedDiagramSubject = {
   type: 'element',
-  id: 'node-1',
-  modelRef: 'system.api',
-  deploymentRef: null,
-  identity: 'system.api',
+  id: 'system.api',
   title: 'API',
   kind: 'service',
   description: 'Handles requests.',
-  technology: 'TypeScript',
-  tags: ['public'],
-  navigateTo: 'api-detail',
-  metadata: null,
 }
 
 describe('visual workspace state', () => {
@@ -121,68 +149,47 @@ describe('visual workspace state', () => {
 })
 
 describe('selected diagram subjects', () => {
-  it('prefers model identity for deployment nodes and flattens descriptions', () => {
-    const selected = normalizeSelectedElement({
+  it('normalizes a node into a selected element, trimming its description', () => {
+    const selected = normalizeSelectedElement(
+      canvasNode({ id: 'rendered-node', name: 'API', kindLabel: 'service', description: '  Handles requests.  ' }),
+    )
+    expect(selected).toEqual({
+      type: 'element',
       id: 'rendered-node',
-      modelRef: 'system.api',
-      deploymentRef: 'prod.api',
       title: 'API',
       kind: 'service',
-      description: { txt: '  Handles requests.  ' },
-      technology: 'TypeScript',
-      tags: ['public'],
-      navigateTo: 'api-detail',
-      metadata: { owner: 'platform' },
-    })
-    expect(selected).toMatchObject({
-      identity: 'system.api',
       description: 'Handles requests.',
-      modelRef: 'system.api',
-      deploymentRef: 'prod.api',
-    })
-  })
-
-  it('falls back through deployment identity to rendered node identity', () => {
-    expect(
-      normalizeSelectedElement({
-        id: 'deployment-node',
-        deploymentRef: 'prod.api',
-        title: 'Production API',
-      }).identity,
-    ).toBe('prod.api')
-    expect(
-      normalizeSelectedElement({ id: 'group-1', title: 'Services' }).identity,
-    ).toBe('group-1')
-  })
-
-  it('preserves edge endpoints, rendered description, and aggregate count', () => {
-    const selected = normalizeSelectedRelationship(
-      {
-        id: 'edge-1',
-        source: 'missing-source',
-        target: 'api',
-        label: 'routes to',
-        description: { txt: 'Requests cross this boundary.' },
-        kind: 'sync',
-        technology: 'HTTPS',
-        notation: 'request',
-        relations: ['relation-1', 'relation-2'],
-      },
-      new Map([['api', 'API']]),
-    )
-    expect(selected).toMatchObject({
-      sourceId: 'missing-source',
-      sourceTitle: 'missing-source',
-      targetTitle: 'API',
-      description: 'Requests cross this boundary.',
-      aggregateCount: 2,
-      relationshipIds: ['relation-1', 'relation-2'],
     })
   })
 
   it('treats absent or blank descriptions as missing', () => {
-    expect(visualDescriptionText(undefined)).toBeNull()
-    expect(visualDescriptionText({ txt: '   ' })).toBeNull()
+    expect(normalizeSelectedElement(canvasNode({ description: null })).description).toBeNull()
+    expect(normalizeSelectedElement(canvasNode({ description: '   ' })).description).toBeNull()
+  })
+
+  it('preserves edge endpoints and falls back to the id for unknown titles', () => {
+    const selected = normalizeSelectedRelationship(
+      canvasEdge({
+        id: 'edge-1',
+        from: 'missing-source',
+        to: 'api',
+        name: 'routes to',
+        description: '  Requests cross this boundary.  ',
+        kindLabel: 'sync',
+      }),
+      new Map([['api', 'API']]),
+    )
+    expect(selected).toEqual({
+      type: 'relationship',
+      id: 'edge-1',
+      sourceId: 'missing-source',
+      sourceTitle: 'missing-source',
+      targetId: 'api',
+      targetTitle: 'API',
+      label: 'routes to',
+      description: 'Requests cross this boundary.',
+      kind: 'sync',
+    })
   })
 
   it('formats the exact visible text sent through the existing chat seam', () => {
@@ -191,20 +198,14 @@ describe('selected diagram subjects', () => {
     )
 
     const relationship = normalizeSelectedRelationship(
-      {
-        id: 'edge-1',
-        source: 'web',
-        target: 'api',
-        label: 'calls',
-        relations: ['one', 'two'],
-      },
+      canvasEdge({ id: 'edge-1', from: 'web', to: 'api', name: 'calls' }),
       new Map([
         ['web', 'Web'],
         ['api', 'API'],
       ]),
     )
     expect(formatContextualQuestion('Why synchronous?', relationship)).toBe(
-      'About relationship “Web → API — calls” (2 model relationships): Why synchronous?',
+      'About relationship “Web → API — calls”: Why synchronous?',
     )
     expect(formatContextualQuestion('  General question  ', null)).toBe(
       'General question',

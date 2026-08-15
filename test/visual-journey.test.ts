@@ -7,7 +7,6 @@ import {
   readFile,
   rm,
   stat,
-  watch,
   writeFile,
 } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -47,28 +46,40 @@ import {
 
 /**
  * The complete visual conversation, driven end to end over the real transport:
- * a real session server, a real browser socket, the real agent client, and the
- * trusted-compiler stand-in. Nothing is mocked, so every terminal cause below
- * converges through the one transition the runtime actually ships.
+ * a real session server, a real browser socket, and the real agent client.
+ * Nothing is mocked, so every terminal cause below converges through the one
+ * transition the runtime actually ships.
  */
 
 const fixtures = fileURLToPath(new URL('./fixtures/visual/', import.meta.url))
-const fakeCompiler = join(fixtures, 'fake-likec4.mjs')
 const assetRoot = join(fixtures, 'browser-assets')
 
-const modelWith = (marker?: string): VisualModel => ({
+const modelWith = (): VisualModel => ({
   format: 'yarramate/visual-model/v1',
   authority: 'ad-hoc',
   initialView: 'choices',
   sourceDigests: {},
-  files: {
-    'likec4.config.json': '{"name":"visual"}',
-    // The fake compiler selects its behaviour from a marker comment inside a
-    // staged source file, so a hanging compile is a property of the model.
-    'model.likec4': `model { system = system "System" }${
-      marker === undefined ? '' : `\n// fake:${marker}`
-    }`,
-    'views/choices.likec4': 'views { view choices { include * } }',
+  graph: {
+    nodes: [
+      {
+        id: 'system',
+        kind: 'yarramate/core@0.1#applicationComponent',
+        kindLabel: 'applicationComponent',
+        layer: null,
+        name: 'System',
+        description: null,
+        aka: [],
+        status: null,
+        owner: null,
+        distinctFrom: [],
+        supersedes: [],
+        constraints: [],
+        references: [],
+        presentIn: [],
+        attestations: [],
+      },
+    ],
+    edges: [],
   },
 })
 
@@ -80,7 +91,6 @@ const requestWith = (
   title: 'Choose a delivery design',
   description: 'Temporary non-canonical comparison',
   chatEnabled: true,
-  compiler: { command: process.execPath, args: [fakeCompiler] },
   initialModel: modelWith(),
   ...overrides,
 })
@@ -159,7 +169,6 @@ interface VisualFixture {
 }
 
 let baseDir = ''
-let compilerLog = ''
 const running: VisualServerHandle[] = []
 
 const startVisualFixture = async (
@@ -411,22 +420,6 @@ const waitForVisualEvent = async <Type extends VisualEvent['type']>(
   }
 }
 
-/**
- * Runs `action` and returns once the trusted compiler has been executed once
- * more than before it. The fake command records every execution before it does
- * anything else, so a run that appears here and does not finish is a compile
- * stage that is genuinely in flight.
- */
-const whileCompiling = async (action: () => void) => {
-  const executions = async () =>
-    (await readFile(compilerLog, 'utf8')).split('\n').filter(Boolean).length
-  const before = await executions()
-  const changes = watch(compilerLog)
-  action()
-  for await (const _change of changes) {
-    if ((await executions()) > before) return
-  }
-}
 
 /** A session directory whose runtime is gone, as a restart finds it. */
 const plantVisualSession = async (
@@ -450,13 +443,9 @@ const plantVisualSession = async (
 
 beforeEach(async () => {
   baseDir = await mkdtemp(join(tmpdir(), 'yarramate-visual-journey-'))
-  compilerLog = join(baseDir, 'compiler.log')
-  await writeFile(compilerLog, '')
-  process.env.YARRAMATE_FAKE_LIKEC4_LOG = compilerLog
 })
 
 afterEach(async () => {
-  delete process.env.YARRAMATE_FAKE_LIKEC4_LOG
   for (const handle of running.splice(0)) {
     await handle.stop('main-cancelled').catch(() => undefined)
   }
@@ -688,42 +677,6 @@ describe('the visual recovery matrix', () => {
     expect(visual.handle.status().lifecycle).toBe('running')
     await closeSocket(second)
   })
-
-  it('aborts an active compiler process when the main agent cancels', async () => {
-    const visual = await startVisualFixture()
-    const browser = await connectFixtureBrowser(visual)
-    send(browser, chatMessage('redraw it'))
-    const asked = await nextFrame(browser, 'accepted')
-
-    let posted: Promise<Response> | undefined
-    await whileCompiling(() => {
-      posted = agentFetch(visual.descriptorPath, '/api/agent/responses', {
-        format: 'yarramate/visual-response/v1',
-        sessionId: visual.sessionId,
-        responseId: nextResponseId(),
-        eventId: asked.eventId,
-        type: 'model.replace',
-        timestamp: '2026-08-08T00:00:03.000Z',
-        // This candidate never finishes compiling on its own.
-        payload: { model: modelWith('hang') },
-      })
-    })
-
-    const started = Date.now()
-    const closed = await visual.handle.stop('main-cancelled')
-    // Cancelled, not waited out: the compiler's own budget is 30 seconds.
-    expect(Date.now() - started).toBeLessThan(15_000)
-
-    const body = (await (await posted)?.json()) as {
-      readonly diagnostics: readonly { readonly code: string }[]
-    }
-    expect(body.diagnostics.map((entry) => entry.code)).toContain('YMVS204')
-    expect(closed.handoff).toMatchObject({
-      terminationReason: 'main-cancelled',
-      decision: 'failed',
-    })
-    await closeSocket(browser)
-  }, 45_000)
 
   it('recovers a restarted runtime from the journal without acknowledging a truncated record', async () => {
     const torn = '{"format":"yarramate/visual-event/v1","sessionId":"0000'
