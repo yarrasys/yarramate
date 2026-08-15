@@ -42,6 +42,11 @@ const NODE_WIDTH = 170
 const NODE_HEIGHT = 50
 const LABEL_MAX_TEXT_WIDTH = 150
 
+// Edge labels are free-floating text at a route midpoint with no box to sit
+// in, so they wrap narrower than node labels - a tall, narrow label intrudes
+// on far fewer neighbours than a wide, flat one.
+const EDGE_LABEL_MAX_TEXT_WIDTH = 110
+
 // Cytoscape's `text-wrap: 'wrap'` only breaks lines on whitespace (or an
 // explicit zero-width space - `separatorRegex` in cytoscape's own text-layout
 // code matches `[\s\u200b]+`). Identifiers with no whitespace - repo-relative
@@ -57,7 +62,10 @@ function withWrapPoints(text: string): string {
   return text.replace(/([/._-])/g, `$1${WRAP_POINT}`)
 }
 
-// ELK layout options: extends base layout with elk-specific config not in cytoscape's types
+// ELK layout options: extends base layout with elk-specific config not in
+// cytoscape's types. `nodeLayoutOptions` is cytoscape-elk's only per-node hook
+// (`makeNode` calls it for every node and assigns the result to that node's
+// ELK `layoutOptions`).
 interface ElkLayoutOptions extends Record<string, unknown> {
   name: 'elk'
   elk: {
@@ -65,6 +73,56 @@ interface ElkLayoutOptions extends Record<string, unknown> {
     'elk.direction': 'DOWN' | 'UP' | 'LEFT' | 'RIGHT'
     [key: string]: unknown
   }
+  nodeLayoutOptions: (node: cytoscape.NodeSingular) => Record<string, unknown> | undefined
+}
+
+// cytoscape draws a compound parent's box itself - cytoscape-elk only feeds
+// positions back for leaf nodes (`nodes.filter((n) => !n.isParent())`), so the
+// container rectangle is its children's bounding box grown by cytoscape's own
+// `padding`. ELK independently reserves `elk.padding` around each child cluster
+// when spacing siblings apart. If cytoscape's padding is the larger of the two,
+// every container is drawn wider than the room ELK left for it and neighbouring
+// boxes close up until they touch - so the two numbers must stay equal.
+const CONTAINER_PADDING = 30
+
+// Extra room ELK leaves above the children that cytoscape does not draw into,
+// giving the container's own label - rendered outside the box by
+// `text-valign: top` - somewhere to sit that isn't the box above it.
+const CONTAINER_LABEL_GAP = 22
+
+// Spacing, shared by the root graph and every compound container.
+//
+// ELK's defaults are ~20px throughout, which is too tight for 170x50 nodes
+// carrying wrapped labels, and it does not account for edge labels at all:
+// cytoscape-elk's `makeEdge` sends only id/source/target, never `labels[]`, so
+// ELK reserves no midpoint space for the relationship text cytoscape then
+// draws there. The between-layer gap therefore has to cover the edge label as
+// well as the edge.
+//
+// A graph's layout options govern only that graph's own children, and
+// cytoscape-elk sets them on the root graph alone, so each container is laid
+// out as a separate child graph that would otherwise fall back to those ~20px
+// defaults - measured: nodes inside a container sat 18px apart while their
+// siblings outside sat 58px apart. Handing the same spacing to every parent
+// through `nodeLayoutOptions` closes that gap. (`elk.hierarchyHandling:
+// INCLUDE_CHILDREN` does not: measured on the 289-node graph it left the
+// in-container gap at the default and widened the layout from 28.5k to 35k px.
+// Direction is deliberately not passed down - ELK ignores it on child graphs,
+// verified by identical container boxes for DOWN and RIGHT.)
+const ELK_SPACING: Record<string, unknown> = {
+  // Between siblings in the same layer.
+  'elk.spacing.nodeNode': 60,
+  // Across layers - the axis edge labels are drawn on.
+  'elk.layered.spacing.nodeNodeBetweenLayers': 100,
+  // Keep routed edges off the node boxes they pass.
+  'elk.spacing.edgeNode': 30,
+  'elk.layered.spacing.edgeNodeBetweenLayers': 30,
+  // Keep parallel edges apart so their labels do not stack.
+  'elk.spacing.edgeEdge': 20,
+  'elk.layered.spacing.edgeEdgeBetweenLayers': 20,
+  // Disconnected subgraphs read as separate clusters, not one mass.
+  'elk.spacing.componentComponent': 80,
+  'elk.padding': `[top=${CONTAINER_PADDING + CONTAINER_LABEL_GAP},left=${CONTAINER_PADDING},bottom=${CONTAINER_PADDING},right=${CONTAINER_PADDING}]`,
 }
 
 // Shared by the full-graph layout effect and the visible-subgraph relayout
@@ -75,7 +133,9 @@ function buildLayoutConfig(direction: 'top-down' | 'left-right'): ElkLayoutOptio
     elk: {
       algorithm: 'layered',
       'elk.direction': direction === 'top-down' ? 'DOWN' : 'LEFT',
+      ...ELK_SPACING,
     },
+    nodeLayoutOptions: (node) => (node.isParent() ? ELK_SPACING : undefined),
   }
 }
 
@@ -148,21 +208,22 @@ const STYLESHEET: cytoscape.StylesheetJsonBlock[] = [
     // Compound container (see resolveCompositionParents below): keeps its own
     // layer fill/border from the rules above but at low opacity with a dashed
     // border, so its ArchiMate type stays legible while still reading as a
-    // grouping box rather than a plain node. Label pinned to the top so it
-    // never collides with children stacked underneath it.
+    // grouping box rather than a plain node. The label is drawn above the box
+    // entirely, in the `CONTAINER_LABEL_GAP` band ELK reserves but cytoscape
+    // does not draw into, so it clears both the children and its own border.
     selector: 'node:parent',
     style: {
       shape: 'roundrectangle',
       'background-opacity': 0.25,
       'border-width': 2,
       'border-style': 'dashed',
-      padding: '30px',
+      padding: `${CONTAINER_PADDING}px`,
       label: 'data(wrapLabel)',
       'font-size': 13,
       'font-weight': 'bold',
       'text-halign': 'center',
       'text-valign': 'top',
-      'text-margin-y': 6,
+      'text-margin-y': -8,
       color: '#333333',
     },
   },
@@ -184,9 +245,17 @@ const STYLESHEET: cytoscape.StylesheetJsonBlock[] = [
       'target-arrow-color': '#999999',
       label: 'data(wrapLabel)',
       'font-size': 10,
+      // ELK reserves no space for edge text (cytoscape-elk's `makeEdge` never
+      // emits `labels[]`), so a long relationship name renders as one wide
+      // banner across the midpoint and collides with whatever else routes
+      // through there. Wrapping caps how far that text can reach sideways.
+      'text-wrap': 'wrap',
+      'text-max-width': `${EDGE_LABEL_MAX_TEXT_WIDTH}px`,
       'text-background-color': '#FFFFFF',
-      'text-background-padding': '2px',
-      'text-background-opacity': 0.8,
+      'text-background-padding': '3px',
+      // Fully opaque: labels that still overlap occlude cleanly instead of
+      // interleaving into unreadable text.
+      'text-background-opacity': 1,
     },
   },
   {
