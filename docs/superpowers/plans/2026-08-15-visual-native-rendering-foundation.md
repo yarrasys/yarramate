@@ -321,7 +321,10 @@ the canonical/ad-hoc constraint itself), `model.replace`, `likec4-compiler`, `Re
 - Editing (drag-to-reposition, field edits, `yarramate apply` wiring, undo stack, commit button).
 - ArchiMate notation toggle / alternate node shapes.
 - Radial (concentric) / Force (cola) layouts — Layered (elk) only in this plan.
-- Saved-views dropdown / `.yarramate/projections/*.yaml` loading.
+- Saved-views dropdown / `.yarramate/projections/*.yaml` loading. **Delivered by Plan 2
+  (`2026-08-15-visual-views-and-filtering.md`): view picker, Save/Save-As.**
 - Status/evidence/ownership badges on nodes.
 - Chat-as-controller (explain/filter/focus query mechanic, `appliedQuery` field). Chat keeps its existing
   explain-only behavior in this plan; only its now-impossible mutation path (`model.replace`) is removed.
+  **The filter/focus half is delivered by Plan 2 (`filter.query`, `appliedQuery`, chat filter pill);
+  chat remains explain-only, never a model-mutation path.**
