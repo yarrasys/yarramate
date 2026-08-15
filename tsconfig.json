@@ -18,6 +18,7 @@
   "exclude": [
     "src/visual-app",
     "test/visual-workspace-state.test.ts",
-    "test/visual-app-render.test.ts"
+    "test/visual-app-render.test.ts",
+    "test/graph-canvas.test.ts"
   ]
 }

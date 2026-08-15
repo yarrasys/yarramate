@@ -19,6 +19,7 @@
     "src/visual-app/**/*.tsx",
     "vite.visual.config.ts",
     "test/visual-workspace-state.test.ts",
-    "test/visual-app-render.test.ts"
+    "test/visual-app-render.test.ts",
+    "test/graph-canvas.test.ts"
   ]
 }
