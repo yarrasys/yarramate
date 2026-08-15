@@ -265,6 +265,7 @@ interface GraphCanvasProps {
   readonly onSelect: (id: string, type: 'node' | 'edge') => void
   readonly matchedIds: readonly string[] | null
   readonly quickFilterText: string
+  readonly direction: 'top-down' | 'left-right'
 }
 
 /**
@@ -282,6 +283,7 @@ export function GraphCanvas({
   onSelect,
   matchedIds,
   quickFilterText,
+  direction,
 }: GraphCanvasProps): React.ReactElement {
   const containerRef = useRef<HTMLDivElement>(null)
   const cyRef = useRef<Core | null>(null)
@@ -348,13 +350,13 @@ export function GraphCanvas({
       name: 'elk',
       elk: {
         algorithm: 'layered',
-        'elk.direction': 'DOWN',
+        'elk.direction': direction === 'top-down' ? 'DOWN' : 'LEFT',
       },
     }
 
     const layout = cyRef.current.layout(layoutConfig as unknown as cytoscape.LayoutOptions)
     layout.run()
-  }, [graph])
+  }, [graph, direction])
 
   // Update selection highlight when selectedId or graph changes
   useEffect(() => {

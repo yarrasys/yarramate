@@ -3,6 +3,7 @@ import type {
   VisualServerFrame,
   VisualSessionSnapshot,
 } from '../adapters/visual/wire.js'
+import type { ProjectionQuery } from '../projection.js'
 import {
   canReconnect,
   initialVisualAppState,
@@ -35,6 +36,8 @@ export interface VisualSession {
   readonly ask: (text: string) => void
   readonly choose: (optionId: string) => void
   readonly navigate: (viewId: string) => void
+  readonly filter: (query: ProjectionQuery) => void
+  readonly clearFilter: () => void
   readonly end: () => void
 }
 
@@ -164,10 +167,21 @@ export const useVisualSession = (): VisualSession => {
     [send],
   )
 
+  const filter = useCallback(
+    (query: ProjectionQuery) => {
+      send({ kind: 'filter', query })
+    },
+    [send],
+  )
+
+  const clearFilter = useCallback(() => {
+    dispatch({ type: 'filter.cleared' })
+  }, [])
+
   const end = useCallback(() => {
     dispatch({ type: 'end.requested' })
     send({ kind: 'end' })
   }, [send])
 
-  return { state, connected, ask, choose, navigate, end }
+  return { state, connected, ask, choose, navigate, filter, clearFilter, end }
 }

@@ -1,4 +1,5 @@
 import { GraphCanvas } from './graph-canvas.js'
+import { ViewPicker } from './view-picker.js'
 import {
   useEffect,
   useLayoutEffect,
@@ -14,6 +15,7 @@ import {
 import type {
   VisualChoicePresentPayload,
   VisualDiagnostic,
+  VisualViewSummary,
 } from '../adapters/visual/protocol-contract.js'
 import { useVisualSession } from './session-client.js'
 import {
@@ -84,8 +86,13 @@ const CommandStrip = ({
   detailsOpen,
   conversationOpen,
   unread,
+  direction,
+  views,
   onToggleDetails,
   onToggleConversation,
+  onToggleDirection,
+  onSelectView,
+  onClearFilter,
   onEnd,
 }: {
   readonly state: VisualAppState
@@ -93,8 +100,13 @@ const CommandStrip = ({
   readonly detailsOpen: boolean
   readonly conversationOpen: boolean
   readonly unread: number
+  readonly direction: 'top-down' | 'left-right'
+  readonly views: readonly VisualViewSummary[]
   readonly onToggleDetails: () => void
   readonly onToggleConversation: () => void
+  readonly onToggleDirection: () => void
+  readonly onSelectView: (view: VisualViewSummary) => void
+  readonly onClearFilter: () => void
   readonly onEnd: () => void
 }) => (
   <header className="command-strip">
@@ -115,6 +127,10 @@ const CommandStrip = ({
       >
         {endTransitionStatus(state)}
       </span>
+      <ViewPicker views={views} onSelect={onSelectView} onClear={onClearFilter} />
+      <button type="button" onClick={onToggleDirection}>
+        {direction === 'top-down' ? 'Top-Down' : 'Left-Right'}
+      </button>
       <button
         type="button"
         aria-expanded={detailsOpen}
@@ -217,11 +233,13 @@ const DiagramWorkspace = ({
   state,
   selectedId,
   waiting,
+  direction,
   onSelect,
 }: {
   readonly state: VisualAppState
   readonly selectedId: string | null
   readonly waiting: string | null
+  readonly direction: 'top-down' | 'left-right'
   readonly onSelect: (subject: SelectedDiagramSubject) => void
 }) => {
   // An edge names its endpoints by node id; the reviewer reads titles. The
@@ -257,6 +275,7 @@ const DiagramWorkspace = ({
             }}
             matchedIds={state.activeFilter?.matchedIds ?? null}
             quickFilterText={state.quickFilterText}
+            direction={direction}
           />
         )}
         {waiting === null ? null : <p className="waiting">{waiting}</p>}
@@ -594,7 +613,7 @@ const ConversationSeparator = ({
 }
 
 export const App = () => {
-  const { state, connected, ask, choose, end } = useVisualSession()
+  const { state, connected, ask, choose, navigate, filter, clearFilter, end } = useVisualSession()
 
   const [workspace, dispatchWorkspace] = useReducer(
     visualWorkspaceReducer,
@@ -679,10 +698,26 @@ export const App = () => {
         detailsOpen={workspace.detailsOpen}
         conversationOpen={conversationOpen}
         unread={workspace.conversation.unread}
+        direction={workspace.direction}
+        views={state.views}
         onToggleDetails={() => dispatchWorkspace({ type: 'details.toggled' })}
         onToggleConversation={() =>
           dispatchWorkspace({ type: 'conversation.toggled' })
         }
+        onToggleDirection={() =>
+          dispatchWorkspace({
+            type: 'direction.set',
+            direction: workspace.direction === 'top-down' ? 'left-right' : 'top-down',
+          })
+        }
+        onSelectView={(view) => {
+          navigate(view.id)
+          filter(view.query)
+          if (view.presentation?.layout === 'layered' && view.presentation.direction) {
+            dispatchWorkspace({ type: 'direction.set', direction: view.presentation.direction })
+          }
+        }}
+        onClearFilter={clearFilter}
         onEnd={end}
       />
       <div
@@ -694,6 +729,7 @@ export const App = () => {
           state={state}
           selectedId={workspace.selectedSubject?.id ?? null}
           waiting={waiting}
+          direction={workspace.direction}
           onSelect={(subject) =>
             dispatchWorkspace({ type: 'subject.selected', subject })
           }

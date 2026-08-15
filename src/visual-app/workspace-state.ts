@@ -78,6 +78,7 @@ export interface VisualWorkspaceState {
   readonly selectedSubject: SelectedDiagramSubject | null
   readonly descriptionExpanded: boolean
   readonly detailsOpen: boolean
+  readonly direction: 'top-down' | 'left-right'
 }
 
 export type VisualWorkspaceAction =
@@ -89,6 +90,7 @@ export type VisualWorkspaceAction =
   | { readonly type: 'subject.cleared' }
   | { readonly type: 'description.toggled' }
   | { readonly type: 'details.toggled' }
+  | { readonly type: 'direction.set'; readonly direction: 'top-down' | 'left-right' }
   | { readonly type: 'model.replaced' }
 
 // `min(45vw, 640px)`, never below the 320px floor the panel is usable at.
@@ -132,6 +134,7 @@ export const createVisualWorkspaceState = (
   selectedSubject: null,
   descriptionExpanded: false,
   detailsOpen: false,
+  direction: 'top-down',
 })
 
 export const visualWorkspaceReducer = (
@@ -202,6 +205,8 @@ export const visualWorkspaceReducer = (
         : { ...state, descriptionExpanded: !state.descriptionExpanded }
     case 'details.toggled':
       return { ...state, detailsOpen: !state.detailsOpen }
+    case 'direction.set':
+      return { ...state, direction: action.direction }
     case 'model.replaced':
       return state.selectedSubject === null
         ? state
