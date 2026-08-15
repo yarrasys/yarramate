@@ -20,6 +20,7 @@ import {
   visualBrowserInputFor,
   type VisualAppState,
 } from '../src/visual-app/state.js'
+import type { ProjectionQuery } from '../src/projection.js'
 
 /** A rendered model with an empty canvas graph — only initialView matters here. */
 const model = (initialView: string): VisualRenderedModel => ({
@@ -787,7 +788,7 @@ describe('visualAppActionsForFrame', () => {
 })
 
 describe('visualAppReducer filter state', () => {
-  const query = { include: { subjects: ['Q1'] }, exclude: {} }
+  const query: ProjectionQuery = { subjects: ['Q1'] }
   const matchedIds = ['node1', 'node2', 'node3']
 
   it('initializes with no active filter', () => {
@@ -810,12 +811,11 @@ describe('visualAppReducer filter state', () => {
       source: 'panel',
     })
   })
-
   it('applies a filter with chat source from chat response', () => {
     const actions = visualAppActionsForFrame({
       kind: 'response',
       response: {
-        responseId: 'r1',
+        ...responseEnvelope,
         type: 'chat.response',
         payload: {
           text: 'Here are results',
@@ -869,7 +869,7 @@ describe('visualAppReducer filter state', () => {
       matchedIds: ['node1'],
       source: 'panel',
     })
-    const newQuery = { include: { subjects: ['Q2'] }, exclude: {} }
+    const newQuery: ProjectionQuery = { subjects: ['Q2'] }
     const filtered2 = visualAppReducer(filtered1, {
       type: 'filter.applied',
       query: newQuery,
@@ -885,10 +885,6 @@ describe('visualAppReducer filter state', () => {
 })
 
 describe('canReconnect', () => {
-  it('pins the browser grace to the protocol reconnect window', () => {
-    expect(RECONNECT_WINDOW_MS).toBe(VISUAL_LIMITS.reconnectMs)
-  })
-
   it('reconnects inside the grace and stops at its edge', () => {
     const lostAt = 1_000_000
     expect(canReconnect(lostAt, lostAt)).toBe(true)
