@@ -51,7 +51,12 @@ import {
   type TerminalEventDependencies,
   type VisualSessionPaths,
 } from './session-store.js'
-import { loadProjection } from '../../projection.js'
+import { loadProjection, evaluateProjection, type ProjectionQuery } from '../../projection.js'
+import {
+  compileWorkspaceWithProfileContext,
+  type ResolvedProfileContext,
+  type SemanticGraph,
+} from '../../compiler.js'
 import { loadWorkspaceManifest, type ResolvedWorkspace } from '../../workspace.js'
 import type {
   VisualRenderedModel,
@@ -424,6 +429,8 @@ const eventFrom = (
       return { ...envelope, type: input.type, payload: input.payload }
     case 'session.end':
       return { ...envelope, type: input.type, payload: input.payload }
+    case 'filter.query':
+      return { ...envelope, type: input.type, payload: input.payload }
   }
 }
 
@@ -545,6 +552,46 @@ export const startVisualServer = async (
       }
     },
   )
+
+  /**
+   * `filter.query` needs a `SemanticGraph`, not the `CanvasGraph` the rendered
+   * model carries — that graph is compiled once here, from the same
+   * `resolvedWorkspace` profiles and documents `ask-command.ts` compiles from,
+   * and reused for every query the session receives. An ad-hoc session with no
+   * resolved workspace, or one whose sources fail to compile, has nothing to
+   * filter against: `filterMatchedIds` degrades to an empty match set rather
+   * than failing the session.
+   */
+  const compiledWorkspace:
+    | { readonly graph: SemanticGraph; readonly profileContext: ResolvedProfileContext }
+    | undefined = (() => {
+    const profiles = resolvedWorkspace?.profiles ?? []
+    const documents = resolvedWorkspace?.documents ?? []
+    if (profiles.length === 0 && documents.length === 0) return undefined
+    try {
+      const compiled = compileWorkspaceWithProfileContext(
+        [...profiles, ...documents].map((path) => ({
+          path,
+          source: readFileSync(resolve(options.cwd, path), 'utf8'),
+        })),
+      )
+      return compiled.ok
+        ? { graph: compiled.graph, profileContext: compiled.profileContext }
+        : undefined
+    } catch {
+      return undefined
+    }
+  })()
+
+  const filterMatchedIds = (query: ProjectionQuery): readonly string[] => {
+    if (compiledWorkspace === undefined) return []
+    const result = evaluateProjection(
+      compiledWorkspace.graph,
+      { format: 'yarramate/projection/v1', id: 'ad-hoc', version: '0', query },
+      compiledWorkspace.profileContext,
+    )
+    return result.subjects.map(({ id }) => id)
+  }
 
   let listening = false
   let bootstrapSpent = false
@@ -1072,6 +1119,19 @@ export const startVisualServer = async (
       // A journaled end is the last input this session takes. The agent still
       // has to see it, so the queue freezes rather than the socket closing.
       if (event.type === 'session.end') freeze('terminal-event')
+      if (event.type === 'filter.query') {
+        // Filtering is a pure read of the compiled workspace: it never asks
+        // the agent anything, so it is answered here directly rather than
+        // through the pending queue a poll would drain.
+        sendFrame(socket, {
+          kind: 'filter-result',
+          result: {
+            query: event.payload.query,
+            matchedIds: filterMatchedIds(event.payload.query),
+          },
+        })
+        return
+      }
       sendFrame(socket, {
         kind: 'accepted',
         sequence: event.sequence,

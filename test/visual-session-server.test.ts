@@ -2219,6 +2219,122 @@ describe('startVisualServer teardown retries', () => {
   )
 })
 
+describe('startVisualServer filter.query', () => {
+  // Same small workspace ask-command.test.ts compiles: one businessActor, two
+  // planned concepts, and a build-order relationship between them, so a
+  // `kinds` filter has an unambiguous single match to assert against.
+  const document = `format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts:
+  - id: user
+    kind: businessActor
+    name: User
+  - id: todo-service
+    kind: applicationService
+    name: Todo service
+    status: planned
+relationships:
+  - id: service-serves-user
+    kind: serving
+    from: todo-service
+    to: user
+`
+  const manifest = `format: yarramate/workspace/v1
+id: filter-fixture
+documents:
+  - architecture/main.yaml
+profiles: []
+projections: []
+adapterMappings: []
+evidence: []
+`
+
+  const withWorkspace = async () => {
+    await mkdir(join(baseDir, '.yarramate/architecture'), { recursive: true })
+    await writeFile(
+      join(baseDir, '.yarramate/architecture/main.yaml'),
+      document,
+      'utf8',
+    )
+    await writeFile(join(baseDir, '.yarramate/workspace.yaml'), manifest, 'utf8')
+  }
+
+  const sendFilterQuery = (
+    socket: WebSocket,
+    query: { readonly kinds?: readonly string[] },
+  ) => {
+    const result = nextFrame(socket, 'filter-result')
+    socket.send(
+      JSON.stringify({
+        type: 'filter.query',
+        lastAcknowledgedSequence: 0,
+        payload: { query },
+      }),
+    )
+    return result
+  }
+
+  it('resolves matching subject ids against the compiled workspace', async () => {
+    await withWorkspace()
+    const server = await start()
+    const { cookie } = await bootstrap(server)
+    const socket = await openBrowserSocket(server, cookie)
+
+    const frame = await sendFilterQuery(socket, {
+      kinds: ['yarramate/core@0.1#businessActor'],
+    })
+
+    expect(frame.result).toEqual({
+      query: { kinds: ['yarramate/core@0.1#businessActor'] },
+      matchedIds: ['main#user'],
+    })
+    socket.close()
+  })
+
+  it('returns no matches for an ad-hoc session with no resolved workspace', async () => {
+    const server = await start()
+    const { cookie } = await bootstrap(server)
+    const socket = await openBrowserSocket(server, cookie)
+
+    const frame = await sendFilterQuery(socket, {
+      kinds: ['yarramate/core@0.1#businessActor'],
+    })
+
+    expect(frame.result).toEqual({
+      query: { kinds: ['yarramate/core@0.1#businessActor'] },
+      matchedIds: [],
+    })
+    socket.close()
+  })
+
+  it('journals the query for audit without waking the agent poll loop', async () => {
+    await withWorkspace()
+    const server = await start({ agentPollMs: 60 })
+    const capability = await capabilityOf(server)
+    const { cookie } = await bootstrap(server)
+    const socket = await openBrowserSocket(server, cookie)
+
+    await sendFilterQuery(socket, {
+      kinds: ['yarramate/core@0.1#businessActor'],
+    })
+
+    const journal = await journalOf(server)
+    expect(journal.at(-1)).toMatchObject({
+      type: 'filter.query',
+      payload: {
+        query: { kinds: ['yarramate/core@0.1#businessActor'] },
+      },
+    })
+    // Non-actionable: the poll loop never saw it, so a poll from before the
+    // journal's start is still waiting rather than replaying it.
+    await expect(
+      (await agentFetch(server, capability, '/api/agent/events?after=0')).json(),
+    ).resolves.toMatchObject({ waiting: true, lastSequence: 2 })
+    socket.close()
+  })
+})
+
 it('keeps the fixture asset root free of anything the server must not serve', async () => {
   expect(dirname(assetRoot)).toBe(fixtures.replace(/\/$/, ''))
   const page = await readFile(join(assetRoot, 'index.html'), 'utf8')
