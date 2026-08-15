@@ -749,16 +749,14 @@ observations:
     result: confirmed
     evidence:
       uri: repo:test/visual-journey.test.ts
-  - subject: yarramate-repository#visual-likec4-compiler-source
-    result: contradicted
+  - subject: yarramate-repository#graph-projection-source
+    result: confirmed
     evidence:
       uri: repo:src/graph-projection.ts
-      message: The trusted compiler subprocess was deleted in Task 8; rendering is now a direct in-process projection.
-  - subject: yarramate-repository#visual-likec4-compiler-tests
-    result: contradicted
+  - subject: yarramate-repository#graph-projection-tests
+    result: confirmed
     evidence:
       uri: repo:test/graph-projection.test.ts
-      message: The compiler-subprocess test suite was deleted alongside likec4-compiler.ts in Task 8.
   - subject: yarramate-repository#visual-protocol-source
     result: confirmed
     evidence:

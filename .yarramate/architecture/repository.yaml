@@ -342,7 +342,13 @@ concepts:
   - id: visual-likec4-compiler-source
     kind: repository-file
     name: src/adapters/visual/likec4-compiler.ts
+    status: retired
+  - id: graph-projection-source
+    kind: repository-file
+    name: src/graph-projection.ts
     status: current
+    supersedes:
+      - visual-likec4-compiler-source
   - id: visual-protocol-source
     kind: repository-file
     name: src/adapters/visual/protocol.ts
@@ -378,7 +384,13 @@ concepts:
   - id: visual-likec4-compiler-tests
     kind: repository-file
     name: test/visual-likec4-compiler.test.ts
+    status: retired
+  - id: graph-projection-tests
+    kind: repository-file
+    name: test/graph-projection.test.ts
     status: current
+    supersedes:
+      - visual-likec4-compiler-tests
   - id: visual-protocol-tests
     kind: repository-file
     name: test/visual-protocol.test.ts
@@ -767,6 +779,11 @@ relationships:
     kind: realization
     from: visual-likec4-compiler-source
     to: yarramate-engine#render-visual-model
+    status: retired
+  - id: graph-projection-realizes-rendering
+    kind: realization
+    from: graph-projection-source
+    to: yarramate-engine#render-visual-model
   - id: visual-protocol-source-realizes-protocol
     kind: realization
     from: visual-protocol-source
@@ -802,6 +819,11 @@ relationships:
   - id: visual-compiler-tests-validate-rendering
     kind: association
     from: visual-likec4-compiler-tests
+    to: yarramate-engine#render-visual-model
+    status: retired
+  - id: graph-projection-tests-validate-rendering
+    kind: association
+    from: graph-projection-tests
     to: yarramate-engine#render-visual-model
   - id: visual-protocol-tests-validate-protocol
     kind: association

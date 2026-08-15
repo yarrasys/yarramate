@@ -1710,3 +1710,15 @@ mappings:
   - native: yarramate-repository#visual-store-tests-validate-recovery
     external: visualStoreTestsValidateRecovery
     type: relationship
+  - native: yarramate-repository#graph-projection-source
+    external: graphProjectionSource
+    type: concept
+  - native: yarramate-repository#graph-projection-realizes-rendering
+    external: graphProjectionRealizesRendering
+    type: relationship
+  - native: yarramate-repository#graph-projection-tests
+    external: graphProjectionTests
+    type: concept
+  - native: yarramate-repository#graph-projection-tests-validate-rendering
+    external: graphProjectionTestsValidateRendering
+    type: relationship

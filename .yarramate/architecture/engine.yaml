@@ -727,13 +727,13 @@ concepts:
   - id: visual-runtime
     kind: applicationComponent
     name: Visual conversation runtime
-    description: Serves authenticated temporary LikeC4 explanations, browser chat transport, recovery, and cleanup without invoking a model provider.
+    description: Serves authenticated temporary native-model explanations, browser chat transport, recovery, and cleanup without invoking a model provider.
     owner: yarramate-product#yarramate-maintainers
     status: current
   - id: visual-browser
     kind: applicationComponent
     name: Visual conversation browser
-    description: Custom React and LikeC4 presentation for diagrams, descriptions, choices, chat, status, and End.
+    description: Custom React and Cytoscape presentation for diagrams, descriptions, choices, chat, status, and End.
     owner: yarramate-product#yarramate-maintainers
     status: current
   - id: visual-session-service
@@ -757,7 +757,7 @@ concepts:
   - id: render-visual-model
     kind: applicationFunction
     name: Render temporary visual model
-    description: Validates, compiles, and atomically promotes a complete grounded or explicitly ad hoc LikeC4 model.
+    description: Projects the canonical yarramate model directly into a renderable graph for the browser, with no compilation, promotion, or ad hoc model support.
     status: current
   - id: recover-visual-session
     kind: applicationFunction
@@ -767,7 +767,7 @@ concepts:
   - id: present-visual-conversation
     kind: applicationFunction
     name: Present the visual conversation
-    description: Draws the promoted views, the authority and connection state, the transcript, the structured choices, and End, and turns what the reviewer does with them into session events.
+    description: Draws the rendered graph, the authority and connection state, the transcript, the structured choices, and End, and turns what the reviewer does with them into session events.
     status: current
   - id: expose-cli-over-mcp
     kind: applicationFunction
@@ -1673,7 +1673,7 @@ relationships:
     from: visual-browser
     to: visual-session-protocol
     mode: read-write
-    description: The browser exchanges only versioned session documents. It cannot reach .yarramate, repository files, or the trusted compiler command vector, and no model provider is reachable from it.
+    description: The browser exchanges only versioned session documents. It cannot reach .yarramate, repository files, or the trusted projection step, and no model provider is reachable from it.
   - id: visual-browser-presents-conversation
     kind: assignment
     from: visual-browser

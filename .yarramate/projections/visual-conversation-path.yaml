@@ -15,7 +15,7 @@ query:
     - yarramate-repository#visual-skill-reference
     - yarramate-repository#visual-session-server-source
     - yarramate-repository#visual-session-store-source
-    - yarramate-repository#visual-likec4-compiler-source
+    - yarramate-repository#graph-projection-source
     - yarramate-repository#visual-protocol-source
     - yarramate-repository#visual-cli-source
     - yarramate-repository#visual-browser-source
@@ -24,7 +24,7 @@ query:
     - yarramate-repository#visual-handoff-schema-source
     - yarramate-repository#visual-session-server-tests
     - yarramate-repository#visual-session-store-tests
-    - yarramate-repository#visual-likec4-compiler-tests
+    - yarramate-repository#graph-projection-tests
     - yarramate-repository#visual-protocol-tests
     - yarramate-repository#visual-cli-tests
     - yarramate-repository#visual-browser-tests
