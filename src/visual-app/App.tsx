@@ -1,5 +1,4 @@
-import { LikeC4Model, type AnyLikeC4Model } from '@likec4/core/model'
-import { LikeC4ModelProvider, ReactLikeC4 } from 'likec4/react'
+import { GraphCanvas } from './graph-canvas.js'
 import {
   useEffect,
   useLayoutEffect,
@@ -19,10 +18,8 @@ import type {
 import { useVisualSession } from './session-client.js'
 import {
   visualAuthorityLabel,
-  visualDrawingFor,
   type VisualAppRecord,
   type VisualAppState,
-  type VisualDrawing,
 } from './state.js'
 import {
   conversationWidthBounds,
@@ -39,18 +36,6 @@ import {
  * strip carries the facts and the controls above it, and the conversation is a
  * panel the reviewer sizes or puts away without losing what it holds.
  */
-
-/**
- * The rendered model as LikeC4's own object graph.
- *
- * `@likec4/core/model` is the module `likec4/react` imports for the same class,
- * so the provider and this factory share one instance of it. `likec4/model`'s
- * `createLikeC4Model` is this exact call — `LikeC4Model.create` — behind an
- * entry point that takes `createRequire` at load and so cannot run in a
- * browser. The compiled document belongs to LikeC4, which reads its own shape.
- */
-const likeC4ModelFrom = (compiled: unknown): AnyLikeC4Model =>
-  LikeC4Model.create(compiled as Parameters<typeof LikeC4Model.create>[0])
 
 const SPEAKERS: Readonly<Record<VisualAppRecord['speaker'], string>> = {
   reviewer: 'You',
@@ -96,22 +81,18 @@ const endTransitionStatus = (state: VisualAppState): string => {
 const CommandStrip = ({
   state,
   connection,
-  views,
   detailsOpen,
   conversationOpen,
   unread,
-  onNavigate,
   onToggleDetails,
   onToggleConversation,
   onEnd,
 }: {
   readonly state: VisualAppState
   readonly connection: string
-  readonly views: readonly string[]
   readonly detailsOpen: boolean
   readonly conversationOpen: boolean
   readonly unread: number
-  readonly onNavigate: (viewId: string) => void
   readonly onToggleDetails: () => void
   readonly onToggleConversation: () => void
   readonly onEnd: () => void
@@ -134,17 +115,6 @@ const CommandStrip = ({
       >
         {endTransitionStatus(state)}
       </span>
-      <label className="offscreen" htmlFor="active-view">Active view</label>
-      <select
-        id="active-view"
-        value={state.activeView}
-        onChange={(event) => onNavigate(event.target.value)}
-        disabled={views.length < 2}
-      >
-        {views.map((viewId) => (
-          <option key={viewId} value={viewId}>{viewId}</option>
-        ))}
-      </select>
       <button
         type="button"
         aria-expanded={detailsOpen}
@@ -245,112 +215,50 @@ const Choices = ({
 
 const DiagramWorkspace = ({
   state,
-  drawing,
+  selectedId,
   waiting,
-  reduceGraphics,
-  onNavigate,
   onSelect,
 }: {
   readonly state: VisualAppState
-  readonly drawing: VisualDrawing<AnyLikeC4Model>
+  readonly selectedId: string | null
   readonly waiting: string | null
-  readonly reduceGraphics: boolean
-  readonly onNavigate: (viewId: string) => void
   readonly onSelect: (subject: SelectedDiagramSubject) => void
 }) => {
   // An edge names its endpoints by node id; the reviewer reads titles. The
   // rendering model the renderer itself draws answers that, so nothing here
   // reaches into the compiled document.
-  const activeRenderedView = useMemo(
-    () => drawing.drawn?.findView(state.activeView)?.$layouted ?? null,
-    [drawing.drawn, state.activeView],
-  )
   const nodeTitles = useMemo(
     () =>
       new Map(
-        (activeRenderedView?.nodes ?? []).map(
-          (node) => [String(node.id), node.title] as const,
+        (state.model?.graph.nodes ?? []).map(
+          (node) => [node.id, node.name] as const,
         ),
       ),
-    [activeRenderedView],
+    [state.model],
   )
-  const canvas = useRef<HTMLDivElement>(null)
-  useLayoutEffect(() => {
-    const host = canvas.current?.querySelector<HTMLElement>(
-      '[data-likec4-instance]',
-    )
-    const sheet = host?.shadowRoot?.adoptedStyleSheets[0]
-    if (
-      sheet === undefined ||
-      [...sheet.cssRules].some((rule) =>
-        rule.cssText.includes('--yarramate-focus-ring'),
-      )
-    ) {
-      return
-    }
-    sheet.insertRule(
-      ':focus-visible { outline: var(--yarramate-focus-ring, 3px solid #2457a6) !important; outline-offset: 3px !important; }',
-      sheet.cssRules.length,
-    )
-  }, [drawing.drawn, state.activeView])
 
   return (
     <section className="diagram-workspace" aria-label="Architecture diagram">
-      <div className="canvas" ref={canvas}>
-        {drawing.drawn === null ? null : (
-          <LikeC4ModelProvider likec4model={drawing.drawn}>
-            <ReactLikeC4
-              viewId={state.activeView}
-              onNodeClick={(node) => onSelect(normalizeSelectedElement(node))}
-              onEdgeClick={(edge) =>
-                onSelect(normalizeSelectedRelationship(edge, nodeTitles))
-              }
-              // LikeC4 1.59.2 declares the originating node optional and never
-              // passes it: the runtime emits `navigateTo` with `viewId` alone,
-              // so this branch is dead against the pinned renderer and the
-              // subject the reviewer clicked is what the reducer keeps across
-              // the navigation. The branch stays because the declared contract
-              // allows the node, but a renderer bump that starts passing it
-              // changes the behaviour from "keep the prior selection" to
-              // "select the navigated node" — a visible change, not a silent
-              // one, and this is where it lands.
-              onNavigateTo={(viewId, _event, node) => {
+      <div className="canvas">
+        {state.model === null ? null : (
+          <GraphCanvas
+            graph={state.model.graph}
+            selectedId={selectedId}
+            onSelect={(id, type) => {
+              const graph = state.model!.graph
+              if (type === 'node') {
+                const node = graph.nodes.find((n) => n.id === id)
                 if (node !== undefined) onSelect(normalizeSelectedElement(node))
-                onNavigate(viewId)
-              }}
-              injectFontCss={false}
-              colorScheme="light"
-              background="dots"
-              controls
-              pannable
-              zoomable
-              fitView
-              keepAspectRatio={false}
-              // The custom inspector is the only details surface, so the
-              // renderer's own overlays stay shut.
-              enableElementDetails={false}
-              enableRelationshipDetails={false}
-              enableNotes
-              enableSearch={false}
-              // The renderer injects its own stylesheets; this session's
-              // policy admits them under this nonce and nothing else.
-              styleNonce={state.styleNonce}
-              showNavigationButtons
-              reduceGraphics={reduceGraphics ? true : 'auto'}
-              className="diagram"
-            />
-          </LikeC4ModelProvider>
+              } else {
+                const edge = graph.edges.find((e) => e.id === id)
+                if (edge !== undefined)
+                  onSelect(normalizeSelectedRelationship(edge, nodeTitles))
+              }
+            }}
+          />
         )}
         {waiting === null ? null : <p className="waiting">{waiting}</p>}
       </div>
-
-      {drawing.fault === null ? null : (
-        // The renderer's exception describes its own internals and may carry
-        // anything: the reviewer reads this application's words instead.
-        <div className="faults" role="alert">
-          <p className="faults-title">{drawing.fault}</p>
-        </div>
-      )}
     </section>
   )
 }
@@ -736,7 +644,6 @@ const ConversationSeparator = ({
 
 export const App = () => {
   const { state, connected, ask, choose, navigate, end } = useVisualSession()
-  const lastDrawn = useRef<AnyLikeC4Model | null>(null)
 
   const [workspace, dispatchWorkspace] = useReducer(
     visualWorkspaceReducer,
@@ -788,37 +695,21 @@ export const App = () => {
     if (received) dispatchWorkspace({ type: 'attention.received' })
   }, [state.transcript.length, state.choices, state.diagnostics])
 
-  const drawing = useMemo(() => {
-    const next = visualDrawingFor(
-      state.model,
-      likeC4ModelFrom,
-      lastDrawn.current,
-    )
-    lastDrawn.current = next.drawn
-    return next
-  }, [state.model])
-
-  const reduceGraphics = useMemo(
-    () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-    [],
-  )
-
   // Promotion replaces the model the reviewer was pointing at, so a subject
   // held from the old one no longer describes anything. Views and lifecycle
   // change under the same model and must leave the selection alone.
-  const activeCandidate = useRef(state.model?.candidate ?? null)
+  const activeCandidate = useRef(state.model)
   useEffect(() => {
-    const candidate = state.model?.candidate ?? null
-    if (candidate !== activeCandidate.current) {
-      activeCandidate.current = candidate
+    if (state.model !== activeCandidate.current) {
+      activeCandidate.current = state.model
       dispatchWorkspace({ type: 'model.replaced' })
     }
-  }, [state.model?.candidate])
+  }, [state.model])
 
-  // A fault already accounts for the empty canvas, and saying there is no model
-  // would contradict the one that arrived and could not be drawn.
+  // "No model to draw" is only true before anything has arrived; once a
+  // model exists there is always something on the canvas to show.
   const waiting =
-    drawing.drawn !== null || drawing.fault !== null
+    state.model !== null
       ? null
       : state.lifecycle === 'connecting'
         ? 'Reading the session'
@@ -834,11 +725,9 @@ export const App = () => {
       <CommandStrip
         state={state}
         connection={connectionOf(state, connected)}
-        views={state.model?.views ?? []}
         detailsOpen={workspace.detailsOpen}
         conversationOpen={conversationOpen}
         unread={workspace.conversation.unread}
-        onNavigate={navigate}
         onToggleDetails={() => dispatchWorkspace({ type: 'details.toggled' })}
         onToggleConversation={() =>
           dispatchWorkspace({ type: 'conversation.toggled' })
@@ -852,10 +741,8 @@ export const App = () => {
       >
         <DiagramWorkspace
           state={state}
-          drawing={drawing}
+          selectedId={workspace.selectedSubject?.id ?? null}
           waiting={waiting}
-          reduceGraphics={reduceGraphics}
-          onNavigate={navigate}
           onSelect={(subject) =>
             dispatchWorkspace({ type: 'subject.selected', subject })
           }
