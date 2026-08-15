@@ -316,6 +316,7 @@ const DiagramWorkspace = ({
             matchedIds={state.activeFilter?.matchedIds ?? null}
             quickFilterText={state.quickFilterText}
             direction={direction}
+            activeViewId={state.activeView}
           />
         )}
         {waiting === null ? null : <p className="waiting">{waiting}</p>}

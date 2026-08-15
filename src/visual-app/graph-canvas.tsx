@@ -270,6 +270,17 @@ export function applyFilter(
     .style('display', 'element')
 }
 
+const FIT_PADDING = 20
+
+// Recenters and rescales the viewport to whatever elements are currently
+// visible. A view switch can match a disjoint node set from the previous
+// view, so the old pan/zoom can leave the new view's nodes off-screen or
+// crammed into a corner; `fit()` is a no-op on an empty visible collection,
+// so callers never need to guard against "the new view matched nothing".
+export function fitToVisible(cy: Core, padding = FIT_PADDING): void {
+  cy.fit(cy.elements(':visible'), padding)
+}
+
 interface GraphCanvasProps {
   readonly graph: CanvasGraph
   readonly selectedId: string | null
@@ -277,6 +288,7 @@ interface GraphCanvasProps {
   readonly matchedIds: readonly string[] | null
   readonly quickFilterText: string
   readonly direction: 'top-down' | 'left-right'
+  readonly activeViewId: string
 }
 
 /**
@@ -295,6 +307,7 @@ export function GraphCanvas({
   matchedIds,
   quickFilterText,
   direction,
+  activeViewId,
 }: GraphCanvasProps): React.ReactElement {
   const containerRef = useRef<HTMLDivElement>(null)
   const cyRef = useRef<Core | null>(null)
@@ -303,6 +316,16 @@ export function GraphCanvas({
   // populates initial elements, so that first sync run only needs to trigger
   // layout, not redundantly remove and re-add the elements it just created.
   const isInitialSyncRef = useRef(true)
+  // Tracks the view active on the previous render, and whether a fit is
+  // pending because of it. `navigate()` updates `activeViewId` synchronously
+  // but `filter()` round-trips through the server, so a view switch's
+  // matched set can land on a later render than the id change itself -
+  // fitting eagerly on the id change would fit to the *previous* view's
+  // still-current matchedIds. Narrower quick-filter typing or a chat-driven
+  // structural filter over the same view leaves this alone, so pan/zoom
+  // don't jump under the reviewer mid-type.
+  const activeViewIdRef = useRef(activeViewId)
+  const pendingViewFitRef = useRef(false)
 
   // Keep onSelectRef up-to-date so tap handlers always call the latest prop
   useEffect(() => {
@@ -385,10 +408,26 @@ export function GraphCanvas({
     }
   }, [selectedId, graph])
 
-  // Apply structural filter (matchedIds) and quick-filter narrowing (quickFilterText)
+  // Arms a pending fit whenever the active view changes. Declared before the
+  // filter-apply effect below - same-phase effects commit in source order,
+  // so a view switch whose filter result lands in the very same render
+  // (e.g. clearing back to "All") is still armed in time for that commit.
+  useEffect(() => {
+    if (activeViewId === activeViewIdRef.current) return
+    activeViewIdRef.current = activeViewId
+    pendingViewFitRef.current = true
+  }, [activeViewId])
+
+  // Apply structural filter (matchedIds) and quick-filter narrowing, then,
+  // only once a pending view-switch fit is armed and its filter result has
+  // actually landed, fit the viewport to whatever is visible now.
   useEffect(() => {
     if (!cyRef.current) return
     applyFilter(cyRef.current, matchedIds, quickFilterText)
+    if (pendingViewFitRef.current) {
+      pendingViewFitRef.current = false
+      fitToVisible(cyRef.current)
+    }
   }, [matchedIds, quickFilterText, graph])
 
   return <div ref={containerRef} style={{ width: '100%', height: '100%' }} />

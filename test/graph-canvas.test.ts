@@ -1,6 +1,6 @@
 import cytoscape from 'cytoscape'
-import { describe, expect, it } from 'vitest'
-import { applyFilter } from '../src/visual-app/graph-canvas.js'
+import { describe, expect, it, vi } from 'vitest'
+import { applyFilter, fitToVisible } from '../src/visual-app/graph-canvas.js'
 
 // A small headless cytoscape instance (no container/DOM needed for hide/show
 // and data queries) - mirrors the shape graphToElements produces, without
@@ -78,5 +78,32 @@ describe('applyFilter', () => {
     // Only node1 is structurally matched; edge1 needs node2 too, so it's hidden
     // even though matchedIds says nothing about edge1's own label.
     expect(visibleIds(cy)).toEqual(['node1'])
+  })
+})
+
+describe('fitToVisible', () => {
+  it('fits to only the currently visible elements, not the whole graph', () => {
+    const cy = buildCy()
+    applyFilter(cy, ['node1', 'node2'], '')
+    const fitSpy = vi.spyOn(cy, 'fit')
+
+    fitToVisible(cy)
+
+    expect(fitSpy).toHaveBeenCalledTimes(1)
+    const call = fitSpy.mock.calls[0]!
+    const visibleCollection = call[0]
+    const padding = call[1]
+    expect(
+      (visibleCollection as cytoscape.CollectionReturnValue)
+        .map((ele) => ele.id())
+        .sort()
+    ).toEqual(['edge1', 'node1', 'node2'])
+    expect(padding).toBe(20)
+  })
+
+  it('is a safe no-op when nothing is visible', () => {
+    const cy = buildCy()
+    applyFilter(cy, [], '')
+    expect(() => fitToVisible(cy)).not.toThrow()
   })
 })
