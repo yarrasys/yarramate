@@ -153,4 +153,36 @@ describe('visual conversation rendering', () => {
       expect(markup).not.toContain('Agent is thinking')
     },
   )
+
+  it('shows a chat filter pill naming the active chat-issued query', () => {
+    const markup = renderSession({
+      activeFilter: {
+        query: { layers: ['application'] },
+        matchedIds: ['a'],
+        source: 'chat',
+      },
+    })
+
+    expect(markup).toContain('class="filter-pill"')
+    expect(markup).toContain('Filtered by chat:')
+    expect(markup).toContain('layers: application')
+    expect(markup).toContain('>Show all</button>')
+  })
+
+  it.each(['view', 'panel'] as const)(
+    'hides the chat filter pill for a %s-sourced filter',
+    (source) => {
+      const markup = renderSession({
+        activeFilter: { query: { layers: ['application'] }, matchedIds: ['a'], source },
+      })
+
+      expect(markup).not.toContain('class="filter-pill"')
+    },
+  )
+
+  it('hides the chat filter pill when there is no active filter', () => {
+    const markup = renderSession()
+
+    expect(markup).not.toContain('class="filter-pill"')
+  })
 })

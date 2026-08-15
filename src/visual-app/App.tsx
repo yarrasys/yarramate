@@ -2,6 +2,7 @@ import { GraphCanvas } from './graph-canvas.js'
 import { FilterPanel } from './filter-panel.js'
 import { QuickFilterBox } from './quick-filter.js'
 import { ViewPicker } from './view-picker.js'
+import { describeQuery } from './describe-query.js'
 import {
   useEffect,
   useLayoutEffect,
@@ -246,12 +247,14 @@ const DiagramWorkspace = ({
   waiting,
   direction,
   onSelect,
+  onClearFilter,
 }: {
   readonly state: VisualAppState
   readonly selectedId: string | null
   readonly waiting: string | null
   readonly direction: 'top-down' | 'left-right'
   readonly onSelect: (subject: SelectedDiagramSubject) => void
+  readonly onClearFilter: () => void
 }) => {
   // An edge names its endpoints by node id; the reviewer reads titles. The
   // rendering model the renderer itself draws answers that, so nothing here
@@ -268,6 +271,16 @@ const DiagramWorkspace = ({
 
   return (
     <section className="diagram-workspace" aria-label="Architecture diagram">
+      {state.activeFilter?.source === 'chat' ? (
+        <div className="filter-pill" role="status">
+          <span>
+            Filtered by chat: <code>{describeQuery(state.activeFilter.query)}</code>
+          </span>
+          <button type="button" onClick={onClearFilter}>
+            Show all
+          </button>
+        </div>
+      ) : null}
       <div className="canvas">
         {state.model === null ? null : (
           <GraphCanvas
@@ -748,6 +761,7 @@ export const App = () => {
           onSelect={(subject) =>
             dispatchWorkspace({ type: 'subject.selected', subject })
           }
+          onClearFilter={clearFilter}
         />
         {conversationOpen ? (
           <ConversationSeparator

@@ -330,6 +330,53 @@ body {
   overflow: auto;
 }
 
+/* A chat-issued filter narrows the diagram from outside the reviewer's own
+   panel, so it earns a badge that says so and a one-click way back to the
+   full model — never a silent narrowing the reviewer has to notice on their
+   own. */
+.diagram-workspace > .filter-pill {
+  position: absolute;
+  inset: var(--step) auto auto var(--step);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: var(--step);
+  max-width: calc(100% - var(--step) * 2);
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--rule-firm);
+  border-radius: 999px;
+  background: var(--sheet);
+  font-family: var(--utility);
+  font-size: 12px;
+  color: var(--ink);
+}
+
+.filter-pill span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-pill code {
+  font-weight: 700;
+}
+
+.filter-pill button {
+  flex: none;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--cobalt);
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.filter-pill button:hover {
+  color: var(--ink);
+}
+
 .conversation-separator {
   position: relative;
   z-index: 3;
