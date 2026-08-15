@@ -882,6 +882,21 @@ describe('visualAppReducer filter state', () => {
       source: 'chat',
     })
   })
+
+  it('sets quickFilterText on quickFilter.changed, independent of activeFilter', () => {
+    const withFilter = visualAppReducer(activeState, {
+      type: 'filter.applied',
+      query,
+      matchedIds,
+      source: 'panel',
+    })
+    const typed = visualAppReducer(withFilter, {
+      type: 'quickFilter.changed',
+      text: 'checkout',
+    })
+    expect(typed.quickFilterText).toBe('checkout')
+    expect(typed.activeFilter).toEqual(withFilter.activeFilter)
+  })
 })
 
 describe('canReconnect', () => {

@@ -130,6 +130,7 @@ export type VisualAppAction =
       readonly source: 'view' | 'panel' | 'chat'
     }
   | { readonly type: 'filter.cleared' }
+  | { readonly type: 'quickFilter.changed'; readonly text: string }
   | { readonly type: 'view.saved'; readonly result: VisualViewSaveResultPayload }
   | {
       readonly type: 'handoff.received'
@@ -376,6 +377,10 @@ const transition = (
       }
     case 'filter.cleared':
       return { ...state, activeFilter: null }
+    case 'quickFilter.changed':
+      return state.quickFilterText === action.text
+        ? state
+        : { ...state, quickFilterText: action.text }
     case 'view.saved':
       return state
   }

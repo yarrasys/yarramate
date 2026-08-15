@@ -38,6 +38,7 @@ export interface VisualSession {
   readonly navigate: (viewId: string) => void
   readonly filter: (query: ProjectionQuery) => void
   readonly clearFilter: () => void
+  readonly setQuickFilterText: (text: string) => void
   readonly end: () => void
 }
 
@@ -178,10 +179,24 @@ export const useVisualSession = (): VisualSession => {
     dispatch({ type: 'filter.cleared' })
   }, [])
 
+  const setQuickFilterText = useCallback((text: string) => {
+    dispatch({ type: 'quickFilter.changed', text })
+  }, [])
+
   const end = useCallback(() => {
     dispatch({ type: 'end.requested' })
     send({ kind: 'end' })
   }, [send])
 
-  return { state, connected, ask, choose, navigate, filter, clearFilter, end }
+  return {
+    state,
+    connected,
+    ask,
+    choose,
+    navigate,
+    filter,
+    clearFilter,
+    setQuickFilterText,
+    end,
+  }
 }

@@ -1,4 +1,6 @@
 import { GraphCanvas } from './graph-canvas.js'
+import { FilterPanel } from './filter-panel.js'
+import { QuickFilterBox } from './quick-filter.js'
 import { ViewPicker } from './view-picker.js'
 import {
   useEffect,
@@ -12,6 +14,7 @@ import {
   type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
+import type { ProjectionQuery } from '../projection.js'
 import type {
   VisualChoicePresentPayload,
   VisualDiagnostic,
@@ -93,6 +96,9 @@ const CommandStrip = ({
   onToggleDirection,
   onSelectView,
   onClearFilter,
+  onApplyFilter,
+  quickFilterText,
+  onQuickFilterChange,
   onEnd,
 }: {
   readonly state: VisualAppState
@@ -107,6 +113,9 @@ const CommandStrip = ({
   readonly onToggleDirection: () => void
   readonly onSelectView: (view: VisualViewSummary) => void
   readonly onClearFilter: () => void
+  readonly onApplyFilter: (query: ProjectionQuery) => void
+  readonly quickFilterText: string
+  readonly onQuickFilterChange: (text: string) => void
   readonly onEnd: () => void
 }) => (
   <header className="command-strip">
@@ -128,6 +137,8 @@ const CommandStrip = ({
         {endTransitionStatus(state)}
       </span>
       <ViewPicker views={views} onSelect={onSelectView} onClear={onClearFilter} />
+      <QuickFilterBox value={quickFilterText} onChange={onQuickFilterChange} />
+      <FilterPanel query={state.activeFilter?.query ?? null} onApply={onApplyFilter} />
       <button type="button" onClick={onToggleDirection}>
         {direction === 'top-down' ? 'Top-Down' : 'Left-Right'}
       </button>
@@ -613,7 +624,8 @@ const ConversationSeparator = ({
 }
 
 export const App = () => {
-  const { state, connected, ask, choose, navigate, filter, clearFilter, end } = useVisualSession()
+  const { state, connected, ask, choose, navigate, filter, clearFilter, setQuickFilterText, end } =
+    useVisualSession()
 
   const [workspace, dispatchWorkspace] = useReducer(
     visualWorkspaceReducer,
@@ -718,6 +730,9 @@ export const App = () => {
           }
         }}
         onClearFilter={clearFilter}
+        onApplyFilter={filter}
+        quickFilterText={state.quickFilterText}
+        onQuickFilterChange={setQuickFilterText}
         onEnd={end}
       />
       <div

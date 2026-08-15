@@ -112,7 +112,8 @@ body {
 }
 
 .command-actions select,
-.command-actions button {
+.command-actions button,
+.command-actions .quick-filter {
   min-height: 32px;
   padding: 0 0.7rem;
   font-family: var(--utility);
@@ -125,6 +126,15 @@ body {
   cursor: pointer;
 }
 
+.command-actions .quick-filter {
+  width: 160px;
+  cursor: text;
+}
+
+.command-actions .quick-filter::placeholder {
+  color: var(--quiet);
+}
+
 .command-actions select {
   /* The native arrow is the one piece of OS chrome worth keeping: it is the
      only affordance saying this control has a list behind it. */
@@ -132,7 +142,9 @@ body {
 }
 
 .command-actions select:hover:enabled,
-.command-actions button:hover:enabled {
+.command-actions button:hover:enabled,
+.command-actions .quick-filter:hover,
+.command-actions .quick-filter:focus {
   border-color: var(--cobalt);
 }
 
@@ -692,6 +704,162 @@ body {
 
 /* ---------------------------------------------------------------- narrow */
 
+
+/* --------------------------------------------------------- filter panel */
+
+.filter-panel {
+  position: relative;
+}
+
+.filter-panel > button {
+  min-height: 32px;
+  padding: 0 0.7rem;
+  font-family: var(--utility);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule-firm);
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.filter-panel > button:hover:enabled {
+  border-color: var(--cobalt);
+}
+
+.filter-panel > button[aria-expanded='true'] {
+  color: var(--paper);
+  background: var(--cobalt);
+  border-color: var(--cobalt);
+}
+
+.filter-panel-body {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 9;
+  min-width: 320px;
+  max-width: 480px;
+  padding: calc(var(--step) * 1.5);
+  margin-top: -1px;
+  border: 1px solid var(--rule-firm);
+  border-top: none;
+  background: var(--sheet);
+  box-shadow: 0 12px 28px rgb(19 35 57 / 12%);
+}
+
+.filter-panel-body[hidden] {
+  display: none;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: calc(var(--step) * 1.5);
+}
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--step) * 0.75);
+}
+
+.filter-field > label,
+.filter-field legend {
+  font-family: var(--utility);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--quiet);
+}
+
+.tag-input {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--step);
+  padding: calc(var(--step) * 0.5);
+  border: 1px solid var(--rule-firm);
+  background: var(--paper);
+  border-radius: 2px;
+}
+
+.tag-input input {
+  flex: 1;
+  min-width: 80px;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 15px;
+}
+
+.tag-input input:focus {
+  outline: none;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.6rem;
+  background: var(--cobalt);
+  color: var(--paper);
+  border-radius: 2px;
+  font-size: 13px;
+}
+
+.tag-chip button {
+  display: inline;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: none;
+  color: currentColor;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.tag-chip button:hover {
+  opacity: 0.8;
+}
+
+.filter-field select {
+  padding: 0.4rem 0.7rem;
+  font-family: var(--body);
+  font-size: 15px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule-firm);
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.filter-field select:hover {
+  border-color: var(--cobalt);
+}
+
+.filter-checkbox-group {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.filter-checkbox-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 15px;
+  padding: 0.4rem 0;
+}
+
+.filter-checkbox-option input {
+  cursor: pointer;
+}
 @media (max-width: 899px) {
   .command-strip {
     grid-template-columns: 1fr;

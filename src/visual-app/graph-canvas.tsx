@@ -227,6 +227,11 @@ function graphToElements(graph: CanvasGraph): ElementDefinition[] {
 // visible nodes - an edge's own label never keeps it visible independently.
 // Binary hide/show only, mirroring the "no partial/dimmed state" principle
 // used for selection highlighting below - never CSS opacity/dimming.
+//
+// Quick-filter narrows by substring match (case-insensitive) against a node's
+// own id, name (`data('label')`), or kind label (`data('kindLabel')`) - the
+// design doc's "name/id substring", extended to the kind label so filtering by
+// e.g. "applicationComponent" also works.
 export function applyFilter(
   cy: Core,
   matchedIds: readonly string[] | null,
@@ -235,13 +240,19 @@ export function applyFilter(
   const trimmedQuickFilter = quickFilterText.trim().toLowerCase()
   const baseNodeIds = matchedIds === null ? cy.nodes().map((node) => node.id()) : matchedIds
 
+  const nodeMatchesQuickFilter = (id: string): boolean => {
+    if (id.toLowerCase().includes(trimmedQuickFilter)) return true
+    const node = cy.getElementById(id)
+    const label = node.data('label')
+    if (typeof label === 'string' && label.toLowerCase().includes(trimmedQuickFilter)) return true
+    const kindLabel = node.data('kindLabel')
+    return typeof kindLabel === 'string' && kindLabel.toLowerCase().includes(trimmedQuickFilter)
+  }
+
   const visibleNodeIds = new Set(
     trimmedQuickFilter === ''
       ? baseNodeIds
-      : baseNodeIds.filter((id) => {
-          const label = cy.getElementById(id).data('label')
-          return typeof label === 'string' && label.toLowerCase().includes(trimmedQuickFilter)
-        })
+      : baseNodeIds.filter(nodeMatchesQuickFilter)
   )
 
   const visibleIds = new Set<string>(visibleNodeIds)
@@ -253,10 +264,10 @@ export function applyFilter(
     }
   }
 
-  cy.elements().hide()
+  cy.elements().style('display', 'none')
   cy.elements()
     .filter((ele) => visibleIds.has(ele.id()))
-    .show()
+    .style('display', 'element')
 }
 
 interface GraphCanvasProps {
