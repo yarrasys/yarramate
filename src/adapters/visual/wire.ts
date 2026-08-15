@@ -5,9 +5,12 @@ import type {
   VisualCapabilities,
   VisualChoicePresentPayload,
   VisualDiagnostic,
+  VisualFilterResultPayload,
   VisualFreezeReason,
   VisualResponse,
   VisualTerminationReason,
+  VisualViewSaveResultPayload,
+  VisualViewSummary,
 } from './protocol-contract.js'
 
 /**
@@ -54,6 +57,8 @@ export interface VisualSessionSnapshot {
   readonly webSocketUrl: string
   readonly model: VisualRenderedModel
   readonly transcript: readonly VisualTranscriptRecord[]
+  /** The saved views the reviewer can switch this session's diagram to. */
+  readonly views: readonly VisualViewSummary[]
   /**
    * Whether the agent still owes an answer to something the reviewer sent. A
    * browser that reconnects mid-turn reads this rather than inferring the turn
@@ -92,4 +97,6 @@ export type VisualServerFrame =
     }
   | { readonly kind: 'response'; readonly response: VisualResponse }
   | { readonly kind: 'model'; readonly model: VisualRenderedModel }
+  | { readonly kind: 'filter-result'; readonly result: VisualFilterResultPayload }
+  | { readonly kind: 'view-save-result'; readonly result: VisualViewSaveResultPayload }
   | { readonly kind: 'closing'; readonly reason: VisualTerminationReason }
