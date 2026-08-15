@@ -17,6 +17,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { WebSocket } from 'ws'
+import { parse } from 'yaml'
 import {
   VISUAL_LIMITS,
   parseVisualDiagnosticResult,
@@ -2324,6 +2325,147 @@ evidence: []
       type: 'filter.query',
       payload: {
         query: { kinds: ['yarramate/core@0.1#businessActor'] },
+      },
+    })
+    // Non-actionable: the poll loop never saw it, so a poll from before the
+    // journal's start is still waiting rather than replaying it.
+    await expect(
+      (await agentFetch(server, capability, '/api/agent/events?after=0')).json(),
+    ).resolves.toMatchObject({ waiting: true, lastSequence: 2 })
+    socket.close()
+  })
+})
+
+describe('startVisualServer view.save', () => {
+  const document = `format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts:
+  - id: user
+    kind: businessActor
+    name: User
+relationships: []
+`
+  const manifest = `format: yarramate/workspace/v1
+id: save-fixture
+documents:
+  - architecture/main.yaml
+profiles: []
+projections: []
+adapterMappings: []
+evidence: []
+`
+
+  const withWorkspace = async () => {
+    await mkdir(join(baseDir, '.yarramate/architecture'), { recursive: true })
+    await writeFile(
+      join(baseDir, '.yarramate/architecture/main.yaml'),
+      document,
+      'utf8',
+    )
+    await writeFile(join(baseDir, '.yarramate/workspace.yaml'), manifest, 'utf8')
+  }
+
+  const sendViewSave = (
+    socket: WebSocket,
+    payload: {
+      readonly id?: string
+      readonly title: string
+      readonly description: string
+      readonly query: Record<string, unknown>
+      readonly presentation?: Record<string, unknown>
+    },
+  ) => {
+    const result = nextFrame(socket, 'view-save-result')
+    socket.send(
+      JSON.stringify({
+        type: 'view.save',
+        lastAcknowledgedSequence: 0,
+        payload,
+      }),
+    )
+    return result
+  }
+
+  it('saves a new view with no id in the payload', async () => {
+    const server = await start()
+    const { cookie } = await bootstrap(server)
+    const socket = await openBrowserSocket(server, cookie)
+
+    const frame = await sendViewSave(socket, {
+      title: 'My View',
+      description: 'desc',
+      query: { kinds: ['yarramate/core@0.1#businessActor'] },
+      presentation: { layout: 'layered', seed: 'seed-1' },
+    })
+
+    expect(frame.result).toEqual({
+      ok: true,
+      id: 'my-view',
+      path: '.yarramate/projections/my-view.yaml',
+    })
+
+    const fileContent = await readFile(
+      join(baseDir, '.yarramate/projections/my-view.yaml'),
+      'utf8',
+    )
+    const parsed = parse(fileContent)
+    expect(parsed).toMatchObject({
+      id: 'my-view',
+      version: '1.0',
+      query: { kinds: ['yarramate/core@0.1#businessActor'] },
+      presentation: {
+        title: 'My View',
+        description: 'desc',
+        layout: 'layered',
+        seed: 'seed-1',
+      },
+    })
+    socket.close()
+  })
+
+  it('rejects a view whose query violates the projection schema', async () => {
+    const server = await start()
+    const { cookie } = await bootstrap(server)
+    const socket = await openBrowserSocket(server, cookie)
+
+    const frame = await sendViewSave(socket, {
+      title: 'Bad Query',
+      description: 'empty subjects',
+      query: { subjects: [] },
+      presentation: {},
+    })
+
+    expect(frame.result.ok).toBe(false)
+    if (frame.result.ok === false) {
+      expect(frame.result.diagnostics.length).toBeGreaterThan(0)
+    }
+
+    await expect(
+      readFile(join(baseDir, '.yarramate/projections/bad-query.yaml'), 'utf8'),
+    ).rejects.toThrow()
+    socket.close()
+  })
+
+  it('journals the save for audit without waking the agent poll loop', async () => {
+    const server = await start({ agentPollMs: 60 })
+    const capability = await capabilityOf(server)
+    const { cookie } = await bootstrap(server)
+    const socket = await openBrowserSocket(server, cookie)
+
+    await sendViewSave(socket, {
+      title: 'Audit Test',
+      description: 'test',
+      query: { kinds: ['yarramate/core@0.1#businessActor'] },
+      presentation: { layout: 'layered', seed: 'seed-1' },
+    })
+
+    const journal = await journalOf(server)
+    expect(journal.at(-1)).toMatchObject({
+      type: 'view.save',
+      payload: {
+        title: 'Audit Test',
+        description: 'test',
       },
     })
     // Non-actionable: the poll loop never saw it, so a poll from before the

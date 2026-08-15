@@ -4,7 +4,7 @@ import {
   randomBytes as randomSource,
   timingSafeEqual,
 } from 'node:crypto'
-import { readFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { lstat, readFile } from 'node:fs/promises'
 import {
   createServer,
@@ -16,6 +16,7 @@ import { basename, extname, join, resolve, sep } from 'node:path'
 import type { Duplex } from 'node:stream'
 import { fileURLToPath } from 'node:url'
 import { WebSocketServer, type RawData, type WebSocket } from 'ws'
+import { stringify } from 'yaml'
 import {
   VISUAL_LIMITS,
   VISUAL_PROTOCOL_VERSION,
@@ -37,6 +38,8 @@ import {
   type VisualSessionStarted,
   type VisualStatus,
   type VisualTerminationReason,
+  type VisualViewSavePayload,
+  type VisualViewSaveResultPayload,
   type VisualViewSummary,
 } from './protocol.js'
 import {
@@ -51,7 +54,7 @@ import {
   type TerminalEventDependencies,
   type VisualSessionPaths,
 } from './session-store.js'
-import { loadProjection, evaluateProjection, type ProjectionQuery } from '../../projection.js'
+import { loadProjection, evaluateProjection, type ProjectionDefinition, type ProjectionQuery } from '../../projection.js'
 import {
   compileWorkspaceWithProfileContext,
   type ResolvedProfileContext,
@@ -431,7 +434,31 @@ const eventFrom = (
       return { ...envelope, type: input.type, payload: input.payload }
     case 'filter.query':
       return { ...envelope, type: input.type, payload: input.payload }
+    case 'view.save':
+      return { ...envelope, type: input.type, payload: input.payload }
   }
+}
+
+/**
+ * Turns a view title into a schema-valid projection id: lowercase,
+ * hyphen-separated, letter-led. A title with no letters or digits degrades
+ * to "view" rather than producing an id the schema would reject.
+ */
+const slugify = (title: string): string => {
+  const cleaned = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  if (cleaned.length === 0) return 'view'
+  return /^[a-z]/.test(cleaned) ? cleaned : `view-${cleaned}`
+}
+
+/** Appends a numeric suffix only when the base id collides with a known view. */
+const uniqueViewId = (base: string, taken: ReadonlySet<string>): string => {
+  if (!taken.has(base)) return base
+  let suffix = 2
+  while (taken.has(`${base}-${suffix}`)) suffix += 1
+  return `${base}-${suffix}`
 }
 
 /**
@@ -1129,6 +1156,45 @@ export const startVisualServer = async (
             query: event.payload.query,
             matchedIds: filterMatchedIds(event.payload.query),
           },
+        })
+        return
+      }
+      if (event.type === 'view.save') {
+        // Saving a view is a pure filesystem write plus schema validation: it
+        // never asks the agent anything, so it is answered here directly
+        // rather than through the pending queue a poll would drain.
+        const existingIds = new Set(views.map((view) => view.id))
+        const id =
+          event.payload.id ?? uniqueViewId(slugify(event.payload.title), existingIds)
+        const presentation: ProjectionDefinition['presentation'] = {
+          ...(event.payload.presentation ?? {}),
+          title: event.payload.title,
+          description: event.payload.description,
+        }
+        const candidate: ProjectionDefinition = {
+          format: 'yarramate/projection/v1',
+          id,
+          version: '1.0',
+          query: event.payload.query,
+          presentation,
+        }
+        const path = `.yarramate/projections/${id}.yaml`
+        const source = stringify(candidate)
+        const loaded = loadProjection({ path, source })
+        if (!loaded.ok) {
+          sendFrame(socket, {
+            kind: 'view-save-result',
+            result: { ok: false, diagnostics: loaded.diagnostics },
+          })
+          return
+        }
+        mkdirSync(resolve(options.cwd, '.yarramate/projections'), {
+          recursive: true,
+        })
+        writeFileSync(resolve(options.cwd, path), source, 'utf8')
+        sendFrame(socket, {
+          kind: 'view-save-result',
+          result: { ok: true, id, path },
         })
         return
       }
