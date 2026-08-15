@@ -9,7 +9,6 @@ import {
   rm,
   stat,
   symlink,
-  watch,
   writeFile,
 } from 'node:fs/promises'
 import { connect } from 'node:net'
@@ -37,26 +36,42 @@ import {
   type VisualServerHandle,
   type VisualServerOptions,
 } from '../src/adapters/visual/session-server.js'
+import {
+  compileWorkspaceWithProfileContext,
+} from '../src/compiler.js'
+import { projectGraphForCanvas } from '../src/graph-projection.js'
 
 const fixtures = fileURLToPath(new URL('./fixtures/visual/', import.meta.url))
-const fakeCompiler = join(fixtures, 'fake-likec4.mjs')
 const assetRoot = join(fixtures, 'browser-assets')
 
-const modelWith = (marker?: string): VisualModel => ({
-  format: 'yarramate/visual-model/v1',
-  authority: 'ad-hoc',
-  initialView: 'choices',
-  sourceDigests: {},
-  files: {
-    'likec4.config.json': '{"name":"visual"}',
-    // The fake compiler selects its behaviour from a marker comment inside a
-    // staged source file, so an invalid candidate is a property of the model.
-    'model.likec4': `model { system = system "System" }${
-      marker === undefined ? '' : `\n// fake:${marker}`
-    }`,
-    'views/choices.likec4': 'views { view choices { include * } }',
-  },
-})
+const modelWith = (): VisualModel => {
+  const compiled = compileWorkspaceWithProfileContext([
+    {
+      path: 'main.yaml',
+      source: `format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts:
+  - id: system
+    kind: applicationComponent
+    name: System
+relationships: []
+`,
+    },
+  ])
+  if (!compiled.ok) {
+    throw new Error(
+      `Failed to compile fixture workspace: ${compiled.diagnostics[0]?.message}`,
+    )
+  }
+  return {
+    format: 'yarramate/visual-model/v1',
+    authority: 'ad-hoc',
+    initialView: 'default',
+    sourceDigests: {},
+    graph: projectGraphForCanvas(compiled.graph, compiled.profileContext),
+  }
+}
 
 const request: VisualSessionRequest = {
   format: 'yarramate/visual-session-request/v1',
@@ -64,7 +79,6 @@ const request: VisualSessionRequest = {
   title: 'Choose a delivery design',
   description: 'Temporary non-canonical comparison',
   chatEnabled: true,
-  compiler: { command: process.execPath, args: [fakeCompiler] },
   initialModel: modelWith(),
 }
 
@@ -911,27 +925,10 @@ describe('startVisualServer bootstrap and browser authentication', () => {
       lastSequence: 0,
       frozen: false,
       model: {
-        candidate: '000001',
-        initialView: 'choices',
-        views: ['choices', 'detailNightly', 'detailStreaming', 'index'],
+        authority: 'ad-hoc',
+        initialView: 'default',
+        graph: { nodes: expect.any(Array), edges: expect.any(Array) },
       },
-    })
-  })
-
-  it('reports the compiled LikeC4 model the browser has to render', async () => {
-    const server = await start()
-    const { cookie } = await bootstrap(server)
-    const response = await fetch(`${server.started.origin}/api/session`, {
-      headers: { Cookie: cookie },
-    })
-    const session = (await response.json()) as {
-      readonly model: { readonly compiled: Record<string, unknown> }
-    }
-    // The compiled export is what `createLikeC4Model` consumes: without it the
-    // browser has view identifiers and nothing to draw.
-    expect(session.model.compiled).toMatchObject({
-      _stage: 'layouted',
-      views: { choices: { id: 'choices' } },
     })
   })
 })
@@ -1613,107 +1610,6 @@ describe('startVisualServer agent responses', () => {
     expect(await journalOf(server)).toHaveLength(2)
     socket.close()
   })
-
-  it('promotes a valid model replacement and tells the browser', async () => {
-    const server = await start()
-    const capability = await capabilityOf(server)
-    const { cookie } = await bootstrap(server)
-    const socket = await openBrowserSocket(server, cookie)
-    const accepted = await sendChat(socket, 'redraw it')
-
-    const rendered = nextFrame(socket, 'model')
-    const posted = await postResponse(server, capability, {
-      format: 'yarramate/visual-response/v1',
-      sessionId: server.started.sessionId,
-      responseId: identifier(3),
-      eventId: accepted.eventId,
-      type: 'model.replace',
-      timestamp: '2026-08-08T00:00:03.000Z',
-      payload: { model: modelWith() },
-    })
-    expect(posted.status).toBe(200)
-    await expect(posted.json()).resolves.toMatchObject({
-      accepted: true,
-      model: { candidate: '000002', initialView: 'choices' },
-    })
-    const broadcast = await rendered
-    expect(broadcast.model.candidate).toBe('000002')
-    // A promoted candidate reaches the browser with its own compiled export,
-    // so the diagram it renders is never one candidate behind.
-    expect(broadcast.model.compiled).toMatchObject({ _stage: 'layouted' })
-
-    const active: unknown = JSON.parse(
-      await readFile(
-        join(server.started.sessionRoot, 'active-model.json'),
-        'utf8',
-      ),
-    )
-    expect(active).toMatchObject({ candidate: '000002' })
-    socket.close()
-  })
-
-  it('keeps the last good rendering when a replacement fails to compile', async () => {
-    const server = await start({ agentPollMs: 60 })
-    const capability = await capabilityOf(server)
-    const { cookie } = await bootstrap(server)
-    const socket = await openBrowserSocket(server, cookie)
-    const accepted = await sendChat(socket, 'redraw it badly')
-    // The replacement has to answer a turn the agent is actually holding, or
-    // the failed compile has nothing to finish.
-    const turn = (await (
-      await agentFetch(server, capability, '/api/agent/events?after=0')
-    ).json()) as { readonly event: VisualEvent }
-    expect(turn.event.eventId).toBe(accepted.eventId)
-
-    const diagnosed = nextFrame(
-      socket,
-      'response',
-      (frame) => frame.response.type === 'diagnostic',
-    )
-    const posted = await postResponse(server, capability, {
-      format: 'yarramate/visual-response/v1',
-      sessionId: server.started.sessionId,
-      responseId: identifier(4),
-      eventId: accepted.eventId,
-      type: 'model.replace',
-      timestamp: '2026-08-08T00:00:04.000Z',
-      payload: { model: modelWith('invalid') },
-    })
-    expect(posted.status).toBe(200)
-    const body = (await posted.json()) as {
-      readonly model?: unknown
-      readonly diagnostics: readonly { readonly code: string }[]
-    }
-    expect(body.model).toBeUndefined()
-    expect(body.diagnostics[0]?.code).toBe('YMVS201')
-    expect((await diagnosed).response).toMatchObject({ type: 'diagnostic' })
-
-    const active: unknown = JSON.parse(
-      await readFile(
-        join(server.started.sessionRoot, 'active-model.json'),
-        'utf8',
-      ),
-    )
-    expect(active).toMatchObject({ candidate: '000001' })
-    const session = (await (
-      await fetch(`${server.started.origin}/api/session`, {
-        headers: { Cookie: cookie },
-      })
-    ).json()) as { readonly model: { readonly candidate: string } }
-    expect(session.model.candidate).toBe('000001')
-
-    // A compile that failed still ends the turn its response answered, so the
-    // reviewer's next message reaches the agent instead of queueing behind a
-    // turn nobody owns any more.
-    expect(server.status().agent.inFlightEventId).toBe(null)
-    await sendChat(socket, 'try the other one')
-    const next = (await (
-      await agentFetch(server, capability, '/api/agent/events?after=2')
-    ).json()) as { readonly waiting: boolean; readonly event: VisualEvent }
-    expect(next.waiting).toBe(false)
-    expect(next.event.payload).toEqual({ text: 'try the other one' })
-    socket.close()
-  })
 })
 
 describe('startVisualServer static asset confinement', () => {
@@ -1721,7 +1617,7 @@ describe('startVisualServer static asset confinement', () => {
     const server = await start()
     const { cookie } = await bootstrap(server)
     const response = await fetch(
-      `${server.started.origin}/assets/%2e%2e%2f%2e%2e%2ffake-likec4.mjs`,
+      `${server.started.origin}/assets/%2e%2e%2f%2e%2e%2foutside-asset-root.txt`,
       { headers: { Cookie: cookie } },
     )
     expect(response.status).toBe(404)
@@ -1743,13 +1639,13 @@ describe('startVisualServer static asset confinement', () => {
     const server = await start()
     const { cookie } = await bootstrap(server)
     const text = await rawRequest(server.started.origin, [
-      'GET /assets/../../fake-likec4.mjs HTTP/1.1',
+      'GET /assets/../../outside-asset-root.txt HTTP/1.1',
       `Host: 127.0.0.1:${new URL(server.started.origin).port}`,
       `Cookie: ${cookie}`,
       'Connection: close',
     ])
     expect(text.split('\r\n')[0]).toContain('404')
-    expect(text).not.toContain('fake-likec4:')
+    expect(text).not.toContain('outside-asset-root:')
   })
 
   it('denies a symlinked asset', async () => {
@@ -1812,16 +1708,6 @@ describe('startVisualServer lifecycle', () => {
       /^ws:\/\/127\.0\.0\.1:[0-9]{1,5}\/socket$/,
     )
     expect(Number(new URL(server.started.origin).port)).toBeGreaterThan(0)
-  })
-
-  it('refuses to start when the initial model does not compile', async () => {
-    await expect(
-      startVisualServer({
-        request: { ...request, initialModel: modelWith('invalid') },
-        baseDir,
-        assetRoot,
-      }),
-    ).rejects.toThrow(/YMVS201/)
   })
 
   it('recovers the handoff before deleting the session', async () => {
@@ -2179,51 +2065,6 @@ describe('startVisualServer shutdown and admission races', () => {
     await expect(stat(server.started.sessionRoot)).rejects.toThrow()
     expect(await rejections.settled()).toEqual([])
   })
-
-  it('finishes admitted work before recovering the session', async () => {
-    const compilerLog = join(baseDir, 'compiler.log')
-    await writeFile(compilerLog, '')
-    const server = await start({ includeTranscript: true })
-    const capability = await capabilityOf(server)
-    const { cookie } = await bootstrap(server)
-    const socket = await openBrowserSocket(server, cookie)
-    const accepted = await sendChat(socket, 'redraw it slowly')
-    const rejections = collectRejections()
-
-    // The barrier: the fake compiler records every execution before it does
-    // anything else, and this candidate's validate stage never returns, so a
-    // logged run means a compile is provably still in flight when stop begins.
-    process.env.YARRAMATE_FAKE_LIKEC4_LOG = compilerLog
-    const running = watch(compilerLog)
-    const posted = postResponse(server, capability, {
-      format: 'yarramate/visual-response/v1',
-      sessionId: server.started.sessionId,
-      responseId: identifier(6),
-      eventId: accepted.eventId,
-      type: 'model.replace',
-      timestamp: '2026-08-08T00:00:06.000Z',
-      payload: { model: modelWith('hang') },
-    })
-    for await (const _change of running) {
-      if ((await readFile(compilerLog, 'utf8')).includes('validate')) break
-    }
-    delete process.env.YARRAMATE_FAKE_LIKEC4_LOG
-
-    const closed = await server.stop('main-cancelled')
-
-    // Shutdown cancelled the compile rather than waiting out its budget, and
-    // still waited for the diagnostic that cancellation produced to be
-    // journaled, so recovery reports work the server had already accepted.
-    const types = (closed.handoff?.transcript ?? []).map((record) => record.type)
-    expect(types).toContain('model.replace')
-    expect(types).toContain('diagnostic')
-    await expect((await posted).json()).resolves.toMatchObject({
-      accepted: true,
-      diagnostics: [{ code: 'YMVS204' }],
-    })
-    await expect(stat(server.started.sessionRoot)).rejects.toThrow()
-    expect(await rejections.settled()).toEqual([])
-  }, 30_000)
 })
 
 describe('startVisualServer diagnostic conformance', () => {
