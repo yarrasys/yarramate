@@ -114,6 +114,13 @@ const eventPayloads: Readonly<Record<string, unknown>> = {
   'chat.message': { text: 'Why is option B cheaper?' },
   'choice.selected': { choiceId: 'delivery', optionId: 'option-b' },
   'view.navigate': { viewId: 'option-b', requiresAttention: false },
+  'filter.query': { query: { kinds: ['yarramate/core@0.1#applicationComponent'] } },
+  'view.save': {
+    title: 'My View',
+    description: 'desc',
+    query: { kinds: ['yarramate/core@0.1#applicationComponent'] },
+    presentation: { layout: 'layered', seed: 'seed-1' },
+  },
   'session.end': { reason: 'user-ended' },
   'browser.connected': { connectionId: 'c1' },
   'browser.disconnected': { connectionId: 'c1', code: 1001 },
@@ -255,6 +262,66 @@ describe('visual protocol', () => {
   it.each(Object.keys(responsePayloads))('accepts the %s response', (type) => {
     expect(
       parseVisualResponse(visualResponse(type, responsePayloads[type])),
+    ).toMatchObject({ ok: true })
+  })
+
+  it.each(['filter.query', 'view.save'] as const)(
+    'accepts the %s browser input',
+    (type) => {
+      expect(
+        parseVisualBrowserInput({
+          type,
+          lastAcknowledgedSequence: 0,
+          payload: eventPayloads[type],
+        }),
+      ).toMatchObject({ ok: true })
+    },
+  )
+
+  it('round-trips chat.response with and without an appliedQuery', () => {
+    expect(
+      parseVisualResponse(
+        visualResponse('chat.response', { text: 'Filtered to 2 concepts.' }),
+      ),
+    ).toMatchObject({ ok: true })
+    expect(
+      parseVisualResponse(
+        visualResponse('chat.response', {
+          text: 'Filtered to 2 concepts.',
+          appliedQuery: {
+            query: { kinds: ['yarramate/core@0.1#applicationComponent'] },
+            matchedIds: ['main#a', 'main#b'],
+          },
+        }),
+      ),
+    ).toMatchObject({ ok: true })
+  })
+
+  it('round-trips filter.result and view.save.result response payloads', () => {
+    expect(
+      parseVisualResponse(
+        visualResponse('filter.result', {
+          query: { kinds: ['yarramate/core@0.1#applicationComponent'] },
+          matchedIds: ['main#a', 'main#b'],
+        }),
+      ),
+    ).toMatchObject({ ok: true })
+    expect(
+      parseVisualResponse(
+        visualResponse('view.save.result', {
+          ok: true,
+          id: 'audit-test',
+          path: 'workspace/views/audit-test.view.yaml',
+        }),
+      ),
+    ).toMatchObject({ ok: true })
+    expect(
+      parseVisualResponse(
+        visualResponse('view.save.result', {
+          ok: false,
+          diagnostics: [diagnostic],
+        }),
+      ),
     ).toMatchObject({ ok: true })
   })
 

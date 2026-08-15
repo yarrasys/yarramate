@@ -2220,6 +2220,85 @@ describe('startVisualServer teardown retries', () => {
   )
 })
 
+describe('startVisualServer session start views list', () => {
+  const document = `format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts:
+  - id: user
+    kind: businessActor
+    name: User
+relationships: []
+`
+  const validProjection = `format: yarramate/projection/v1
+id: valid-view
+version: "1.0"
+query:
+  kinds: [yarramate/core@0.1#businessActor]
+presentation:
+  title: Valid View
+`
+  // Fails loadProjection's schema check: an empty \`subjects\` array violates
+  // \`minItems: 1\`, same as the view.save rejection test above.
+  const invalidProjection = `format: yarramate/projection/v1
+id: invalid-view
+version: "1.0"
+query:
+  subjects: []
+presentation:
+  title: Invalid View
+`
+  const manifest = `format: yarramate/workspace/v1
+id: views-fixture
+documents:
+  - architecture/main.yaml
+profiles: []
+projections:
+  - projections/valid-view.yaml
+  - projections/invalid-view.yaml
+adapterMappings: []
+evidence: []
+`
+
+  it('skips a projection failing schema validation, keeping the valid survivors', async () => {
+    await mkdir(join(baseDir, '.yarramate/architecture'), { recursive: true })
+    await mkdir(join(baseDir, '.yarramate/projections'), { recursive: true })
+    await writeFile(
+      join(baseDir, '.yarramate/architecture/main.yaml'),
+      document,
+      'utf8',
+    )
+    await writeFile(
+      join(baseDir, '.yarramate/projections/valid-view.yaml'),
+      validProjection,
+      'utf8',
+    )
+    await writeFile(
+      join(baseDir, '.yarramate/projections/invalid-view.yaml'),
+      invalidProjection,
+      'utf8',
+    )
+
+    await writeFile(join(baseDir, '.yarramate/workspace.yaml'), manifest, 'utf8')
+
+    const server = await start()
+    const { cookie } = await bootstrap(server)
+    const socket = await openBrowserSocket(server, cookie)
+    const ready = await nextFrame(socket, 'ready')
+
+    expect(ready.snapshot.views).toEqual([
+      {
+        id: 'valid-view',
+        title: 'Valid View',
+        description: '',
+        query: { kinds: ['yarramate/core@0.1#businessActor'] },
+        presentation: { title: 'Valid View' },
+      },
+    ])
+    socket.close()
+  })
+})
+
 describe('startVisualServer filter.query', () => {
   // Same small workspace ask-command.test.ts compiles: one businessActor, two
   // planned concepts, and a build-order relationship between them, so a
@@ -2419,6 +2498,53 @@ evidence: []
         description: 'desc',
         layout: 'layered',
         seed: 'seed-1',
+      },
+    })
+    socket.close()
+  })
+
+  it('overwrites an existing view when the payload carries its id', async () => {
+    const server = await start()
+    const { cookie } = await bootstrap(server)
+    const socket = await openBrowserSocket(server, cookie)
+
+    const created = await sendViewSave(socket, {
+      id: 'shared-view',
+      title: 'Original Title',
+      description: 'original desc',
+      query: { kinds: ['yarramate/core@0.1#businessActor'] },
+      presentation: { layout: 'layered', seed: 'seed-1' },
+    })
+    expect(created.result).toEqual({
+      ok: true,
+      id: 'shared-view',
+      path: '.yarramate/projections/shared-view.yaml',
+    })
+
+    const overwritten = await sendViewSave(socket, {
+      id: 'shared-view',
+      title: 'Updated Title',
+      description: 'updated desc',
+      query: { kinds: ['yarramate/core@0.1#businessActor'] },
+      presentation: { layout: 'radial', seed: 'seed-2' },
+    })
+    expect(overwritten.result).toEqual({
+      ok: true,
+      id: 'shared-view',
+      path: '.yarramate/projections/shared-view.yaml',
+    })
+
+    const fileContent = await readFile(
+      join(baseDir, '.yarramate/projections/shared-view.yaml'),
+      'utf8',
+    )
+    expect(parse(fileContent)).toMatchObject({
+      id: 'shared-view',
+      presentation: {
+        title: 'Updated Title',
+        description: 'updated desc',
+        layout: 'radial',
+        seed: 'seed-2',
       },
     })
     socket.close()

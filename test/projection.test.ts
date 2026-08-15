@@ -859,6 +859,44 @@ query:
       },
     })
   })
+
+  it('produces the same subjects from a synthetic ad-hoc projection as from the equivalent on-disk file', () => {
+    const compilation = compileWorkspace([
+      { path: 'projection-model.yaml', source },
+    ])
+    expect(compilation.ok).toBe(true)
+    if (!compilation.ok) return
+
+    const loaded = loadProjection({
+      path: 'current-capabilities.projection.yaml',
+      source: readFileSync(
+        fileURLToPath(
+          new URL(
+            './fixtures/valid/current-capabilities.projection.yaml',
+            import.meta.url,
+          ),
+        ),
+        'utf8',
+      ),
+    })
+    expect(loaded.ok).toBe(true)
+    if (!loaded.ok) return
+
+    // Mirrors the synthetic `ProjectionDefinition` session-server.ts builds
+    // for `filter.query`: an ad-hoc id/version wrapping the browser's query,
+    // with no presentation. It must select the same subjects as loading the
+    // equivalent on-disk projection file for the same query.
+    const synthetic: ProjectionDefinition = {
+      format: 'yarramate/projection/v1',
+      id: 'ad-hoc',
+      version: '0',
+      query: loaded.projection.query,
+    }
+
+    const fromFile = evaluateProjection(compilation.graph, loaded.projection)
+    const fromSynthetic = evaluateProjection(compilation.graph, synthetic)
+    expect(fromSynthetic.subjects).toEqual(fromFile.subjects)
+  })
 })
 
 describe('excludeStatuses', () => {
