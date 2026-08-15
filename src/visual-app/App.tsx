@@ -255,6 +255,8 @@ const DiagramWorkspace = ({
                   onSelect(normalizeSelectedRelationship(edge, nodeTitles))
               }
             }}
+            matchedIds={state.activeFilter?.matchedIds ?? null}
+            quickFilterText={state.quickFilterText}
           />
         )}
         {waiting === null ? null : <p className="waiting">{waiting}</p>}

@@ -219,10 +219,52 @@ function graphToElements(graph: CanvasGraph): ElementDefinition[] {
   return [...nodeElements, ...edgeElements]
 }
 
+// Recompute which elements cytoscape shows from the structural (server-matched)
+// `matchedIds` filter and the client-side `quickFilterText` narrowing, then
+// hide/show elements in one pass. `matchedIds === null` means "no structural
+// filter" (all nodes eligible); an empty/whitespace `quickFilterText` means "no
+// quick-filter narrowing". An edge is visible iff both its endpoints are
+// visible nodes - an edge's own label never keeps it visible independently.
+// Binary hide/show only, mirroring the "no partial/dimmed state" principle
+// used for selection highlighting below - never CSS opacity/dimming.
+export function applyFilter(
+  cy: Core,
+  matchedIds: readonly string[] | null,
+  quickFilterText: string
+): void {
+  const trimmedQuickFilter = quickFilterText.trim().toLowerCase()
+  const baseNodeIds = matchedIds === null ? cy.nodes().map((node) => node.id()) : matchedIds
+
+  const visibleNodeIds = new Set(
+    trimmedQuickFilter === ''
+      ? baseNodeIds
+      : baseNodeIds.filter((id) => {
+          const label = cy.getElementById(id).data('label')
+          return typeof label === 'string' && label.toLowerCase().includes(trimmedQuickFilter)
+        })
+  )
+
+  const visibleIds = new Set<string>(visibleNodeIds)
+  for (const edge of cy.edges()) {
+    const source = edge.data('source') as string
+    const target = edge.data('target') as string
+    if (visibleNodeIds.has(source) && visibleNodeIds.has(target)) {
+      visibleIds.add(edge.id())
+    }
+  }
+
+  cy.elements().hide()
+  cy.elements()
+    .filter((ele) => visibleIds.has(ele.id()))
+    .show()
+}
+
 interface GraphCanvasProps {
   readonly graph: CanvasGraph
   readonly selectedId: string | null
   readonly onSelect: (id: string, type: 'node' | 'edge') => void
+  readonly matchedIds: readonly string[] | null
+  readonly quickFilterText: string
 }
 
 /**
@@ -238,6 +280,8 @@ export function GraphCanvas({
   graph,
   selectedId,
   onSelect,
+  matchedIds,
+  quickFilterText,
 }: GraphCanvasProps): React.ReactElement {
   const containerRef = useRef<HTMLDivElement>(null)
   const cyRef = useRef<Core | null>(null)
@@ -327,6 +371,12 @@ export function GraphCanvas({
       }
     }
   }, [selectedId, graph])
+
+  // Apply structural filter (matchedIds) and quick-filter narrowing (quickFilterText)
+  useEffect(() => {
+    if (!cyRef.current) return
+    applyFilter(cyRef.current, matchedIds, quickFilterText)
+  }, [matchedIds, quickFilterText, graph])
 
   return <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
 }
