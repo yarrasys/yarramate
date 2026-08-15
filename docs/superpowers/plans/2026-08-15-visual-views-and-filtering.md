@@ -303,11 +303,32 @@ narrowing layers on top of `activeFilter`, it does not replace it or go through 
 
 ### Task 13: `src/visual-app/graph-canvas.tsx` — shared `applyFilter`
 
-Add `applyFilter(cy: cytoscape.Core, matchedIds: readonly string[] | null, quickFilterText: string)`: compute the
+**Correction (verified against this worktree): `GraphCanvas` (graph-canvas.tsx:237-332) owns the `cyRef`
+instance; `App.tsx:244-258` renders it as a child, passing `graph`/`selectedId`/`onSelect` today. `state`
+(with `activeFilter`/`quickFilterText`) lives in `App.tsx`'s scope, not inside `GraphCanvas`. So: add
+`matchedIds: readonly string[] | null` and `quickFilterText: string` to `GraphCanvasProps`; `App.tsx` passes
+`state.activeFilter?.matchedIds ?? null` and `state.quickFilterText`; the new `useEffect` (keyed on
+`[matchedIds, quickFilterText, graph]`, mirroring the existing selection-highlight effect's pattern at
+graph-canvas.tsx:316-329) lives inside `GraphCanvas` itself, where `cyRef.current` is reachable. Type the
+function with the file's existing `Core` import (`import type { Core } from 'cytoscape'`), not `cytoscape.Core`.**
+
+**Correction: `matchedIds` (from `session-server.ts`'s `filterMatchedIds`, `result.subjects.map(({ id }) => id)`)
+is node/subject ids ONLY — never edge ids. `applyFilter` must derive edge visibility itself: an edge is visible
+iff both its `source` and `target` node ids are visible (matchedIds-filtered, if `matchedIds !== null`, AND
+quick-filter-matched if quick-filter narrows that node's own label). Quick-filter substring matching reads each
+element's own `data('label')` (nodes and edges both carry this field, set in `graphToElements` at
+graph-canvas.tsx:196/213) — case-insensitive `includes`. An edge whose own label matches the quick-filter text
+is NOT independently kept if either endpoint is hidden by `matchedIds` — the node filter (structural, from the
+server) takes precedence; quick-filter only narrows further within what `matchedIds` already allows.**
+
+Add an exported `applyFilter(cy: Core, matchedIds: readonly string[] | null, quickFilterText: string)`: compute the
 visible id set as `matchedIds` intersected with the quick-filter substring match (or just the quick-filter match
 alone when `matchedIds` is `null`), then `cy.elements().hide(); cy.$(visibleSelector).show()` (never dimming —
-same rule Plan 1 already established for selection highlighting). Wire it from a `useEffect` keyed on
-`[activeFilter, quickFilterText]` in the component that owns `GraphCanvas`.
+same "binary, no partial state" principle Plan 1 established for selection highlighting, which uses class
+toggling rather than hide/show since it's a different concern). No existing graph-canvas test file exists in
+this codebase (`test/visual-app-render.test.ts` does not touch cytoscape/GraphCanvas) — full filter behavior
+test coverage is Task 19's job; this task does not need to add one, but a plain unit test of `applyFilter`'s id-
+matching logic (no live cytoscape instance) is welcome if easy.
 
 ### Task 14: New component `src/visual-app/view-picker.tsx`, plus a direction toggle
 
