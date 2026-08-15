@@ -10,8 +10,6 @@ import type {
 } from '../src/adapters/visual/wire.js'
 import {
   RECONNECT_WINDOW_MS,
-  VISUAL_DRAW_FAULT_BARE,
-  VISUAL_DRAW_FAULT_KEPT,
   VISUAL_END_NOTICE,
   canReconnect,
   initialVisualAppState,
@@ -20,24 +18,14 @@ import {
   visualAppSnapshotFrom,
   visualAuthorityLabel,
   visualBrowserInputFor,
-  visualDrawingFor,
   type VisualAppState,
 } from '../src/visual-app/state.js'
 
-const compiledOf = (...views: readonly string[]) => ({
-  _stage: 'layouted',
-  views: Object.fromEntries(views.map((id) => [id, { id }])),
-})
-
-const model = (
-  candidate: string,
-  ...views: readonly string[]
-): VisualRenderedModel => ({
-  candidate,
+/** A rendered model with an empty canvas graph — only initialView matters here. */
+const model = (initialView: string): VisualRenderedModel => ({
   authority: 'ad-hoc',
-  initialView: views[0] as string,
-  views,
-  compiled: compiledOf(...views),
+  initialView,
+  graph: { nodes: [], edges: [] },
 })
 
 const serverSnapshot: VisualSessionSnapshot = {
@@ -55,7 +43,7 @@ const serverSnapshot: VisualSessionSnapshot = {
     transcript: true,
   },
   webSocketUrl: 'ws://127.0.0.1:4321/socket',
-  model: model('000001', 'choices', 'option-b'),
+  model: model('choices'),
   transcript: [],
   agentTurnOpen: false,
   pendingChoice: null,
@@ -132,7 +120,7 @@ describe('visualAppReducer session lifecycle', () => {
       activeView: 'choices',
       composerEnabled: true,
     })
-    expect(activeState.model?.candidate).toBe('000001')
+    expect(activeState.model).toBe(serverSnapshot.model)
   })
 
   it('keeps input shut when the turn was still open at reconnect', () => {
@@ -338,11 +326,12 @@ describe('visualAppReducer model rendering', () => {
       type: 'diagnostic.received',
       diagnostics: [compileDiagnostic],
     })
+    const replacement = model('choices')
     const next = visualAppReducer(failed, {
       type: 'model.received',
-      model: model('000002', 'choices'),
+      model: replacement,
     })
-    expect(next.model?.candidate).toBe('000002')
+    expect(next.model).toBe(replacement)
     expect(next.diagnostics).toEqual([])
   })
 
@@ -370,26 +359,26 @@ describe('visualAppReducer model rendering', () => {
     expect(next.model).toBe(activeState.model)
   })
 
-  it('keeps the reviewer on the view they were reading', () => {
+  it('keeps the current view when the replacement model happens to open on it', () => {
     const drilled = visualAppReducer(activeState, {
       type: 'view.navigated',
       viewId: 'option-b',
     })
     const next = visualAppReducer(drilled, {
       type: 'model.received',
-      model: model('000002', 'choices', 'option-b'),
+      model: model('option-b'),
     })
     expect(next.activeView).toBe('option-b')
   })
 
-  it('falls back to the initial view when the replacement dropped it', () => {
+  it("resets to the replacement model's own initial view, even after a drill-down", () => {
     const drilled = visualAppReducer(activeState, {
       type: 'view.navigated',
       viewId: 'option-b',
     })
     const next = visualAppReducer(drilled, {
       type: 'model.received',
-      model: model('000002', 'choices'),
+      model: model('choices'),
     })
     expect(next.activeView).toBe('choices')
   })
@@ -742,7 +731,7 @@ describe('visualAppActionsForFrame', () => {
   })
 
   it('replaces the rendered model from a model frame', () => {
-    const rendered = model('000002', 'choices')
+    const rendered = model('choices')
     expect(actionsFor({ kind: 'model', model: rendered })).toEqual([
       { type: 'model.received', model: rendered },
     ])
@@ -794,31 +783,6 @@ describe('visualAppActionsForFrame', () => {
       { type: 'diagnostic.received', diagnostics: [compileDiagnostic] },
     ])
   })
-
-  it('ignores a model replacement response, because the model frame carries it', () => {
-    expect(
-      actionsFor({
-        kind: 'response',
-        response: {
-          format: 'yarramate/visual-response/v1',
-          sessionId: '0'.repeat(32),
-          responseId: 'c'.repeat(32),
-          eventId: 'd'.repeat(32),
-          timestamp: '2026-08-08T00:00:02.000Z',
-          type: 'model.replace',
-          payload: {
-            model: {
-              format: 'yarramate/visual-model/v1',
-              authority: 'ad-hoc',
-              initialView: 'choices',
-              sourceDigests: {},
-              files: { 'model.likec4': 'model {}' },
-            },
-          },
-        },
-      }),
-    ).toEqual([])
-  })
 })
 
 describe('canReconnect', () => {
@@ -841,66 +805,5 @@ describe('visualAuthorityLabel', () => {
   it('names a checked model and an ad hoc one in the reviewer’s words', () => {
     expect(visualAuthorityLabel('canonical')).toBe('Checked YarraMate model')
     expect(visualAuthorityLabel('ad-hoc')).toBe('Ad hoc · non-canonical')
-  })
-})
-
-describe('visualDrawingFor', () => {
-  /** A renderer stands for its drawing: what it read is what is on screen. */
-  const drawn = (model: VisualRenderedModel) => ({ read: model.compiled })
-  const readable = (compiled: unknown) => ({ read: compiled })
-  const unreadable = () => {
-    throw new Error('Invalid element kind "ghost" in views/choices')
-  }
-
-  it('draws a rendering the renderer can read', () => {
-    const rendered = model('000002', 'choices')
-    expect(visualDrawingFor(rendered, readable, null)).toEqual({
-      drawn: { read: rendered.compiled },
-      fault: null,
-    })
-  })
-
-  it('keeps the drawing on screen while the session has no model', () => {
-    const kept = drawn(model('000001', 'choices'))
-    expect(visualDrawingFor(null, unreadable, kept)).toEqual({
-      drawn: kept,
-      fault: null,
-    })
-  })
-
-  it('keeps the last good drawing and says so when a replacement cannot be drawn', () => {
-    const kept = drawn(model('000001', 'choices'))
-    const drawing = visualDrawingFor(
-      model('000002', 'choices'),
-      unreadable,
-      kept,
-    )
-    expect(drawing.drawn).toBe(kept)
-    expect(drawing.fault).toBe(VISUAL_DRAW_FAULT_KEPT)
-  })
-
-  it('says nothing could be drawn when the first model cannot be drawn', () => {
-    const drawing = visualDrawingFor(
-      model('000001', 'choices'),
-      unreadable,
-      null,
-    )
-    expect(drawing.drawn).toBe(null)
-    expect(drawing.fault).toBe(VISUAL_DRAW_FAULT_BARE)
-  })
-
-  it('never puts the renderer’s own exception in front of the reviewer', () => {
-    // The words the reviewer reads are this application's, in every case: a
-    // renderer's internals are not an explanation and may carry anything.
-    for (const lastDrawn of [null, drawn(model('000001', 'choices'))]) {
-      const { fault } = visualDrawingFor(
-        model('000002', 'choices'),
-        unreadable,
-        lastDrawn,
-      )
-      expect(fault).not.toBe(null)
-      expect(fault).not.toContain('ghost')
-      expect(fault).not.toContain('Invalid element kind')
-    }
   })
 })
