@@ -50,6 +50,8 @@ export interface ProjectionDefinition {
   }
 }
 
+export type ProjectionQuery = ProjectionDefinition['query']
+
 export interface ProjectionResult {
   readonly format: 'yarramate/projection-result/v1'
   readonly projection: string
