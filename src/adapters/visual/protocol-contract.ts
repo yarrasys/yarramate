@@ -179,6 +179,16 @@ export type VisualBrowserInput =
       readonly payload: VisualViewNavigatePayload
     }
   | {
+      readonly type: 'filter.query'
+      readonly lastAcknowledgedSequence: number
+      readonly payload: VisualFilterQueryPayload
+    }
+  | {
+      readonly type: 'view.save'
+      readonly lastAcknowledgedSequence: number
+      readonly payload: VisualViewSavePayload
+    }
+  | {
       readonly type: 'session.end'
       readonly lastAcknowledgedSequence: number
       readonly payload: VisualBrowserSessionEndPayload

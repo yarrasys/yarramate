@@ -292,6 +292,30 @@
           "additionalProperties": false,
           "required": ["type", "lastAcknowledgedSequence", "payload"],
           "properties": {
+            "type": { "const": "filter.query" },
+            "lastAcknowledgedSequence": {
+              "$ref": "#/$defs/acknowledgedSequence"
+            },
+            "payload": { "$ref": "#/$defs/filterQueryPayload" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "lastAcknowledgedSequence", "payload"],
+          "properties": {
+            "type": { "const": "view.save" },
+            "lastAcknowledgedSequence": {
+              "$ref": "#/$defs/acknowledgedSequence"
+            },
+            "payload": { "$ref": "#/$defs/viewSavePayload" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "lastAcknowledgedSequence", "payload"],
+          "properties": {
             "type": { "const": "session.end" },
             "lastAcknowledgedSequence": {
               "$ref": "#/$defs/acknowledgedSequence"
