@@ -22,6 +22,32 @@ export interface SaveViewControlProps {
  * non-deterministic layout that needs one (Task 17 brief). */
 const SAVE_SEED = 'default'
 
+export interface BuildPayloadParams {
+  readonly id: string | undefined
+  readonly title: string
+  readonly description: string
+  readonly query: ProjectionQuery | null
+  readonly direction: 'top-down' | 'left-right'
+}
+
+/** Pure translation from the form's local state to the wire payload — no
+ * active filter names an unfiltered view, since every field of a
+ * `ProjectionQuery` is optional and `{}` is itself a valid, if
+ * unconstrained, query. */
+export const buildPayload = ({
+  id,
+  title,
+  description,
+  query,
+  direction,
+}: BuildPayloadParams): VisualViewSavePayload => ({
+  ...(id === undefined ? {} : { id }),
+  title,
+  description,
+  query: query ?? {},
+  presentation: { layout: 'layered', direction, seed: SAVE_SEED },
+})
+
 /**
  * Saves the reviewer's current filter and layout direction as a named
  * projection document. "Save" overwrites whatever view is active — behind a
@@ -58,21 +84,13 @@ export function SaveViewControl({
     })
   }
 
-  const buildPayload = (id: string | undefined): VisualViewSavePayload => ({
-    ...(id === undefined ? {} : { id }),
-    title,
-    description,
-    // No active filter names an unfiltered view — every field of a
-    // `ProjectionQuery` is optional, so `{}` is itself a valid, if
-    // unconstrained, query.
-    query: query ?? {},
-    presentation: { layout: 'layered', direction, seed: SAVE_SEED },
-  })
+  const submitPayload = (id: string | undefined) =>
+    buildPayload({ id, title, description, query, direction })
 
   const submit = (id: string | undefined) => {
     if (title.trim() === '') return
     if (id === undefined) {
-      onSave(buildPayload(undefined))
+      onSave(submitPayload(undefined))
       return
     }
     setConfirmId(id)
@@ -80,7 +98,7 @@ export function SaveViewControl({
 
   const confirmOverwrite = () => {
     if (confirmId === null) return
-    onSave(buildPayload(confirmId))
+    onSave(submitPayload(confirmId))
     setConfirmId(null)
   }
 

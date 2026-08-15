@@ -192,4 +192,35 @@ describe('visual conversation rendering', () => {
 
     expect(markup).not.toContain('class="filter-pill"')
   })
+
+  it('renders view options in the picker when state.views is populated', () => {
+    const markup = renderSession({
+      views: [
+        {
+          id: 'v1',
+          title: 'View One',
+          description: '',
+          query: {},
+          presentation: {},
+        },
+      ],
+    })
+
+    expect(markup).toContain('<select')
+    expect(markup).toContain('<option value="v1">View One</option>')
+  })
+
+  it('renders the quick-filter box with the current quickFilterText as its value', () => {
+    const markup = renderSession({ quickFilterText: 'checkout' })
+
+    expect(markup).toContain('class="quick-filter"')
+    expect(markup).toContain('value="checkout"')
+  })
+
+  it('renders the filter panel toggle button', () => {
+    const markup = renderSession()
+
+    expect(markup).toContain('class="filter-panel"')
+    expect(markup).toContain('>Filter</button>')
+  })
 })

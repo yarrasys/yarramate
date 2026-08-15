@@ -10,7 +10,7 @@ import type { LifecycleStatus, ProjectionQuery } from '../projection.js'
  * schema's `minItems: 1` on the array fields rejects an empty array outright)
  * — happens once, at the point this leaves the form.
  */
-interface QueryFields {
+export interface QueryFields {
   readonly subjects: readonly string[]
   readonly documents: readonly string[]
   readonly kinds: readonly string[]
@@ -26,7 +26,7 @@ interface QueryFields {
   readonly isolatedConcepts: '' | 'include' | 'exclude'
 }
 
-const EMPTY_FIELDS: QueryFields = {
+export const EMPTY_FIELDS: QueryFields = {
   subjects: [],
   documents: [],
   kinds: [],
@@ -51,7 +51,7 @@ const LIFECYCLE_STATUSES: readonly LifecycleStatus[] = [
 /** How long the reviewer must pause before an edit becomes a live query. */
 const APPLY_DEBOUNCE_MS = 300
 
-const queryToFields = (query: ProjectionQuery | null): QueryFields =>
+export const queryToFields = (query: ProjectionQuery | null): QueryFields =>
   query === null
     ? EMPTY_FIELDS
     : {
@@ -73,7 +73,7 @@ const queryToFields = (query: ProjectionQuery | null): QueryFields =>
 /** Every populated field, and nothing else — an empty array or an unset
  * single-choice field is never sent, since `minItems: 1` on the schema's
  * array properties makes `[]` itself invalid. */
-const composeQuery = (fields: QueryFields): ProjectionQuery => ({
+export const composeQuery = (fields: QueryFields): ProjectionQuery => ({
   ...(fields.subjects.length > 0 ? { subjects: fields.subjects } : {}),
   ...(fields.documents.length > 0 ? { documents: fields.documents } : {}),
   ...(fields.kinds.length > 0 ? { kinds: fields.kinds } : {}),
