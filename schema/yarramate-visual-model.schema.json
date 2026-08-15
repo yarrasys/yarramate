@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://yarramate.org/schema/visual-model/v1",
   "title": "YarraMate visual model",
-  "description": "One complete, self-contained LikeC4 candidate rendered inside a visual session.",
+  "description": "One complete, self-contained native model graph rendered inside a visual session.",
   "type": "object",
   "additionalProperties": false,
   "required": ["format", "authority", "initialView", "sourceDigests", "graph"],
