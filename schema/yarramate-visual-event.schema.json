@@ -32,6 +32,8 @@
         "chat.message",
         "choice.selected",
         "view.navigate",
+        "filter.query",
+        "view.save",
         "session.end",
         "browser.connected",
         "browser.disconnected"
@@ -67,6 +69,22 @@
       "properties": {
         "type": { "const": "view.navigate" },
         "payload": { "$ref": "#/$defs/viewNavigatePayload" }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["type", "payload"],
+      "properties": {
+        "type": { "const": "filter.query" },
+        "payload": { "$ref": "#/$defs/filterQueryPayload" }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["type", "payload"],
+      "properties": {
+        "type": { "const": "view.save" },
+        "payload": { "$ref": "#/$defs/viewSavePayload" }
       }
     },
     {
@@ -146,6 +164,38 @@
           "$ref": "https://yarramate.org/schema/visual-model/v1#/$defs/viewId"
         },
         "requiresAttention": { "type": "boolean" }
+      }
+    },
+    "filterQueryPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["query"],
+      "properties": {
+        "query": {
+          "$ref": "https://yarramate.org/schema/projection/v1#/$defs/query"
+        }
+      }
+    },
+    "viewSavePayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "description", "query", "presentation"],
+      "properties": {
+        "id": {
+          "$ref": "https://yarramate.org/schema/projection/v1#/$defs/id"
+        },
+        "title": {
+          "$ref": "https://yarramate.org/schema/projection/v1#/$defs/nonEmptyText"
+        },
+        "description": {
+          "$ref": "https://yarramate.org/schema/projection/v1#/$defs/nonEmptyText"
+        },
+        "query": {
+          "$ref": "https://yarramate.org/schema/projection/v1#/$defs/query"
+        },
+        "presentation": {
+          "$ref": "https://yarramate.org/schema/projection/v1#/$defs/presentation"
+        }
       }
     },
     "terminationReason": {

@@ -11,6 +11,9 @@ import visualEventSchema from '../../../schema/yarramate-visual-event.schema.jso
 import visualGraphSchema from '../../../schema/yarramate-visual-graph.schema.json' with {
   type: 'json',
 }
+import projectionSchema from '../../../schema/yarramate-projection.schema.json' with {
+  type: 'json',
+}
 import visualHandoffSchema from '../../../schema/yarramate-visual-handoff.schema.json' with {
   type: 'json',
 }
@@ -65,6 +68,7 @@ ajv.addSchema([
   visualSessionRequestSchema,
   visualSessionStartedSchema,
   visualStatusSchema,
+  projectionSchema,
 ])
 
 // Diagnostics report the document they came from rather than a source file,
