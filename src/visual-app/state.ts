@@ -6,7 +6,11 @@ import {
   type VisualChoicePresentPayload,
   type VisualDiagnostic,
   type VisualHandoffSummary,
+  type VisualViewSavePayload,
+  type VisualViewSaveResultPayload,
+  type VisualViewSummary,
 } from '../adapters/visual/protocol-contract.js'
+import type { ProjectionQuery } from '../projection.js'
 import type {
   VisualRenderedModel,
   VisualServerFrame,
@@ -60,6 +64,7 @@ export interface VisualAppSnapshot {
   readonly styleNonce: string
   readonly lastSequence: number
   readonly frozen: boolean
+  readonly views: readonly VisualViewSummary[]
 }
 
 export interface VisualAppState {
@@ -73,6 +78,7 @@ export interface VisualAppState {
   readonly styleNonce: string
   readonly activeView: string
   readonly transcript: readonly VisualAppRecord[]
+  readonly views: readonly VisualViewSummary[]
   readonly choices: VisualChoicePresentPayload | null
   readonly agentStatus: VisualAgentStatusPayload | null
   readonly diagnostics: readonly VisualDiagnostic[]
@@ -110,6 +116,12 @@ export type VisualAppAction =
   | { readonly type: 'choice.sent'; readonly optionId: string }
   | { readonly type: 'view.navigated'; readonly viewId: string }
   | {
+      readonly type: 'filter.applied'
+      readonly query: ProjectionQuery
+      readonly matchedIds: readonly string[]
+    }
+  | { readonly type: 'view.saved'; readonly result: VisualViewSaveResultPayload }
+  | {
       readonly type: 'handoff.received'
       readonly id: string
       readonly handoff: VisualHandoffSummary
@@ -134,6 +146,7 @@ export const initialVisualAppState: VisualAppState = {
   styleNonce: '',
   activeView: '',
   transcript: [],
+  views: [],
   choices: null,
   agentStatus: null,
   diagnostics: [],
@@ -160,6 +173,7 @@ export const visualAppSnapshotFrom = (
   styleNonce: snapshot.styleNonce,
   lastSequence: snapshot.lastSequence,
   frozen: snapshot.frozen,
+  views: snapshot.views,
 })
 
 /** The exact words for what the reviewer is looking at. */
@@ -339,6 +353,10 @@ const transition = (
       return { ...state, lifecycle: 'disconnected' }
     case 'session.closed':
       return { ...state, lifecycle: 'closed', closedReason: action.reason }
+    case 'filter.applied':
+      return state
+    case 'view.saved':
+      return state
   }
 }
 
@@ -374,6 +392,8 @@ export type VisualAppIntent =
     }
   | { readonly kind: 'navigate'; readonly viewId: string }
   | { readonly kind: 'end' }
+  | { readonly kind: 'filter'; readonly query: ProjectionQuery }
+  | { readonly kind: 'save-view'; readonly payload: VisualViewSavePayload }
 
 /**
  * One intent as the frame the server admits. Every frame carries the sequence
@@ -412,6 +432,18 @@ export const visualBrowserInputFor = (
         lastAcknowledgedSequence,
         payload: { reason: 'user-ended' },
       }
+    case 'filter':
+      return {
+        type: 'filter.query',
+        lastAcknowledgedSequence,
+        payload: { query: intent.query },
+      }
+    case 'save-view':
+      return {
+        type: 'view.save',
+        lastAcknowledgedSequence,
+        payload: intent.payload,
+      }
   }
 }
 
@@ -442,16 +474,35 @@ export const visualAppActionsForFrame = (
       return [{ type: 'model.received', model: frame.model }]
     case 'closing':
       return [{ type: 'session.closed', reason: frame.reason }]
+    case 'filter-result':
+      return [
+        {
+          type: 'filter.applied',
+          query: frame.result.query,
+          matchedIds: frame.result.matchedIds,
+        },
+      ]
+    case 'view-save-result':
+      return [{ type: 'view.saved', result: frame.result }]
     case 'response':
       switch (frame.response.type) {
-        case 'chat.response':
-          return [
+        case 'chat.response': {
+          const actions: VisualAppAction[] = [
             {
               type: 'chat.received',
               id: frame.response.responseId,
               text: frame.response.payload.text,
             },
           ]
+          if (frame.response.payload.appliedQuery) {
+            actions.push({
+              type: 'filter.applied',
+              query: frame.response.payload.appliedQuery.query,
+              matchedIds: frame.response.payload.appliedQuery.matchedIds,
+            })
+          }
+          return actions
+        }
         case 'agent.status':
           return [{ type: 'status.received', status: frame.response.payload }]
         case 'choice.present':
