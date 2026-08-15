@@ -42,6 +42,21 @@ const NODE_WIDTH = 170
 const NODE_HEIGHT = 50
 const LABEL_MAX_TEXT_WIDTH = 150
 
+// Cytoscape's `text-wrap: 'wrap'` only breaks lines on whitespace (or an
+// explicit zero-width space - `separatorRegex` in cytoscape's own text-layout
+// code matches `[\s\u200b]+`). Identifiers with no whitespace - repo-relative
+// file paths, dotted schema names, hyphenated ids - have no break opportunity
+// at all, so instead of wrapping at `text-max-width` they render as one
+// unbroken line that overflows the fixed node box into neighboring nodes.
+// Inserting a zero-width space after each path/word separator gives the wrap
+// engine somewhere to break without changing a single visible character, so
+// it stays a rendering-only concern - the underlying `label`/`name` used for
+// quick-filter substring matching is never touched.
+const WRAP_POINT = '\u200b'
+function withWrapPoints(text: string): string {
+  return text.replace(/([/._-])/g, `$1${WRAP_POINT}`)
+}
+
 // ELK layout options: extends base layout with elk-specific config not in cytoscape's types
 interface ElkLayoutOptions extends Record<string, unknown> {
   name: 'elk'
@@ -78,7 +93,7 @@ const STYLESHEET: cytoscape.StylesheetJsonBlock[] = [
       width: NODE_WIDTH,
       height: NODE_HEIGHT,
       padding: '8px',
-      label: 'data(label)',
+      label: 'data(wrapLabel)',
       'font-size': 12,
       'text-wrap': 'wrap',
       'text-max-width': `${LABEL_MAX_TEXT_WIDTH}px`,
@@ -142,7 +157,7 @@ const STYLESHEET: cytoscape.StylesheetJsonBlock[] = [
       'border-width': 2,
       'border-style': 'dashed',
       padding: '30px',
-      label: 'data(label)',
+      label: 'data(wrapLabel)',
       'font-size': 13,
       'font-weight': 'bold',
       'text-halign': 'center',
@@ -167,7 +182,7 @@ const STYLESHEET: cytoscape.StylesheetJsonBlock[] = [
       'taxi-radius': 25,
       'target-arrow-shape': 'triangle',
       'target-arrow-color': '#999999',
-      label: 'data(label)',
+      label: 'data(wrapLabel)',
       'font-size': 10,
       'text-background-color': '#FFFFFF',
       'text-background-padding': '2px',
@@ -275,6 +290,7 @@ function graphToElements(graph: CanvasGraph): ElementDefinition[] {
       data: {
         id: node.id,
         label: node.name,
+        wrapLabel: withWrapPoints(node.name),
         kind: node.kind,
         kindLabel: node.kindLabel,
         layer: node.layer,
@@ -294,6 +310,7 @@ function graphToElements(graph: CanvasGraph): ElementDefinition[] {
           source: edge.from,
           target: edge.to,
           label: edge.name ?? edge.kindLabel,
+          wrapLabel: withWrapPoints(edge.name ?? edge.kindLabel),
         },
         group: 'edges',
       })
