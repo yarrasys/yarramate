@@ -9,6 +9,7 @@
  * `node:path`, or the schema documents into its bundle.
  */
 import type { CanvasGraph } from '../../graph-projection.js'
+import type { ProjectionDefinition, ProjectionQuery } from '../../projection.js'
 
 export const VISUAL_PROTOCOL_VERSION = 'yarramate/visual-protocol/v1' as const
 
@@ -104,6 +105,29 @@ export interface VisualViewNavigatePayload {
   readonly requiresAttention: boolean
 }
 
+export interface VisualViewSummary {
+  readonly id: string
+  readonly title: string
+  readonly description: string
+}
+
+export interface VisualFilterQueryPayload {
+  readonly query: ProjectionQuery
+}
+
+export interface VisualFilterResultPayload {
+  readonly query: ProjectionQuery
+  readonly matchedIds: readonly string[]
+}
+
+export interface VisualViewSavePayload {
+  readonly id?: string
+  readonly title: string
+  readonly description: string
+  readonly query: ProjectionQuery
+  readonly presentation: ProjectionDefinition['presentation']
+}
+
 /**
  * Terminal event payload. Every reason is the runtime's to choose: only it
  * knows whether a session ended by request, by a failing child, by a browser
@@ -180,9 +204,12 @@ export type VisualEvent =
       'browser.disconnected',
       VisualBrowserDisconnectedPayload
     >
+  | VisualEventEnvelope<'filter.query', VisualFilterQueryPayload>
+  | VisualEventEnvelope<'view.save', VisualViewSavePayload>
 
 export interface VisualChatResponsePayload {
   readonly text: string
+  readonly appliedQuery?: VisualFilterResultPayload
 }
 
 export interface VisualAgentStatusPayload {
@@ -213,6 +240,10 @@ export interface VisualHandoffSummary {
 export interface VisualDiagnosticPayload {
   readonly diagnostics: readonly VisualDiagnostic[]
 }
+
+export type VisualViewSaveResultPayload =
+  | { readonly ok: true; readonly id: string; readonly path: string }
+  | { readonly ok: false; readonly diagnostics: readonly VisualDiagnostic[] }
 
 interface VisualResponseEnvelope<Type extends string, Payload> {
   readonly format: 'yarramate/visual-response/v1'
