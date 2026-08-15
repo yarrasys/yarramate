@@ -191,12 +191,19 @@ carry a payload, neither wraps `VisualResponse`.
 
 ### Task 7: `src/adapters/visual/session-server.ts` — build and send the views list
 
-At session-start (wherever `VisualSessionSnapshot` is currently assembled before `sendFrame(socket, { kind:
-'ready', snapshot })` at line 1147), iterate `resolved.projections` (the already-resolved workspace field —
-`ResolvedWorkspace` is already in scope here since the session's workspace was already loaded), `loadProjection`
-each, skip-and-log (not session-killing) any that fail, and build the `views: VisualViewSummary[]` array from the
-survivors. Mirror `check-command.ts:194-201`'s tolerant-collect shape, but `continue`/skip instead of
-failing the whole session (this is a live browser session, not a CI gate).
+Add `readonly cwd: string` to `VisualServerOptions` (`session-server.ts:199-216`) and thread it through from
+`visual-cli.ts`'s `runVisualStart` (`visual-cli.ts:265-282` already receives `cwd`, it just isn't passed to
+`startVisualServer` today — add it to that call). At session-start, before the `VisualSessionSnapshot` closure
+is first built (`session-server.ts:690` today), resolve the manifest exactly like `cli.ts:153` does
+(`resolve(cwd, '.yarramate/workspace.yaml')`), `readFileSync` it, and call `loadWorkspaceManifest({ path:
+manifestPath, source }, cwd)` (same call shape as `apply-command.ts:511-514`) to get `ResolvedWorkspace` once;
+hold it in a closure variable (Task 9 reuses it — do not reload it there). If the manifest file is missing or
+fails to parse, degrade to an empty `ResolvedWorkspace.projections` list rather than failing session start (an
+ad-hoc/what-if session with no on-disk workspace stays valid, it just has no saved views to list). Then iterate
+`resolved.projections`, `loadProjection` each, skip-and-log (not session-killing) any that fail, and build the
+`views: VisualViewSummary[]` array from the survivors. Mirror `check-command.ts:194-201`'s tolerant-collect
+shape, but `continue`/skip instead of failing the whole session (this is a live browser session, not a CI gate).
+Wire the built `views` array into `VisualSessionSnapshot`'s new `views` field (Task 6).
 
 ### Task 8: `session-server.ts` — handle `filter.query` synchronously
 
@@ -218,8 +225,9 @@ For `view.save`: validate the constructed `ProjectionDefinition` (`{ format: 'ya
 input.payload.id ?? generateId(input.payload.title), version: '1', query, presentation }`) against
 `schema/yarramate-projection.schema.json` (reuse the same Ajv validator `loadProjection`/`validateProjection`
 already wraps — do not hand-roll a second validation call). On success, `writeFileSync` to
-`.yarramate/projections/<id>.yaml` — serialize with `stringify` from the `yaml` package (already a dependency;
-`apply-command.ts` already imports and uses this exact function — `stringify(value, { lineWidth: 0 })` — for
+`resolve(cwd, '.yarramate/projections/<id>.yaml')` (same `cwd` Task 7 threads into `VisualServerOptions` and
+resolved the workspace manifest against — not `process.cwd()`) — serialize with `stringify` from the `yaml`
+package (already a dependency; `apply-command.ts` already imports and uses this exact function —
 YAML rendering elsewhere in this codebase, the only existing precedent for object→YAML serialization here) and
 respond `{ kind: 'view-save-result', result: { ok: true, id, path } }`. On validation failure, respond `{ ok:
 false, diagnostics }` without writing anything. Overwrite-vs-create is purely whether `input.payload.id` is
