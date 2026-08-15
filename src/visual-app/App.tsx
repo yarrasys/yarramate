@@ -320,13 +320,11 @@ const SelectedSubjectInspector = ({
   expanded,
   onToggleDescription,
   onClear,
-  onNavigate,
 }: {
   readonly subject: SelectedDiagramSubject
   readonly expanded: boolean
   readonly onToggleDescription: () => void
   readonly onClear: () => void
-  readonly onNavigate: (viewId: string) => void
 }) => (
   <section className="subject-inspector" aria-labelledby="subject-heading">
     <div className="subject-heading-row">
@@ -352,27 +350,13 @@ const SelectedSubjectInspector = ({
         <div>
           <dt>Identity</dt>
           <dd>
-            <code>{subject.identity}</code>
+            <code>{subject.id}</code>
           </dd>
         </div>
-        {subject.kind === null ? null : (
-          <div>
-            <dt>Kind</dt>
-            <dd>{subject.kind}</dd>
-          </div>
-        )}
-        {subject.technology === null ? null : (
-          <div>
-            <dt>Technology</dt>
-            <dd>{subject.technology}</dd>
-          </div>
-        )}
-        {subject.tags.length === 0 ? null : (
-          <div>
-            <dt>Tags</dt>
-            <dd>{subject.tags.join(', ')}</dd>
-          </div>
-        )}
+        <div>
+          <dt>Kind</dt>
+          <dd>{subject.kind}</dd>
+        </div>
       </dl>
     ) : (
       <dl className="subject-facts">
@@ -380,27 +364,9 @@ const SelectedSubjectInspector = ({
           <dt>Label</dt>
           <dd>{subject.label ?? 'Unlabelled relationship'}</dd>
         </div>
-        {subject.kind === null ? null : (
-          <div>
-            <dt>Kind</dt>
-            <dd>{subject.kind}</dd>
-          </div>
-        )}
-        {subject.technology === null ? null : (
-          <div>
-            <dt>Technology</dt>
-            <dd>{subject.technology}</dd>
-          </div>
-        )}
-        {subject.notation === null ? null : (
-          <div>
-            <dt>Notation</dt>
-            <dd>{subject.notation}</dd>
-          </div>
-        )}
         <div>
-          <dt>Model relations</dt>
-          <dd>{subject.aggregateCount}</dd>
+          <dt>Kind</dt>
+          <dd>{subject.kind}</dd>
         </div>
       </dl>
     )}
@@ -410,20 +376,6 @@ const SelectedSubjectInspector = ({
       expanded={expanded}
       onToggle={onToggleDescription}
     />
-
-    {subject.type === 'element' && subject.navigateTo !== null ? (
-      <button
-        type="button"
-        className="subject-navigate"
-        onClick={() => {
-          if (subject.type === 'element' && subject.navigateTo !== null) {
-            onNavigate(subject.navigateTo)
-          }
-        }}
-      >
-        Open related view
-      </button>
-    ) : null}
   </section>
 )
 
@@ -437,7 +389,6 @@ const ConversationPanel = ({
   onChoice,
   onToggleDescription,
   onClearSubject,
-  onNavigate,
 }: {
   readonly state: VisualAppState
   readonly hidden: boolean
@@ -448,7 +399,6 @@ const ConversationPanel = ({
   readonly onChoice: (optionId: string) => void
   readonly onToggleDescription: () => void
   readonly onClearSubject: () => void
-  readonly onNavigate: (viewId: string) => void
 }) => {
   const [draft, setDraft] = useState('')
   const agentWaiting =
@@ -484,7 +434,6 @@ const ConversationPanel = ({
             expanded={descriptionExpanded}
             onToggleDescription={onToggleDescription}
             onClear={onClearSubject}
-            onNavigate={onNavigate}
           />
         )}
 
@@ -643,7 +592,7 @@ const ConversationSeparator = ({
 }
 
 export const App = () => {
-  const { state, connected, ask, choose, navigate, end } = useVisualSession()
+  const { state, connected, ask, choose, end } = useVisualSession()
 
   const [workspace, dispatchWorkspace] = useReducer(
     visualWorkspaceReducer,
@@ -770,7 +719,6 @@ export const App = () => {
             dispatchWorkspace({ type: 'description.toggled' })
           }
           onClearSubject={() => dispatchWorkspace({ type: 'subject.cleared' })}
-          onNavigate={navigate}
         />
       </div>
     </main>

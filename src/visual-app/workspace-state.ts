@@ -216,9 +216,9 @@ export const formatContextualQuestion = (
   const text = question.trim()
   if (subject === null) return text
   if (subject.type === 'element') {
-    return `About element "${subject.title}" (${subject.id}): ${text}`
+    return `About element “${subject.title}” (${subject.id}): ${text}`
   }
   const route = `${subject.sourceTitle} → ${subject.targetTitle}`
   const name = subject.label === null ? route : `${route} — ${subject.label}`
-  return `About relationship "${name}": ${text}`
+  return `About relationship “${name}”: ${text}`
 }

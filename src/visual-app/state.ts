@@ -30,19 +30,6 @@ export const RECONNECT_WINDOW_MS = VISUAL_LIMITS.reconnectMs
 /** Shown the moment End is requested, and kept in the record. */
 export const VISUAL_END_NOTICE = 'Returning control to the main agent'
 
-/**
- * What the reviewer is told when a rendering the server compiled is one this
- * browser's renderer cannot read: one for a canvas that still has the drawing
- * before it, one for a canvas that has nothing to keep. The renderer's own
- * exception names its internals and may carry anything, so it never reaches the
- * page; these are the only words for that failure.
- */
-export const VISUAL_DRAW_FAULT_KEPT =
-  'The latest model could not be drawn. The diagram still shows the last one that could.'
-
-export const VISUAL_DRAW_FAULT_BARE =
-  'The model could not be drawn. Nothing is on the canvas until one that can be drawn arrives.'
-
 export type VisualAppLifecycle =
   | 'connecting'
   | 'active'
@@ -187,39 +174,6 @@ export const visualAuthorityLabel = (authority: VisualAuthority): string =>
 export const canReconnect = (lostAt: number, now: number): boolean =>
   now - lostAt < RECONNECT_WINDOW_MS
 
-/** What is on the canvas, and why nothing newer is. */
-export interface VisualDrawing<TDrawing> {
-  /** The rendering to draw: the new one, or the last one that could be drawn. */
-  readonly drawn: TDrawing | null
-  /** Why the newest rendering is not on screen, in this application's words. */
-  readonly fault: string | null
-}
-
-/**
- * The candidate as a drawing, or the last good drawing and a fault.
- *
- * A rendering the server compiled can still be one the renderer here refuses,
- * and a desk that answers that by blanking the canvas has taken away the
- * reviewer's place for a reason only a console would hold. The failed candidate
- * is dropped; the drawing that worked is not, and the reviewer is told why.
- */
-export const visualDrawingFor = <TDrawing>(
-  model: VisualRenderedModel | null,
-  draw: (compiled: unknown) => TDrawing,
-  lastDrawn: TDrawing | null,
-): VisualDrawing<TDrawing> => {
-  if (model === null) return { drawn: lastDrawn, fault: null }
-  try {
-    return { drawn: draw(model.compiled), fault: null }
-  } catch {
-    return {
-      drawn: lastDrawn,
-      fault:
-        lastDrawn === null ? VISUAL_DRAW_FAULT_BARE : VISUAL_DRAW_FAULT_KEPT,
-    }
-  }
-}
-
 /**
  * A record this browser wrote itself, keyed by a counter rather than by
  * position: a restored conversation changes the position of everything, and a
@@ -249,8 +203,7 @@ const withRecord = (
     : [...state.transcript, record]
 
 /** The view the reviewer keeps, or the one the new model opens on. */
-const viewWithin = (model: VisualRenderedModel, activeView: string): string =>
-  model.views.includes(activeView) ? activeView : model.initialView
+const viewWithin = (model: VisualRenderedModel): string => model.initialView
 
 /**
  * The turn is over. The composer reopens, and the status the agent reported
@@ -271,7 +224,7 @@ const transition = (
         // A reconnect re-sends the snapshot, and it reports what the session
         // holds — never that a session the reviewer already ended is open.
         lifecycle: state.lifecycle === 'ending' ? 'ending' : 'active',
-        activeView: viewWithin(action.snapshot.model, state.activeView),
+        activeView: viewWithin(action.snapshot.model),
         // The session owns what was said; this browser owns only what it told
         // the reviewer itself, so a reload restores the record and keeps its
         // own notices.
@@ -290,7 +243,7 @@ const transition = (
       return {
         ...state,
         model: action.model,
-        activeView: viewWithin(action.model, state.activeView),
+        activeView: viewWithin(action.model),
         diagnostics: [],
       }
     case 'diagnostic.received':
@@ -518,10 +471,6 @@ export const visualAppActionsForFrame = (
               diagnostics: frame.response.payload.diagnostics,
             },
           ]
-        case 'model.replace':
-          // The promoted candidate arrives as its own frame, compiled. The
-          // response is the journal's copy of the request, not a rendering.
-          return []
       }
   }
 }
