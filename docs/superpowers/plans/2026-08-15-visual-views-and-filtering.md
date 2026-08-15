@@ -347,6 +347,38 @@ minimal piece this plan actually needs: a `direction: 'top-down' | 'left-right'`
 design doc); a view with `presentation.layout !== 'layered'` has nothing to apply and is left at the current
 direction.
 
+**Correction (verified against this worktree, wiring detail): `useVisualSession()` (`session-client.tsx:32-39,158-172`)
+exposes `navigate` today but has no `filter` or clear-filter sender. Add two more to the `VisualSession`
+interface and hook, mirroring the existing pattern:
+- `filter: (query: ProjectionQuery) => void` — `send({ kind: 'filter', query })` only, no optimistic local
+  dispatch (unlike `navigate`'s `dispatch({ type: 'view.navigated', ... })`): the real `matchedIds` arrive
+  later via a `filter-result` frame, applied through the `filter.applied` action Task 11 already wired
+  (`state.ts:498-506`). That reducer path hardcodes `source: 'panel'` for every `filter-result` frame,
+  whether view-picker or the Task 15 filter-panel sent the query — leave this as-is, do not add a mechanism
+  to disambiguate. No consumer distinguishes `'view'` from `'panel'` today (Task 18's chat pill only checks
+  `activeFilter.source === 'chat'`, plan.md:417).
+- `clearFilter: () => void` — `dispatch({ type: 'filter.cleared' })` only, no `send()` call: there is no wire
+  event for "clear filter" (`ACTIONABLE_EVENT_TYPES` has none), so clearing is a pure client-side reset of
+  `activeFilter` to `null`, same as Plan 1's other local-only UI actions.
+
+`view-picker.tsx` itself should stay dumb: props `views: readonly VisualViewSummary[]`, `onSelect: (view:
+VisualViewSummary) => void`, `onClear: () => void`. `App.tsx` composes the combined `onSelect` handler that
+calls `navigate(view.id)`, `filter(view.query)`, and (per the direction paragraph below) the workspace
+direction dispatch when `view.presentation?.layout === 'layered' && view.presentation.direction` is set.
+
+**Correction (direction wiring): add `direction: 'top-down' | 'left-right'` to `VisualWorkspaceState`
+(`workspace-state.ts:66-81`, default `'top-down'` in `createVisualWorkspaceState`) and a
+`{ type: 'direction.set'; direction: 'top-down' | 'left-right' }` action/reducer case (mirrors the existing
+`details.toggled` case shape at `workspace-state.ts:203-204`, but carries a value rather than toggling).
+Extend `GraphCanvasProps` with `direction: 'top-down' | 'left-right'`; in the layout effect
+(`graph-canvas.tsx:347-357`) map it to `'elk.direction': direction === 'top-down' ? 'DOWN' : 'LEFT'` and add
+`direction` to the effect's dependency array so toggling re-runs layout. Thread `workspace.direction` from
+`App.tsx`'s `workspace` reducer state down through `DiagramWorkspace` to `GraphCanvas`, and
+`dispatchWorkspace({ type: 'direction.set', direction })` up from the new toggle button. `CommandStrip`
+already renders the toolbar-style `command-actions` row (`App.tsx:109-144`, Details/Conversation/End
+buttons) — the direction toggle and the view-picker dropdown both belong there, alongside those.**
+
+
 
 ### Task 15: New component `src/visual-app/filter-panel.tsx`
 
