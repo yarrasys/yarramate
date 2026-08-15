@@ -36,10 +36,24 @@ that is Plan 3, unaffected by this plan's wire additions.
   `resolved.projections.flatMap(path => { const loaded = loadProjection(...); return loaded.ok ? [...] : [...]
   })`. `resolved.projections` is `ResolvedWorkspace.projections` (`src/workspace.ts:35-42`), the glob-expanded
   form of `.yarramate/workspace.yaml`'s `projections: ['projections/*.yaml']` pattern (confirmed against this
-  repo's actual `.yarramate/workspace.yaml`) — already computed by `loadWorkspaceManifest`, which the session
-  server already calls to build every session. A new file written by Save-As that matches the existing glob and
+  repo's actual `.yarramate/workspace.yaml`). A new file written by Save-As that matches the existing glob and
   lives in `.yarramate/projections/` is picked up automatically on the next session start; **no
   `.yarramate/workspace.yaml` edit is needed for Save/Save-As.**
+- **Correction (verified against this worktree, not assumed):** `ResolvedWorkspace` is *not* already in scope in
+  `session-server.ts` — grepped, `loadWorkspaceManifest` has zero call sites there or in `session-store.ts` or
+  `visual-cli.ts`, and neither `VisualServerOptions` (`session-server.ts:199-216`) nor `VisualSessionRequest`
+  (`protocol-contract.ts:58-65`) carries a workspace path or `cwd` today. The session's compiled graph arrives
+  pre-built (`request.initialModel.graph`) from a caller outside this codebase; nothing about workspace-on-disk
+  ever reaches `startVisualServer`. Task 7 must add `readonly cwd: string` to `VisualServerOptions` and thread it
+  from `visual-cli.ts`'s `runVisualStart` (`visual-cli.ts:265-282`), which already receives `cwd` but currently
+  drops it before calling `startVisualServer({ request: request.value, baseDir })` — add `cwd` to that call.
+  Inside `session-server.ts`, resolve the manifest at the fixed conventional path exactly like `cli.ts:153` does
+  (`resolve(cwd, '.yarramate/workspace.yaml')`), `readFileSync` it, and call `loadWorkspaceManifest({ path:
+  manifestPath, source }, cwd)` (same call shape as `apply-command.ts:511-514`) to get `ResolvedWorkspace`. Do
+  this once at session start and hold the result in a closure variable — Task 9's slug-collision check and its
+  write-path resolution both reuse it, they must not reload it. If the manifest file does not exist or fails to
+  parse, degrade to `views: []` rather than failing session start (an ad-hoc/what-if session with no on-disk
+  workspace is explicitly in scope per this doc's own framing — see Question 5 discussion above).
 - `src/adapters/visual/wire.ts:24-56` — the actual runtime socket protocol (distinct from the JSON-schema-mirrored
   request/response types in `protocol-contract.ts`): `VisualRenderedModel { authority, initialView, graph }`,
   `VisualSessionSnapshot { protocolVersion, sessionId, authority, ..., model: VisualRenderedModel, transcript,
