@@ -1,3 +1,4 @@
+import type { CanvasGraph } from '../../graph-projection.js'
 import type {
   VISUAL_PROTOCOL_VERSION,
   VisualAuthority,
@@ -20,18 +21,11 @@ import type {
  * the protocol is type-only too.
  */
 
-/** One promoted candidate as the browser receives it. */
+/** The resolved graph a session renders, as the browser receives it. */
 export interface VisualRenderedModel {
-  readonly candidate: string
   readonly authority: VisualAuthority
   readonly initialView: string
-  readonly views: readonly string[]
-  /**
-   * The trusted compiler's own LikeC4 export for this candidate, the document
-   * `createLikeC4Model` consumes. Its internals belong to LikeC4, so the
-   * transport carries it verbatim instead of restating a shape it does not own.
-   */
-  readonly compiled: unknown
+  readonly graph: CanvasGraph
 }
 
 /**

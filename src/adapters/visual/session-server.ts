@@ -16,10 +16,6 @@ import type { Duplex } from 'node:stream'
 import { fileURLToPath } from 'node:url'
 import { WebSocketServer, type RawData, type WebSocket } from 'ws'
 import {
-  compileVisualModel,
-  type CompiledVisualModel,
-} from './likec4-compiler.js'
-import {
   VISUAL_LIMITS,
   VISUAL_PROTOCOL_VERSION,
   parseVisualBrowserInput,
@@ -169,21 +165,6 @@ const DEFAULT_ASSET_ROOT = fileURLToPath(
   new URL('../../visual-app/', import.meta.url),
 )
 
-/**
- * One promoted candidate as the browser receives it. The export is read back
- * from the candidate directory rather than re-derived, so what the browser
- * draws is exactly the document the trusted compiler wrote.
- */
-const renderCompiled = async (
-  compiled: CompiledVisualModel,
-): Promise<VisualRenderedModel> => ({
-  candidate: compiled.candidate,
-  authority: compiled.authority,
-  initialView: compiled.initialView,
-  views: compiled.views,
-  compiled: JSON.parse(await readFile(compiled.exportPath, 'utf8')) as unknown,
-})
-
 export type VisualEventDelivery =
   | {
       readonly waiting: false
@@ -202,7 +183,6 @@ export type VisualResponseAcceptance =
       readonly accepted: true
       readonly duplicate: boolean
       readonly lastSequence: number
-      readonly model?: VisualRenderedModel
       readonly diagnostics: readonly VisualDiagnostic[]
     }
   | {
@@ -253,8 +233,6 @@ export interface VisualServerHandle {
 export interface ActiveVisualSession {
   readonly paths: VisualSessionPaths
   lifecycle: VisualLifecycle
-  /** Cancels whatever the trusted compiler is doing for this session. */
-  readonly compilerAbort: AbortController
   /** Records why the browser stopped being able to speak. */
   readonly freeze: (reason: VisualFreezeReason) => void
   /** Settles work already admitted, so recovery reads a quiet journal. */
@@ -271,11 +249,10 @@ export interface ActiveVisualSession {
  * that failed, a browser that never came back, a cancelling main agent, or a
  * runtime shutting itself down.
  *
- * The order is the invariant. Input freezes before anything is read; the
- * compiler is cancelled rather than waited out; work already admitted is still
- * allowed to finish; exactly one terminal event is journaled; and the handoff
- * is recovered without deleting anything, so `stop` — and only `stop` — is what
- * removes the session directory.
+ * The order is the invariant. Input freezes before anything is read; work
+ * already admitted is still allowed to finish; exactly one terminal event is
+ * journaled; and the handoff is recovered without deleting anything, so
+ * `stop` — and only `stop` — is what removes the session directory.
  */
 export const terminateVisualSession = (
   session: ActiveVisualSession,
@@ -284,7 +261,6 @@ export const terminateVisualSession = (
   session.terminating ??= (async () => {
     if (session.lifecycle !== 'stopped') session.lifecycle = 'draining'
     session.freeze('terminal-event')
-    session.compilerAbort.abort()
     await session.quiesce()
     // A terminal event that cannot be journaled must not be why a session
     // stays up: `runVisualStart` waits on this to return, so a transition that
@@ -491,8 +467,6 @@ export const startVisualServer = async (
     'Content-Security-Policy': visualContentSecurityPolicy(styleNonce),
   }
 
-  /** Cancels every compile this session runs, including one in flight. */
-  const compilerAbort = new AbortController()
   /** Set once the loopback listener exists; a failed start has to close it. */
   let closeListener: (() => Promise<void>) | undefined
 
@@ -500,40 +474,26 @@ export const startVisualServer = async (
   // leave one behind for the next run to prune, nor a listener for the process
   // to outlive.
   const abandon = async (cause: unknown): Promise<never> => {
-    compilerAbort.abort()
     await closeListener?.().catch(() => undefined)
     await removeVisualSession(paths).catch(() => undefined)
     throw cause
   }
 
-  const compilation = await compileVisualModel({
-    model: request.initialModel,
-    command: request.compiler,
-    paths,
-    now,
-    signal: compilerAbort.signal,
-  }).catch(abandon)
-  if (!compilation.ok) {
-    const first = compilation.diagnostics[0]
-    return abandon(
-      serverError(
-        first?.code ?? 'YMVS302',
-        `Initial visual model did not compile: ${
-          first?.message ?? 'unknown violation'
-        }`,
-      ),
-    )
+  // `request.initialModel.graph` is already a fully resolved graph — the
+  // caller compiled it (`buildVisualModelGraph`) before invoking
+  // `yarramate-visual start` — so there is no in-session compile step left;
+  // rendering is a direct projection of the request onto the wire shape.
+  const rendered: VisualRenderedModel = {
+    authority: request.initialModel.authority,
+    initialView: request.initialModel.initialView,
+    graph: request.initialModel.graph,
   }
-
-  let rendered: VisualRenderedModel = await renderCompiled(
-    compilation.compiled,
-  ).catch(abandon)
 
   const capabilities: VisualCapabilities = {
     chat: request.chatEnabled,
     choices: request.chatEnabled,
     navigation: true,
-    modelReplacement: true,
+    modelReplacement: false,
     transcript: true,
   }
 
@@ -640,7 +600,6 @@ export const startVisualServer = async (
   const active: ActiveVisualSession = {
     paths,
     lifecycle: 'starting',
-    compilerAbort,
     freeze,
     quiesce: drainAdmission,
     terminalEvent: { now, randomBytes },
@@ -1217,50 +1176,6 @@ export const startVisualServer = async (
     })
   }
 
-  const replaceModel = async (
-    response: Extract<VisualResponse, { readonly type: 'model.replace' }>,
-  ): Promise<{
-    readonly model?: VisualRenderedModel
-    readonly diagnostics: readonly VisualDiagnostic[]
-  }> => {
-    const compiled = await compileVisualModel({
-      model: response.payload.model,
-      command: request.compiler,
-      paths,
-      now,
-      signal: compilerAbort.signal,
-    })
-    if (compiled.ok) {
-      rendered = await renderCompiled(compiled.compiled)
-      broadcast({ kind: 'model', model: rendered })
-      return { model: rendered, diagnostics: [] }
-    }
-    // The candidate is discarded and the last good rendering stays live; the
-    // browser learns why from a journaled diagnostic response.
-    const diagnostic: VisualResponse = {
-      format: 'yarramate/visual-response/v1',
-      sessionId,
-      responseId: drawHex(16),
-      eventId: response.eventId,
-      type: 'diagnostic',
-      timestamp: stamp(),
-      payload: { diagnostics: compiled.diagnostics },
-    }
-    const appended = await appendVisualResponse(paths, diagnostic)
-    if (appended.ok) transcriptBytes = appended.transcriptBytes
-    // A journal that refused the explanation is still a journal that reached a
-    // limit, and the limit outlives this response.
-    else if (appended.freeze !== undefined) freeze(appended.freeze)
-    broadcast({ kind: 'response', response: diagnostic })
-    // The diagnostic is the answer to the event the replacement was answering,
-    // and it is the only one that event will get. It retires the turn exactly
-    // as an agent-posted diagnostic would, so the reviewer's next message is
-    // deliverable instead of waiting behind a turn nobody will ever close.
-    markAnswered(diagnostic)
-    completeTurn(diagnostic)
-    return { diagnostics: compiled.diagnostics }
-  }
-
   /**
    * Events a turn-completing response has already answered.
    *
@@ -1393,10 +1308,6 @@ export const startVisualServer = async (
         recordResponse(response)
         markAnswered(response)
         broadcast({ kind: 'response', response })
-        const replaced =
-          response.type === 'model.replace'
-            ? await replaceModel(response)
-            : { diagnostics: [] as readonly VisualDiagnostic[] }
         completeTurn(response)
         return {
           code: 200,
@@ -1404,8 +1315,7 @@ export const startVisualServer = async (
             accepted: true,
             duplicate: false,
             lastSequence,
-            ...(replaced.model === undefined ? {} : { model: replaced.model }),
-            diagnostics: replaced.diagnostics,
+            diagnostics: [],
           },
         }
       },
