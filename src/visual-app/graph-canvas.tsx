@@ -55,6 +55,18 @@ interface ElkLayoutOptions extends Record<string, unknown> {
   }
 }
 
+// Shared by the full-graph layout effect and the visible-subgraph relayout
+// that runs on view switch, so both always agree on algorithm/direction.
+function buildLayoutConfig(direction: 'top-down' | 'left-right'): ElkLayoutOptions {
+  return {
+    name: 'elk',
+    elk: {
+      algorithm: 'layered',
+      'elk.direction': direction === 'top-down' ? 'DOWN' : 'LEFT',
+    },
+  }
+}
+
 // Build the cytoscape stylesheet with base node style, layer-specific overrides,
 // edge style, and selected-state highlight class.
 // Stylesheet entries match StylesheetStyle shape (selector + style properties)
@@ -270,15 +282,18 @@ export function applyFilter(
     .style('display', 'element')
 }
 
-const FIT_PADDING = 20
-
-// Recenters and rescales the viewport to whatever elements are currently
-// visible. A view switch can match a disjoint node set from the previous
-// view, so the old pan/zoom can leave the new view's nodes off-screen or
-// crammed into a corner; `fit()` is a no-op on an empty visible collection,
-// so callers never need to guard against "the new view matched nothing".
-export function fitToVisible(cy: Core, padding = FIT_PADDING): void {
-  cy.fit(cy.elements(':visible'), padding)
+// Positions come from the last full-graph layout, which packs every node
+// (including ones a view hides) into one shared coordinate space. Reusing
+// those positions for a disjoint visible subset leaves it scattered across
+// the old full-graph span - relaying out just the visible collection gives
+// each view a fresh, compact layout instead. cytoscape-elk's own `fit: true`
+// default re-frames the viewport to the result, so no separate fit call is
+// needed; `layout()` is a no-op on an empty visible collection, so callers
+// never need to guard against "the new view matched nothing".
+export function relayoutVisible(cy: Core, direction: 'top-down' | 'left-right'): void {
+  cy.elements(':visible')
+    .layout(buildLayoutConfig(direction) as unknown as cytoscape.LayoutOptions)
+    .run()
 }
 
 interface GraphCanvasProps {
@@ -380,15 +395,9 @@ export function GraphCanvas({
       cyRef.current.add(elements)
     }
 
-    const layoutConfig: ElkLayoutOptions = {
-      name: 'elk',
-      elk: {
-        algorithm: 'layered',
-        'elk.direction': direction === 'top-down' ? 'DOWN' : 'LEFT',
-      },
-    }
-
-    const layout = cyRef.current.layout(layoutConfig as unknown as cytoscape.LayoutOptions)
+    const layout = cyRef.current.layout(
+      buildLayoutConfig(direction) as unknown as cytoscape.LayoutOptions
+    )
     layout.run()
   }, [graph, direction])
 
@@ -419,16 +428,18 @@ export function GraphCanvas({
   }, [activeViewId])
 
   // Apply structural filter (matchedIds) and quick-filter narrowing, then,
-  // only once a pending view-switch fit is armed and its filter result has
-  // actually landed, fit the viewport to whatever is visible now.
+  // only once a pending view-switch relayout is armed and its filter result
+  // has actually landed, rerun layout scoped to whatever is visible now -
+  // see `relayoutVisible` for why a fresh layout (not just a re-fit) is
+  // needed here.
   useEffect(() => {
     if (!cyRef.current) return
     applyFilter(cyRef.current, matchedIds, quickFilterText)
     if (pendingViewFitRef.current) {
       pendingViewFitRef.current = false
-      fitToVisible(cyRef.current)
+      relayoutVisible(cyRef.current, direction)
     }
-  }, [matchedIds, quickFilterText, graph])
+  }, [matchedIds, quickFilterText, graph, direction])
 
   return <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
 }

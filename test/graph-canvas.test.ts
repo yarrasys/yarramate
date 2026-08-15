@@ -1,6 +1,6 @@
 import cytoscape from 'cytoscape'
-import { describe, expect, it, vi } from 'vitest'
-import { applyFilter, fitToVisible } from '../src/visual-app/graph-canvas.js'
+import { describe, expect, it } from 'vitest'
+import { applyFilter, relayoutVisible } from '../src/visual-app/graph-canvas.js'
 
 // A small headless cytoscape instance (no container/DOM needed for hide/show
 // and data queries) - mirrors the shape graphToElements produces, without
@@ -81,29 +81,42 @@ describe('applyFilter', () => {
   })
 })
 
-describe('fitToVisible', () => {
-  it('fits to only the currently visible elements, not the whole graph', () => {
-    const cy = buildCy()
+describe('relayoutVisible', () => {
+  // Explicit positions and a `preset` initial layout (cytoscape otherwise
+  // auto-runs a `grid` layout on init, discarding them) so moved-vs-untouched
+  // is observable, not masked by every node already starting at (0, 0).
+  const buildPositionedCy = () =>
+    cytoscape({
+      styleEnabled: true,
+      layout: { name: 'preset' },
+      elements: [
+        { data: { id: 'node1' }, position: { x: 500, y: 500 }, group: 'nodes' },
+        { data: { id: 'node2' }, position: { x: 600, y: 500 }, group: 'nodes' },
+        { data: { id: 'node3' }, position: { x: 9999, y: 9999 }, group: 'nodes' },
+        {
+          data: { id: 'edge1', source: 'node1', target: 'node2', label: 'calls' },
+          group: 'edges',
+        },
+      ],
+    })
+
+  it('repositions only the currently visible elements, leaving hidden ones untouched', async () => {
+    const cy = buildPositionedCy()
     applyFilter(cy, ['node1', 'node2'], '')
-    const fitSpy = vi.spyOn(cy, 'fit')
+    const hiddenBefore = { ...cy.getElementById('node3').position() }
+    const visibleBefore = { ...cy.getElementById('node1').position() }
+    const settled = new Promise<void>((resolve) => cy.one('layoutstop', () => resolve()))
 
-    fitToVisible(cy)
+    relayoutVisible(cy, 'top-down')
+    await settled
 
-    expect(fitSpy).toHaveBeenCalledTimes(1)
-    const call = fitSpy.mock.calls[0]!
-    const visibleCollection = call[0]
-    const padding = call[1]
-    expect(
-      (visibleCollection as cytoscape.CollectionReturnValue)
-        .map((ele) => ele.id())
-        .sort()
-    ).toEqual(['edge1', 'node1', 'node2'])
-    expect(padding).toBe(20)
+    expect(cy.getElementById('node3').position()).toEqual(hiddenBefore)
+    expect(cy.getElementById('node1').position()).not.toEqual(visibleBefore)
   })
 
   it('is a safe no-op when nothing is visible', () => {
-    const cy = buildCy()
+    const cy = buildPositionedCy()
     applyFilter(cy, [], '')
-    expect(() => fitToVisible(cy)).not.toThrow()
+    expect(() => relayoutVisible(cy, 'top-down')).not.toThrow()
   })
 })
