@@ -786,6 +786,104 @@ describe('visualAppActionsForFrame', () => {
   })
 })
 
+describe('visualAppReducer filter state', () => {
+  const query = { include: { subjects: ['Q1'] }, exclude: {} }
+  const matchedIds = ['node1', 'node2', 'node3']
+
+  it('initializes with no active filter', () => {
+    expect(initialVisualAppState.activeFilter).toBe(null)
+    expect(initialVisualAppState.quickFilterText).toBe('')
+  })
+
+  it('applies a filter with panel source from filter-result frame', () => {
+    const actions = visualAppActionsForFrame({
+      kind: 'filter-result',
+      result: { query, matchedIds },
+    })
+    const filtered = actions.reduce(
+      (state, action) => visualAppReducer(state, action),
+      activeState,
+    )
+    expect(filtered.activeFilter).toEqual({
+      query,
+      matchedIds,
+      source: 'panel',
+    })
+  })
+
+  it('applies a filter with chat source from chat response', () => {
+    const actions = visualAppActionsForFrame({
+      kind: 'response',
+      response: {
+        responseId: 'r1',
+        type: 'chat.response',
+        payload: {
+          text: 'Here are results',
+          appliedQuery: { query, matchedIds },
+        },
+      },
+    })
+    const filtered = actions.reduce(
+      (state, action) => visualAppReducer(state, action),
+      activeState,
+    )
+    expect(filtered.activeFilter).toEqual({
+      query,
+      matchedIds,
+      source: 'chat',
+    })
+  })
+
+  it('clears the active filter on filter.cleared action', () => {
+    const filtered = visualAppReducer(activeState, {
+      type: 'filter.applied',
+      query,
+      matchedIds,
+      source: 'panel',
+    })
+    expect(filtered.activeFilter).not.toBe(null)
+    const cleared = visualAppReducer(filtered, {
+      type: 'filter.cleared',
+    })
+    expect(cleared.activeFilter).toBe(null)
+  })
+
+  it('does not clear quickFilterText when clearing the filter', () => {
+    const withFilter = visualAppReducer(activeState, {
+      type: 'filter.applied',
+      query,
+      matchedIds,
+      source: 'panel',
+    })
+    const cleared = visualAppReducer(withFilter, {
+      type: 'filter.cleared',
+    })
+    // quickFilterText should remain unchanged
+    expect(cleared.quickFilterText).toBe(activeState.quickFilterText)
+  })
+
+  it('replacing a filter with a new one updates the activeFilter', () => {
+    const filtered1 = visualAppReducer(activeState, {
+      type: 'filter.applied',
+      query,
+      matchedIds: ['node1'],
+      source: 'panel',
+    })
+    const newQuery = { include: { subjects: ['Q2'] }, exclude: {} }
+    const filtered2 = visualAppReducer(filtered1, {
+      type: 'filter.applied',
+      query: newQuery,
+      matchedIds: ['node4', 'node5'],
+      source: 'chat',
+    })
+    expect(filtered2.activeFilter).toEqual({
+      query: newQuery,
+      matchedIds: ['node4', 'node5'],
+      source: 'chat',
+    })
+  })
+})
+
 describe('canReconnect', () => {
   it('pins the browser grace to the protocol reconnect window', () => {
     expect(RECONNECT_WINDOW_MS).toBe(VISUAL_LIMITS.reconnectMs)

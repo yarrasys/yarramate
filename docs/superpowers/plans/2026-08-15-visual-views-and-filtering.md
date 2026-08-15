@@ -287,14 +287,19 @@ the design doc.
 - `visualAppSnapshotFrom` (or wherever `VisualSessionSnapshot` → initial app state is built): read `snapshot
   .views` into the new `views` state slice.
 
-### Task 12: `src/visual-app/workspace-state.ts` (or wherever `VisualAppState`/reducer lives) — filter state slice
+### Task 12: `src/visual-app/state.ts` — filter state slice
+
+**Correction (verified against this worktree): `VisualAppState`/`transition` live in `state.ts` (Task 11 already
+extended it with `views` and no-op `filter.applied`/`view.saved` cases there). `workspace-state.ts` owns only
+`VisualWorkspaceState` — local UI layout (conversation panel, selected subject, direction toggle) — not filter
+data.**
 
 Add `activeFilter: { query: ProjectionQuery; matchedIds: readonly string[]; source: 'view' | 'panel' | 'chat' }
-| null` to app state (`null` = unfiltered). Reducer case for `'filter.applied'` sets it; a `'filter.cleared'`
-action (fired by "Show all", or by starting to type in the quick-filter box, or by opening the structured panel
-to build a new ad-hoc query) sets it back to `null`. Quick-filter text is a **separate, independent** state
-field (`quickFilterText: string`) — client-side substring narrowing layers on top of `activeFilter`, it does not
-replace it or go through the server at all.
+| null` to `VisualAppState` (`null` = unfiltered). The `transition` case for `'filter.applied'` (currently a
+no-op from Task 11) sets it; a new `'filter.cleared'` action (fired by "Show all", or by starting to type in the
+quick-filter box, or by opening the structured panel to build a new ad-hoc query) sets it back to `null`. Quick-
+filter text is a **separate, independent** state field (`quickFilterText: string`) — client-side substring
+narrowing layers on top of `activeFilter`, it does not replace it or go through the server at all.
 
 ### Task 13: `src/visual-app/graph-canvas.tsx` — shared `applyFilter`
 

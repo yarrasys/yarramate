@@ -89,6 +89,14 @@ export interface VisualAppState {
   readonly localRecords: number
   readonly lastSequence: number
   readonly frozen: boolean
+  /** The last query the reviewer applied, and what it matched. `null` = unfiltered. */
+  readonly activeFilter: {
+    readonly query: ProjectionQuery
+    readonly matchedIds: readonly string[]
+    readonly source: 'view' | 'panel' | 'chat'
+  } | null
+  /** Client-side substring narrowing layered on top of `activeFilter`. */
+  readonly quickFilterText: string
   readonly closedReason: string | null
 }
 
@@ -119,7 +127,9 @@ export type VisualAppAction =
       readonly type: 'filter.applied'
       readonly query: ProjectionQuery
       readonly matchedIds: readonly string[]
+      readonly source: 'view' | 'panel' | 'chat'
     }
+  | { readonly type: 'filter.cleared' }
   | { readonly type: 'view.saved'; readonly result: VisualViewSaveResultPayload }
   | {
       readonly type: 'handoff.received'
@@ -156,6 +166,8 @@ export const initialVisualAppState: VisualAppState = {
   localRecords: 0,
   lastSequence: 0,
   frozen: false,
+  activeFilter: null,
+  quickFilterText: '',
   closedReason: null,
 }
 
@@ -354,7 +366,16 @@ const transition = (
     case 'session.closed':
       return { ...state, lifecycle: 'closed', closedReason: action.reason }
     case 'filter.applied':
-      return state
+      return {
+        ...state,
+        activeFilter: {
+          query: action.query,
+          matchedIds: action.matchedIds,
+          source: action.source,
+        },
+      }
+    case 'filter.cleared':
+      return { ...state, activeFilter: null }
     case 'view.saved':
       return state
   }
@@ -480,6 +501,7 @@ export const visualAppActionsForFrame = (
           type: 'filter.applied',
           query: frame.result.query,
           matchedIds: frame.result.matchedIds,
+          source: 'panel',
         },
       ]
     case 'view-save-result':
@@ -499,6 +521,7 @@ export const visualAppActionsForFrame = (
               type: 'filter.applied',
               query: frame.response.payload.appliedQuery.query,
               matchedIds: frame.response.payload.appliedQuery.matchedIds,
+              source: 'chat',
             })
           }
           return actions
