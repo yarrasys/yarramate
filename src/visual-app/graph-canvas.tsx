@@ -35,15 +35,12 @@ const DEFAULT_BORDER = '#999999'
 
 // `width: 'label'` / `height: 'label'` are deprecated in cytoscape.js (and, at this
 // graph's scale with wrapped text, crash inside cytoscape's style-hint pool during
-// `elements().remove()`). Size nodes explicitly instead, precomputed once per node
-// via canvas text measurement and passed through as plain numeric node data - the
-// `'data(labelWidth)'` / `'data(labelHeight)'` mappers below never re-measure text
-// during rendering or layout, so they carry none of that risk.
-const LABEL_FONT = '12px Helvetica Neue, Helvetica, Arial, sans-serif'
-const LABEL_LINE_HEIGHT = 15
+// `elements().remove()`). Every node gets the same fixed box regardless of label
+// length - wrapped text that doesn't fit the box simply overflows it, the standard
+// tradeoff diagram tools make for uniform node sizing.
+const NODE_WIDTH = 170
+const NODE_HEIGHT = 50
 const LABEL_MAX_TEXT_WIDTH = 150
-const LABEL_MIN_WIDTH = 40
-const measureCtx = typeof document === 'undefined' ? null : document.createElement('canvas').getContext('2d')
 
 // ELK layout options: extends base layout with elk-specific config not in cytoscape's types
 interface ElkLayoutOptions extends Record<string, unknown> {
@@ -78,8 +75,8 @@ const STYLESHEET: cytoscape.StylesheetJsonBlock[] = [
       'border-color': DEFAULT_BORDER,
       'border-width': 2,
       shape: 'roundrectangle',
-      width: 'data(labelWidth)',
-      height: 'data(labelHeight)',
+      width: NODE_WIDTH,
+      height: NODE_HEIGHT,
       padding: '8px',
       label: 'data(label)',
       'font-size': 12,
@@ -144,7 +141,7 @@ const STYLESHEET: cytoscape.StylesheetJsonBlock[] = [
     style: {
       'line-color': '#999999',
       width: 1.5,
-      'curve-style': 'bezier',
+      'curve-style': 'round-segments',
       'target-arrow-shape': 'triangle',
       'target-arrow-color': '#999999',
       label: 'data(label)',
@@ -164,41 +161,6 @@ const STYLESHEET: cytoscape.StylesheetJsonBlock[] = [
   },
 ]
 
-// Greedy word-wrap a label at LABEL_MAX_TEXT_WIDTH (mirroring cytoscape's own
-// 'text-wrap': 'wrap' behavior) and return the resulting box size. Computed once per
-// node in `graphToElements`, not from within a cytoscape style function - see the
-// `LABEL_FONT` comment above for why.
-function wrappedLabelSize(label: string): { labelWidth: number; labelHeight: number } {
-  if (measureCtx === null || label === '') {
-    return { labelWidth: LABEL_MIN_WIDTH, labelHeight: LABEL_LINE_HEIGHT }
-  }
-
-  measureCtx.font = LABEL_FONT
-  const spaceWidth = measureCtx.measureText(' ').width
-  let lineCount = 1
-  let currentLineWidth = 0
-  let maxLineWidth = 0
-
-  for (const word of label.split(/\s+/)) {
-    const wordWidth = measureCtx.measureText(word).width
-    const candidateWidth =
-      currentLineWidth === 0 ? wordWidth : currentLineWidth + spaceWidth + wordWidth
-    if (candidateWidth > LABEL_MAX_TEXT_WIDTH && currentLineWidth > 0) {
-      maxLineWidth = Math.max(maxLineWidth, currentLineWidth)
-      lineCount += 1
-      currentLineWidth = wordWidth
-    } else {
-      currentLineWidth = candidateWidth
-    }
-  }
-  maxLineWidth = Math.max(maxLineWidth, currentLineWidth)
-
-  return {
-    labelWidth: Math.max(LABEL_MIN_WIDTH, Math.min(maxLineWidth, LABEL_MAX_TEXT_WIDTH)),
-    labelHeight: lineCount * LABEL_LINE_HEIGHT,
-  }
-}
-
 // Convert CanvasGraph nodes and edges to cytoscape ElementDefinition format
 function graphToElements(graph: CanvasGraph): ElementDefinition[] {
   const nodeElements = graph.nodes.map(
@@ -210,7 +172,6 @@ function graphToElements(graph: CanvasGraph): ElementDefinition[] {
         kindLabel: node.kindLabel,
         layer: node.layer,
         status: node.status,
-        ...wrappedLabelSize(node.name),
       },
       group: 'nodes',
     })
