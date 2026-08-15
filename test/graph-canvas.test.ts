@@ -79,6 +79,69 @@ describe('applyFilter', () => {
     // even though matchedIds says nothing about edge1's own label.
     expect(visibleIds(cy)).toEqual(['node1'])
   })
+
+  // Composition claims render as cytoscape compound nesting, and cytoscape
+  // derives a parent's position from its children - so a container left
+  // parenting only hidden children is dragged back to their stale full-graph
+  // coordinates instead of being placed by the scoped layout.
+  const buildNestedCy = () =>
+    cytoscape({
+      styleEnabled: true,
+      elements: [
+        { data: { id: 'container', label: 'Control Panel' }, group: 'nodes' },
+        {
+          data: { id: 'partA', label: 'Query Service', parent: 'container', compositionParent: 'container' },
+          group: 'nodes',
+        },
+        {
+          data: { id: 'partB', label: 'Session Adapter', parent: 'container', compositionParent: 'container' },
+          group: 'nodes',
+        },
+        { data: { id: 'outsider', label: 'Runner Daemon' }, group: 'nodes' },
+      ],
+    })
+
+  const parentOf = (cy: cytoscape.Core, id: string): string | null => {
+    const parent = cy.getElementById(id).parent()
+    return parent.nonempty() ? parent.first().id() : null
+  }
+
+  it('detaches a container from its children when the filter hides all of them', () => {
+    const cy = buildNestedCy()
+    applyFilter(cy, ['container', 'outsider'], '')
+    expect(visibleIds(cy)).toEqual(['container', 'outsider'])
+    expect(cy.getElementById('container').isParent()).toBe(false)
+    expect(parentOf(cy, 'partA')).toBeNull()
+  })
+
+  it('restores nesting when the hidden parts come back', () => {
+    const cy = buildNestedCy()
+    applyFilter(cy, ['container'], '')
+    expect(cy.getElementById('container').isParent()).toBe(false)
+
+    applyFilter(cy, null, '')
+    expect(parentOf(cy, 'partA')).toEqual('container')
+    expect(parentOf(cy, 'partB')).toEqual('container')
+  })
+
+  it('keeps only the visible parts nested when a container is partly filtered', () => {
+    const cy = buildNestedCy()
+    applyFilter(cy, ['partA'], '')
+    // partA pulls its container in through the ancestor walk; partB stays out.
+    expect(visibleIds(cy)).toEqual(['container', 'partA'])
+    expect(parentOf(cy, 'partA')).toEqual('container')
+    expect(parentOf(cy, 'partB')).toBeNull()
+  })
+
+  it('pulls in a container through the canonical claim after a detach', () => {
+    const cy = buildNestedCy()
+    // Detach first, so the ancestor walk has no live `parent` left to follow
+    // and must fall back on the model's own claim.
+    applyFilter(cy, ['outsider'], '')
+    applyFilter(cy, ['partA'], '')
+    expect(visibleIds(cy)).toEqual(['container', 'partA'])
+    expect(parentOf(cy, 'partA')).toEqual('container')
+  })
 })
 
 describe('relayoutVisible', () => {

@@ -295,7 +295,11 @@ function graphToElements(graph: CanvasGraph): ElementDefinition[] {
         kindLabel: node.kindLabel,
         layer: node.layer,
         status: node.status,
-        ...(parent === undefined ? {} : { parent }),
+        // `parent` is cytoscape's live nesting pointer and `applyFilter` moves
+        // it as views come and go, so the model's own claim is kept alongside
+        // it under a key cytoscape does not interpret. Without this the
+        // canonical parent would be unrecoverable after the first detach.
+        ...(parent === undefined ? {} : { parent, compositionParent: parent }),
       },
       group: 'nodes',
     }
@@ -358,13 +362,44 @@ export function applyFilter(
   // A compound child that matches the filter needs its container(s) shown
   // too, or it renders as a stray top-level node instead of the nested part
   // the model claims it is - pull in every visible node's ancestor chain.
+  // The walk follows the model's own `compositionParent` claim rather than
+  // cytoscape's live `parent`, because a node detached by an earlier filter
+  // pass has no live parent left to walk.
+  const canonicalParentOf = (id: string): string | undefined => {
+    const claimed = cy.getElementById(id).data('compositionParent')
+    return typeof claimed === 'string' ? claimed : undefined
+  }
   for (const id of [...visibleNodeIds]) {
-    let ancestor = cy.getElementById(id).parent()
-    while (ancestor.nonempty()) {
-      visibleNodeIds.add(ancestor.first().id())
-      ancestor = ancestor.parent()
+    const seen = new Set<string>([id])
+    let ancestor = canonicalParentOf(id)
+    while (ancestor !== undefined && !seen.has(ancestor)) {
+      seen.add(ancestor)
+      visibleNodeIds.add(ancestor)
+      ancestor = canonicalParentOf(ancestor)
     }
   }
+
+  // Containment is a rendering device, so it only holds while both ends of the
+  // claim are on screen. cytoscape derives a compound parent's position from
+  // its children, and a hidden child keeps the coordinates the last full-graph
+  // layout gave it - so a container whose parts are all filtered out gets
+  // dragged back to its old position the instant a scoped layout places it,
+  // stranding it thousands of pixels from the view it belongs to. Detaching
+  // hidden children leaves the whole as an ordinary node, which the layout can
+  // place; re-attaching restores the nesting when the parts come back.
+  // Decisions are read from canonical data and collected before any `move`,
+  // since moving re-creates elements and invalidates live parent lookups.
+  const reparents: { readonly node: string; readonly parent: string | null }[] = []
+  for (const node of cy.nodes()) {
+    const canonical = canonicalParentOf(node.id())
+    if (canonical === undefined) continue
+    const desired = visibleNodeIds.has(node.id()) && visibleNodeIds.has(canonical) ? canonical : null
+    const current = node.parent().nonempty() ? node.parent().first().id() : null
+    if (current !== desired) reparents.push({ node: node.id(), parent: desired })
+  }
+  // `move` carries data and classes across but drops inline style, so it has to
+  // land before the display pass below rather than after it.
+  for (const { node, parent } of reparents) cy.getElementById(node).move({ parent })
 
   const visibleIds = new Set<string>(visibleNodeIds)
   for (const edge of cy.edges()) {
