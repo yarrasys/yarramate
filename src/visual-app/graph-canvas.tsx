@@ -33,6 +33,18 @@ const LAYER_COLORS = {
 const DEFAULT_FILL = '#F0F0F0'
 const DEFAULT_BORDER = '#999999'
 
+// `width: 'label'` / `height: 'label'` are deprecated in cytoscape.js (and, at this
+// graph's scale with wrapped text, crash inside cytoscape's style-hint pool during
+// `elements().remove()`). Size nodes explicitly instead, precomputed once per node
+// via canvas text measurement and passed through as plain numeric node data - the
+// `'data(labelWidth)'` / `'data(labelHeight)'` mappers below never re-measure text
+// during rendering or layout, so they carry none of that risk.
+const LABEL_FONT = '12px Helvetica Neue, Helvetica, Arial, sans-serif'
+const LABEL_LINE_HEIGHT = 15
+const LABEL_MAX_TEXT_WIDTH = 150
+const LABEL_MIN_WIDTH = 40
+const measureCtx = typeof document === 'undefined' ? null : document.createElement('canvas').getContext('2d')
+
 // ELK layout options: extends base layout with elk-specific config not in cytoscape's types
 interface ElkLayoutOptions extends Record<string, unknown> {
   name: 'elk'
@@ -54,13 +66,13 @@ const STYLESHEET: cytoscape.StylesheetJsonBlock[] = [
       'border-color': DEFAULT_BORDER,
       'border-width': 2,
       shape: 'roundrectangle',
-      width: 'label',
-      height: 'label',
+      width: 'data(labelWidth)',
+      height: 'data(labelHeight)',
       padding: '8px',
       label: 'data(label)',
       'font-size': 12,
       'text-wrap': 'wrap',
-      'text-max-width': '150px',
+      'text-max-width': `${LABEL_MAX_TEXT_WIDTH}px`,
       'text-halign': 'center',
       'text-valign': 'center',
       color: '#333333',
@@ -140,6 +152,41 @@ const STYLESHEET: cytoscape.StylesheetJsonBlock[] = [
   },
 ]
 
+// Greedy word-wrap a label at LABEL_MAX_TEXT_WIDTH (mirroring cytoscape's own
+// 'text-wrap': 'wrap' behavior) and return the resulting box size. Computed once per
+// node in `graphToElements`, not from within a cytoscape style function - see the
+// `LABEL_FONT` comment above for why.
+function wrappedLabelSize(label: string): { labelWidth: number; labelHeight: number } {
+  if (measureCtx === null || label === '') {
+    return { labelWidth: LABEL_MIN_WIDTH, labelHeight: LABEL_LINE_HEIGHT }
+  }
+
+  measureCtx.font = LABEL_FONT
+  const spaceWidth = measureCtx.measureText(' ').width
+  let lineCount = 1
+  let currentLineWidth = 0
+  let maxLineWidth = 0
+
+  for (const word of label.split(/\s+/)) {
+    const wordWidth = measureCtx.measureText(word).width
+    const candidateWidth =
+      currentLineWidth === 0 ? wordWidth : currentLineWidth + spaceWidth + wordWidth
+    if (candidateWidth > LABEL_MAX_TEXT_WIDTH && currentLineWidth > 0) {
+      maxLineWidth = Math.max(maxLineWidth, currentLineWidth)
+      lineCount += 1
+      currentLineWidth = wordWidth
+    } else {
+      currentLineWidth = candidateWidth
+    }
+  }
+  maxLineWidth = Math.max(maxLineWidth, currentLineWidth)
+
+  return {
+    labelWidth: Math.max(LABEL_MIN_WIDTH, Math.min(maxLineWidth, LABEL_MAX_TEXT_WIDTH)),
+    labelHeight: lineCount * LABEL_LINE_HEIGHT,
+  }
+}
+
 // Convert CanvasGraph nodes and edges to cytoscape ElementDefinition format
 function graphToElements(graph: CanvasGraph): ElementDefinition[] {
   const nodeElements = graph.nodes.map(
@@ -151,6 +198,7 @@ function graphToElements(graph: CanvasGraph): ElementDefinition[] {
         kindLabel: node.kindLabel,
         layer: node.layer,
         status: node.status,
+        ...wrappedLabelSize(node.name),
       },
       group: 'nodes',
     })
@@ -194,6 +242,10 @@ export function GraphCanvas({
   const containerRef = useRef<HTMLDivElement>(null)
   const cyRef = useRef<Core | null>(null)
   const onSelectRef = useRef(onSelect)
+  // True until the sync effect below has run once; the mount effect already
+  // populates initial elements, so that first sync run only needs to trigger
+  // layout, not redundantly remove and re-add the elements it just created.
+  const isInitialSyncRef = useRef(true)
 
   // Keep onSelectRef up-to-date so tap handlers always call the latest prop
   useEffect(() => {
@@ -240,9 +292,13 @@ export function GraphCanvas({
   useEffect(() => {
     if (!cyRef.current) return
 
-    const elements = graphToElements(graph)
-    cyRef.current.elements().remove()
-    cyRef.current.add(elements)
+    if (isInitialSyncRef.current) {
+      isInitialSyncRef.current = false
+    } else {
+      const elements = graphToElements(graph)
+      cyRef.current.elements().remove()
+      cyRef.current.add(elements)
+    }
 
     const layoutConfig: ElkLayoutOptions = {
       name: 'elk',
