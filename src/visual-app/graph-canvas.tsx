@@ -338,8 +338,11 @@ export function GraphCanvas({
   // fitting eagerly on the id change would fit to the *previous* view's
   // still-current matchedIds. Narrower quick-filter typing or a chat-driven
   // structural filter over the same view leaves this alone, so pan/zoom
-  // don't jump under the reviewer mid-type.
+  // don't jump under the reviewer mid-type. Layout direction toggles are
+  // armed the same way: they must relayout only the currently visible
+  // subgraph, not every element (see the graph-sync effect below).
   const activeViewIdRef = useRef(activeViewId)
+  const directionRef = useRef(direction)
   const pendingViewFitRef = useRef(false)
 
   // Keep onSelectRef up-to-date so tap handlers always call the latest prop
@@ -383,7 +386,13 @@ export function GraphCanvas({
     }
   }, [])
 
-  // Update elements and layout whenever graph changes
+  // Update elements whenever the graph itself changes, laying out with the
+  // current direction. Deliberately NOT keyed on `direction` - a full
+  // remove/re-add + unscoped layout over every element (not just what's
+  // currently visible) on every direction toggle would blow away the
+  // filtered/view-scoped canvas and reintroduce the sprawl a view switch
+  // once had. Direction-only changes are handled by the pending-fit effect
+  // below, which reruns `relayoutVisible` scoped to what's actually shown.
   useEffect(() => {
     if (!cyRef.current) return
 
@@ -399,7 +408,7 @@ export function GraphCanvas({
       buildLayoutConfig(direction) as unknown as cytoscape.LayoutOptions
     )
     layout.run()
-  }, [graph, direction])
+  }, [graph])
 
   // Update selection highlight when selectedId or graph changes
   useEffect(() => {
@@ -417,15 +426,19 @@ export function GraphCanvas({
     }
   }, [selectedId, graph])
 
-  // Arms a pending fit whenever the active view changes. Declared before the
-  // filter-apply effect below - same-phase effects commit in source order,
-  // so a view switch whose filter result lands in the very same render
-  // (e.g. clearing back to "All") is still armed in time for that commit.
+  // Arms a pending fit whenever the active view or layout direction
+  // changes. Declared before the filter-apply effect below - same-phase
+  // effects commit in source order, so a view switch whose filter result
+  // lands in the very same render (e.g. clearing back to "All") is still
+  // armed in time for that commit.
   useEffect(() => {
-    if (activeViewId === activeViewIdRef.current) return
+    const viewChanged = activeViewId !== activeViewIdRef.current
+    const directionChanged = direction !== directionRef.current
+    if (!viewChanged && !directionChanged) return
     activeViewIdRef.current = activeViewId
+    directionRef.current = direction
     pendingViewFitRef.current = true
-  }, [activeViewId])
+  }, [activeViewId, direction])
 
   // Apply structural filter (matchedIds) and quick-filter narrowing, then,
   // only once a pending view-switch relayout is armed and its filter result

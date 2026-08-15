@@ -143,7 +143,12 @@ const CommandStrip = ({
       >
         {endTransitionStatus(state)}
       </span>
-      <ViewPicker views={views} onSelect={onSelectView} onClear={onClearFilter} />
+      <ViewPicker
+        views={views}
+        activeViewId={state.activeView}
+        onSelect={onSelectView}
+        onClear={onClearFilter}
+      />
       <QuickFilterBox value={quickFilterText} onChange={onQuickFilterChange} />
       <FilterPanel query={state.activeFilter?.query ?? null} onApply={onApplyFilter} />
       <SaveViewControl

@@ -390,7 +390,9 @@ const transition = (
         },
       }
     case 'filter.cleared':
-      return { ...state, activeFilter: null }
+      // Clearing the filter also leaves whatever named view was active -
+      // the reviewer is back on the unfiltered "All" view, not a stale one.
+      return { ...state, activeFilter: null, activeView: '' }
     case 'quickFilter.changed':
       return state.quickFilterText === action.text
         ? state
