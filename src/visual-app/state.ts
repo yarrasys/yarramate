@@ -98,6 +98,12 @@ export interface VisualAppState {
   /** Client-side substring narrowing layered on top of `activeFilter`. */
   readonly quickFilterText: string
   readonly closedReason: string | null
+  /** The save in flight, so the panel can disable itself and the result can
+   * be matched back to what it named — the result carries only an id. */
+  readonly pendingViewSave: VisualViewSavePayload | null
+  /** Shown once a save lands ok, until the reviewer dismisses it or a fresh
+   * save starts. */
+  readonly viewSaveNotice: boolean
 }
 
 export type VisualAppAction =
@@ -131,7 +137,9 @@ export type VisualAppAction =
     }
   | { readonly type: 'filter.cleared' }
   | { readonly type: 'quickFilter.changed'; readonly text: string }
+  | { readonly type: 'view.save.sent'; readonly payload: VisualViewSavePayload }
   | { readonly type: 'view.saved'; readonly result: VisualViewSaveResultPayload }
+  | { readonly type: 'view.saveNotice.dismissed' }
   | {
       readonly type: 'handoff.received'
       readonly id: string
@@ -170,6 +178,8 @@ export const initialVisualAppState: VisualAppState = {
   activeFilter: null,
   quickFilterText: '',
   closedReason: null,
+  pendingViewSave: null,
+  viewSaveNotice: false,
 }
 
 export const visualAppSnapshotFrom = (
@@ -265,6 +275,10 @@ const transition = (
         awaitingAgent: action.snapshot.agentTurnOpen,
         agentStatus: action.snapshot.agentTurnOpen ? state.agentStatus : null,
         lastSequence: Math.max(state.lastSequence, action.snapshot.lastSequence),
+        // A reconnect must not resurrect an in-flight save from before the
+        // socket dropped, nor replay a notice for one that already landed.
+        pendingViewSave: null,
+        viewSaveNotice: false,
       }
     case 'model.received':
       return {
@@ -381,8 +395,44 @@ const transition = (
       return state.quickFilterText === action.text
         ? state
         : { ...state, quickFilterText: action.text }
-    case 'view.saved':
-      return state
+    case 'view.save.sent':
+      return { ...state, pendingViewSave: action.payload, viewSaveNotice: false }
+    case 'view.saved': {
+      if (!action.result.ok) {
+        // The failed candidate names nothing new; what was saved before, if
+        // anything, is unchanged. Every reason it failed is shown, verbatim.
+        return {
+          ...state,
+          diagnostics: action.result.diagnostics,
+          pendingViewSave: null,
+        }
+      }
+      const pending = state.pendingViewSave
+      // A result with nothing pending names a save this browser never sent —
+      // stale or duplicated, either way nothing here to build a summary from.
+      if (pending === null) return state
+      const saved: VisualViewSummary = {
+        id: action.result.id,
+        title: pending.title,
+        description: pending.description,
+        query: pending.query,
+        presentation: pending.presentation,
+      }
+      const existingIndex = state.views.findIndex((view) => view.id === saved.id)
+      return {
+        ...state,
+        views:
+          existingIndex === -1
+            ? [...state.views, saved]
+            : state.views.map((view, index) =>
+                index === existingIndex ? saved : view,
+              ),
+        viewSaveNotice: true,
+        pendingViewSave: null,
+      }
+    }
+    case 'view.saveNotice.dismissed':
+      return { ...state, viewSaveNotice: false }
   }
 }
 

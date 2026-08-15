@@ -4,6 +4,7 @@ import type {
   VisualSessionSnapshot,
 } from '../adapters/visual/wire.js'
 import type { ProjectionQuery } from '../projection.js'
+import type { VisualViewSavePayload } from '../adapters/visual/protocol-contract.js'
 import {
   canReconnect,
   initialVisualAppState,
@@ -39,6 +40,8 @@ export interface VisualSession {
   readonly filter: (query: ProjectionQuery) => void
   readonly clearFilter: () => void
   readonly setQuickFilterText: (text: string) => void
+  readonly saveView: (payload: VisualViewSavePayload) => void
+  readonly dismissSavedNotice: () => void
   readonly end: () => void
 }
 
@@ -183,6 +186,18 @@ export const useVisualSession = (): VisualSession => {
     dispatch({ type: 'quickFilter.changed', text })
   }, [])
 
+  const saveView = useCallback(
+    (payload: VisualViewSavePayload) => {
+      dispatch({ type: 'view.save.sent', payload })
+      send({ kind: 'save-view', payload })
+    },
+    [send],
+  )
+
+  const dismissSavedNotice = useCallback(() => {
+    dispatch({ type: 'view.saveNotice.dismissed' })
+  }, [])
+
   const end = useCallback(() => {
     dispatch({ type: 'end.requested' })
     send({ kind: 'end' })
@@ -197,6 +212,8 @@ export const useVisualSession = (): VisualSession => {
     filter,
     clearFilter,
     setQuickFilterText,
+    saveView,
+    dismissSavedNotice,
     end,
   }
 }

@@ -33,6 +33,8 @@ const session = vi.hoisted(() => {
     lastSequence: 1,
     frozen: false,
     closedReason: null,
+    pendingViewSave: null,
+    viewSaveNotice: false,
   }
   return { baseState, state: baseState }
 })
@@ -44,6 +46,11 @@ vi.mock('../src/visual-app/session-client.js', () => ({
     ask: vi.fn(),
     choose: vi.fn(),
     navigate: vi.fn(),
+    filter: vi.fn(),
+    clearFilter: vi.fn(),
+    setQuickFilterText: vi.fn(),
+    saveView: vi.fn(),
+    dismissSavedNotice: vi.fn(),
     end: vi.fn(),
   }),
 }))

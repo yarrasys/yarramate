@@ -952,3 +952,166 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+.save-view-control {
+  display: contents;
+}
+
+.save-view-toggle {
+  padding: 0 calc(var(--step) * 0.75rem);
+  height: 32px;
+  border: 1px solid var(--rule-firm);
+  border-radius: 2px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.save-view-toggle:hover:not(:disabled) {
+  border-color: var(--rule);
+  background: color-mix(in oklab, var(--paper) 90%, var(--ink));
+}
+
+.save-view-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.save-view-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--sheet);
+  border: 1px solid var(--rule-firm);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  z-index: 10;
+}
+
+.save-view-panel-body {
+  padding: calc(var(--step) * 1.5);
+  min-width: 300px;
+}
+
+.save-view-form {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--step) * 1);
+}
+
+.save-view-form div {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--step) * 0.5);
+}
+
+.save-view-form label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.save-view-form input,
+.save-view-form textarea {
+  padding: calc(var(--step) * 0.5);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  font-family: var(--body);
+  font-size: 13px;
+}
+
+.save-view-actions {
+  display: flex;
+  gap: calc(var(--step) * 1);
+  margin-top: calc(var(--step) * 0.5);
+}
+
+.save-view-actions button {
+  flex: 1;
+  padding: calc(var(--step) * 0.5) calc(var(--step) * 1);
+  border: 1px solid var(--rule-firm);
+  border-radius: 2px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.save-view-actions button:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--paper) 85%, var(--ink));
+}
+
+.save-view-notice {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--step) * 0.75);
+  padding: calc(var(--step) * 0.75) calc(var(--step) * 1.5);
+  background: color-mix(in oklab, var(--eucalyptus) 15%, var(--sheet));
+  border: 1px solid var(--eucalyptus);
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.save-view-notice button {
+  margin-left: auto;
+  padding: 0 calc(var(--step) * 0.5);
+  border: none;
+  background: none;
+  color: var(--eucalyptus);
+  font-size: 11px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.confirm-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.confirm-dialog {
+  background: var(--sheet);
+  border: 1px solid var(--rule-firm);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  padding: calc(var(--step) * 2);
+  max-width: 400px;
+  text-align: center;
+}
+
+.confirm-dialog h2 {
+  margin: 0 0 calc(var(--step) * 1) 0;
+  font-size: 16px;
+}
+
+.confirm-dialog p {
+  margin: 0 0 calc(var(--step) * 1.5) 0;
+  font-size: 13px;
+  color: var(--quiet);
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  gap: calc(var(--step) * 1);
+}
+
+.confirm-dialog-actions button {
+  flex: 1;
+  padding: calc(var(--step) * 0.75);
+  border: 1px solid var(--rule-firm);
+  border-radius: 2px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.confirm-dialog-actions button:hover {
+  background: color-mix(in oklab, var(--paper) 85%, var(--ink));
+}

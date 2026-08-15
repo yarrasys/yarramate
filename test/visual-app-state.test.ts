@@ -917,3 +917,139 @@ describe('visualAuthorityLabel', () => {
     expect(visualAuthorityLabel('ad-hoc')).toBe('Ad hoc · non-canonical')
   })
 })
+
+describe('visualAppReducer view save', () => {
+  it('stores pending save on view.save.sent', () => {
+    const payload = {
+      title: 'My view',
+      description: 'A test view',
+      query: { subjects: ['Q1'] },
+      presentation: { layout: 'layered', direction: 'top-down', seed: 'test' } as const,
+    }
+    const sent = visualAppReducer(initialVisualAppState, {
+      type: 'view.save.sent',
+      payload,
+    })
+    expect(sent.pendingViewSave).toEqual(payload)
+    expect(sent.viewSaveNotice).toBe(false)
+  })
+
+  it('saves view and shows notice on view.saved ok:true', () => {
+    const payload = {
+      title: 'My view',
+      description: 'A test view',
+      query: { subjects: ['Q1'] },
+      presentation: { layout: 'layered', direction: 'top-down', seed: 'test' } as const,
+    }
+    const sent = visualAppReducer(initialVisualAppState, {
+      type: 'view.save.sent',
+      payload,
+    })
+    const saved = visualAppReducer(sent, {
+      type: 'view.saved',
+      result: { ok: true, id: 'view-1', path: '/views/view-1' },
+    })
+    expect(saved.views).toHaveLength(1)
+    expect(saved.views[0]).toEqual({
+      id: 'view-1',
+      title: 'My view',
+      description: 'A test view',
+      query: { subjects: ['Q1'] },
+      presentation: { layout: 'layered', direction: 'top-down', seed: 'test' },
+    })
+    expect(saved.viewSaveNotice).toBe(true)
+    expect(saved.pendingViewSave).toBe(null)
+  })
+
+  it('replaces existing view on overwrite', () => {
+    const view1 = {
+      id: 'view-1',
+      title: 'Old title',
+      description: 'Old desc',
+      query: {} as ProjectionQuery,
+      presentation: { layout: 'layered', direction: 'top-down', seed: 'test' } as const,
+    }
+    const state = { ...initialVisualAppState, views: [view1] }
+    const payload = {
+      id: 'view-1',
+      title: 'New title',
+      description: 'New desc',
+      query: {},
+      presentation: { layout: 'layered', direction: 'left-right', seed: 'test' } as const,
+    }
+    const sent = visualAppReducer(state, {
+      type: 'view.save.sent',
+      payload,
+    })
+    const saved = visualAppReducer(sent, {
+      type: 'view.saved',
+      result: { ok: true, id: 'view-1', path: '/views/view-1' },
+    })
+    expect(saved.views).toHaveLength(1)
+    expect(saved.views[0]?.title).toBe('New title')
+  })
+
+  it('sets diagnostics and clears pending on view.saved ok:false', () => {
+    const payload = {
+      title: 'Bad view',
+      description: 'Will fail',
+      query: {},
+      presentation: { layout: 'layered', direction: 'top-down', seed: 'test' } as const,
+    }
+    const sent = visualAppReducer(initialVisualAppState, {
+      type: 'view.save.sent',
+      payload,
+    })
+    const diag = {
+      severity: 'error' as const,
+      code: 'E001',
+      message: 'Invalid',
+      path: 'test.yaml',
+      line: 1,
+      column: 1,
+      pointer: '/x',
+    }
+    const saved = visualAppReducer(sent, {
+      type: 'view.saved',
+      result: { ok: false, diagnostics: [diag] },
+    })
+    expect(saved.diagnostics).toEqual([diag])
+    expect(saved.pendingViewSave).toBe(null)
+  })
+
+  it('clears notice on view.saveNotice.dismissed', () => {
+    const state = { ...initialVisualAppState, viewSaveNotice: true }
+    const dismissed = visualAppReducer(state, {
+      type: 'view.saveNotice.dismissed',
+    })
+    expect(dismissed.viewSaveNotice).toBe(false)
+  })
+
+  it('clears pending/notice on session.loaded reconnect', () => {
+    const payload = {
+      title: 'Stale',
+      description: 'Should go away',
+      query: {},
+      presentation: { layout: 'layered', direction: 'top-down', seed: 'test' } as const,
+    }
+    const state = {
+      ...initialVisualAppState,
+      pendingViewSave: payload,
+      viewSaveNotice: true,
+    }
+    const reloaded = visualAppReducer(state, {
+      type: 'session.loaded',
+      snapshot: visualAppSnapshotFrom({
+        ...serverSnapshot,
+        authority: 'canonical',
+        title: 'Test',
+        description: 'Test session',
+        views: [],
+        lastSequence: 0,
+        agentTurnOpen: false,
+      }),
+    })
+    expect(reloaded.pendingViewSave).toBe(null)
+    expect(reloaded.viewSaveNotice).toBe(false)
+  })
+})

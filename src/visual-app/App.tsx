@@ -2,6 +2,7 @@ import { GraphCanvas } from './graph-canvas.js'
 import { FilterPanel } from './filter-panel.js'
 import { QuickFilterBox } from './quick-filter.js'
 import { ViewPicker } from './view-picker.js'
+import { SaveViewControl } from './save-view.js'
 import { describeQuery } from './describe-query.js'
 import {
   useEffect,
@@ -19,6 +20,7 @@ import type { ProjectionQuery } from '../projection.js'
 import type {
   VisualChoicePresentPayload,
   VisualDiagnostic,
+  VisualViewSavePayload,
   VisualViewSummary,
 } from '../adapters/visual/protocol-contract.js'
 import { useVisualSession } from './session-client.js'
@@ -100,6 +102,8 @@ const CommandStrip = ({
   onApplyFilter,
   quickFilterText,
   onQuickFilterChange,
+  onSaveView,
+  onDismissSavedNotice,
   onEnd,
 }: {
   readonly state: VisualAppState
@@ -117,6 +121,8 @@ const CommandStrip = ({
   readonly onApplyFilter: (query: ProjectionQuery) => void
   readonly quickFilterText: string
   readonly onQuickFilterChange: (text: string) => void
+  readonly onSaveView: (payload: VisualViewSavePayload) => void
+  readonly onDismissSavedNotice: () => void
   readonly onEnd: () => void
 }) => (
   <header className="command-strip">
@@ -140,6 +146,16 @@ const CommandStrip = ({
       <ViewPicker views={views} onSelect={onSelectView} onClear={onClearFilter} />
       <QuickFilterBox value={quickFilterText} onChange={onQuickFilterChange} />
       <FilterPanel query={state.activeFilter?.query ?? null} onApply={onApplyFilter} />
+      <SaveViewControl
+        views={views}
+        activeViewId={state.activeView}
+        query={state.activeFilter?.query ?? null}
+        direction={direction}
+        pendingSave={state.pendingViewSave !== null}
+        notice={state.viewSaveNotice}
+        onSave={onSaveView}
+        onDismissNotice={onDismissSavedNotice}
+      />
       <button type="button" onClick={onToggleDirection}>
         {direction === 'top-down' ? 'Top-Down' : 'Left-Right'}
       </button>
@@ -637,7 +653,7 @@ const ConversationSeparator = ({
 }
 
 export const App = () => {
-  const { state, connected, ask, choose, navigate, filter, clearFilter, setQuickFilterText, end } =
+  const { state, connected, ask, choose, navigate, filter, clearFilter, setQuickFilterText, saveView, dismissSavedNotice, end } =
     useVisualSession()
 
   const [workspace, dispatchWorkspace] = useReducer(
@@ -746,6 +762,8 @@ export const App = () => {
         onApplyFilter={filter}
         quickFilterText={state.quickFilterText}
         onQuickFilterChange={setQuickFilterText}
+        onSaveView={saveView}
+        onDismissSavedNotice={dismissSavedNotice}
         onEnd={end}
       />
       <div
