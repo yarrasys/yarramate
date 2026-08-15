@@ -189,6 +189,18 @@ The child loops on one event at a time:
 1. `wait <descriptor> --after <lastSequence>`. Empty stdout is an idle window,
    not a failure — call again from the same sequence.
 2. Answer from the bounded slice. Outside it, say so rather than inferring.
+   When the turn resolves a filter or focus request rather than a pure
+   explain request, call the `yarramate_ask` MCP tool with the resolved
+   query text and no `budget` (the server then appends `--json`, so the CLI
+   returns a `yarramate/ask-result/v1` document carrying `seeds` and
+   `result.subjects` instead of budgeted prose). Build
+   `query: { subjects: seeds, relationships: 'connected' }` — the identical
+   seed-focus `ProjectionQuery` shape `ask-command.ts`'s `sliceProjection`
+   already builds internally (`ask-command.ts:398`) — and set
+   `appliedQuery: { query, matchedIds: result.subjects.map(s => s.id) }` on
+   the `chat.response` payload (`VisualChatResponsePayload`,
+   `protocol-contract.ts:220-223`) before calling `respond`. A pure explain
+   request sends no `appliedQuery`, unchanged.
 3. `respond <descriptor> <response.json>` with a
    `yarramate/visual-response/v1` document whose `sessionId` is this session's
    own identifier, `eventId` is the event being answered, `responseId` is a
