@@ -571,6 +571,8 @@ export const startVisualServer = async (
             id: projection.id,
             title: projection.presentation?.title ?? projection.id,
             description: projection.presentation?.description ?? '',
+            query: projection.query,
+            presentation: projection.presentation,
           },
         ]
       } catch {

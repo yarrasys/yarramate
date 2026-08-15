@@ -109,6 +109,8 @@ export interface VisualViewSummary {
   readonly id: string
   readonly title: string
   readonly description: string
+  readonly query: ProjectionQuery
+  readonly presentation: ProjectionDefinition['presentation']
 }
 
 export interface VisualFilterQueryPayload {
