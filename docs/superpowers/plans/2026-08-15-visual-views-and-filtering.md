@@ -255,15 +255,26 @@ exists in this codebase today (verified) — write a small local slugify in this
 utility, just enough to turn a title into a valid id, with a numeric suffix on collision against the already-
 resolved `resolved.projections` list.
 
-### Task 10: `session-server.ts` — thread `yarramate_ask`'s result into `chat.response.appliedQuery`
+### Task 10: `skills/yarramate-architecture/references/visual-conversations.md` — guide the delegated child to populate `chat.response.appliedQuery`
 
-Find where the agent's `yarramate_ask` MCP tool call result is currently composed into the outgoing
-`chat.response` payload (agent-side response construction path). The MCP tool already returns matched subject
-ids (confirmed: `yarramate ask` CLI output includes a `Slice for "..."` summary with concrete subject ids — the
-MCP tool wraps the same `sliceProjection`/`evaluateProjection` call). Thread `{ query, matchedIds }` from that
-result into `VisualChatResponsePayload.appliedQuery` when the agent's turn resolved a filter/focus request (vs.
-a pure explain request, which sends no `appliedQuery`). This is server-side response construction only — no new
-resolution engine, per the design doc.
+**Correction (verified against this worktree, not assumed):** `session-server.ts` never constructs `chat.response` —
+it only validates and forwards whatever response document the delegated child sends via
+`yarramate-visual respond <descriptor> <response.json>` (`visual-cli.ts`'s `respondCliCommand`, line 119: parse +
+validate + `sendVisualResponse`, no payload construction). `chat.response` is built by the child itself, per its
+own loop instructions in `skills/yarramate-architecture/references/visual-conversations.md` §"6. Delegate the
+visual agent" (the `wait`/answer/`respond` loop, lines 187-199). That skill doc is the actual target — it is the
+child's only source of guidance on payload shape today, and currently says nothing about `appliedQuery`.
+
+Add guidance to that loop (step 2, "Answer from the bounded slice"): when the chat turn resolves a filter/focus
+request rather than a pure explain request, call `yarramate_ask` with the resolved query text (no `budget`, so
+the MCP tool wraps `ask <workspace> "<query>" --json`) to get its `yarramate/ask-result/v1` JSON body — `seeds`
+(the resolved subject ids) and `result.subjects` (`ProjectionResult.subjects`, each with `.id`). Build
+`query: { subjects: seeds, relationships: 'connected' }` (the same seed-focus `ProjectionQuery` shape
+`ask-command.ts`'s `sliceProjection` already builds internally) and set
+`appliedQuery: { query, matchedIds: result.subjects.map(s => s.id) }` on the `chat.response` payload
+(`VisualChatResponsePayload`, `protocol-contract.ts:220-223`) before calling `respond`. A pure explain request
+sends no `appliedQuery`, unchanged. No new resolution engine and no source changes outside this skill doc, per
+the design doc.
 
 ### Task 11: `src/visual-app/state.ts` — client-side wire glue
 
