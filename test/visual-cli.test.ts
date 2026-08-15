@@ -119,6 +119,7 @@ const startServer = async (overrides: Partial<VisualServerOptions> = {}) => {
   const handle = await startVisualServer({
     request: requestWith(),
     baseDir,
+    cwd: baseDir,
     assetRoot,
     // Long enough that an event racing a poll always wins; the idle tests set
     // their own ceiling.

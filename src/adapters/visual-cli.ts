@@ -279,7 +279,7 @@ export const runVisualStart = async (
     // A previous runtime's orphans are collected on the critical path of a new
     // session, bounded per pass so a full directory cannot stall this one.
     await pruneStaleVisualSessions(baseDir, new Date())
-    handle = await startVisualServer({ request: request.value, baseDir })
+    handle = await startVisualServer({ request: request.value, baseDir, cwd })
   } catch (cause) {
     // A failed start has already recovered and removed whatever it created.
     return refusalResult(visualFailureDiagnostics(cause))

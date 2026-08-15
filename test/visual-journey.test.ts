@@ -183,6 +183,7 @@ const startVisualFixture = async (
   const handle = await startVisualServer({
     request: requestWith({ chatEnabled }),
     baseDir,
+    cwd: baseDir,
     assetRoot,
     // Long enough that an event racing a poll always wins.
     agentPollMs: 4000,
@@ -837,6 +838,7 @@ describe('the visual recovery matrix', () => {
       startVisualServer({
         request: requestWith(),
         baseDir,
+        cwd: baseDir,
         assetRoot,
         now: () => {
           taken += 1

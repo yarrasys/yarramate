@@ -4,6 +4,7 @@ import {
   randomBytes as randomSource,
   timingSafeEqual,
 } from 'node:crypto'
+import { readFileSync } from 'node:fs'
 import { lstat, readFile } from 'node:fs/promises'
 import {
   createServer,
@@ -36,6 +37,7 @@ import {
   type VisualSessionStarted,
   type VisualStatus,
   type VisualTerminationReason,
+  type VisualViewSummary,
 } from './protocol.js'
 import {
   appendTerminalEvent,
@@ -49,6 +51,8 @@ import {
   type TerminalEventDependencies,
   type VisualSessionPaths,
 } from './session-store.js'
+import { loadProjection } from '../../projection.js'
+import { loadWorkspaceManifest, type ResolvedWorkspace } from '../../workspace.js'
 import type {
   VisualRenderedModel,
   VisualServerFrame,
@@ -200,6 +204,8 @@ export interface VisualServerOptions {
   readonly request: VisualSessionRequest
   /** Directory that holds one directory per live session. */
   readonly baseDir: string
+  /** Working directory for resolving .yarramate/workspace.yaml and projections. */
+  readonly cwd: string
   /** Root of the self-contained browser application. */
   readonly assetRoot?: string
   readonly now?: () => Date
@@ -497,6 +503,49 @@ export const startVisualServer = async (
     transcript: true,
   }
 
+  // Load the workspace manifest and build the views list from its projections.
+  const resolvedWorkspace: ResolvedWorkspace | undefined = (() => {
+    const manifestPath = resolve(options.cwd, '.yarramate/workspace.yaml')
+    try {
+      const manifestSource = readFileSync(manifestPath, 'utf8')
+      const loaded = loadWorkspaceManifest(
+        { path: manifestPath, source: manifestSource },
+        options.cwd,
+      )
+      return loaded.ok ? loaded.workspace : undefined
+    } catch {
+      // Missing or unreadable manifest: session proceeds with no saved views.
+      return undefined
+    }
+  })()
+
+  const views: readonly VisualViewSummary[] = (resolvedWorkspace?.projections ?? []).flatMap(
+    (projectionPath) => {
+      try {
+        const projectionSource = readFileSync(
+          resolve(options.cwd, projectionPath),
+          'utf8',
+        )
+        const loaded = loadProjection({
+          path: projectionPath,
+          source: projectionSource,
+        })
+        if (!loaded.ok) return []
+        const { projection } = loaded
+        return [
+          {
+            id: projection.id,
+            title: projection.presentation?.title ?? projection.id,
+            description: projection.presentation?.description ?? '',
+          },
+        ]
+      } catch {
+        // Skipped projection: session continues with remaining views.
+        return []
+      }
+    },
+  )
+
   let listening = false
   let bootstrapSpent = false
   let agentAttached = false
@@ -698,6 +747,7 @@ export const startVisualServer = async (
     webSocketUrl,
     model: rendered,
     transcript: [...transcript],
+    views,
     agentTurnOpen: openTurn(),
     pendingChoice,
     styleNonce,

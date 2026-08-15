@@ -45,6 +45,7 @@ const serverSnapshot: VisualSessionSnapshot = {
   webSocketUrl: 'ws://127.0.0.1:4321/socket',
   model: model('choices'),
   transcript: [],
+  views: [],
   agentTurnOpen: false,
   pendingChoice: null,
   styleNonce: 'a'.repeat(32),
