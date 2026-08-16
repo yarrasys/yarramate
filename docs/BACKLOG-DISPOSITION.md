@@ -23,7 +23,10 @@ The current repository implements the agreed foundation for:
   logical and dynamic output;
 - non-destructive LikeC4 mapping synchronization, opt-in stale-entry pruning,
   and source-located project reference diagnostics;
-- explicit Graphify node observation producing standard evidence overlays.
+- explicit Graphify node observation producing standard evidence overlays;
+- native browser visualization and mechanical model editing through the
+  `yarramate-visual` adapter, its published `yarramate/visual-protocol/v2`
+  wire, and changeset commits that land through `yarramate apply`.
 
 There is no remaining concrete, locally actionable item in the agreed Core 0.1
 or initial journey scope.
@@ -66,6 +69,13 @@ Additional authoring, catalogue, source, runtime, visualization, or evidence
 adapters need a named tool, consumer journey, input/output contract, and
 acceptance fixture. “Additional adapters” alone is not an implementable
 requirement.
+
+This gate has been resolved once, for browser visualization and mechanical
+editing: the named tool is cytoscape.js, the consumer journey is a reviewer
+reading and correcting the model in a session, the contract is
+`yarramate/visual-protocol/v2`, and the acceptance fixtures are the visual
+session, protocol, and app suites. Further adapters in any of these
+categories still need their own four answers.
 
 When one of these gates is resolved, add a bounded roadmap item and ADR before
 implementation. Until then, the local backlog is exhausted rather than
