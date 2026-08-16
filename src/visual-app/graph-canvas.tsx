@@ -132,21 +132,20 @@ const ELK_SPACING: Record<string, unknown> = {
 }
 
 // FNV-1a hash: deterministically convert a seed string to a signed int32.
-// ELK's `org.eclipse.elk.randomSeed` expects an integer; if passed a
-// non-numeric string (like `'default'` from SAVE_SEED), it silently ignores
-// it. This function ensures the wire-format string seed reaches ELK as a
-// reproducible int32.
+// ELK's `org.eclipse.elk.randomSeed` is INT-typed; handed a non-numeric string
+// (like `'default'` from SAVE_SEED) it silently ignores the option, so the
+// wire-format string seed has to become an integer before it reaches elk.
 //
-// FNV-1a algorithm: multiply by prime (16777619), XOR each byte, fold to
-// int32 via bitwise operations that work in JavaScript's 53-bit float
-// mantissa. Same hash produces same output across reloads and machines.
+// `Math.imul` is the exact int32 multiply - a plain `hash * 16777619` overflows
+// the 53-bit mantissa once `hash` passes 2^29 and starts rounding, which is
+// still deterministic but is no longer FNV-1a. Same string always hashes to the
+// same int32, across reloads and machines.
 function seedToInt32(seed: string): number {
-  let hash = 2166136261 >>> 0 // FNV offset basis as uint32
+  let hash = 2166136261 // FNV offset basis
   for (let i = 0; i < seed.length; i++) {
-    hash ^= seed.charCodeAt(i)
-    hash = (hash * 16777619) >>> 0 // uint32 multiply
+    hash = Math.imul(hash ^ seed.charCodeAt(i), 16777619)
   }
-  return (hash << 0) as unknown as number // fold to signed int32
+  return hash | 0
 }
 
 // Shared by the full-graph layout effect and the visible-subgraph relayout
