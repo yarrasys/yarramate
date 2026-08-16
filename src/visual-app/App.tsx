@@ -125,6 +125,7 @@ const CommandStrip = ({
   readonly direction: 'top-down' | 'left-right'
   readonly views: readonly VisualViewSummary[]
   readonly onToggleDetails: () => void
+  readonly onToggleConversation: () => void
   readonly onSelectLayout: (layout: 'layered' | 'radial' | 'force') => void
   readonly notation: 'native' | 'archimate'
   readonly onSelectNotation: (notation: 'native' | 'archimate') => void

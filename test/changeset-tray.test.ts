@@ -66,6 +66,7 @@ const graph: CanvasGraph = {
       document: 'architecture/main.yaml',
       kind: 'yarramate/core@0.1#serving',
       kindLabel: 'serving',
+      coreKindLabel: 'serving',
       from: 'svc#checkout',
       to: 'svc#db',
       name: null,

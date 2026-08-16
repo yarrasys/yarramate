@@ -40,6 +40,7 @@ const edge: CanvasEdge = {
   document: 'main.yaml',
   kind: 'yarramate/relationship/dependency',
   kindLabel: 'Dependency',
+  coreKindLabel: 'Dependency',
   from: 'yarramate/core#checkout-service',
   to: 'yarramate/core#api',
   name: null,

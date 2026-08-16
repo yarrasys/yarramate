@@ -38,6 +38,7 @@ const canvasEdge = (overrides: Partial<CanvasEdge> = {}): CanvasEdge => ({
   localId: 'edge-1',
   kind: 'yarramate/core@0.1#dependency',
   kindLabel: 'dependency',
+  coreKindLabel: 'dependency',
   document: 'main.yaml',
   from: 'web',
   to: 'api',

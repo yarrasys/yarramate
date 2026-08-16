@@ -21,6 +21,7 @@ const graphNode = {
   kind: 'yarramate/core@0.1#applicationComponent',
   kindLabel: 'applicationComponent',
   layer: null,
+  aspect: null,
   name: 'System',
   description: null,
   aka: [],

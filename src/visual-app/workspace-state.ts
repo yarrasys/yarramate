@@ -119,6 +119,7 @@ export type VisualWorkspaceAction =
   | { readonly type: 'subject.selected'; readonly subject: SelectedDiagramSubject }
   | { readonly type: 'subject.cleared' }
   | { readonly type: 'description.toggled' }
+  | { readonly type: 'details.toggled' }
   | { readonly type: 'direction.set'; readonly direction: 'top-down' | 'left-right' }
   | { readonly type: 'layout.set'; readonly layout: 'layered' | 'radial' | 'force' }
   | { readonly type: 'notation.set'; readonly notation: 'native' | 'archimate' }

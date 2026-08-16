@@ -115,6 +115,7 @@ describe('buildPayload', () => {
       layout: 'layered',
       direction: 'top-down',
       showLifecycle: true,
+      showEvidence: false,
       showOwnership: false,
       notation: 'native',
     })
@@ -131,6 +132,7 @@ describe('buildPayload', () => {
       layout: 'radial',
       direction: 'top-down',
       showLifecycle: true,
+      showEvidence: false,
       showOwnership: false,
       notation: 'native',
     })

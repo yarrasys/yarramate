@@ -65,7 +65,7 @@ describe('buildStylesheet badge layers', () => {
     showEvidence: boolean,
     showOwnership: boolean,
   ): cytoscape.StylesheetStyle =>
-    buildStylesheet(showLifecycle, showEvidence, showOwnership).find(
+    buildStylesheet(showLifecycle, showEvidence, showOwnership, 'native').find(
       (block): block is cytoscape.StylesheetStyle =>
         'style' in block && block.selector === 'node' && 'background-image' in block.style,
     )!
@@ -82,9 +82,8 @@ describe('buildStylesheet badge layers', () => {
     return mapper({ data: (key) => data[key] })
   }
 
-
   it('draws a background-color rule for every LAYER_COLORS key', () => {
-    const sheet = buildStylesheet(false, false, false)
+    const sheet = buildStylesheet(false, false, false, 'native')
     for (const layer of Object.keys(LAYER_COLORS)) {
       const rule = sheet.find(
         (block): block is cytoscape.StylesheetStyle =>
