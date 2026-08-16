@@ -310,6 +310,49 @@ distinguishable from one that never had a graph to check against.
 about who wrote a record, not a contradiction between the model and
 observed reality, so it reports rather than gates.
 
+## Writing overlays
+
+An overlay is a workspace document, so `yarramate apply` writes it the way
+it writes a model document: `add-observation`, `update-observation`, and
+`delete-observation` address an evidence document declared by the manifest's
+`evidence` list (ADR 0089). Before this the only way to record what a
+provider read was to open the file, which is exactly the hand-editing the
+apply loop exists to prevent — a reviewer who adds a concept through the
+visual canvas or a batch has no path to the evidence for it.
+
+```yaml
+format: yarramate/operations/v1
+operations:
+  - op: add-observation
+    document: .yarramate/evidence/repository.yaml
+    observation:
+      subject: yarramate-engine#compiler
+      result: confirmed
+      evidence:
+        uri: repo:src/compiler.ts
+```
+
+An observation is addressed by the pair (target, key) rather than by an
+`id`, because an overlay entry has none: `reconcile` already treats that
+pair as unique per document (ADR 0075, `YM803`). The target is the
+observation's `subject` or `claim`; a keyless observation is the presence
+claim for its target, so an absent `key` is itself an address rather than a
+wildcard. `update-observation` names the entry the same way and changes
+whatever else it carries — `result`, `value`, `evidence.uri`,
+`evidence.message` — scalars replacing in place. Retraction is explicit and
+narrow: `remove: [message]` is the only retraction an observation admits,
+because `message` is the only optional field it holds, and setting and
+removing it in one operation is rejected rather than ordered.
+`delete-observation` removes the whole entry.
+
+The gate is the one every batch passes. The candidate workspace compiles,
+then every touched overlay is loaded and evaluated against the compiled
+graph, before a single byte is written: an observation whose subject the
+graph does not carry rejects the batch with `YM801` and leaves every source
+unchanged. `yarramate/apply-result/v1` counts the work as
+`addedObservations`, `updatedObservations`, and `deletedObservations`
+alongside the concept and relationship counts.
+
 ## Boundary
 
 Evidence overlays do not:

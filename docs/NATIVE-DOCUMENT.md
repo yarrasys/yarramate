@@ -433,9 +433,9 @@ operations:
 yarramate apply operations.yaml .yarramate/workspace.yaml
 ```
 
-The operations are `add-concept`, `add-relationship`, `update-concept`,
-`update-relationship`, `delete-concept`, and `delete-relationship`. Concept
-and relationship records accept the same
+The model operations are `add-concept`, `add-relationship`,
+`update-concept`, `update-relationship`, `delete-concept`, and
+`delete-relationship`. Concept and relationship records accept the same
 optional fields as the authoring format — for example `status`,
 `description`, `aka`, `owner`, `distinctFrom`, `supersedes`,
 `constraints`, `references`, `presentIn`, `attestations`, and the
@@ -456,6 +456,14 @@ Integrity is evaluated against the post-batch state, so a concept and its
 referring relationships can leave in one batch (ADR 0069). Retirement
 (`status: retired`) remains the descoping path; delete only when the
 history itself is noise.
+
+Three further operations — `add-observation`, `update-observation`, and
+`delete-observation` — address an evidence overlay declared by the
+manifest's `evidence` list rather than a model document. An overlay entry
+has no `id`, so an observation is addressed by the pair (target, key)
+instead (ADR 0089); `docs/EVIDENCE.md` covers the shape. They pass the same
+atomic gate: the candidate workspace compiles and every touched overlay is
+evaluated against the compiled graph before anything is written.
 
 An `attestations` entry an operation writes must carry `recordedBy`, even
 though a hand-authored document may omit it: a batch is a machine's

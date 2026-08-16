@@ -109,6 +109,25 @@ const deleteOp: YarramateOperation = {
   relationship: { id: 'checkout-db' },
 }
 
+const observeOp: YarramateOperation = {
+  op: 'add-observation',
+  document: '.yarramate/evidence/repository.yaml',
+  observation: {
+    subject: 'architecture#checkout',
+    key: 'exists',
+    value: 'true',
+    result: 'confirmed',
+    evidence: { uri: 'repo:src/checkout.ts' },
+  },
+}
+
+const retractMessageOp: YarramateOperation = {
+  op: 'update-observation',
+  document: '.yarramate/evidence/repository.yaml',
+  observation: { claim: 'architecture#checkout~expects-residency' },
+  remove: ['message'],
+}
+
 describe('resolveSubjectName', () => {
   it('names a concept from the current graph', () => {
     expect(resolveSubjectName('architecture/main.yaml', 'checkout', graph)).toBe(
@@ -167,6 +186,28 @@ describe('describeChangesetRow / changesetRowLabel', () => {
     expect(row.fields).toEqual([])
     expect(row.removedFields).toEqual([])
     expect(changesetRowLabel(row)).toBe('delete-relationship · checkout-db')
+  })
+
+  it('addresses an observation by its target and key, never by an id', () => {
+    const row = describeChangesetRow(observeOp, graph)
+    expect(row).toEqual({
+      verb: 'add-observation',
+      subjectName: 'architecture#checkout (exists)',
+      fields: ['value', 'result', 'evidence'],
+      removedFields: [],
+    })
+    expect(changesetRowLabel(row)).toBe(
+      'add-observation · architecture#checkout (exists) · value, result, evidence',
+    )
+  })
+
+  it('names a keyless observation by its target alone', () => {
+    const row = describeChangesetRow(retractMessageOp, graph)
+    expect(row.subjectName).toBe('architecture#checkout~expects-residency')
+    expect(row.fields).toEqual([])
+    expect(changesetRowLabel(row)).toBe(
+      'update-observation · architecture#checkout~expects-residency · remove: message',
+    )
   })
 })
 

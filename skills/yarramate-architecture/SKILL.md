@@ -81,6 +81,10 @@ cite the pattern by name when explaining the resulting model.
    when states or several related declarations make that clearer.
 6. Add an evidence overlay only for existing subjects or stable claim IDs.
    Evidence supports or challenges the proposal; it is not a second model.
+   Observations land through the same `yarramate apply` batch as the model
+   they observe (`add-observation`, `update-observation`,
+   `delete-observation`) — the loop that keeps a partial edit off disk is
+   the loop that keeps an unevaluated observation off disk.
 7. Add the focused projections needed to answer the
    repository-orientation question. Add a separate projection for every
    ordered flow that needs a dynamic view, then include each intended view in

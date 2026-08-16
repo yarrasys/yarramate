@@ -69,6 +69,9 @@ describe('applyOperations', () => {
       updatedRelationships: 0,
       deletedConcepts: 0,
       deletedRelationships: 0,
+      addedObservations: 0,
+      updatedObservations: 0,
+      deletedObservations: 0,
     })
     expect(outcome.result.documents).toEqual(['architecture/main.yaml'])
 

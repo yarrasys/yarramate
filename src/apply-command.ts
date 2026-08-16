@@ -18,6 +18,7 @@ import {
   type CliResult,
 } from './cli-support.js'
 import { compileWorkspace, type Diagnostic, type WorkspaceSource } from './compiler.js'
+import { evaluateEvidence, loadEvidence } from './evidence.js'
 import {
   loadSourceDocument,
   locateSourcePath,
@@ -31,6 +32,7 @@ import type {
   ConceptFields,
   ConstraintReference,
   IdentifiedReference,
+  ObservationTarget,
   OperationsDocument,
   RelationshipFields,
   YarramateApplyResult,
@@ -49,6 +51,11 @@ const SCALAR_CONCEPT_FIELDS = ['kind', 'name', 'description', 'status', 'owner']
 const LIST_CONCEPT_FIELDS = ['aka', 'constraints', 'references', 'presentIn', 'attestations', 'distinctFrom', 'supersedes'] as const
 const SCALAR_RELATIONSHIP_FIELDS = ['kind', 'from', 'to', 'name', 'description', 'status', 'mode', 'content'] as const
 const LIST_RELATIONSHIP_FIELDS = ['references', 'presentIn'] as const
+// An overlay entry's address is the pair (target, key); everything else it
+// carries is editable. `uri` and `message` sit one level down, inside the
+// entry's own `evidence:` mapping.
+const SCALAR_OBSERVATION_FIELDS = ['result', 'value'] as const
+const EVIDENCE_FIELDS = ['uri', 'message'] as const
 
 // ---------------------------------------------------------------------------
 // The splice layer. Every operation becomes a minimal text edit against the
@@ -143,11 +150,12 @@ const itemFieldInsertAt = (source: string, map: YAMLMap): number => {
   return afterContentLine(source, anchor)
 }
 
-// Appends one item to a top-level block collection (`concepts:` or
-// `relationships:`), creating or converting the collection when needed.
+// Appends one item to a top-level block collection (`concepts:`,
+// `relationships:` or an overlay's `observations:`), creating or converting
+// the collection when needed.
 const appendCollectionItem = (
   source: string,
-  collection: 'concepts' | 'relationships',
+  collection: string,
   item: Readonly<Record<string, unknown>>,
 ): string => {
   const document = parseDocument(source)
@@ -192,10 +200,33 @@ const appendCollectionItem = (
   )
 }
 
-const itemMap = (
+type ItemFields = Readonly<Record<string, unknown>>
+type ItemMatcher = (fields: ItemFields) => boolean
+
+const byId =
+  (id: string): ItemMatcher =>
+  (fields) =>
+    fields.id === id
+
+// An overlay entry has no `id`: it is addressed by the pair (target, key) -
+// what `reconcile` already treats as unique per document (ADR 0075, and the
+// YM803 duplicate-target diagnostic). A keyless address matches the keyless
+// entry, the presence claim for that target, and never stands in for every
+// key the target carries.
+const byObservation =
+  (target: ObservationTarget): ItemMatcher =>
+  (fields) =>
+    fields.subject === target.subject &&
+    fields.claim === target.claim &&
+    fields.key === target.key
+
+const observationAddress = (target: ObservationTarget): string =>
+  `"${target.subject ?? target.claim}"${target.key === undefined ? '' : ` (${target.key})`}`
+
+const itemMatching = (
   source: string,
   collection: string,
-  id: string,
+  matches: ItemMatcher,
 ): { readonly map: YAMLMap; readonly sequence: YAMLSeq } | undefined => {
   const document = parseDocument(source)
   const root = document.contents
@@ -204,19 +235,26 @@ const itemMap = (
   if (pair === undefined || !isSeq(pair.value)) return undefined
   const sequence = pair.value as YAMLSeq
   const found = sequence.items.find(
-    (candidate) =>
-      isMap(candidate) &&
-      (candidate as YAMLMap).items.some(
-        (field) =>
-          isScalar(field.key) &&
-          field.key.value === 'id' &&
-          isScalar(field.value) &&
-          field.value.value === id,
-      ),
+    (candidate) => isMap(candidate) && matches((candidate as YAMLMap).toJSON() as ItemFields),
   )
   return found === undefined
     ? undefined
     : { map: found as YAMLMap, sequence }
+}
+
+const itemMap = (
+  source: string,
+  collection: string,
+  id: string,
+): { readonly map: YAMLMap; readonly sequence: YAMLSeq } | undefined =>
+  itemMatching(source, collection, byId(id))
+
+// An observation's locator is a mapping inside the entry; edits descend into
+// it so a changed URI splices that one line rather than re-rendering the
+// entry around it.
+const nestedMap = (map: YAMLMap, key: string): YAMLMap | undefined => {
+  const pair = pairFor(map, key)
+  return pair !== undefined && isMap(pair.value) ? (pair.value as YAMLMap) : undefined
 }
 
 // The indent item fields sit at, read off the item's own first field.
@@ -363,14 +401,14 @@ const removeField = (
 // schema requires the key.
 const removeCollectionItem = (
   source: string,
-  collection: 'concepts' | 'relationships',
-  id: string,
+  collection: string,
+  matches: ItemMatcher,
 ): string => {
-  const { map, sequence } = itemMap(source, collection, id)!
+  const { map, sequence } = itemMatching(source, collection, matches)!
   if (sequence.flow) {
-    const remaining = (
-      sequence.toJSON() as ReadonlyArray<Readonly<Record<string, unknown>>>
-    ).filter((item) => item.id !== id)
+    const remaining = (sequence.toJSON() as readonly ItemFields[]).filter(
+      (item) => !matches(item),
+    )
     const [start, valueEnd] = nodeRange(sequence)
     return splice(
       source,
@@ -444,6 +482,13 @@ export const applyOperations = (
   const workspaceDocuments = new Map(
     resolvedWorkspace.documents.map((path) => [resolve(cwd, path), path]),
   )
+  // Overlay entries live in the workspace's evidence documents, addressed the
+  // same way. The two sets stay apart: a concept operation aimed at an
+  // overlay — or an observation aimed at a compiler document — is rejected
+  // before anything is touched.
+  const workspaceEvidence = new Map(
+    resolvedWorkspace.evidence.map((path) => [resolve(cwd, path), path]),
+  )
   const candidates = new Map<string, string>()
   const counts = {
     addedConcepts: 0,
@@ -452,6 +497,9 @@ export const applyOperations = (
     updatedRelationships: 0,
     deletedConcepts: 0,
     deletedRelationships: 0,
+    addedObservations: 0,
+    updatedObservations: 0,
+    deletedObservations: 0,
   }
   const deletions: Array<{
     readonly index: number
@@ -472,13 +520,18 @@ export const applyOperations = (
   })
   for (const [index, operation] of operationList.entries()) {
     const absolute = resolve(cwd, operation.document)
-    const manifestPath = workspaceDocuments.get(absolute)
+    const overlay = operation.op.endsWith('-observation')
+    const manifestPath = overlay
+      ? workspaceEvidence.get(absolute)
+      : workspaceDocuments.get(absolute)
     const locate = (message: string): Diagnostic =>
       locateOperation(index, message)
     if (manifestPath === undefined) {
       return failed([
         locate(
-          `Operation ${index} targets "${operation.document}", which is not a document of workspace "${resolvedWorkspace.id}"`,
+          `Operation ${index} targets "${operation.document}", which is not ${
+            overlay ? 'an evidence document' : 'a document'
+          } of workspace "${resolvedWorkspace.id}"`,
         ),
       ])
     }
@@ -517,13 +570,103 @@ export const applyOperations = (
           ),
         ])
       }
-      source = removeCollectionItem(source, collection, id)
+      source = removeCollectionItem(source, collection, byId(id))
       deletions.push({ index, absolute, id })
       if (operation.op === 'delete-concept') {
         counts.deletedConcepts += 1
       } else {
         counts.deletedRelationships += 1
       }
+    } else if (operation.op === 'add-observation') {
+      const address = observationAddress(operation.observation)
+      const matches = byObservation(operation.observation)
+      if (itemMatching(source, 'observations', matches) !== undefined) {
+        return failed([
+          locate(
+            `Operation ${index} adds an observation of ${address}, which ${operation.document} already records`,
+          ),
+        ])
+      }
+      source = appendCollectionItem(
+        source,
+        'observations',
+        operation.observation as unknown as ItemFields,
+      )
+      counts.addedObservations += 1
+    } else if (operation.op === 'update-observation') {
+      const target = operation.observation
+      const address = observationAddress(target)
+      const matches = byObservation(target)
+      const removals = operation.remove ?? []
+      if (removals.includes('message') && target.evidence?.message !== undefined) {
+        return failed([
+          locate(`Operation ${index} both sets and removes "message" on ${address}`),
+        ])
+      }
+      if (itemMatching(source, 'observations', matches) === undefined) {
+        return failed([
+          locate(
+            `Operation ${index} updates an observation of ${address}, which does not exist in ${operation.document}`,
+          ),
+        ])
+      }
+      const fields = target as unknown as ItemFields
+      for (const key of SCALAR_OBSERVATION_FIELDS) {
+        if (fields[key] === undefined) continue
+        source = setScalarField(
+          source,
+          itemMatching(source, 'observations', matches)!.map,
+          key,
+          fields[key],
+        )
+      }
+      for (const key of EVIDENCE_FIELDS) {
+        const value = target.evidence?.[key]
+        if (value === undefined) continue
+        const locator = nestedMap(
+          itemMatching(source, 'observations', matches)!.map,
+          'evidence',
+        )
+        if (locator === undefined) {
+          return failed([
+            locate(
+              `Operation ${index} updates the evidence of ${address}, which ${operation.document} does not record as a mapping`,
+            ),
+          ])
+        }
+        source = setScalarField(source, locator, key, value)
+      }
+      for (const key of removals) {
+        const locator = nestedMap(
+          itemMatching(source, 'observations', matches)!.map,
+          'evidence',
+        )
+        // Annotated: without it the assignment below feeds `source` back
+        // into its own inferred type through this call.
+        const removed: string | undefined =
+          locator === undefined ? undefined : removeField(source, locator, key)
+        if (removed === undefined) {
+          return failed([
+            locate(`Operation ${index} removes "${key}", which is not set on ${address}`),
+          ])
+        }
+        source = removed
+      }
+      counts.updatedObservations += 1
+    } else if (operation.op === 'delete-observation') {
+      const address = observationAddress(operation.observation)
+      const matches = byObservation(operation.observation)
+      if (itemMatching(source, 'observations', matches) === undefined) {
+        return failed([
+          locate(
+            `Operation ${index} deletes an observation of ${address}, which does not exist in ${operation.document}`,
+          ),
+        ])
+      }
+      // An overlay entry is nobody's reference target, so unlike a concept
+      // deletion this stages no reference-integrity check.
+      source = removeCollectionItem(source, 'observations', matches)
+      counts.deletedObservations += 1
     } else {
       const collection =
         operation.op === 'update-concept' ? 'concepts' : 'relationships'
@@ -718,11 +861,29 @@ export const applyOperations = (
   )
   if (!compilation.ok) return failed(compilation.diagnostics)
 
+  // The overlay gate: an observation the batch authored must load and must
+  // evaluate against the graph the batch just proved compiles, so an entry
+  // naming a subject that does not exist is rejected here rather than
+  // discovered later by `reconcile`. Only touched overlays are evaluated —
+  // pre-existing drift elsewhere is reconcile's report to make, not this
+  // batch's failure.
+  for (const [absolute, path] of workspaceEvidence) {
+    const source = candidates.get(absolute)
+    if (source === undefined) continue
+    const loaded = loadEvidence({ path, source })
+    if (!loaded.ok) return failed(loaded.diagnostics)
+    const evaluation = evaluateEvidence(compilation.graph, loaded.evidence)
+    if (!evaluation.ok) return failed(evaluation.diagnostics)
+  }
+
   for (const [absolute, source] of candidates) {
     writeFileSync(absolute, source, 'utf8')
   }
   const touched = [...candidates.keys()]
-    .map((absolute) => workspaceDocuments.get(absolute)!)
+    .map(
+      (absolute) =>
+        workspaceDocuments.get(absolute) ?? workspaceEvidence.get(absolute)!,
+    )
     .sort()
   return {
     ok: true,
@@ -795,7 +956,10 @@ export function runApplyCommand(
       result.applied.updatedConcepts +
       result.applied.updatedRelationships +
       result.applied.deletedConcepts +
-      result.applied.deletedRelationships
+      result.applied.deletedRelationships +
+      result.applied.addedObservations +
+      result.applied.updatedObservations +
+      result.applied.deletedObservations
     return {
       exitCode: 0,
       stdout: `Applied ${applied} operation${applied === 1 ? '' : 's'} to ${result.documents.join(', ')}\n`,

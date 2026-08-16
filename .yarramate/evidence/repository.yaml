@@ -797,3 +797,83 @@ observations:
     result: confirmed
     evidence:
       uri: repo:test/workspace.test.ts
+  - subject: yarramate-engine#build-visual-session-request
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/visual/request.ts
+  - subject: yarramate-engine#commit-visual-changeset
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/visual/session-server.ts
+  - subject: yarramate-engine#save-visual-layout
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/visual/session-server.ts
+  - subject: yarramate-engine#visual-layout-sidecar
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-visual-layout.schema.json
+  - subject: yarramate-engine#render-visual-presentation-badges
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/badges.ts
+  - subject: yarramate-engine#render-archimate-kind-icons
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/kind-icons.ts
+  - subject: yarramate-repository#visual-request-source
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/visual/request.ts
+  - subject: yarramate-repository#visual-canvas-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/graph-canvas.tsx
+  - subject: yarramate-repository#visual-inspector-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/subject-form.tsx
+  - subject: yarramate-repository#visual-changeset-tray-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/changeset-tray.tsx
+  - subject: yarramate-repository#visual-badges-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/badges.ts
+  - subject: yarramate-repository#visual-kind-icons-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/kind-icons.ts
+  - subject: yarramate-repository#visual-layout-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-visual-layout.schema.json
+  - subject: yarramate-repository#visual-request-tests
+    result: confirmed
+    evidence:
+      uri: repo:test/visual-request.test.ts
+  - subject: yarramate-repository#visual-canvas-layout-tests
+    result: confirmed
+    evidence:
+      uri: repo:test/graph-canvas-layout.test.ts
+  - subject: yarramate-repository#visual-inspector-tests
+    result: confirmed
+    evidence:
+      uri: repo:test/subject-form.test.ts
+  - subject: yarramate-repository#visual-changeset-tray-tests
+    result: confirmed
+    evidence:
+      uri: repo:test/changeset-tray.test.ts
+  - subject: yarramate-repository#visual-badges-tests
+    result: confirmed
+    evidence:
+      uri: repo:test/badges.test.ts
+  - subject: yarramate-repository#visual-kind-icons-tests
+    result: confirmed
+    evidence:
+      uri: repo:test/kind-icons.test.ts
+  - subject: yarramate-repository#apply-operations-tests
+    result: confirmed
+    evidence:
+      uri: repo:test/apply-operations.test.ts

@@ -247,6 +247,137 @@
         }
       }
     },
+    "observationTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "subject": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "claim": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "key": {
+          "$ref": "#/$defs/nonEmptyText"
+        }
+      },
+      "oneOf": [
+        {
+          "required": ["subject"],
+          "not": {
+            "required": ["claim"]
+          }
+        },
+        {
+          "required": ["claim"],
+          "not": {
+            "required": ["subject"]
+          }
+        }
+      ]
+    },
+    "observationFields": {
+      "type": "object",
+      "additionalProperties": false,
+      "dependentRequired": {
+        "key": ["value"],
+        "value": ["key"]
+      },
+      "properties": {
+        "subject": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "claim": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "key": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "value": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "result": {
+          "enum": ["confirmed", "contradicted", "unknown", "not-observed"]
+        },
+        "evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["uri"],
+          "properties": {
+            "uri": {
+              "$ref": "#/$defs/nonEmptyText"
+            },
+            "message": {
+              "$ref": "#/$defs/nonEmptyText"
+            }
+          }
+        }
+      },
+      "oneOf": [
+        {
+          "required": ["subject"],
+          "not": {
+            "required": ["claim"]
+          }
+        },
+        {
+          "required": ["claim"],
+          "not": {
+            "required": ["subject"]
+          }
+        }
+      ]
+    },
+    "observationChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "dependentRequired": {
+        "value": ["key"]
+      },
+      "properties": {
+        "subject": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "claim": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "key": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "value": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "result": {
+          "enum": ["confirmed", "contradicted", "unknown", "not-observed"]
+        },
+        "evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "uri": {
+              "$ref": "#/$defs/nonEmptyText"
+            },
+            "message": {
+              "$ref": "#/$defs/nonEmptyText"
+            }
+          }
+        }
+      },
+      "oneOf": [
+        {
+          "required": ["subject"],
+          "not": {
+            "required": ["claim"]
+          }
+        },
+        {
+          "required": ["claim"],
+          "not": {
+            "required": ["subject"]
+          }
+        }
+      ]
+    },
     "operation": {
       "oneOf": [
         {
@@ -445,6 +576,69 @@
             },
             "relationship": {
               "$ref": "#/$defs/deleteTarget"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "document", "observation"],
+          "properties": {
+            "op": {
+              "const": "add-observation"
+            },
+            "document": {
+              "$ref": "#/$defs/nonEmptyText"
+            },
+            "observation": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/observationFields"
+                },
+                {
+                  "type": "object",
+                  "required": ["result", "evidence"]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "document", "observation"],
+          "properties": {
+            "op": {
+              "const": "update-observation"
+            },
+            "document": {
+              "$ref": "#/$defs/nonEmptyText"
+            },
+            "observation": {
+              "$ref": "#/$defs/observationChange"
+            },
+            "remove": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "enum": ["message"]
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "document", "observation"],
+          "properties": {
+            "op": {
+              "const": "delete-observation"
+            },
+            "document": {
+              "$ref": "#/$defs/nonEmptyText"
+            },
+            "observation": {
+              "$ref": "#/$defs/observationTarget"
             }
           }
         }
