@@ -603,6 +603,11 @@ function runLayout(
 
   const first = eles.layout(buildLayoutConfig(layout, direction))
   if (layout !== 'force') {
+    // A superseded force chain's handlers all bail on the guards below, so
+    // nobody else will retire its busy notice. This run owns the canvas now,
+    // and it is the single synchronous pass it always was - nothing to wait
+    // for, so switching backends mid-force clears "Laying out..." here.
+    onWaitingChange(null)
     first.run()
     return
   }
@@ -873,7 +878,12 @@ export function GraphCanvas({
       cyRef.current.add(elements)
     }
 
-    runLayout(cyRef.current, layout, direction, forceLayoutRef, onWaitingChangeRef.current)
+    // Read through the ref inside the wrapper, not once at the call site:
+    // an async force chain keeps calling this long after the effect ran, and
+    // it must always reach the current prop (same reason as `registerDragSave`).
+    runLayout(cyRef.current, layout, direction, forceLayoutRef, (waiting) =>
+      onWaitingChangeRef.current(waiting),
+    )
   }, [graph])
 
   // Update selection highlight when selectedId or graph changes
@@ -916,7 +926,9 @@ export function GraphCanvas({
     applyFilter(cyRef.current, matchedIds, quickFilterText)
     if (pendingViewFitRef.current) {
       pendingViewFitRef.current = false
-      relayoutVisible(cyRef.current, layout, direction, forceLayoutRef, onWaitingChangeRef.current)
+      relayoutVisible(cyRef.current, layout, direction, forceLayoutRef, (waiting) =>
+        onWaitingChangeRef.current(waiting),
+      )
     }
   }, [matchedIds, quickFilterText, graph, layout, direction])
 

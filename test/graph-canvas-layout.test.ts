@@ -200,9 +200,7 @@ const buildHubFixture = () =>
 
 // elk-backed layouts (layered, force) resolve asynchronously; the built-in
 // concentric layout (radial) resolves synchronously but still fires
-// `layoutstop`, so one helper covers all three. This file is compiled under
-// both tsconfig.json (lib ES2024) and tsconfig.visual.json (lib ES2022, no
-// `Promise.withResolvers`), so it stays on the executor form.
+// `layoutstop`, so one helper covers all three.
 const runLayout = (cy: cytoscape.Core, options: cytoscape.LayoutOptions): Promise<void> =>
   new Promise((resolve) => {
     cy.one('layoutstop', () => resolve())
@@ -356,5 +354,40 @@ describe('relayoutVisible force second pass', () => {
     expect(waitingCalls.filter((w) => w === null)).toHaveLength(1)
     expect(waitingCalls.at(-1)).toBeNull()
     expect(countOverlappingPairs(cy)).toBe(0)
+  })
+
+  it('retires the busy notice when a layered request supersedes an in-flight force run', async () => {
+    const cy = buildHubFixture()
+    const inFlightRef: { current: cytoscape.Layouts | null } = { current: null }
+    const waitingCalls: (string | null)[] = []
+    const onWaitingChange = (waiting: string | null) => {
+      waitingCalls.push(waiting)
+    }
+
+    // Two passes: the force stress run, stopped where it stands, and the
+    // layered run that took the canvas off it. The superseded chain's own
+    // handlers are guarded into silence, so if the layered branch does not
+    // retire the notice itself nothing ever will and "Laying out..." sticks
+    // for the rest of the session.
+    const settled = Promise.withResolvers<void>()
+    let started = 0
+    cy.on('layoutstart', () => {
+      started++
+    })
+    let stopped = 0
+    cy.on('layoutstop', () => {
+      stopped++
+      if (stopped === 2) settled.resolve()
+    })
+
+    relayoutVisible(cy, 'force', 'top-down', inFlightRef, onWaitingChange)
+    expect(waitingCalls).toEqual(['Laying out...'])
+    relayoutVisible(cy, 'layered', 'top-down', inFlightRef, onWaitingChange)
+    await settled.promise
+
+    expect(started).toBe(2)
+    expect(waitingCalls.at(-1)).toBeNull()
+    expect(waitingCalls.filter((w) => w === null)).toHaveLength(1)
+    expect(inFlightRef.current).toBeNull()
   })
 })
