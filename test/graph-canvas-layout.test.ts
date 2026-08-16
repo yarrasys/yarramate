@@ -2,6 +2,7 @@ import cytoscape from 'cytoscape'
 import { describe, expect, it, vi } from 'vitest'
 import {
   applySavedPositions,
+  buildLayoutConfig,
   buildPositionMap,
   DRAG_SAVE_DEBOUNCE_MS,
   registerDragSave,
@@ -138,5 +139,90 @@ describe('layout drag-save and position pinning', () => {
     expect(onSaveLayout).not.toHaveBeenCalled()
 
     vi.useRealTimers()
+  })
+})
+
+// Fixed node size (matching production's NODE_WIDTH/NODE_HEIGHT) so bounding-
+// box overlap checks below are meaningful instead of comparing cytoscape's
+// zero-size headless default boxes.
+const LAYOUT_FIXTURE_STYLE: cytoscape.StylesheetJsonBlock[] = [
+  { selector: 'node', style: { width: 170, height: 50 } },
+]
+
+// A small cycle - every node has exactly two neighbours - so each backend's
+// spacing/overlap behavior is exercised without a compound parent muddying
+// the bounding-box check (a parent legitimately overlaps its own children).
+const buildLayoutFixture = () =>
+  cytoscape({
+    styleEnabled: true,
+    style: LAYOUT_FIXTURE_STYLE,
+    layout: { name: 'null' },
+    elements: [
+      { data: { id: 'a' }, group: 'nodes' as const },
+      { data: { id: 'b' }, group: 'nodes' as const },
+      { data: { id: 'c' }, group: 'nodes' as const },
+      { data: { id: 'd' }, group: 'nodes' as const },
+      { data: { id: 'e' }, group: 'nodes' as const },
+      { data: { id: 'f' }, group: 'nodes' as const },
+      { data: { id: 'ab', source: 'a', target: 'b' }, group: 'edges' as const },
+      { data: { id: 'bc', source: 'b', target: 'c' }, group: 'edges' as const },
+      { data: { id: 'cd', source: 'c', target: 'd' }, group: 'edges' as const },
+      { data: { id: 'de', source: 'd', target: 'e' }, group: 'edges' as const },
+      { data: { id: 'ef', source: 'e', target: 'f' }, group: 'edges' as const },
+      { data: { id: 'fa', source: 'f', target: 'a' }, group: 'edges' as const },
+    ],
+  })
+
+// elk-backed layouts (layered, force) resolve asynchronously; the built-in
+// concentric layout (radial) resolves synchronously but still fires
+// `layoutstop`, so one helper covers all three. This file is compiled under
+// both tsconfig.json (lib ES2024) and tsconfig.visual.json (lib ES2022, no
+// `Promise.withResolvers`), so it stays on the executor form.
+const runLayout = (cy: cytoscape.Core, options: cytoscape.LayoutOptions): Promise<void> =>
+  new Promise((resolve) => {
+    cy.one('layoutstop', () => resolve())
+    cy.layout(options).run()
+  })
+
+const countOverlappingPairs = (cy: cytoscape.Core): number => {
+  const boxes = cy.nodes().map((node) => node.boundingBox())
+  let overlaps = 0
+  boxes.forEach((a, i) => {
+    boxes.slice(i + 1).forEach((b) => {
+      if (a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.y1) {
+        overlaps++
+      }
+    })
+  })
+  return overlaps
+}
+
+describe('buildLayoutConfig', () => {
+  it.each(['layered', 'radial', 'force'] as const)(
+    'lays out the %s backend with zero overlapping node bounding boxes',
+    async (layout) => {
+      const cy = buildLayoutFixture()
+      await runLayout(cy, buildLayoutConfig(layout, 'top-down'))
+      expect(countOverlappingPairs(cy)).toBe(0)
+    }
+  )
+
+  it('radial and force configs carry no elk.direction', () => {
+    const radial = buildLayoutConfig('radial', 'top-down') as unknown as Record<string, unknown>
+    expect(radial).not.toHaveProperty('elk')
+
+    const force = buildLayoutConfig('force', 'top-down') as unknown as {
+      elk: Record<string, unknown>
+    }
+    expect(Object.keys(force.elk)).not.toContain('elk.direction')
+  })
+
+  it('layered with the same seed produces identical positions across two runs', async () => {
+    const cyA = buildLayoutFixture()
+    const cyB = buildLayoutFixture()
+    await runLayout(cyA, buildLayoutConfig('layered', 'top-down', 'fixed-seed'))
+    await runLayout(cyB, buildLayoutConfig('layered', 'top-down', 'fixed-seed'))
+
+    expect(buildPositionMap(cyA.nodes())).toEqual(buildPositionMap(cyB.nodes()))
   })
 })

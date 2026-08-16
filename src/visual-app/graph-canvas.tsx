@@ -69,15 +69,17 @@ function withWrapPoints(text: string): string {
 // ELK layout options: extends base layout with elk-specific config not in
 // cytoscape's types. `nodeLayoutOptions` is cytoscape-elk's only per-node hook
 // (`makeNode` calls it for every node and assigns the result to that node's
-// ELK `layoutOptions`).
+// ELK `layoutOptions`). `elk.direction` is optional because the `force`
+// backend (elk's `stress` algorithm) ignores direction entirely - only
+// `layered` sets it.
 interface ElkLayoutOptions extends Record<string, unknown> {
   name: 'elk'
   elk: {
-    algorithm: 'layered' | string
-    'elk.direction': 'DOWN' | 'UP' | 'LEFT' | 'RIGHT'
+    algorithm: string
+    'elk.direction'?: 'DOWN' | 'UP' | 'LEFT' | 'RIGHT'
     [key: string]: unknown
   }
-  nodeLayoutOptions: (node: cytoscape.NodeSingular) => Record<string, unknown> | undefined
+  nodeLayoutOptions?: (node: cytoscape.NodeSingular) => Record<string, unknown> | undefined
 }
 
 // cytoscape draws a compound parent's box itself - cytoscape-elk only feeds
@@ -131,16 +133,62 @@ const ELK_SPACING: Record<string, unknown> = {
 
 // Shared by the full-graph layout effect and the visible-subgraph relayout
 // that runs on view switch, so both always agree on algorithm/direction.
-function buildLayoutConfig(direction: 'top-down' | 'left-right'): ElkLayoutOptions {
-  return {
+//
+// Three backends, chosen by headless measurement on this repo's own 258-node
+// graph:
+// - `layered` - elk's `layered` algorithm, today's default directional
+//   (org-chart style) layout. `elk.randomSeed` is honoured deterministically
+//   (same seed -> identical layout hash), the only backend `seed` affects.
+// - `radial` - cytoscape's own built-in `concentric`, not elk's `radial`
+//   algorithm (measured unusable on this graph: a tree algorithm, 17.5k
+//   overlapping node pairs). Concentric filters compound parents itself
+//   (`eles.nodes().not(':parent')`), so parents wrap their children instead
+//   of being concentric-positioned themselves - measured 0 parent overlaps.
+// - `force` - elk's `stress` algorithm, first pass only. The `sporeOverlap`
+//   overlap-removal second pass is Task 3's business: it needs this first
+//   pass to have finished before it can run.
+//
+// `elk.direction` is ignored by every elk algorithm except `layered`
+// (verified: identical container boxes for DOWN and RIGHT on `stress`), so
+// only `layered` reads `direction`.
+export function buildLayoutConfig(
+  layout: 'layered' | 'radial' | 'force',
+  direction: 'top-down' | 'left-right',
+  seed?: string
+): cytoscape.LayoutOptions {
+  if (layout === 'radial') {
+    return {
+      name: 'concentric',
+      avoidOverlap: true,
+      spacingFactor: 1.4,
+      animate: false,
+      nodeDimensionsIncludeLabels: false,
+    }
+  }
+  if (layout === 'force') {
+    const config: ElkLayoutOptions = {
+      name: 'elk',
+      elk: {
+        algorithm: 'stress',
+        'org.eclipse.elk.stress.desiredEdgeLength': 320,
+      },
+    }
+    return config as unknown as cytoscape.LayoutOptions
+  }
+  const elk: ElkLayoutOptions['elk'] = {
+    algorithm: 'layered',
+    'elk.direction': direction === 'top-down' ? 'DOWN' : 'LEFT',
+    ...ELK_SPACING,
+  }
+  if (seed !== undefined) {
+    elk['elk.randomSeed'] = seed
+  }
+  const config: ElkLayoutOptions = {
     name: 'elk',
-    elk: {
-      algorithm: 'layered',
-      'elk.direction': direction === 'top-down' ? 'DOWN' : 'LEFT',
-      ...ELK_SPACING,
-    },
+    elk,
     nodeLayoutOptions: (node) => (node.isParent() ? ELK_SPACING : undefined),
   }
+  return config as unknown as cytoscape.LayoutOptions
 }
 
 // Build the cytoscape stylesheet with base node style, layer-specific overrides,
@@ -499,7 +547,7 @@ export function applyFilter(
 // never need to guard against "the new view matched nothing".
 export function relayoutVisible(cy: Core, direction: 'top-down' | 'left-right'): void {
   cy.elements(':visible')
-    .layout(buildLayoutConfig(direction) as unknown as cytoscape.LayoutOptions)
+    .layout(buildLayoutConfig('layered', direction))
     .run()
 }
 
@@ -710,9 +758,7 @@ export function GraphCanvas({
       cyRef.current.add(elements)
     }
 
-    const layout = cyRef.current.layout(
-      buildLayoutConfig(direction) as unknown as cytoscape.LayoutOptions
-    )
+    const layout = cyRef.current.layout(buildLayoutConfig('layered', direction))
     layout.run()
   }, [graph])
 
