@@ -20,6 +20,7 @@ const node: CanvasNode = {
   kind: 'yarramate/concept/application',
   kindLabel: 'Application',
   layer: null,
+  aspect: null,
   name: 'Checkout Service',
   description: 'Handles checkout.',
   aka: ['Checkout'],

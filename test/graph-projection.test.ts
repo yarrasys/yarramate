@@ -260,6 +260,49 @@ relationships: []
     expect(projected.nodes[0]?.layer).toBe('business')
   })
 
+  it('resolves aspect through kind inheritance, not just direct declaration', () => {
+    // `repository-file` declares no aspect of its own; it inherits
+    // `passive-structure` from `yarramate/core@0.1#artifact` the same way it
+    // inherits the `technology` layer. This mirrors the repo's real
+    // development profile (`.yarramate/profiles/yarramate-development.yaml`),
+    // inlined here so the suite stays hermetic. Task 11 shapes nodes by
+    // aspect, so an inherited kind arriving as `null` would silently draw the
+    // wrong shape rather than fail loudly.
+    const result = compileWorkspaceWithProfileContext([
+      {
+        path: 'inheriting-profile.yaml',
+        source: `format: yarramate/profile/v1
+id: example/development
+version: "1.0"
+extends: yarramate/core@0.1
+conceptKinds:
+  - id: repository-file
+    name: Repository file
+    parent: yarramate/core@0.1#artifact
+relationshipKinds: []
+`,
+      },
+      {
+        path: 'main.yaml',
+        source: `format: yarramate/v1
+id: main
+profile: example/development@1.0
+concepts:
+  - id: compiler
+    kind: repository-file
+    name: Compiler source
+relationships: []
+`,
+      },
+    ])
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+
+    const projected = projectGraphForCanvas(result.graph, result.profileContext)
+    expect(projected.nodes[0]?.aspect).toBe('passive-structure')
+    expect(projected.nodes[0]?.layer).toBe('technology')
+  })
+
   it('sorts nodes and edges by id regardless of declaration order', () => {
     const result = compile(`format: yarramate/v1
 id: main
