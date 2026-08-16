@@ -287,7 +287,7 @@ const readSessionMarker = async (
     !IDENTIFIER.test(id) ||
     typeof createdAt !== 'string' ||
     !TIMESTAMP.test(createdAt) ||
-    (authority !== 'canonical' && authority !== 'ad-hoc')
+    authority !== 'canonical'
   ) {
     throw storeError(
       'YMVS124',

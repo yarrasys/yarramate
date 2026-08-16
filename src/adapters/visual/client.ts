@@ -501,7 +501,6 @@ const localVisualStatus = async (
         chat: false,
         choices: false,
         navigation: false,
-        modelReplacement: false,
         transcript: false,
       },
       transcriptBytes,

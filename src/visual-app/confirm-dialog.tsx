@@ -8,9 +8,9 @@ export interface ConfirmDialogProps {
 }
 
 /**
- * The one confirm-before-overwrite affordance the workspace needs: Task 17's
- * Save (overwriting an existing view) today, Plan 3's Commit tomorrow reuses
- * this same generic dialog rather than building its own.
+ * The one confirm-before-overwrite affordance the workspace needs: saving over
+ * an existing view asks through this generic dialog, and anything else that
+ * has to ask before overwriting reuses it rather than building its own.
  */
 export function ConfirmDialog({
   title,

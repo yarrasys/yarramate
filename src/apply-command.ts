@@ -17,7 +17,7 @@ import {
   usage,
   type CliResult,
 } from './cli-support.js'
-import { compileWorkspace, type Diagnostic } from './compiler.js'
+import { compileWorkspace, type Diagnostic, type WorkspaceSource } from './compiler.js'
 import {
   loadSourceDocument,
   locateSourcePath,
@@ -27,92 +27,20 @@ import operationsSchema from '../schema/yarramate-operations.schema.json' with {
   type: 'json',
 }
 
+import type {
+  ConceptFields,
+  ConstraintReference,
+  IdentifiedReference,
+  OperationsDocument,
+  RelationshipFields,
+  YarramateApplyResult,
+  YarramateOperation,
+} from './operations.js'
+
 const Ajv2020 = Ajv2020Module.default
 const validateOperations = new Ajv2020({ allErrors: true }).compile(
   operationsSchema,
 )
-
-interface IdentifiedReference {
-  readonly id: string
-  readonly ref: string
-}
-
-interface ConstraintReference extends IdentifiedReference {
-  readonly expects?: {
-    readonly provider: string
-    readonly key: string
-    readonly value: string
-  }
-}
-
-interface ConceptFields {
-  readonly id: string
-  readonly kind?: string
-  readonly name?: string
-  readonly description?: string
-  readonly aka?: readonly string[]
-  readonly status?: string
-  readonly owner?: string
-  readonly distinctFrom?: readonly string[]
-  readonly supersedes?: readonly string[]
-  readonly constraints?: readonly ConstraintReference[]
-  readonly references?: readonly IdentifiedReference[]
-  readonly presentIn?: readonly string[]
-  // A batch is a machine's transcription of someone's judgment, so the
-  // operations contract makes the recorder mandatory here even though a
-  // hand-written document may omit it (the committer is the recorder).
-  readonly attestations?: ReadonlyArray<{
-    readonly topic: string
-    readonly by: string
-    readonly recordedBy: string
-    readonly on: string
-  }>
-}
-
-interface RelationshipFields {
-  readonly id: string
-  readonly kind?: string
-  readonly from?: string
-  readonly to?: string
-  readonly name?: string
-  readonly description?: string
-  readonly status?: string
-  readonly mode?: string
-  readonly content?: string
-  readonly references?: readonly IdentifiedReference[]
-  readonly presentIn?: readonly string[]
-}
-
-type Operation =
-  | { readonly op: 'add-concept'; readonly document: string; readonly concept: ConceptFields }
-  | { readonly op: 'add-relationship'; readonly document: string; readonly relationship: RelationshipFields }
-  | {
-      readonly op: 'update-concept'
-      readonly document: string
-      readonly concept: ConceptFields
-      readonly remove?: readonly string[]
-    }
-  | {
-      readonly op: 'update-relationship'
-      readonly document: string
-      readonly relationship: RelationshipFields
-      readonly remove?: readonly string[]
-    }
-  | {
-      readonly op: 'delete-concept'
-      readonly document: string
-      readonly concept: { readonly id: string }
-    }
-  | {
-      readonly op: 'delete-relationship'
-      readonly document: string
-      readonly relationship: { readonly id: string }
-    }
-
-interface OperationsDocument {
-  readonly format: 'yarramate/operations/v1'
-  readonly operations: readonly Operation[]
-}
 
 // Scalar fields replace; list fields append; `remove` retracts (ADR 0062).
 // An answer enriches what is there and may explicitly take back what it
@@ -475,6 +403,338 @@ const removeCollectionItem = (
 
 // ---------------------------------------------------------------------------
 
+export type ApplyOutcome =
+  | { readonly ok: true; readonly result: YarramateApplyResult }
+  | { readonly ok: false; readonly diagnostics: readonly Diagnostic[] }
+
+// The programmatic core, split out of the CLI wrapper below so a long-lived
+// caller (the visual session server) can apply a batch without shelling
+// out. Takes raw sources rather than a parsed array so loadSourceDocument /
+// locateSourcePath keep producing diagnostics whose pointers read
+// `/operations/<i>/<field>` — that pointer is how a caller maps a rejection
+// back onto whatever authored the operation. No shell-out, no temp files,
+// no process access, no module-level mutable state: safe to call
+// repeatedly and concurrently against different workspaces.
+export const applyOperations = (
+  operations: WorkspaceSource,
+  workspace: WorkspaceSource,
+  cwd: string,
+): ApplyOutcome => {
+  const failed = (diagnostics: readonly Diagnostic[]): ApplyOutcome => ({
+    ok: false,
+    diagnostics,
+  })
+  const loadedWorkspace = loadWorkspaceManifest(workspace, cwd)
+  if (!loadedWorkspace.ok) return failed(loadedWorkspace.diagnostics)
+  const resolvedWorkspace = loadedWorkspace.workspace
+
+  const loadedOperations = loadSourceDocument<OperationsDocument>(
+    operations,
+    validateOperations,
+    'Operations',
+  )
+  if (!loadedOperations.ok) return failed(loadedOperations.diagnostics)
+  const operationList = loadedOperations.document.value.operations
+  const yaml = loadedOperations.document.yaml
+  const lineCounter = loadedOperations.document.lineCounter
+  const operationsPath = operations.path
+
+  // Documents are addressed by their manifest paths; an operation aimed
+  // anywhere else is rejected before anything is touched.
+  const workspaceDocuments = new Map(
+    resolvedWorkspace.documents.map((path) => [resolve(cwd, path), path]),
+  )
+  const candidates = new Map<string, string>()
+  const counts = {
+    addedConcepts: 0,
+    addedRelationships: 0,
+    updatedConcepts: 0,
+    updatedRelationships: 0,
+    deletedConcepts: 0,
+    deletedRelationships: 0,
+  }
+  const deletions: Array<{
+    readonly index: number
+    readonly absolute: string
+    readonly id: string
+  }> = []
+  const locateOperation = (index: number, message: string): Diagnostic => ({
+    severity: 'error',
+    code: 'YM912',
+    message,
+    ...locateSourcePath(
+      operationsPath,
+      yaml,
+      lineCounter,
+      ['operations', index, 'document'],
+      `/operations/${index}/document`,
+    ),
+  })
+  for (const [index, operation] of operationList.entries()) {
+    const absolute = resolve(cwd, operation.document)
+    const manifestPath = workspaceDocuments.get(absolute)
+    const locate = (message: string): Diagnostic =>
+      locateOperation(index, message)
+    if (manifestPath === undefined) {
+      return failed([
+        locate(
+          `Operation ${index} targets "${operation.document}", which is not a document of workspace "${resolvedWorkspace.id}"`,
+        ),
+      ])
+    }
+    let source = candidates.get(absolute)
+    if (source === undefined) {
+      source = readFileSync(absolute, 'utf8')
+    }
+    if (operation.op === 'add-concept') {
+      source = appendCollectionItem(
+        source,
+        'concepts',
+        operation.concept as unknown as Readonly<Record<string, unknown>>,
+      )
+      counts.addedConcepts += 1
+    } else if (operation.op === 'add-relationship') {
+      source = appendCollectionItem(
+        source,
+        'relationships',
+        operation.relationship as unknown as Readonly<Record<string, unknown>>,
+      )
+      counts.addedRelationships += 1
+    } else if (
+      operation.op === 'delete-concept' ||
+      operation.op === 'delete-relationship'
+    ) {
+      const collection =
+        operation.op === 'delete-concept' ? 'concepts' : 'relationships'
+      const id =
+        operation.op === 'delete-concept'
+          ? operation.concept.id
+          : operation.relationship.id
+      if (itemMap(source, collection, id) === undefined) {
+        return failed([
+          locate(
+            `Operation ${index} deletes "${id}", which does not exist in ${operation.document}`,
+          ),
+        ])
+      }
+      source = removeCollectionItem(source, collection, id)
+      deletions.push({ index, absolute, id })
+      if (operation.op === 'delete-concept') {
+        counts.deletedConcepts += 1
+      } else {
+        counts.deletedRelationships += 1
+      }
+    } else {
+      const collection =
+        operation.op === 'update-concept' ? 'concepts' : 'relationships'
+      const payload = (
+        operation.op === 'update-concept'
+          ? operation.concept
+          : operation.relationship
+      ) as unknown as Readonly<Record<string, unknown>>
+      const scalars: readonly string[] =
+        operation.op === 'update-concept'
+          ? SCALAR_CONCEPT_FIELDS
+          : SCALAR_RELATIONSHIP_FIELDS
+      const lists: readonly string[] =
+        operation.op === 'update-concept'
+          ? LIST_CONCEPT_FIELDS
+          : LIST_RELATIONSHIP_FIELDS
+      const id = payload.id as string
+      const removals = operation.remove ?? []
+      const contradiction = removals.find(
+        (key) => payload[key] !== undefined,
+      )
+      if (contradiction !== undefined) {
+        return failed([
+          locate(
+            `Operation ${index} both sets and removes "${contradiction}" on "${id}"`,
+          ),
+        ])
+      }
+      const located = itemMap(source, collection, id)
+      if (located === undefined) {
+        return failed([
+          locate(
+            `Operation ${index} updates "${id}", which does not exist in ${operation.document}`,
+          ),
+        ])
+      }
+      for (const key of scalars) {
+        if (payload[key] === undefined) continue
+        source = setScalarField(
+          source,
+          itemMap(source, collection, id)!.map,
+          key,
+          payload[key],
+        )
+      }
+      for (const key of lists) {
+        const additions = payload[key] as readonly unknown[] | undefined
+        if (additions === undefined || additions.length === 0) continue
+        source = appendListField(
+          source,
+          itemMap(source, collection, id)!.map,
+          key,
+          additions,
+        )
+      }
+      for (const key of removals) {
+        const removed = removeField(
+          source,
+          itemMap(source, collection, id)!.map,
+          key,
+        )
+        if (removed === undefined) {
+          return failed([
+            locate(
+              `Operation ${index} removes "${key}", which is not set on "${id}"`,
+            ),
+          ])
+        }
+        source = removed
+      }
+      if (operation.op === 'update-concept') {
+        counts.updatedConcepts += 1
+      } else {
+        counts.updatedRelationships += 1
+      }
+    }
+    candidates.set(absolute, source)
+  }
+
+  // Reference integrity for deletes (#123), evaluated against the
+  // post-batch state: stage everything first, then look, so a concept
+  // deleted together with its referring relationships in one batch
+  // succeeds while a target anything still points at rejects the
+  // whole batch. Referring sites are relationship endpoints, owner,
+  // constraint and identified references; projection selectors are
+  // deliberately unchecked — they tolerate no-match by design. The
+  // compile gate below stays the backstop.
+  if (deletions.length > 0) {
+    interface ReferringSite {
+      readonly ref: string
+      readonly subject: string
+      readonly field: string
+    }
+    const staged = resolvedWorkspace.documents.map((path) => {
+      const absolute = resolve(cwd, path)
+      return {
+        absolute,
+        value: parseDocument(
+          candidates.get(absolute) ?? readFileSync(absolute, 'utf8'),
+        ).toJSON() as {
+          readonly id?: string
+          readonly concepts?: readonly ConceptFields[]
+          readonly relationships?: readonly RelationshipFields[]
+        } | null,
+      }
+    })
+    const qualify = (documentId: string, reference: string): string =>
+      reference.includes('#') ? reference : `${documentId}#${reference}`
+    const referrers: ReferringSite[] = staged.flatMap(({ value }) => {
+      const documentId = value?.id
+      if (documentId === undefined) return []
+      const sites: ReferringSite[] = []
+      for (const concept of value?.concepts ?? []) {
+        const subject = `${documentId}#${concept.id}`
+        if (concept.owner !== undefined) {
+          sites.push({
+            ref: qualify(documentId, concept.owner),
+            subject,
+            field: 'owner',
+          })
+        }
+        for (const constraint of concept.constraints ?? []) {
+          sites.push({
+            ref: qualify(documentId, constraint.ref),
+            subject,
+            field: 'constraints',
+          })
+        }
+        for (const reference of concept.references ?? []) {
+          sites.push({
+            ref: qualify(documentId, reference.ref),
+            subject,
+            field: 'references',
+          })
+        }
+      }
+      for (const relationship of value?.relationships ?? []) {
+        const subject = `${documentId}#${relationship.id}`
+        for (const endpoint of ['from', 'to'] as const) {
+          const reference = relationship[endpoint]
+          if (reference !== undefined) {
+            sites.push({
+              ref: qualify(documentId, reference),
+              subject,
+              field: endpoint,
+            })
+          }
+        }
+        for (const reference of relationship.references ?? []) {
+          sites.push({
+            ref: qualify(documentId, reference.ref),
+            subject,
+            field: 'references',
+          })
+        }
+      }
+      return sites
+    })
+    const documentIds = new Map(
+      staged.map(({ absolute, value }) => [absolute, value?.id]),
+    )
+    const violations = deletions.flatMap((deletion) => {
+      const documentId = documentIds.get(deletion.absolute)
+      if (documentId === undefined) return []
+      const target = `${documentId}#${deletion.id}`
+      const referring = referrers.filter((site) => site.ref === target)
+      if (referring.length === 0) return []
+      return [
+        locateOperation(
+          deletion.index,
+          `Operation ${deletion.index} deletes "${deletion.id}", which is still referenced by ${referring
+            .map((site) => `"${site.subject}" (${site.field})`)
+            .join(', ')}`,
+        ),
+      ]
+    })
+    if (violations.length > 0) return failed(violations)
+  }
+
+  // The atomic gate: the whole candidate workspace must compile before a
+  // single byte is written; any diagnostic rejects the entire batch.
+  const compilation = compileWorkspace(
+    [...resolvedWorkspace.profiles, ...resolvedWorkspace.documents].map(
+      (path) => {
+        const absolute = resolve(cwd, path)
+        return {
+          path,
+          source: candidates.get(absolute) ?? readFileSync(absolute, 'utf8'),
+        }
+      },
+    ),
+  )
+  if (!compilation.ok) return failed(compilation.diagnostics)
+
+  for (const [absolute, source] of candidates) {
+    writeFileSync(absolute, source, 'utf8')
+  }
+  const touched = [...candidates.keys()]
+    .map((absolute) => workspaceDocuments.get(absolute)!)
+    .sort()
+  return {
+    ok: true,
+    result: {
+      format: 'yarramate/apply-result/v1',
+      workspace: resolvedWorkspace.id,
+      applied: counts,
+      documents: touched,
+    },
+  }
+}
+
 export function runApplyCommand(
   options: readonly string[],
   cwd: string,
@@ -503,338 +763,42 @@ export function runApplyCommand(
           'apply requires an explicit workspace manifest (yarramate/workspace/v1)\n',
       }
     }
-    const failed = (diagnostics: readonly Diagnostic[]): CliResult => ({
-      exitCode: 1,
-      stdout: json ? diagnosticJson(diagnostics) : humanDiagnostics(diagnostics),
-      stderr: '',
-    })
-    const loadedWorkspace = loadWorkspaceManifest(
+    const operationsSource = readFileSync(
+      resolve(cwd, operationsPath),
+      'utf8',
+    )
+    const outcome = applyOperations(
+      { path: operationsPath, source: operationsSource },
       { path: workspacePath, source: manifestSource },
       cwd,
     )
-    if (!loadedWorkspace.ok) return failed(loadedWorkspace.diagnostics)
-    const workspace = loadedWorkspace.workspace
-
-    const operationsSource = readFileSync(resolve(cwd, operationsPath), 'utf8')
-    const loadedOperations = loadSourceDocument<OperationsDocument>(
-      { path: operationsPath, source: operationsSource },
-      validateOperations,
-      'Operations',
-    )
-    if (!loadedOperations.ok) return failed(loadedOperations.diagnostics)
-    const operations = loadedOperations.document.value.operations
-    const yaml = loadedOperations.document.yaml
-    const lineCounter = loadedOperations.document.lineCounter
-
-    // Documents are addressed by their manifest paths; an operation aimed
-    // anywhere else is rejected before anything is touched.
-    const workspaceDocuments = new Map(
-      workspace.documents.map((path) => [resolve(cwd, path), path]),
-    )
-    const candidates = new Map<string, string>()
-    const counts = {
-      addedConcepts: 0,
-      addedRelationships: 0,
-      updatedConcepts: 0,
-      updatedRelationships: 0,
-      deletedConcepts: 0,
-      deletedRelationships: 0,
-    }
-    const deletions: Array<{
-      readonly index: number
-      readonly absolute: string
-      readonly id: string
-    }> = []
-    const locateOperation = (index: number, message: string): Diagnostic => ({
-      severity: 'error',
-      code: 'YM912',
-      message,
-      ...locateSourcePath(
-        operationsPath,
-        yaml,
-        lineCounter,
-        ['operations', index, 'document'],
-        `/operations/${index}/document`,
-      ),
-    })
-    for (const [index, operation] of operations.entries()) {
-      const absolute = resolve(cwd, operation.document)
-      const manifestPath = workspaceDocuments.get(absolute)
-      const locate = (message: string): Diagnostic =>
-        locateOperation(index, message)
-      if (manifestPath === undefined) {
-        return failed([
-          locate(
-            `Operation ${index} targets "${operation.document}", which is not a document of workspace "${workspace.id}"`,
-          ),
-        ])
+    if (!outcome.ok) {
+      return {
+        exitCode: 1,
+        stdout: json
+          ? diagnosticJson(outcome.diagnostics)
+          : humanDiagnostics(outcome.diagnostics),
+        stderr: '',
       }
-      let source = candidates.get(absolute)
-      if (source === undefined) {
-        source = readFileSync(absolute, 'utf8')
-      }
-      if (operation.op === 'add-concept') {
-        source = appendCollectionItem(
-          source,
-          'concepts',
-          operation.concept as unknown as Readonly<Record<string, unknown>>,
-        )
-        counts.addedConcepts += 1
-      } else if (operation.op === 'add-relationship') {
-        source = appendCollectionItem(
-          source,
-          'relationships',
-          operation.relationship as unknown as Readonly<Record<string, unknown>>,
-        )
-        counts.addedRelationships += 1
-      } else if (
-        operation.op === 'delete-concept' ||
-        operation.op === 'delete-relationship'
-      ) {
-        const collection =
-          operation.op === 'delete-concept' ? 'concepts' : 'relationships'
-        const id =
-          operation.op === 'delete-concept'
-            ? operation.concept.id
-            : operation.relationship.id
-        if (itemMap(source, collection, id) === undefined) {
-          return failed([
-            locate(
-              `Operation ${index} deletes "${id}", which does not exist in ${operation.document}`,
-            ),
-          ])
-        }
-        source = removeCollectionItem(source, collection, id)
-        deletions.push({ index, absolute, id })
-        if (operation.op === 'delete-concept') {
-          counts.deletedConcepts += 1
-        } else {
-          counts.deletedRelationships += 1
-        }
-      } else {
-        const collection =
-          operation.op === 'update-concept' ? 'concepts' : 'relationships'
-        const payload = (
-          operation.op === 'update-concept'
-            ? operation.concept
-            : operation.relationship
-        ) as unknown as Readonly<Record<string, unknown>>
-        const scalars: readonly string[] =
-          operation.op === 'update-concept'
-            ? SCALAR_CONCEPT_FIELDS
-            : SCALAR_RELATIONSHIP_FIELDS
-        const lists: readonly string[] =
-          operation.op === 'update-concept'
-            ? LIST_CONCEPT_FIELDS
-            : LIST_RELATIONSHIP_FIELDS
-        const id = payload.id as string
-        const removals = operation.remove ?? []
-        const contradiction = removals.find(
-          (key) => payload[key] !== undefined,
-        )
-        if (contradiction !== undefined) {
-          return failed([
-            locate(
-              `Operation ${index} both sets and removes "${contradiction}" on "${id}"`,
-            ),
-          ])
-        }
-        const located = itemMap(source, collection, id)
-        if (located === undefined) {
-          return failed([
-            locate(
-              `Operation ${index} updates "${id}", which does not exist in ${operation.document}`,
-            ),
-          ])
-        }
-        for (const key of scalars) {
-          if (payload[key] === undefined) continue
-          source = setScalarField(
-            source,
-            itemMap(source, collection, id)!.map,
-            key,
-            payload[key],
-          )
-        }
-        for (const key of lists) {
-          const additions = payload[key] as readonly unknown[] | undefined
-          if (additions === undefined || additions.length === 0) continue
-          source = appendListField(
-            source,
-            itemMap(source, collection, id)!.map,
-            key,
-            additions,
-          )
-        }
-        for (const key of removals) {
-          const removed = removeField(
-            source,
-            itemMap(source, collection, id)!.map,
-            key,
-          )
-          if (removed === undefined) {
-            return failed([
-              locate(
-                `Operation ${index} removes "${key}", which is not set on "${id}"`,
-              ),
-            ])
-          }
-          source = removed
-        }
-        if (operation.op === 'update-concept') {
-          counts.updatedConcepts += 1
-        } else {
-          counts.updatedRelationships += 1
-        }
-      }
-      candidates.set(absolute, source)
     }
-
-    // Reference integrity for deletes (#123), evaluated against the
-    // post-batch state: stage everything first, then look, so a concept
-    // deleted together with its referring relationships in one batch
-    // succeeds while a target anything still points at rejects the
-    // whole batch. Referring sites are relationship endpoints, owner,
-    // constraint and identified references; projection selectors are
-    // deliberately unchecked — they tolerate no-match by design. The
-    // compile gate below stays the backstop.
-    if (deletions.length > 0) {
-      interface ReferringSite {
-        readonly ref: string
-        readonly subject: string
-        readonly field: string
-      }
-      const staged = workspace.documents.map((path) => {
-        const absolute = resolve(cwd, path)
-        return {
-          absolute,
-          value: parseDocument(
-            candidates.get(absolute) ?? readFileSync(absolute, 'utf8'),
-          ).toJSON() as {
-            readonly id?: string
-            readonly concepts?: readonly ConceptFields[]
-            readonly relationships?: readonly RelationshipFields[]
-          } | null,
-        }
-      })
-      const qualify = (documentId: string, reference: string): string =>
-        reference.includes('#') ? reference : `${documentId}#${reference}`
-      const referrers: ReferringSite[] = staged.flatMap(({ value }) => {
-        const documentId = value?.id
-        if (documentId === undefined) return []
-        const sites: ReferringSite[] = []
-        for (const concept of value?.concepts ?? []) {
-          const subject = `${documentId}#${concept.id}`
-          if (concept.owner !== undefined) {
-            sites.push({
-              ref: qualify(documentId, concept.owner),
-              subject,
-              field: 'owner',
-            })
-          }
-          for (const constraint of concept.constraints ?? []) {
-            sites.push({
-              ref: qualify(documentId, constraint.ref),
-              subject,
-              field: 'constraints',
-            })
-          }
-          for (const reference of concept.references ?? []) {
-            sites.push({
-              ref: qualify(documentId, reference.ref),
-              subject,
-              field: 'references',
-            })
-          }
-        }
-        for (const relationship of value?.relationships ?? []) {
-          const subject = `${documentId}#${relationship.id}`
-          for (const endpoint of ['from', 'to'] as const) {
-            const reference = relationship[endpoint]
-            if (reference !== undefined) {
-              sites.push({
-                ref: qualify(documentId, reference),
-                subject,
-                field: endpoint,
-              })
-            }
-          }
-          for (const reference of relationship.references ?? []) {
-            sites.push({
-              ref: qualify(documentId, reference.ref),
-              subject,
-              field: 'references',
-            })
-          }
-        }
-        return sites
-      })
-      const documentIds = new Map(
-        staged.map(({ absolute, value }) => [absolute, value?.id]),
-      )
-      const violations = deletions.flatMap((deletion) => {
-        const documentId = documentIds.get(deletion.absolute)
-        if (documentId === undefined) return []
-        const target = `${documentId}#${deletion.id}`
-        const referring = referrers.filter((site) => site.ref === target)
-        if (referring.length === 0) return []
-        return [
-          locateOperation(
-            deletion.index,
-            `Operation ${deletion.index} deletes "${deletion.id}", which is still referenced by ${referring
-              .map((site) => `"${site.subject}" (${site.field})`)
-              .join(', ')}`,
-          ),
-        ]
-      })
-      if (violations.length > 0) return failed(violations)
-    }
-
-    // The atomic gate: the whole candidate workspace must compile before a
-    // single byte is written; any diagnostic rejects the entire batch.
-    const compilation = compileWorkspace(
-      [...workspace.profiles, ...workspace.documents].map((path) => {
-        const absolute = resolve(cwd, path)
-        return {
-          path,
-          source: candidates.get(absolute) ?? readFileSync(absolute, 'utf8'),
-        }
-      }),
-    )
-    if (!compilation.ok) return failed(compilation.diagnostics)
-
-    for (const [absolute, source] of candidates) {
-      writeFileSync(absolute, source, 'utf8')
-    }
-    const touched = [...candidates.keys()]
-      .map((absolute) => workspaceDocuments.get(absolute)!)
-      .sort()
+    const { result } = outcome
     if (json) {
       return {
         exitCode: 0,
-        stdout: `${JSON.stringify(
-          {
-            format: 'yarramate/apply-result/v1',
-            workspace: workspace.id,
-            applied: counts,
-            documents: touched,
-          },
-          null,
-          2,
-        )}\n`,
+        stdout: `${JSON.stringify(result, null, 2)}\n`,
         stderr: '',
       }
     }
     const applied =
-      counts.addedConcepts +
-      counts.addedRelationships +
-      counts.updatedConcepts +
-      counts.updatedRelationships +
-      counts.deletedConcepts +
-      counts.deletedRelationships
+      result.applied.addedConcepts +
+      result.applied.addedRelationships +
+      result.applied.updatedConcepts +
+      result.applied.updatedRelationships +
+      result.applied.deletedConcepts +
+      result.applied.deletedRelationships
     return {
       exitCode: 0,
-      stdout: `Applied ${applied} operation${applied === 1 ? '' : 's'} to ${touched.join(', ')}\n`,
+      stdout: `Applied ${applied} operation${applied === 1 ? '' : 's'} to ${result.documents.join(', ')}\n`,
       stderr: '',
     }
   } catch (error) {

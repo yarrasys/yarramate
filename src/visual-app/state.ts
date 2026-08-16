@@ -6,10 +6,14 @@ import {
   type VisualChoicePresentPayload,
   type VisualDiagnostic,
   type VisualHandoffSummary,
+  type VisualLayoutSavePayload,
+  type VisualLayoutSaveResultPayload,
   type VisualViewSavePayload,
   type VisualViewSaveResultPayload,
   type VisualViewSummary,
 } from '../adapters/visual/protocol-contract.js'
+
+import type { YarramateOperation } from '../operations.js'
 import type { ProjectionQuery } from '../projection.js'
 import type {
   VisualRenderedModel,
@@ -104,6 +108,17 @@ export interface VisualAppState {
   /** Shown once a save lands ok, until the reviewer dismisses it or a fresh
    * save starts. */
   readonly viewSaveNotice: boolean
+  /** Operations staged for commit; replaces on same-field re-edit. */
+  readonly pendingChangeset: { readonly operations: readonly YarramateOperation[] }
+  /** Idle when no commit in flight; committing while waiting for apply-result. */
+  readonly commitStatus: 'idle' | 'committing'
+  /** Diagnostics from the most recent failed commit; null when idle or on success. */
+  readonly commitDiagnostics: readonly VisualDiagnostic[] | null
+  /** The document list the server reported for the last successful commit -
+   * never an optimistic local guess. Cleared when a fresh edit is staged. */
+  readonly commitNotice: readonly string[] | null
+  /** Transient notice from layout.save success/failure, cleared on next save. */
+  readonly layoutNotice: string | null
 }
 
 export type VisualAppAction =
@@ -141,6 +156,25 @@ export type VisualAppAction =
   | { readonly type: 'view.saved'; readonly result: VisualViewSaveResultPayload }
   | { readonly type: 'view.saveNotice.dismissed' }
   | {
+      readonly type: 'changeset.staged'
+      readonly operation: YarramateOperation
+    }
+  | { readonly type: 'changeset.discarded'; readonly index: number }
+  | { readonly type: 'changeset.cleared' }
+  | { readonly type: 'changeset.commit.sent' }
+  | {
+      readonly type: 'changeset.committed'
+      readonly documents: readonly string[]
+    }
+  | {
+      readonly type: 'apply.failed'
+      readonly diagnostics: readonly VisualDiagnostic[]
+    }
+  | {
+      readonly type: 'layout.saved'
+      readonly result: VisualLayoutSaveResultPayload
+    }
+  | {
       readonly type: 'handoff.received'
       readonly id: string
       readonly handoff: VisualHandoffSummary
@@ -157,7 +191,7 @@ export type VisualAppAction =
 
 export const initialVisualAppState: VisualAppState = {
   lifecycle: 'connecting',
-  authority: 'ad-hoc',
+  authority: 'canonical',
   title: '',
   description: '',
   chatEnabled: false,
@@ -180,6 +214,11 @@ export const initialVisualAppState: VisualAppState = {
   closedReason: null,
   pendingViewSave: null,
   viewSaveNotice: false,
+  pendingChangeset: { operations: [] },
+  commitStatus: 'idle',
+  commitDiagnostics: null,
+  commitNotice: null,
+  layoutNotice: null,
 }
 
 export const visualAppSnapshotFrom = (
@@ -198,10 +237,6 @@ export const visualAppSnapshotFrom = (
   frozen: snapshot.frozen,
   views: snapshot.views,
 })
-
-/** The exact words for what the reviewer is looking at. */
-export const visualAuthorityLabel = (authority: VisualAuthority): string =>
-  authority === 'canonical' ? 'Checked YarraMate model' : 'Ad hoc · non-canonical'
 
 /**
  * A dropped socket is recoverable only while the server still holds the
@@ -249,6 +284,28 @@ const viewWithin = (model: VisualRenderedModel): string => model.initialView
  */
 const turnAnswered = { awaitingAgent: false, agentStatus: null } as const
 
+/** Derive a unique key for an operation target (subject id + changed field names).
+ * Operations targeting the same subject and field should replace rather than queue.
+ * Combines op type, document, subject id, and sorted field names (excluding 'id').
+ */
+const changesetTargetKey = (op: YarramateOperation): string => {
+  if ('concept' in op) {
+    const concept = op.concept
+    const fields = Object.keys(concept)
+      .filter((k) => k !== 'id')
+      .sort()
+      .join(':')
+    return `${op.op}:${op.document}:concept:${concept.id}:${fields}`
+  } else {
+    const relationship = op.relationship
+    const fields = Object.keys(relationship)
+      .filter((k) => k !== 'id')
+      .sort()
+      .join(':')
+    return `${op.op}:${op.document}:relationship:${relationship.id}:${fields}`
+  }
+}
+
 const transition = (
   state: VisualAppState,
   action: VisualAppAction,
@@ -281,10 +338,11 @@ const transition = (
         viewSaveNotice: false,
       }
     case 'model.received':
+      // Mid-session model frames replace the compilation; preserve the
+      // reviewer's current view, filter, and search state across edits.
       return {
         ...state,
         model: action.model,
-        activeView: viewWithin(action.model),
         diagnostics: [],
       }
     case 'diagnostic.received':
@@ -435,6 +493,67 @@ const transition = (
     }
     case 'view.saveNotice.dismissed':
       return { ...state, viewSaveNotice: false }
+    case 'changeset.staged': {
+      // Replacing: if an operation targets the same subject and field, remove the old one.
+      const key = changesetTargetKey(action.operation)
+      const filtered = state.pendingChangeset.operations.filter(
+        (op) => changesetTargetKey(op) !== key,
+      )
+      return {
+        ...state,
+        pendingChangeset: {
+          operations: [...filtered, action.operation],
+        },
+        commitDiagnostics: null,
+        // A fresh edit makes the last commit's receipt stale, not wrong: drop it.
+        commitNotice: null,
+      }
+    }
+    case 'changeset.discarded': {
+      const { index } = action
+      if (index < 0 || index >= state.pendingChangeset.operations.length) {
+        return state
+      }
+      return {
+        ...state,
+        pendingChangeset: {
+          operations: state.pendingChangeset.operations.filter(
+            (_, i) => i !== index,
+          ),
+        },
+      }
+    }
+    case 'changeset.cleared':
+      return {
+        ...state,
+        pendingChangeset: { operations: [] },
+        commitDiagnostics: null,
+      }
+    case 'changeset.commit.sent':
+      // The button locks the moment the frame leaves, so one changeset cannot be
+      // committed twice while the runtime is still validating the first attempt.
+      return { ...state, commitStatus: 'committing', commitDiagnostics: null }
+    case 'changeset.committed':
+      return {
+        ...state,
+        pendingChangeset: { operations: [] },
+        commitStatus: 'idle',
+        commitDiagnostics: null,
+        commitNotice: action.documents,
+      }
+    case 'apply.failed':
+      return {
+        ...state,
+        commitStatus: 'idle',
+        commitDiagnostics: action.diagnostics,
+      }
+    case 'layout.saved': {
+      const notice = action.result.ok ? 'Layout saved' : action.result.message
+      return {
+        ...state,
+        layoutNotice: notice,
+      }
+    }
   }
 }
 
@@ -472,6 +591,8 @@ export type VisualAppIntent =
   | { readonly kind: 'end' }
   | { readonly kind: 'filter'; readonly query: ProjectionQuery }
   | { readonly kind: 'save-view'; readonly payload: VisualViewSavePayload }
+  | { readonly kind: 'commit-changeset' }
+  | { readonly kind: 'save-layout'; readonly payload: VisualLayoutSavePayload }
 
 /**
  * One intent as the frame the server admits. Every frame carries the sequence
@@ -519,6 +640,18 @@ export const visualBrowserInputFor = (
     case 'save-view':
       return {
         type: 'view.save',
+        lastAcknowledgedSequence,
+        payload: intent.payload,
+      }
+    case 'commit-changeset':
+      return {
+        type: 'changeset.commit',
+        lastAcknowledgedSequence,
+        payload: { operations: state.pendingChangeset.operations },
+      }
+    case 'save-layout':
+      return {
+        type: 'layout.save',
         lastAcknowledgedSequence,
         payload: intent.payload,
       }
@@ -603,5 +736,22 @@ export const visualAppActionsForFrame = (
             },
           ]
       }
+    case 'apply-result': {
+      const actions: VisualAppAction[] = []
+      if (frame.result.ok) {
+        actions.push({
+          type: 'changeset.committed',
+          documents: frame.result.result.documents,
+        })
+      } else {
+        actions.push({
+          type: 'apply.failed',
+          diagnostics: frame.result.diagnostics,
+        })
+      }
+      return actions
+    }
+    case 'layout-save-result':
+      return [{ type: 'layout.saved', result: frame.result }]
   }
 }

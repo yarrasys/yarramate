@@ -67,18 +67,18 @@ relationships: []
   }
   return {
     format: 'yarramate/visual-model/v1',
-    authority: 'ad-hoc',
+    authority: 'canonical',
     initialView: 'default',
-    sourceDigests: {},
+    sourceDigests: { 'model.likec4': 'a'.repeat(64) },
     graph: projectGraphForCanvas(compiled.graph, compiled.profileContext),
   }
 }
 
 const request: VisualSessionRequest = {
   format: 'yarramate/visual-session-request/v1',
-  authority: 'ad-hoc',
+  authority: 'canonical',
   title: 'Choose a delivery design',
-  description: 'Temporary non-canonical comparison',
+  description: 'Design options drawn from the checked workspace',
   chatEnabled: true,
   initialModel: modelWith(),
 }
@@ -418,8 +418,29 @@ const rawRequest = (origin: string, lines: readonly string[]) =>
     socket.on('error', reject)
   })
 
+/**
+ * Every session start resolves `<cwd>/.yarramate/workspace.yaml` and refuses
+ * to start (YMVS132) without one, so each test gets an empty-but-valid
+ * manifest by default; tests that need real documents overwrite this file.
+ */
+const minimalWorkspaceManifest = `format: yarramate/workspace/v1
+id: empty-fixture
+documents: []
+profiles: []
+projections: []
+adapterMappings: []
+evidence: []
+contracts: []
+`
+
 beforeEach(async () => {
   baseDir = await mkdtemp(join(tmpdir(), 'yarramate-visual-server-'))
+  await mkdir(join(baseDir, '.yarramate'), { recursive: true })
+  await writeFile(
+    join(baseDir, '.yarramate/workspace.yaml'),
+    minimalWorkspaceManifest,
+    'utf8',
+  )
 })
 
 afterEach(async () => {
@@ -927,7 +948,7 @@ describe('startVisualServer bootstrap and browser authentication', () => {
       lastSequence: 0,
       frozen: false,
       model: {
-        authority: 'ad-hoc',
+        authority: 'canonical',
         initialView: 'default',
         graph: { nodes: expect.any(Array), edges: expect.any(Array) },
       },

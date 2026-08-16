@@ -11,10 +11,19 @@ import visualEventSchema from '../../../schema/yarramate-visual-event.schema.jso
 import visualGraphSchema from '../../../schema/yarramate-visual-graph.schema.json' with {
   type: 'json',
 }
+import applyResultSchema from '../../../schema/yarramate-apply-result.schema.json' with {
+  type: 'json',
+}
+import operationsSchema from '../../../schema/yarramate-operations.schema.json' with {
+  type: 'json',
+}
 import projectionSchema from '../../../schema/yarramate-projection.schema.json' with {
   type: 'json',
 }
 import visualHandoffSchema from '../../../schema/yarramate-visual-handoff.schema.json' with {
+  type: 'json',
+}
+import visualLayoutSchema from '../../../schema/yarramate-visual-layout.schema.json' with {
   type: 'json',
 }
 import visualModelSchema from '../../../schema/yarramate-visual-model.schema.json' with {
@@ -68,7 +77,13 @@ ajv.addSchema([
   visualSessionRequestSchema,
   visualSessionStartedSchema,
   visualStatusSchema,
+  visualLayoutSchema,
   projectionSchema,
+  // The commit path's event and response documents reference Core's operations
+  // and apply-result shapes rather than restating them, so Ajv needs both
+  // resolvable before it compiles the visual validators.
+  operationsSchema,
+  applyResultSchema,
 ])
 
 // Diagnostics report the document they came from rather than a source file,
@@ -151,9 +166,10 @@ const jsonBytes = (value: unknown): number => {
 
 /**
  * Relative POSIX path confined to the candidate root. Absolute paths, parent
- * traversal, empty segments, dot-prefixed segments (how a staged symlink or
- * metadata entry would be smuggled in), Windows separators, and NUL bytes are
- * all rejected.
+ * traversal, empty segments, `.`/`..` segments, Windows separators, and NUL
+ * bytes are all rejected. A dot-prefixed directory is not an escape and is
+ * kept: every workspace keeps its documents under `.yarramate/`, so the
+ * digests of a canonical model are unrepresentable without it.
  */
 const isConfinedRelativePath = (candidate: string): boolean => {
   if (candidate.length === 0 || candidate.length > 1024) return false
@@ -162,7 +178,10 @@ const isConfinedRelativePath = (candidate: string): boolean => {
   if (posix.normalize(candidate) !== candidate) return false
   return candidate
     .split('/')
-    .every((segment) => segment.length > 0 && !segment.startsWith('.'))
+    .every(
+      (segment) =>
+        segment.length > 0 && segment !== '.' && segment !== '..',
+    )
 }
 
 const modelSemantics = (
@@ -190,16 +209,6 @@ const modelSemantics = (
       visualDiagnostic(
         'YMVS112',
         'A canonical visual model must record the source digests it was derived from',
-        path,
-        `${prefix}/sourceDigests`,
-      ),
-    )
-  }
-  if (fields.authority === 'ad-hoc' && digestKeys.length > 0) {
-    diagnostics.push(
-      visualDiagnostic(
-        'YMVS112',
-        'An ad-hoc visual model must not claim canonical source digests',
         path,
         `${prefix}/sourceDigests`,
       ),

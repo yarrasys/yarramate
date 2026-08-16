@@ -12,8 +12,10 @@ import {
 
 const canvasNode = (overrides: Partial<CanvasNode> = {}): CanvasNode => ({
   id: 'system.api',
+  localId: 'api',
   kind: 'yarramate/core@0.1#applicationComponent',
   kindLabel: 'applicationComponent',
+  document: 'main.yaml',
   layer: 'application',
   name: 'API',
   description: 'Handles requests.',
@@ -31,8 +33,10 @@ const canvasNode = (overrides: Partial<CanvasNode> = {}): CanvasNode => ({
 
 const canvasEdge = (overrides: Partial<CanvasEdge> = {}): CanvasEdge => ({
   id: 'edge-1',
+  localId: 'edge-1',
   kind: 'yarramate/core@0.1#dependency',
   kindLabel: 'dependency',
+  document: 'main.yaml',
   from: 'web',
   to: 'api',
   name: 'calls',
@@ -93,7 +97,7 @@ describe('visual workspace state', () => {
     expect(reopened.conversation).toMatchObject({ mode: 'open', unread: 0 })
   })
 
-  it('opens for a direct selection and clears only on model replacement', () => {
+  it('re-reads a held subject from the replacement model and drops it only when removed', () => {
     const selected = visualWorkspaceReducer(createVisualWorkspaceState(1568), {
       type: 'subject.selected',
       subject: elementSubject,
@@ -101,11 +105,67 @@ describe('visual workspace state', () => {
     expect(selected.conversation.mode).toBe('open')
     expect(selected.selectedSubject).toEqual(elementSubject)
 
+    // A commit that renamed the held subject: the inspector follows the edit
+    // instead of closing under the reviewer who just made it.
+    const renamed = visualWorkspaceReducer(selected, {
+      type: 'model.replaced',
+      graph: { nodes: [canvasNode({ name: 'Gateway API' })], edges: [] },
+    })
+    expect(renamed.selectedSubject).toMatchObject({
+      type: 'element',
+      id: 'system.api',
+      title: 'Gateway API',
+    })
+    expect(renamed.conversation.mode).toBe('open')
+
+    // A commit that deleted it, and a session with no model at all: nothing
+    // left to point at either way.
+    for (const graph of [{ nodes: [], edges: [] }, null]) {
+      const gone = visualWorkspaceReducer(selected, {
+        type: 'model.replaced',
+        graph,
+      })
+      expect(gone.selectedSubject).toBeNull()
+      expect(gone.conversation.mode).toBe('open')
+    }
+  })
+
+  it('re-resolves a held relationship endpoint title after replacement', () => {
+    const web = canvasNode({ id: 'web', name: 'Web' })
+    const api = canvasNode({ id: 'api', name: 'API' })
+    const selected = visualWorkspaceReducer(createVisualWorkspaceState(1568), {
+      type: 'subject.selected',
+      subject: normalizeSelectedRelationship(
+        canvasEdge(),
+        new Map([
+          ['web', 'Web'],
+          ['api', 'API'],
+        ]),
+      ),
+    })
+
     const replaced = visualWorkspaceReducer(selected, {
       type: 'model.replaced',
+      graph: {
+        nodes: [web, canvasNode({ id: 'api', name: 'Gateway API' })],
+        edges: [canvasEdge({ name: 'invokes' })],
+      },
     })
-    expect(replaced.selectedSubject).toBeNull()
-    expect(replaced.conversation.mode).toBe('open')
+    expect(replaced.selectedSubject).toMatchObject({
+      type: 'relationship',
+      id: 'edge-1',
+      sourceTitle: 'Web',
+      targetTitle: 'Gateway API',
+      label: 'invokes',
+    })
+
+    // The edge outlives one of its endpoints only in a broken model; a
+    // relationship the commit removed closes the inspector.
+    const dropped = visualWorkspaceReducer(selected, {
+      type: 'model.replaced',
+      graph: { nodes: [web, api], edges: [] },
+    })
+    expect(dropped.selectedSubject).toBeNull()
   })
 
   it('clamps width to the design maximum of min(45vw, 640px)', () => {

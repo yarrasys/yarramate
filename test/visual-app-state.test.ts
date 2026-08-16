@@ -16,7 +16,6 @@ import {
   visualAppActionsForFrame,
   visualAppReducer,
   visualAppSnapshotFrom,
-  visualAuthorityLabel,
   visualBrowserInputFor,
   type VisualAppState,
 } from '../src/visual-app/state.js'
@@ -24,23 +23,28 @@ import type { ProjectionQuery } from '../src/projection.js'
 
 /** A rendered model with an empty canvas graph — only initialView matters here. */
 const model = (initialView: string): VisualRenderedModel => ({
-  authority: 'ad-hoc',
+  authority: 'canonical',
   initialView,
   graph: { nodes: [], edges: [] },
+  documents: [],
+  vocabulary: {
+    conceptKinds: [],
+    relationshipKinds: [],
+  },
+  layouts: {},
 })
 
 const serverSnapshot: VisualSessionSnapshot = {
   protocolVersion: 'yarramate/visual-protocol/v1',
   sessionId: '0'.repeat(32),
-  authority: 'ad-hoc',
+  authority: 'canonical',
   title: 'Choose a delivery design',
-  description: 'Temporary non-canonical comparison',
+  description: 'Design options drawn from the checked workspace',
   chatEnabled: true,
   capabilities: {
     chat: true,
     choices: true,
     navigation: true,
-    modelReplacement: true,
     transcript: true,
   },
   webSocketUrl: 'ws://127.0.0.1:4321/socket',
@@ -116,9 +120,9 @@ describe('visualAppReducer session lifecycle', () => {
   it('activates the session from the server snapshot', () => {
     expect(activeState).toMatchObject({
       lifecycle: 'active',
-      authority: 'ad-hoc',
+      authority: 'canonical',
       title: 'Choose a delivery design',
-      description: 'Temporary non-canonical comparison',
+      description: 'Design options drawn from the checked workspace',
       activeView: 'choices',
       composerEnabled: true,
     })
@@ -373,7 +377,7 @@ describe('visualAppReducer model rendering', () => {
     expect(next.activeView).toBe('option-b')
   })
 
-  it("resets to the replacement model's own initial view, even after a drill-down", () => {
+  it('does not fall back to the replacement model\'s own initial view when one was already chosen', () => {
     const drilled = visualAppReducer(activeState, {
       type: 'view.navigated',
       viewId: 'option-b',
@@ -382,7 +386,31 @@ describe('visualAppReducer model rendering', () => {
       type: 'model.received',
       model: model('choices'),
     })
-    expect(next.activeView).toBe('choices')
+    // A mid-session recompile must not yank the reviewer back to a default view.
+    expect(next.activeView).toBe('option-b')
+  })
+
+  it('preserves the active filter and quick-filter text across a model replacement', () => {
+    const filtered = visualAppReducer(activeState, {
+      type: 'filter.applied',
+      query: { subjects: ['Q1'] },
+      matchedIds: ['node1'],
+      source: 'panel',
+    })
+    const searched = visualAppReducer(filtered, {
+      type: 'quickFilter.changed',
+      text: 'checkout',
+    })
+    const next = visualAppReducer(searched, {
+      type: 'model.received',
+      model: model('choices'),
+    })
+    expect(next.activeFilter).toEqual({
+      query: { subjects: ['Q1'] },
+      matchedIds: ['node1'],
+      source: 'panel',
+    })
+    expect(next.quickFilterText).toBe('checkout')
   })
 
   it('moves the active view locally without touching the transcript', () => {
@@ -393,6 +421,88 @@ describe('visualAppReducer model rendering', () => {
     expect(next.activeView).toBe('option-b')
     expect(next.transcript).toBe(activeState.transcript)
     expect(next.composerEnabled).toBe(true)
+  })
+})
+
+describe('visualAppReducer changeset management', () => {
+  it('replaces a pending edit targeting the same subject and field', () => {
+    const op1 = {
+      op: 'update-concept',
+      document: 'model.yaml',
+      concept: { id: 'Q1', name: 'First name' },
+    } as const
+    const op2 = {
+      op: 'update-concept',
+      document: 'model.yaml',
+      concept: { id: 'Q1', name: 'Revised name' },
+    } as const
+    const staged1 = visualAppReducer(activeState, {
+      type: 'changeset.staged',
+      operation: op1,
+    })
+    expect(staged1.pendingChangeset.operations).toHaveLength(1)
+    expect(staged1.pendingChangeset.operations[0]).toBe(op1)
+    
+    // Staging a second edit to the same field replaces the first.
+    const staged2 = visualAppReducer(staged1, {
+      type: 'changeset.staged',
+      operation: op2,
+    })
+    expect(staged2.pendingChangeset.operations).toHaveLength(1)
+    expect(staged2.pendingChangeset.operations[0]).toBe(op2)
+  })
+
+  it('keeps the changeset intact when apply fails, and sets diagnostics', () => {
+    const op = {
+      op: 'update-concept',
+      document: 'model.yaml',
+      concept: { id: 'Q1', name: 'Updated' },
+    } as const
+    const staged = visualAppReducer(activeState, {
+      type: 'changeset.staged',
+      operation: op,
+    })
+    expect(staged.pendingChangeset.operations).toHaveLength(1)
+    
+    const diagnostic = {
+      severity: 'error' as const,
+      code: 'TEST001',
+      message: 'Invalid update',
+      path: 'model.yaml',
+      pointer: '/concept/Q1',
+      line: 1,
+      column: 1,
+    } as const
+    
+    const failed = visualAppReducer(staged, {
+      type: 'apply.failed',
+      diagnostics: [diagnostic],
+    })
+    // Changeset is preserved so the user can fix and retry.
+    expect(failed.pendingChangeset.operations).toHaveLength(1)
+    expect(failed.commitDiagnostics).toEqual([diagnostic])
+    expect(failed.commitStatus).toBe('idle')
+  })
+
+  it('clears the changeset and diagnostics when commit succeeds', () => {
+    const op = {
+      op: 'update-concept',
+      document: 'model.yaml',
+      concept: { id: 'Q1', name: 'Updated' },
+    } as const
+    const staged = visualAppReducer(activeState, {
+      type: 'changeset.staged',
+      operation: op,
+    })
+    
+    const committed = visualAppReducer(staged, {
+      type: 'changeset.committed',
+      documents: ['model.yaml'],
+    })
+    expect(committed.pendingChangeset.operations).toEqual([])
+    expect(committed.commitStatus).toBe('idle')
+    expect(committed.commitDiagnostics).toBeNull()
+    expect(committed.commitNotice).toEqual(['model.yaml'])
   })
 })
 
@@ -908,13 +1018,6 @@ describe('canReconnect', () => {
     expect(canReconnect(lostAt, lostAt + RECONNECT_WINDOW_MS + 60_000)).toBe(
       false,
     )
-  })
-})
-
-describe('visualAuthorityLabel', () => {
-  it('names a checked model and an ad hoc one in the reviewer’s words', () => {
-    expect(visualAuthorityLabel('canonical')).toBe('Checked YarraMate model')
-    expect(visualAuthorityLabel('ad-hoc')).toBe('Ad hoc · non-canonical')
   })
 })
 

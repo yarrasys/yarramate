@@ -4,7 +4,7 @@ import {
   randomBytes as randomSource,
   timingSafeEqual,
 } from 'node:crypto'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { lstat, readFile } from 'node:fs/promises'
 import {
   createServer,
@@ -15,8 +15,9 @@ import type { AddressInfo, Socket } from 'node:net'
 import { basename, extname, join, resolve, sep } from 'node:path'
 import type { Duplex } from 'node:stream'
 import { fileURLToPath } from 'node:url'
+import Ajv2020Module from 'ajv/dist/2020.js'
 import { WebSocketServer, type RawData, type WebSocket } from 'ws'
-import { stringify } from 'yaml'
+import { parse, stringify } from 'yaml'
 import {
   VISUAL_LIMITS,
   VISUAL_PROTOCOL_VERSION,
@@ -32,6 +33,7 @@ import {
   type VisualEvent,
   type VisualFreezeReason,
   type VisualHandoff,
+  type VisualLayoutPositions,
   type VisualLifecycle,
   type VisualResponse,
   type VisualSessionRequest,
@@ -60,6 +62,9 @@ import {
   type ResolvedProfileContext,
   type SemanticGraph,
 } from '../../compiler.js'
+import { applyOperations } from '../../apply-command.js'
+import { projectGraphForCanvas } from '../../graph-projection.js'
+import { kindLabelOf } from '../../kind-label.js'
 import { loadWorkspaceManifest, type ResolvedWorkspace } from '../../workspace.js'
 import type {
   VisualRenderedModel,
@@ -67,6 +72,22 @@ import type {
   VisualSessionSnapshot,
   VisualTranscriptRecord,
 } from './wire.js'
+import visualLayoutSchema from '../../../schema/yarramate-visual-layout.schema.json' with {
+  type: 'json',
+}
+import visualProjectionSchema from '../../../schema/yarramate-projection.schema.json' with {
+  type: 'json',
+}
+
+// The layout sidecar is adapter-owned presentation state (ADR 0023) that
+// protocol.ts's validators never touch — the browser's own `layout.save`
+// payload is already schema-validated by `parseVisualBrowserInput` before it
+// reaches this module — so this file compiles its own single-purpose
+// validator for the sidecar files it reads directly off disk.
+const Ajv2020 = Ajv2020Module.default
+const layoutAjv = new Ajv2020({ allErrors: true })
+layoutAjv.addSchema(visualProjectionSchema)
+const validateVisualLayout = layoutAjv.compile(visualLayoutSchema)
 
 // The browser application imports these from `./wire.js`; the server keeps
 // publishing them so one import still covers the whole transport for an
@@ -170,6 +191,10 @@ const LIMIT_FREEZE: Readonly<Record<VisualFreezeReason, boolean>> = {
   'pending-events': true,
   'browser-disconnected': false,
   'terminal-event': false,
+  // A landed changeset that leaves the workspace unable to recompile is our
+  // own bug, not the reviewer's: the runtime is why the conversation stopped,
+  // same as the byte and queue ceilings above.
+  'recompile-failed': true,
 }
 
 /** Built browser application, beside the compiled adapter in `dist`. */
@@ -436,6 +461,10 @@ const eventFrom = (
       return { ...envelope, type: input.type, payload: input.payload }
     case 'view.save':
       return { ...envelope, type: input.type, payload: input.payload }
+    case 'changeset.commit':
+      return { ...envelope, type: input.type, payload: input.payload }
+    case 'layout.save':
+      return { ...envelope, type: input.type, payload: input.payload }
   }
 }
 
@@ -519,41 +548,32 @@ export const startVisualServer = async (
     throw cause
   }
 
-  // `request.initialModel.graph` is already a fully resolved graph — the
-  // caller compiled it (`buildVisualModelGraph`) before invoking
-  // `yarramate-visual start` — so there is no in-session compile step left;
-  // rendering is a direct projection of the request onto the wire shape.
-  const rendered: VisualRenderedModel = {
-    authority: request.initialModel.authority,
-    initialView: request.initialModel.initialView,
-    graph: request.initialModel.graph,
-  }
+  const manifestPath = resolve(options.cwd, '.yarramate/workspace.yaml')
 
-  const capabilities: VisualCapabilities = {
-    chat: request.chatEnabled,
-    choices: request.chatEnabled,
-    navigation: true,
-    modelReplacement: false,
-    transcript: true,
-  }
-
-  // Load the workspace manifest and build the views list from its projections.
-  const resolvedWorkspace: ResolvedWorkspace | undefined = (() => {
-    const manifestPath = resolve(options.cwd, '.yarramate/workspace.yaml')
+  // A session with no resolvable workspace manifest has nothing to compile,
+  // filter, or land a `changeset.commit` against, so a missing, unreadable, or
+  // invalid manifest refuses the session outright rather than starting one
+  // nothing can act on.
+  const resolvedWorkspace: ResolvedWorkspace = await (async () => {
     try {
       const manifestSource = readFileSync(manifestPath, 'utf8')
       const loaded = loadWorkspaceManifest(
         { path: manifestPath, source: manifestSource },
         options.cwd,
       )
-      return loaded.ok ? loaded.workspace : undefined
+      if (loaded.ok) return loaded.workspace
     } catch {
-      // Missing or unreadable manifest: session proceeds with no saved views.
-      return undefined
+      // Falls through to the same refusal as an invalid manifest below.
     }
+    return abandon(
+      serverError(
+        'YMVS132',
+        `Session requires a resolvable workspace manifest at ${manifestPath}`,
+      ),
+    )
   })()
 
-  const views: readonly VisualViewSummary[] = (resolvedWorkspace?.projections ?? []).flatMap(
+  const views: readonly VisualViewSummary[] = resolvedWorkspace.projections.flatMap(
     (projectionPath) => {
       try {
         const projectionSource = readFileSync(
@@ -582,35 +602,117 @@ export const startVisualServer = async (
     },
   )
 
+  // Drag positions are adapter-owned presentation state (ADR 0023): never
+  // validated by Core. An invalid or unreadable sidecar is skipped exactly
+  // like a broken saved view above — presentation state must never fail a
+  // session.
+  const layoutDir = resolve(options.cwd, '.yarramate/visual-layout')
+  const layouts: Record<string, VisualLayoutPositions> = (() => {
+    const built: Record<string, VisualLayoutPositions> = {}
+    let entries: readonly string[]
+    try {
+      entries = readdirSync(layoutDir)
+    } catch {
+      return built
+    }
+    for (const entry of entries) {
+      if (extname(entry) !== '.yaml' && extname(entry) !== '.yml') continue
+      try {
+        const source = readFileSync(join(layoutDir, entry), 'utf8')
+        const parsed: unknown = parse(source)
+        if (!validateVisualLayout(parsed)) continue
+        const sidecar = parsed as {
+          readonly projectionId: string
+          readonly positions: VisualLayoutPositions
+        }
+        built[sidecar.projectionId] = sidecar.positions
+      } catch {
+        // Skipped sidecar: presentation state must never fail a session.
+      }
+    }
+    return built
+  })()
+
+  // `request.initialModel.graph` is the caller's compile (`buildVisualModelGraph`,
+  // before invoking `yarramate-visual start`) and is only the fallback below:
+  // `recompileWorkspace` immediately below is the one path that actually fills
+  // `documents`/`vocabulary`, reused for both the initial render and every
+  // later `changeset.commit`.
+  let rendered: VisualRenderedModel = {
+    authority: request.initialModel.authority,
+    initialView: request.initialModel.initialView,
+    graph: request.initialModel.graph,
+    documents: [],
+    vocabulary: { conceptKinds: [], relationshipKinds: [] },
+    layouts,
+  }
+
+  const capabilities: VisualCapabilities = {
+    chat: request.chatEnabled,
+    choices: request.chatEnabled,
+    navigation: true,
+    transcript: true,
+  }
+
+  let compiledWorkspace:
+    | { readonly graph: SemanticGraph; readonly profileContext: ResolvedProfileContext }
+    | undefined
+
   /**
    * `filter.query` needs a `SemanticGraph`, not the `CanvasGraph` the rendered
-   * model carries — that graph is compiled once here, from the same
+   * model carries — that graph is compiled here, from the same
    * `resolvedWorkspace` profiles and documents `ask-command.ts` compiles from,
-   * and reused for every query the session receives. An ad-hoc session with no
-   * resolved workspace, or one whose sources fail to compile, has nothing to
-   * filter against: `filterMatchedIds` degrades to an empty match set rather
-   * than failing the session.
+   * and reused for every query the session receives. A session whose sources
+   * fail to compile has nothing to filter against: `filterMatchedIds`
+   * degrades to an empty match set rather than failing the session.
+   *
+   * This is the single compile path: called once for the initial `rendered`
+   * above and again after every landed `changeset.commit`, it re-reads
+   * sources from disk, reassigns `compiledWorkspace`, rebuilds the
+   * `CanvasGraph`, and reassigns `rendered` — carrying forward `authority`,
+   * `initialView`, and `layouts`, which a document recompile never touches.
+   * Returns whether it compiled, so a post-write failure can freeze the
+   * session instead of serving a stale graph.
    */
-  const compiledWorkspace:
-    | { readonly graph: SemanticGraph; readonly profileContext: ResolvedProfileContext }
-    | undefined = (() => {
-    const profiles = resolvedWorkspace?.profiles ?? []
-    const documents = resolvedWorkspace?.documents ?? []
-    if (profiles.length === 0 && documents.length === 0) return undefined
+  const recompileWorkspace = (): boolean => {
     try {
-      const compiled = compileWorkspaceWithProfileContext(
-        [...profiles, ...documents].map((path) => ({
-          path,
-          source: readFileSync(resolve(options.cwd, path), 'utf8'),
-        })),
+      const sources = [
+        ...resolvedWorkspace.profiles,
+        ...resolvedWorkspace.documents,
+      ].map((path) => ({
+        path,
+        source: readFileSync(resolve(options.cwd, path), 'utf8'),
+      }))
+      const compiled = compileWorkspaceWithProfileContext(sources)
+      if (!compiled.ok) {
+        compiledWorkspace = undefined
+        return false
+      }
+      compiledWorkspace = {
+        graph: compiled.graph,
+        profileContext: compiled.profileContext,
+      }
+      const conceptKinds = [...compiled.profileContext.conceptKindLineages.keys()].map(
+        (id) => ({ id, label: kindLabelOf(id) }),
       )
-      return compiled.ok
-        ? { graph: compiled.graph, profileContext: compiled.profileContext }
-        : undefined
+      const relationshipKinds = [
+        ...compiled.profileContext.relationshipKindLineages.keys(),
+      ].map((id) => ({ id, label: kindLabelOf(id) }))
+      rendered = {
+        authority: rendered.authority,
+        initialView: rendered.initialView,
+        graph: projectGraphForCanvas(compiled.graph, compiled.profileContext),
+        documents: resolvedWorkspace.documents,
+        vocabulary: { conceptKinds, relationshipKinds },
+        layouts: rendered.layouts,
+      }
+      return true
     } catch {
-      return undefined
+      compiledWorkspace = undefined
+      return false
     }
-  })()
+  }
+  recompileWorkspace()
 
   const filterMatchedIds = (query: ProjectionQuery): readonly string[] => {
     if (compiledWorkspace === undefined) return []
@@ -1197,6 +1299,107 @@ export const startVisualServer = async (
         sendFrame(socket, {
           kind: 'view-save-result',
           result: { ok: true, id, path },
+        })
+        return
+      }
+      if (event.type === 'changeset.commit') {
+        // Landing a batch is mechanical: Core's `applyOperations` never asks
+        // the agent anything, so it is answered here directly rather than
+        // through the pending queue a poll would drain. This never runs
+        // `git commit` - the user reverts a landed batch with `git revert`.
+        const operationsSource = stringify({
+          format: 'yarramate/operations/v1',
+          operations: event.payload.operations,
+        })
+        const outcome = applyOperations(
+          { path: 'changeset.yaml', source: operationsSource },
+          { path: manifestPath, source: readFileSync(manifestPath, 'utf8') },
+          options.cwd,
+        )
+        if (!outcome.ok) {
+          // Nothing landed: forward Core's diagnostics verbatim (ADR 0062)
+          // rather than recompiling or broadcasting anything.
+          sendFrame(socket, {
+            kind: 'apply-result',
+            result: { ok: false, diagnostics: outcome.diagnostics },
+          })
+          return
+        }
+        sendFrame(socket, {
+          kind: 'apply-result',
+          result: { ok: true, result: outcome.result },
+        })
+        if (recompileWorkspace()) {
+          broadcast({ kind: 'model', model: rendered })
+          return
+        }
+        // A post-write compile failure is a bug, not a user error: the batch
+        // landed but produced a document Core itself can no longer parse.
+        // The freeze alone only tells the browser input is refused, not why
+        // the graph on screen has gone stale, so a diagnostic response is
+        // journaled alongside it.
+        const diagnosticResponse: VisualResponse = {
+          format: 'yarramate/visual-response/v1',
+          sessionId,
+          responseId: drawHex(16),
+          eventId: event.eventId,
+          type: 'diagnostic',
+          timestamp: stamp(),
+          payload: {
+            diagnostics: [
+              serverDiagnostic(
+                'YMVS310',
+                'Workspace failed to recompile after a landed changeset',
+              ),
+            ],
+          },
+        }
+        const appendedResponse = await appendVisualResponse(paths, diagnosticResponse)
+        if (appendedResponse.ok) {
+          transcriptBytes = appendedResponse.transcriptBytes
+          recordResponse(diagnosticResponse)
+          broadcast({ kind: 'response', response: diagnosticResponse })
+        } else if (appendedResponse.freeze !== undefined) {
+          freeze(appendedResponse.freeze)
+        }
+        freeze('recompile-failed')
+        return
+      }
+      if (event.type === 'layout.save') {
+        // Saving a drag position is adapter-owned presentation state
+        // (ADR 0023): never routed through `apply`, never validated by Core,
+        // never `git commit`ed. It never asks the agent anything, so it is
+        // answered here directly rather than through the pending queue a
+        // poll would drain.
+        const { projectionId, positions } = event.payload
+        if (!views.some((view) => view.id === projectionId)) {
+          sendFrame(socket, {
+            kind: 'layout-save-result',
+            result: {
+              ok: false,
+              message: `"${projectionId}" is not a known view id`,
+            },
+          })
+          return
+        }
+        const path = `.yarramate/visual-layout/${projectionId}.yaml`
+        mkdirSync(layoutDir, { recursive: true })
+        writeFileSync(
+          resolve(options.cwd, path),
+          stringify({
+            format: 'yarramate/visual-layout/v1',
+            projectionId,
+            positions,
+          }),
+          'utf8',
+        )
+        rendered = {
+          ...rendered,
+          layouts: { ...rendered.layouts, [projectionId]: positions },
+        }
+        sendFrame(socket, {
+          kind: 'layout-save-result',
+          result: { ok: true, path },
         })
         return
       }

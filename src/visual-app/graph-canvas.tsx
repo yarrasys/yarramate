@@ -1,13 +1,17 @@
 import type React from 'react'
 import { useEffect, useRef } from 'react'
 import cytoscape from 'cytoscape'
-import type { Core, ElementDefinition } from 'cytoscape'
+import type { Core, ElementDefinition, NodeCollection } from 'cytoscape'
 import elk from 'cytoscape-elk'
 import type {
   CanvasGraph,
   CanvasNode,
   CanvasEdge,
 } from '../graph-projection.js'
+import type {
+  VisualLayoutPositions,
+  VisualLayoutSavePayload,
+} from '../adapters/visual/protocol-contract.js'
 
 // Register elk extension once at module load, guarded against re-registration
 let elkRegistered = false
@@ -499,6 +503,83 @@ export function relayoutVisible(cy: Core, direction: 'top-down' | 'left-right'):
     .run()
 }
 
+// `dragfree` fires once per drag (unlike `position`, which fires on every
+// intermediate frame), so it is the natural trigger for a layout save - but a
+// reviewer repositioning several nodes in quick succession should still
+// coalesce into one save carrying the final layout, not one write per node.
+export const DRAG_SAVE_DEBOUNCE_MS = 500
+
+// Whole-sidecar snapshot of every node's current position, keyed by subject
+// id. `layout.save` always writes the full map, never a partial patch, so
+// the server's `yarramate/visual-layout/v1` document stays self-consistent
+// with whatever the canvas showed at save time.
+export function buildPositionMap(nodes: NodeCollection): VisualLayoutPositions {
+  const positions: Record<string, { readonly x: number; readonly y: number }> = {}
+  nodes.forEach((node) => {
+    const { x, y } = node.position()
+    positions[node.id()] = { x, y }
+  })
+  return positions
+}
+
+// Pins every node the sidecar names to its saved position; a node the
+// sidecar doesn't mention keeps wherever the layout run that just finished
+// placed it. Runs after layout completes - there is no per-node "leave this
+// one alone" hook in `nodeLayoutOptions`, so overriding the finished result
+// is the only way to keep a subset fixed while ELK freely places the rest.
+export function applySavedPositions(cy: Core, saved: VisualLayoutPositions | undefined): void {
+  if (saved === undefined) return
+  cy.nodes().forEach((node) => {
+    const position = saved[node.id()]
+    if (position !== undefined) node.position(position)
+  })
+}
+
+export interface DragSaveHandle {
+  /** Cancels a queued save without unbinding the drag listener. */
+  readonly cancelPending: () => void
+  /** Unbinds the drag listener and cancels any queued save. */
+  readonly dispose: () => void
+}
+
+// Wires cytoscape's `dragfree` to a debounced whole-layout save. `getActiveViewId`
+// and `onSaveLayout` are read through indirection functions (rather than closed
+// over directly) so the component can keep this registration alive for its
+// whole lifetime while still always saving against the current view and
+// calling the current prop.
+export function registerDragSave(
+  cy: Core,
+  getActiveViewId: () => string,
+  onSaveLayout: (payload: VisualLayoutSavePayload) => void,
+): DragSaveHandle {
+  let timer: NodeJS.Timeout | null = null
+  const cancelPending = () => {
+    if (timer !== null) {
+      clearTimeout(timer)
+      timer = null
+    }
+  }
+  const handler = () => {
+    cancelPending()
+    timer = setTimeout(() => {
+      timer = null
+      const projectionId = getActiveViewId()
+      // The unfiltered pseudo-view is not a saved projection; the server
+      // rejects a save aimed at it.
+      if (projectionId === '') return
+      onSaveLayout({ projectionId, positions: buildPositionMap(cy.nodes()) })
+    }, DRAG_SAVE_DEBOUNCE_MS)
+  }
+  cy.on('dragfree', 'node', handler)
+  return {
+    cancelPending,
+    dispose: () => {
+      cy.off('dragfree', 'node', handler)
+      cancelPending()
+    },
+  }
+}
+
 interface GraphCanvasProps {
   readonly graph: CanvasGraph
   readonly selectedId: string | null
@@ -507,6 +588,9 @@ interface GraphCanvasProps {
   readonly quickFilterText: string
   readonly direction: 'top-down' | 'left-right'
   readonly activeViewId: string
+  /** Saved layout for the active view, or undefined when it has none yet. */
+  readonly savedPositions: VisualLayoutPositions | undefined
+  readonly onSaveLayout: (payload: VisualLayoutSavePayload) => void
 }
 
 /**
@@ -526,38 +610,44 @@ export function GraphCanvas({
   quickFilterText,
   direction,
   activeViewId,
+  savedPositions,
+  onSaveLayout,
 }: GraphCanvasProps): React.ReactElement {
   const containerRef = useRef<HTMLDivElement>(null)
   const cyRef = useRef<Core | null>(null)
   const onSelectRef = useRef(onSelect)
-  // True until the sync effect below has run once; the mount effect already
-  // populates initial elements, so that first sync run only needs to trigger
-  // layout, not redundantly remove and re-add the elements it just created.
   const isInitialSyncRef = useRef(true)
-  // Tracks the view active on the previous render, and whether a fit is
-  // pending because of it. `navigate()` updates `activeViewId` synchronously
-  // but `filter()` round-trips through the server, so a view switch's
-  // matched set can land on a later render than the id change itself -
-  // fitting eagerly on the id change would fit to the *previous* view's
-  // still-current matchedIds. Narrower quick-filter typing or a chat-driven
-  // structural filter over the same view leaves this alone, so pan/zoom
-  // don't jump under the reviewer mid-type. Layout direction toggles are
-  // armed the same way: they must relayout only the currently visible
-  // subgraph, not every element (see the graph-sync effect below).
   const activeViewIdRef = useRef(activeViewId)
   const directionRef = useRef(direction)
   const pendingViewFitRef = useRef(false)
+  // Keep latest onSaveLayout and savedPositions for the drag-save handler
+  const onSaveLayoutRef = useRef(onSaveLayout)
+  const savedPositionsRef = useRef(savedPositions)
+  const dragSaveHandleRef = useRef<DragSaveHandle | null>(null)
 
   // Keep onSelectRef up-to-date so tap handlers always call the latest prop
   useEffect(() => {
     onSelectRef.current = onSelect
   }, [onSelect])
 
-  // Mount effect: create cytoscape instance once on mount, wire tap handlers,
-  // cleanup on unmount. Intentionally NOT keyed on `graph` - recreating the
-  // instance on every graph update would discard pan/zoom/viewport state.
-  // Reads `graph` only for the initial element set; the effect below (keyed
-  // on `graph`) keeps elements in sync on every subsequent change in place.
+  // Keep onSaveLayoutRef up-to-date for the drag-save handler
+  useEffect(() => {
+    onSaveLayoutRef.current = onSaveLayout
+  }, [onSaveLayout])
+
+  // Keep savedPositionsRef up-to-date for the layoutstop handler
+  useEffect(() => {
+    savedPositionsRef.current = savedPositions
+  }, [savedPositions])
+
+  // Cancel pending drag-save when the active view changes, so a queued save
+  // never lands against a different view's sidecar. Also cleared on unmount.
+  useEffect(() => {
+    dragSaveHandleRef.current?.cancelPending()
+  }, [activeViewId])
+
+  // Mount effect: create cytoscape instance once on mount, wire tap and
+  // layoutstop handlers, setup drag-save, cleanup on unmount.
   useEffect(() => {
     if (!containerRef.current) return
 
@@ -583,7 +673,20 @@ export function GraphCanvas({
       onSelectRef.current(edgeId, 'edge')
     })
 
+    // Drag-end → debounced layout save with full position snapshot
+    dragSaveHandleRef.current = registerDragSave(
+      cy,
+      () => activeViewIdRef.current,
+      (payload) => onSaveLayoutRef.current(payload),
+    )
+
+    // After each layout run completes, pin nodes to their saved positions
+    cy.on('layoutstop', () => {
+      applySavedPositions(cy, savedPositionsRef.current)
+    })
+
     return () => {
+      dragSaveHandleRef.current?.dispose()
       cy.destroy()
       cyRef.current = null
     }
@@ -617,10 +720,8 @@ export function GraphCanvas({
   useEffect(() => {
     if (!cyRef.current) return
 
-    // Clear previous selection class from all elements
     cyRef.current.elements().removeClass('selected')
 
-    // Apply selection class to the matching element
     if (selectedId) {
       const element = cyRef.current.getElementById(selectedId)
       if (element.nonempty()) {

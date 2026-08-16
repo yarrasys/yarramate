@@ -36,47 +36,5 @@
     "initialModel": {
       "$ref": "https://yarramate.org/schema/visual-model/v1"
     }
-  },
-  "allOf": [
-    {
-      "if": {
-        "type": "object",
-        "required": ["authority"],
-        "properties": {
-          "authority": { "const": "canonical" }
-        }
-      },
-      "then": {
-        "type": "object",
-        "properties": {
-          "initialModel": {
-            "type": "object",
-            "properties": {
-              "authority": { "const": "canonical" }
-            }
-          }
-        }
-      }
-    },
-    {
-      "if": {
-        "type": "object",
-        "required": ["authority"],
-        "properties": {
-          "authority": { "const": "ad-hoc" }
-        }
-      },
-      "then": {
-        "type": "object",
-        "properties": {
-          "initialModel": {
-            "type": "object",
-            "properties": {
-              "authority": { "const": "ad-hoc" }
-            }
-          }
-        }
-      }
-    }
-  ]
+  }
 }

@@ -106,14 +106,12 @@
         "chat",
         "choices",
         "navigation",
-        "modelReplacement",
         "transcript"
       ],
       "properties": {
         "chat": { "type": "boolean" },
         "choices": { "type": "boolean" },
         "navigation": { "type": "boolean" },
-        "modelReplacement": { "type": "boolean" },
         "transcript": { "type": "boolean" }
       }
     }

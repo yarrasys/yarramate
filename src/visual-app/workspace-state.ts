@@ -1,4 +1,8 @@
-import type { CanvasEdge, CanvasNode } from '../graph-projection.js'
+import type {
+  CanvasEdge,
+  CanvasGraph,
+  CanvasNode,
+} from '../graph-projection.js'
 
 export type ConversationMode = 'auto' | 'open' | 'closed'
 
@@ -58,6 +62,27 @@ export const normalizeSelectedRelationship = (
   }
 }
 
+const nodeTitlesOf = (graph: CanvasGraph): ReadonlyMap<string, string> =>
+  new Map(graph.nodes.map((node) => [node.id, node.name] as const))
+
+const nextElement = (
+  graph: CanvasGraph,
+  id: string,
+): SelectedElement | null => {
+  const node = graph.nodes.find((candidate) => candidate.id === id)
+  return node === undefined ? null : normalizeSelectedElement(node)
+}
+
+const nextRelationship = (
+  graph: CanvasGraph,
+  id: string,
+): SelectedRelationship | null => {
+  const edge = graph.edges.find((candidate) => candidate.id === id)
+  return edge === undefined
+    ? null
+    : normalizeSelectedRelationship(edge, nodeTitlesOf(graph))
+}
+
 export const CONVERSATION_MIN_WIDTH = 320
 export const CONVERSATION_MAX_WIDTH = 640
 /** The share of the viewport the approved design lets the conversation take. */
@@ -91,7 +116,12 @@ export type VisualWorkspaceAction =
   | { readonly type: 'description.toggled' }
   | { readonly type: 'details.toggled' }
   | { readonly type: 'direction.set'; readonly direction: 'top-down' | 'left-right' }
-  | { readonly type: 'model.replaced' }
+  | {
+      readonly type: 'model.replaced'
+      /** The graph that replaced it, so a subject that survived the commit can
+       * be re-read from it instead of being dropped along with the old model. */
+      readonly graph: CanvasGraph | null
+    }
 
 // `min(45vw, 640px)`, never below the 320px floor the panel is usable at.
 export const conversationWidthBounds = (viewportWidth: number) => ({
@@ -207,10 +237,23 @@ export const visualWorkspaceReducer = (
       return { ...state, detailsOpen: !state.detailsOpen }
     case 'direction.set':
       return { ...state, direction: action.direction }
-    case 'model.replaced':
-      return state.selectedSubject === null
-        ? state
-        : { ...state, selectedSubject: null, descriptionExpanded: false }
+    case 'model.replaced': {
+      const held = state.selectedSubject
+      if (held === null) return state
+      const graph = action.graph
+      const survivor =
+        graph === null
+          ? null
+          : held.type === 'element'
+            ? nextElement(graph, held.id)
+            : nextRelationship(graph, held.id)
+      // A commit rewrites the whole model, but the reviewer's subject usually
+      // survives it - re-read the same id rather than closing the inspector
+      // under them. Only a subject the commit actually removed is dropped.
+      return survivor === null
+        ? { ...state, selectedSubject: null, descriptionExpanded: false }
+        : { ...state, selectedSubject: survivor }
+    }
   }
 }
 

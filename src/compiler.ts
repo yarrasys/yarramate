@@ -298,6 +298,30 @@ export const parseAttestationClaimValue = (
   }
 }
 
+export interface ConstraintExpectsParts {
+  readonly provider: string
+  readonly key: string
+  readonly value: string
+}
+
+// Mirrors the compiler's own write-side encoding (ADR 0075): provider and
+// key admit no whitespace, so the first two spaces delimit them and
+// everything after the second space is the expected value verbatim, spaces
+// included. This is the sole authority for decoding the value written at
+// the constraint's `expects` claim — reconciliation.ts delegates here
+// rather than mirroring the regex itself.
+export const parseConstraintExpectsValue = (
+  value: string,
+): ConstraintExpectsParts | undefined => {
+  const match = /^(\S+) (\S+) ([\s\S]+)$/.exec(value)
+  if (match === null) return undefined
+  return {
+    provider: match[1]!,
+    key: match[2]!,
+    value: match[3]!,
+  }
+}
+
 const describeAspect = (aspect: (typeof conceptKinds)[number]['aspect']) =>
   aspect.replace('-', ' ')
 

@@ -81,6 +81,7 @@
     "./schema/visual-model": "./schema/yarramate-visual-model.schema.json",
     "./schema/visual-graph": "./schema/yarramate-visual-graph.schema.json",
     "./schema/visual-handoff": "./schema/yarramate-visual-handoff.schema.json",
+    "./schema/visual-layout": "./schema/yarramate-visual-layout.schema.json",
     "./schema/visual-status": "./schema/yarramate-visual-status.schema.json",
     "./schema/visual-diagnostic-result": "./schema/yarramate-visual-diagnostic-result.schema.json"
   },

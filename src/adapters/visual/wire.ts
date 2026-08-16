@@ -1,12 +1,16 @@
 import type { CanvasGraph } from '../../graph-projection.js'
 import type {
   VISUAL_PROTOCOL_VERSION,
+  VisualApplyResultPayload,
   VisualAuthority,
   VisualCapabilities,
   VisualChoicePresentPayload,
   VisualDiagnostic,
   VisualFilterResultPayload,
   VisualFreezeReason,
+  VisualKindOption,
+  VisualLayoutPositions,
+  VisualLayoutSaveResultPayload,
   VisualResponse,
   VisualTerminationReason,
   VisualViewSaveResultPayload,
@@ -29,6 +33,14 @@ export interface VisualRenderedModel {
   readonly authority: VisualAuthority
   readonly initialView: string
   readonly graph: CanvasGraph
+  /** Manifest-relative document paths — the add-concept target dropdown. */
+  readonly documents: readonly string[]
+  readonly vocabulary: {
+    readonly conceptKinds: readonly VisualKindOption[]
+    readonly relationshipKinds: readonly VisualKindOption[]
+  }
+  /** Every saved layout sidecar, keyed by projection id (Plan-level decision 1). */
+  readonly layouts: { readonly [projectionId: string]: VisualLayoutPositions }
 }
 
 /**
@@ -99,4 +111,9 @@ export type VisualServerFrame =
   | { readonly kind: 'model'; readonly model: VisualRenderedModel }
   | { readonly kind: 'filter-result'; readonly result: VisualFilterResultPayload }
   | { readonly kind: 'view-save-result'; readonly result: VisualViewSaveResultPayload }
+  | { readonly kind: 'apply-result'; readonly result: VisualApplyResultPayload }
+  | {
+      readonly kind: 'layout-save-result'
+      readonly result: VisualLayoutSaveResultPayload
+    }
   | { readonly kind: 'closing'; readonly reason: VisualTerminationReason }

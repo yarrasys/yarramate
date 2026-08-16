@@ -4,7 +4,11 @@ import type {
   VisualSessionSnapshot,
 } from '../adapters/visual/wire.js'
 import type { ProjectionQuery } from '../projection.js'
-import type { VisualViewSavePayload } from '../adapters/visual/protocol-contract.js'
+import type {
+  VisualLayoutSavePayload,
+  VisualViewSavePayload,
+} from '../adapters/visual/protocol-contract.js'
+import type { YarramateOperation } from '../operations.js'
 import {
   canReconnect,
   initialVisualAppState,
@@ -41,6 +45,11 @@ export interface VisualSession {
   readonly clearFilter: () => void
   readonly setQuickFilterText: (text: string) => void
   readonly saveView: (payload: VisualViewSavePayload) => void
+  readonly stageChange: (operation: YarramateOperation) => void
+  readonly discardChange: (index: number) => void
+  readonly clearChangeset: () => void
+  readonly commitChangeset: () => void
+  readonly saveLayout: (payload: VisualLayoutSavePayload) => void
   readonly dismissSavedNotice: () => void
   readonly end: () => void
 }
@@ -194,6 +203,34 @@ export const useVisualSession = (): VisualSession => {
     [send],
   )
 
+  // Staging is local: nothing leaves the browser until the reviewer commits.
+  const stageChange = useCallback((operation: YarramateOperation) => {
+    dispatch({ type: 'changeset.staged', operation })
+  }, [])
+
+  const discardChange = useCallback((index: number) => {
+    dispatch({ type: 'changeset.discarded', index })
+  }, [])
+
+  const clearChangeset = useCallback(() => {
+    dispatch({ type: 'changeset.cleared' })
+  }, [])
+
+  const commitChangeset = useCallback(() => {
+    // An empty changeset has nothing to validate: the runtime would refuse it,
+    // so the button never spends a round trip proving that.
+    if (stateRef.current.pendingChangeset.operations.length === 0) return
+    dispatch({ type: 'changeset.commit.sent' })
+    send({ kind: 'commit-changeset' })
+  }, [send])
+
+  const saveLayout = useCallback(
+    (payload: VisualLayoutSavePayload) => {
+      send({ kind: 'save-layout', payload })
+    },
+    [send],
+  )
+
   const dismissSavedNotice = useCallback(() => {
     dispatch({ type: 'view.saveNotice.dismissed' })
   }, [])
@@ -213,6 +250,11 @@ export const useVisualSession = (): VisualSession => {
     clearFilter,
     setQuickFilterText,
     saveView,
+    stageChange,
+    discardChange,
+    clearChangeset,
+    commitChangeset,
+    saveLayout,
     dismissSavedNotice,
     end,
   }

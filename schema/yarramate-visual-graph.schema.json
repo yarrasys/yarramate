@@ -26,6 +26,8 @@
       "additionalProperties": false,
       "required": [
         "id",
+        "localId",
+        "document",
         "kind",
         "kindLabel",
         "layer",
@@ -44,6 +46,14 @@
       "properties": {
         "id": {
           "type": "string"
+        },
+        "localId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "document": {
+          "type": "string",
+          "minLength": 1
         },
         "kind": {
           "type": "string"
@@ -93,7 +103,7 @@
         "references": {
           "type": "array",
           "items": {
-            "type": "string"
+            "$ref": "#/$defs/identifiedReference"
           }
         },
         "presentIn": {
@@ -115,6 +125,8 @@
       "additionalProperties": false,
       "required": [
         "id",
+        "localId",
+        "document",
         "kind",
         "kindLabel",
         "from",
@@ -130,6 +142,14 @@
       "properties": {
         "id": {
           "type": "string"
+        },
+        "localId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "document": {
+          "type": "string",
+          "minLength": 1
         },
         "kind": {
           "type": "string"
@@ -161,7 +181,7 @@
         "references": {
           "type": "array",
           "items": {
-            "type": "string"
+            "$ref": "#/$defs/identifiedReference"
           }
         },
         "presentIn": {
@@ -172,29 +192,71 @@
         }
       }
     },
+    "identifiedReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "ref"],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "ref": {
+          "type": "string"
+        }
+      }
+    },
     "constraint": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["ref", "expects"],
+      "required": ["id", "ref", "expects"],
       "properties": {
+        "id": {
+          "type": "string"
+        },
         "ref": {
           "type": "string"
         },
         "expects": {
-          "type": ["string", "null"]
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["provider", "key", "value"],
+              "properties": {
+                "provider": {
+                  "type": "string"
+                },
+                "key": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     },
     "attestation": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["topic", "value"],
+      "required": ["topic", "by", "on", "recordedBy"],
       "properties": {
         "topic": {
           "type": "string"
         },
-        "value": {
+        "by": {
           "type": "string"
+        },
+        "on": {
+          "type": "string"
+        },
+        "recordedBy": {
+          "type": ["string", "null"]
         }
       }
     }

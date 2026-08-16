@@ -9,6 +9,7 @@
  * `node:path`, or the schema documents into its bundle.
  */
 import type { CanvasGraph } from '../../graph-projection.js'
+import type { YarramateApplyResult, YarramateOperation } from '../../operations.js'
 import type { ProjectionDefinition, ProjectionQuery } from '../../projection.js'
 
 export const VISUAL_PROTOCOL_VERSION = 'yarramate/visual-protocol/v1' as const
@@ -22,7 +23,7 @@ export const VISUAL_LIMITS = {
   staleSessionMs: 24 * 60 * 60 * 1000,
 } as const
 
-export type VisualAuthority = 'canonical' | 'ad-hoc'
+export type VisualAuthority = 'canonical'
 
 export interface VisualDiagnostic {
   readonly severity: 'error'
@@ -43,7 +44,6 @@ export interface VisualCapabilities {
   readonly chat: boolean
   readonly choices: boolean
   readonly navigation: boolean
-  readonly modelReplacement: boolean
   readonly transcript: boolean
 }
 
@@ -113,6 +113,11 @@ export interface VisualViewSummary {
   readonly presentation: ProjectionDefinition['presentation']
 }
 
+export interface VisualKindOption {
+  readonly id: string
+  readonly label: string
+}
+
 export interface VisualFilterQueryPayload {
   readonly query: ProjectionQuery
 }
@@ -128,6 +133,19 @@ export interface VisualViewSavePayload {
   readonly description: string
   readonly query: ProjectionQuery
   readonly presentation: ProjectionDefinition['presentation']
+}
+
+export interface VisualLayoutPositions {
+  readonly [subjectId: string]: { readonly x: number; readonly y: number }
+}
+
+export interface VisualChangesetCommitPayload {
+  readonly operations: readonly YarramateOperation[]
+}
+
+export interface VisualLayoutSavePayload {
+  readonly projectionId: string
+  readonly positions: VisualLayoutPositions
 }
 
 /**
@@ -191,6 +209,16 @@ export type VisualBrowserInput =
       readonly payload: VisualViewSavePayload
     }
   | {
+      readonly type: 'changeset.commit'
+      readonly lastAcknowledgedSequence: number
+      readonly payload: VisualChangesetCommitPayload
+    }
+  | {
+      readonly type: 'layout.save'
+      readonly lastAcknowledgedSequence: number
+      readonly payload: VisualLayoutSavePayload
+    }
+  | {
       readonly type: 'session.end'
       readonly lastAcknowledgedSequence: number
       readonly payload: VisualBrowserSessionEndPayload
@@ -218,6 +246,8 @@ export type VisualEvent =
     >
   | VisualEventEnvelope<'filter.query', VisualFilterQueryPayload>
   | VisualEventEnvelope<'view.save', VisualViewSavePayload>
+  | VisualEventEnvelope<'changeset.commit', VisualChangesetCommitPayload>
+  | VisualEventEnvelope<'layout.save', VisualLayoutSavePayload>
 
 export interface VisualChatResponsePayload {
   readonly text: string
@@ -256,6 +286,14 @@ export interface VisualDiagnosticPayload {
 export type VisualViewSaveResultPayload =
   | { readonly ok: true; readonly id: string; readonly path: string }
   | { readonly ok: false; readonly diagnostics: readonly VisualDiagnostic[] }
+
+export type VisualApplyResultPayload =
+  | { readonly ok: true; readonly result: YarramateApplyResult }
+  | { readonly ok: false; readonly diagnostics: readonly VisualDiagnostic[] }
+
+export type VisualLayoutSaveResultPayload =
+  | { readonly ok: true; readonly path: string }
+  | { readonly ok: false; readonly message: string }
 
 interface VisualResponseEnvelope<Type extends string, Payload> {
   readonly format: 'yarramate/visual-response/v1'
@@ -305,6 +343,7 @@ export type VisualFreezeReason =
   | 'pending-events'
   | 'browser-disconnected'
   | 'terminal-event'
+  | 'recompile-failed'
 
 export interface VisualStatus {
   readonly format: 'yarramate/visual-status/v1'

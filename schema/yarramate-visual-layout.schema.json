@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yarramate.org/schema/visual-layout/v1",
+  "title": "YarraMate visual layout",
+  "description": "Adapter-owned drag-position sidecar for one saved projection's canvas (ADR 0023). Never validated by Core, never routed through apply.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "projectionId", "positions"],
+  "properties": {
+    "format": {
+      "const": "yarramate/visual-layout/v1"
+    },
+    "projectionId": {
+      "$ref": "https://yarramate.org/schema/projection/v1#/$defs/id"
+    },
+    "positions": {
+      "$ref": "#/$defs/positions"
+    }
+  },
+  "$defs": {
+    "positions": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/position"
+      }
+    },
+    "position": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" }
+      }
+    }
+  }
+}

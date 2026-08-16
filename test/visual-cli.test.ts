@@ -63,15 +63,17 @@ const CLOSED_PORT = 1
 
 const modelWith = (): VisualModel => ({
   format: 'yarramate/visual-model/v1',
-  authority: 'ad-hoc',
+  authority: 'canonical',
   initialView: 'choices',
-  sourceDigests: {},
+  sourceDigests: { 'model.likec4': 'a'.repeat(64) },
   graph: {
     nodes: [
       {
         id: 'system',
+        localId: 'system',
         kind: 'yarramate/core@0.1#applicationComponent',
         kindLabel: 'applicationComponent',
+        document: 'main.yaml',
         layer: null,
         name: 'System',
         description: null,
@@ -92,9 +94,9 @@ const modelWith = (): VisualModel => ({
 
 const requestWith = (): VisualSessionRequest => ({
   format: 'yarramate/visual-session-request/v1',
-  authority: 'ad-hoc',
+  authority: 'canonical',
   title: 'Choose a delivery design',
-  description: 'Temporary non-canonical comparison',
+  description: 'Design options drawn from the checked workspace',
   chatEnabled: true,
   initialModel: modelWith(),
 })
@@ -285,7 +287,7 @@ const plantSession = async (
       format: 'yarramate/visual-session-marker/v1',
       id,
       createdAt,
-      authority: 'ad-hoc',
+      authority: 'canonical',
     },
   )
   const records = plantedJournal(id)
@@ -351,9 +353,32 @@ const startForeground = (requestPath: string, cwd: string): Foreground => {
   return { result, started: first.promise, stdout, stderr, signals }
 }
 
+/**
+ * A session refuses to start (YMVS132) without a resolvable workspace manifest,
+ * so each test gets an empty-but-valid one; tests needing real documents
+ * overwrite this file.
+ */
+const minimalWorkspaceManifest = `format: yarramate/workspace/v1
+id: empty-fixture
+documents: []
+profiles: []
+projections: []
+adapterMappings: []
+evidence: []
+contracts: []
+`
+
 beforeEach(async () => {
   baseDir = await mkdtemp(join(tmpdir(), 'yarramate-visual-cli-'))
   workDir = await mkdtemp(join(tmpdir(), 'yarramate-visual-work-'))
+  for (const root of [baseDir, workDir]) {
+    await mkdir(join(root, '.yarramate'), { recursive: true })
+    await writeFile(
+      join(root, '.yarramate/workspace.yaml'),
+      minimalWorkspaceManifest,
+      'utf8',
+    )
+  }
 })
 
 afterEach(async () => {
@@ -822,7 +847,7 @@ describe('status', () => {
       agent: { attached: false, inFlightEventId: null },
       // Read back from the journal that outlived the runtime.
       queue: { pendingEvents: 0, lastSequence: 2, frozen: false },
-      capabilities: { chat: false, modelReplacement: false },
+      capabilities: { chat: false, transcript: false },
     })
   })
 
@@ -853,7 +878,7 @@ describe('recover', () => {
     expect(handoff).toMatchObject({
       format: 'yarramate/visual-handoff/v1',
       sessionId: id,
-      authority: 'ad-hoc',
+      authority: 'canonical',
       decision: 'completed',
       terminationReason: 'user-ended',
       lastSequence: 2,
@@ -896,7 +921,7 @@ describe('recover', () => {
         format: 'yarramate/visual-session-marker/v1',
         id: identifier(0xfeed),
         createdAt: '2026-08-08T00:00:00.000Z',
-        authority: 'ad-hoc',
+        authority: 'canonical',
       },
     })
     const result = await runVisualClientCli(['recover', descriptorPath], workDir)
@@ -1035,7 +1060,7 @@ describe('stop', () => {
         format: 'yarramate/visual-session-marker/v1',
         id: identifier(0xfeed),
         createdAt: '2026-08-08T00:00:00.000Z',
-        authority: 'ad-hoc',
+        authority: 'canonical',
       },
     })
     const result = await runVisualClientCli(['stop', descriptorPath], workDir)
@@ -1078,7 +1103,7 @@ describe('runVisualStart', () => {
     expect(started).toMatchObject({
       format: 'yarramate/visual-session-started/v1',
       protocolVersion: VISUAL_PROTOCOL_VERSION,
-      authority: 'ad-hoc',
+      authority: 'canonical',
       title: 'Choose a delivery design',
       chatEnabled: true,
       capabilities: { chat: true, transcript: true },
@@ -1360,14 +1385,6 @@ describe('runVisualStart', () => {
     expect(refusalCodes(result)).toEqual(['YMVS407'])
   })
 
-  it('refuses an invalid request before any filesystem effect', async () => {
-    const requestPath = join(workDir, 'request.json')
-    await writeJson(requestPath, { ...requestWith(), authority: 'canonical' })
-    const result = await runVisualCli(['start', requestPath], workDir)
-    expect(result.exitCode).toBe(1)
-    expect(refusalCodes(result)).toContain('YMVS111')
-    expect(existsSync(join(workDir, VISUAL_SESSION_DIRECTORY))).toBe(false)
-  })
 
   it('prunes a session a previous runtime abandoned', async () => {
     const stale = identifier(0x5747)
@@ -1380,7 +1397,7 @@ describe('runVisualStart', () => {
       format: 'yarramate/visual-session-marker/v1',
       id: stale,
       createdAt: abandonedAt.toISOString(),
-      authority: 'ad-hoc',
+      authority: 'canonical',
     })
     await writeFile(join(root, 'journal.jsonl'), '', { mode: 0o600 })
     // Collection follows what nothing has written to, so the abandonment has

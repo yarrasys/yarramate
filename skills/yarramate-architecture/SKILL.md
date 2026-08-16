@@ -233,28 +233,29 @@ yarramate-likec4 export-project .yarramate/likec4-project.yaml .yarramate-out/li
 
 ## Explain a model visually
 
-Use this journey when the answer is a picture the user talks to: "visually
-explain this architecture", "show how this question relates to the model",
-"compare these choices visually", "open a visual conversation about this flow".
-No CLI command is asked of the user; this skill stays the public interface.
+Use this journey when the answer is a picture the user talks to or edits:
+"visually explain this architecture", "show how this question relates to the
+model", "compare these choices visually", "let me fix these names on the
+diagram". No CLI command is asked of the user; this skill stays the public
+interface.
 
 ```text
 request
-  -> classify canonical or ad hoc authority
-  -> for repository architecture: yarramate check, then yarramate ask --json
-  -> resolve LikeC4 >=1.59.2 <1.60.0; ask before the pinned runner
+  -> yarramate check, then yarramate-visual request > request.json
   -> inspect actual harness delegation/recovery capabilities
   -> start yarramate-visual as a managed foreground process
   -> capable: delegate a bounded visual agent and await handoff
   -> incapable: diagram-only mode; continue the conversation here
+  -> reviewer edits and commits: the runtime lands them through `apply`
   -> End or failure: recover, optionally read the transcript, stop, resume
 ```
 
 Read [references/visual-conversations.md](references/visual-conversations.md)
-before starting a session. It owns the authority rules, the compiler consent
-step, the capability test, the exact commands and documents, the delegated
-child's prompt and authority limits, and the recovery order. A visual session
-renders a bounded slice; it never becomes declared intent on its own.
+before starting a session. It owns the request builder and its refusals, the
+capability test, the exact commands and documents, the delegated child's prompt
+and authority limits, what a committed changeset writes, and the recovery order.
+The session renders and edits the checked workspace; Git review still accepts or
+discards whatever it wrote.
 
 ## Correctness and authority
 
@@ -263,8 +264,10 @@ renders a bounded slice; it never becomes declared intent on its own.
 - A repair command cannot serve as verification. Run read-only adapter checks
   before `map --sync`, use sync only while authoring, and never put sync in a
   CI verification gate.
-- Keep LikeC4 optional. Default to visual output for these guided journeys,
-  but respect an explicit request for tool-neutral semantic output only.
+- Keep LikeC4 optional. Default to generating the LikeC4 project for these
+  guided journeys, but respect an explicit request for tool-neutral semantic
+  output only. The browser session does not use it: `yarramate-visual` renders
+  the native model itself.
 - Keep adapter fields outside native documents.
 - Use globally qualified identities at CLI and projection boundaries.
 - Preserve source-located diagnostics verbatim when asking the author to fix

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://yarramate.org/schema/visual-model/v1",
   "title": "YarraMate visual model",
-  "description": "One complete, self-contained native model graph rendered inside a visual session.",
+  "description": "One complete, self-contained native model graph handed to a visual session at start.",
   "type": "object",
   "additionalProperties": false,
   "required": ["format", "authority", "initialView", "sourceDigests", "graph"],
@@ -50,31 +50,11 @@
           }
         }
       }
-    },
-    {
-      "if": {
-        "type": "object",
-        "required": ["authority"],
-        "properties": {
-          "authority": {
-            "const": "ad-hoc"
-          }
-        }
-      },
-      "then": {
-        "type": "object",
-        "properties": {
-          "sourceDigests": {
-            "type": "object",
-            "maxProperties": 0
-          }
-        }
-      }
     }
   ],
   "$defs": {
     "authority": {
-      "enum": ["canonical", "ad-hoc"]
+      "const": "canonical"
     },
     "viewId": {
       "type": "string",
@@ -87,7 +67,7 @@
     "relativePath": {
       "type": "string",
       "maxLength": 1024,
-      "pattern": "^(?:[A-Za-z0-9_-][A-Za-z0-9._-]*/)*[A-Za-z0-9_-][A-Za-z0-9._-]*$"
+      "pattern": "^(?:(?!\\.\\.?/)[A-Za-z0-9._-]+/)*(?!\\.\\.?$)[A-Za-z0-9._-]+$"
     }
   }
 }

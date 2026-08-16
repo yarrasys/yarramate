@@ -103,7 +103,8 @@
             "transcript-bytes",
             "pending-events",
             "browser-disconnected",
-            "terminal-event"
+            "terminal-event",
+            "recompile-failed"
           ]
         }
       }

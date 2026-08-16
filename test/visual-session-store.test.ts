@@ -43,17 +43,17 @@ import { projectGraphForCanvas } from '../src/graph-projection.js'
 
 const model: VisualModel = {
   format: 'yarramate/visual-model/v1',
-  authority: 'ad-hoc',
+  authority: 'canonical',
   initialView: 'choices',
-  sourceDigests: {},
+  sourceDigests: { 'model.likec4': 'a'.repeat(64) },
   graph: { nodes: [], edges: [] },
 }
 
 const request: VisualSessionRequest = {
   format: 'yarramate/visual-session-request/v1',
-  authority: 'ad-hoc',
+  authority: 'canonical',
   title: 'Choose a delivery design',
-  description: 'Temporary non-canonical comparison',
+  description: 'Design options drawn from the checked workspace',
   chatEnabled: true,
   initialModel: model,
 }
@@ -175,7 +175,7 @@ describe('visual session store', () => {
         format: VISUAL_SESSION_MARKER_FORMAT,
         id: sessionId,
         createdAt: '2026-08-08T00:00:00.000Z',
-        authority: 'ad-hoc',
+        authority: 'canonical',
       })
     })
 
@@ -200,7 +200,10 @@ describe('visual session store', () => {
     })
 
     it('rejects a session request that fails protocol validation', async () => {
-      const broken = { ...request, authority: 'canonical' } as const
+      const broken = {
+        ...request,
+        initialModel: { ...model, sourceDigests: {} },
+      } as const
 
       await expect(
         createVisualSession(
@@ -662,7 +665,7 @@ describe('visual session store', () => {
 
       expect(await recoverVisualSession(session.paths)).toMatchObject({
         sessionId,
-        authority: 'ad-hoc',
+        authority: 'canonical',
         decision: 'completed',
         terminationReason: 'user-ended',
         lastSequence: 2,
@@ -845,7 +848,7 @@ relationships: []
           format: VISUAL_SESSION_MARKER_FORMAT,
           id: 'cd'.repeat(16),
           createdAt: '2026-08-08T00:00:00.000Z',
-          authority: 'ad-hoc',
+          authority: 'canonical',
         }),
       )
 

@@ -4,6 +4,8 @@ import { QuickFilterBox } from './quick-filter.js'
 import { ViewPicker } from './view-picker.js'
 import { SaveViewControl } from './save-view.js'
 import { describeQuery } from './describe-query.js'
+import { ChangesetTray } from './changeset-tray.js'
+import { ConceptForm, RelationshipForm } from './subject-form.js'
 import {
   useEffect,
   useLayoutEffect,
@@ -17,18 +19,17 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react'
 import type { ProjectionQuery } from '../projection.js'
+import type { VisualRenderedModel } from '../adapters/visual/wire.js'
+import type { YarramateOperation } from '../operations.js'
 import type {
   VisualChoicePresentPayload,
   VisualDiagnostic,
+  VisualLayoutSavePayload,
   VisualViewSavePayload,
   VisualViewSummary,
 } from '../adapters/visual/protocol-contract.js'
 import { useVisualSession } from './session-client.js'
-import {
-  visualAuthorityLabel,
-  type VisualAppRecord,
-  type VisualAppState,
-} from './state.js'
+import type { VisualAppRecord, VisualAppState } from './state.js'
 import {
   conversationWidthBounds,
   createVisualWorkspaceState,
@@ -129,8 +130,8 @@ const CommandStrip = ({
     <div className="command-identity">
       <h1>{state.title === '' ? 'Opening the session' : state.title}</h1>
       <span className="beta-badge">Beta</span>
-      <span className={`authority authority-${state.authority}`}>
-        {visualAuthorityLabel(state.authority)}
+      <span className="authority">
+        Checked YarraMate model
       </span>
       <span className="connection-state" role="status">{connection}</span>
     </div>
@@ -261,7 +262,6 @@ const Choices = ({
     </ul>
   </div>
 )
-
 const DiagramWorkspace = ({
   state,
   selectedId,
@@ -269,6 +269,7 @@ const DiagramWorkspace = ({
   direction,
   onSelect,
   onClearFilter,
+  onSaveLayout,
 }: {
   readonly state: VisualAppState
   readonly selectedId: string | null
@@ -276,6 +277,7 @@ const DiagramWorkspace = ({
   readonly direction: 'top-down' | 'left-right'
   readonly onSelect: (subject: SelectedDiagramSubject) => void
   readonly onClearFilter: () => void
+  readonly onSaveLayout: (payload: VisualLayoutSavePayload) => void
 }) => {
   // An edge names its endpoints by node id; the reviewer reads titles. The
   // rendering model the renderer itself draws answers that, so nothing here
@@ -322,7 +324,14 @@ const DiagramWorkspace = ({
             quickFilterText={state.quickFilterText}
             direction={direction}
             activeViewId={state.activeView}
+            savedPositions={state.model.layouts[state.activeView]}
+            onSaveLayout={onSaveLayout}
           />
+        )}
+        {state.layoutNotice === null ? null : (
+          <div className="layout-notice-pill" role="status">
+            <span>{state.layoutNotice}</span>
+          </div>
         )}
         {waiting === null ? null : <p className="waiting">{waiting}</p>}
       </div>
@@ -384,67 +393,75 @@ const ExpandableDescription = ({
  */
 const SelectedSubjectInspector = ({
   subject,
+  model,
+  operations,
   expanded,
   onToggleDescription,
   onClear,
+  onStageChange,
 }: {
   readonly subject: SelectedDiagramSubject
+  readonly model: VisualRenderedModel
+  readonly operations: readonly YarramateOperation[]
   readonly expanded: boolean
   readonly onToggleDescription: () => void
   readonly onClear: () => void
-}) => (
-  <section className="subject-inspector" aria-labelledby="subject-heading">
-    <div className="subject-heading-row">
-      <div>
-        <p className="subject-type">
-          {subject.type === 'element'
-            ? 'Selected element'
-            : 'Selected relationship'}
-        </p>
-        <h2 id="subject-heading">
-          {subject.type === 'element'
-            ? subject.title
-            : `${subject.sourceTitle} → ${subject.targetTitle}`}
-        </h2>
+  readonly onStageChange: (operation: YarramateOperation) => void
+}) => {
+  const node =
+    subject.type === 'element'
+      ? model.graph.nodes.find((candidate) => candidate.id === subject.id)
+      : undefined
+  const edge =
+    subject.type === 'relationship'
+      ? model.graph.edges.find((candidate) => candidate.id === subject.id)
+      : undefined
+
+  return (
+    <section className="subject-inspector" aria-labelledby="subject-heading">
+      <div className="subject-heading-row">
+        <div>
+          <p className="subject-type">
+            {subject.type === 'element'
+              ? 'Selected element'
+              : 'Selected relationship'}
+          </p>
+          <h2 id="subject-heading">
+            {subject.type === 'element'
+              ? subject.title
+              : `${subject.sourceTitle} → ${subject.targetTitle}`}
+          </h2>
+        </div>
+        <button type="button" className="subject-clear" onClick={onClear}>
+          Clear
+        </button>
       </div>
-      <button type="button" className="subject-clear" onClick={onClear}>
-        Clear
-      </button>
-    </div>
 
-    {subject.type === 'element' ? (
-      <dl className="subject-facts">
-        <div>
-          <dt>Identity</dt>
-          <dd>
-            <code>{subject.id}</code>
-          </dd>
-        </div>
-        <div>
-          <dt>Kind</dt>
-          <dd>{subject.kind}</dd>
-        </div>
-      </dl>
-    ) : (
-      <dl className="subject-facts">
-        <div>
-          <dt>Label</dt>
-          <dd>{subject.label ?? 'Unlabelled relationship'}</dd>
-        </div>
-        <div>
-          <dt>Kind</dt>
-          <dd>{subject.kind}</dd>
-        </div>
-      </dl>
-    )}
+      {node !== undefined ? (
+        <ConceptForm
+          node={node}
+          model={model}
+          operations={operations}
+          onStageChange={onStageChange}
+        />
+      ) : null}
+      {edge !== undefined ? (
+        <RelationshipForm
+          edge={edge}
+          model={model}
+          operations={operations}
+          onStageChange={onStageChange}
+        />
+      ) : null}
 
-    <ExpandableDescription
-      text={subject.description}
-      expanded={expanded}
-      onToggle={onToggleDescription}
-    />
-  </section>
-)
+      <ExpandableDescription
+        text={subject.description}
+        expanded={expanded}
+        onToggle={onToggleDescription}
+      />
+    </section>
+  )
+}
 
 const ConversationPanel = ({
   state,
@@ -456,6 +473,10 @@ const ConversationPanel = ({
   onChoice,
   onToggleDescription,
   onClearSubject,
+  onDiscardChange,
+  onStageChange,
+  onClearChangeset,
+  onCommitChangeset,
 }: {
   readonly state: VisualAppState
   readonly hidden: boolean
@@ -466,6 +487,10 @@ const ConversationPanel = ({
   readonly onChoice: (optionId: string) => void
   readonly onToggleDescription: () => void
   readonly onClearSubject: () => void
+  readonly onDiscardChange: (index: number) => void
+  readonly onStageChange: (operation: YarramateOperation) => void
+  readonly onClearChangeset: () => void
+  readonly onCommitChangeset: () => void
 }) => {
   const [draft, setDraft] = useState('')
   const agentWaiting =
@@ -495,14 +520,24 @@ const ConversationPanel = ({
       hidden={hidden}
     >
       <div className="conversation-scroll">
-        {selectedSubject === null ? null : (
+        {selectedSubject === null || state.model === null ? null : (
           <SelectedSubjectInspector
             subject={selectedSubject}
+            model={state.model}
+            operations={state.pendingChangeset.operations}
             expanded={descriptionExpanded}
             onToggleDescription={onToggleDescription}
             onClear={onClearSubject}
+            onStageChange={onStageChange}
           />
         )}
+
+        <ChangesetTray
+          state={state}
+          onDiscardChange={onDiscardChange}
+          onClearChangeset={onClearChangeset}
+          onCommitChangeset={onCommitChangeset}
+        />
 
         <ol className="ledger" role="log" aria-live="polite">
           {state.transcript.length === 0 ? (
@@ -659,8 +694,24 @@ const ConversationSeparator = ({
 }
 
 export const App = () => {
-  const { state, connected, ask, choose, navigate, filter, clearFilter, setQuickFilterText, saveView, dismissSavedNotice, end } =
-    useVisualSession()
+  const {
+    state,
+    connected,
+    ask,
+    choose,
+    navigate,
+    filter,
+    clearFilter,
+    setQuickFilterText,
+    saveView,
+    saveLayout,
+    dismissSavedNotice,
+    discardChange,
+    stageChange,
+    clearChangeset,
+    commitChangeset,
+    end,
+  } = useVisualSession()
 
   const [workspace, dispatchWorkspace] = useReducer(
     visualWorkspaceReducer,
@@ -712,14 +763,17 @@ export const App = () => {
     if (received) dispatchWorkspace({ type: 'attention.received' })
   }, [state.transcript.length, state.choices, state.diagnostics])
 
-  // Promotion replaces the model the reviewer was pointing at, so a subject
-  // held from the old one no longer describes anything. Views and lifecycle
-  // change under the same model and must leave the selection alone.
+  // A commit or a promotion replaces the whole model. The workspace re-reads the
+  // held subject from the new graph rather than assuming it is gone; views and
+  // lifecycle change under the same model and must leave the selection alone.
   const activeCandidate = useRef(state.model)
   useEffect(() => {
     if (state.model !== activeCandidate.current) {
       activeCandidate.current = state.model
-      dispatchWorkspace({ type: 'model.replaced' })
+      dispatchWorkspace({
+        type: 'model.replaced',
+        graph: state.model?.graph ?? null,
+      })
     }
   }, [state.model])
 
@@ -786,6 +840,7 @@ export const App = () => {
             dispatchWorkspace({ type: 'subject.selected', subject })
           }
           onClearFilter={clearFilter}
+          onSaveLayout={saveLayout}
         />
         {conversationOpen ? (
           <ConversationSeparator
@@ -810,6 +865,10 @@ export const App = () => {
             dispatchWorkspace({ type: 'description.toggled' })
           }
           onClearSubject={() => dispatchWorkspace({ type: 'subject.cleared' })}
+          onDiscardChange={discardChange}
+          onStageChange={stageChange}
+          onClearChangeset={clearChangeset}
+          onCommitChangeset={commitChangeset}
         />
       </div>
     </main>

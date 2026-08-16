@@ -21,6 +21,9 @@
     "test/visual-app-render.test.ts",
     "test/graph-canvas.test.ts",
     "test/filter-panel.test.ts",
-    "test/save-view.test.ts"
+    "test/save-view.test.ts",
+    "test/graph-canvas-layout.test.ts",
+    "test/changeset-tray.test.ts",
+    "test/subject-form.test.ts"
   ]
 }

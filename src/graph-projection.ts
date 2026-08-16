@@ -3,10 +3,14 @@ import {
   type GraphClaim,
   type ResolvedProfileContext,
   type SemanticGraph,
+  parseAttestationClaimValue,
+  parseConstraintExpectsValue,
 } from './compiler.js'
-
+import { kindLabelOf } from './kind-label.js'
 export interface CanvasNode {
-  readonly id: string // subject id, e.g. "yarramate-engine#compiler-module"
+  readonly id: string // qualified subject id, e.g. "yarramate-engine#compiler-module"
+  readonly localId: string // authored id inside its document, e.g. "compiler-module"
+  readonly document: string // manifest-relative path, from the subject's kind claim source
   readonly kind: string // resolved kind identity, e.g. "yarramate/core@0.1#applicationComponent"
   readonly kindLabel: string // local id stripped of profile prefix, e.g. "applicationComponent"
   readonly layer: string | null // from profileContext.conceptKindLayers, null if unresolved
@@ -18,19 +22,27 @@ export interface CanvasNode {
   readonly distinctFrom: readonly string[] // refs
   readonly supersedes: readonly string[] // refs
   readonly constraints: ReadonlyArray<{
+    readonly id: string
     readonly ref: string
-    readonly expects: string | null
+    readonly expects: { readonly provider: string; readonly key: string; readonly value: string } | null
   }>
-  readonly references: readonly string[] // refs
+  readonly references: ReadonlyArray<{
+    readonly id: string
+    readonly ref: string
+  }>
   readonly presentIn: readonly string[] // refs
   readonly attestations: ReadonlyArray<{
     readonly topic: string
-    readonly value: string
+    readonly by: string
+    readonly on: string
+    readonly recordedBy: string | null
   }>
 }
 
 export interface CanvasEdge {
   readonly id: string
+  readonly localId: string // authored id inside its document
+  readonly document: string // manifest-relative path, from the relationship's kind claim source
   readonly kind: string
   readonly kindLabel: string
   readonly from: string // node id
@@ -40,10 +52,12 @@ export interface CanvasEdge {
   readonly mode: string | null
   readonly content: string | null
   readonly status: string | null
-  readonly references: readonly string[]
+  readonly references: ReadonlyArray<{
+    readonly id: string
+    readonly ref: string
+  }>
   readonly presentIn: readonly string[]
 }
-
 export interface CanvasGraph {
   readonly nodes: readonly CanvasNode[]
   readonly edges: readonly CanvasEdge[]
@@ -88,7 +102,15 @@ const claimRef = (claim: GraphClaim): string => {
   )
 }
 
-const kindLabelOf = (kind: string): string => kind.slice(kind.lastIndexOf('#') + 1)
+// The compiler qualifies every subject id as `<document id>#<authored id>`
+// (`qualifyReference` in src/compiler.ts), and a document's authored ids never
+// contain `#`. An operation addresses a subject by the id someone wrote in the
+// file, not by the qualified identity the compile derived, so the projection
+// carries both rather than leaving the browser to re-derive one from the other.
+const authoredIdOf = (subjectId: string): string => {
+  const boundary = subjectId.indexOf('#')
+  return boundary === -1 ? subjectId : subjectId.slice(boundary + 1)
+}
 
 const compareById = <T extends { readonly id: string }>(left: T, right: T) =>
   left.id.localeCompare(right.id)
@@ -150,21 +172,46 @@ const projectConcept = (
       const expectsClaim = claims.find(
         (claim) => claim.id === `${subjectId}~expects-${localId}`,
       )
+      let expects: { readonly provider: string; readonly key: string; readonly value: string } | null
+      if (expectsClaim === undefined) {
+        expects = null
+      } else {
+        const parsed = parseConstraintExpectsValue(claimValue(expectsClaim))
+        if (parsed === undefined) {
+          throw new Error(
+            `Constraint expects claim "${expectsClaim.id}" on concept "${subjectId}" does not follow the "provider key value" encoding`,
+          )
+        }
+        expects = parsed
+      }
       return {
+        id: localId,
         ref: claimRef(requiresClaim),
-        expects: expectsClaim === undefined ? null : claimValue(expectsClaim),
+        expects,
       }
     })
 
   const attestations = claims
     .filter((claim) => claim.predicate.startsWith(ATTESTATION_PREDICATE_PREFIX))
-    .map((claim) => ({
-      topic: claim.predicate.slice(ATTESTATION_PREDICATE_PREFIX.length),
-      value: claimValue(claim),
-    }))
+    .map((claim) => {
+      const parsed = parseAttestationClaimValue(claimValue(claim))
+      if (parsed === undefined) {
+        throw new Error(
+          `Attestation claim "${claim.id}" on concept "${subjectId}" does not follow the "by on [recordedBy]" encoding`,
+        )
+      }
+      return {
+        topic: claim.predicate.slice(ATTESTATION_PREDICATE_PREFIX.length),
+        by: parsed.by,
+        on: parsed.on,
+        recordedBy: parsed.recordedBy ?? null,
+      }
+    })
 
   return {
     id: subjectId,
+    localId: authoredIdOf(subjectId),
+    document: kindClaim.source.path,
     kind,
     kindLabel: kindLabelOf(kind),
     layer: profileContext.conceptKindLayers.get(kind) ?? null,
@@ -187,8 +234,19 @@ const projectConcept = (
     constraints,
     references: claims
       .filter((claim) => claim.predicate === REFERENCE_REFERS_TO_PREDICATE)
-      .map(claimRef)
-      .sort(),
+      .map((referencesClaim) => {
+        const localId = referencesClaim.id.split('~reference-')[1]
+        if (localId === undefined) {
+          throw new Error(
+            `Reference claim "${referencesClaim.id}" on concept "${subjectId}" does not follow the "<subject>~reference-<id>" id convention`,
+          )
+        }
+        return {
+          id: localId,
+          ref: claimRef(referencesClaim),
+        }
+      })
+      .sort((left, right) => left.ref.localeCompare(right.ref)),
     presentIn: claims
       .filter((claim) => claim.predicate === STATE_PRESENT_IN_PREDICATE)
       .map(claimRef)
@@ -222,6 +280,8 @@ const projectRelationship = (
 
   return {
     id: relationshipId,
+    localId: authoredIdOf(relationshipId),
+    document: definingClaim.source.path,
     kind,
     kindLabel: kindLabelOf(kind),
     from: definingClaim.subject,
@@ -233,10 +293,23 @@ const projectRelationship = (
     status: statusClaim === undefined ? null : claimValue(statusClaim),
     references: ownClaims
       .filter((claim) => claim.predicate === REFERENCE_REFERS_TO_PREDICATE)
-      .map(claimRef),
+      .map((referencesClaim) => {
+        const localId = referencesClaim.id.split('~reference-')[1]
+        if (localId === undefined) {
+          throw new Error(
+            `Reference claim "${referencesClaim.id}" on relationship "${relationshipId}" does not follow the "<subject>~reference-<id>" id convention`,
+          )
+        }
+        return {
+          id: localId,
+          ref: claimRef(referencesClaim),
+        }
+      })
+      .sort((left, right) => left.ref.localeCompare(right.ref)),
     presentIn: ownClaims
       .filter((claim) => claim.predicate === STATE_PRESENT_IN_PREDICATE)
-      .map(claimRef),
+      .map(claimRef)
+      .sort(),
   }
 }
 

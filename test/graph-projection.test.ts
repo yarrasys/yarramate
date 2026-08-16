@@ -97,9 +97,9 @@ relationships: []
     const node = projected.nodes.find((candidate) => candidate.id === 'main#service')
     expect(node).toBeDefined()
     if (node === undefined) return
-
     expect(node.kind).toBe('yarramate/core@0.1#applicationComponent')
     expect(node.kindLabel).toBe('applicationComponent')
+    expect(node.document).toBe('main.yaml')
     expect(node.layer).toBe('application')
     expect(node.name).toBe('Payments service')
     expect(node.description).toBe('Handles payment processing')
@@ -114,16 +114,35 @@ relationships: []
     expect(node.constraints).toEqual(
       expect.arrayContaining([
         {
+          id: 'residency',
           ref: 'main#data-residency-rule',
-          expects: 'terraform-scan region ap-southeast-2',
+          expects: {
+            provider: 'terraform-scan',
+            key: 'region',
+            value: 'ap-southeast-2',
+          },
         },
-        { ref: 'main#naming-convention-rule', expects: null },
+        {
+          id: 'naming',
+          ref: 'main#naming-convention-rule',
+          expects: null,
+        },
       ]),
     )
-    expect(node.references).toEqual(['main#policy-alpha', 'main#policy-zeta'])
+    // References are sorted by ref value, not id
+    expect(node.references).toEqual([
+      { id: 'policy-source-alpha', ref: 'main#policy-alpha' },
+      { id: 'policy-source-zeta', ref: 'main#policy-zeta' },
+    ])
     expect(node.presentIn).toEqual(['main#state-alpha', 'main#state-zeta'])
+    // Attestations are unsorted, preserving authored order
     expect(node.attestations).toEqual([
-      { topic: 'adequacy', value: 'main#review-board 2026-08-01 claude-fable-5' },
+      {
+        topic: 'adequacy',
+        by: 'main#review-board',
+        on: '2026-08-01',
+        recordedBy: 'claude-fable-5',
+      },
     ])
   })
 
@@ -144,6 +163,8 @@ relationships: []
     expect(projected.nodes).toEqual([
       {
         id: 'main#bare',
+        localId: 'bare',
+        document: 'main.yaml',
         kind: 'yarramate/core@0.1#applicationComponent',
         kindLabel: 'applicationComponent',
         layer: 'application',
@@ -193,6 +214,8 @@ relationships:
     expect(projected.edges).toEqual([
       {
         id: 'main#consumer-accesses-store',
+        localId: 'consumer-accesses-store',
+        document: 'main.yaml',
         kind: 'yarramate/core@0.1#access',
         kindLabel: 'access',
         from: 'main#consumer',

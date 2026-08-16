@@ -1,0 +1,343 @@
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { describe, expect, it } from 'vitest'
+import type { VisualDiagnostic } from '../src/adapters/visual/protocol-contract.js'
+import type { CanvasGraph } from '../src/graph-projection.js'
+import type { YarramateOperation } from '../src/operations.js'
+import type { VisualAppState } from '../src/visual-app/state.js'
+import {
+  ChangesetTray,
+  changesetRowLabel,
+  describeChangesetRow,
+  partitionDiagnostics,
+  resolveSubjectName,
+} from '../src/visual-app/changeset-tray.js'
+
+// Ids are qualified `<document id>#<authored id>` exactly as the compiler
+// emits them; `localId` is the id the document actually wrote, and the id an
+// operation must address. Two documents deliberately author `checkout`.
+const graph: CanvasGraph = {
+  nodes: [
+    {
+      id: 'svc#checkout',
+      localId: 'checkout',
+      document: 'architecture/main.yaml',
+      kind: 'yarramate/core@0.1#applicationComponent',
+      kindLabel: 'applicationComponent',
+      layer: 'application',
+      name: 'Checkout Service',
+      description: null,
+      aka: [],
+      status: null,
+      owner: null,
+      distinctFrom: [],
+      supersedes: [],
+      constraints: [],
+      references: [],
+      presentIn: [],
+      attestations: [],
+    },
+    {
+      id: 'ops#checkout',
+      localId: 'checkout',
+      document: 'architecture/operations.yaml',
+      kind: 'yarramate/core@0.1#businessProcess',
+      kindLabel: 'businessProcess',
+      layer: 'business',
+      name: 'Checkout Journey',
+      description: null,
+      aka: [],
+      status: null,
+      owner: null,
+      distinctFrom: [],
+      supersedes: [],
+      constraints: [],
+      references: [],
+      presentIn: [],
+      attestations: [],
+    },
+  ],
+  edges: [
+    {
+      id: 'svc#checkout-db',
+      localId: 'checkout-db',
+      document: 'architecture/main.yaml',
+      kind: 'yarramate/core@0.1#serving',
+      kindLabel: 'serving',
+      from: 'svc#checkout',
+      to: 'svc#db',
+      name: null,
+      description: null,
+      mode: null,
+      content: null,
+      status: null,
+      references: [],
+      presentIn: [],
+    },
+  ],
+}
+
+const updateOp: YarramateOperation = {
+  op: 'update-concept',
+  document: 'architecture/main.yaml',
+  concept: { id: 'checkout', name: 'Checkout API' },
+}
+
+const retractOp: YarramateOperation = {
+  op: 'update-concept',
+  document: 'architecture/main.yaml',
+  concept: { id: 'checkout' },
+  remove: ['owner'],
+}
+
+const addOp: YarramateOperation = {
+  op: 'add-concept',
+  document: 'architecture/main.yaml',
+  concept: {
+    id: 'new-service',
+    kind: 'yarramate/core@0.1#applicationComponent',
+    name: 'New Service',
+  },
+}
+
+const deleteOp: YarramateOperation = {
+  op: 'delete-relationship',
+  document: 'architecture/main.yaml',
+  relationship: { id: 'checkout-db' },
+}
+
+describe('resolveSubjectName', () => {
+  it('names a concept from the current graph', () => {
+    expect(resolveSubjectName('architecture/main.yaml', 'checkout', graph)).toBe(
+      'Checkout Service',
+    )
+  })
+
+  it('tells apart the same authored id in two documents', () => {
+    expect(resolveSubjectName('architecture/operations.yaml', 'checkout', graph)).toBe(
+      'Checkout Journey',
+    )
+  })
+
+  it('falls back to the raw id when the subject is not in the current graph', () => {
+    expect(resolveSubjectName('architecture/main.yaml', 'missing', graph)).toBe('missing')
+  })
+
+  it('falls back to the raw id when the id is only authored in another document', () => {
+    expect(resolveSubjectName('architecture/other.yaml', 'checkout', graph)).toBe('checkout')
+  })
+
+  it('falls back to the raw id when there is no model graph yet', () => {
+    expect(resolveSubjectName('architecture/main.yaml', 'checkout', null)).toBe('checkout')
+  })
+})
+
+describe('describeChangesetRow / changesetRowLabel', () => {
+  it('names the verb, subject, and changed field for a scalar update', () => {
+    const row = describeChangesetRow(updateOp, graph)
+    expect(row).toEqual({
+      verb: 'update-concept',
+      subjectName: 'Checkout Service',
+      fields: ['name'],
+      removedFields: [],
+    })
+    expect(changesetRowLabel(row)).toBe('update-concept · Checkout Service · name')
+  })
+
+  it('renders a retraction as remove: <field>, never as a write', () => {
+    const row = describeChangesetRow(retractOp, graph)
+    expect(row.fields).toEqual([])
+    expect(row.removedFields).toEqual(['owner'])
+    expect(changesetRowLabel(row)).toBe(
+      'update-concept · Checkout Service · remove: owner',
+    )
+  })
+
+  it('falls back to the raw id for a subject an add-concept has not created yet', () => {
+    const row = describeChangesetRow(addOp, graph)
+    expect(row.subjectName).toBe('new-service')
+    expect(changesetRowLabel(row)).toBe('add-concept · new-service · kind, name')
+  })
+
+  it('carries no field list for a delete operation', () => {
+    const row = describeChangesetRow(deleteOp, graph)
+    expect(row.fields).toEqual([])
+    expect(row.removedFields).toEqual([])
+    expect(changesetRowLabel(row)).toBe('delete-relationship · checkout-db')
+  })
+})
+
+describe('partitionDiagnostics', () => {
+  const rowDiagnostic: VisualDiagnostic = {
+    severity: 'error',
+    code: 'YM912',
+    message: 'cannot set and remove the same field',
+    path: '',
+    pointer: '/operations/2/document',
+    line: 0,
+    column: 0,
+  }
+  const exactRowDiagnostic: VisualDiagnostic = {
+    severity: 'error',
+    code: 'YM913',
+    message: 'unknown operation kind',
+    path: '',
+    pointer: '/operations/0',
+    line: 0,
+    column: 0,
+  }
+  const compileDiagnostic: VisualDiagnostic = {
+    severity: 'error',
+    code: 'YM001',
+    message: 'missing predicate',
+    path: 'architecture/main.yaml',
+    pointer: '/manifest/documents/0',
+    line: 3,
+    column: 5,
+  }
+
+  it('maps a /operations/<i>/... pointer to that row index', () => {
+    const { byRow, batch } = partitionDiagnostics([rowDiagnostic])
+    expect(byRow.get(2)).toEqual([rowDiagnostic])
+    expect(batch).toEqual([])
+  })
+
+  it('maps a bare /operations/<i> pointer, with no trailing field, to that row', () => {
+    const { byRow } = partitionDiagnostics([exactRowDiagnostic])
+    expect(byRow.get(0)).toEqual([exactRowDiagnostic])
+  })
+
+  it('sends a pointer with no /operations/<i> segment to the batch level', () => {
+    const { byRow, batch } = partitionDiagnostics([compileDiagnostic])
+    expect(byRow.size).toBe(0)
+    expect(batch).toEqual([compileDiagnostic])
+  })
+
+  it('groups multiple diagnostics staged against the same row', () => {
+    const second: VisualDiagnostic = {
+      ...rowDiagnostic,
+      code: 'YM914',
+      pointer: '/operations/2/concept/name',
+    }
+    const { byRow } = partitionDiagnostics([rowDiagnostic, second])
+    expect(byRow.get(2)).toEqual([rowDiagnostic, second])
+  })
+})
+
+const baseState: VisualAppState = {
+  lifecycle: 'active',
+  authority: 'canonical',
+  title: '',
+  description: '',
+  chatEnabled: false,
+  model: {
+    authority: 'canonical',
+    initialView: '',
+    graph,
+    documents: [],
+    vocabulary: { conceptKinds: [], relationshipKinds: [] },
+    layouts: {},
+  },
+  styleNonce: '',
+  activeView: '',
+  transcript: [],
+  views: [],
+  activeFilter: null,
+  quickFilterText: '',
+  choices: null,
+  agentStatus: null,
+  diagnostics: [],
+  handoff: null,
+  composerEnabled: false,
+  awaitingAgent: false,
+  localRecords: 0,
+  lastSequence: 0,
+  frozen: false,
+  closedReason: null,
+  pendingViewSave: null,
+  viewSaveNotice: false,
+  pendingChangeset: { operations: [] },
+  commitStatus: 'idle',
+  commitDiagnostics: null,
+  commitNotice: null,
+  layoutNotice: null,
+}
+
+const render = (overrides: Partial<VisualAppState> = {}): string =>
+  renderToStaticMarkup(
+    createElement(ChangesetTray, {
+      state: { ...baseState, ...overrides },
+      onDiscardChange: () => {},
+      onClearChangeset: () => {},
+      onCommitChangeset: () => {},
+    }),
+  )
+
+const commitButtonTag = (html: string): string => {
+  const match = /<button[^>]*class="changeset-commit"[^>]*>/.exec(html)
+  if (match === null) throw new Error('commit button not found in: ' + html)
+  return match[0]
+}
+
+describe('ChangesetTray', () => {
+  it('renders nothing when the changeset is empty and there is no notice or diagnostics', () => {
+    expect(render()).toBe('')
+  })
+
+  it('never gates on composerEnabled or the agent turn', () => {
+    // chatEnabled: false and composerEnabled: false in baseState already; a
+    // non-empty changeset must still render the tray and an enabled button.
+    const html = render({ pendingChangeset: { operations: [updateOp] } })
+    expect(html).not.toBe('')
+    expect(commitButtonTag(html)).not.toContain('disabled')
+  })
+
+  it('disables Commit changes when the changeset is empty', () => {
+    const html = render({ commitNotice: ['architecture/main.yaml'] })
+    expect(commitButtonTag(html)).toContain('disabled=""')
+  })
+
+  it('disables Commit changes and marks it aria-busy while a commit is in flight', () => {
+    const html = render({
+      pendingChangeset: { operations: [updateOp] },
+      commitStatus: 'committing',
+    })
+    const tag = commitButtonTag(html)
+    expect(tag).toContain('disabled=""')
+    expect(tag).toContain('aria-busy="true"')
+  })
+
+  it('enables Commit changes once operations are staged and idle', () => {
+    const html = render({ pendingChangeset: { operations: [updateOp] } })
+    expect(commitButtonTag(html)).not.toContain('disabled')
+  })
+
+  it('names exactly the paths the server reported on success', () => {
+    const html = render({
+      commitNotice: ['architecture/main.yaml', 'architecture/other.yaml'],
+    })
+    expect(html).toContain('Committed · 2 files')
+    expect(html).toContain('architecture/main.yaml')
+    expect(html).toContain('architecture/other.yaml')
+  })
+
+  it('keeps the staged rows on a failed commit instead of clearing the tray', () => {
+    const html = render({
+      pendingChangeset: { operations: [updateOp] },
+      commitDiagnostics: [
+        {
+          severity: 'error',
+          code: 'YM912',
+          message: 'cannot set and remove the same field',
+          path: '',
+          pointer: '/operations/0/concept',
+          line: 0,
+          column: 0,
+        },
+      ],
+    })
+    expect(html).toContain('update-concept')
+    expect(html).toContain('Checkout Service')
+    expect(html).toContain('YM912')
+  })
+})

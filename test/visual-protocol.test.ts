@@ -16,6 +16,8 @@ import {
 
 const graphNode = {
   id: 'system',
+  localId: 'system',
+  document: 'main.yaml',
   kind: 'yarramate/core@0.1#applicationComponent',
   kindLabel: 'applicationComponent',
   layer: null,
@@ -34,9 +36,9 @@ const graphNode = {
 
 const model = {
   format: 'yarramate/visual-model/v1',
-  authority: 'ad-hoc',
+  authority: 'canonical',
   initialView: 'choices',
-  sourceDigests: {},
+  sourceDigests: { 'model.likec4': 'a'.repeat(64) },
   graph: { nodes: [graphNode], edges: [] },
 } as const
 
@@ -47,9 +49,9 @@ const timestamp = '2026-08-08T00:00:00.000Z'
 
 const sessionRequest = {
   format: 'yarramate/visual-session-request/v1',
-  authority: 'ad-hoc',
+  authority: 'canonical',
   title: 'Choose a delivery design',
-  description: 'Temporary non-canonical comparison',
+  description: 'Design options drawn from the checked workspace',
   chatEnabled: true,
   initialModel: model,
 } as const
@@ -58,7 +60,6 @@ const capabilities = {
   chat: true,
   choices: true,
   navigation: true,
-  modelReplacement: true,
   transcript: true,
 } as const
 
@@ -66,7 +67,7 @@ const sessionStarted = {
   format: 'yarramate/visual-session-started/v1',
   protocolVersion: VISUAL_PROTOCOL_VERSION,
   sessionId,
-  authority: 'ad-hoc',
+  authority: 'canonical',
   title: 'Choose a delivery design',
   chatEnabled: true,
   browserUrl: 'http://127.0.0.1:51234/bootstrap?key=0123456789abcdef',
@@ -162,7 +163,7 @@ const responsePayloads: Readonly<Record<string, unknown>> = {
 const handoff = {
   format: 'yarramate/visual-handoff/v1',
   sessionId,
-  authority: 'ad-hoc',
+  authority: 'canonical',
   decision: 'completed',
   terminationReason: 'user-ended',
   lastSequence: 3,
@@ -196,9 +197,9 @@ describe('visual protocol', () => {
     expect(
       parseVisualSessionRequest({
         format: 'yarramate/visual-session-request/v1',
-        authority: 'ad-hoc',
+        authority: 'canonical',
         title: 'Choose a delivery design',
-        description: 'Temporary non-canonical comparison',
+        description: 'Design options drawn from the checked workspace',
         chatEnabled: true,
         initialModel: model,
       }),
@@ -423,33 +424,19 @@ describe('visual protocol', () => {
     },
   )
 
-  it('requires the request authority to match the initial model authority', () => {
-    expect(
-      parseVisualSessionRequest({ ...sessionRequest, authority: 'canonical' }),
-    ).toMatchObject({ ok: false })
-  })
-
-  it('ties model authority to source digests', () => {
+  it('requires a canonical model to record source digests', () => {
     const digests = { 'model.likec4': '9'.repeat(64) }
     expect(
-      parseVisualModel({
-        ...model,
-        authority: 'canonical',
-        sourceDigests: digests,
-      }),
+      parseVisualModel({ ...model, sourceDigests: digests }),
     ).toMatchObject({ ok: true })
-    expect(parseVisualModel({ ...model, authority: 'canonical' })).toMatchObject(
-      { ok: false },
-    )
-    expect(parseVisualModel({ ...model, sourceDigests: digests })).toMatchObject(
-      { ok: false },
-    )
+    expect(
+      parseVisualModel({ ...model, sourceDigests: {} }),
+    ).toMatchObject({ ok: false })
   })
 
   it.each([
     '../secret.likec4',
     '/tmp/secret.likec4',
-    '.hidden.likec4',
     'a/../b.likec4',
     './model.likec4',
     'a//b.likec4',
@@ -675,5 +662,20 @@ describe('visual protocol', () => {
         pointer: '/sourceDigests/evil~1..~1escape.likec4',
       }),
     )
+  })
+
+  it('keeps a digest keyed under the workspace dot directory', () => {
+    // Every workspace keeps its documents under `.yarramate/`, and the graph
+    // addresses them by exactly that path, so a dot directory is the normal
+    // case here rather than a smuggled metadata entry.
+    expect(
+      parseVisualModel({
+        ...model,
+        authority: 'canonical',
+        sourceDigests: {
+          '.yarramate/architecture/engine.yaml': '9'.repeat(64),
+        },
+      }),
+    ).toMatchObject({ ok: true })
   })
 })

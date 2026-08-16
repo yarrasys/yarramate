@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto'
 import { once } from 'node:events'
 import { existsSync, watch as watchEagerly } from 'node:fs'
 import {
+  mkdir,
   mkdtemp,
   readdir,
   readFile,
@@ -56,15 +57,17 @@ const assetRoot = join(fixtures, 'browser-assets')
 
 const modelWith = (): VisualModel => ({
   format: 'yarramate/visual-model/v1',
-  authority: 'ad-hoc',
+  authority: 'canonical',
   initialView: 'choices',
-  sourceDigests: {},
+  sourceDigests: { 'model.likec4': 'a'.repeat(64) },
   graph: {
     nodes: [
       {
         id: 'system',
+        localId: 'system',
         kind: 'yarramate/core@0.1#applicationComponent',
         kindLabel: 'applicationComponent',
+        document: 'main.yaml',
         layer: null,
         name: 'System',
         description: null,
@@ -87,9 +90,9 @@ const requestWith = (
   overrides: Partial<VisualSessionRequest> = {},
 ): VisualSessionRequest => ({
   format: 'yarramate/visual-session-request/v1',
-  authority: 'ad-hoc',
+  authority: 'canonical',
   title: 'Choose a delivery design',
-  description: 'Temporary non-canonical comparison',
+  description: 'Design options drawn from the checked workspace',
   chatEnabled: true,
   initialModel: modelWith(),
   ...overrides,
@@ -442,8 +445,29 @@ const plantVisualSession = async (
   return { paths: created.paths, sessionId }
 }
 
+/**
+ * A session refuses to start (YMVS132) without a resolvable workspace manifest,
+ * so each test gets an empty-but-valid one; tests needing real documents
+ * overwrite this file.
+ */
+const minimalWorkspaceManifest = `format: yarramate/workspace/v1
+id: empty-fixture
+documents: []
+profiles: []
+projections: []
+adapterMappings: []
+evidence: []
+contracts: []
+`
+
 beforeEach(async () => {
   baseDir = await mkdtemp(join(tmpdir(), 'yarramate-visual-journey-'))
+  await mkdir(join(baseDir, '.yarramate'), { recursive: true })
+  await writeFile(
+    join(baseDir, '.yarramate/workspace.yaml'),
+    minimalWorkspaceManifest,
+    'utf8',
+  )
 })
 
 afterEach(async () => {
