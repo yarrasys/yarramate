@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import {
   appendFile,
+  chmod,
   mkdir,
   mkdtemp,
   readFile,
@@ -849,6 +850,50 @@ relationships: []
         removeVisualSession(visualSessionPaths(unmarked)),
       ).rejects.toThrow(/YMVS124/);
       expect(existsSync(join(unmarked, "notes.md"))).toBe(true);
+    });
+
+    /**
+     * Root permissions cannot single out one entry, so the entry that refuses
+     * removal is a directory holding a file it will not let go of. What the
+     * test is about is the two files beside it: a cleanup that fails part-way
+     * must not be the step that loses the handoff, nor the marker that lets a
+     * later pass agree to delete what is left.
+     */
+    const enforcesPermissions =
+      process.platform !== "win32" && process.getuid?.() !== 0;
+
+    it.skipIf(!enforcesPermissions)(
+      "keeps the journal and marker when another entry's removal fails",
+      async () => {
+        const session = await startSession();
+        await appendVisualEvent(session.paths, chatEvent);
+        await appendVisualResponse(session.paths, handoffResponse);
+        const stuck = join(session.paths.root, "stuck");
+        await mkdir(stuck, { mode: 0o700 });
+        await writeFile(join(stuck, "held"), "keep me", { mode: 0o600 });
+        await chmod(stuck, 0o500);
+
+        await expect(removeVisualSession(session.paths)).rejects.toThrow();
+        expect(existsSync(session.paths.journal)).toBe(true);
+        expect(existsSync(session.paths.marker)).toBe(true);
+
+        await chmod(stuck, 0o700);
+        const handoff = await removeVisualSession(session.paths, true);
+
+        expect(handoff).toMatchObject({
+          summary: handoffResponse.payload.summary,
+          transcript: [chatEvent],
+        });
+        expect(existsSync(session.paths.root)).toBe(false);
+      },
+    );
+
+    it("removes a marked session whose journal a failed cleanup already took", async () => {
+      const session = await startSession();
+      await rm(session.paths.journal);
+
+      expect(await removeVisualSession(session.paths)).toBeUndefined();
+      expect(existsSync(session.paths.root)).toBe(false);
     });
 
     it("refuses to delete a session whose marker names another directory", async () => {

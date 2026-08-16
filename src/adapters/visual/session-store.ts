@@ -878,9 +878,68 @@ export const buildVisualModelGraph = (
 }
 
 /**
+ * Whether a journal is still on disk. A cleanup that failed partway can leave
+ * a marked session without one, and that is a question about the filesystem
+ * rather than a corruption to report.
+ */
+const journalExists = async (paths: VisualSessionPaths): Promise<boolean> => {
+  try {
+    await lstat(paths.journal)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Deletes a session directory one entry at a time, journal and marker last.
+ *
+ * `rm(..., { recursive: true })` rejects the moment one entry fails while the
+ * sibling removals it already started are still in flight; those stragglers go
+ * on deleting after the caller has already seen the rejection. A cleanup that
+ * failed could therefore still take the journal with it, leaving the retry that
+ * follows nothing to recover from. Removing entries in a decided order, and
+ * awaiting each one, keeps the two files a retry depends on - the journal it
+ * recovers from, and the marker that authorises deleting this directory at all
+ * - on disk for as long as any other trace of the session is. The marker goes
+ * last of the two: a directory that outlives its marker is one no later pass
+ * would agree to remove.
+ */
+const removeSessionDirectory = async (
+  paths: VisualSessionPaths,
+): Promise<void> => {
+  let entries
+  try {
+    entries = await readdir(paths.root, { withFileTypes: true })
+  } catch (cause) {
+    // A session already gone is a completed cleanup, not a failed one.
+    if (
+      typeof cause === 'object' &&
+      cause !== null &&
+      'code' in cause &&
+      cause.code === 'ENOENT'
+    ) {
+      return
+    }
+    throw cause
+  }
+  const journal = basename(paths.journal)
+  const marker = basename(paths.marker)
+  for (const entry of entries) {
+    if (entry.name === journal || entry.name === marker) continue
+    await rm(join(paths.root, entry.name), { recursive: true, force: true })
+  }
+  await rm(paths.journal, { force: true })
+  await rm(paths.marker, { force: true })
+  await rm(paths.root, { recursive: true, force: true })
+}
+
+/**
  * Recovers the handoff and only then deletes the session, so cleanup can never
  * be the step that loses confirmed state. Returns `undefined` when the session
- * is already gone, which makes a repeated stop idempotent.
+ * is already gone, which makes a repeated stop idempotent, and when a previous
+ * cleanup already took the journal: there is no handoff left to recover, and
+ * refusing would strand a marked directory that only this call will remove.
  */
 export const removeVisualSession = async (
   paths: VisualSessionPaths,
@@ -899,8 +958,12 @@ export const removeVisualSession = async (
       `Session root "${paths.root}" is not a directory`,
     )
   }
-  const handoff = await recoverVisualSession(paths, includeTranscript)
-  await rm(paths.root, { recursive: true, force: true })
+  // The marker authorises the deletion whether or not a journal survived it.
+  await readSessionMarker(paths)
+  const handoff = (await journalExists(paths))
+    ? await recoverVisualSession(paths, includeTranscript)
+    : undefined
+  await removeSessionDirectory(paths)
   await syncDirectory(dirname(paths.root))
   forget(paths)
   return handoff
@@ -993,8 +1056,9 @@ export const pruneStaleVisualSessions = async (
   )
   const removed: string[] = []
   for (const candidate of stale.slice(0, Math.max(0, limit))) {
-    await rm(candidate.root, { recursive: true, force: true })
-    forget(visualSessionPaths(candidate.root))
+    const paths = visualSessionPaths(candidate.root)
+    await removeSessionDirectory(paths)
+    forget(paths)
     removed.push(candidate.root)
   }
   if (removed.length > 0) {
