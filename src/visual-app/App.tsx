@@ -1,11 +1,11 @@
-import { GraphCanvas } from './graph-canvas.js'
-import { FilterPanel, type PresentationFlag } from './filter-panel.js'
-import { QuickFilterBox } from './quick-filter.js'
-import { ViewPicker } from './view-picker.js'
-import { SaveViewControl } from './save-view.js'
-import { describeQuery } from './describe-query.js'
-import { ChangesetTray } from './changeset-tray.js'
-import { ConceptForm, RelationshipForm } from './subject-form.js'
+import { GraphCanvas } from "./graph-canvas.js";
+import { FilterPanel, type PresentationFlag } from "./filter-panel.js";
+import { QuickFilterBox } from "./quick-filter.js";
+import { ViewPicker } from "./view-picker.js";
+import { SaveViewControl } from "./save-view.js";
+import { describeQuery } from "./describe-query.js";
+import { ChangesetTray } from "./changeset-tray.js";
+import { ConceptForm, RelationshipForm } from "./subject-form.js";
 import {
   useEffect,
   useLayoutEffect,
@@ -17,19 +17,19 @@ import {
   type FormEvent,
   type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
-} from 'react'
-import type { ProjectionQuery } from '../projection.js'
-import type { VisualRenderedModel } from '../adapters/visual/wire.js'
-import type { YarramateOperation } from '../operations.js'
+} from "react";
+import type { ProjectionQuery } from "../projection.js";
+import type { VisualRenderedModel } from "../adapters/visual/wire.js";
+import type { YarramateOperation } from "../operations.js";
 import type {
   VisualChoicePresentPayload,
   VisualDiagnostic,
   VisualLayoutSavePayload,
   VisualViewSavePayload,
   VisualViewSummary,
-} from '../adapters/visual/protocol-contract.js'
-import { useVisualSession } from './session-client.js'
-import type { VisualAppRecord, VisualAppState } from './state.js'
+} from "../adapters/visual/protocol-contract.js";
+import { useVisualSession } from "./session-client.js";
+import type { VisualAppRecord, VisualAppState } from "./state.js";
 import {
   conversationWidthBounds,
   createVisualWorkspaceState,
@@ -37,9 +37,10 @@ import {
   normalizeSelectedElement,
   normalizeSelectedRelationship,
   presentationActionsFor,
+  viewNeedingApplication,
   visualWorkspaceReducer,
   type SelectedDiagramSubject,
-} from './workspace-state.js'
+} from "./workspace-state.js";
 
 /**
  * A drawing board, not a document: the diagram holds the workspace, one compact
@@ -47,46 +48,46 @@ import {
  * panel the reviewer sizes or puts away without losing what it holds.
  */
 
-const SPEAKERS: Readonly<Record<VisualAppRecord['speaker'], string>> = {
-  reviewer: 'You',
-  agent: 'Agent',
-  session: 'Session',
-}
+const SPEAKERS: Readonly<Record<VisualAppRecord["speaker"], string>> = {
+  reviewer: "You",
+  agent: "Agent",
+  session: "Session",
+};
 
 const STATUS_WORDS: Readonly<
-  Record<'thinking' | 'compiling' | 'waiting' | 'idle', string>
+  Record<"thinking" | "compiling" | "waiting" | "idle", string>
 > = {
-  thinking: 'Agent is thinking',
-  compiling: 'Agent is compiling the model',
-  waiting: 'Agent is waiting',
-  idle: 'Agent is idle',
-}
+  thinking: "Agent is thinking",
+  compiling: "Agent is compiling the model",
+  waiting: "Agent is waiting",
+  idle: "Agent is idle",
+};
 
 const connectionOf = (state: VisualAppState, connected: boolean): string => {
   switch (state.lifecycle) {
-    case 'connecting':
-      return 'Opening'
-    case 'active':
-      return connected ? 'Live' : 'Reconnecting'
-    case 'ending':
-      return 'Ending'
-    case 'disconnected':
-      return 'Reconnecting'
-    case 'closed':
-      return 'Closed'
+    case "connecting":
+      return "Opening";
+    case "active":
+      return connected ? "Live" : "Reconnecting";
+    case "ending":
+      return "Ending";
+    case "disconnected":
+      return "Reconnecting";
+    case "closed":
+      return "Closed";
   }
-}
+};
 
 const endTransitionStatus = (state: VisualAppState): string => {
-  if (state.lifecycle === 'closed') {
-    return 'Visual conversation ended. Continue in the main agent.'
+  if (state.lifecycle === "closed") {
+    return "Visual conversation ended. Continue in the main agent.";
   }
-  if (state.lifecycle !== 'ending') return ''
+  if (state.lifecycle !== "ending") return "";
   if (state.handoff !== null) {
-    return 'Handoff ready — returning control to the main agent.'
+    return "Handoff ready — returning control to the main agent.";
   }
-  return 'Ending conversation — preparing a handoff for the main agent.'
-}
+  return "Ending conversation — preparing a handoff for the main agent.";
+};
 
 // ArchiMate notation pins `elk.direction` to `DOWN` when it builds a layered
 // config (`buildLayoutConfig`), and elk's direction is the only thing the
@@ -94,9 +95,9 @@ const endTransitionStatus = (state: VisualAppState): string => {
 // combination whatever is stored, and leaves every other one alone. Radial and
 // force never read a direction at all, so ArchiMate pins nothing there.
 const directionPinned = (
-  layout: 'layered' | 'radial' | 'force',
-  notation: 'native' | 'archimate'
-): boolean => layout === 'layered' && notation === 'archimate'
+  layout: "layered" | "radial" | "force",
+  notation: "native" | "archimate",
+): boolean => layout === "layered" && notation === "archimate";
 
 const CommandStrip = ({
   state,
@@ -127,42 +128,45 @@ const CommandStrip = ({
   onDismissSavedNotice,
   onEnd,
 }: {
-  readonly state: VisualAppState
-  readonly connection: string
-  readonly detailsOpen: boolean
-  readonly conversationOpen: boolean
-  readonly unread: number
-  readonly layout: 'layered' | 'radial' | 'force'
-  readonly direction: 'top-down' | 'left-right'
-  readonly views: readonly VisualViewSummary[]
-  readonly onToggleDetails: () => void
-  readonly onToggleConversation: () => void
-  readonly onSelectLayout: (layout: 'layered' | 'radial' | 'force') => void
-  readonly notation: 'native' | 'archimate'
-  readonly seed: string
-  readonly onSelectNotation: (notation: 'native' | 'archimate') => void
-  readonly onToggleDirection: () => void
-  readonly showLifecycle: boolean
-  readonly showEvidence: boolean
-  readonly showOwnership: boolean
-  readonly onTogglePresentation: (flag: PresentationFlag, value: boolean) => void
-  readonly onSelectView: (view: VisualViewSummary) => void
-  readonly onClearFilter: () => void
-  readonly onApplyFilter: (query: ProjectionQuery) => void
-  readonly quickFilterText: string
-  readonly onQuickFilterChange: (text: string) => void
-  readonly onSaveView: (payload: VisualViewSavePayload) => void
-  readonly onDismissSavedNotice: () => void
-  readonly onEnd: () => void
+  readonly state: VisualAppState;
+  readonly connection: string;
+  readonly detailsOpen: boolean;
+  readonly conversationOpen: boolean;
+  readonly unread: number;
+  readonly layout: "layered" | "radial" | "force";
+  readonly direction: "top-down" | "left-right";
+  readonly views: readonly VisualViewSummary[];
+  readonly onToggleDetails: () => void;
+  readonly onToggleConversation: () => void;
+  readonly onSelectLayout: (layout: "layered" | "radial" | "force") => void;
+  readonly notation: "native" | "archimate";
+  readonly seed: string;
+  readonly onSelectNotation: (notation: "native" | "archimate") => void;
+  readonly onToggleDirection: () => void;
+  readonly showLifecycle: boolean;
+  readonly showEvidence: boolean;
+  readonly showOwnership: boolean;
+  readonly onTogglePresentation: (
+    flag: PresentationFlag,
+    value: boolean,
+  ) => void;
+  readonly onSelectView: (view: VisualViewSummary) => void;
+  readonly onClearFilter: () => void;
+  readonly onApplyFilter: (query: ProjectionQuery) => void;
+  readonly quickFilterText: string;
+  readonly onQuickFilterChange: (text: string) => void;
+  readonly onSaveView: (payload: VisualViewSavePayload) => void;
+  readonly onDismissSavedNotice: () => void;
+  readonly onEnd: () => void;
 }) => (
   <header className="command-strip">
     <div className="command-identity">
-      <h1>{state.title === '' ? 'Opening the session' : state.title}</h1>
+      <h1>{state.title === "" ? "Opening the session" : state.title}</h1>
       <span className="beta-badge">Beta</span>
-      <span className="authority">
-        Checked YarraMate model
+      <span className="authority">Checked YarraMate model</span>
+      <span className="connection-state" role="status">
+        {connection}
       </span>
-      <span className="connection-state" role="status">{connection}</span>
     </div>
     <div className="command-actions">
       <span
@@ -208,7 +212,9 @@ const CommandStrip = ({
         aria-label="Layout"
         value={layout}
         onChange={(e) =>
-          onSelectLayout(e.currentTarget.value as 'layered' | 'radial' | 'force')
+          onSelectLayout(
+            e.currentTarget.value as "layered" | "radial" | "force",
+          )
         }
       >
         <option value="layered">Layered</option>
@@ -219,7 +225,7 @@ const CommandStrip = ({
         aria-label="Notation"
         value={notation}
         onChange={(e) =>
-          onSelectNotation(e.currentTarget.value as 'native' | 'archimate')
+          onSelectNotation(e.currentTarget.value as "native" | "archimate")
         }
       >
         <option value="native">Native</option>
@@ -227,17 +233,17 @@ const CommandStrip = ({
       </select>
       <span className="direction-notice" role="status">
         {directionPinned(layout, notation)
-          ? 'ArchiMate notation fixes direction to Top-Down.'
-          : ''}
+          ? "ArchiMate notation fixes direction to Top-Down."
+          : ""}
       </span>
       <button
         type="button"
         onClick={onToggleDirection}
-        disabled={layout !== 'layered' || notation === 'archimate'}
+        disabled={layout !== "layered" || notation === "archimate"}
       >
-        {directionPinned(layout, notation) || direction === 'top-down'
-          ? 'Top-Down'
-          : 'Left-Right'}
+        {directionPinned(layout, notation) || direction === "top-down"
+          ? "Top-Down"
+          : "Left-Right"}
       </button>
       <button
         type="button"
@@ -254,39 +260,37 @@ const CommandStrip = ({
         onClick={onToggleConversation}
       >
         Conversation
-        {unread === 0 ? null : <span className="attention-count">{unread}</span>}
+        {unread === 0 ? null : (
+          <span className="attention-count">{unread}</span>
+        )}
       </button>
       <button
         type="button"
         className="end-session"
         onClick={onEnd}
-        disabled={state.lifecycle !== 'active'}
+        disabled={state.lifecycle !== "active"}
       >
-        {state.lifecycle === 'ending' || state.lifecycle === 'closed'
-          ? 'Ending…'
-          : 'End'}
+        {state.lifecycle === "ending" || state.lifecycle === "closed"
+          ? "Ending…"
+          : "End"}
       </button>
     </div>
     {/* Static prose is not worth the canvas: the disclosure is laid over the
         workspace from the strip rather than taking a row of its own, so opening
         it never reflows the diagram or the conversation. */}
-    <div
-      id="session-details"
-      className="session-details"
-      hidden={!detailsOpen}
-    >
+    <div id="session-details" className="session-details" hidden={!detailsOpen}>
       <p>{state.description}</p>
       <button type="button" className="details-close" onClick={onToggleDetails}>
         Close details
       </button>
     </div>
   </header>
-)
+);
 
 const Faults = ({
   diagnostics,
 }: {
-  readonly diagnostics: readonly VisualDiagnostic[]
+  readonly diagnostics: readonly VisualDiagnostic[];
 }) =>
   diagnostics.length === 0 ? null : (
     <div className="faults" role="alert">
@@ -305,16 +309,16 @@ const Faults = ({
         ))}
       </ul>
     </div>
-  )
+  );
 
 const Choices = ({
   choices,
   disabled,
   onChoice,
 }: {
-  readonly choices: VisualChoicePresentPayload
-  readonly disabled: boolean
-  readonly onChoice: (optionId: string) => void
+  readonly choices: VisualChoicePresentPayload;
+  readonly disabled: boolean;
+  readonly onChoice: (optionId: string) => void;
 }) => (
   <div className="choices">
     <p className="question">{choices.question}</p>
@@ -335,7 +339,7 @@ const Choices = ({
       ))}
     </ul>
   </div>
-)
+);
 const DiagramWorkspace = ({
   state,
   selectedId,
@@ -352,20 +356,20 @@ const DiagramWorkspace = ({
   onSaveLayout,
   onWaitingChange,
 }: {
-  readonly state: VisualAppState
-  readonly selectedId: string | null
-  readonly waiting: string | null
-  readonly layout: 'layered' | 'radial' | 'force'
-  readonly direction: 'top-down' | 'left-right'
-  readonly notation: 'native' | 'archimate'
-  readonly seed: string
-  readonly showLifecycle: boolean
-  readonly showEvidence: boolean
-  readonly showOwnership: boolean
-  readonly onSelect: (subject: SelectedDiagramSubject) => void
-  readonly onClearFilter: () => void
-  readonly onSaveLayout: (payload: VisualLayoutSavePayload) => void
-  readonly onWaitingChange: (waiting: string | null) => void
+  readonly state: VisualAppState;
+  readonly selectedId: string | null;
+  readonly waiting: string | null;
+  readonly layout: "layered" | "radial" | "force";
+  readonly direction: "top-down" | "left-right";
+  readonly notation: "native" | "archimate";
+  readonly seed: string;
+  readonly showLifecycle: boolean;
+  readonly showEvidence: boolean;
+  readonly showOwnership: boolean;
+  readonly onSelect: (subject: SelectedDiagramSubject) => void;
+  readonly onClearFilter: () => void;
+  readonly onSaveLayout: (payload: VisualLayoutSavePayload) => void;
+  readonly onWaitingChange: (waiting: string | null) => void;
 }) => {
   // An edge names its endpoints by node id; the reviewer reads titles. The
   // rendering model the renderer itself draws answers that, so nothing here
@@ -378,14 +382,15 @@ const DiagramWorkspace = ({
         ),
       ),
     [state.model],
-  )
+  );
 
   return (
     <section className="diagram-workspace" aria-label="Architecture diagram">
-      {state.activeFilter?.source === 'chat' ? (
+      {state.activeFilter?.source === "chat" ? (
         <div className="filter-pill" role="status">
           <span>
-            Filtered by chat: <code>{describeQuery(state.activeFilter.query)}</code>
+            Filtered by chat:{" "}
+            <code>{describeQuery(state.activeFilter.query)}</code>
           </span>
           <button type="button" onClick={onClearFilter}>
             Show all
@@ -398,14 +403,15 @@ const DiagramWorkspace = ({
             graph={state.model.graph}
             selectedId={selectedId}
             onSelect={(id, type) => {
-              const graph = state.model!.graph
-              if (type === 'node') {
-                const node = graph.nodes.find((n) => n.id === id)
-                if (node !== undefined) onSelect(normalizeSelectedElement(node))
+              const graph = state.model!.graph;
+              if (type === "node") {
+                const node = graph.nodes.find((n) => n.id === id);
+                if (node !== undefined)
+                  onSelect(normalizeSelectedElement(node));
               } else {
-                const edge = graph.edges.find((e) => e.id === id)
+                const edge = graph.edges.find((e) => e.id === id);
                 if (edge !== undefined)
-                  onSelect(normalizeSelectedRelationship(edge, nodeTitles))
+                  onSelect(normalizeSelectedRelationship(edge, nodeTitles));
               }
             }}
             matchedIds={state.activeFilter?.matchedIds ?? null}
@@ -431,8 +437,8 @@ const DiagramWorkspace = ({
         {waiting === null ? null : <p className="waiting">{waiting}</p>}
       </div>
     </section>
-  )
-}
+  );
+};
 
 /**
  * A description is worth reading in full and worth not burying the rest of the
@@ -445,41 +451,41 @@ const ExpandableDescription = ({
   expanded,
   onToggle,
 }: {
-  readonly text: string | null
-  readonly expanded: boolean
-  readonly onToggle: () => void
+  readonly text: string | null;
+  readonly expanded: boolean;
+  readonly onToggle: () => void;
 }) => {
-  const description = text ?? 'No description declared in this model'
-  const body = useRef<HTMLParagraphElement>(null)
-  const [canExpand, setCanExpand] = useState(false)
+  const description = text ?? "No description declared in this model";
+  const body = useRef<HTMLParagraphElement>(null);
+  const [canExpand, setCanExpand] = useState(false);
 
   useLayoutEffect(() => {
-    const element = body.current
-    if (element === null || expanded) return
+    const element = body.current;
+    if (element === null || expanded) return;
     const measure = () =>
-      setCanExpand(element.scrollHeight > element.clientHeight + 1)
-    measure()
-    const observer = new ResizeObserver(measure)
-    observer.observe(element)
-    return () => observer.disconnect()
-  }, [description, expanded])
+      setCanExpand(element.scrollHeight > element.clientHeight + 1);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [description, expanded]);
 
   return (
     <div className="subject-description">
       <p
         ref={body}
-        className={expanded ? 'description-expanded' : 'description-clamped'}
+        className={expanded ? "description-expanded" : "description-clamped"}
       >
         {description}
       </p>
       {canExpand || expanded ? (
         <button type="button" aria-expanded={expanded} onClick={onToggle}>
-          {expanded ? 'Show less' : 'Show more'}
+          {expanded ? "Show less" : "Show more"}
         </button>
       ) : null}
     </div>
-  )
-}
+  );
+};
 
 /**
  * What the reviewer clicked, said back to them in the model's own words: the
@@ -495,34 +501,34 @@ const SelectedSubjectInspector = ({
   onClear,
   onStageChange,
 }: {
-  readonly subject: SelectedDiagramSubject
-  readonly model: VisualRenderedModel
-  readonly operations: readonly YarramateOperation[]
-  readonly expanded: boolean
-  readonly onToggleDescription: () => void
-  readonly onClear: () => void
-  readonly onStageChange: (operation: YarramateOperation) => void
+  readonly subject: SelectedDiagramSubject;
+  readonly model: VisualRenderedModel;
+  readonly operations: readonly YarramateOperation[];
+  readonly expanded: boolean;
+  readonly onToggleDescription: () => void;
+  readonly onClear: () => void;
+  readonly onStageChange: (operation: YarramateOperation) => void;
 }) => {
   const node =
-    subject.type === 'element'
+    subject.type === "element"
       ? model.graph.nodes.find((candidate) => candidate.id === subject.id)
-      : undefined
+      : undefined;
   const edge =
-    subject.type === 'relationship'
+    subject.type === "relationship"
       ? model.graph.edges.find((candidate) => candidate.id === subject.id)
-      : undefined
+      : undefined;
 
   return (
     <section className="subject-inspector" aria-labelledby="subject-heading">
       <div className="subject-heading-row">
         <div>
           <p className="subject-type">
-            {subject.type === 'element'
-              ? 'Selected element'
-              : 'Selected relationship'}
+            {subject.type === "element"
+              ? "Selected element"
+              : "Selected relationship"}
           </p>
           <h2 id="subject-heading">
-            {subject.type === 'element'
+            {subject.type === "element"
               ? subject.title
               : `${subject.sourceTitle} → ${subject.targetTitle}`}
           </h2>
@@ -555,8 +561,8 @@ const SelectedSubjectInspector = ({
         onToggle={onToggleDescription}
       />
     </section>
-  )
-}
+  );
+};
 
 const ConversationPanel = ({
   state,
@@ -573,39 +579,38 @@ const ConversationPanel = ({
   onClearChangeset,
   onCommitChangeset,
 }: {
-  readonly state: VisualAppState
-  readonly hidden: boolean
-  readonly disabled: boolean
-  readonly selectedSubject: SelectedDiagramSubject | null
-  readonly descriptionExpanded: boolean
-  readonly onSend: (text: string) => void
-  readonly onChoice: (optionId: string) => void
-  readonly onToggleDescription: () => void
-  readonly onClearSubject: () => void
-  readonly onDiscardChange: (index: number) => void
-  readonly onStageChange: (operation: YarramateOperation) => void
-  readonly onClearChangeset: () => void
-  readonly onCommitChangeset: () => void
+  readonly state: VisualAppState;
+  readonly hidden: boolean;
+  readonly disabled: boolean;
+  readonly selectedSubject: SelectedDiagramSubject | null;
+  readonly descriptionExpanded: boolean;
+  readonly onSend: (text: string) => void;
+  readonly onChoice: (optionId: string) => void;
+  readonly onToggleDescription: () => void;
+  readonly onClearSubject: () => void;
+  readonly onDiscardChange: (index: number) => void;
+  readonly onStageChange: (operation: YarramateOperation) => void;
+  readonly onClearChangeset: () => void;
+  readonly onCommitChangeset: () => void;
 }) => {
-  const [draft, setDraft] = useState('')
-  const agentWaiting =
-    state.lifecycle === 'active' && state.awaitingAgent
+  const [draft, setDraft] = useState("");
+  const agentWaiting = state.lifecycle === "active" && state.awaitingAgent;
   const visibleAgentStatus =
-    state.lifecycle === 'active' ? state.agentStatus : null
+    state.lifecycle === "active" ? state.agentStatus : null;
 
   const submit = (event: FormEvent) => {
-    event.preventDefault()
-    const text = draft.trim()
-    if (text === '' || disabled) return
-    onSend(text)
-    setDraft('')
-  }
+    event.preventDefault();
+    const text = draft.trim();
+    if (text === "" || disabled) return;
+    onSend(text);
+    setDraft("");
+  };
 
   const keyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key !== 'Enter' || event.shiftKey) return
-    event.preventDefault()
-    event.currentTarget.form?.requestSubmit()
-  }
+    if (event.key !== "Enter" || event.shiftKey) return;
+    event.preventDefault();
+    event.currentTarget.form?.requestSubmit();
+  };
 
   return (
     <section
@@ -664,7 +669,7 @@ const ConversationPanel = ({
         {selectedSubject === null ? null : (
           <div className="subject-chip">
             <span>
-              {selectedSubject.type === 'element'
+              {selectedSubject.type === "element"
                 ? selectedSubject.title
                 : `${selectedSubject.sourceTitle} → ${selectedSubject.targetTitle}`}
             </span>
@@ -688,12 +693,12 @@ const ConversationPanel = ({
           disabled={disabled}
           placeholder={
             !state.chatEnabled
-              ? 'This session is read-only'
-              : selectedSubject?.type === 'element'
-                ? 'Ask about this element'
-                : selectedSubject?.type === 'relationship'
-                  ? 'Ask about this relationship'
-                  : 'Ask about this design'
+              ? "This session is read-only"
+              : selectedSubject?.type === "element"
+                ? "Ask about this element"
+                : selectedSubject?.type === "relationship"
+                  ? "Ask about this relationship"
+                  : "Ask about this design"
           }
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={keyDown}
@@ -711,64 +716,64 @@ const ConversationPanel = ({
             <span>
               {visibleAgentStatus === null
                 ? agentWaiting
-                  ? 'Awaiting agent response'
-                  : '\u00a0'
-                : (STATUS_WORDS[visibleAgentStatus.state] ?? '\u00a0')}
+                  ? "Awaiting agent response"
+                  : "\u00a0"
+                : (STATUS_WORDS[visibleAgentStatus.state] ?? "\u00a0")}
             </span>
           </p>
-          <button type="submit" disabled={disabled || draft.trim() === ''}>
+          <button type="submit" disabled={disabled || draft.trim() === ""}>
             Send
           </button>
         </div>
       </form>
     </section>
-  )
-}
+  );
+};
 
 const ConversationSeparator = ({
   width,
   viewportWidth,
   onResize,
 }: {
-  readonly width: number
-  readonly viewportWidth: number
-  readonly onResize: (width: number) => void
+  readonly width: number;
+  readonly viewportWidth: number;
+  readonly onResize: (width: number) => void;
 }) => {
   // From the state the reducer clamped against, never from `window`: a resize
   // that leaves the panel width alone still changes what this may be dragged
   // to, and a render that read the live global would only say so by accident.
-  const bounds = conversationWidthBounds(viewportWidth)
+  const bounds = conversationWidthBounds(viewportWidth);
   const drag = useRef<{
-    readonly pointerId: number
-    readonly startX: number
-    readonly startWidth: number
-  } | null>(null)
+    readonly pointerId: number;
+    readonly startX: number;
+    readonly startWidth: number;
+  } | null>(null);
   const pointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const active = drag.current
-    if (active?.pointerId !== event.pointerId) return
-    onResize(active.startWidth + active.startX - event.clientX)
-  }
+    const active = drag.current;
+    if (active?.pointerId !== event.pointerId) return;
+    onResize(active.startWidth + active.startX - event.clientX);
+  };
   const pointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     drag.current = {
       pointerId: event.pointerId,
       startX: event.clientX,
       startWidth: width,
-    }
-    event.currentTarget.setPointerCapture(event.pointerId)
-  }
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
   const pointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (drag.current?.pointerId !== event.pointerId) return
-    drag.current = null
+    if (drag.current?.pointerId !== event.pointerId) return;
+    drag.current = null;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId)
+      event.currentTarget.releasePointerCapture(event.pointerId);
     }
-  }
+  };
   const keyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
-    event.preventDefault()
-    const step = event.shiftKey ? 32 : 8
-    onResize(width + (event.key === 'ArrowLeft' ? step : -step))
-  }
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    const step = event.shiftKey ? 32 : 8;
+    onResize(width + (event.key === "ArrowLeft" ? step : -step));
+  };
   return (
     <div
       className="conversation-separator"
@@ -785,8 +790,8 @@ const ConversationSeparator = ({
       onPointerCancel={pointerUp}
       onKeyDown={keyDown}
     />
-  )
-}
+  );
+};
 
 export const App = () => {
   const {
@@ -806,25 +811,51 @@ export const App = () => {
     clearChangeset,
     commitChangeset,
     end,
-  } = useVisualSession()
+  } = useVisualSession();
 
   const [workspace, dispatchWorkspace] = useReducer(
     visualWorkspaceReducer,
     window.innerWidth,
     createVisualWorkspaceState,
-  )
+  );
 
-  const [layoutWaiting, setLayoutWaiting] = useState<string | null>(null)
+  const [layoutWaiting, setLayoutWaiting] = useState<string | null>(null);
 
   useEffect(() => {
     const resized = () =>
       dispatchWorkspace({
-        type: 'viewport.resized',
+        type: "viewport.resized",
         viewportWidth: window.innerWidth,
-      })
-    window.addEventListener('resize', resized)
-    return () => window.removeEventListener('resize', resized)
-  }, [])
+      });
+    window.addEventListener("resize", resized);
+    return () => window.removeEventListener("resize", resized);
+  }, []);
+
+  // Applying a view is one job with two triggers - the picker, and the view
+  // the session opens on - so it runs here rather than in the picker's
+  // handler, which the server-chosen opening never passes through. The ref
+  // records what has already landed, so a reviewer-driven navigate (which
+  // moves `activeView` synchronously) is applied exactly once, and clearing
+  // back to "All" re-arms the view the reviewer left.
+  const appliedViewRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (state.activeView === "") {
+      appliedViewRef.current = null;
+      return;
+    }
+    const view = viewNeedingApplication(
+      state.activeView,
+      state.views,
+      appliedViewRef.current,
+      connected,
+    );
+    if (view === null) return;
+    appliedViewRef.current = view.id;
+    filter(view.query);
+    for (const action of presentationActionsFor(view.presentation)) {
+      dispatchWorkspace(action);
+    }
+  }, [state.activeView, state.views, connected, filter]);
 
   // Only what arrived from the agent counts as attention: everything the
   // reviewer did themselves is already in front of them.
@@ -832,47 +863,47 @@ export const App = () => {
     transcriptLength: state.transcript.length,
     choices: state.choices,
     diagnostics: state.diagnostics,
-  })
+  });
 
   useEffect(() => {
-    const previous = attention.current
-    let receivedTranscript = false
+    const previous = attention.current;
+    let receivedTranscript = false;
     for (
       let index = previous.transcriptLength;
       index < state.transcript.length;
       index += 1
     ) {
-      if (state.transcript[index]?.speaker === 'agent') {
-        receivedTranscript = true
-        break
+      if (state.transcript[index]?.speaker === "agent") {
+        receivedTranscript = true;
+        break;
       }
     }
     const received =
       receivedTranscript ||
       (state.choices !== null && state.choices !== previous.choices) ||
       (state.diagnostics.length > 0 &&
-        state.diagnostics !== previous.diagnostics)
+        state.diagnostics !== previous.diagnostics);
     attention.current = {
       transcriptLength: state.transcript.length,
       choices: state.choices,
       diagnostics: state.diagnostics,
-    }
-    if (received) dispatchWorkspace({ type: 'attention.received' })
-  }, [state.transcript.length, state.choices, state.diagnostics])
+    };
+    if (received) dispatchWorkspace({ type: "attention.received" });
+  }, [state.transcript.length, state.choices, state.diagnostics]);
 
   // A commit or a promotion replaces the whole model. The workspace re-reads the
   // held subject from the new graph rather than assuming it is gone; views and
   // lifecycle change under the same model and must leave the selection alone.
-  const activeCandidate = useRef(state.model)
+  const activeCandidate = useRef(state.model);
   useEffect(() => {
     if (state.model !== activeCandidate.current) {
-      activeCandidate.current = state.model
+      activeCandidate.current = state.model;
       dispatchWorkspace({
-        type: 'model.replaced',
+        type: "model.replaced",
         graph: state.model?.graph ?? null,
-      })
+      });
     }
-  }, [state.model])
+  }, [state.model]);
 
   // "No model to draw" is only true before anything has arrived; once a
   // model exists, `waiting` reflects the canvas's own busy state (e.g. a
@@ -880,14 +911,14 @@ export const App = () => {
   const waiting =
     state.model !== null
       ? layoutWaiting
-      : state.lifecycle === 'connecting'
-        ? 'Reading the session'
-        : 'No model to draw'
+      : state.lifecycle === "connecting"
+        ? "Reading the session"
+        : "No model to draw";
 
-  const conversationOpen = workspace.conversation.mode === 'open'
+  const conversationOpen = workspace.conversation.mode === "open";
   const shellStyle = {
-    '--conversation-width': `${workspace.conversation.width}px`,
-  } as CSSProperties
+    "--conversation-width": `${workspace.conversation.width}px`,
+  } as CSSProperties;
 
   return (
     <main className="visual-shell" style={shellStyle}>
@@ -905,28 +936,27 @@ export const App = () => {
         showEvidence={workspace.showEvidence}
         showOwnership={workspace.showOwnership}
         views={state.views}
-        onToggleDetails={() => dispatchWorkspace({ type: 'details.toggled' })}
+        onToggleDetails={() => dispatchWorkspace({ type: "details.toggled" })}
         onToggleConversation={() =>
-          dispatchWorkspace({ type: 'conversation.toggled' })
+          dispatchWorkspace({ type: "conversation.toggled" })
         }
         onToggleDirection={() =>
           dispatchWorkspace({
-            type: 'direction.set',
-            direction: workspace.direction === 'top-down' ? 'left-right' : 'top-down',
+            type: "direction.set",
+            direction:
+              workspace.direction === "top-down" ? "left-right" : "top-down",
           })
         }
-        onSelectNotation={(notation) => dispatchWorkspace({ type: 'notation.set', notation })}
-        onSelectLayout={(layout) => dispatchWorkspace({ type: 'layout.set', layout })}
-        onTogglePresentation={(flag, value) =>
-          dispatchWorkspace({ type: 'presentation.toggled', flag, value })
+        onSelectNotation={(notation) =>
+          dispatchWorkspace({ type: "notation.set", notation })
         }
-        onSelectView={(view) => {
-          navigate(view.id)
-          filter(view.query)
-          for (const action of presentationActionsFor(view.presentation)) {
-            dispatchWorkspace(action)
-          }
-        }}
+        onSelectLayout={(layout) =>
+          dispatchWorkspace({ type: "layout.set", layout })
+        }
+        onTogglePresentation={(flag, value) =>
+          dispatchWorkspace({ type: "presentation.toggled", flag, value })
+        }
+        onSelectView={(view) => navigate(view.id)}
         onClearFilter={clearFilter}
         onApplyFilter={filter}
         quickFilterText={state.quickFilterText}
@@ -937,7 +967,7 @@ export const App = () => {
       />
       <div
         className={`workspace workspace-conversation-${
-          conversationOpen ? 'open' : 'closed'
+          conversationOpen ? "open" : "closed"
         }`}
       >
         <DiagramWorkspace
@@ -952,7 +982,7 @@ export const App = () => {
           showEvidence={workspace.showEvidence}
           showOwnership={workspace.showOwnership}
           onSelect={(subject) =>
-            dispatchWorkspace({ type: 'subject.selected', subject })
+            dispatchWorkspace({ type: "subject.selected", subject })
           }
           onClearFilter={clearFilter}
           onSaveLayout={saveLayout}
@@ -963,7 +993,7 @@ export const App = () => {
             width={workspace.conversation.width}
             viewportWidth={workspace.viewportWidth}
             onResize={(width) =>
-              dispatchWorkspace({ type: 'conversation.resized', width })
+              dispatchWorkspace({ type: "conversation.resized", width })
             }
           />
         ) : null}
@@ -978,9 +1008,9 @@ export const App = () => {
           }
           onChoice={choose}
           onToggleDescription={() =>
-            dispatchWorkspace({ type: 'description.toggled' })
+            dispatchWorkspace({ type: "description.toggled" })
           }
-          onClearSubject={() => dispatchWorkspace({ type: 'subject.cleared' })}
+          onClearSubject={() => dispatchWorkspace({ type: "subject.cleared" })}
           onDiscardChange={discardChange}
           onStageChange={stageChange}
           onClearChangeset={clearChangeset}
@@ -988,5 +1018,5 @@ export const App = () => {
         />
       </div>
     </main>
-  )
-}
+  );
+};
