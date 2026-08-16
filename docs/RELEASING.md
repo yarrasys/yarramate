@@ -20,10 +20,11 @@ either action.
    fetched from `main` at page load — refresh them when the release changes
    the story.
 2. Update public documentation for any stable-interface change.
-3. Run:
+3. Ensure the `pnpm` on `PATH` matches the `packageManager` field in
+   `package.json` — `corepack enable` provides it where Corepack is installed,
+   otherwise check `pnpm --version` against the field. Then run:
 
    ```sh
-   corepack enable
    pnpm install --frozen-lockfile
    pnpm run verify
    npm pack --dry-run
