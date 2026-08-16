@@ -706,6 +706,50 @@ query:
     )
   })
 
+  it('round-trips notation through a saved projection document', () => {
+    const withNative = loadProjection({
+      path: 'native.projection.yaml',
+      source: `format: yarramate/projection/v1
+id: notation-test
+version: "1.0"
+query: {}
+presentation:
+  notation: native
+`,
+    })
+    const withArchimate = loadProjection({
+      path: 'archimate.projection.yaml',
+      source: `format: yarramate/projection/v1
+id: notation-test
+version: "1.0"
+query: {}
+presentation:
+  notation: archimate
+`,
+    })
+    expect(withNative.ok).toBe(true)
+    expect(withArchimate.ok).toBe(true)
+    if (!withNative.ok || !withArchimate.ok) return
+    expect(withNative.projection.presentation?.notation).toBe('native')
+    expect(withArchimate.projection.presentation?.notation).toBe('archimate')
+    expect(canonicalProjection(withNative.projection).presentation?.notation).toBe('native')
+    expect(canonicalProjection(withArchimate.projection).presentation?.notation).toBe('archimate')
+  })
+
+  it('rejects unknown notation values in schema validation', () => {
+    const invalid = loadProjection({
+      path: 'invalid.projection.yaml',
+      source: `format: yarramate/projection/v1
+id: bad-notation
+version: "1.0"
+query: {}
+presentation:
+  notation: invalid-notation
+`,
+    })
+    expect(invalid.ok).toBe(false)
+  })
+
   it('keeps portable presentation metadata out of projection membership', () => {
     const compilation = compileWorkspace([
       { path: 'projection-model.yaml', source },
@@ -858,6 +902,44 @@ query:
         },
       },
     })
+  })
+
+  it('produces the same subjects from a synthetic ad-hoc projection as from the equivalent on-disk file', () => {
+    const compilation = compileWorkspace([
+      { path: 'projection-model.yaml', source },
+    ])
+    expect(compilation.ok).toBe(true)
+    if (!compilation.ok) return
+
+    const loaded = loadProjection({
+      path: 'current-capabilities.projection.yaml',
+      source: readFileSync(
+        fileURLToPath(
+          new URL(
+            './fixtures/valid/current-capabilities.projection.yaml',
+            import.meta.url,
+          ),
+        ),
+        'utf8',
+      ),
+    })
+    expect(loaded.ok).toBe(true)
+    if (!loaded.ok) return
+
+    // Mirrors the synthetic `ProjectionDefinition` session-server.ts builds
+    // for `filter.query`: an ad-hoc id/version wrapping the browser's query,
+    // with no presentation. It must select the same subjects as loading the
+    // equivalent on-disk projection file for the same query.
+    const synthetic: ProjectionDefinition = {
+      format: 'yarramate/projection/v1',
+      id: 'ad-hoc',
+      version: '0',
+      query: loaded.projection.query,
+    }
+
+    const fromFile = evaluateProjection(compilation.graph, loaded.projection)
+    const fromSynthetic = evaluateProjection(compilation.graph, synthetic)
+    expect(fromSynthetic.subjects).toEqual(fromFile.subjects)
   })
 })
 

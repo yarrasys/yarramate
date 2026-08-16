@@ -1710,3 +1710,165 @@ mappings:
   - native: yarramate-repository#visual-store-tests-validate-recovery
     external: visualStoreTestsValidateRecovery
     type: relationship
+  - native: yarramate-repository#graph-projection-source
+    external: graphProjectionSource
+    type: concept
+  - native: yarramate-repository#graph-projection-realizes-rendering
+    external: graphProjectionRealizesRendering
+    type: relationship
+  - native: yarramate-repository#graph-projection-tests
+    external: graphProjectionTests
+    type: concept
+  - native: yarramate-repository#graph-projection-tests-validate-rendering
+    external: graphProjectionTestsValidateRendering
+    type: relationship
+  - native: yarramate-engine#commit-visual-changeset
+    external: commitVisualChangeset
+    type: concept
+  - native: yarramate-engine#save-visual-layout
+    external: saveVisualLayout
+    type: concept
+  - native: yarramate-engine#visual-layout-sidecar
+    external: visualLayoutSidecar
+    type: concept
+  - native: yarramate-engine#visual-runtime-commits-changeset
+    external: visualRuntimeCommitsChangeset
+    type: relationship
+  - native: yarramate-engine#apply-serves-visual-commit
+    external: applyServesVisualCommit
+    type: relationship
+  - native: yarramate-engine#visual-commit-reads-operations
+    external: visualCommitReadsOperations
+    type: relationship
+  - native: yarramate-engine#visual-commit-reads-apply-result
+    external: visualCommitReadsApplyResult
+    type: relationship
+  - native: yarramate-engine#visual-runtime-saves-layout
+    external: visualRuntimeSavesLayout
+    type: relationship
+  - native: yarramate-engine#visual-layout-save-writes-sidecar
+    external: visualLayoutSaveWritesSidecar
+    type: relationship
+  - native: yarramate-engine#build-visual-session-request
+    external: buildVisualSessionRequest
+    type: concept
+  - native: yarramate-engine#cli-provides-view
+    external: cliProvidesView
+    type: relationship
+  - native: yarramate-engine#compiler-serves-request-build
+    external: compilerServesRequestBuild
+    type: relationship
+  - native: yarramate-engine#request-build-reads-manifest
+    external: requestBuildReadsManifest
+    type: relationship
+  - native: yarramate-engine#request-build-writes-protocol
+    external: requestBuildWritesProtocol
+    type: relationship
+  - native: yarramate-engine#view-command
+    external: viewCommand
+    type: concept
+  - native: yarramate-engine#view-command-serves-agent-harness
+    external: viewCommandServesAgentHarness
+    type: relationship
+  - native: yarramate-engine#visual-runtime-builds-request
+    external: visualRuntimeBuildsRequest
+    type: relationship
+  - native: yarramate-repository#apply-operations-tests
+    external: applyOperationsTests
+    type: concept
+  - native: yarramate-repository#apply-operations-tests-validate-apply
+    external: applyOperationsTestsValidateApply
+    type: relationship
+  - native: yarramate-repository#visual-canvas-layout-tests
+    external: visualCanvasLayoutTests
+    type: concept
+  - native: yarramate-repository#visual-canvas-layout-tests-validate-browser
+    external: visualCanvasLayoutTestsValidateBrowser
+    type: relationship
+  - native: yarramate-repository#visual-canvas-source
+    external: visualCanvasSource
+    type: concept
+  - native: yarramate-repository#visual-canvas-source-realizes-browser
+    external: visualCanvasSourceRealizesBrowser
+    type: relationship
+  - native: yarramate-repository#visual-changeset-tray-source
+    external: visualChangesetTraySource
+    type: concept
+  - native: yarramate-repository#visual-changeset-tray-source-realizes-commit
+    external: visualChangesetTraySourceRealizesCommit
+    type: relationship
+  - native: yarramate-repository#visual-changeset-tray-tests
+    external: visualChangesetTrayTests
+    type: concept
+  - native: yarramate-repository#visual-changeset-tray-tests-validate-commit
+    external: visualChangesetTrayTestsValidateCommit
+    type: relationship
+  - native: yarramate-repository#visual-inspector-source
+    external: visualInspectorSource
+    type: concept
+  - native: yarramate-repository#visual-inspector-source-realizes-presentation
+    external: visualInspectorSourceRealizesPresentation
+    type: relationship
+  - native: yarramate-repository#visual-inspector-tests
+    external: visualInspectorTests
+    type: concept
+  - native: yarramate-repository#visual-inspector-tests-validate-presentation
+    external: visualInspectorTestsValidatePresentation
+    type: relationship
+  - native: yarramate-repository#visual-layout-schema-realizes-sidecar
+    external: visualLayoutSchemaRealizesSidecar
+    type: relationship
+  - native: yarramate-repository#visual-layout-schema-source
+    external: visualLayoutSchemaSource
+    type: concept
+  - native: yarramate-repository#visual-request-source
+    external: visualRequestSource
+    type: concept
+  - native: yarramate-repository#visual-request-source-realizes-request-build
+    external: visualRequestSourceRealizesRequestBuild
+    type: relationship
+  - native: yarramate-repository#visual-request-tests
+    external: visualRequestTests
+    type: concept
+  - native: yarramate-repository#visual-request-tests-validate-request-build
+    external: visualRequestTestsValidateRequestBuild
+    type: relationship
+  - native: yarramate-engine#render-visual-presentation-badges
+    external: renderVisualPresentationBadges
+    type: concept
+  - native: yarramate-engine#render-archimate-kind-icons
+    external: renderArchimateKindIcons
+    type: concept
+  - native: yarramate-engine#render-visual-model-reads-kind-catalogue
+    external: renderVisualModelReadsKindCatalogue
+    type: relationship
+  - native: yarramate-engine#visual-browser-renders-presentation-badges
+    external: visualBrowserRendersPresentationBadges
+    type: relationship
+  - native: yarramate-engine#visual-browser-renders-kind-icons
+    external: visualBrowserRendersKindIcons
+    type: relationship
+  - native: yarramate-repository#visual-badges-source
+    external: visualBadgesSource
+    type: concept
+  - native: yarramate-repository#visual-kind-icons-source
+    external: visualKindIconsSource
+    type: concept
+  - native: yarramate-repository#visual-badges-tests
+    external: visualBadgesTests
+    type: concept
+  - native: yarramate-repository#visual-kind-icons-tests
+    external: visualKindIconsTests
+    type: concept
+  - native: yarramate-repository#visual-badges-source-realizes-badges
+    external: visualBadgesSourceRealizesBadges
+    type: relationship
+  - native: yarramate-repository#visual-kind-icons-source-realizes-icons
+    external: visualKindIconsSourceRealizesIcons
+    type: relationship
+  - native: yarramate-repository#visual-badges-tests-validate-badges
+    external: visualBadgesTestsValidateBadges
+    type: relationship
+  - native: yarramate-repository#visual-kind-icons-tests-validate-icons
+    external: visualKindIconsTestsValidateIcons
+    type: relationship

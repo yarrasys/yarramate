@@ -24,7 +24,7 @@
       "const": "yarramate/visual-status/v1"
     },
     "protocolVersion": {
-      "const": "yarramate/visual-protocol/v1"
+      "const": "yarramate/visual-protocol/v2"
     },
     "sessionId": {
       "$ref": "https://yarramate.org/schema/visual-event/v1#/$defs/identifier"
@@ -103,7 +103,8 @@
             "transcript-bytes",
             "pending-events",
             "browser-disconnected",
-            "terminal-event"
+            "terminal-event",
+            "recompile-failed"
           ]
         }
       }

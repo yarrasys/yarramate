@@ -1,7 +1,8 @@
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { VisualAppState } from '../src/visual-app/state.js'
+import type * as WorkspaceState from '../src/visual-app/workspace-state.js'
 
 const session = vi.hoisted(() => {
   const baseState: VisualAppState = {
@@ -20,6 +21,9 @@ const session = vi.hoisted(() => {
         text: 'What happens next?',
       },
     ],
+    views: [],
+    activeFilter: null,
+    quickFilterText: '',
     choices: null,
     agentStatus: null,
     diagnostics: [],
@@ -30,6 +34,13 @@ const session = vi.hoisted(() => {
     lastSequence: 1,
     frozen: false,
     closedReason: null,
+    pendingViewSave: null,
+    viewSaveNotice: false,
+    pendingChangeset: { operations: [] },
+    commitStatus: 'idle',
+    commitDiagnostics: null,
+    commitNotice: null,
+    layoutNotice: null,
   }
   return { baseState, state: baseState }
 })
@@ -41,9 +52,47 @@ vi.mock('../src/visual-app/session-client.js', () => ({
     ask: vi.fn(),
     choose: vi.fn(),
     navigate: vi.fn(),
+    filter: vi.fn(),
+    clearFilter: vi.fn(),
+    setQuickFilterText: vi.fn(),
+    saveView: vi.fn(),
+    dismissSavedNotice: vi.fn(),
     end: vi.fn(),
   }),
 }))
+
+// The command strip's layout control lives on local `useReducer` workspace
+// state, not `VisualAppState` - so a render test that wants to see the
+// direction button disabled under a non-`layered` backend has to override
+// the reducer's initial value the same way `session` overrides session state
+// above, rather than driving it through props the App component doesn't have.
+// `notationOverride` follows the same pattern for the ArchiMate direction pin,
+// and `directionOverride` for a stored direction the pin has to override in
+// the label without touching what is stored.
+const workspace = vi.hoisted(() => ({
+  layoutOverride: undefined as 'layered' | 'radial' | 'force' | undefined,
+  notationOverride: undefined as 'native' | 'archimate' | undefined,
+  directionOverride: undefined as 'top-down' | 'left-right' | undefined,
+}))
+
+vi.mock('../src/visual-app/workspace-state.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof WorkspaceState>()
+  return {
+    ...actual,
+    createVisualWorkspaceState: (viewportWidth: number) => ({
+      ...actual.createVisualWorkspaceState(viewportWidth),
+      ...(workspace.layoutOverride === undefined
+        ? {}
+        : { layout: workspace.layoutOverride }),
+      ...(workspace.notationOverride === undefined
+        ? {}
+        : { notation: workspace.notationOverride }),
+      ...(workspace.directionOverride === undefined
+        ? {}
+        : { direction: workspace.directionOverride }),
+    }),
+  }
+})
 
 import { App } from '../src/visual-app/App.js'
 
@@ -150,4 +199,137 @@ describe('visual conversation rendering', () => {
       expect(markup).not.toContain('Agent is thinking')
     },
   )
+
+  it('shows a chat filter pill naming the active chat-issued query', () => {
+    const markup = renderSession({
+      activeFilter: {
+        query: { layers: ['application'] },
+        matchedIds: ['a'],
+        source: 'chat',
+      },
+    })
+
+    expect(markup).toContain('class="filter-pill"')
+    expect(markup).toContain('Filtered by chat:')
+    expect(markup).toContain('layers: application')
+    expect(markup).toContain('>Show all</button>')
+  })
+
+  it.each(['view', 'panel'] as const)(
+    'hides the chat filter pill for a %s-sourced filter',
+    (source) => {
+      const markup = renderSession({
+        activeFilter: { query: { layers: ['application'] }, matchedIds: ['a'], source },
+      })
+
+      expect(markup).not.toContain('class="filter-pill"')
+    },
+  )
+
+  it('hides the chat filter pill when there is no active filter', () => {
+    const markup = renderSession()
+
+    expect(markup).not.toContain('class="filter-pill"')
+  })
+
+  it('renders view options in the picker when state.views is populated', () => {
+    const markup = renderSession({
+      views: [
+        {
+          id: 'v1',
+          title: 'View One',
+          description: '',
+          query: {},
+          presentation: {},
+        },
+      ],
+    })
+
+    expect(markup).toContain('<select')
+    expect(markup).toContain('<option value="v1">View One</option>')
+  })
+
+  it('renders the quick-filter box with the current quickFilterText as its value', () => {
+    const markup = renderSession({ quickFilterText: 'checkout' })
+
+    expect(markup).toContain('class="quick-filter"')
+    expect(markup).toContain('value="checkout"')
+  })
+
+  it('renders the filter panel toggle button', () => {
+    const markup = renderSession()
+
+    expect(markup).toContain('class="filter-panel"')
+    expect(markup).toContain('>Filter</button>')
+  })
+})
+
+describe('layout control', () => {
+  beforeEach(() => {
+    workspace.layoutOverride = undefined
+    workspace.notationOverride = undefined
+    workspace.directionOverride = undefined
+  })
+
+  afterAll(() => {
+    workspace.layoutOverride = undefined
+    workspace.notationOverride = undefined
+    workspace.directionOverride = undefined
+  })
+
+  it('enables the direction button under the default layered backend', () => {
+    workspace.layoutOverride = undefined
+    const markup = renderSession()
+
+    expect(markup).toContain('<button type="button">Top-Down</button>')
+  })
+
+  it.each(['radial', 'force'] as const)(
+    'disables the direction button under %s',
+    (layout) => {
+      workspace.layoutOverride = layout
+      const markup = renderSession()
+
+      expect(markup).toContain('<button type="button" disabled="">Top-Down</button>')
+    },
+  )
+
+  it('disables the direction button and shows the reason under archimate notation', () => {
+    workspace.layoutOverride = undefined
+    workspace.notationOverride = 'archimate'
+    const markup = renderSession()
+
+    expect(markup).toContain('<button type="button" disabled="">Top-Down</button>')
+    expect(markup).toContain(
+      '<span class="direction-notice" role="status">ArchiMate notation fixes direction to Top-Down.</span>',
+    )
+  })
+
+  it('shows no direction notice under native notation', () => {
+    workspace.layoutOverride = undefined
+    workspace.notationOverride = 'native'
+    const markup = renderSession()
+
+    expect(markup).toContain('<span class="direction-notice" role="status"></span>')
+  })
+
+  it('reports the pinned direction while archimate makes a stored left-right inert', () => {
+    workspace.notationOverride = 'archimate'
+    workspace.directionOverride = 'left-right'
+    const markup = renderSession()
+
+    // The canvas laid out DOWN, so the strip cannot advertise the stored value.
+    expect(markup).toContain('<button type="button" disabled="">Top-Down</button>')
+  })
+
+  it('keeps the stored direction and drops the notice where archimate pins nothing', () => {
+    workspace.layoutOverride = 'radial'
+    workspace.notationOverride = 'archimate'
+    workspace.directionOverride = 'left-right'
+    const markup = renderSession()
+
+    // Radial never reads a direction, so the pin is not what disabled this.
+    expect(markup).toContain('<button type="button" disabled="">Left-Right</button>')
+    expect(markup).toContain('<span class="direction-notice" role="status"></span>')
+  })
 })

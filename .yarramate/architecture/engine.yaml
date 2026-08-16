@@ -727,13 +727,13 @@ concepts:
   - id: visual-runtime
     kind: applicationComponent
     name: Visual conversation runtime
-    description: Serves authenticated temporary LikeC4 explanations, browser chat transport, recovery, and cleanup without invoking a model provider.
+    description: Serves authenticated temporary native-model explanations, browser chat transport, mechanical commits through the apply write path, layout persistence, recovery, and cleanup without invoking a model provider.
     owner: yarramate-product#yarramate-maintainers
     status: current
   - id: visual-browser
     kind: applicationComponent
     name: Visual conversation browser
-    description: Custom React and LikeC4 presentation for diagrams, descriptions, choices, chat, status, and End.
+    description: Custom React and Cytoscape presentation for diagrams, dropdown-constrained concept and relationship edits, the staged changeset, descriptions, choices, chat, status, and End.
     owner: yarramate-product#yarramate-maintainers
     status: current
   - id: visual-session-service
@@ -745,7 +745,7 @@ concepts:
   - id: visual-session-protocol
     kind: dataObject
     name: Visual session protocol
-    description: Versioned browser, delegated-agent, model, status, and handoff documents for one temporary session.
+    description: Versioned browser, delegated-agent, model, status, operations, apply-result, layout, and handoff documents for one temporary session.
     owner: yarramate-product#yarramate-maintainers
     status: current
   - id: visual-handoff
@@ -754,10 +754,15 @@ concepts:
     description: Recoverable summary of confirmed decisions, requested changes, unresolved questions, final views, termination, and optional transcript access.
     owner: yarramate-product#yarramate-maintainers
     status: current
+  - id: build-visual-session-request
+    kind: applicationFunction
+    name: Build the visual session request
+    description: Transcribes a repository into the session request a session starts from - the compiled native graph, the digest of every source that compiled, and the declared view list - and refuses before any session exists when the workspace cannot be read, does not compile, or declares no such view.
+    status: current
   - id: render-visual-model
     kind: applicationFunction
     name: Render temporary visual model
-    description: Validates, compiles, and atomically promotes a complete grounded or explicitly ad hoc LikeC4 model.
+    description: Compiles the checked workspace and projects its native graph into the renderable graph the browser draws, recompiling after every landed commit; no DSL round-trip, no promotion, no ad hoc model.
     status: current
   - id: recover-visual-session
     kind: applicationFunction
@@ -767,12 +772,38 @@ concepts:
   - id: present-visual-conversation
     kind: applicationFunction
     name: Present the visual conversation
-    description: Draws the promoted views, the authority and connection state, the transcript, the structured choices, and End, and turns what the reviewer does with them into session events.
+    description: Draws the rendered graph, the authority and connection state, the transcript, the structured choices, the editable inspector with its staged changeset, and End, and turns what the reviewer does with them into session events.
     status: current
   - id: expose-cli-over-mcp
     kind: applicationFunction
     name: Expose the CLI over MCP
     description: Advertises the read-only CLI verbs as stdio Model Context Protocol tools and forwards each call to the same command surface a human runs.
+    status: current
+  - id: commit-visual-changeset
+    kind: applicationFunction
+    name: Commit the visual changeset
+    description: Lands a browser-authored batch of concept and relationship operations by calling the existing apply write path, then rebroadcasts the recompiled model; the runtime adds no write surface of its own and never runs a Git command.
+    status: current
+  - id: save-visual-layout
+    kind: applicationFunction
+    name: Save the visual layout
+    description: Persists reviewer-dragged node positions for one projection's canvas as an adapter-owned sidecar, never through apply and never inside the semantic model.
+    status: current
+  - id: visual-layout-sidecar
+    kind: dataObject
+    name: Visual layout sidecar
+    description: The yarramate/visual-layout/v1 saved node positions for one projection's canvas - presentation the repository keeps, outside the model it describes.
+    owner: yarramate-product#yarramate-maintainers
+    status: current
+  - id: render-visual-presentation-badges
+    kind: applicationFunction
+    name: Render visual presentation badges
+    description: Draws lifecycle status, evidence, and ownership badge SVGs on each node as inline data-URI background images based on concept status, attestations, and owner fields already present in the visual graph; generates deterministic owner colour from a stable FNV-1a hash of the owner ref, using only the four hue-bearing CSS tokens from styles.css (eucalyptus, ochre, cobalt, ink).
+    status: current
+  - id: render-archimate-kind-icons
+    kind: applicationFunction
+    name: Render ArchiMate kind icons
+    description: Draws a 14×14 px single-stroke SVG icon per concept kind in the repository's graph, covering 19 kinds using ArchiMate element glyphs as descriptive notation only, with no trademark or conformance claim. Unknown kinds render nothing. Active only under archimate notation mode; falls back to native rendering when notation is native.
     status: current
 relationships:
   - id: core-contract-checker-loads-contract
@@ -1645,6 +1676,25 @@ relationships:
     kind: assignment
     from: visual-runtime
     to: render-visual-model
+  - id: visual-runtime-builds-request
+    kind: assignment
+    from: visual-runtime
+    to: build-visual-session-request
+  - id: compiler-serves-request-build
+    kind: serving
+    from: compiler
+    to: build-visual-session-request
+    description: The request carries the native compiler's own graph and source digests, so no agent hand-authors the model a session renders.
+  - id: request-build-reads-manifest
+    kind: access
+    from: build-visual-session-request
+    to: workspace-manifest
+    mode: read
+  - id: request-build-writes-protocol
+    kind: access
+    from: build-visual-session-request
+    to: visual-session-protocol
+    mode: write
   - id: visual-runtime-recovers-session
     kind: assignment
     from: visual-runtime
@@ -1673,7 +1723,7 @@ relationships:
     from: visual-browser
     to: visual-session-protocol
     mode: read-write
-    description: The browser exchanges only versioned session documents. It cannot reach .yarramate, repository files, or the trusted compiler command vector, and no model provider is reachable from it.
+    description: The browser exchanges only versioned session documents. It cannot reach .yarramate, repository files, or the trusted projection step, and no model provider is reachable from it.
   - id: visual-browser-presents-conversation
     kind: assignment
     from: visual-browser
@@ -1683,3 +1733,46 @@ relationships:
     from: recover-visual-session
     to: visual-handoff
     mode: write
+  - id: visual-runtime-commits-changeset
+    kind: assignment
+    from: visual-runtime
+    to: commit-visual-changeset
+  - id: apply-serves-visual-commit
+    kind: serving
+    from: apply-command
+    to: commit-visual-changeset
+    description: A browser-authored batch takes the same atomic validated write path a human or agent takes; the whole candidate workspace compiles before a byte lands.
+  - id: visual-commit-reads-operations
+    kind: access
+    from: commit-visual-changeset
+    to: apply-operations
+    mode: read
+  - id: visual-commit-reads-apply-result
+    kind: access
+    from: commit-visual-changeset
+    to: apply-result
+    mode: read
+    description: The browser is shown exactly what landed - the written file list on success, or the validation diagnostics verbatim.
+  - id: visual-runtime-saves-layout
+    kind: assignment
+    from: visual-runtime
+    to: save-visual-layout
+  - id: visual-layout-save-writes-sidecar
+    kind: access
+    from: save-visual-layout
+    to: visual-layout-sidecar
+    mode: write
+  - id: render-visual-model-reads-kind-catalogue
+    kind: access
+    from: render-visual-model
+    to: kind-catalogue
+    mode: read
+    description: Projects concept kind aspects (resolved through kind inheritance) onto each canvas node so notation modes can render shapes and styling by aspect.
+  - id: visual-browser-renders-presentation-badges
+    kind: assignment
+    from: visual-browser
+    to: render-visual-presentation-badges
+  - id: visual-browser-renders-kind-icons
+    kind: assignment
+    from: visual-browser
+    to: render-archimate-kind-icons

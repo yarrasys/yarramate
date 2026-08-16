@@ -17,6 +17,14 @@
       "pattern": "^[0-9]+\\.[0-9]+$"
     },
     "query": {
+      "$ref": "#/$defs/query"
+    },
+    "presentation": {
+      "$ref": "#/$defs/presentation"
+    }
+  },
+  "$defs": {
+    "query": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -135,6 +143,9 @@
         },
         "showOwnership": {
           "type": "boolean"
+        },
+        "notation": {
+          "enum": ["native", "archimate"]
         }
       },
       "allOf": [
@@ -147,9 +158,7 @@
           }
         }
       ]
-    }
-  },
-  "$defs": {
+    },
     "id": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"

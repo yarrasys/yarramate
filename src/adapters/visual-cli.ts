@@ -20,11 +20,14 @@ import {
   type VisualDiagnostic,
   type VisualTerminationReason,
 } from './visual/protocol.js'
+import { buildVisualSessionRequest } from './visual/request.js'
 import { startVisualServer } from './visual/session-server.js'
 import { pruneStaleVisualSessions } from './visual/session-store.js'
 
 export const visualUsage =
   'Usage:\n' +
+  '  yarramate-visual request [--view <id>] [--title <text>]\n' +
+  '                           [--description <text>] [--chat]\n' +
   '  yarramate-visual start <request.json>\n' +
   '  yarramate-visual wait <descriptor.json> [--after <sequence>]\n' +
   '  yarramate-visual respond <descriptor.json> <response.json>\n' +
@@ -95,6 +98,67 @@ const transcriptFlag = (rest: readonly string[]): boolean | undefined =>
     : rest.length === 1 && rest[0] === '--transcript'
       ? true
       : undefined
+
+interface RequestFlags {
+  readonly view: string | undefined
+  readonly title: string | undefined
+  readonly description: string | undefined
+  readonly chatEnabled: boolean
+}
+
+/**
+ * Strict because the document this builds is a session's whole input: a
+ * misspelled flag that was silently ignored would open a session on the wrong
+ * view, or with chat off when the caller asked for it. A repeated flag is a
+ * caller that means two things at once, and a value beginning with `--` is a
+ * missing value rather than a title, so both refuse with usage.
+ */
+const requestFlags = (rest: readonly string[]): RequestFlags | undefined => {
+  let view: string | undefined
+  let title: string | undefined
+  let description: string | undefined
+  let chatEnabled = false
+  for (let index = 0; index < rest.length; index += 1) {
+    const flag = rest[index]
+    if (flag === '--chat') {
+      if (chatEnabled) return undefined
+      chatEnabled = true
+      continue
+    }
+    const value = rest[index + 1]
+    if (value === undefined || value.startsWith('--')) return undefined
+    index += 1
+    if (flag === '--view' && view === undefined) view = value
+    else if (flag === '--title' && title === undefined) title = value
+    else if (flag === '--description' && description === undefined) {
+      description = value
+    } else return undefined
+  }
+  return { view, title, description, chatEnabled }
+}
+
+/**
+ * Transcribes the workspace into the request document `start` consumes. It is
+ * the only visual command that reads the repository rather than a session:
+ * every other one addresses a descriptor, and this one runs before a session
+ * exists.
+ */
+const requestCliCommand = (
+  rest: readonly string[],
+  cwd: string,
+): CliResult => {
+  const flags = requestFlags(rest)
+  if (flags === undefined) return usageResult
+  const built = buildVisualSessionRequest({
+    cwd,
+    initialView: flags.view,
+    title: flags.title,
+    description: flags.description,
+    chatEnabled: flags.chatEnabled,
+  })
+  if (!built.ok) return refusalResult(built.diagnostics)
+  return { exitCode: 0, stdout: documentLine(built.request), stderr: '' }
+}
 
 const waitCliCommand = async (
   descriptorPath: string,
@@ -209,6 +273,9 @@ const stopCliCommand = async (
 /**
  * Every command an agent can run to completion. `start` is not one of them: it
  * blocks for the life of the session and is dispatched by `runVisualCli`.
+ *
+ * `request` is the one verb that takes no descriptor - it runs before any
+ * session exists - so it is dispatched ahead of the descriptor requirement.
  */
 export async function runVisualClientCli(
   args: readonly string[],
@@ -216,6 +283,7 @@ export async function runVisualClientCli(
 ): Promise<CliResult> {
   const [command, descriptor, ...rest] = args
   if (command === '--version') return versionResult('yarramate-visual')
+  if (command === 'request') return requestCliCommand(args.slice(1), cwd)
   if (descriptor === undefined) return usageResult
   switch (command) {
     case 'wait':
@@ -279,7 +347,7 @@ export const runVisualStart = async (
     // A previous runtime's orphans are collected on the critical path of a new
     // session, bounded per pass so a full directory cannot stall this one.
     await pruneStaleVisualSessions(baseDir, new Date())
-    handle = await startVisualServer({ request: request.value, baseDir })
+    handle = await startVisualServer({ request: request.value, baseDir, cwd })
   } catch (cause) {
     // A failed start has already recovered and removed whatever it created.
     return refusalResult(visualFailureDiagnostics(cause))

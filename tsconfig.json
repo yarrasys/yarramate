@@ -18,6 +18,14 @@
   "exclude": [
     "src/visual-app",
     "test/visual-workspace-state.test.ts",
-    "test/visual-app-render.test.ts"
+    "test/visual-app-render.test.ts",
+    "test/graph-canvas.test.ts",
+    "test/filter-panel.test.ts",
+    "test/save-view.test.ts",
+    "test/graph-canvas-layout.test.ts",
+    "test/changeset-tray.test.ts",
+    "test/subject-form.test.ts",
+    "test/badges.test.ts",
+    "test/kind-icons.test.ts"
   ]
 }

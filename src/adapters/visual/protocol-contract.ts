@@ -8,7 +8,17 @@
  * contract: it can import these declarations and limits without pulling Ajv,
  * `node:path`, or the schema documents into its bundle.
  */
-export const VISUAL_PROTOCOL_VERSION = 'yarramate/visual-protocol/v1' as const
+import type { CanvasGraph } from "../../graph-projection.js";
+import type {
+  YarramateApplyResult,
+  YarramateOperation,
+} from "../../operations.js";
+import type {
+  ProjectionDefinition,
+  ProjectionQuery,
+} from "../../projection.js";
+
+export const VISUAL_PROTOCOL_VERSION = "yarramate/visual-protocol/v2" as const;
 
 export const VISUAL_LIMITS = {
   messageBytes: 64 * 1024,
@@ -17,95 +27,131 @@ export const VISUAL_LIMITS = {
   pendingEvents: 32,
   reconnectMs: 5 * 60 * 1000,
   staleSessionMs: 24 * 60 * 60 * 1000,
-} as const
+} as const;
 
-export type VisualAuthority = 'canonical' | 'ad-hoc'
+export type VisualAuthority = "canonical";
 
 export interface VisualDiagnostic {
-  readonly severity: 'error'
-  readonly code: string
-  readonly message: string
-  readonly path: string
-  readonly pointer: string
-  readonly line: number
-  readonly column: number
+  readonly severity: "error";
+  readonly code: string;
+  readonly message: string;
+  readonly path: string;
+  readonly pointer: string;
+  readonly line: number;
+  readonly column: number;
 }
 
 export interface VisualDiagnosticResult {
-  readonly format: 'yarramate/visual-diagnostic-result/v1'
-  readonly diagnostics: readonly VisualDiagnostic[]
+  readonly format: "yarramate/visual-diagnostic-result/v1";
+  readonly diagnostics: readonly VisualDiagnostic[];
 }
 
 export interface VisualCapabilities {
-  readonly chat: boolean
-  readonly choices: boolean
-  readonly navigation: boolean
-  readonly modelReplacement: boolean
-  readonly transcript: boolean
+  readonly chat: boolean;
+  readonly choices: boolean;
+  readonly navigation: boolean;
+  readonly transcript: boolean;
 }
 
 export interface VisualModel {
-  readonly format: 'yarramate/visual-model/v1'
-  readonly authority: VisualAuthority
-  readonly initialView: string
-  readonly sourceDigests: Readonly<Record<string, string>>
-  readonly files: Readonly<Record<string, string>>
-}
-
-export interface VisualCompilerCommand {
-  readonly command: string
-  readonly args: readonly string[]
+  readonly format: "yarramate/visual-model/v1";
+  readonly authority: VisualAuthority;
+  readonly initialView: string;
+  readonly sourceDigests: Readonly<Record<string, string>>;
+  readonly graph: CanvasGraph;
 }
 
 export interface VisualSessionRequest {
-  readonly format: 'yarramate/visual-session-request/v1'
-  readonly authority: VisualModel['authority']
-  readonly title: string
-  readonly description: string
-  readonly chatEnabled: boolean
-  readonly compiler: VisualCompilerCommand
-  readonly initialModel: VisualModel
+  readonly format: "yarramate/visual-session-request/v1";
+  readonly authority: VisualModel["authority"];
+  readonly title: string;
+  readonly description: string;
+  readonly chatEnabled: boolean;
+  readonly initialModel: VisualModel;
 }
 
 export interface VisualSessionStarted {
-  readonly format: 'yarramate/visual-session-started/v1'
-  readonly protocolVersion: typeof VISUAL_PROTOCOL_VERSION
-  readonly sessionId: string
-  readonly authority: VisualAuthority
-  readonly title: string
-  readonly chatEnabled: boolean
-  readonly browserUrl: string
-  readonly webSocketUrl: string
-  readonly origin: string
-  readonly descriptorPath: string
-  readonly sessionRoot: string
-  readonly capabilities: VisualCapabilities
-  readonly startedAt: string
+  readonly format: "yarramate/visual-session-started/v1";
+  readonly protocolVersion: typeof VISUAL_PROTOCOL_VERSION;
+  readonly sessionId: string;
+  readonly authority: VisualAuthority;
+  readonly title: string;
+  readonly chatEnabled: boolean;
+  readonly browserUrl: string;
+  readonly webSocketUrl: string;
+  readonly origin: string;
+  readonly descriptorPath: string;
+  readonly sessionRoot: string;
+  readonly capabilities: VisualCapabilities;
+  readonly startedAt: string;
 }
 
 export interface VisualSessionDescriptor {
-  readonly format: 'yarramate/visual-session-descriptor/v1'
-  readonly protocolVersion: typeof VISUAL_PROTOCOL_VERSION
-  readonly sessionId: string
-  readonly origin: string
-  readonly agentCapability: string
-  readonly sessionRoot: string
-  readonly journalPath: string
-  readonly createdAt: string
+  readonly format: "yarramate/visual-session-descriptor/v1";
+  readonly protocolVersion: typeof VISUAL_PROTOCOL_VERSION;
+  readonly sessionId: string;
+  readonly origin: string;
+  readonly agentCapability: string;
+  readonly sessionRoot: string;
+  readonly journalPath: string;
+  readonly createdAt: string;
 }
 
 export interface VisualChatMessagePayload {
-  readonly text: string
+  readonly text: string;
 }
 
 export interface VisualChoiceSelectedPayload {
-  readonly choiceId: string
-  readonly optionId: string
+  readonly choiceId: string;
+  readonly optionId: string;
 }
 
 export interface VisualViewNavigatePayload {
-  readonly viewId: string
-  readonly requiresAttention: boolean
+  readonly viewId: string;
+  readonly requiresAttention: boolean;
+}
+
+export interface VisualViewSummary {
+  readonly id: string;
+  readonly title: string;
+  readonly description: string;
+  readonly query: ProjectionQuery;
+  readonly presentation: ProjectionDefinition["presentation"];
+}
+
+export interface VisualKindOption {
+  readonly id: string;
+  readonly label: string;
+}
+
+export interface VisualFilterQueryPayload {
+  readonly query: ProjectionQuery;
+}
+
+export interface VisualFilterResultPayload {
+  readonly query: ProjectionQuery;
+  readonly matchedIds: readonly string[];
+}
+
+export interface VisualViewSavePayload {
+  readonly id?: string;
+  readonly title: string;
+  readonly description: string;
+  readonly query: ProjectionQuery;
+  readonly presentation: ProjectionDefinition["presentation"];
+}
+
+export interface VisualLayoutPositions {
+  readonly [subjectId: string]: { readonly x: number; readonly y: number };
+}
+
+export interface VisualChangesetCommitPayload {
+  readonly operations: readonly YarramateOperation[];
+}
+
+export interface VisualLayoutSavePayload {
+  readonly projectionId: string;
+  readonly positions: VisualLayoutPositions;
 }
 
 /**
@@ -114,21 +160,21 @@ export interface VisualViewNavigatePayload {
  * that never came back, or by its own cancellation.
  */
 export interface VisualSessionEndPayload {
-  readonly reason: VisualTerminationReason
+  readonly reason: VisualTerminationReason;
 }
 
 /** End as an untrusted browser may ask for it, and nothing more. */
 export interface VisualBrowserSessionEndPayload {
-  readonly reason: 'user-ended'
+  readonly reason: "user-ended";
 }
 
 export interface VisualBrowserConnectedPayload {
-  readonly connectionId: string
+  readonly connectionId: string;
 }
 
 export interface VisualBrowserDisconnectedPayload {
-  readonly connectionId: string
-  readonly code: number
+  readonly connectionId: string;
+  readonly code: number;
 }
 
 /**
@@ -144,165 +190,198 @@ export interface VisualBrowserDisconnectedPayload {
  */
 export type VisualBrowserInput =
   | {
-      readonly type: 'chat.message'
-      readonly lastAcknowledgedSequence: number
-      readonly payload: VisualChatMessagePayload
+      readonly type: "chat.message";
+      readonly lastAcknowledgedSequence: number;
+      readonly payload: VisualChatMessagePayload;
     }
   | {
-      readonly type: 'choice.selected'
-      readonly lastAcknowledgedSequence: number
-      readonly payload: VisualChoiceSelectedPayload
+      readonly type: "choice.selected";
+      readonly lastAcknowledgedSequence: number;
+      readonly payload: VisualChoiceSelectedPayload;
     }
   | {
-      readonly type: 'view.navigate'
-      readonly lastAcknowledgedSequence: number
-      readonly payload: VisualViewNavigatePayload
+      readonly type: "view.navigate";
+      readonly lastAcknowledgedSequence: number;
+      readonly payload: VisualViewNavigatePayload;
     }
   | {
-      readonly type: 'session.end'
-      readonly lastAcknowledgedSequence: number
-      readonly payload: VisualBrowserSessionEndPayload
+      readonly type: "filter.query";
+      readonly lastAcknowledgedSequence: number;
+      readonly payload: VisualFilterQueryPayload;
     }
+  | {
+      readonly type: "view.save";
+      readonly lastAcknowledgedSequence: number;
+      readonly payload: VisualViewSavePayload;
+    }
+  | {
+      readonly type: "changeset.commit";
+      readonly lastAcknowledgedSequence: number;
+      readonly payload: VisualChangesetCommitPayload;
+    }
+  | {
+      readonly type: "layout.save";
+      readonly lastAcknowledgedSequence: number;
+      readonly payload: VisualLayoutSavePayload;
+    }
+  | {
+      readonly type: "session.end";
+      readonly lastAcknowledgedSequence: number;
+      readonly payload: VisualBrowserSessionEndPayload;
+    };
 
 interface VisualEventEnvelope<Type extends string, Payload> {
-  readonly format: 'yarramate/visual-event/v1'
-  readonly sessionId: string
-  readonly sequence: number
-  readonly eventId: string
-  readonly type: Type
-  readonly timestamp: string
-  readonly payload: Payload
+  readonly format: "yarramate/visual-event/v1";
+  readonly sessionId: string;
+  readonly sequence: number;
+  readonly eventId: string;
+  readonly type: Type;
+  readonly timestamp: string;
+  readonly payload: Payload;
 }
 
 export type VisualEvent =
-  | VisualEventEnvelope<'chat.message', VisualChatMessagePayload>
-  | VisualEventEnvelope<'choice.selected', VisualChoiceSelectedPayload>
-  | VisualEventEnvelope<'view.navigate', VisualViewNavigatePayload>
-  | VisualEventEnvelope<'session.end', VisualSessionEndPayload>
-  | VisualEventEnvelope<'browser.connected', VisualBrowserConnectedPayload>
+  | VisualEventEnvelope<"chat.message", VisualChatMessagePayload>
+  | VisualEventEnvelope<"choice.selected", VisualChoiceSelectedPayload>
+  | VisualEventEnvelope<"view.navigate", VisualViewNavigatePayload>
+  | VisualEventEnvelope<"session.end", VisualSessionEndPayload>
+  | VisualEventEnvelope<"browser.connected", VisualBrowserConnectedPayload>
   | VisualEventEnvelope<
-      'browser.disconnected',
+      "browser.disconnected",
       VisualBrowserDisconnectedPayload
     >
+  | VisualEventEnvelope<"filter.query", VisualFilterQueryPayload>
+  | VisualEventEnvelope<"view.save", VisualViewSavePayload>
+  | VisualEventEnvelope<"changeset.commit", VisualChangesetCommitPayload>
+  | VisualEventEnvelope<"layout.save", VisualLayoutSavePayload>;
 
 export interface VisualChatResponsePayload {
-  readonly text: string
+  readonly text: string;
+  readonly appliedQuery?: VisualFilterResultPayload;
 }
 
 export interface VisualAgentStatusPayload {
-  readonly state: 'thinking' | 'compiling' | 'waiting' | 'idle'
-  readonly detail?: string
+  readonly state: "thinking" | "compiling" | "waiting" | "idle";
+  readonly detail?: string;
 }
 
 export interface VisualChoiceOption {
-  readonly id: string
-  readonly label: string
-  readonly description?: string
+  readonly id: string;
+  readonly label: string;
+  readonly description?: string;
 }
 
 export interface VisualChoicePresentPayload {
-  readonly choiceId: string
-  readonly question: string
-  readonly options: readonly VisualChoiceOption[]
-}
-
-export interface VisualModelReplacePayload {
-  readonly model: VisualModel
+  readonly choiceId: string;
+  readonly question: string;
+  readonly options: readonly VisualChoiceOption[];
 }
 
 export interface VisualHandoffSummary {
-  readonly summary: string
-  readonly confirmedDecisions: readonly string[]
-  readonly requestedChanges: readonly string[]
-  readonly unresolvedQuestions: readonly string[]
-  readonly finalViews: readonly string[]
+  readonly summary: string;
+  readonly confirmedDecisions: readonly string[];
+  readonly requestedChanges: readonly string[];
+  readonly unresolvedQuestions: readonly string[];
+  readonly finalViews: readonly string[];
 }
 
 export interface VisualDiagnosticPayload {
-  readonly diagnostics: readonly VisualDiagnostic[]
+  readonly diagnostics: readonly VisualDiagnostic[];
 }
 
+export type VisualViewSaveResultPayload =
+  | { readonly ok: true; readonly id: string; readonly path: string }
+  | { readonly ok: false; readonly diagnostics: readonly VisualDiagnostic[] };
+
+export type VisualApplyResultPayload =
+  | { readonly ok: true; readonly result: YarramateApplyResult }
+  | { readonly ok: false; readonly diagnostics: readonly VisualDiagnostic[] };
+
+export type VisualLayoutSaveResultPayload =
+  | { readonly ok: true; readonly path: string }
+  | { readonly ok: false; readonly message: string };
+
 interface VisualResponseEnvelope<Type extends string, Payload> {
-  readonly format: 'yarramate/visual-response/v1'
-  readonly sessionId: string
-  readonly responseId: string
-  readonly eventId: string
-  readonly type: Type
-  readonly timestamp: string
-  readonly payload: Payload
+  readonly format: "yarramate/visual-response/v1";
+  readonly sessionId: string;
+  readonly responseId: string;
+  readonly eventId: string;
+  readonly type: Type;
+  readonly timestamp: string;
+  readonly payload: Payload;
 }
 
 export type VisualResponse =
-  | VisualResponseEnvelope<'chat.response', VisualChatResponsePayload>
-  | VisualResponseEnvelope<'agent.status', VisualAgentStatusPayload>
-  | VisualResponseEnvelope<'choice.present', VisualChoicePresentPayload>
-  | VisualResponseEnvelope<'model.replace', VisualModelReplacePayload>
-  | VisualResponseEnvelope<'handoff.complete', VisualHandoffSummary>
-  | VisualResponseEnvelope<'diagnostic', VisualDiagnosticPayload>
+  | VisualResponseEnvelope<"chat.response", VisualChatResponsePayload>
+  | VisualResponseEnvelope<"agent.status", VisualAgentStatusPayload>
+  | VisualResponseEnvelope<"choice.present", VisualChoicePresentPayload>
+  | VisualResponseEnvelope<"handoff.complete", VisualHandoffSummary>
+  | VisualResponseEnvelope<"diagnostic", VisualDiagnosticPayload>;
 
-export type VisualHandoffDecision = 'completed' | 'cancelled' | 'failed'
+export type VisualHandoffDecision = "completed" | "cancelled" | "failed";
 
 export type VisualTerminationReason =
-  | 'user-ended'
-  | 'child-failed'
-  | 'browser-timeout'
-  | 'main-cancelled'
-  | 'server-failed'
-  | 'compiler-failed'
+  | "user-ended"
+  | "child-failed"
+  | "browser-timeout"
+  | "main-cancelled"
+  | "server-failed"
+  | "compiler-failed";
 
 export interface VisualHandoff extends VisualHandoffSummary {
-  readonly format: 'yarramate/visual-handoff/v1'
-  readonly sessionId: string
-  readonly authority: VisualAuthority
-  readonly decision: VisualHandoffDecision
-  readonly terminationReason: VisualTerminationReason
-  readonly lastSequence: number
-  readonly transcriptPath: string
-  readonly transcript?: readonly (VisualEvent | VisualResponse)[]
-  readonly completedAt: string
+  readonly format: "yarramate/visual-handoff/v1";
+  readonly sessionId: string;
+  readonly authority: VisualAuthority;
+  readonly decision: VisualHandoffDecision;
+  readonly terminationReason: VisualTerminationReason;
+  readonly lastSequence: number;
+  readonly transcriptPath: string;
+  readonly transcript?: readonly (VisualEvent | VisualResponse)[];
+  readonly completedAt: string;
 }
 
-export type VisualLifecycle = 'starting' | 'running' | 'draining' | 'stopped'
+export type VisualLifecycle = "starting" | "running" | "draining" | "stopped";
 
 export type VisualFreezeReason =
-  | 'message-bytes'
-  | 'model-bytes'
-  | 'transcript-bytes'
-  | 'pending-events'
-  | 'browser-disconnected'
-  | 'terminal-event'
+  | "message-bytes"
+  | "model-bytes"
+  | "transcript-bytes"
+  | "pending-events"
+  | "browser-disconnected"
+  | "terminal-event"
+  | "recompile-failed";
 
 export interface VisualStatus {
-  readonly format: 'yarramate/visual-status/v1'
-  readonly protocolVersion: typeof VISUAL_PROTOCOL_VERSION
-  readonly sessionId: string
-  readonly lifecycle: VisualLifecycle
-  readonly alreadyStopped: boolean
+  readonly format: "yarramate/visual-status/v1";
+  readonly protocolVersion: typeof VISUAL_PROTOCOL_VERSION;
+  readonly sessionId: string;
+  readonly lifecycle: VisualLifecycle;
+  readonly alreadyStopped: boolean;
   readonly server: {
-    readonly listening: boolean
-    readonly origin: string
-  }
+    readonly listening: boolean;
+    readonly origin: string;
+  };
   readonly browser: {
-    readonly connected: boolean
-    readonly connections: number
-    readonly lastSeenAt?: string
-    readonly graceExpiresAt?: string
-  }
+    readonly connected: boolean;
+    readonly connections: number;
+    readonly lastSeenAt?: string;
+    readonly graceExpiresAt?: string;
+  };
   readonly agent: {
-    readonly attached: boolean
-    readonly inFlightEventId: string | null
-  }
+    readonly attached: boolean;
+    readonly inFlightEventId: string | null;
+  };
   readonly queue: {
-    readonly pendingEvents: number
-    readonly lastSequence: number
-    readonly frozen: boolean
-    readonly frozenReason?: VisualFreezeReason
-  }
-  readonly capabilities: VisualCapabilities
-  readonly transcriptBytes: number
-  readonly updatedAt: string
+    readonly pendingEvents: number;
+    readonly lastSequence: number;
+    readonly frozen: boolean;
+    readonly frozenReason?: VisualFreezeReason;
+  };
+  readonly capabilities: VisualCapabilities;
+  readonly transcriptBytes: number;
+  readonly updatedAt: string;
 }
 
 export type ParseResult<T> =
   | { readonly ok: true; readonly value: T }
-  | { readonly ok: false; readonly diagnostics: readonly VisualDiagnostic[] }
+  | { readonly ok: false; readonly diagnostics: readonly VisualDiagnostic[] };

@@ -400,7 +400,7 @@ observations:
   - subject: yarramate-engine#render-visual-model
     result: confirmed
     evidence:
-      uri: repo:src/adapters/visual/likec4-compiler.ts
+      uri: repo:src/graph-projection.ts
   - subject: yarramate-engine#requirements-traceability-matrix
     result: confirmed
     evidence:
@@ -749,14 +749,14 @@ observations:
     result: confirmed
     evidence:
       uri: repo:test/visual-journey.test.ts
-  - subject: yarramate-repository#visual-likec4-compiler-source
+  - subject: yarramate-repository#graph-projection-source
     result: confirmed
     evidence:
-      uri: repo:src/adapters/visual/likec4-compiler.ts
-  - subject: yarramate-repository#visual-likec4-compiler-tests
+      uri: repo:src/graph-projection.ts
+  - subject: yarramate-repository#graph-projection-tests
     result: confirmed
     evidence:
-      uri: repo:test/visual-likec4-compiler.test.ts
+      uri: repo:test/graph-projection.test.ts
   - subject: yarramate-repository#visual-protocol-source
     result: confirmed
     evidence:

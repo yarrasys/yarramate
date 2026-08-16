@@ -2,10 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://yarramate.org/schema/visual-model/v1",
   "title": "YarraMate visual model",
-  "description": "One complete, self-contained LikeC4 candidate rendered inside a visual session.",
+  "description": "One complete, self-contained native model graph handed to a visual session at start.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["format", "authority", "initialView", "sourceDigests", "files"],
+  "required": ["format", "authority", "initialView", "sourceDigests", "graph"],
   "properties": {
     "format": {
       "const": "yarramate/visual-model/v1"
@@ -26,16 +26,8 @@
         "$ref": "#/$defs/digest"
       }
     },
-    "files": {
-      "type": "object",
-      "minProperties": 1,
-      "maxProperties": 4096,
-      "propertyNames": {
-        "$ref": "#/$defs/modelFilePath"
-      },
-      "additionalProperties": {
-        "$ref": "#/$defs/textFile"
-      }
+    "graph": {
+      "$ref": "https://yarramate.org/schema/visual-graph/v1"
     }
   },
   "allOf": [
@@ -58,31 +50,11 @@
           }
         }
       }
-    },
-    {
-      "if": {
-        "type": "object",
-        "required": ["authority"],
-        "properties": {
-          "authority": {
-            "const": "ad-hoc"
-          }
-        }
-      },
-      "then": {
-        "type": "object",
-        "properties": {
-          "sourceDigests": {
-            "type": "object",
-            "maxProperties": 0
-          }
-        }
-      }
     }
   ],
   "$defs": {
     "authority": {
-      "enum": ["canonical", "ad-hoc"]
+      "const": "canonical"
     },
     "viewId": {
       "type": "string",
@@ -95,17 +67,7 @@
     "relativePath": {
       "type": "string",
       "maxLength": 1024,
-      "pattern": "^(?:[A-Za-z0-9_-][A-Za-z0-9._-]*/)*[A-Za-z0-9_-][A-Za-z0-9._-]*$"
-    },
-    "modelFilePath": {
-      "type": "string",
-      "maxLength": 1024,
-      "pattern": "^(?:likec4\\.config\\.json|(?:[A-Za-z0-9_-][A-Za-z0-9._-]*/)*[A-Za-z0-9_-][A-Za-z0-9._-]*\\.(?:c4|likec4))$"
-    },
-    "textFile": {
-      "type": "string",
-      "maxLength": 5242880,
-      "pattern": "^[^\\u0000]*$"
+      "pattern": "^(?:(?!\\.\\.?/)[A-Za-z0-9._-]+/)*(?!\\.\\.?$)[A-Za-z0-9._-]+$"
     }
   }
 }

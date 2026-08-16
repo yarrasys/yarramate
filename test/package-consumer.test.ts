@@ -83,12 +83,12 @@ describe('consumer package contract', () => {
       ),
       'utf8',
     )
-    expect(visualGuide).toContain('must be an absolute executable path')
-    expect(visualGuide).toContain('command -v npx')
-    expect(visualGuide).not.toContain(
-      '"command": "./node_modules/.bin/likec4"',
-    )
-    expect(visualGuide).not.toContain('"command": "npx"')
+    // The journey a consumer follows: transcribe the workspace into a request,
+    // then land reviewer edits through `apply`. No compiler shell-out survives.
+    expect(visualGuide).toContain('yarramate-visual request')
+    expect(visualGuide).toContain('changeset.commit')
+    expect(visualGuide).toContain('the same `apply` write path')
+    expect(visualGuide).not.toContain('node_modules/.bin/likec4')
   })
 
   it('packs only a self-contained consumer surface', { timeout: 30_000 }, () => {
@@ -116,8 +116,8 @@ describe('consumer package contract', () => {
       )
       expect(files).toContain('package/dist/adapters/visual-cli.js')
       expect(files).toContain('package/dist/visual-app/index.html')
-      // The nine standalone visual protocol documents a consumer validates
-      // against, each exported under `./schema/visual-*`.
+      // The eleven standalone visual documents a consumer validates against,
+      // each exported under `./schema/visual-*`.
       for (const schema of [
         'session-request',
         'session-started',
@@ -125,7 +125,9 @@ describe('consumer package contract', () => {
         'event',
         'response',
         'model',
+        'graph',
         'handoff',
+        'layout',
         'status',
         'diagnostic-result',
       ]) {

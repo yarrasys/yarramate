@@ -1,4 +1,5 @@
-import Ajv2020Module from 'ajv/dist/2020.js'
+import { createRequire } from 'node:module'
+import type Ajv2020Type from 'ajv/dist/2020.js'
 import { LineCounter, parseDocument } from 'yaml'
 import {
   conceptKinds,
@@ -19,7 +20,15 @@ import profileSchema from '../schema/yarramate-profile.schema.json' with {
 }
 
 const coreProfile = 'yarramate/core@0.1'
-const Ajv2020 = Ajv2020Module.default
+// `ajv/dist/2020.js` is CJS. Its default-export shape is resolved
+// differently under this repo's two tsconfigs: NodeNext (root) sees the raw
+// `module.exports` (needs `.default`), Bundler+esModuleInterop
+// (tsconfig.visual.json) sees the already-unwrapped class. `require()`
+// sidesteps the value-level ambiguity; the type is normalized the same way.
+type Ajv2020Ctor = typeof Ajv2020Type extends { default: infer D } ? D : typeof Ajv2020Type
+const require = createRequire(import.meta.url)
+const ajv2020Module = require('ajv/dist/2020.js') as { default?: Ajv2020Ctor } & Ajv2020Ctor
+const Ajv2020 = ajv2020Module.default ?? ajv2020Module
 const validateDocument = new Ajv2020({ allErrors: true }).compile(documentSchema)
 const validateProfile = new Ajv2020({ allErrors: true }).compile(profileSchema)
 
@@ -197,6 +206,7 @@ export interface ResolvedProfileContext {
   readonly conceptKindLineages: ReadonlyMap<string, readonly string[]>
   readonly relationshipKindLineages: ReadonlyMap<string, readonly string[]>
   readonly conceptKindLayers: ReadonlyMap<string, string>
+  readonly conceptKindAspects: ReadonlyMap<string, string>
   readonly relationshipKindEndpointAspects: ReadonlyMap<
     string,
     RelationshipEndpointAspects
@@ -286,6 +296,30 @@ export const parseAttestationClaimValue = (
     by: match[1]!,
     on: match[2]!,
     ...(recordedBy === undefined ? {} : { recordedBy }),
+  }
+}
+
+export interface ConstraintExpectsParts {
+  readonly provider: string
+  readonly key: string
+  readonly value: string
+}
+
+// Mirrors the compiler's own write-side encoding (ADR 0075): provider and
+// key admit no whitespace, so the first two spaces delimit them and
+// everything after the second space is the expected value verbatim, spaces
+// included. This is the sole authority for decoding the value written at
+// the constraint's `expects` claim — reconciliation.ts delegates here
+// rather than mirroring the regex itself.
+export const parseConstraintExpectsValue = (
+  value: string,
+): ConstraintExpectsParts | undefined => {
+  const match = /^(\S+) (\S+) ([\s\S]+)$/.exec(value)
+  if (match === null) return undefined
+  return {
+    provider: match[1]!,
+    key: match[2]!,
+    value: match[3]!,
   }
 }
 
@@ -1951,6 +1985,11 @@ function compileWorkspaceResolved(
         [...conceptKindByIdentity]
           .sort(([left], [right]) => left.localeCompare(right))
           .map(([identity, kind]) => [identity, kind.layer] as const),
+      ),
+      conceptKindAspects: immutableMap(
+        [...conceptKindByIdentity]
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([identity, kind]) => [identity, kind.aspect] as const),
       ),
       relationshipKindEndpointAspects: immutableMap(
         [...relationshipKindByIdentity]

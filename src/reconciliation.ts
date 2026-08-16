@@ -2,6 +2,7 @@ import type { GraphClaim, SemanticGraph } from './compiler.js'
 import {
   ATTESTATION_PREDICATE_PREFIX,
   parseAttestationClaimValue,
+  parseConstraintExpectsValue,
 } from './compiler.js'
 import type {
   EvidenceLocator,
@@ -170,7 +171,8 @@ const expectationOf = (
 
 interface DeclaredExpectation extends UnobservedExpectation {}
 
-// Mirrors the compiler encoding (ADR 0075). Provider and key admit no
+// The compiler's parseConstraintExpectsValue is the sole authority for
+// decoding the encoded value (ADR 0075). Provider and key admit no
 // whitespace, so the first two spaces delimit them and everything after the
 // second space is the expected value verbatim, spaces included.
 const parseExpectation = (
@@ -182,14 +184,14 @@ const parseExpectation = (
   ) {
     return undefined
   }
-  const match = /^(\S+) (\S+) ([\s\S]+)$/.exec(claim.object.value)
-  if (match === null) return undefined
+  const parts = parseConstraintExpectsValue(claim.object.value)
+  if (parts === undefined) return undefined
   return {
     claim: claim.id,
     subject: claim.subject,
-    provider: match[1]!,
-    key: match[2]!,
-    expected: match[3]!,
+    provider: parts.provider,
+    key: parts.key,
+    expected: parts.value,
     declared: {
       document: claim.source.document,
       path: claim.source.path,

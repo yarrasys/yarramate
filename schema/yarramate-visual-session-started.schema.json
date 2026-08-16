@@ -25,7 +25,7 @@
       "const": "yarramate/visual-session-started/v1"
     },
     "protocolVersion": {
-      "const": "yarramate/visual-protocol/v1"
+      "const": "yarramate/visual-protocol/v2"
     },
     "sessionId": {
       "$ref": "https://yarramate.org/schema/visual-event/v1#/$defs/identifier"
@@ -102,18 +102,11 @@
       "description": "Features the browser session may use. Diagram-only mode disables chat.",
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "chat",
-        "choices",
-        "navigation",
-        "modelReplacement",
-        "transcript"
-      ],
+      "required": ["chat", "choices", "navigation", "transcript"],
       "properties": {
         "chat": { "type": "boolean" },
         "choices": { "type": "boolean" },
         "navigation": { "type": "boolean" },
-        "modelReplacement": { "type": "boolean" },
         "transcript": { "type": "boolean" }
       }
     }

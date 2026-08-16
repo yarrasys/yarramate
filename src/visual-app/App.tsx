@@ -1,5 +1,11 @@
-import { LikeC4Model, type AnyLikeC4Model } from '@likec4/core/model'
-import { LikeC4ModelProvider, ReactLikeC4 } from 'likec4/react'
+import { GraphCanvas } from "./graph-canvas.js";
+import { FilterPanel, type PresentationFlag } from "./filter-panel.js";
+import { QuickFilterBox } from "./quick-filter.js";
+import { ViewPicker } from "./view-picker.js";
+import { SaveViewControl } from "./save-view.js";
+import { describeQuery } from "./describe-query.js";
+import { ChangesetTray } from "./changeset-tray.js";
+import { ConceptForm, RelationshipForm } from "./subject-form.js";
 import {
   useEffect,
   useLayoutEffect,
@@ -11,28 +17,30 @@ import {
   type FormEvent,
   type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
-} from 'react'
+} from "react";
+import type { ProjectionQuery } from "../projection.js";
+import type { VisualRenderedModel } from "../adapters/visual/wire.js";
+import type { YarramateOperation } from "../operations.js";
 import type {
   VisualChoicePresentPayload,
   VisualDiagnostic,
-} from '../adapters/visual/protocol-contract.js'
-import { useVisualSession } from './session-client.js'
-import {
-  visualAuthorityLabel,
-  visualDrawingFor,
-  type VisualAppRecord,
-  type VisualAppState,
-  type VisualDrawing,
-} from './state.js'
+  VisualLayoutSavePayload,
+  VisualViewSavePayload,
+  VisualViewSummary,
+} from "../adapters/visual/protocol-contract.js";
+import { useVisualSession } from "./session-client.js";
+import type { VisualAppRecord, VisualAppState } from "./state.js";
 import {
   conversationWidthBounds,
   createVisualWorkspaceState,
   formatContextualQuestion,
   normalizeSelectedElement,
   normalizeSelectedRelationship,
+  presentationActionsFor,
+  viewNeedingApplication,
   visualWorkspaceReducer,
   type SelectedDiagramSubject,
-} from './workspace-state.js'
+} from "./workspace-state.js";
 
 /**
  * A drawing board, not a document: the diagram holds the workspace, one compact
@@ -40,90 +48,125 @@ import {
  * panel the reviewer sizes or puts away without losing what it holds.
  */
 
-/**
- * The rendered model as LikeC4's own object graph.
- *
- * `@likec4/core/model` is the module `likec4/react` imports for the same class,
- * so the provider and this factory share one instance of it. `likec4/model`'s
- * `createLikeC4Model` is this exact call — `LikeC4Model.create` — behind an
- * entry point that takes `createRequire` at load and so cannot run in a
- * browser. The compiled document belongs to LikeC4, which reads its own shape.
- */
-const likeC4ModelFrom = (compiled: unknown): AnyLikeC4Model =>
-  LikeC4Model.create(compiled as Parameters<typeof LikeC4Model.create>[0])
-
-const SPEAKERS: Readonly<Record<VisualAppRecord['speaker'], string>> = {
-  reviewer: 'You',
-  agent: 'Agent',
-  session: 'Session',
-}
+const SPEAKERS: Readonly<Record<VisualAppRecord["speaker"], string>> = {
+  reviewer: "You",
+  agent: "Agent",
+  session: "Session",
+};
 
 const STATUS_WORDS: Readonly<
-  Record<'thinking' | 'compiling' | 'waiting' | 'idle', string>
+  Record<"thinking" | "compiling" | "waiting" | "idle", string>
 > = {
-  thinking: 'Agent is thinking',
-  compiling: 'Agent is compiling the model',
-  waiting: 'Agent is waiting',
-  idle: 'Agent is idle',
-}
+  thinking: "Agent is thinking",
+  compiling: "Agent is compiling the model",
+  waiting: "Agent is waiting",
+  idle: "Agent is idle",
+};
 
 const connectionOf = (state: VisualAppState, connected: boolean): string => {
   switch (state.lifecycle) {
-    case 'connecting':
-      return 'Opening'
-    case 'active':
-      return connected ? 'Live' : 'Reconnecting'
-    case 'ending':
-      return 'Ending'
-    case 'disconnected':
-      return 'Reconnecting'
-    case 'closed':
-      return 'Closed'
+    case "connecting":
+      return "Opening";
+    case "active":
+      return connected ? "Live" : "Reconnecting";
+    case "ending":
+      return "Ending";
+    case "disconnected":
+      return "Reconnecting";
+    case "closed":
+      return "Closed";
   }
-}
+};
 
 const endTransitionStatus = (state: VisualAppState): string => {
-  if (state.lifecycle === 'closed') {
-    return 'Visual conversation ended. Continue in the main agent.'
+  if (state.lifecycle === "closed") {
+    return "Visual conversation ended. Continue in the main agent.";
   }
-  if (state.lifecycle !== 'ending') return ''
+  if (state.lifecycle !== "ending") return "";
   if (state.handoff !== null) {
-    return 'Handoff ready — returning control to the main agent.'
+    return "Handoff ready — returning control to the main agent.";
   }
-  return 'Ending conversation — preparing a handoff for the main agent.'
-}
+  return "Ending conversation — preparing a handoff for the main agent.";
+};
+
+// ArchiMate notation pins `elk.direction` to `DOWN` when it builds a layered
+// config (`buildLayoutConfig`), and elk's direction is the only thing the
+// stored `direction` ever steers - so the strip reports Top-Down for that one
+// combination whatever is stored, and leaves every other one alone. Radial and
+// force never read a direction at all, so ArchiMate pins nothing there.
+const directionPinned = (
+  layout: "layered" | "radial" | "force",
+  notation: "native" | "archimate",
+): boolean => layout === "layered" && notation === "archimate";
 
 const CommandStrip = ({
   state,
   connection,
-  views,
   detailsOpen,
   conversationOpen,
   unread,
-  onNavigate,
+  layout,
+  direction,
+  views,
   onToggleDetails,
   onToggleConversation,
+  onToggleDirection,
+  onSelectLayout,
+  notation,
+  seed,
+  onSelectNotation,
+  showLifecycle,
+  showEvidence,
+  showOwnership,
+  onTogglePresentation,
+  onSelectView,
+  onClearFilter,
+  onApplyFilter,
+  quickFilterText,
+  onQuickFilterChange,
+  onSaveView,
+  onDismissSavedNotice,
   onEnd,
 }: {
-  readonly state: VisualAppState
-  readonly connection: string
-  readonly views: readonly string[]
-  readonly detailsOpen: boolean
-  readonly conversationOpen: boolean
-  readonly unread: number
-  readonly onNavigate: (viewId: string) => void
-  readonly onToggleDetails: () => void
-  readonly onToggleConversation: () => void
-  readonly onEnd: () => void
+  readonly state: VisualAppState;
+  readonly connection: string;
+  readonly detailsOpen: boolean;
+  readonly conversationOpen: boolean;
+  readonly unread: number;
+  readonly layout: "layered" | "radial" | "force";
+  readonly direction: "top-down" | "left-right";
+  readonly views: readonly VisualViewSummary[];
+  readonly onToggleDetails: () => void;
+  readonly onToggleConversation: () => void;
+  readonly onSelectLayout: (layout: "layered" | "radial" | "force") => void;
+  readonly notation: "native" | "archimate";
+  readonly seed: string;
+  readonly onSelectNotation: (notation: "native" | "archimate") => void;
+  readonly onToggleDirection: () => void;
+  readonly showLifecycle: boolean;
+  readonly showEvidence: boolean;
+  readonly showOwnership: boolean;
+  readonly onTogglePresentation: (
+    flag: PresentationFlag,
+    value: boolean,
+  ) => void;
+  readonly onSelectView: (view: VisualViewSummary) => void;
+  readonly onClearFilter: () => void;
+  readonly onApplyFilter: (query: ProjectionQuery) => void;
+  readonly quickFilterText: string;
+  readonly onQuickFilterChange: (text: string) => void;
+  readonly onSaveView: (payload: VisualViewSavePayload) => void;
+  readonly onDismissSavedNotice: () => void;
+  readonly onEnd: () => void;
 }) => (
   <header className="command-strip">
     <div className="command-identity">
-      <h1>{state.title === '' ? 'Opening the session' : state.title}</h1>
+      <h1>{state.title === "" ? "Opening the session" : state.title}</h1>
       <span className="beta-badge">Beta</span>
-      <span className={`authority authority-${state.authority}`}>
-        {visualAuthorityLabel(state.authority)}
+      <span className="authority">Checked YarraMate model</span>
+      <span className="connection-state" role="status">
+        {connection}
       </span>
-      <span className="connection-state" role="status">{connection}</span>
     </div>
     <div className="command-actions">
       <span
@@ -134,17 +177,74 @@ const CommandStrip = ({
       >
         {endTransitionStatus(state)}
       </span>
-      <label className="offscreen" htmlFor="active-view">Active view</label>
+      <ViewPicker
+        views={views}
+        activeViewId={state.activeView}
+        onSelect={onSelectView}
+        onClear={onClearFilter}
+      />
+      <QuickFilterBox value={quickFilterText} onChange={onQuickFilterChange} />
+      <FilterPanel
+        query={state.activeFilter?.query ?? null}
+        onApply={onApplyFilter}
+        showLifecycle={showLifecycle}
+        showEvidence={showEvidence}
+        showOwnership={showOwnership}
+        onTogglePresentation={onTogglePresentation}
+      />
+      <SaveViewControl
+        views={views}
+        activeViewId={state.activeView}
+        query={state.activeFilter?.query ?? null}
+        layout={layout}
+        direction={direction}
+        notation={notation}
+        seed={seed}
+        showLifecycle={showLifecycle}
+        showEvidence={showEvidence}
+        showOwnership={showOwnership}
+        pendingSave={state.pendingViewSave !== null}
+        notice={state.viewSaveNotice}
+        onSave={onSaveView}
+        onDismissNotice={onDismissSavedNotice}
+      />
       <select
-        id="active-view"
-        value={state.activeView}
-        onChange={(event) => onNavigate(event.target.value)}
-        disabled={views.length < 2}
+        aria-label="Layout"
+        value={layout}
+        onChange={(e) =>
+          onSelectLayout(
+            e.currentTarget.value as "layered" | "radial" | "force",
+          )
+        }
       >
-        {views.map((viewId) => (
-          <option key={viewId} value={viewId}>{viewId}</option>
-        ))}
+        <option value="layered">Layered</option>
+        <option value="radial">Radial</option>
+        <option value="force">Force</option>
       </select>
+      <select
+        aria-label="Notation"
+        value={notation}
+        onChange={(e) =>
+          onSelectNotation(e.currentTarget.value as "native" | "archimate")
+        }
+      >
+        <option value="native">Native</option>
+        <option value="archimate">ArchiMate</option>
+      </select>
+      <span className="direction-notice" role="status">
+        {directionPinned(layout, notation)
+          ? "ArchiMate notation fixes direction to Top-Down."
+          : ""}
+      </span>
+      <button
+        type="button"
+        onClick={onToggleDirection}
+        disabled={layout !== "layered" || notation === "archimate"}
+      >
+        {directionPinned(layout, notation) || direction === "top-down"
+          ? "Top-Down"
+          : "Left-Right"}
+      </button>
       <button
         type="button"
         aria-expanded={detailsOpen}
@@ -160,39 +260,37 @@ const CommandStrip = ({
         onClick={onToggleConversation}
       >
         Conversation
-        {unread === 0 ? null : <span className="attention-count">{unread}</span>}
+        {unread === 0 ? null : (
+          <span className="attention-count">{unread}</span>
+        )}
       </button>
       <button
         type="button"
         className="end-session"
         onClick={onEnd}
-        disabled={state.lifecycle !== 'active'}
+        disabled={state.lifecycle !== "active"}
       >
-        {state.lifecycle === 'ending' || state.lifecycle === 'closed'
-          ? 'Ending…'
-          : 'End'}
+        {state.lifecycle === "ending" || state.lifecycle === "closed"
+          ? "Ending…"
+          : "End"}
       </button>
     </div>
     {/* Static prose is not worth the canvas: the disclosure is laid over the
         workspace from the strip rather than taking a row of its own, so opening
         it never reflows the diagram or the conversation. */}
-    <div
-      id="session-details"
-      className="session-details"
-      hidden={!detailsOpen}
-    >
+    <div id="session-details" className="session-details" hidden={!detailsOpen}>
       <p>{state.description}</p>
       <button type="button" className="details-close" onClick={onToggleDetails}>
         Close details
       </button>
     </div>
   </header>
-)
+);
 
 const Faults = ({
   diagnostics,
 }: {
-  readonly diagnostics: readonly VisualDiagnostic[]
+  readonly diagnostics: readonly VisualDiagnostic[];
 }) =>
   diagnostics.length === 0 ? null : (
     <div className="faults" role="alert">
@@ -211,16 +309,16 @@ const Faults = ({
         ))}
       </ul>
     </div>
-  )
+  );
 
 const Choices = ({
   choices,
   disabled,
   onChoice,
 }: {
-  readonly choices: VisualChoicePresentPayload
-  readonly disabled: boolean
-  readonly onChoice: (optionId: string) => void
+  readonly choices: VisualChoicePresentPayload;
+  readonly disabled: boolean;
+  readonly onChoice: (optionId: string) => void;
 }) => (
   <div className="choices">
     <p className="question">{choices.question}</p>
@@ -241,119 +339,106 @@ const Choices = ({
       ))}
     </ul>
   </div>
-)
-
+);
 const DiagramWorkspace = ({
   state,
-  drawing,
+  selectedId,
   waiting,
-  reduceGraphics,
-  onNavigate,
+  layout,
+  direction,
+  notation,
+  seed,
+  showLifecycle,
+  showEvidence,
+  showOwnership,
   onSelect,
+  onClearFilter,
+  onSaveLayout,
+  onWaitingChange,
 }: {
-  readonly state: VisualAppState
-  readonly drawing: VisualDrawing<AnyLikeC4Model>
-  readonly waiting: string | null
-  readonly reduceGraphics: boolean
-  readonly onNavigate: (viewId: string) => void
-  readonly onSelect: (subject: SelectedDiagramSubject) => void
+  readonly state: VisualAppState;
+  readonly selectedId: string | null;
+  readonly waiting: string | null;
+  readonly layout: "layered" | "radial" | "force";
+  readonly direction: "top-down" | "left-right";
+  readonly notation: "native" | "archimate";
+  readonly seed: string;
+  readonly showLifecycle: boolean;
+  readonly showEvidence: boolean;
+  readonly showOwnership: boolean;
+  readonly onSelect: (subject: SelectedDiagramSubject) => void;
+  readonly onClearFilter: () => void;
+  readonly onSaveLayout: (payload: VisualLayoutSavePayload) => void;
+  readonly onWaitingChange: (waiting: string | null) => void;
 }) => {
   // An edge names its endpoints by node id; the reviewer reads titles. The
   // rendering model the renderer itself draws answers that, so nothing here
   // reaches into the compiled document.
-  const activeRenderedView = useMemo(
-    () => drawing.drawn?.findView(state.activeView)?.$layouted ?? null,
-    [drawing.drawn, state.activeView],
-  )
   const nodeTitles = useMemo(
     () =>
       new Map(
-        (activeRenderedView?.nodes ?? []).map(
-          (node) => [String(node.id), node.title] as const,
+        (state.model?.graph.nodes ?? []).map(
+          (node) => [node.id, node.name] as const,
         ),
       ),
-    [activeRenderedView],
-  )
-  const canvas = useRef<HTMLDivElement>(null)
-  useLayoutEffect(() => {
-    const host = canvas.current?.querySelector<HTMLElement>(
-      '[data-likec4-instance]',
-    )
-    const sheet = host?.shadowRoot?.adoptedStyleSheets[0]
-    if (
-      sheet === undefined ||
-      [...sheet.cssRules].some((rule) =>
-        rule.cssText.includes('--yarramate-focus-ring'),
-      )
-    ) {
-      return
-    }
-    sheet.insertRule(
-      ':focus-visible { outline: var(--yarramate-focus-ring, 3px solid #2457a6) !important; outline-offset: 3px !important; }',
-      sheet.cssRules.length,
-    )
-  }, [drawing.drawn, state.activeView])
+    [state.model],
+  );
 
   return (
     <section className="diagram-workspace" aria-label="Architecture diagram">
-      <div className="canvas" ref={canvas}>
-        {drawing.drawn === null ? null : (
-          <LikeC4ModelProvider likec4model={drawing.drawn}>
-            <ReactLikeC4
-              viewId={state.activeView}
-              onNodeClick={(node) => onSelect(normalizeSelectedElement(node))}
-              onEdgeClick={(edge) =>
-                onSelect(normalizeSelectedRelationship(edge, nodeTitles))
+      {state.activeFilter?.source === "chat" ? (
+        <div className="filter-pill" role="status">
+          <span>
+            Filtered by chat:{" "}
+            <code>{describeQuery(state.activeFilter.query)}</code>
+          </span>
+          <button type="button" onClick={onClearFilter}>
+            Show all
+          </button>
+        </div>
+      ) : null}
+      <div className="canvas">
+        {state.model === null ? null : (
+          <GraphCanvas
+            graph={state.model.graph}
+            selectedId={selectedId}
+            onSelect={(id, type) => {
+              const graph = state.model!.graph;
+              if (type === "node") {
+                const node = graph.nodes.find((n) => n.id === id);
+                if (node !== undefined)
+                  onSelect(normalizeSelectedElement(node));
+              } else {
+                const edge = graph.edges.find((e) => e.id === id);
+                if (edge !== undefined)
+                  onSelect(normalizeSelectedRelationship(edge, nodeTitles));
               }
-              // LikeC4 1.59.2 declares the originating node optional and never
-              // passes it: the runtime emits `navigateTo` with `viewId` alone,
-              // so this branch is dead against the pinned renderer and the
-              // subject the reviewer clicked is what the reducer keeps across
-              // the navigation. The branch stays because the declared contract
-              // allows the node, but a renderer bump that starts passing it
-              // changes the behaviour from "keep the prior selection" to
-              // "select the navigated node" — a visible change, not a silent
-              // one, and this is where it lands.
-              onNavigateTo={(viewId, _event, node) => {
-                if (node !== undefined) onSelect(normalizeSelectedElement(node))
-                onNavigate(viewId)
-              }}
-              injectFontCss={false}
-              colorScheme="light"
-              background="dots"
-              controls
-              pannable
-              zoomable
-              fitView
-              keepAspectRatio={false}
-              // The custom inspector is the only details surface, so the
-              // renderer's own overlays stay shut.
-              enableElementDetails={false}
-              enableRelationshipDetails={false}
-              enableNotes
-              enableSearch={false}
-              // The renderer injects its own stylesheets; this session's
-              // policy admits them under this nonce and nothing else.
-              styleNonce={state.styleNonce}
-              showNavigationButtons
-              reduceGraphics={reduceGraphics ? true : 'auto'}
-              className="diagram"
-            />
-          </LikeC4ModelProvider>
+            }}
+            matchedIds={state.activeFilter?.matchedIds ?? null}
+            quickFilterText={state.quickFilterText}
+            layout={layout}
+            direction={direction}
+            notation={notation}
+            seed={seed}
+            showLifecycle={showLifecycle}
+            showEvidence={showEvidence}
+            showOwnership={showOwnership}
+            activeViewId={state.activeView}
+            savedPositions={state.model.layouts[state.activeView]}
+            onSaveLayout={onSaveLayout}
+            onWaitingChange={onWaitingChange}
+          />
+        )}
+        {state.layoutNotice === null ? null : (
+          <div className="layout-notice-pill" role="status">
+            <span>{state.layoutNotice}</span>
+          </div>
         )}
         {waiting === null ? null : <p className="waiting">{waiting}</p>}
       </div>
-
-      {drawing.fault === null ? null : (
-        // The renderer's exception describes its own internals and may carry
-        // anything: the reviewer reads this application's words instead.
-        <div className="faults" role="alert">
-          <p className="faults-title">{drawing.fault}</p>
-        </div>
-      )}
     </section>
-  )
-}
+  );
+};
 
 /**
  * A description is worth reading in full and worth not burying the rest of the
@@ -366,41 +451,41 @@ const ExpandableDescription = ({
   expanded,
   onToggle,
 }: {
-  readonly text: string | null
-  readonly expanded: boolean
-  readonly onToggle: () => void
+  readonly text: string | null;
+  readonly expanded: boolean;
+  readonly onToggle: () => void;
 }) => {
-  const description = text ?? 'No description declared in this model'
-  const body = useRef<HTMLParagraphElement>(null)
-  const [canExpand, setCanExpand] = useState(false)
+  const description = text ?? "No description declared in this model";
+  const body = useRef<HTMLParagraphElement>(null);
+  const [canExpand, setCanExpand] = useState(false);
 
   useLayoutEffect(() => {
-    const element = body.current
-    if (element === null || expanded) return
+    const element = body.current;
+    if (element === null || expanded) return;
     const measure = () =>
-      setCanExpand(element.scrollHeight > element.clientHeight + 1)
-    measure()
-    const observer = new ResizeObserver(measure)
-    observer.observe(element)
-    return () => observer.disconnect()
-  }, [description, expanded])
+      setCanExpand(element.scrollHeight > element.clientHeight + 1);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [description, expanded]);
 
   return (
     <div className="subject-description">
       <p
         ref={body}
-        className={expanded ? 'description-expanded' : 'description-clamped'}
+        className={expanded ? "description-expanded" : "description-clamped"}
       >
         {description}
       </p>
       {canExpand || expanded ? (
         <button type="button" aria-expanded={expanded} onClick={onToggle}>
-          {expanded ? 'Show less' : 'Show more'}
+          {expanded ? "Show less" : "Show more"}
         </button>
       ) : null}
     </div>
-  )
-}
+  );
+};
 
 /**
  * What the reviewer clicked, said back to them in the model's own words: the
@@ -409,115 +494,75 @@ const ExpandableDescription = ({
  */
 const SelectedSubjectInspector = ({
   subject,
+  model,
+  operations,
   expanded,
   onToggleDescription,
   onClear,
-  onNavigate,
+  onStageChange,
 }: {
-  readonly subject: SelectedDiagramSubject
-  readonly expanded: boolean
-  readonly onToggleDescription: () => void
-  readonly onClear: () => void
-  readonly onNavigate: (viewId: string) => void
-}) => (
-  <section className="subject-inspector" aria-labelledby="subject-heading">
-    <div className="subject-heading-row">
-      <div>
-        <p className="subject-type">
-          {subject.type === 'element'
-            ? 'Selected element'
-            : 'Selected relationship'}
-        </p>
-        <h2 id="subject-heading">
-          {subject.type === 'element'
-            ? subject.title
-            : `${subject.sourceTitle} → ${subject.targetTitle}`}
-        </h2>
+  readonly subject: SelectedDiagramSubject;
+  readonly model: VisualRenderedModel;
+  readonly operations: readonly YarramateOperation[];
+  readonly expanded: boolean;
+  readonly onToggleDescription: () => void;
+  readonly onClear: () => void;
+  readonly onStageChange: (operation: YarramateOperation) => void;
+}) => {
+  const node =
+    subject.type === "element"
+      ? model.graph.nodes.find((candidate) => candidate.id === subject.id)
+      : undefined;
+  const edge =
+    subject.type === "relationship"
+      ? model.graph.edges.find((candidate) => candidate.id === subject.id)
+      : undefined;
+
+  return (
+    <section className="subject-inspector" aria-labelledby="subject-heading">
+      <div className="subject-heading-row">
+        <div>
+          <p className="subject-type">
+            {subject.type === "element"
+              ? "Selected element"
+              : "Selected relationship"}
+          </p>
+          <h2 id="subject-heading">
+            {subject.type === "element"
+              ? subject.title
+              : `${subject.sourceTitle} → ${subject.targetTitle}`}
+          </h2>
+        </div>
+        <button type="button" className="subject-clear" onClick={onClear}>
+          Clear
+        </button>
       </div>
-      <button type="button" className="subject-clear" onClick={onClear}>
-        Clear
-      </button>
-    </div>
 
-    {subject.type === 'element' ? (
-      <dl className="subject-facts">
-        <div>
-          <dt>Identity</dt>
-          <dd>
-            <code>{subject.identity}</code>
-          </dd>
-        </div>
-        {subject.kind === null ? null : (
-          <div>
-            <dt>Kind</dt>
-            <dd>{subject.kind}</dd>
-          </div>
-        )}
-        {subject.technology === null ? null : (
-          <div>
-            <dt>Technology</dt>
-            <dd>{subject.technology}</dd>
-          </div>
-        )}
-        {subject.tags.length === 0 ? null : (
-          <div>
-            <dt>Tags</dt>
-            <dd>{subject.tags.join(', ')}</dd>
-          </div>
-        )}
-      </dl>
-    ) : (
-      <dl className="subject-facts">
-        <div>
-          <dt>Label</dt>
-          <dd>{subject.label ?? 'Unlabelled relationship'}</dd>
-        </div>
-        {subject.kind === null ? null : (
-          <div>
-            <dt>Kind</dt>
-            <dd>{subject.kind}</dd>
-          </div>
-        )}
-        {subject.technology === null ? null : (
-          <div>
-            <dt>Technology</dt>
-            <dd>{subject.technology}</dd>
-          </div>
-        )}
-        {subject.notation === null ? null : (
-          <div>
-            <dt>Notation</dt>
-            <dd>{subject.notation}</dd>
-          </div>
-        )}
-        <div>
-          <dt>Model relations</dt>
-          <dd>{subject.aggregateCount}</dd>
-        </div>
-      </dl>
-    )}
+      {node !== undefined ? (
+        <ConceptForm
+          node={node}
+          model={model}
+          operations={operations}
+          onStageChange={onStageChange}
+        />
+      ) : null}
+      {edge !== undefined ? (
+        <RelationshipForm
+          edge={edge}
+          model={model}
+          operations={operations}
+          onStageChange={onStageChange}
+        />
+      ) : null}
 
-    <ExpandableDescription
-      text={subject.description}
-      expanded={expanded}
-      onToggle={onToggleDescription}
-    />
-
-    {subject.type === 'element' && subject.navigateTo !== null ? (
-      <button
-        type="button"
-        className="subject-navigate"
-        onClick={() => {
-          if (subject.type === 'element' && subject.navigateTo !== null) {
-            onNavigate(subject.navigateTo)
-          }
-        }}
-      >
-        Open related view
-      </button>
-    ) : null}
-  </section>
-)
+      <ExpandableDescription
+        text={subject.description}
+        expanded={expanded}
+        onToggle={onToggleDescription}
+      />
+    </section>
+  );
+};
 
 const ConversationPanel = ({
   state,
@@ -529,38 +574,43 @@ const ConversationPanel = ({
   onChoice,
   onToggleDescription,
   onClearSubject,
-  onNavigate,
+  onDiscardChange,
+  onStageChange,
+  onClearChangeset,
+  onCommitChangeset,
 }: {
-  readonly state: VisualAppState
-  readonly hidden: boolean
-  readonly disabled: boolean
-  readonly selectedSubject: SelectedDiagramSubject | null
-  readonly descriptionExpanded: boolean
-  readonly onSend: (text: string) => void
-  readonly onChoice: (optionId: string) => void
-  readonly onToggleDescription: () => void
-  readonly onClearSubject: () => void
-  readonly onNavigate: (viewId: string) => void
+  readonly state: VisualAppState;
+  readonly hidden: boolean;
+  readonly disabled: boolean;
+  readonly selectedSubject: SelectedDiagramSubject | null;
+  readonly descriptionExpanded: boolean;
+  readonly onSend: (text: string) => void;
+  readonly onChoice: (optionId: string) => void;
+  readonly onToggleDescription: () => void;
+  readonly onClearSubject: () => void;
+  readonly onDiscardChange: (index: number) => void;
+  readonly onStageChange: (operation: YarramateOperation) => void;
+  readonly onClearChangeset: () => void;
+  readonly onCommitChangeset: () => void;
 }) => {
-  const [draft, setDraft] = useState('')
-  const agentWaiting =
-    state.lifecycle === 'active' && state.awaitingAgent
+  const [draft, setDraft] = useState("");
+  const agentWaiting = state.lifecycle === "active" && state.awaitingAgent;
   const visibleAgentStatus =
-    state.lifecycle === 'active' ? state.agentStatus : null
+    state.lifecycle === "active" ? state.agentStatus : null;
 
   const submit = (event: FormEvent) => {
-    event.preventDefault()
-    const text = draft.trim()
-    if (text === '' || disabled) return
-    onSend(text)
-    setDraft('')
-  }
+    event.preventDefault();
+    const text = draft.trim();
+    if (text === "" || disabled) return;
+    onSend(text);
+    setDraft("");
+  };
 
   const keyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key !== 'Enter' || event.shiftKey) return
-    event.preventDefault()
-    event.currentTarget.form?.requestSubmit()
-  }
+    if (event.key !== "Enter" || event.shiftKey) return;
+    event.preventDefault();
+    event.currentTarget.form?.requestSubmit();
+  };
 
   return (
     <section
@@ -570,15 +620,24 @@ const ConversationPanel = ({
       hidden={hidden}
     >
       <div className="conversation-scroll">
-        {selectedSubject === null ? null : (
+        {selectedSubject === null || state.model === null ? null : (
           <SelectedSubjectInspector
             subject={selectedSubject}
+            model={state.model}
+            operations={state.pendingChangeset.operations}
             expanded={descriptionExpanded}
             onToggleDescription={onToggleDescription}
             onClear={onClearSubject}
-            onNavigate={onNavigate}
+            onStageChange={onStageChange}
           />
         )}
+
+        <ChangesetTray
+          state={state}
+          onDiscardChange={onDiscardChange}
+          onClearChangeset={onClearChangeset}
+          onCommitChangeset={onCommitChangeset}
+        />
 
         <ol className="ledger" role="log" aria-live="polite">
           {state.transcript.length === 0 ? (
@@ -610,7 +669,7 @@ const ConversationPanel = ({
         {selectedSubject === null ? null : (
           <div className="subject-chip">
             <span>
-              {selectedSubject.type === 'element'
+              {selectedSubject.type === "element"
                 ? selectedSubject.title
                 : `${selectedSubject.sourceTitle} → ${selectedSubject.targetTitle}`}
             </span>
@@ -634,12 +693,12 @@ const ConversationPanel = ({
           disabled={disabled}
           placeholder={
             !state.chatEnabled
-              ? 'This session is read-only'
-              : selectedSubject?.type === 'element'
-                ? 'Ask about this element'
-                : selectedSubject?.type === 'relationship'
-                  ? 'Ask about this relationship'
-                  : 'Ask about this design'
+              ? "This session is read-only"
+              : selectedSubject?.type === "element"
+                ? "Ask about this element"
+                : selectedSubject?.type === "relationship"
+                  ? "Ask about this relationship"
+                  : "Ask about this design"
           }
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={keyDown}
@@ -657,64 +716,64 @@ const ConversationPanel = ({
             <span>
               {visibleAgentStatus === null
                 ? agentWaiting
-                  ? 'Awaiting agent response'
-                  : '\u00a0'
-                : (STATUS_WORDS[visibleAgentStatus.state] ?? '\u00a0')}
+                  ? "Awaiting agent response"
+                  : "\u00a0"
+                : (STATUS_WORDS[visibleAgentStatus.state] ?? "\u00a0")}
             </span>
           </p>
-          <button type="submit" disabled={disabled || draft.trim() === ''}>
+          <button type="submit" disabled={disabled || draft.trim() === ""}>
             Send
           </button>
         </div>
       </form>
     </section>
-  )
-}
+  );
+};
 
 const ConversationSeparator = ({
   width,
   viewportWidth,
   onResize,
 }: {
-  readonly width: number
-  readonly viewportWidth: number
-  readonly onResize: (width: number) => void
+  readonly width: number;
+  readonly viewportWidth: number;
+  readonly onResize: (width: number) => void;
 }) => {
   // From the state the reducer clamped against, never from `window`: a resize
   // that leaves the panel width alone still changes what this may be dragged
   // to, and a render that read the live global would only say so by accident.
-  const bounds = conversationWidthBounds(viewportWidth)
+  const bounds = conversationWidthBounds(viewportWidth);
   const drag = useRef<{
-    readonly pointerId: number
-    readonly startX: number
-    readonly startWidth: number
-  } | null>(null)
+    readonly pointerId: number;
+    readonly startX: number;
+    readonly startWidth: number;
+  } | null>(null);
   const pointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const active = drag.current
-    if (active?.pointerId !== event.pointerId) return
-    onResize(active.startWidth + active.startX - event.clientX)
-  }
+    const active = drag.current;
+    if (active?.pointerId !== event.pointerId) return;
+    onResize(active.startWidth + active.startX - event.clientX);
+  };
   const pointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     drag.current = {
       pointerId: event.pointerId,
       startX: event.clientX,
       startWidth: width,
-    }
-    event.currentTarget.setPointerCapture(event.pointerId)
-  }
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
   const pointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (drag.current?.pointerId !== event.pointerId) return
-    drag.current = null
+    if (drag.current?.pointerId !== event.pointerId) return;
+    drag.current = null;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId)
+      event.currentTarget.releasePointerCapture(event.pointerId);
     }
-  }
+  };
   const keyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
-    event.preventDefault()
-    const step = event.shiftKey ? 32 : 8
-    onResize(width + (event.key === 'ArrowLeft' ? step : -step))
-  }
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    const step = event.shiftKey ? 32 : 8;
+    onResize(width + (event.key === "ArrowLeft" ? step : -step));
+  };
   return (
     <div
       className="conversation-separator"
@@ -731,28 +790,72 @@ const ConversationSeparator = ({
       onPointerCancel={pointerUp}
       onKeyDown={keyDown}
     />
-  )
-}
+  );
+};
 
 export const App = () => {
-  const { state, connected, ask, choose, navigate, end } = useVisualSession()
-  const lastDrawn = useRef<AnyLikeC4Model | null>(null)
+  const {
+    state,
+    connected,
+    ask,
+    choose,
+    navigate,
+    filter,
+    clearFilter,
+    setQuickFilterText,
+    saveView,
+    saveLayout,
+    dismissSavedNotice,
+    discardChange,
+    stageChange,
+    clearChangeset,
+    commitChangeset,
+    end,
+  } = useVisualSession();
 
   const [workspace, dispatchWorkspace] = useReducer(
     visualWorkspaceReducer,
     window.innerWidth,
     createVisualWorkspaceState,
-  )
+  );
+
+  const [layoutWaiting, setLayoutWaiting] = useState<string | null>(null);
 
   useEffect(() => {
     const resized = () =>
       dispatchWorkspace({
-        type: 'viewport.resized',
+        type: "viewport.resized",
         viewportWidth: window.innerWidth,
-      })
-    window.addEventListener('resize', resized)
-    return () => window.removeEventListener('resize', resized)
-  }, [])
+      });
+    window.addEventListener("resize", resized);
+    return () => window.removeEventListener("resize", resized);
+  }, []);
+
+  // Applying a view is one job with two triggers - the picker, and the view
+  // the session opens on - so it runs here rather than in the picker's
+  // handler, which the server-chosen opening never passes through. The ref
+  // records what has already landed, so a reviewer-driven navigate (which
+  // moves `activeView` synchronously) is applied exactly once, and clearing
+  // back to "All" re-arms the view the reviewer left.
+  const appliedViewRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (state.activeView === "") {
+      appliedViewRef.current = null;
+      return;
+    }
+    const view = viewNeedingApplication(
+      state.activeView,
+      state.views,
+      appliedViewRef.current,
+      connected,
+    );
+    if (view === null) return;
+    appliedViewRef.current = view.id;
+    filter(view.query);
+    for (const action of presentationActionsFor(view.presentation)) {
+      dispatchWorkspace(action);
+    }
+  }, [state.activeView, state.views, connected, filter]);
 
   // Only what arrived from the agent counts as attention: everything the
   // reviewer did themselves is already in front of them.
@@ -760,112 +863,137 @@ export const App = () => {
     transcriptLength: state.transcript.length,
     choices: state.choices,
     diagnostics: state.diagnostics,
-  })
+  });
 
   useEffect(() => {
-    const previous = attention.current
-    let receivedTranscript = false
+    const previous = attention.current;
+    let receivedTranscript = false;
     for (
       let index = previous.transcriptLength;
       index < state.transcript.length;
       index += 1
     ) {
-      if (state.transcript[index]?.speaker === 'agent') {
-        receivedTranscript = true
-        break
+      if (state.transcript[index]?.speaker === "agent") {
+        receivedTranscript = true;
+        break;
       }
     }
     const received =
       receivedTranscript ||
       (state.choices !== null && state.choices !== previous.choices) ||
       (state.diagnostics.length > 0 &&
-        state.diagnostics !== previous.diagnostics)
+        state.diagnostics !== previous.diagnostics);
     attention.current = {
       transcriptLength: state.transcript.length,
       choices: state.choices,
       diagnostics: state.diagnostics,
-    }
-    if (received) dispatchWorkspace({ type: 'attention.received' })
-  }, [state.transcript.length, state.choices, state.diagnostics])
+    };
+    if (received) dispatchWorkspace({ type: "attention.received" });
+  }, [state.transcript.length, state.choices, state.diagnostics]);
 
-  const drawing = useMemo(() => {
-    const next = visualDrawingFor(
-      state.model,
-      likeC4ModelFrom,
-      lastDrawn.current,
-    )
-    lastDrawn.current = next.drawn
-    return next
-  }, [state.model])
-
-  const reduceGraphics = useMemo(
-    () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-    [],
-  )
-
-  // Promotion replaces the model the reviewer was pointing at, so a subject
-  // held from the old one no longer describes anything. Views and lifecycle
-  // change under the same model and must leave the selection alone.
-  const activeCandidate = useRef(state.model?.candidate ?? null)
+  // A commit or a promotion replaces the whole model. The workspace re-reads the
+  // held subject from the new graph rather than assuming it is gone; views and
+  // lifecycle change under the same model and must leave the selection alone.
+  const activeCandidate = useRef(state.model);
   useEffect(() => {
-    const candidate = state.model?.candidate ?? null
-    if (candidate !== activeCandidate.current) {
-      activeCandidate.current = candidate
-      dispatchWorkspace({ type: 'model.replaced' })
+    if (state.model !== activeCandidate.current) {
+      activeCandidate.current = state.model;
+      dispatchWorkspace({
+        type: "model.replaced",
+        graph: state.model?.graph ?? null,
+      });
     }
-  }, [state.model?.candidate])
+  }, [state.model]);
 
-  // A fault already accounts for the empty canvas, and saying there is no model
-  // would contradict the one that arrived and could not be drawn.
+  // "No model to draw" is only true before anything has arrived; once a
+  // model exists, `waiting` reflects the canvas's own busy state (e.g. a
+  // `force` layout's two-pass run) instead of always being null.
   const waiting =
-    drawing.drawn !== null || drawing.fault !== null
-      ? null
-      : state.lifecycle === 'connecting'
-        ? 'Reading the session'
-        : 'No model to draw'
+    state.model !== null
+      ? layoutWaiting
+      : state.lifecycle === "connecting"
+        ? "Reading the session"
+        : "No model to draw";
 
-  const conversationOpen = workspace.conversation.mode === 'open'
+  const conversationOpen = workspace.conversation.mode === "open";
   const shellStyle = {
-    '--conversation-width': `${workspace.conversation.width}px`,
-  } as CSSProperties
+    "--conversation-width": `${workspace.conversation.width}px`,
+  } as CSSProperties;
 
   return (
     <main className="visual-shell" style={shellStyle}>
       <CommandStrip
         state={state}
         connection={connectionOf(state, connected)}
-        views={state.model?.views ?? []}
         detailsOpen={workspace.detailsOpen}
         conversationOpen={conversationOpen}
         unread={workspace.conversation.unread}
-        onNavigate={navigate}
-        onToggleDetails={() => dispatchWorkspace({ type: 'details.toggled' })}
+        layout={workspace.layout}
+        direction={workspace.direction}
+        notation={workspace.notation}
+        seed={workspace.seed}
+        showLifecycle={workspace.showLifecycle}
+        showEvidence={workspace.showEvidence}
+        showOwnership={workspace.showOwnership}
+        views={state.views}
+        onToggleDetails={() => dispatchWorkspace({ type: "details.toggled" })}
         onToggleConversation={() =>
-          dispatchWorkspace({ type: 'conversation.toggled' })
+          dispatchWorkspace({ type: "conversation.toggled" })
         }
+        onToggleDirection={() =>
+          dispatchWorkspace({
+            type: "direction.set",
+            direction:
+              workspace.direction === "top-down" ? "left-right" : "top-down",
+          })
+        }
+        onSelectNotation={(notation) =>
+          dispatchWorkspace({ type: "notation.set", notation })
+        }
+        onSelectLayout={(layout) =>
+          dispatchWorkspace({ type: "layout.set", layout })
+        }
+        onTogglePresentation={(flag, value) =>
+          dispatchWorkspace({ type: "presentation.toggled", flag, value })
+        }
+        onSelectView={(view) => navigate(view.id)}
+        onClearFilter={clearFilter}
+        onApplyFilter={filter}
+        quickFilterText={state.quickFilterText}
+        onQuickFilterChange={setQuickFilterText}
+        onSaveView={saveView}
+        onDismissSavedNotice={dismissSavedNotice}
         onEnd={end}
       />
       <div
         className={`workspace workspace-conversation-${
-          conversationOpen ? 'open' : 'closed'
+          conversationOpen ? "open" : "closed"
         }`}
       >
         <DiagramWorkspace
           state={state}
-          drawing={drawing}
+          selectedId={workspace.selectedSubject?.id ?? null}
           waiting={waiting}
-          reduceGraphics={reduceGraphics}
-          onNavigate={navigate}
+          layout={workspace.layout}
+          direction={workspace.direction}
+          notation={workspace.notation}
+          seed={workspace.seed}
+          showLifecycle={workspace.showLifecycle}
+          showEvidence={workspace.showEvidence}
+          showOwnership={workspace.showOwnership}
           onSelect={(subject) =>
-            dispatchWorkspace({ type: 'subject.selected', subject })
+            dispatchWorkspace({ type: "subject.selected", subject })
           }
+          onClearFilter={clearFilter}
+          onSaveLayout={saveLayout}
+          onWaitingChange={setLayoutWaiting}
         />
         {conversationOpen ? (
           <ConversationSeparator
             width={workspace.conversation.width}
             viewportWidth={workspace.viewportWidth}
             onResize={(width) =>
-              dispatchWorkspace({ type: 'conversation.resized', width })
+              dispatchWorkspace({ type: "conversation.resized", width })
             }
           />
         ) : null}
@@ -880,12 +1008,15 @@ export const App = () => {
           }
           onChoice={choose}
           onToggleDescription={() =>
-            dispatchWorkspace({ type: 'description.toggled' })
+            dispatchWorkspace({ type: "description.toggled" })
           }
-          onClearSubject={() => dispatchWorkspace({ type: 'subject.cleared' })}
-          onNavigate={navigate}
+          onClearSubject={() => dispatchWorkspace({ type: "subject.cleared" })}
+          onDiscardChange={discardChange}
+          onStageChange={stageChange}
+          onClearChangeset={clearChangeset}
+          onCommitChangeset={commitChangeset}
         />
       </div>
     </main>
-  )
-}
+  );
+};

@@ -1,12 +1,20 @@
+import type { CanvasGraph } from '../../graph-projection.js'
 import type {
   VISUAL_PROTOCOL_VERSION,
+  VisualApplyResultPayload,
   VisualAuthority,
   VisualCapabilities,
   VisualChoicePresentPayload,
   VisualDiagnostic,
+  VisualFilterResultPayload,
   VisualFreezeReason,
+  VisualKindOption,
+  VisualLayoutPositions,
+  VisualLayoutSaveResultPayload,
   VisualResponse,
   VisualTerminationReason,
+  VisualViewSaveResultPayload,
+  VisualViewSummary,
 } from './protocol-contract.js'
 
 /**
@@ -20,18 +28,19 @@ import type {
  * the protocol is type-only too.
  */
 
-/** One promoted candidate as the browser receives it. */
+/** The resolved graph a session renders, as the browser receives it. */
 export interface VisualRenderedModel {
-  readonly candidate: string
   readonly authority: VisualAuthority
   readonly initialView: string
-  readonly views: readonly string[]
-  /**
-   * The trusted compiler's own LikeC4 export for this candidate, the document
-   * `createLikeC4Model` consumes. Its internals belong to LikeC4, so the
-   * transport carries it verbatim instead of restating a shape it does not own.
-   */
-  readonly compiled: unknown
+  readonly graph: CanvasGraph
+  /** Manifest-relative document paths — the add-concept target dropdown. */
+  readonly documents: readonly string[]
+  readonly vocabulary: {
+    readonly conceptKinds: readonly VisualKindOption[]
+    readonly relationshipKinds: readonly VisualKindOption[]
+  }
+  /** Every saved layout sidecar, keyed by projection id (Plan-level decision 1). */
+  readonly layouts: { readonly [projectionId: string]: VisualLayoutPositions }
 }
 
 /**
@@ -60,6 +69,8 @@ export interface VisualSessionSnapshot {
   readonly webSocketUrl: string
   readonly model: VisualRenderedModel
   readonly transcript: readonly VisualTranscriptRecord[]
+  /** The saved views the reviewer can switch this session's diagram to. */
+  readonly views: readonly VisualViewSummary[]
   /**
    * Whether the agent still owes an answer to something the reviewer sent. A
    * browser that reconnects mid-turn reads this rather than inferring the turn
@@ -98,4 +109,11 @@ export type VisualServerFrame =
     }
   | { readonly kind: 'response'; readonly response: VisualResponse }
   | { readonly kind: 'model'; readonly model: VisualRenderedModel }
+  | { readonly kind: 'filter-result'; readonly result: VisualFilterResultPayload }
+  | { readonly kind: 'view-save-result'; readonly result: VisualViewSaveResultPayload }
+  | { readonly kind: 'apply-result'; readonly result: VisualApplyResultPayload }
+  | {
+      readonly kind: 'layout-save-result'
+      readonly result: VisualLayoutSaveResultPayload
+    }
   | { readonly kind: 'closing'; readonly reason: VisualTerminationReason }

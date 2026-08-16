@@ -8,7 +8,22 @@ import visualDiagnosticResultSchema from '../../../schema/yarramate-visual-diagn
 import visualEventSchema from '../../../schema/yarramate-visual-event.schema.json' with {
   type: 'json',
 }
+import visualGraphSchema from '../../../schema/yarramate-visual-graph.schema.json' with {
+  type: 'json',
+}
+import applyResultSchema from '../../../schema/yarramate-apply-result.schema.json' with {
+  type: 'json',
+}
+import operationsSchema from '../../../schema/yarramate-operations.schema.json' with {
+  type: 'json',
+}
+import projectionSchema from '../../../schema/yarramate-projection.schema.json' with {
+  type: 'json',
+}
 import visualHandoffSchema from '../../../schema/yarramate-visual-handoff.schema.json' with {
+  type: 'json',
+}
+import visualLayoutSchema from '../../../schema/yarramate-visual-layout.schema.json' with {
   type: 'json',
 }
 import visualModelSchema from '../../../schema/yarramate-visual-model.schema.json' with {
@@ -53,14 +68,22 @@ const Ajv2020 = Ajv2020Module.default
 const ajv = new Ajv2020({ allErrors: true })
 ajv.addSchema([
   visualDiagnosticResultSchema,
-  visualModelSchema,
   visualEventSchema,
+  visualGraphSchema,
+  visualHandoffSchema,
+  visualModelSchema,
   visualResponseSchema,
+  visualSessionDescriptorSchema,
   visualSessionRequestSchema,
   visualSessionStartedSchema,
-  visualSessionDescriptorSchema,
-  visualHandoffSchema,
   visualStatusSchema,
+  visualLayoutSchema,
+  projectionSchema,
+  // The commit path's event and response documents reference Core's operations
+  // and apply-result shapes rather than restating them, so Ajv needs both
+  // resolvable before it compiles the visual validators.
+  operationsSchema,
+  applyResultSchema,
 ])
 
 // Diagnostics report the document they came from rather than a source file,
@@ -141,14 +164,12 @@ const jsonBytes = (value: unknown): number => {
   return Buffer.byteLength(encoded, 'utf8')
 }
 
-const MODEL_ROOT_CONFIG = 'likec4.config.json'
-const MODEL_SOURCE_EXTENSIONS = ['.c4', '.likec4'] as const
-
 /**
  * Relative POSIX path confined to the candidate root. Absolute paths, parent
- * traversal, empty segments, dot-prefixed segments (how a staged symlink or
- * metadata entry would be smuggled in), Windows separators, and NUL bytes are
- * all rejected.
+ * traversal, empty segments, `.`/`..` segments, Windows separators, and NUL
+ * bytes are all rejected. A dot-prefixed directory is not an escape and is
+ * kept: every workspace keeps its documents under `.yarramate/`, so the
+ * digests of a canonical model are unrepresentable without it.
  */
 const isConfinedRelativePath = (candidate: string): boolean => {
   if (candidate.length === 0 || candidate.length > 1024) return false
@@ -157,14 +178,10 @@ const isConfinedRelativePath = (candidate: string): boolean => {
   if (posix.normalize(candidate) !== candidate) return false
   return candidate
     .split('/')
-    .every((segment) => segment.length > 0 && !segment.startsWith('.'))
-}
-
-export const isSafeVisualModelPath = (candidate: string): boolean => {
-  if (!isConfinedRelativePath(candidate)) return false
-  if (candidate === MODEL_ROOT_CONFIG) return true
-  const extension = posix.extname(candidate)
-  return MODEL_SOURCE_EXTENSIONS.some((allowed) => allowed === extension)
+    .every(
+      (segment) =>
+        segment.length > 0 && segment !== '.' && segment !== '..',
+    )
 }
 
 const modelSemantics = (
@@ -174,36 +191,6 @@ const modelSemantics = (
 ): readonly VisualDiagnostic[] => {
   const fields = documentFields(input)
   const diagnostics: VisualDiagnostic[] = []
-
-  const files = documentFields(fields.files)
-  const fileKeys = Object.keys(files)
-  if (fileKeys.length > 0) {
-    let sources = 0
-    for (const key of fileKeys) {
-      if (!isSafeVisualModelPath(key)) {
-        diagnostics.push(
-          visualDiagnostic(
-            'YMVS113',
-            `Model file "${key}" escapes the candidate root or is not a LikeC4 source`,
-            path,
-            `${prefix}/files/${pointerSegment(key)}`,
-          ),
-        )
-        continue
-      }
-      if (key !== MODEL_ROOT_CONFIG) sources += 1
-    }
-    if (sources === 0) {
-      diagnostics.push(
-        visualDiagnostic(
-          'YMVS114',
-          'A visual model requires at least one .c4 or .likec4 source file',
-          path,
-          `${prefix}/files`,
-        ),
-      )
-    }
-  }
 
   const digestKeys = Object.keys(documentFields(fields.sourceDigests))
   for (const key of digestKeys) {
@@ -222,16 +209,6 @@ const modelSemantics = (
       visualDiagnostic(
         'YMVS112',
         'A canonical visual model must record the source digests it was derived from',
-        path,
-        `${prefix}/sourceDigests`,
-      ),
-    )
-  }
-  if (fields.authority === 'ad-hoc' && digestKeys.length > 0) {
-    diagnostics.push(
-      visualDiagnostic(
-        'YMVS112',
-        'An ad-hoc visual model must not claim canonical source digests',
         path,
         `${prefix}/sourceDigests`,
       ),
@@ -316,13 +293,6 @@ const responseSemantics = (
   const fields = documentFields(input)
   if (fields.type === 'chat.response') {
     return chatTextSemantics(fields.payload, path, '/payload')
-  }
-  if (fields.type === 'model.replace') {
-    return modelSemantics(
-      documentFields(fields.payload).model,
-      path,
-      '/payload/model',
-    )
   }
   return []
 }

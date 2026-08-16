@@ -14,16 +14,33 @@ import {
   VISUAL_PROTOCOL_VERSION,
 } from '../src/adapters/visual/protocol.js'
 
+const graphNode = {
+  id: 'system',
+  localId: 'system',
+  document: 'main.yaml',
+  kind: 'yarramate/core@0.1#applicationComponent',
+  kindLabel: 'applicationComponent',
+  layer: null,
+  aspect: null,
+  name: 'System',
+  description: null,
+  aka: [],
+  status: null,
+  owner: null,
+  distinctFrom: [],
+  supersedes: [],
+  constraints: [],
+  references: [],
+  presentIn: [],
+  attestations: [],
+} as const
+
 const model = {
   format: 'yarramate/visual-model/v1',
-  authority: 'ad-hoc',
+  authority: 'canonical',
   initialView: 'choices',
-  sourceDigests: {},
-  files: {
-    'likec4.config.json': '{"name":"visual"}',
-    'model.likec4': 'model { system = system "System" }',
-    'views.likec4': 'views { view choices { include * } }',
-  },
+  sourceDigests: { 'model.likec4': 'a'.repeat(64) },
+  graph: { nodes: [graphNode], edges: [] },
 } as const
 
 const sessionId = '0123456789abcdef0123456789abcdef'
@@ -33,11 +50,10 @@ const timestamp = '2026-08-08T00:00:00.000Z'
 
 const sessionRequest = {
   format: 'yarramate/visual-session-request/v1',
-  authority: 'ad-hoc',
+  authority: 'canonical',
   title: 'Choose a delivery design',
-  description: 'Temporary non-canonical comparison',
+  description: 'Design options drawn from the checked workspace',
   chatEnabled: true,
-  compiler: { command: '/usr/bin/node', args: ['fake-likec4.mjs'] },
   initialModel: model,
 } as const
 
@@ -45,7 +61,6 @@ const capabilities = {
   chat: true,
   choices: true,
   navigation: true,
-  modelReplacement: true,
   transcript: true,
 } as const
 
@@ -53,7 +68,7 @@ const sessionStarted = {
   format: 'yarramate/visual-session-started/v1',
   protocolVersion: VISUAL_PROTOCOL_VERSION,
   sessionId,
-  authority: 'ad-hoc',
+  authority: 'canonical',
   title: 'Choose a delivery design',
   chatEnabled: true,
   browserUrl: 'http://127.0.0.1:51234/bootstrap?key=0123456789abcdef',
@@ -101,6 +116,13 @@ const eventPayloads: Readonly<Record<string, unknown>> = {
   'chat.message': { text: 'Why is option B cheaper?' },
   'choice.selected': { choiceId: 'delivery', optionId: 'option-b' },
   'view.navigate': { viewId: 'option-b', requiresAttention: false },
+  'filter.query': { query: { kinds: ['yarramate/core@0.1#applicationComponent'] } },
+  'view.save': {
+    title: 'My View',
+    description: 'desc',
+    query: { kinds: ['yarramate/core@0.1#applicationComponent'] },
+    presentation: { layout: 'layered', seed: 'seed-1' },
+  },
   'session.end': { reason: 'user-ended' },
   'browser.connected': { connectionId: 'c1' },
   'browser.disconnected': { connectionId: 'c1', code: 1001 },
@@ -118,8 +140,8 @@ const diagnostic = {
   severity: 'error',
   code: 'YMVS201',
   message: 'Unknown element',
-  path: 'model.likec4',
-  pointer: '/files/model.likec4',
+  path: 'src/architecture/product.yaml',
+  pointer: '/graph/nodes/0/name',
   line: 1,
   column: 1,
 } as const
@@ -135,7 +157,6 @@ const responsePayloads: Readonly<Record<string, unknown>> = {
       { id: 'option-b', label: 'Isolated', description: 'Separate process' },
     ],
   },
-  'model.replace': { model },
   'handoff.complete': handoffSummary,
   diagnostic: { diagnostics: [diagnostic] },
 }
@@ -143,7 +164,7 @@ const responsePayloads: Readonly<Record<string, unknown>> = {
 const handoff = {
   format: 'yarramate/visual-handoff/v1',
   sessionId,
-  authority: 'ad-hoc',
+  authority: 'canonical',
   decision: 'completed',
   terminationReason: 'user-ended',
   lastSequence: 3,
@@ -177,68 +198,16 @@ describe('visual protocol', () => {
     expect(
       parseVisualSessionRequest({
         format: 'yarramate/visual-session-request/v1',
-        authority: 'ad-hoc',
+        authority: 'canonical',
         title: 'Choose a delivery design',
-        description: 'Temporary non-canonical comparison',
+        description: 'Design options drawn from the checked workspace',
         chatEnabled: true,
-        compiler: { command: '/usr/bin/node', args: ['fake-likec4.mjs'] },
         initialModel: model,
       }),
     ).toMatchObject({ ok: true })
   })
 
-  it('accepts pinned npm package arguments without weakening NUL rejection', () => {
-    expect(
-      parseVisualSessionRequest({
-        ...sessionRequest,
-        compiler: {
-          command: '/usr/bin/npx',
-          args: ['--yes', 'likec4@1.59.2'],
-        },
-      }),
-    ).toMatchObject({ ok: true })
-    expect(
-      parseVisualSessionRequest({
-        ...sessionRequest,
-        compiler: {
-          command: '/usr/bin/npx',
-          args: ['likec4@1.59.2\u0000--project=other'],
-        },
-      }),
-    ).toMatchObject({ ok: false })
-  })
 
-  it('accepts LikeC4 source text containing @ and rejects NUL', () => {
-    expect(
-      parseVisualModel({
-        ...model,
-        files: {
-          ...model.files,
-          'model.likec4': 'model { system = system "ops@example.com" }',
-        },
-      }),
-    ).toMatchObject({ ok: true })
-    expect(
-      parseVisualModel({
-        ...model,
-        files: {
-          ...model.files,
-          'model.likec4': 'model\u0000hidden',
-        },
-      }),
-    ).toMatchObject({ ok: false })
-  })
-
-  it.each(['../secret.likec4', '/tmp/secret.likec4', 'asset.js'])(
-    'rejects unsafe model file %s',
-    (path) => {
-      expect(
-        parseVisualModel({ ...model, files: { [path]: 'x' } }),
-      ).toMatchObject({
-        ok: false,
-      })
-    },
-  )
 
   it('rejects messages over the exact limit', () => {
     expect(VISUAL_LIMITS.messageBytes).toBe(64 * 1024)
@@ -295,6 +264,66 @@ describe('visual protocol', () => {
   it.each(Object.keys(responsePayloads))('accepts the %s response', (type) => {
     expect(
       parseVisualResponse(visualResponse(type, responsePayloads[type])),
+    ).toMatchObject({ ok: true })
+  })
+
+  it.each(['filter.query', 'view.save'] as const)(
+    'accepts the %s browser input',
+    (type) => {
+      expect(
+        parseVisualBrowserInput({
+          type,
+          lastAcknowledgedSequence: 0,
+          payload: eventPayloads[type],
+        }),
+      ).toMatchObject({ ok: true })
+    },
+  )
+
+  it('round-trips chat.response with and without an appliedQuery', () => {
+    expect(
+      parseVisualResponse(
+        visualResponse('chat.response', { text: 'Filtered to 2 concepts.' }),
+      ),
+    ).toMatchObject({ ok: true })
+    expect(
+      parseVisualResponse(
+        visualResponse('chat.response', {
+          text: 'Filtered to 2 concepts.',
+          appliedQuery: {
+            query: { kinds: ['yarramate/core@0.1#applicationComponent'] },
+            matchedIds: ['main#a', 'main#b'],
+          },
+        }),
+      ),
+    ).toMatchObject({ ok: true })
+  })
+
+  it('round-trips filter.result and view.save.result response payloads', () => {
+    expect(
+      parseVisualResponse(
+        visualResponse('filter.result', {
+          query: { kinds: ['yarramate/core@0.1#applicationComponent'] },
+          matchedIds: ['main#a', 'main#b'],
+        }),
+      ),
+    ).toMatchObject({ ok: true })
+    expect(
+      parseVisualResponse(
+        visualResponse('view.save.result', {
+          ok: true,
+          id: 'audit-test',
+          path: 'workspace/views/audit-test.view.yaml',
+        }),
+      ),
+    ).toMatchObject({ ok: true })
+    expect(
+      parseVisualResponse(
+        visualResponse('view.save.result', {
+          ok: false,
+          diagnostics: [diagnostic],
+        }),
+      ),
     ).toMatchObject({ ok: true })
   })
 
@@ -396,59 +425,42 @@ describe('visual protocol', () => {
     },
   )
 
-  it('requires the request authority to match the initial model authority', () => {
-    expect(
-      parseVisualSessionRequest({ ...sessionRequest, authority: 'canonical' }),
-    ).toMatchObject({ ok: false })
-  })
-
-  it('ties model authority to source digests', () => {
+  it('requires a canonical model to record source digests', () => {
     const digests = { 'model.likec4': '9'.repeat(64) }
     expect(
-      parseVisualModel({
-        ...model,
-        authority: 'canonical',
-        sourceDigests: digests,
-      }),
+      parseVisualModel({ ...model, sourceDigests: digests }),
     ).toMatchObject({ ok: true })
-    expect(parseVisualModel({ ...model, authority: 'canonical' })).toMatchObject(
-      { ok: false },
-    )
-    expect(parseVisualModel({ ...model, sourceDigests: digests })).toMatchObject(
-      { ok: false },
-    )
-  })
-
-  it('requires at least one LikeC4 source file', () => {
     expect(
-      parseVisualModel({
-        ...model,
-        files: { 'likec4.config.json': '{"name":"visual"}' },
-      }),
+      parseVisualModel({ ...model, sourceDigests: {} }),
     ).toMatchObject({ ok: false })
   })
 
   it.each([
-    'nested/likec4.config.json',
-    '.hidden.likec4',
+    '../secret.likec4',
+    '/tmp/secret.likec4',
     'a/../b.likec4',
     './model.likec4',
     'a//b.likec4',
     'sub\\model.likec4',
-  ])('rejects the additional unsafe model file %s', (path) => {
-    expect(parseVisualModel({ ...model, files: { [path]: 'x' } })).toMatchObject(
-      { ok: false },
-    )
-  })
-
-  it('accepts nested LikeC4 sources inside the candidate root', () => {
+  ])('rejects the unsafe source digest key %s', (key) => {
     expect(
       parseVisualModel({
         ...model,
-        files: {
-          'likec4.config.json': '{"name":"visual"}',
-          'views/choices.likec4': 'views { view choices { include * } }',
-          'model/system.c4': 'model { system = system "System" }',
+        authority: 'canonical',
+        sourceDigests: { [key]: '9'.repeat(64) },
+      }),
+    ).toMatchObject({ ok: false })
+  })
+
+  it('accepts nested source digest keys inside the candidate root', () => {
+    expect(
+      parseVisualModel({
+        ...model,
+        authority: 'canonical',
+        sourceDigests: {
+          'likec4.config.json': '9'.repeat(64),
+          'views/choices.likec4': '9'.repeat(64),
+          'model/system.c4': '9'.repeat(64),
         },
       }),
     ).toMatchObject({ ok: true })
@@ -486,9 +498,11 @@ describe('visual protocol', () => {
     expect(
       parseVisualModel({
         ...model,
-        files: {
-          ...model.files,
-          'huge.likec4': 'x'.repeat(VISUAL_LIMITS.modelBytes),
+        graph: {
+          nodes: [
+            { ...graphNode, description: 'x'.repeat(VISUAL_LIMITS.modelBytes) },
+          ],
+          edges: [],
         },
       }),
     ).toMatchObject({ ok: false })
@@ -614,21 +628,6 @@ describe('visual protocol', () => {
     ).toMatchObject({ ok: true })
   })
 
-  it('requires an absolute compiler executable and rejects hostile arguments', () => {
-    expect(
-      parseVisualSessionRequest({
-        ...sessionRequest,
-        compiler: { command: 'node', args: [] },
-      }),
-    ).toMatchObject({ ok: false })
-    expect(
-      parseVisualSessionRequest({
-        ...sessionRequest,
-        compiler: { command: '/usr/bin/node', args: ['a\u0000b'] },
-      }),
-    ).toMatchObject({ ok: false })
-  })
-
   it('reports source-located diagnostics for invalid documents', () => {
     const parsed = parseVisualSessionRequest({ ...sessionRequest, title: '' })
     expect(parsed.ok).toBe(false)
@@ -650,18 +649,34 @@ describe('visual protocol', () => {
     ).toMatchObject({ ok: true })
   })
 
-  it('points unsafe file diagnostics at the offending escaped key', () => {
+  it('points unsafe source digest diagnostics at the offending escaped key', () => {
     const parsed = parseVisualModel({
       ...model,
-      files: { ...model.files, 'evil/../escape.likec4': 'x' },
+      authority: 'canonical',
+      sourceDigests: { 'evil/../escape.likec4': '9'.repeat(64) },
     })
     expect(parsed.ok).toBe(false)
     if (parsed.ok) return
     expect(parsed.diagnostics).toContainEqual(
       expect.objectContaining({
         code: 'YMVS113',
-        pointer: '/files/evil~1..~1escape.likec4',
+        pointer: '/sourceDigests/evil~1..~1escape.likec4',
       }),
     )
+  })
+
+  it('keeps a digest keyed under the workspace dot directory', () => {
+    // Every workspace keeps its documents under `.yarramate/`, and the graph
+    // addresses them by exactly that path, so a dot directory is the normal
+    // case here rather than a smuggled metadata entry.
+    expect(
+      parseVisualModel({
+        ...model,
+        authority: 'canonical',
+        sourceDigests: {
+          '.yarramate/architecture/engine.yaml': '9'.repeat(64),
+        },
+      }),
+    ).toMatchObject({ ok: true })
   })
 })

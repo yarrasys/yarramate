@@ -112,7 +112,8 @@ body {
 }
 
 .command-actions select,
-.command-actions button {
+.command-actions button,
+.command-actions .quick-filter {
   min-height: 32px;
   padding: 0 0.7rem;
   font-family: var(--utility);
@@ -125,6 +126,15 @@ body {
   cursor: pointer;
 }
 
+.command-actions .quick-filter {
+  width: 160px;
+  cursor: text;
+}
+
+.command-actions .quick-filter::placeholder {
+  color: var(--quiet);
+}
+
 .command-actions select {
   /* The native arrow is the one piece of OS chrome worth keeping: it is the
      only affordance saying this control has a list behind it. */
@@ -132,7 +142,9 @@ body {
 }
 
 .command-actions select:hover:enabled,
-.command-actions button:hover:enabled {
+.command-actions button:hover:enabled,
+.command-actions .quick-filter:hover,
+.command-actions .quick-filter:focus {
   border-color: var(--cobalt);
 }
 
@@ -177,6 +189,20 @@ body {
   display: none;
 }
 
+/* Reason the direction control is disabled under ArchiMate notation -
+   same empty-string/:empty idiom as .end-transition-status above. */
+.direction-notice {
+  max-width: 16rem;
+  font-family: var(--utility);
+  font-size: 11px;
+  line-height: 1.25;
+  color: var(--quiet);
+}
+
+.direction-notice:empty {
+  display: none;
+}
+
 .authority {
   margin: 0;
   font-family: var(--utility);
@@ -194,10 +220,6 @@ body {
   margin-right: 0.5rem;
   vertical-align: 0;
   background: currentColor;
-}
-
-.authority-ad-hoc {
-  color: var(--ochre);
 }
 
 /* A static claim about the feature, not a live status — bordered like a tag
@@ -296,12 +318,10 @@ body {
   background: var(--paper);
 }
 
-/* The diagram owns its box. LikeC4 sizes its shadow host from a stylesheet it
-   injects at runtime, which this page's policy does not admit, so the host is
-   sized from here instead. Only the host: the blocked <style> element is a
-   sibling, and a display rule would put its source text on the page. */
-.canvas,
-.diagram {
+/* Cytoscape measures the element it mounts into and draws nothing when that
+   box collapses, so the container is sized here rather than left to the
+   canvas element it creates inside. */
+.canvas {
   width: 100%;
   height: 100%;
   min-width: 0;
@@ -316,6 +336,53 @@ body {
   z-index: 4;
   max-height: 50%;
   overflow: auto;
+}
+
+/* A chat-issued filter narrows the diagram from outside the reviewer's own
+   panel, so it earns a badge that says so and a one-click way back to the
+   full model — never a silent narrowing the reviewer has to notice on their
+   own. */
+.diagram-workspace > .filter-pill {
+  position: absolute;
+  inset: var(--step) auto auto var(--step);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: var(--step);
+  max-width: calc(100% - var(--step) * 2);
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--rule-firm);
+  border-radius: 999px;
+  background: var(--sheet);
+  font-family: var(--utility);
+  font-size: 12px;
+  color: var(--ink);
+}
+
+.filter-pill span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-pill code {
+  font-weight: 700;
+}
+
+.filter-pill button {
+  flex: none;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--cobalt);
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.filter-pill button:hover {
+  color: var(--ink);
 }
 
 .conversation-separator {
@@ -692,6 +759,162 @@ body {
 
 /* ---------------------------------------------------------------- narrow */
 
+
+/* --------------------------------------------------------- filter panel */
+
+.filter-panel {
+  position: relative;
+}
+
+.filter-panel > button {
+  min-height: 32px;
+  padding: 0 0.7rem;
+  font-family: var(--utility);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule-firm);
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.filter-panel > button:hover:enabled {
+  border-color: var(--cobalt);
+}
+
+.filter-panel > button[aria-expanded='true'] {
+  color: var(--paper);
+  background: var(--cobalt);
+  border-color: var(--cobalt);
+}
+
+.filter-panel-body {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 9;
+  min-width: 320px;
+  max-width: 480px;
+  padding: calc(var(--step) * 1.5);
+  margin-top: -1px;
+  border: 1px solid var(--rule-firm);
+  border-top: none;
+  background: var(--sheet);
+  box-shadow: 0 12px 28px rgb(19 35 57 / 12%);
+}
+
+.filter-panel-body[hidden] {
+  display: none;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: calc(var(--step) * 1.5);
+}
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--step) * 0.75);
+}
+
+.filter-field > label,
+.filter-field legend {
+  font-family: var(--utility);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--quiet);
+}
+
+.tag-input {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--step);
+  padding: calc(var(--step) * 0.5);
+  border: 1px solid var(--rule-firm);
+  background: var(--paper);
+  border-radius: 2px;
+}
+
+.tag-input input {
+  flex: 1;
+  min-width: 80px;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 15px;
+}
+
+.tag-input input:focus {
+  outline: none;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.6rem;
+  background: var(--cobalt);
+  color: var(--paper);
+  border-radius: 2px;
+  font-size: 13px;
+}
+
+.tag-chip button {
+  display: inline;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: none;
+  color: currentColor;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.tag-chip button:hover {
+  opacity: 0.8;
+}
+
+.filter-field select {
+  padding: 0.4rem 0.7rem;
+  font-family: var(--body);
+  font-size: 15px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule-firm);
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.filter-field select:hover {
+  border-color: var(--cobalt);
+}
+
+.filter-checkbox-group {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.filter-checkbox-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 15px;
+  padding: 0.4rem 0;
+}
+
+.filter-checkbox-option input {
+  cursor: pointer;
+}
 @media (max-width: 899px) {
   .command-strip {
     grid-template-columns: 1fr;
@@ -736,4 +959,406 @@ body {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+.save-view-control {
+  display: contents;
+}
+
+.save-view-toggle {
+  padding: 0 calc(var(--step) * 0.75rem);
+  height: 32px;
+  border: 1px solid var(--rule-firm);
+  border-radius: 2px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.save-view-toggle:hover:not(:disabled) {
+  border-color: var(--rule);
+  background: color-mix(in oklab, var(--paper) 90%, var(--ink));
+}
+
+.save-view-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.save-view-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--sheet);
+  border: 1px solid var(--rule-firm);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  z-index: 10;
+}
+
+.save-view-panel-body {
+  padding: calc(var(--step) * 1.5);
+  min-width: 300px;
+}
+
+.save-view-form {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--step) * 1);
+}
+
+.save-view-form div {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--step) * 0.5);
+}
+
+.save-view-form label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.save-view-form input,
+.save-view-form textarea {
+  padding: calc(var(--step) * 0.5);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  font-family: var(--body);
+  font-size: 13px;
+}
+
+.save-view-actions {
+  display: flex;
+  gap: calc(var(--step) * 1);
+  margin-top: calc(var(--step) * 0.5);
+}
+
+.save-view-actions button {
+  flex: 1;
+  padding: calc(var(--step) * 0.5) calc(var(--step) * 1);
+  border: 1px solid var(--rule-firm);
+  border-radius: 2px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.save-view-actions button:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--paper) 85%, var(--ink));
+}
+
+.save-view-notice {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--step) * 0.75);
+  padding: calc(var(--step) * 0.75) calc(var(--step) * 1.5);
+  background: color-mix(in oklab, var(--eucalyptus) 15%, var(--sheet));
+  border: 1px solid var(--eucalyptus);
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.save-view-notice button {
+  margin-left: auto;
+  padding: 0 calc(var(--step) * 0.5);
+  border: none;
+  background: none;
+  color: var(--eucalyptus);
+  font-size: 11px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.confirm-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.confirm-dialog {
+  background: var(--sheet);
+  border: 1px solid var(--rule-firm);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  padding: calc(var(--step) * 2);
+  max-width: 400px;
+  text-align: center;
+}
+
+.confirm-dialog h2 {
+  margin: 0 0 calc(var(--step) * 1) 0;
+  font-size: 16px;
+}
+
+.confirm-dialog p {
+  margin: 0 0 calc(var(--step) * 1.5) 0;
+  font-size: 13px;
+  color: var(--quiet);
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  gap: calc(var(--step) * 1);
+}
+
+.confirm-dialog-actions button {
+  flex: 1;
+  padding: calc(var(--step) * 0.75);
+  border: 1px solid var(--rule-firm);
+  border-radius: 2px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.confirm-dialog-actions button:hover {
+  background: color-mix(in oklab, var(--paper) 85%, var(--ink));
+}
+
+/* ------------------------------------------------------------ changeset tray */
+
+.changeset-tray {
+  padding: calc(var(--step) * 1.5) calc(var(--step) * 2.5);
+  border-top: 1px solid var(--rule);
+  background: color-mix(in srgb, var(--sheet) 92%, var(--cobalt) 8%);
+}
+
+.changeset-heading-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--step);
+}
+
+.changeset-heading-row h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 15px;
+}
+
+.changeset-discard-all {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--eucalyptus);
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.changeset-rows {
+  margin: var(--step) 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: calc(var(--step) * 0.75);
+}
+
+.changeset-row {
+  padding: calc(var(--step) * 0.75);
+  border: 1px solid var(--rule-firm);
+  border-radius: 2px;
+  background: var(--paper);
+}
+
+.changeset-row-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--step);
+}
+
+.changeset-row-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--utility);
+  font-size: 12px;
+  color: var(--ink);
+}
+
+.changeset-row-discard {
+  flex: none;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--eucalyptus);
+  font-size: 11px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.changeset-row-diagnostics,
+.changeset-batch-diagnostics {
+  margin: calc(var(--step) * 0.5) 0 0;
+  padding-left: 1.1rem;
+  font-family: var(--utility);
+  font-size: 11px;
+  color: var(--failure);
+}
+
+.changeset-batch-diagnostics {
+  margin: 0 0 var(--step);
+}
+
+.changeset-row-diagnostics .code,
+.changeset-batch-diagnostics .code {
+  font-weight: 700;
+}
+
+.changeset-row-diagnostics .where,
+.changeset-batch-diagnostics .where {
+  color: var(--quiet);
+  margin-left: 0.4rem;
+}
+
+.changeset-actions {
+  margin-top: var(--step);
+}
+
+.changeset-commit {
+  width: 100%;
+  padding: calc(var(--step) * 0.75);
+  border: 1px solid var(--cobalt);
+  border-radius: 2px;
+  background: var(--cobalt);
+  color: var(--paper);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.changeset-commit:disabled {
+  border-color: var(--rule-firm);
+  background: transparent;
+  color: var(--quiet);
+  cursor: not-allowed;
+}
+
+.changeset-notice {
+  margin-top: var(--step);
+  padding: calc(var(--step) * 0.75) calc(var(--step) * 1);
+  border: 1px solid var(--eucalyptus);
+  border-radius: 4px;
+  background: color-mix(in oklab, var(--eucalyptus) 15%, var(--sheet));
+  font-size: 12px;
+  color: var(--ink);
+}
+
+.changeset-notice p {
+  margin: 0 0 calc(var(--step) * 0.25);
+  font-weight: 700;
+}
+
+.changeset-notice ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-family: var(--utility);
+}
+
+/* Layout save notice pill - top-right corner, appears when layout.save succeeds.
+   Reuses filter-pill styling but overrides inset for top-right placement. */
+.layout-notice-pill {
+  position: absolute;
+  inset: var(--step) var(--step) auto auto;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: var(--step);
+  max-width: calc(100% - var(--step) * 2);
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--rule-firm);
+  border-radius: 999px;
+  background: var(--sheet);
+  font-family: var(--utility);
+  font-size: 12px;
+  color: var(--ink);
+}
+
+.layout-notice-pill span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* InspectorForms (Tasks 16-17): the editable concept/relationship forms
+   inside the subject inspector. One field per row, repeatable rows for
+   list-shaped fields, each nested one step further than its parent. */
+.subject-form {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--step) * 1.25);
+  margin: calc(var(--step) * 1) 0;
+}
+
+.subject-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--step) * 0.35);
+}
+
+.subject-form-label {
+  font-family: var(--utility);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--quiet);
+}
+
+.subject-form-field input[type='text'],
+.subject-form-field select {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--rule-firm);
+  border-radius: calc(var(--step) * 0.5);
+  background: var(--paper);
+  font-family: var(--body);
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.subject-form-list {
+  border-top: 1px solid var(--rule);
+  padding-top: calc(var(--step) * 0.75);
+}
+
+.subject-form-row {
+  display: flex;
+  align-items: flex-start;
+  gap: calc(var(--step) * 0.5);
+  margin-bottom: calc(var(--step) * 0.5);
+}
+
+.subject-form-row-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--step) * 0.5);
+  flex: 1;
+}
+
+.subject-form-toggle {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--step) * 0.35);
+  font-family: var(--utility);
+  font-size: 12px;
+  color: var(--quiet);
+}
+
+.subject-form-row-add,
+.subject-form-row-remove {
+  border: 1px solid var(--rule-firm);
+  border-radius: calc(var(--step) * 0.5);
+  background: var(--sheet);
+  font-family: var(--utility);
+  font-size: 12px;
+  padding: 0.25rem 0.6rem;
+  cursor: pointer;
 }

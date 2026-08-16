@@ -1,4 +1,5 @@
-import Ajv2020Module from 'ajv/dist/2020.js'
+import { createRequire } from 'node:module'
+import type Ajv2020Type from 'ajv/dist/2020.js'
 import { isDeclaredNonGoal } from './brief.js'
 import type {
   Diagnostic,
@@ -12,7 +13,15 @@ import projectionSchema from '../schema/yarramate-projection.schema.json' with {
   type: 'json',
 }
 
-const Ajv2020 = Ajv2020Module.default
+// `ajv/dist/2020.js` is CJS. Its default-export shape is resolved
+// differently under this repo's two tsconfigs: NodeNext (root) sees the raw
+// `module.exports` (needs `.default`), Bundler+esModuleInterop
+// (tsconfig.visual.json) sees the already-unwrapped class. `require()`
+// sidesteps the value-level ambiguity; the type is normalized the same way.
+type Ajv2020Ctor = typeof Ajv2020Type extends { default: infer D } ? D : typeof Ajv2020Type
+const require = createRequire(import.meta.url)
+const ajv2020Module = require('ajv/dist/2020.js') as { default?: Ajv2020Ctor } & Ajv2020Ctor
+const Ajv2020 = ajv2020Module.default ?? ajv2020Module
 const validateProjection = new Ajv2020({ allErrors: true }).compile(
   projectionSchema,
 )
@@ -47,8 +56,11 @@ export interface ProjectionDefinition {
     readonly showLifecycle?: boolean
     readonly showEvidence?: boolean
     readonly showOwnership?: boolean
+    readonly notation?: 'native' | 'archimate'
   }
 }
+
+export type ProjectionQuery = ProjectionDefinition['query']
 
 export interface ProjectionResult {
   readonly format: 'yarramate/projection-result/v1'
@@ -110,6 +122,7 @@ export function canonicalProjection(
             ...(presentation.showLifecycle === undefined ? {} : { showLifecycle: presentation.showLifecycle }),
             ...(presentation.showEvidence === undefined ? {} : { showEvidence: presentation.showEvidence }),
             ...(presentation.showOwnership === undefined ? {} : { showOwnership: presentation.showOwnership }),
+            ...(presentation.notation === undefined ? {} : { notation: presentation.notation }),
           },
         }),
   }
@@ -394,6 +407,9 @@ export function evaluateProjection(
             ...(projection.presentation.showOwnership === undefined
               ? {}
               : { showOwnership: projection.presentation.showOwnership }),
+            ...(projection.presentation.notation === undefined
+              ? {}
+              : { notation: projection.presentation.notation }),
           },
         }),
     documents: graph.documents.filter(({ id }) => selectedDocuments.has(id)),

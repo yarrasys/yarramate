@@ -339,10 +339,36 @@ concepts:
     kind: repository-file
     name: src/adapters/visual/session-store.ts
     status: current
+  - id: visual-request-source
+    kind: repository-file
+    name: src/adapters/visual/request.ts
+    status: current
+  - id: visual-canvas-source
+    kind: repository-file
+    name: src/visual-app/graph-canvas.tsx
+    status: current
+  - id: visual-inspector-source
+    kind: repository-file
+    name: src/visual-app/subject-form.tsx
+    status: current
+  - id: visual-changeset-tray-source
+    kind: repository-file
+    name: src/visual-app/changeset-tray.tsx
+    status: current
+  - id: visual-layout-schema-source
+    kind: repository-file
+    name: schema/yarramate-visual-layout.schema.json
+    status: current
   - id: visual-likec4-compiler-source
     kind: repository-file
     name: src/adapters/visual/likec4-compiler.ts
+    status: retired
+  - id: graph-projection-source
+    kind: repository-file
+    name: src/graph-projection.ts
     status: current
+    supersedes:
+      - visual-likec4-compiler-source
   - id: visual-protocol-source
     kind: repository-file
     name: src/adapters/visual/protocol.ts
@@ -378,7 +404,13 @@ concepts:
   - id: visual-likec4-compiler-tests
     kind: repository-file
     name: test/visual-likec4-compiler.test.ts
+    status: retired
+  - id: graph-projection-tests
+    kind: repository-file
+    name: test/graph-projection.test.ts
     status: current
+    supersedes:
+      - visual-likec4-compiler-tests
   - id: visual-protocol-tests
     kind: repository-file
     name: test/visual-protocol.test.ts
@@ -395,9 +427,45 @@ concepts:
     kind: repository-file
     name: test/visual-journey.test.ts
     status: current
+  - id: visual-request-tests
+    kind: repository-file
+    name: test/visual-request.test.ts
+    status: current
+  - id: visual-canvas-layout-tests
+    kind: repository-file
+    name: test/graph-canvas-layout.test.ts
+    status: current
+  - id: visual-inspector-tests
+    kind: repository-file
+    name: test/subject-form.test.ts
+    status: current
+  - id: visual-changeset-tray-tests
+    kind: repository-file
+    name: test/changeset-tray.test.ts
+    status: current
+  - id: apply-operations-tests
+    kind: repository-file
+    name: test/apply-operations.test.ts
+    status: current
   - id: visual-skill-reference
     kind: repository-file
     name: skills/yarramate-architecture/references/visual-conversations.md
+    status: current
+  - id: visual-badges-source
+    kind: repository-file
+    name: src/visual-app/badges.ts
+    status: current
+  - id: visual-kind-icons-source
+    kind: repository-file
+    name: src/visual-app/kind-icons.ts
+    status: current
+  - id: visual-badges-tests
+    kind: repository-file
+    name: test/badges.test.ts
+    status: current
+  - id: visual-kind-icons-tests
+    kind: repository-file
+    name: test/kind-icons.test.ts
     status: current
 relationships:
   - id: backlog-disposition-qualifies-roadmap
@@ -767,6 +835,11 @@ relationships:
     kind: realization
     from: visual-likec4-compiler-source
     to: yarramate-engine#render-visual-model
+    status: retired
+  - id: graph-projection-realizes-rendering
+    kind: realization
+    from: graph-projection-source
+    to: yarramate-engine#render-visual-model
   - id: visual-protocol-source-realizes-protocol
     kind: realization
     from: visual-protocol-source
@@ -803,6 +876,11 @@ relationships:
     kind: association
     from: visual-likec4-compiler-tests
     to: yarramate-engine#render-visual-model
+    status: retired
+  - id: graph-projection-tests-validate-rendering
+    kind: association
+    from: graph-projection-tests
+    to: yarramate-engine#render-visual-model
   - id: visual-protocol-tests-validate-protocol
     kind: association
     from: visual-protocol-tests
@@ -819,6 +897,46 @@ relationships:
     kind: association
     from: visual-journey-tests
     to: yarramate-engine#visual-handoff
+  - id: visual-request-source-realizes-request-build
+    kind: realization
+    from: visual-request-source
+    to: yarramate-engine#build-visual-session-request
+  - id: visual-canvas-source-realizes-browser
+    kind: realization
+    from: visual-canvas-source
+    to: yarramate-engine#visual-browser
+  - id: visual-inspector-source-realizes-presentation
+    kind: realization
+    from: visual-inspector-source
+    to: yarramate-engine#present-visual-conversation
+  - id: visual-changeset-tray-source-realizes-commit
+    kind: realization
+    from: visual-changeset-tray-source
+    to: yarramate-engine#commit-visual-changeset
+  - id: visual-layout-schema-realizes-sidecar
+    kind: realization
+    from: visual-layout-schema-source
+    to: yarramate-engine#visual-layout-sidecar
+  - id: visual-request-tests-validate-request-build
+    kind: association
+    from: visual-request-tests
+    to: yarramate-engine#build-visual-session-request
+  - id: visual-canvas-layout-tests-validate-browser
+    kind: association
+    from: visual-canvas-layout-tests
+    to: yarramate-engine#visual-browser
+  - id: visual-inspector-tests-validate-presentation
+    kind: association
+    from: visual-inspector-tests
+    to: yarramate-engine#present-visual-conversation
+  - id: visual-changeset-tray-tests-validate-commit
+    kind: association
+    from: visual-changeset-tray-tests
+    to: yarramate-engine#commit-visual-changeset
+  - id: apply-operations-tests-validate-apply
+    kind: association
+    from: apply-operations-tests
+    to: yarramate-engine#apply-command
   - id: visual-reference-documents-session-command
     kind: association
     from: visual-skill-reference
@@ -828,3 +946,19 @@ relationships:
     from: agent-skill-source
     to: visual-skill-reference
     description: The canonical skill routes a harness into the visual journey and decides delegated chat versus diagram-only mode before the runtime starts.
+  - id: visual-badges-source-realizes-badges
+    kind: realization
+    from: visual-badges-source
+    to: yarramate-engine#render-visual-presentation-badges
+  - id: visual-kind-icons-source-realizes-icons
+    kind: realization
+    from: visual-kind-icons-source
+    to: yarramate-engine#render-archimate-kind-icons
+  - id: visual-badges-tests-validate-badges
+    kind: association
+    from: visual-badges-tests
+    to: yarramate-engine#render-visual-presentation-badges
+  - id: visual-kind-icons-tests-validate-icons
+    kind: association
+    from: visual-kind-icons-tests
+    to: yarramate-engine#render-archimate-kind-icons
