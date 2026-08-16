@@ -16,16 +16,15 @@ export interface SaveViewControlProps {
   readonly showEvidence: boolean
   readonly showOwnership: boolean
   readonly notation: 'native' | 'archimate'
+  readonly seed: string
   readonly pendingSave: boolean
   readonly notice: boolean
   readonly onSave: (payload: VisualViewSavePayload) => void
   readonly onDismissNotice: () => void
 }
 
-/** The layered/elk algorithm is deterministic given its input, so there is no
- * real seed to capture yet — a placeholder until a later plan wires a
- * non-deterministic layout that needs one (Task 17 brief). */
-const SAVE_SEED = 'default'
+// (no module-level seed constant: the seed a save writes is the one the canvas
+// laid the view out with, held in workspace state - see `workspace-state.ts`.)
 
 export interface BuildPayloadParams {
   readonly id: string | undefined
@@ -38,6 +37,7 @@ export interface BuildPayloadParams {
   readonly showEvidence: boolean
   readonly showOwnership: boolean
   readonly notation: 'native' | 'archimate'
+  readonly seed: string
 }
 
 /** Pure translation from the form's local state to the wire payload — no
@@ -55,12 +55,13 @@ export const buildPayload = ({
   showEvidence,
   showOwnership,
   notation,
+  seed,
 }: BuildPayloadParams): VisualViewSavePayload => ({
   ...(id === undefined ? {} : { id }),
   title,
   description,
   query: query ?? {},
-  presentation: { layout, direction, seed: SAVE_SEED, showLifecycle, showEvidence, showOwnership, notation },
+  presentation: { layout, direction, seed, showLifecycle, showEvidence, showOwnership, notation },
 })
 
 /**
@@ -80,6 +81,7 @@ export function SaveViewControl({
   showEvidence,
   showOwnership,
   notation,
+  seed,
   pendingSave,
   notice,
   onSave,
@@ -116,6 +118,7 @@ export function SaveViewControl({
       showEvidence,
       showOwnership,
       notation,
+      seed,
     })
 
   const submit = (id: string | undefined) => {

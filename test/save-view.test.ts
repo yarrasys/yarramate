@@ -17,6 +17,7 @@ describe('buildPayload', () => {
       showEvidence: true,
       showOwnership: false,
       notation: 'native',
+      seed: 'default',
     })
 
     expect(payload).toEqual({
@@ -48,6 +49,7 @@ describe('buildPayload', () => {
       showEvidence: true,
       showOwnership: true,
       notation: 'native',
+      seed: 'default',
     })
 
     expect(payload.presentation?.showLifecycle).toBe(false)
@@ -67,6 +69,7 @@ describe('buildPayload', () => {
       showEvidence: true,
       showOwnership: false,
       notation: 'native',
+      seed: 'default',
     })
 
     expect(payload).not.toHaveProperty('id')
@@ -98,6 +101,7 @@ describe('buildPayload', () => {
       showEvidence: true,
       showOwnership: false,
       notation: 'native',
+      seed: 'default',
     })
 
     expect(payload.title).toBe('Exact Title')
@@ -118,6 +122,7 @@ describe('buildPayload', () => {
       showEvidence: false,
       showOwnership: false,
       notation: 'native',
+      seed: 'default',
     })
 
     expect(payload.query).toEqual({})
@@ -135,6 +140,7 @@ describe('buildPayload', () => {
       showEvidence: false,
       showOwnership: false,
       notation: 'native',
+      seed: 'default',
     })
 
     expect(payload.presentation?.layout).toBe('radial')
@@ -158,8 +164,29 @@ describe('buildPayload', () => {
       showEvidence: true,
       showOwnership: false,
       notation: 'archimate',
+      seed: 'default',
     })
 
     expect(payload.presentation?.notation).toBe('archimate')
+  })
+
+  // The seed the canvas actually laid this view out with is what a save must
+  // write back - not the placeholder a view with no declared seed falls to.
+  it('carries the live canvas seed through to presentation', () => {
+    const payload = buildPayload({
+      id: 'view-id',
+      title: 'Seeded View',
+      description: 'A reviewer-chosen seed',
+      query,
+      layout: 'force',
+      direction: 'top-down',
+      showLifecycle: true,
+      showEvidence: true,
+      showOwnership: false,
+      notation: 'native',
+      seed: 'reviewer-seed-7',
+    })
+
+    expect(payload.presentation?.seed).toBe('reviewer-seed-7')
   })
 })

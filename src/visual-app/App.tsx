@@ -112,6 +112,7 @@ const CommandStrip = ({
   onToggleDirection,
   onSelectLayout,
   notation,
+  seed,
   onSelectNotation,
   showLifecycle,
   showEvidence,
@@ -138,6 +139,7 @@ const CommandStrip = ({
   readonly onToggleConversation: () => void
   readonly onSelectLayout: (layout: 'layered' | 'radial' | 'force') => void
   readonly notation: 'native' | 'archimate'
+  readonly seed: string
   readonly onSelectNotation: (notation: 'native' | 'archimate') => void
   readonly onToggleDirection: () => void
   readonly showLifecycle: boolean
@@ -193,6 +195,7 @@ const CommandStrip = ({
         layout={layout}
         direction={direction}
         notation={notation}
+        seed={seed}
         showLifecycle={showLifecycle}
         showEvidence={showEvidence}
         showOwnership={showOwnership}
@@ -340,6 +343,7 @@ const DiagramWorkspace = ({
   layout,
   direction,
   notation,
+  seed,
   showLifecycle,
   showEvidence,
   showOwnership,
@@ -354,6 +358,7 @@ const DiagramWorkspace = ({
   readonly layout: 'layered' | 'radial' | 'force'
   readonly direction: 'top-down' | 'left-right'
   readonly notation: 'native' | 'archimate'
+  readonly seed: string
   readonly showLifecycle: boolean
   readonly showEvidence: boolean
   readonly showOwnership: boolean
@@ -408,6 +413,7 @@ const DiagramWorkspace = ({
             layout={layout}
             direction={direction}
             notation={notation}
+            seed={seed}
             showLifecycle={showLifecycle}
             showEvidence={showEvidence}
             showOwnership={showOwnership}
@@ -894,6 +900,7 @@ export const App = () => {
         layout={workspace.layout}
         direction={workspace.direction}
         notation={workspace.notation}
+        seed={workspace.seed}
         showLifecycle={workspace.showLifecycle}
         showEvidence={workspace.showEvidence}
         showOwnership={workspace.showOwnership}
@@ -940,6 +947,7 @@ export const App = () => {
           layout={workspace.layout}
           direction={workspace.direction}
           notation={workspace.notation}
+          seed={workspace.seed}
           showLifecycle={workspace.showLifecycle}
           showEvidence={workspace.showEvidence}
           showOwnership={workspace.showOwnership}

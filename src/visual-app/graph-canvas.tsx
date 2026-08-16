@@ -141,8 +141,9 @@ const ELK_SPACING: Record<string, unknown> = {
 
 // FNV-1a hash: deterministically convert a seed string to a signed int32.
 // ELK's `org.eclipse.elk.randomSeed` is INT-typed; handed a non-numeric string
-// (like `'default'` from SAVE_SEED) it silently ignores the option, so the
-// wire-format string seed has to become an integer before it reaches elk.
+// (like the `'default'` a view that declares no seed of its own lays out under)
+// it silently ignores the option, so the wire-format string seed has to become
+// an integer before it reaches elk.
 //
 // `Math.imul` is the exact int32 multiply - a plain `hash * 16777619` overflows
 // the 53-bit mantissa once `hash` passes 2^29 and starts rounding, which is
@@ -929,6 +930,7 @@ function runLayout(
   inFlightRef: { current: Layouts | null },
   onWaitingChange: (waiting: string | null) => void,
   notation: 'native' | 'archimate' = 'native',
+  seed?: string,
 ): void {
   // Clear the ref *before* stopping: `stop()` can emit `layoutstop`
   // synchronously, and the superseded run's handler must already see itself
@@ -937,7 +939,7 @@ function runLayout(
   inFlightRef.current = null
   superseded?.stop()
 
-  const first = eles.layout(buildLayoutConfig(layout, direction, undefined, notation))
+  const first = eles.layout(buildLayoutConfig(layout, direction, seed, notation))
   if (layout !== 'force') {
     // A superseded force chain's handlers all bail on the guards below, so
     // nobody else will retire its busy notice. This run owns the canvas now,
@@ -986,7 +988,9 @@ function runLayout(
 // callback so every existing caller that only cares about layered/radial's
 // synchronous behaviour keeps working unchanged. `notation` likewise
 // defaults to `'native'` so a caller that has never heard of ArchiMate
-// notation gets the direction mapping it always did.
+// notation gets the direction mapping it always did. `seed` is the active
+// view's `presentation.seed`; only the `force` backend reads it (see
+// `buildLayoutConfig`), and omitting it leaves elk on its own default.
 export function relayoutVisible(
   cy: Core,
   layout: 'layered' | 'radial' | 'force',
@@ -994,8 +998,17 @@ export function relayoutVisible(
   inFlightRef: { current: Layouts | null } = { current: null },
   onWaitingChange: (waiting: string | null) => void = () => {},
   notation: 'native' | 'archimate' = 'native',
+  seed?: string,
 ): void {
-  runLayout(cy.elements(':visible'), layout, direction, inFlightRef, onWaitingChange, notation)
+  runLayout(
+    cy.elements(':visible'),
+    layout,
+    direction,
+    inFlightRef,
+    onWaitingChange,
+    notation,
+    seed,
+  )
 }
 
 // `dragfree` fires once per drag (unlike `position`, which fires on every
@@ -1087,6 +1100,12 @@ interface GraphCanvasProps {
   readonly showEvidence: boolean
   readonly showOwnership: boolean
   readonly notation: 'native' | 'archimate'
+  /**
+   * The active view's `presentation.seed`. Only the `force` backend reads it
+   * (elk `stress`'s initial random placement); the other two are deterministic
+   * by construction and ignore it.
+   */
+  readonly seed: string
   readonly activeViewId: string
   /** Saved layout for the active view, or undefined when it has none yet. */
   readonly savedPositions: VisualLayoutPositions | undefined
@@ -1119,6 +1138,7 @@ export function GraphCanvas({
   showEvidence,
   showOwnership,
   notation,
+  seed,
 }: GraphCanvasProps): React.ReactElement {
   const containerRef = useRef<HTMLDivElement>(null)
   const cyRef = useRef<Core | null>(null)
@@ -1129,6 +1149,7 @@ export function GraphCanvas({
   const directionRef = useRef(direction)
   const layoutRef = useRef(layout)
   const notationRef = useRef(notation)
+  const seedRef = useRef(seed)
   const pendingViewFitRef = useRef(false)
   // Keep latest onSaveLayout and savedPositions for the drag-save handler
   const onSaveLayoutRef = useRef(onSaveLayout)
@@ -1264,6 +1285,7 @@ export function GraphCanvas({
       forceLayoutRef,
       (waiting) => onWaitingChangeRef.current(waiting),
       notation,
+      seed,
     )
   }, [graph])
 
@@ -1282,11 +1304,13 @@ export function GraphCanvas({
   }, [selectedId, graph])
 
   // Arms a pending fit whenever the active view, layout backend, layout
-  // direction, or notation mode changes. Notation belongs here because
+  // direction, notation mode, or seed changes. Notation belongs here because
   // `buildLayoutConfig` pins `elk.direction: 'DOWN'` under `archimate` - the
   // stylesheet effect above swaps node shapes on the live instance
   // immediately, so without a matching relayout an archimate toggle would
-  // leave ArchiMate shapes sitting in the native direction's geometry.
+  // leave ArchiMate shapes sitting in the native direction's geometry. Seed
+  // belongs here for the same reason: under `force` it is layout input, so a
+  // reviewer who declares a new seed has to see the placement it produces.
   // Declared before the filter-apply effect below - same-phase effects commit
   // in source order, so a view switch whose filter result lands in the very
   // same render (e.g. clearing back to "All") is still armed in time for that
@@ -1296,13 +1320,22 @@ export function GraphCanvas({
     const layoutChanged = layout !== layoutRef.current
     const directionChanged = direction !== directionRef.current
     const notationChanged = notation !== notationRef.current
-    if (!viewChanged && !layoutChanged && !directionChanged && !notationChanged) return
+    const seedChanged = seed !== seedRef.current
+    if (
+      !viewChanged &&
+      !layoutChanged &&
+      !directionChanged &&
+      !notationChanged &&
+      !seedChanged
+    )
+      return
     activeViewIdRef.current = activeViewId
     layoutRef.current = layout
     directionRef.current = direction
     notationRef.current = notation
+    seedRef.current = seed
     pendingViewFitRef.current = true
-  }, [activeViewId, layout, direction, notation])
+  }, [activeViewId, layout, direction, notation, seed])
 
   // Apply structural filter (matchedIds) and quick-filter narrowing, then,
   // only once a pending view-switch relayout is armed and its filter result
@@ -1321,9 +1354,10 @@ export function GraphCanvas({
         forceLayoutRef,
         (waiting) => onWaitingChangeRef.current(waiting),
         notation,
+        seed,
       )
     }
-  }, [matchedIds, quickFilterText, graph, layout, direction, notation])
+  }, [matchedIds, quickFilterText, graph, layout, direction, notation, seed])
 
   return <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
 }

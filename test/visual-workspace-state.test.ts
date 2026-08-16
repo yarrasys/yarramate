@@ -403,3 +403,48 @@ describe('visualWorkspaceReducer notation', () => {
     ])
   })
 })
+
+describe('visualWorkspaceReducer seed', () => {
+  const workspaceState = createVisualWorkspaceState(1280)
+
+  // `presentation.seed` is required wherever `presentation.layout` is, so a
+  // view always names the seed it lays out under; this is the value a view
+  // that never declared one of its own falls back to.
+  it('starts with the default seed', () => {
+    expect(workspaceState.seed).toBe('default')
+  })
+
+  it('sets the seed on seed.set', () => {
+    const next = visualWorkspaceReducer(workspaceState, {
+      type: 'seed.set',
+      seed: 'reviewer-seed-7',
+    })
+    expect(next.seed).toBe('reviewer-seed-7')
+  })
+
+  it('adopts a selected view declared seed', () => {
+    const actions = presentationActionsFor({ layout: 'force', seed: 'reviewer-seed-7' })
+    const next = actions.reduce(visualWorkspaceReducer, workspaceState)
+    expect(next.seed).toBe('reviewer-seed-7')
+    expect(next.layout).toBe('force')
+  })
+
+  it('leaves the seed untouched when a view declares none', () => {
+    const actions = presentationActionsFor({})
+    const next = actions.reduce(visualWorkspaceReducer, workspaceState)
+    expect(next).toBe(workspaceState)
+  })
+
+  it('adopts only the seed field a view actually declares', () => {
+    const actions = presentationActionsFor({ seed: 'reviewer-seed-7' })
+    expect(actions).toEqual([{ type: 'seed.set', seed: 'reviewer-seed-7' }])
+  })
+
+  it('returns the same state when the declared seed is already current', () => {
+    const next = visualWorkspaceReducer(workspaceState, {
+      type: 'seed.set',
+      seed: 'default',
+    })
+    expect(next).toBe(workspaceState)
+  })
+})

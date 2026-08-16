@@ -347,6 +347,31 @@ describe('relayoutVisible force second pass', () => {
     expect(countOverlappingPairs(cy)).toBe(0)
   })
 
+  // The canvas never calls `buildLayoutConfig` itself, so a view's declared
+  // seed reaches elk only if `relayoutVisible` forwards it down.
+  it('threads the seed through to the force backend', async () => {
+    const runSeeded = async (seed: string) => {
+      const cy = buildHubFixture()
+      const idle = Promise.withResolvers<void>()
+      relayoutVisible(
+        cy,
+        'force',
+        'top-down',
+        { current: null },
+        (waiting) => {
+          if (waiting === null) idle.resolve()
+        },
+        'native',
+        seed,
+      )
+      await idle.promise
+      return buildPositionMap(cy.nodes())
+    }
+
+    expect(await runSeeded('seed-alpha')).toEqual(await runSeeded('seed-alpha'))
+    expect(await runSeeded('seed-alpha')).not.toEqual(await runSeeded('seed-beta'))
+  })
+
   it('supersedes an in-flight force run instead of stacking a second pass on top', async () => {
     const cy = buildHubFixture()
     const inFlightRef: { current: cytoscape.Layouts | null } = { current: null }
