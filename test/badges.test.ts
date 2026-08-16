@@ -106,6 +106,60 @@ describe('buildStylesheet badge layers', () => {
     ])
   })
 
+  it('gives each node its own badge set from one shared stylesheet', () => {
+    // One stylesheet serves the whole graph and the mapper memoises per node
+    // data, so the cache key must discriminate on all four fields it reads.
+    // A key that dropped one would hand the second node the first's badges.
+    const style = nodeRule(true, true, true).style as cytoscape.Css.Node
+    const images = style['background-image'] as (ele: {
+      data: (key: string) => unknown
+    }) => string[]
+    const eleOf = (data: Record<string, unknown>) => ({
+      data: (key: string) => data[key] ?? null,
+    })
+
+    const bare = eleOf({ status: 'planned' })
+    const owned = eleOf({ status: 'planned', owner: 'doc#dana', ownerInitials: 'D' })
+    const evidenced = eleOf({ status: 'planned', hasAttestations: true })
+
+    expect(images(bare)).toEqual([LIFECYCLE_BADGE_URI.planned])
+    expect(images(owned)).toEqual([LIFECYCLE_BADGE_URI.planned, ownerBadgeUri('doc#dana', 'D')])
+    expect(images(evidenced)).toEqual([LIFECYCLE_BADGE_URI.planned, EVIDENCE_BADGE_URI])
+    // A repeat lookup is served from the cache and must not have drifted.
+    expect(images(bare)).toEqual([LIFECYCLE_BADGE_URI.planned])
+  })
+
+  it('keeps all seven badge properties the same length for one node', () => {
+    // cytoscape reads the seven arrays positionally - entry `i` of each one
+    // describes the same badge - so a node carrying all three badges must
+    // report three entries on every property, not just on the image list.
+    const style = nodeRule(true, true, true).style as unknown as Record<
+      string,
+      (ele: { data: (key: string) => unknown }) => unknown[]
+    >
+    const data: Record<string, unknown> = {
+      status: 'current',
+      hasAttestations: true,
+      owner: 'doc#dana',
+      ownerInitials: 'D',
+    }
+    const ele = { data: (key: string) => data[key] ?? null }
+    const properties = [
+      'background-image',
+      'background-position-x',
+      'background-position-y',
+      'background-width',
+      'background-height',
+      'background-image-containment',
+      'background-clip',
+    ]
+    for (const property of properties) {
+      const mapper = style[property]
+      if (mapper === undefined) throw new Error(`node rule is missing ${property}`)
+      expect(mapper(ele)).toHaveLength(3)
+    }
+  })
+
 })
 
 describe('ownerColorOf hash function', () => {

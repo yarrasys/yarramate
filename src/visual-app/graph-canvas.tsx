@@ -232,6 +232,18 @@ interface BadgeLayer {
   readonly positionY: string
 }
 
+// One node's seven badge style values, pre-split into the parallel arrays
+// cytoscape wants. Held together so the seven mappers can never disagree on
+// length even though each is asked for its own property separately.
+interface BadgeStyleArrays {
+  readonly images: string[]
+  readonly positionsX: string[]
+  readonly positionsY: string[]
+  readonly sizes: number[]
+  readonly containments: 'over'[]
+  readonly clips: 'none'[]
+}
+
 const BADGE_SIZE = 12
 // Lifecycle top-right, evidence bottom-left, ownership bottom-right - each
 // corner gets at most one badge, so none ever overlap on a single node. Each
@@ -280,6 +292,34 @@ export function buildStylesheet(
   showEvidence: boolean,
   showOwnership: boolean,
 ): cytoscape.StylesheetJsonBlock[] {
+  // Cytoscape re-evaluates every mapper on each style recalculation - a single
+  // selection change re-runs all seven over every node - and rebuilding the
+  // percent-encoded SVG payloads that often is pure waste. Which badges a node
+  // gets is a pure function of four data fields (the three toggles are fixed
+  // for this stylesheet's lifetime), so keying on those collapses 7 x N builds
+  // per recalculation into one per distinct badge combination on the graph.
+  // Cytoscape only reads these arrays, so nodes sharing a combination share
+  // one set.
+  const badgeStyleCache = new Map<string, BadgeStyleArrays>()
+  const badgeStyleFor = (ele: NodeSingular): BadgeStyleArrays => {
+    const key =
+      `${String(ele.data('status'))}\u0000${String(ele.data('hasAttestations'))}` +
+      `\u0000${String(ele.data('owner'))}\u0000${String(ele.data('ownerInitials'))}`
+    const cached = badgeStyleCache.get(key)
+    if (cached !== undefined) return cached
+    const layers = badgeLayersFor(ele, showLifecycle, showEvidence, showOwnership)
+    const built: BadgeStyleArrays = {
+      images: layers.map((layer) => layer.image),
+      positionsX: layers.map((layer) => layer.positionX),
+      positionsY: layers.map((layer) => layer.positionY),
+      sizes: layers.map(() => BADGE_SIZE),
+      containments: layers.map((): 'over' => 'over'),
+      clips: layers.map((): 'none' => 'none'),
+    }
+    badgeStyleCache.set(key, built)
+    return built
+  }
+
   return [
     {
       selector: 'node',
@@ -308,34 +348,13 @@ export function buildStylesheet(
       // sit right on a node's corner instead of being cropped by its border.
       selector: 'node',
       style: {
-        'background-image': (ele: NodeSingular) =>
-          badgeLayersFor(ele, showLifecycle, showEvidence, showOwnership).map(
-            (layer) => layer.image,
-          ),
-        'background-position-x': (ele: NodeSingular) =>
-          badgeLayersFor(ele, showLifecycle, showEvidence, showOwnership).map(
-            (layer) => layer.positionX,
-          ),
-        'background-position-y': (ele: NodeSingular) =>
-          badgeLayersFor(ele, showLifecycle, showEvidence, showOwnership).map(
-            (layer) => layer.positionY,
-          ),
-        'background-width': (ele: NodeSingular) =>
-          badgeLayersFor(ele, showLifecycle, showEvidence, showOwnership).map(
-            () => BADGE_SIZE,
-          ),
-        'background-height': (ele: NodeSingular) =>
-          badgeLayersFor(ele, showLifecycle, showEvidence, showOwnership).map(
-            () => BADGE_SIZE,
-          ),
-        'background-image-containment': (ele: NodeSingular) =>
-          badgeLayersFor(ele, showLifecycle, showEvidence, showOwnership).map(
-            (): 'over' => 'over',
-          ),
-        'background-clip': (ele: NodeSingular) =>
-          badgeLayersFor(ele, showLifecycle, showEvidence, showOwnership).map(
-            (): 'none' => 'none',
-          ),
+        'background-image': (ele: NodeSingular) => badgeStyleFor(ele).images,
+        'background-position-x': (ele: NodeSingular) => badgeStyleFor(ele).positionsX,
+        'background-position-y': (ele: NodeSingular) => badgeStyleFor(ele).positionsY,
+        'background-width': (ele: NodeSingular) => badgeStyleFor(ele).sizes,
+        'background-height': (ele: NodeSingular) => badgeStyleFor(ele).sizes,
+        'background-image-containment': (ele: NodeSingular) => badgeStyleFor(ele).containments,
+        'background-clip': (ele: NodeSingular) => badgeStyleFor(ele).clips,
       },
     },
     {
