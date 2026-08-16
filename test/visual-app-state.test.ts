@@ -35,7 +35,7 @@ const model = (initialView: string): VisualRenderedModel => ({
 });
 
 const serverSnapshot: VisualSessionSnapshot = {
-  protocolVersion: "yarramate/visual-protocol/v1",
+  protocolVersion: "yarramate/visual-protocol/v2",
   sessionId: "0".repeat(32),
   authority: "canonical",
   title: "Choose a delivery design",

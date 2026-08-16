@@ -129,11 +129,15 @@ Eleven closed `yarramate/visual-*/v1` JSON documents, each with
 `additionalProperties: false`, published from `./schema`:
 session request, session started, session descriptor, event, response,
 status, handoff, model, graph, layout, and diagnostic result.
-`yarramate/visual-protocol/v1` is the version the started result, the
+`yarramate/visual-protocol/v2` is the version the started result, the
 descriptor, and status agree on. The wire is a published contract, not a
 process-local convention, because the journal that recovers a crashed session
 has to be readable by a process that did not write it — see
 [ADR 0081](adr/0081-a-visual-conversation-is-an-adapter-with-a-published-protocol.md).
+v1 said `model.replace`: the delegated agent could re-author the whole model
+and the runtime would adopt it. That response no longer exists, so a v1 child
+is refused rather than misread — see
+[ADR 0088](adr/0088-removing-the-agents-mutation-path-bumps-the-wire.md).
 
 The journal carries ten event kinds. Eight are the browser's to send —
 `chat.message`, `choice.selected`, `view.navigate`, `view.save`,
