@@ -217,12 +217,21 @@ describe('buildLayoutConfig', () => {
     expect(Object.keys(force.elk)).not.toContain('elk.direction')
   })
 
-  it('layered with the same seed produces identical positions across two runs', async () => {
+  it('force backend with the same seed produces identical positions across two runs', async () => {
     const cyA = buildLayoutFixture()
     const cyB = buildLayoutFixture()
-    await runLayout(cyA, buildLayoutConfig('layered', 'top-down', 'fixed-seed'))
-    await runLayout(cyB, buildLayoutConfig('layered', 'top-down', 'fixed-seed'))
+    await runLayout(cyA, buildLayoutConfig('force', 'top-down', 'seed-alpha'))
+    await runLayout(cyB, buildLayoutConfig('force', 'top-down', 'seed-alpha'))
 
     expect(buildPositionMap(cyA.nodes())).toEqual(buildPositionMap(cyB.nodes()))
+  })
+
+  it('force backend with different seeds produces different positions', async () => {
+    const cyA = buildLayoutFixture()
+    const cyB = buildLayoutFixture()
+    await runLayout(cyA, buildLayoutConfig('force', 'top-down', 'seed-alpha'))
+    await runLayout(cyB, buildLayoutConfig('force', 'top-down', 'seed-beta'))
+
+    expect(buildPositionMap(cyA.nodes())).not.toEqual(buildPositionMap(cyB.nodes()))
   })
 })

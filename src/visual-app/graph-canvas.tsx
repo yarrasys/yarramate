@@ -131,22 +131,43 @@ const ELK_SPACING: Record<string, unknown> = {
   'elk.padding': `[top=${CONTAINER_PADDING + CONTAINER_LABEL_GAP},left=${CONTAINER_PADDING},bottom=${CONTAINER_PADDING},right=${CONTAINER_PADDING}]`,
 }
 
+// FNV-1a hash: deterministically convert a seed string to a signed int32.
+// ELK's `org.eclipse.elk.randomSeed` expects an integer; if passed a
+// non-numeric string (like `'default'` from SAVE_SEED), it silently ignores
+// it. This function ensures the wire-format string seed reaches ELK as a
+// reproducible int32.
+//
+// FNV-1a algorithm: multiply by prime (16777619), XOR each byte, fold to
+// int32 via bitwise operations that work in JavaScript's 53-bit float
+// mantissa. Same hash produces same output across reloads and machines.
+function seedToInt32(seed: string): number {
+  let hash = 2166136261 >>> 0 // FNV offset basis as uint32
+  for (let i = 0; i < seed.length; i++) {
+    hash ^= seed.charCodeAt(i)
+    hash = (hash * 16777619) >>> 0 // uint32 multiply
+  }
+  return (hash << 0) as unknown as number // fold to signed int32
+}
+
 // Shared by the full-graph layout effect and the visible-subgraph relayout
 // that runs on view switch, so both always agree on algorithm/direction.
 //
 // Three backends, chosen by headless measurement on this repo's own 258-node
 // graph:
 // - `layered` - elk's `layered` algorithm, today's default directional
-//   (org-chart style) layout. `elk.randomSeed` is honoured deterministically
-//   (same seed -> identical layout hash), the only backend `seed` affects.
+//   (org-chart style) layout. Seed has no measurable effect on crossing
+//   minimization on this repo's graph and is silently ignored.
 // - `radial` - cytoscape's own built-in `concentric`, not elk's `radial`
 //   algorithm (measured unusable on this graph: a tree algorithm, 17.5k
 //   overlapping node pairs). Concentric filters compound parents itself
 //   (`eles.nodes().not(':parent')`), so parents wrap their children instead
 //   of being concentric-positioned themselves - measured 0 parent overlaps.
-// - `force` - elk's `stress` algorithm, first pass only. The `sporeOverlap`
-//   overlap-removal second pass is Task 3's business: it needs this first
-//   pass to have finished before it can run.
+//   Not elk-based, so no seed support.
+// - `force` - elk's `stress` algorithm, first pass only. Seed deterministically
+//   changes the initial random placement; measured to be the only backend where
+//   randomSeed visibly alters final positions. The `sporeOverlap` overlap-removal
+//   second pass is Task 3's business: it needs this first pass to have finished
+//   before it can run.
 //
 // `elk.direction` is ignored by every elk algorithm except `layered`
 // (verified: identical container boxes for DOWN and RIGHT on `stress`), so
@@ -173,15 +194,18 @@ export function buildLayoutConfig(
         'org.eclipse.elk.stress.desiredEdgeLength': 320,
       },
     }
+    if (seed !== undefined) {
+      config.elk['elk.randomSeed'] = seedToInt32(seed)
+    }
     return config as unknown as cytoscape.LayoutOptions
   }
+  // layered: no seed wiring (seed has no measurable effect on crossing
+  // minimization in this repo's graph; measured via headless elk on a
+  // 10-node asymmetric crossing-prone fixture)
   const elk: ElkLayoutOptions['elk'] = {
     algorithm: 'layered',
     'elk.direction': direction === 'top-down' ? 'DOWN' : 'LEFT',
     ...ELK_SPACING,
-  }
-  if (seed !== undefined) {
-    elk['elk.randomSeed'] = seed
   }
   const config: ElkLayoutOptions = {
     name: 'elk',
