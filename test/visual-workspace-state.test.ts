@@ -367,3 +367,38 @@ describe('visualWorkspaceReducer presentation', () => {
     ])
   })
 })
+
+describe('visualWorkspaceReducer notation', () => {
+  const workspaceState = createVisualWorkspaceState(1280)
+
+  it('starts with native notation', () => {
+    expect(workspaceState.notation).toBe('native')
+  })
+
+  it('sets notation on notation.set', () => {
+    const next = visualWorkspaceReducer(workspaceState, {
+      type: 'notation.set',
+      notation: 'archimate',
+    })
+    expect(next.notation).toBe('archimate')
+  })
+
+  it('adopts a selected view declared notation', () => {
+    const actions = presentationActionsFor({ notation: 'archimate' })
+    const next = actions.reduce(visualWorkspaceReducer, workspaceState)
+    expect(next.notation).toBe('archimate')
+  })
+
+  it('leaves notation untouched when a view declares none', () => {
+    const actions = presentationActionsFor({})
+    const next = actions.reduce(visualWorkspaceReducer, workspaceState)
+    expect(next).toBe(workspaceState)
+  })
+
+  it('adopts only the notation field a view actually declares', () => {
+    const actions = presentationActionsFor({ notation: 'archimate' })
+    expect(actions).toEqual([
+      { type: 'notation.set', notation: 'archimate' },
+    ])
+  })
+})

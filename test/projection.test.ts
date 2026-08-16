@@ -706,6 +706,50 @@ query:
     )
   })
 
+  it('round-trips notation through a saved projection document', () => {
+    const withNative = loadProjection({
+      path: 'native.projection.yaml',
+      source: `format: yarramate/projection/v1
+id: notation-test
+version: "1.0"
+query: {}
+presentation:
+  notation: native
+`,
+    })
+    const withArchimate = loadProjection({
+      path: 'archimate.projection.yaml',
+      source: `format: yarramate/projection/v1
+id: notation-test
+version: "1.0"
+query: {}
+presentation:
+  notation: archimate
+`,
+    })
+    expect(withNative.ok).toBe(true)
+    expect(withArchimate.ok).toBe(true)
+    if (!withNative.ok || !withArchimate.ok) return
+    expect(withNative.projection.presentation?.notation).toBe('native')
+    expect(withArchimate.projection.presentation?.notation).toBe('archimate')
+    expect(canonicalProjection(withNative.projection).presentation?.notation).toBe('native')
+    expect(canonicalProjection(withArchimate.projection).presentation?.notation).toBe('archimate')
+  })
+
+  it('rejects unknown notation values in schema validation', () => {
+    const invalid = loadProjection({
+      path: 'invalid.projection.yaml',
+      source: `format: yarramate/projection/v1
+id: bad-notation
+version: "1.0"
+query: {}
+presentation:
+  notation: invalid-notation
+`,
+    })
+    expect(invalid.ok).toBe(false)
+  })
+
   it('keeps portable presentation metadata out of projection membership', () => {
     const compilation = compileWorkspace([
       { path: 'projection-model.yaml', source },

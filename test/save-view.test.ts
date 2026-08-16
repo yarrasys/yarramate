@@ -16,6 +16,7 @@ describe('buildPayload', () => {
       showLifecycle: true,
       showEvidence: true,
       showOwnership: false,
+      notation: 'native',
     })
 
     expect(payload).toEqual({
@@ -30,6 +31,7 @@ describe('buildPayload', () => {
         showLifecycle: true,
         showEvidence: true,
         showOwnership: false,
+        notation: 'native',
       },
     })
   })
@@ -45,6 +47,7 @@ describe('buildPayload', () => {
       showLifecycle: false,
       showEvidence: true,
       showOwnership: true,
+      notation: 'native',
     })
 
     expect(payload.presentation?.showLifecycle).toBe(false)
@@ -63,6 +66,7 @@ describe('buildPayload', () => {
       showLifecycle: true,
       showEvidence: true,
       showOwnership: false,
+      notation: 'native',
     })
 
     expect(payload).not.toHaveProperty('id')
@@ -77,6 +81,7 @@ describe('buildPayload', () => {
         showLifecycle: true,
         showEvidence: true,
         showOwnership: false,
+        notation: 'native',
       },
     })
   })
@@ -92,6 +97,7 @@ describe('buildPayload', () => {
       showLifecycle: true,
       showEvidence: true,
       showOwnership: false,
+      notation: 'native',
     })
 
     expect(payload.title).toBe('Exact Title')
@@ -109,8 +115,8 @@ describe('buildPayload', () => {
       layout: 'layered',
       direction: 'top-down',
       showLifecycle: true,
-      showEvidence: true,
       showOwnership: false,
+      notation: 'native',
     })
 
     expect(payload.query).toEqual({})
@@ -125,8 +131,8 @@ describe('buildPayload', () => {
       layout: 'radial',
       direction: 'top-down',
       showLifecycle: true,
-      showEvidence: true,
       showOwnership: false,
+      notation: 'native',
     })
 
     expect(payload.presentation?.layout).toBe('radial')
@@ -136,5 +142,22 @@ describe('buildPayload', () => {
     expect(payload.query).toEqual(query)
     expect(payload.presentation?.direction).toBe('top-down')
     expect(payload.presentation?.seed).toBe('default')
+  })
+
+  it('carries notation through to presentation', () => {
+    const payload = buildPayload({
+      id: 'view-id',
+      title: 'ArchiMate View',
+      description: 'An archimate test',
+      query,
+      layout: 'layered',
+      direction: 'top-down',
+      showLifecycle: true,
+      showEvidence: true,
+      showOwnership: false,
+      notation: 'archimate',
+    })
+
+    expect(payload.presentation?.notation).toBe('archimate')
   })
 })
