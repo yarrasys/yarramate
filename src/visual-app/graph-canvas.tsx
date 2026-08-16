@@ -1063,6 +1063,7 @@ export function GraphCanvas({
   const activeViewIdRef = useRef(activeViewId)
   const directionRef = useRef(direction)
   const layoutRef = useRef(layout)
+  const notationRef = useRef(notation)
   const pendingViewFitRef = useRef(false)
   // Keep latest onSaveLayout and savedPositions for the drag-save handler
   const onSaveLayoutRef = useRef(onSaveLayout)
@@ -1215,21 +1216,28 @@ export function GraphCanvas({
     }
   }, [selectedId, graph])
 
-  // Arms a pending fit whenever the active view, layout backend, or layout
-  // direction changes. Declared before the filter-apply effect below -
-  // same-phase effects commit in source order, so a view switch whose
-  // filter result lands in the very same render (e.g. clearing back to
-  // "All") is still armed in time for that commit.
+  // Arms a pending fit whenever the active view, layout backend, layout
+  // direction, or notation mode changes. Notation belongs here because
+  // `buildLayoutConfig` pins `elk.direction: 'DOWN'` under `archimate` - the
+  // stylesheet effect above swaps node shapes on the live instance
+  // immediately, so without a matching relayout an archimate toggle would
+  // leave ArchiMate shapes sitting in the native direction's geometry.
+  // Declared before the filter-apply effect below - same-phase effects commit
+  // in source order, so a view switch whose filter result lands in the very
+  // same render (e.g. clearing back to "All") is still armed in time for that
+  // commit.
   useEffect(() => {
     const viewChanged = activeViewId !== activeViewIdRef.current
     const layoutChanged = layout !== layoutRef.current
     const directionChanged = direction !== directionRef.current
-    if (!viewChanged && !layoutChanged && !directionChanged) return
+    const notationChanged = notation !== notationRef.current
+    if (!viewChanged && !layoutChanged && !directionChanged && !notationChanged) return
     activeViewIdRef.current = activeViewId
     layoutRef.current = layout
     directionRef.current = direction
+    notationRef.current = notation
     pendingViewFitRef.current = true
-  }, [activeViewId, layout, direction])
+  }, [activeViewId, layout, direction, notation])
 
   // Apply structural filter (matchedIds) and quick-filter narrowing, then,
   // only once a pending view-switch relayout is armed and its filter result
@@ -1250,7 +1258,7 @@ export function GraphCanvas({
         notation,
       )
     }
-  }, [matchedIds, quickFilterText, graph, layout, direction])
+  }, [matchedIds, quickFilterText, graph, layout, direction, notation])
 
   return <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
 }
