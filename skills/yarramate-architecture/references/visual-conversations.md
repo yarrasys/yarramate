@@ -136,6 +136,9 @@ A dragged position is presentation, not an operation: `layout.save` writes an
 adapter-owned sidecar per projection and never routes through `apply`
 ([ADR 0085](../../../docs/adr/0085-a-dragged-position-is-presentation-the-repository-keeps.md)).
 
+Four presentation toggles ride in `view.save`'s `presentation` object alongside `layout`, `direction`, and `seed`: `showLifecycle`, `showEvidence`, `showOwnership` (three badge toggles controlling what is drawn on each node — status, evidence marks, owner initials), and `notation` (switching between `native` and `archimate` rendering modes). None of these compose a filter or fire `filter.query`; toggling a badge or notation checkbox dispatches `onTogglePresentation` and updates state locally without consulting the model, and they save and reload as projection presentation fields, never as operations. They are why a reviewer can tweak the canvas appearance mid-session without publishing a semantic change.
+
+
 The chat agent has no part in any of this and cannot author a model - the wire
 has no `model.replace`. Chat explains, filters, and focuses; the reviewer edits.
 

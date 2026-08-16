@@ -795,6 +795,16 @@ concepts:
     description: The yarramate/visual-layout/v1 saved node positions for one projection's canvas - presentation the repository keeps, outside the model it describes.
     owner: yarramate-product#yarramate-maintainers
     status: current
+  - id: render-visual-presentation-badges
+    kind: applicationFunction
+    name: Render visual presentation badges
+    description: Draws lifecycle status, evidence, and ownership badge SVGs on each node as inline data-URI background images based on concept status, attestations, and owner fields already present in the visual graph; generates deterministic owner colour from a stable FNV-1a hash of the owner ref, using only the four hue-bearing CSS tokens from styles.css (eucalyptus, ochre, cobalt, ink).
+    status: current
+  - id: render-archimate-kind-icons
+    kind: applicationFunction
+    name: Render ArchiMate kind icons
+    description: Draws a 14×14 px single-stroke SVG icon per concept kind in the repository's graph, covering 19 kinds using ArchiMate element glyphs as descriptive notation only, with no trademark or conformance claim. Unknown kinds render nothing. Active only under archimate notation mode; falls back to native rendering when notation is native.
+    status: current
 relationships:
   - id: core-contract-checker-loads-contract
     kind: assignment
@@ -1752,3 +1762,17 @@ relationships:
     from: save-visual-layout
     to: visual-layout-sidecar
     mode: write
+  - id: render-visual-model-reads-kind-catalogue
+    kind: access
+    from: render-visual-model
+    to: kind-catalogue
+    mode: read
+    description: Projects concept kind aspects (resolved through kind inheritance) onto each canvas node so notation modes can render shapes and styling by aspect.
+  - id: visual-browser-renders-presentation-badges
+    kind: assignment
+    from: visual-browser
+    to: render-visual-presentation-badges
+  - id: visual-browser-renders-kind-icons
+    kind: assignment
+    from: visual-browser
+    to: render-archimate-kind-icons

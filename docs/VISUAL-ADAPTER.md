@@ -55,6 +55,44 @@ reviewable input rather than a reproducible artifact
 An unreadable or invalid sidecar is skipped: presentation must never fail a
 session.
 
+### Layout backends
+
+Three layout algorithms render the canvas automatically, selected via `presentation.layout`:
+
+- **`layered`** (`elk layered`) — honours `presentation.direction` (`top-down` → `elk.direction: DOWN`, `left-right` → `RIGHT`). Measured 112 ms on this repository's 258-node graph. Deterministic; seed (`presentation.seed`) is ignored.
+- **`radial`** (cytoscape `concentric`) — degree-ranked rings, hubs in the centre. Ignores `direction` and `seed`. Measured 4 ms with zero node overlaps. Not elk-based; compound parents wrap children instead of being positioned concentrically themselves.
+- **`force`** (elk `stress` + `sporeOverlap`) — a two-pass layout: elk `stress` (`desiredEdgeLength: 320`) first, then (once that settles) `sporeOverlap` to remove overlaps. Takes 5.4 s on the full graph but reaches zero overlapping pairs. Seed deterministically shifts initial random placement — the only backend where seed visibly alters final positions. Shows a `"Laying out..."` busy notice during the run and supersedes a request while another is in flight rather than stacking a second pass.
+
+The three measurements above are from this repository's own graph (258 concepts, 352 relationships, 220×64 px nodes), not a synthetic fixture. **`radial` is not elk `radial`** — ELK's radial is a tree algorithm that produced 17,578 overlapping pairs on this graph and did not terminate when overlap removal was attempted afterward. `radial` maps instead to cytoscape's built-in `concentric`, and `force` takes no new dependency beyond the already-installed `cytoscape-elk`, avoiding `cytoscape-cola` and `cytoscape-fcose` which either stalled, produced degenerate output, or left too many overlaps to be useful. See [ADR 0086](adr/0086-radial-is-concentric-and-force-is-stress-then-spore.md) for the full measurement table and rejected alternatives.
+
+Seed is a string on the wire and is FNV-1a-hashed to a signed int32 before being handed to `elk.randomSeed` (the browser hashes it with `Math.imul`). It is saved for every view but only reproduces a `force` layout; `layered` is deterministic and ignores it, and `concentric` is deterministic by construction.
+
+`elk.direction` is only honoured by `layered`; the other two backends ignore it entirely.
+
+### Presentation toggles
+
+Four presentation state fields ride alongside layout in `presentation`, saved via `view.save` and persisted in the projection document:
+
+- `showLifecycle` — renders a status badge (lifecycle: `planned` / `current` / `retired`) on each node's top-left, using the existing CSS tokens from `src/visual-app/styles.css`.
+- `showEvidence` — renders a checkmark badge on each node's bottom-left, only when the node has attestations (`hasAttestations: boolean`). Binary presence, never a graded state.
+- `showOwnership` — renders the owner's initials in a coloured circle on each node's bottom-right, hashing the owner ref onto a four-colour palette from `styles.css` (eucalyptus, ochre, cobalt, ink) deterministically and stably across reloads and machines. Colour is only informative here; initials identify the owner at a glance.
+- `notation` — toggles between `native` (the default) and `archimate` rendering mode (see below).
+
+None of these toggle a projection query or compose a `filter.query` event; toggling a checkbox dispatches `onTogglePresentation` and updates local state only. They are presentation, not semantic queries, so they save without consulting the model, reload without validating against the model, and appear in no changeset. View switching, layout changes, and direction changes all trigger a relayout; toggling a badge or notation does not (notation is applied at stylesheet render time, badges are derived from existing node data).
+
+### ArchiMate notation mode
+
+Under `notation === 'archimate'`, the stylesheet swaps node shapes by aspect (resolved from each concept kind's inheritance), applies line-notation conventions by core relationship kind (derived kinds resolve through lineage), and forces `layered` direction to `DOWN` with the direction toggle disabled and a reason shown (`"ArchiMate notation fixes direction to Top-Down."`). The direction pin is applied only at layout-config build time; nothing is overwritten in state, so switching back to `native` restores the projection's declared direction on the next layout.
+
+Node shapes by aspect: `active-structure` → `rectangle`, `behavior` → `round-rectangle`, `passive-structure` → `rectangle` + top accent, `motivation` → `octagon`, `composite` → `rectangle` + dashed border.
+
+Line notation (element-line convention pairs) covers all 11 core relationship kinds: `composition` (solid, filled diamond → none), `aggregation` (solid, hollow diamond → none), `assignment` (solid, filled circle → filled triangle), `realization` (dotted, none → hollow triangle), `specialization` (solid, none → hollow triangle), `serving` (solid, none → vee), `access` (dotted, none → vee), `influence` (dashed, none → vee), `triggering` (solid, none → filled triangle), `flow` (dashed, none → filled triangle), `association` (solid, none → none). Derived kinds like `implements` (inherits `realization`) resolve to their core ancestor and render with the core kind's notation.
+
+19 kind icons — one per distinct kind in this repository's graph — render in each node's top-right slot under `archimate` notation, with unknown kinds rendering nothing. Icons are 14×14 px single-stroke SVGs using `--ink` (`#182228`) and are descriptive notation only; no trademark or conformance claim is made (see [ADR 0087](adr/0087-archimate-notation-is-a-rendering-mode-not-a-vocabulary.md)).
+
+ArchiMate mode is pure rendering: the schema, vocabulary, kinds, relationships, and semantic model are completely unchanged. Switching notation changes only what is drawn on the canvas, not what is compiled or what lands when a reviewer commits changes.
+
+
 ## Commands
 
 ```sh
