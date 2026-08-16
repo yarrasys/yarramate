@@ -1,43 +1,43 @@
-import { useState } from 'react'
-import type { ProjectionQuery } from '../projection.js'
+import { useState } from "react";
+import type { ProjectionQuery } from "../projection.js";
 import type {
   VisualViewSavePayload,
   VisualViewSummary,
-} from '../adapters/visual/protocol-contract.js'
-import { ConfirmDialog } from './confirm-dialog.js'
+} from "../adapters/visual/protocol-contract.js";
+import { ConfirmDialog } from "./confirm-dialog.js";
 
 export interface SaveViewControlProps {
-  readonly views: readonly VisualViewSummary[]
-  readonly activeViewId: string
-  readonly query: ProjectionQuery | null
-  readonly layout: 'layered' | 'radial' | 'force'
-  readonly direction: 'top-down' | 'left-right'
-  readonly showLifecycle: boolean
-  readonly showEvidence: boolean
-  readonly showOwnership: boolean
-  readonly notation: 'native' | 'archimate'
-  readonly seed: string
-  readonly pendingSave: boolean
-  readonly notice: boolean
-  readonly onSave: (payload: VisualViewSavePayload) => void
-  readonly onDismissNotice: () => void
+  readonly views: readonly VisualViewSummary[];
+  readonly activeViewId: string;
+  readonly query: ProjectionQuery | null;
+  readonly layout: "layered" | "radial" | "force";
+  readonly direction: "top-down" | "left-right";
+  readonly showLifecycle: boolean;
+  readonly showEvidence: boolean;
+  readonly showOwnership: boolean;
+  readonly notation: "native" | "archimate";
+  readonly seed: string;
+  readonly pendingSave: boolean;
+  readonly notice: boolean;
+  readonly onSave: (payload: VisualViewSavePayload) => void;
+  readonly onDismissNotice: () => void;
 }
 
 // (no module-level seed constant: the seed a save writes is the one the canvas
 // laid the view out with, held in workspace state - see `workspace-state.ts`.)
 
 export interface BuildPayloadParams {
-  readonly id: string | undefined
-  readonly title: string
-  readonly description: string
-  readonly query: ProjectionQuery | null
-  readonly layout: 'layered' | 'radial' | 'force'
-  readonly direction: 'top-down' | 'left-right'
-  readonly showLifecycle: boolean
-  readonly showEvidence: boolean
-  readonly showOwnership: boolean
-  readonly notation: 'native' | 'archimate'
-  readonly seed: string
+  readonly id: string | undefined;
+  readonly title: string;
+  readonly description: string;
+  readonly query: ProjectionQuery | null;
+  readonly layout: "layered" | "radial" | "force";
+  readonly direction: "top-down" | "left-right";
+  readonly showLifecycle: boolean;
+  readonly showEvidence: boolean;
+  readonly showOwnership: boolean;
+  readonly notation: "native" | "archimate";
+  readonly seed: string;
 }
 
 /** Pure translation from the form's local state to the wire payload — no
@@ -61,8 +61,16 @@ export const buildPayload = ({
   title,
   description,
   query: query ?? {},
-  presentation: { layout, direction, seed, showLifecycle, showEvidence, showOwnership, notation },
-})
+  presentation: {
+    layout,
+    direction,
+    seed,
+    showLifecycle,
+    showEvidence,
+    showOwnership,
+    notation,
+  },
+});
 
 /**
  * Saves the reviewer's current filter and layout direction as a named
@@ -87,24 +95,29 @@ export function SaveViewControl({
   onSave,
   onDismissNotice,
 }: SaveViewControlProps) {
-  const [open, setOpen] = useState(false)
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
-  const [confirmId, setConfirmId] = useState<string | null>(null)
-  const activeView = views.find((view) => view.id === activeViewId) ?? null
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const activeView = views.find((view) => view.id === activeViewId) ?? null;
 
   const toggle = () => {
     setOpen((wasOpen) => {
-      const nowOpen = !wasOpen
+      const nowOpen = !wasOpen;
       // Opening starts from whatever the reviewer is already looking at, so
       // a plain overwrite Save needs no retyping.
       if (nowOpen) {
-        setTitle(activeView?.title ?? '')
-        setDescription(activeView?.description ?? '')
+        setTitle(activeView?.title ?? "");
+        setDescription(activeView?.description ?? "");
       }
-      return nowOpen
-    })
-  }
+      return nowOpen;
+    });
+  };
+
+  // `title` and `description` are both required `nonEmptyText` in
+  // `viewSavePayload`, so the form refuses exactly what the server would
+  // reject rather than sending a save that can only come back as a fault.
+  const incomplete = title.trim() === "" || description.trim() === "";
 
   const submitPayload = (id: string | undefined) =>
     buildPayload({
@@ -119,22 +132,22 @@ export function SaveViewControl({
       showOwnership,
       notation,
       seed,
-    })
+    });
 
   const submit = (id: string | undefined) => {
-    if (title.trim() === '') return
+    if (incomplete) return;
     if (id === undefined) {
-      onSave(submitPayload(undefined))
-      return
+      onSave(submitPayload(undefined));
+      return;
     }
-    setConfirmId(id)
-  }
+    setConfirmId(id);
+  };
 
   const confirmOverwrite = () => {
-    if (confirmId === null) return
-    onSave(submitPayload(confirmId))
-    setConfirmId(null)
-  }
+    if (confirmId === null) return;
+    onSave(submitPayload(confirmId));
+    setConfirmId(null);
+  };
 
   return (
     <div className="save-view-control">
@@ -162,8 +175,8 @@ export function SaveViewControl({
             <form
               className="save-view-form"
               onSubmit={(event) => {
-                event.preventDefault()
-                submit(activeView === null ? undefined : activeView.id)
+                event.preventDefault();
+                submit(activeView === null ? undefined : activeView.id);
               }}
             >
               <div>
@@ -186,20 +199,19 @@ export function SaveViewControl({
                     setDescription(event.currentTarget.value)
                   }
                   disabled={pendingSave}
+                  required
                 />
               </div>
               <div className="save-view-actions">
                 <button
                   type="submit"
-                  disabled={
-                    pendingSave || activeView === null || title.trim() === ''
-                  }
+                  disabled={pendingSave || activeView === null || incomplete}
                 >
                   Save
                 </button>
                 <button
                   type="button"
-                  disabled={pendingSave || title.trim() === ''}
+                  disabled={pendingSave || incomplete}
                   onClick={() => submit(undefined)}
                 >
                   Save As New
@@ -220,5 +232,5 @@ export function SaveViewControl({
         />
       )}
     </div>
-  )
+  );
 }
