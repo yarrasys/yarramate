@@ -28,7 +28,7 @@ if (!elkRegistered) {
 }
 
 // Layer → color palette from approved ArchiMate mockups (6 of 8 union values used)
-const LAYER_COLORS = {
+export const LAYER_COLORS = {
   motivation: { fill: '#CCCCFF', border: '#8F8FE0' },
   strategy: { fill: '#F5DEAA', border: '#C9A355' },
   business: { fill: '#FFFF99', border: '#C9C355' },

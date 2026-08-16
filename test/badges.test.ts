@@ -9,7 +9,7 @@ import {
   ownerInitialsOf,
   type LifecycleStatus,
 } from '../src/visual-app/badges.js'
-import { buildStylesheet } from '../src/visual-app/graph-canvas.js'
+import { LAYER_COLORS, buildStylesheet } from '../src/visual-app/graph-canvas.js'
 
 describe('lifecycle badge URIs', () => {
   it('generates a distinct data:image/svg+xml URI per status', () => {
@@ -82,6 +82,20 @@ describe('buildStylesheet badge layers', () => {
     return mapper({ data: (key) => data[key] })
   }
 
+
+  it('draws a background-color rule for every LAYER_COLORS key', () => {
+    const sheet = buildStylesheet(false, false, false)
+    for (const layer of Object.keys(LAYER_COLORS)) {
+      const rule = sheet.find(
+        (block): block is cytoscape.StylesheetStyle =>
+          'style' in block && block.selector === `node[layer = "${layer}"]`,
+      )
+      expect(rule, `missing selector for layer "${layer}"`).toBeDefined()
+      expect((rule!.style as cytoscape.Css.Node)['background-color']).toBe(
+        LAYER_COLORS[layer as keyof typeof LAYER_COLORS].fill,
+      )
+    }
+  })
 
   it('draws no badges when both toggles are off', () => {
     expect(layersFor(false, false, false, { status: 'current', hasAttestations: true })).toEqual([])
