@@ -1,8 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   EMPTY_FIELDS,
   composeQuery,
   queryToFields,
+  presentationToggleHandler,
+  type PresentationFlag,
   type QueryFields,
 } from '../src/visual-app/filter-panel.js'
 import type { ProjectionQuery } from '../src/projection.js'
@@ -90,5 +92,36 @@ describe('queryToFields', () => {
 
   it('round-trips a query using all 13 fields through composeQuery(queryToFields(query))', () => {
     expect(composeQuery(queryToFields(allFilledQuery))).toEqual(allFilledQuery)
+  })
+})
+
+describe('presentationToggleHandler', () => {
+  const flags: readonly PresentationFlag[] = ['showLifecycle', 'showEvidence', 'showOwnership']
+
+  it.each(flags)(
+    'dispatches presentation.toggled for %s carrying the flag and its new value, and nothing else',
+    (flag) => {
+      const onTogglePresentation = vi.fn()
+      presentationToggleHandler(onTogglePresentation, flag)(true)
+      expect(onTogglePresentation).toHaveBeenCalledTimes(1)
+      expect(onTogglePresentation).toHaveBeenCalledWith(flag, true)
+    },
+  )
+
+  it('never composes a ProjectionQuery or fires the debounced filter.query round-trip', () => {
+    vi.useFakeTimers()
+    try {
+      // The badge checkboxes wire directly to this handler in filter-panel.tsx
+      // - it never touches `fields`/`composeQuery`/`scheduleApply`, so no
+      // amount of waiting past the 300ms apply debounce can produce a query.
+      const onApply = vi.fn()
+      const onTogglePresentation = vi.fn()
+      presentationToggleHandler(onTogglePresentation, 'showOwnership')(true)
+      vi.advanceTimersByTime(1000)
+      expect(onApply).not.toHaveBeenCalled()
+      expect(onTogglePresentation).toHaveBeenCalledWith('showOwnership', true)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

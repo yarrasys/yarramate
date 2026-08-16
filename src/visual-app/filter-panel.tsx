@@ -229,7 +229,23 @@ export interface FilterPanelProps {
    * query rather than guessing at one. */
   readonly query: ProjectionQuery | null
   readonly onApply: (query: ProjectionQuery) => void
+  readonly showLifecycle: boolean
+  readonly showEvidence: boolean
+  readonly showOwnership: boolean
+  readonly onTogglePresentation: (flag: PresentationFlag, value: boolean) => void
 }
+
+export type PresentationFlag = 'showLifecycle' | 'showEvidence' | 'showOwnership'
+
+/** The checkbox's onChange handler, extracted so it is directly testable in
+ * isolation from rendering: it calls `onTogglePresentation` and nothing
+ * else — never `composeQuery`/`scheduleApply`. These three flags are
+ * presentation state, not one of the 13 `ProjectionQuery` dimensions, so
+ * toggling one must never compose a query or arm the debounced apply. */
+export const presentationToggleHandler =
+  (onTogglePresentation: (flag: PresentationFlag, value: boolean) => void, flag: PresentationFlag) =>
+  (value: boolean): void =>
+    onTogglePresentation(flag, value)
 
 /**
  * A structured, always-valid-by-construction editor over all 13
@@ -240,7 +256,14 @@ export interface FilterPanelProps {
  * every other browser input goes through and surfaces through `Faults` —
  * this component adds no validation of its own.
  */
-export function FilterPanel({ query, onApply }: FilterPanelProps) {
+export function FilterPanel({
+  query,
+  onApply,
+  showLifecycle,
+  showEvidence,
+  showOwnership,
+  onTogglePresentation,
+}: FilterPanelProps) {
   const debounceHandle = useRef<number | null>(null)
   const [fields, setFields] = useState<QueryFields>(() => queryToFields(query))
   const [open, setOpen] = useState(false)
@@ -364,6 +387,45 @@ export function FilterPanel({ query, onApply }: FilterPanelProps) {
             onChange={(value) => update('isolatedConcepts', value)}
           />
         </div>
+        <fieldset className="filter-field filter-presentation-group">
+          <legend>Presentation</legend>
+          <label className="filter-checkbox-option">
+            <input
+              type="checkbox"
+              checked={showLifecycle}
+              onChange={(event) =>
+                presentationToggleHandler(onTogglePresentation, 'showLifecycle')(
+                  event.currentTarget.checked,
+                )
+              }
+            />
+            Lifecycle badges
+          </label>
+          <label className="filter-checkbox-option">
+            <input
+              type="checkbox"
+              checked={showEvidence}
+              onChange={(event) =>
+                presentationToggleHandler(onTogglePresentation, 'showEvidence')(
+                  event.currentTarget.checked,
+                )
+              }
+            />
+            Evidence badges
+          </label>
+          <label className="filter-checkbox-option">
+            <input
+              type="checkbox"
+              checked={showOwnership}
+              onChange={(event) =>
+                presentationToggleHandler(onTogglePresentation, 'showOwnership')(
+                  event.currentTarget.checked,
+                )
+              }
+            />
+            Ownership badges
+          </label>
+        </fieldset>
       </div>
     </div>
   )

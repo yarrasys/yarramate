@@ -1,5 +1,5 @@
 import { GraphCanvas } from './graph-canvas.js'
-import { FilterPanel } from './filter-panel.js'
+import { FilterPanel, type PresentationFlag } from './filter-panel.js'
 import { QuickFilterBox } from './quick-filter.js'
 import { ViewPicker } from './view-picker.js'
 import { SaveViewControl } from './save-view.js'
@@ -101,6 +101,10 @@ const CommandStrip = ({
   onToggleConversation,
   onToggleDirection,
   onSelectLayout,
+  showLifecycle,
+  showEvidence,
+  showOwnership,
+  onTogglePresentation,
   onSelectView,
   onClearFilter,
   onApplyFilter,
@@ -122,6 +126,10 @@ const CommandStrip = ({
   readonly onToggleConversation: () => void
   readonly onToggleDirection: () => void
   readonly onSelectLayout: (layout: 'layered' | 'radial' | 'force') => void
+  readonly showLifecycle: boolean
+  readonly showEvidence: boolean
+  readonly showOwnership: boolean
+  readonly onTogglePresentation: (flag: PresentationFlag, value: boolean) => void
   readonly onSelectView: (view: VisualViewSummary) => void
   readonly onClearFilter: () => void
   readonly onApplyFilter: (query: ProjectionQuery) => void
@@ -156,13 +164,23 @@ const CommandStrip = ({
         onClear={onClearFilter}
       />
       <QuickFilterBox value={quickFilterText} onChange={onQuickFilterChange} />
-      <FilterPanel query={state.activeFilter?.query ?? null} onApply={onApplyFilter} />
+      <FilterPanel
+        query={state.activeFilter?.query ?? null}
+        onApply={onApplyFilter}
+        showLifecycle={showLifecycle}
+        showEvidence={showEvidence}
+        showOwnership={showOwnership}
+        onTogglePresentation={onTogglePresentation}
+      />
       <SaveViewControl
         views={views}
         activeViewId={state.activeView}
         query={state.activeFilter?.query ?? null}
         layout={layout}
         direction={direction}
+        showLifecycle={showLifecycle}
+        showEvidence={showEvidence}
+        showOwnership={showOwnership}
         pendingSave={state.pendingViewSave !== null}
         notice={state.viewSaveNotice}
         onSave={onSaveView}
@@ -285,6 +303,9 @@ const DiagramWorkspace = ({
   waiting,
   layout,
   direction,
+  showLifecycle,
+  showEvidence,
+  showOwnership,
   onSelect,
   onClearFilter,
   onSaveLayout,
@@ -295,6 +316,9 @@ const DiagramWorkspace = ({
   readonly waiting: string | null
   readonly layout: 'layered' | 'radial' | 'force'
   readonly direction: 'top-down' | 'left-right'
+  readonly showLifecycle: boolean
+  readonly showEvidence: boolean
+  readonly showOwnership: boolean
   readonly onSelect: (subject: SelectedDiagramSubject) => void
   readonly onClearFilter: () => void
   readonly onSaveLayout: (payload: VisualLayoutSavePayload) => void
@@ -345,6 +369,9 @@ const DiagramWorkspace = ({
             quickFilterText={state.quickFilterText}
             layout={layout}
             direction={direction}
+            showLifecycle={showLifecycle}
+            showEvidence={showEvidence}
+            showOwnership={showOwnership}
             activeViewId={state.activeView}
             savedPositions={state.model.layouts[state.activeView]}
             onSaveLayout={onSaveLayout}
@@ -827,6 +854,9 @@ export const App = () => {
         unread={workspace.conversation.unread}
         layout={workspace.layout}
         direction={workspace.direction}
+        showLifecycle={workspace.showLifecycle}
+        showEvidence={workspace.showEvidence}
+        showOwnership={workspace.showOwnership}
         views={state.views}
         onToggleDetails={() => dispatchWorkspace({ type: 'details.toggled' })}
         onToggleConversation={() =>
@@ -839,6 +869,9 @@ export const App = () => {
           })
         }
         onSelectLayout={(layout) => dispatchWorkspace({ type: 'layout.set', layout })}
+        onTogglePresentation={(flag, value) =>
+          dispatchWorkspace({ type: 'presentation.toggled', flag, value })
+        }
         onSelectView={(view) => {
           navigate(view.id)
           filter(view.query)
@@ -865,6 +898,9 @@ export const App = () => {
           waiting={waiting}
           layout={workspace.layout}
           direction={workspace.direction}
+          showLifecycle={workspace.showLifecycle}
+          showEvidence={workspace.showEvidence}
+          showOwnership={workspace.showOwnership}
           onSelect={(subject) =>
             dispatchWorkspace({ type: 'subject.selected', subject })
           }

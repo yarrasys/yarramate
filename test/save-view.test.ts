@@ -13,6 +13,9 @@ describe('buildPayload', () => {
       query,
       layout: 'layered',
       direction: 'top-down',
+      showLifecycle: true,
+      showEvidence: true,
+      showOwnership: false,
     })
 
     expect(payload).toEqual({
@@ -20,8 +23,33 @@ describe('buildPayload', () => {
       title: 'My View',
       description: 'desc',
       query,
-      presentation: { layout: 'layered', direction: 'top-down', seed: 'default' },
+      presentation: {
+        layout: 'layered',
+        direction: 'top-down',
+        seed: 'default',
+        showLifecycle: true,
+        showEvidence: true,
+        showOwnership: false,
+      },
     })
+  })
+
+  it('round-trips the three presentation flags into the saved presentation object', () => {
+    const payload = buildPayload({
+      id: 'existing-view',
+      title: 'My View',
+      description: 'desc',
+      query,
+      layout: 'layered',
+      direction: 'top-down',
+      showLifecycle: false,
+      showEvidence: true,
+      showOwnership: true,
+    })
+
+    expect(payload.presentation?.showLifecycle).toBe(false)
+    expect(payload.presentation?.showEvidence).toBe(true)
+    expect(payload.presentation?.showOwnership).toBe(true)
   })
 
   it('omits id entirely for an ad-hoc/new view', () => {
@@ -32,6 +60,9 @@ describe('buildPayload', () => {
       query,
       layout: 'layered',
       direction: 'left-right',
+      showLifecycle: true,
+      showEvidence: true,
+      showOwnership: false,
     })
 
     expect(payload).not.toHaveProperty('id')
@@ -39,7 +70,14 @@ describe('buildPayload', () => {
       title: 'New View',
       description: 'desc',
       query,
-      presentation: { layout: 'layered', direction: 'left-right', seed: 'default' },
+      presentation: {
+        layout: 'layered',
+        direction: 'left-right',
+        seed: 'default',
+        showLifecycle: true,
+        showEvidence: true,
+        showOwnership: false,
+      },
     })
   })
 
@@ -51,6 +89,9 @@ describe('buildPayload', () => {
       query,
       layout: 'layered',
       direction: 'top-down',
+      showLifecycle: true,
+      showEvidence: true,
+      showOwnership: false,
     })
 
     expect(payload.title).toBe('Exact Title')
@@ -67,6 +108,9 @@ describe('buildPayload', () => {
       query: null,
       layout: 'layered',
       direction: 'top-down',
+      showLifecycle: true,
+      showEvidence: true,
+      showOwnership: false,
     })
 
     expect(payload.query).toEqual({})
@@ -80,6 +124,9 @@ describe('buildPayload', () => {
       query,
       layout: 'radial',
       direction: 'top-down',
+      showLifecycle: true,
+      showEvidence: true,
+      showOwnership: false,
     })
 
     expect(payload.presentation?.layout).toBe('radial')

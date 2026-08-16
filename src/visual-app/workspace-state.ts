@@ -105,6 +105,9 @@ export interface VisualWorkspaceState {
   readonly detailsOpen: boolean
   readonly direction: 'top-down' | 'left-right'
   readonly layout: 'layered' | 'radial' | 'force'
+  readonly showLifecycle: boolean
+  readonly showEvidence: boolean
+  readonly showOwnership: boolean
 }
 
 export type VisualWorkspaceAction =
@@ -118,6 +121,11 @@ export type VisualWorkspaceAction =
   | { readonly type: 'details.toggled' }
   | { readonly type: 'direction.set'; readonly direction: 'top-down' | 'left-right' }
   | { readonly type: 'layout.set'; readonly layout: 'layered' | 'radial' | 'force' }
+  | {
+      readonly type: 'presentation.toggled'
+      readonly flag: 'showLifecycle' | 'showEvidence' | 'showOwnership'
+      readonly value: boolean
+    }
   | {
       readonly type: 'model.replaced'
       /** The graph that replaced it, so a subject that survived the commit can
@@ -136,6 +144,9 @@ export const presentationActionsFor = (
     | {
         readonly layout?: 'layered' | 'radial' | 'force'
         readonly direction?: 'top-down' | 'left-right'
+        readonly showLifecycle?: boolean
+        readonly showEvidence?: boolean
+        readonly showOwnership?: boolean
       }
     | undefined,
 ): readonly VisualWorkspaceAction[] => {
@@ -145,6 +156,15 @@ export const presentationActionsFor = (
   }
   if (presentation?.direction !== undefined) {
     actions.push({ type: 'direction.set', direction: presentation.direction })
+  }
+  if (presentation?.showLifecycle !== undefined) {
+    actions.push({ type: 'presentation.toggled', flag: 'showLifecycle', value: presentation.showLifecycle })
+  }
+  if (presentation?.showEvidence !== undefined) {
+    actions.push({ type: 'presentation.toggled', flag: 'showEvidence', value: presentation.showEvidence })
+  }
+  if (presentation?.showOwnership !== undefined) {
+    actions.push({ type: 'presentation.toggled', flag: 'showOwnership', value: presentation.showOwnership })
   }
   return actions
 }
@@ -192,6 +212,12 @@ export const createVisualWorkspaceState = (
   detailsOpen: false,
   direction: 'top-down',
   layout: 'layered',
+  showLifecycle: true,
+  showEvidence: true,
+  // This repo declares exactly one owner across all 102
+  // `yarramate/ownership/owner` claims, so every chip would render
+  // identically - uniform noise until real ownership diversity exists.
+  showOwnership: false,
 })
 
 export const visualWorkspaceReducer = (
@@ -266,6 +292,8 @@ export const visualWorkspaceReducer = (
       return { ...state, direction: action.direction }
     case 'layout.set':
       return { ...state, layout: action.layout }
+    case 'presentation.toggled':
+      return { ...state, [action.flag]: action.value }
     case 'model.replaced': {
       const held = state.selectedSubject
       if (held === null) return state

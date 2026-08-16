@@ -860,6 +860,9 @@ interface GraphCanvasProps {
   readonly quickFilterText: string
   readonly layout: 'layered' | 'radial' | 'force'
   readonly direction: 'top-down' | 'left-right'
+  readonly showLifecycle: boolean
+  readonly showEvidence: boolean
+  readonly showOwnership: boolean
   readonly activeViewId: string
   /** Saved layout for the active view, or undefined when it has none yet. */
   readonly savedPositions: VisualLayoutPositions | undefined
@@ -888,11 +891,15 @@ export function GraphCanvas({
   savedPositions,
   onSaveLayout,
   onWaitingChange,
+  showLifecycle,
+  showEvidence,
+  showOwnership,
 }: GraphCanvasProps): React.ReactElement {
   const containerRef = useRef<HTMLDivElement>(null)
   const cyRef = useRef<Core | null>(null)
   const onSelectRef = useRef(onSelect)
   const isInitialSyncRef = useRef(true)
+  const isInitialPresentationSyncRef = useRef(true)
   const activeViewIdRef = useRef(activeViewId)
   const directionRef = useRef(direction)
   const layoutRef = useRef(layout)
@@ -944,10 +951,10 @@ export function GraphCanvas({
     const cy = cytoscape({
       container: containerRef.current,
       elements: graphToElements(graph),
-      // `GraphCanvasProps` carries no presentation toggles yet (Task 7 adds
-      // `showLifecycle`/`showEvidence`/`showOwnership` and threads them
-      // through here) - all stay off (no badges drawn) until that wiring lands.
-      style: buildStylesheet(false, false, false),
+      // `showLifecycle`/`showEvidence`/`showOwnership` seed the stylesheet the
+      // mount builds; the effect below re-applies it to the live instance on
+      // every later toggle, without remounting or re-laying-out.
+      style: buildStylesheet(showLifecycle, showEvidence, showOwnership),
       wheelSensitivity: 0.1,
       layout: { name: 'null' },
     })
@@ -987,6 +994,20 @@ export function GraphCanvas({
       cyRef.current = null
     }
   }, [])
+
+  // Toggling a presentation flag repaints the live instance in place - it
+  // must never remount cytoscape or rerun layout, since either would
+  // discard the reviewer's dragged positions and viewport. Skipped on the
+  // mount render (the mount effect above already built this exact
+  // stylesheet once), mirroring `isInitialSyncRef` below.
+  useEffect(() => {
+    if (!cyRef.current) return
+    if (isInitialPresentationSyncRef.current) {
+      isInitialPresentationSyncRef.current = false
+      return
+    }
+    cyRef.current.style(buildStylesheet(showLifecycle, showEvidence, showOwnership))
+  }, [showLifecycle, showEvidence, showOwnership])
 
   // Update elements whenever the graph itself changes, laying out with the
   // current layout and direction. Deliberately NOT keyed on `layout`/

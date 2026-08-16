@@ -18,6 +18,7 @@ const canvasNode = (overrides: Partial<CanvasNode> = {}): CanvasNode => ({
   kindLabel: 'applicationComponent',
   document: 'main.yaml',
   layer: 'application',
+  aspect: null,
   name: 'API',
   description: 'Handles requests.',
   aka: [],
@@ -306,5 +307,63 @@ describe('visualWorkspaceReducer layout', () => {
   it('adopts only the field a view actually declares', () => {
     const actions = presentationActionsFor({ layout: 'force' })
     expect(actions).toEqual([{ type: 'layout.set', layout: 'force' }])
+  })
+})
+
+describe('visualWorkspaceReducer presentation', () => {
+  const workspaceState = createVisualWorkspaceState(1280)
+
+  it('starts with lifecycle and evidence badges on and ownership off', () => {
+    expect(workspaceState.showLifecycle).toBe(true)
+    expect(workspaceState.showEvidence).toBe(true)
+    expect(workspaceState.showOwnership).toBe(false)
+  })
+
+  it.each([
+    ['showLifecycle', false] as const,
+    ['showEvidence', false] as const,
+    ['showOwnership', true] as const,
+  ])('sets %s to %s on presentation.toggled', (flag, value) => {
+    const next = visualWorkspaceReducer(workspaceState, {
+      type: 'presentation.toggled',
+      flag,
+      value,
+    })
+    expect(next[flag]).toBe(value)
+  })
+
+  it('leaves the other two flags untouched when one is toggled', () => {
+    const next = visualWorkspaceReducer(workspaceState, {
+      type: 'presentation.toggled',
+      flag: 'showOwnership',
+      value: true,
+    })
+    expect(next.showLifecycle).toBe(workspaceState.showLifecycle)
+    expect(next.showEvidence).toBe(workspaceState.showEvidence)
+  })
+
+  it('adopts a selected view declared presentation flags', () => {
+    const actions = presentationActionsFor({
+      showLifecycle: false,
+      showEvidence: false,
+      showOwnership: true,
+    })
+    const next = actions.reduce(visualWorkspaceReducer, workspaceState)
+    expect(next.showLifecycle).toBe(false)
+    expect(next.showEvidence).toBe(false)
+    expect(next.showOwnership).toBe(true)
+  })
+
+  it('leaves presentation flags untouched when a view declares none of them', () => {
+    const actions = presentationActionsFor({})
+    const next = actions.reduce(visualWorkspaceReducer, workspaceState)
+    expect(next).toBe(workspaceState)
+  })
+
+  it('adopts only the presentation flag a view actually declares', () => {
+    const actions = presentationActionsFor({ showOwnership: true })
+    expect(actions).toEqual([
+      { type: 'presentation.toggled', flag: 'showOwnership', value: true },
+    ])
   })
 })

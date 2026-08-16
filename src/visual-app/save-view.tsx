@@ -12,6 +12,9 @@ export interface SaveViewControlProps {
   readonly query: ProjectionQuery | null
   readonly layout: 'layered' | 'radial' | 'force'
   readonly direction: 'top-down' | 'left-right'
+  readonly showLifecycle: boolean
+  readonly showEvidence: boolean
+  readonly showOwnership: boolean
   readonly pendingSave: boolean
   readonly notice: boolean
   readonly onSave: (payload: VisualViewSavePayload) => void
@@ -30,6 +33,9 @@ export interface BuildPayloadParams {
   readonly query: ProjectionQuery | null
   readonly layout: 'layered' | 'radial' | 'force'
   readonly direction: 'top-down' | 'left-right'
+  readonly showLifecycle: boolean
+  readonly showEvidence: boolean
+  readonly showOwnership: boolean
 }
 
 /** Pure translation from the form's local state to the wire payload — no
@@ -43,12 +49,15 @@ export const buildPayload = ({
   query,
   layout,
   direction,
+  showLifecycle,
+  showEvidence,
+  showOwnership,
 }: BuildPayloadParams): VisualViewSavePayload => ({
   ...(id === undefined ? {} : { id }),
   title,
   description,
   query: query ?? {},
-  presentation: { layout, direction, seed: SAVE_SEED },
+  presentation: { layout, direction, seed: SAVE_SEED, showLifecycle, showEvidence, showOwnership },
 })
 
 /**
@@ -64,6 +73,9 @@ export function SaveViewControl({
   query,
   layout,
   direction,
+  showLifecycle,
+  showEvidence,
+  showOwnership,
   pendingSave,
   notice,
   onSave,
@@ -89,7 +101,17 @@ export function SaveViewControl({
   }
 
   const submitPayload = (id: string | undefined) =>
-    buildPayload({ id, title, description, query, layout, direction })
+    buildPayload({
+      id,
+      title,
+      description,
+      query,
+      layout,
+      direction,
+      showLifecycle,
+      showEvidence,
+      showOwnership,
+    })
 
   const submit = (id: string | undefined) => {
     if (title.trim() === '') return
