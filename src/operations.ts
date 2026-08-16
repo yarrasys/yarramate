@@ -60,9 +60,44 @@ export interface RelationshipFields {
   readonly presentIn?: readonly string[]
 }
 
+// An observation is addressed by the pair (target, key) rather than by an
+// `id`, because an overlay entry has none: the pair is what `reconcile`
+// already treats as unique per document (ADR 0075, and the YM803 duplicate
+// -target diagnostic). A keyless observation is the presence claim for its
+// target, so `key` absent is itself an address, not a wildcard.
+export interface ObservationTarget {
+  readonly subject?: string
+  readonly claim?: string
+  readonly key?: string
+}
+
+export interface ObservationFields extends ObservationTarget {
+  readonly value?: string
+  readonly result?: 'confirmed' | 'contradicted' | 'unknown' | 'not-observed'
+  readonly evidence?: { readonly uri: string; readonly message?: string }
+}
+
+// An update addresses an entry by (target, key) and changes whatever else it
+// names, so `key` here is an address rather than a field: unlike `add`, it
+// carries no obligation to restate the value read at that key, and evidence
+// can be corrected a field at a time.
+export interface ObservationChange extends ObservationTarget {
+  readonly value?: string
+  readonly result?: 'confirmed' | 'contradicted' | 'unknown' | 'not-observed'
+  readonly evidence?: { readonly uri?: string; readonly message?: string }
+}
+
 export type YarramateOperation =
-  | { readonly op: 'add-concept'; readonly document: string; readonly concept: ConceptFields }
-  | { readonly op: 'add-relationship'; readonly document: string; readonly relationship: RelationshipFields }
+  | {
+      readonly op: 'add-concept'
+      readonly document: string
+      readonly concept: ConceptFields
+    }
+  | {
+      readonly op: 'add-relationship'
+      readonly document: string
+      readonly relationship: RelationshipFields
+    }
   | {
       readonly op: 'update-concept'
       readonly document: string
@@ -85,6 +120,22 @@ export type YarramateOperation =
       readonly document: string
       readonly relationship: { readonly id: string }
     }
+  | {
+      readonly op: 'add-observation'
+      readonly document: string
+      readonly observation: ObservationFields
+    }
+  | {
+      readonly op: 'update-observation'
+      readonly document: string
+      readonly observation: ObservationChange
+      readonly remove?: readonly string[]
+    }
+  | {
+      readonly op: 'delete-observation'
+      readonly document: string
+      readonly observation: ObservationTarget
+    }
 
 export interface OperationsDocument {
   readonly format: 'yarramate/operations/v1'
@@ -101,6 +152,9 @@ export interface YarramateApplyResult {
     readonly updatedRelationships: number
     readonly deletedConcepts: number
     readonly deletedRelationships: number
+    readonly addedObservations: number
+    readonly updatedObservations: number
+    readonly deletedObservations: number
   }
   readonly documents: readonly string[]
 }

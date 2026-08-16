@@ -5,6 +5,8 @@ import { compileWorkspace } from '../src/compiler.js'
 import { compareArchitectureStates } from '../src/architecture-state.js'
 import { evaluateProjection, loadProjection } from '../src/projection.js'
 import { prepareLikeC4Export } from '../src/adapters/likec4.js'
+import { evaluateEvidenceWorkspace, loadEvidence } from '../src/evidence.js'
+import { reconcileEvidenceReports } from '../src/reconciliation.js'
 
 const model = (name: string) => ({
   path: `.yarramate/architecture/${name}.yaml`,
@@ -230,6 +232,32 @@ describe('YarraMate repository model', () => {
         'yarramate-repository#agent-skill-source',
       ]),
     )
+  })
+
+  it('leaves no current concept without an evidence observation', () => {
+    const result = compileWorkspace(selfModelSources)
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+
+    const overlay = loadEvidence(repositorySource('.yarramate/evidence/repository.yaml'))
+    expect(overlay.ok).toBe(true)
+    if (!overlay.ok) return
+
+    const evaluation = evaluateEvidenceWorkspace(result.graph, [overlay.evidence])
+    expect(evaluation.ok).toBe(true)
+    if (!evaluation.ok) return
+
+    // Attestation staleness is git-derived, so the reconcile command
+    // supplies it and this dogfooding read deliberately does not: coverage
+    // is a property of the model and its overlay alone, and asserting it
+    // here keeps the honesty gate inside `pnpm test`.
+    const report = reconcileEvidenceReports('yarramate', evaluation.reports, result.graph)
+
+    expect(report.summary.subjectsWithoutEvidence).toBe(0)
+    expect(report.unobservedSubjects).toBeUndefined()
+    expect(report.summary.contradicted).toBe(0)
+    expect(report.summary.notObserved).toBe(0)
   })
 
   it('renders its architecture-state change through the optional LikeC4 adapter', () => {

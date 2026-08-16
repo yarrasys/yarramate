@@ -45,14 +45,29 @@ export const describeChangesetRow = (
   operation: YarramateOperation,
   graph: CanvasGraph | null,
 ): ChangesetRowDescription => {
-  // Every union member's payload carries `id`; scalars/lists it sets or
-  // appends are whatever other keys ride alongside it.
-  const payload = 'concept' in operation ? operation.concept : operation.relationship
   // Only `update-*` members carry `remove` at all.
   const removedFields =
-    operation.op === 'update-concept' || operation.op === 'update-relationship'
+    operation.op === 'update-concept' ||
+    operation.op === 'update-relationship' ||
+    operation.op === 'update-observation'
       ? (operation.remove ?? [])
       : []
+  if ('observation' in operation) {
+    // An overlay entry has no `id`: the pair (target, key) is its address,
+    // and the target may be a claim this canvas never draws - the name
+    // lookup falls back to the identity, which is what the row should say.
+    const { subject, claim, key, ...fields } = operation.observation
+    const name = resolveSubjectName(operation.document, (subject ?? claim)!, graph)
+    return {
+      verb: operation.op,
+      subjectName: key === undefined ? name : `${name} (${key})`,
+      fields: Object.keys(fields),
+      removedFields,
+    }
+  }
+  // Every other union member's payload carries `id`; scalars/lists it sets
+  // or appends are whatever other keys ride alongside it.
+  const payload = 'concept' in operation ? operation.concept : operation.relationship
   return {
     verb: operation.op,
     subjectName: resolveSubjectName(operation.document, payload.id, graph),

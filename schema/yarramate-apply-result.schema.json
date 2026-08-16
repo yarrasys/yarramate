@@ -17,7 +17,10 @@
         "updatedConcepts",
         "updatedRelationships",
         "deletedConcepts",
-        "deletedRelationships"
+        "deletedRelationships",
+        "addedObservations",
+        "updatedObservations",
+        "deletedObservations"
       ],
       "properties": {
         "addedConcepts": { "type": "integer", "minimum": 0 },
@@ -25,7 +28,10 @@
         "updatedConcepts": { "type": "integer", "minimum": 0 },
         "updatedRelationships": { "type": "integer", "minimum": 0 },
         "deletedConcepts": { "type": "integer", "minimum": 0 },
-        "deletedRelationships": { "type": "integer", "minimum": 0 }
+        "deletedRelationships": { "type": "integer", "minimum": 0 },
+        "addedObservations": { "type": "integer", "minimum": 0 },
+        "updatedObservations": { "type": "integer", "minimum": 0 },
+        "deletedObservations": { "type": "integer", "minimum": 0 }
       }
     },
     "documents": {

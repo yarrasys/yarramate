@@ -105,6 +105,9 @@ describe('apply command', () => {
       updatedRelationships: 0,
       deletedConcepts: 0,
       deletedRelationships: 0,
+      addedObservations: 0,
+      updatedObservations: 0,
+      deletedObservations: 0,
     })
     const validate = new Ajv2020({ allErrors: true }).compile(resultSchema)
     expect(validate(payload), JSON.stringify(validate.errors)).toBe(true)
@@ -501,6 +504,9 @@ operations:
       updatedRelationships: 0,
       deletedConcepts: 1,
       deletedRelationships: 1,
+      addedObservations: 0,
+      updatedObservations: 0,
+      deletedObservations: 0,
     })
     const validate = new Ajv2020({ allErrors: true }).compile(resultSchema)
     expect(validate(payload), JSON.stringify(validate.errors)).toBe(true)
@@ -777,5 +783,232 @@ operations:
     expect(after).toContain('id: flow-item')
     expect(after).toContain('name: Flow item')
     expect(after).not.toContain('status: planned')
+  })
+
+  describe('observation operations', () => {
+    const overlay = `format: yarramate/evidence/v1
+id: repository-audit
+version: "1.0"
+provider: repository-audit
+observations:
+  - subject: main#user
+    result: confirmed
+    evidence:
+      uri: repo:src/user.ts
+  - subject: main#user
+    key: role
+    value: operator
+    result: confirmed
+    evidence:
+      uri: repo:src/user.ts
+      message: read off the role constant
+`
+
+    beforeEach(() => {
+      mkdirSync(join(workspace, 'evidence'))
+      writeFileSync(join(workspace, 'evidence/repository.yaml'), overlay, 'utf8')
+      writeFileSync(
+        join(workspace, 'workspace.yaml'),
+        `format: yarramate/workspace/v1
+id: apply-fixture
+documents:
+  - architecture/main.yaml
+profiles: []
+projections: []
+adapterMappings: []
+evidence:
+  - evidence/repository.yaml
+`,
+        'utf8',
+      )
+    })
+
+    const apply = (operations: string) => {
+      writeFileSync(join(workspace, 'operations.yaml'), operations, 'utf8')
+      return runCli(
+        ['apply', 'operations.yaml', 'workspace.yaml', '--json'],
+        workspace,
+      )
+    }
+    const overlayNow = () =>
+      readFileSync(join(workspace, 'evidence/repository.yaml'), 'utf8')
+
+    it('adds, updates and deletes overlay entries in one batch', () => {
+      const result = apply(`format: yarramate/operations/v1
+operations:
+  - op: add-observation
+    document: evidence/repository.yaml
+    observation:
+      subject: main#reviewer
+      result: not-observed
+      evidence:
+        uri: repo:src/reviewer.ts
+        message: no reviewer wiring found
+  - op: update-observation
+    document: evidence/repository.yaml
+    observation:
+      subject: main#user
+      key: role
+      value: administrator
+      evidence:
+        uri: repo:src/roles.ts
+  - op: delete-observation
+    document: evidence/repository.yaml
+    observation:
+      subject: main#user
+`)
+      expect(result.exitCode).toBe(0)
+      const payload = JSON.parse(result.stdout) as {
+        applied: Record<string, number>
+        documents: readonly string[]
+      }
+      expect(
+        new Ajv2020({ allErrors: true }).validate(resultSchema, payload),
+      ).toBe(true)
+      expect(payload.applied).toMatchObject({
+        addedObservations: 1,
+        updatedObservations: 1,
+        deletedObservations: 1,
+      })
+      expect(payload.documents).toEqual(['evidence/repository.yaml'])
+      const after = overlayNow()
+      expect(after).toContain('subject: main#reviewer')
+      expect(after).toContain('message: no reviewer wiring found')
+      expect(after).toContain('value: administrator')
+      expect(after).toContain('uri: repo:src/roles.ts')
+      // The keyless entry is gone; the keyed one it shares a target with
+      // survives, untouched apart from the fields the update named.
+      expect(after).not.toContain('uri: repo:src/user.ts')
+      expect(after).toContain('read off the role constant')
+      expect(after).toContain('result: confirmed')
+    })
+
+    it('refuses an entry whose target the graph does not carry', () => {
+      const result = apply(`format: yarramate/operations/v1
+operations:
+  - op: add-observation
+    document: evidence/repository.yaml
+    observation:
+      subject: main#nobody
+      result: confirmed
+      evidence:
+        uri: repo:src/nobody.ts
+`)
+      expect(result.exitCode).toBe(1)
+      expect(result.stdout).toContain('YM801')
+      expect(overlayNow()).toBe(overlay)
+    })
+
+    it('keeps model documents and overlays apart', () => {
+      const atModel = apply(`format: yarramate/operations/v1
+operations:
+  - op: add-observation
+    document: architecture/main.yaml
+    observation:
+      subject: main#user
+      result: confirmed
+      evidence:
+        uri: repo:src/user.ts
+`)
+      expect(atModel.exitCode).toBe(1)
+      expect(atModel.stdout).toContain('not an evidence document')
+      const atOverlay = apply(`format: yarramate/operations/v1
+operations:
+  - op: add-concept
+    document: evidence/repository.yaml
+    concept:
+      id: intruder
+      kind: applicationService
+      name: Intruder
+`)
+      expect(atOverlay.exitCode).toBe(1)
+      expect(atOverlay.stdout).toContain('not a document')
+      expect(overlayNow()).toBe(overlay)
+    })
+
+    it('addresses a keyed entry apart from the keyless one', () => {
+      const result = apply(`format: yarramate/operations/v1
+operations:
+  - op: update-observation
+    document: evidence/repository.yaml
+    observation:
+      subject: main#user
+      result: contradicted
+`)
+      expect(result.exitCode).toBe(0)
+      const after = overlayNow()
+      // The keyless entry took the change; the keyed entry kept its own
+      // result rather than being swept up by the shared subject.
+      expect(after).toContain('result: contradicted')
+      expect(after.match(/result: confirmed/g)).toHaveLength(1)
+    })
+
+    it('refuses an update or delete of an entry that is not there', () => {
+      const missing = apply(`format: yarramate/operations/v1
+operations:
+  - op: update-observation
+    document: evidence/repository.yaml
+    observation:
+      subject: main#user
+      key: absent
+      value: nothing
+`)
+      expect(missing.exitCode).toBe(1)
+      expect(missing.stdout).toContain('does not exist')
+      const gone = apply(`format: yarramate/operations/v1
+operations:
+  - op: delete-observation
+    document: evidence/repository.yaml
+    observation:
+      claim: main#never-claimed
+`)
+      expect(gone.exitCode).toBe(1)
+      expect(gone.stdout).toContain('does not exist')
+      expect(overlayNow()).toBe(overlay)
+    })
+
+    it('retracts an evidence message without touching the locator', () => {
+      const result = apply(`format: yarramate/operations/v1
+operations:
+  - op: update-observation
+    document: evidence/repository.yaml
+    observation:
+      subject: main#user
+      key: role
+    remove: [message]
+`)
+      expect(result.exitCode).toBe(0)
+      const after = overlayNow()
+      expect(after).not.toContain('read off the role constant')
+      expect(after).toContain('uri: repo:src/user.ts')
+    })
+
+    it('writes nothing when a model edit rides with a bad observation', () => {
+      const before = readFileSync(
+        join(workspace, 'architecture/main.yaml'),
+        'utf8',
+      )
+      const result = apply(`format: yarramate/operations/v1
+operations:
+  - op: update-concept
+    document: architecture/main.yaml
+    concept:
+      id: user
+      description: The person managing todo tasks.
+  - op: add-observation
+    document: evidence/repository.yaml
+    observation:
+      subject: main#user
+      result: confirmed
+      evidence:
+        uri: repo:src/user.ts
+`)
+      expect(result.exitCode).toBe(1)
+      expect(result.stdout).toContain('already records')
+      expect(
+        readFileSync(join(workspace, 'architecture/main.yaml'), 'utf8'),
+      ).toBe(before)
+      expect(overlayNow()).toBe(overlay)
+    })
   })
 })

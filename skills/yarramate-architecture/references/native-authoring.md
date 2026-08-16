@@ -330,6 +330,36 @@ Evidence evaluates an existing subject or stable claim ID. Results are
 observed subject directly through evidence or mutate declared intent from an
 evidence result.
 
+Overlays are workspace documents, so write them the way you write a model
+document — through `yarramate apply`, never by hand:
+
+```yaml
+format: yarramate/operations/v1
+operations:
+  - op: add-observation
+    document: .yarramate/evidence/repository.yaml
+    observation:
+      subject: delivery#delivery-api
+      result: confirmed
+      evidence: { uri: "repo:src/delivery-api.ts" }
+  - op: update-observation
+    document: .yarramate/evidence/repository.yaml
+    observation:
+      claim: delivery#api-accesses-data
+      result: confirmed
+      evidence: { message: Storage behavior is now explicit }
+  - op: delete-observation
+    document: .yarramate/evidence/repository.yaml
+    observation: { subject: delivery#retired-api }
+```
+
+An observation is addressed by its `(target, key)` pair, not by an id: the
+target is `subject` or `claim`, and `key` names a value observation. Omit
+`key` for the presence claim itself. An update enriches like `update-*` on a
+concept — scalars replace, `remove: [message]` retracts — and the whole
+batch is rejected unless the candidate workspace compiles and every touched
+overlay evaluates cleanly against it.
+
 ## LikeC4 project
 
 Keep visualization configuration outside native documents. Project `mapping`,

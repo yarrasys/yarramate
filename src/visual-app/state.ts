@@ -288,26 +288,31 @@ const viewWithin = (model: VisualRenderedModel): string => model.initialView;
  */
 const turnAnswered = { awaitingAgent: false, agentStatus: null } as const;
 
-/** Derive a unique key for an operation target (subject id + changed field names).
+/** Derive a unique key for an operation target (address + changed field names).
  * Operations targeting the same subject and field should replace rather than queue.
- * Combines op type, document, subject id, and sorted field names (excluding 'id').
+ * Concepts and relationships are addressed by `id`; an overlay observation has
+ * none and is addressed by the pair (target, key) that `apply` matches on.
  */
 const changesetTargetKey = (op: YarramateOperation): string => {
+  const changedFields = (payload: object, address: readonly string[]) =>
+    Object.keys(payload)
+      .filter((k) => !address.includes(k))
+      .sort()
+      .join(":");
   if ("concept" in op) {
     const concept = op.concept;
-    const fields = Object.keys(concept)
-      .filter((k) => k !== "id")
-      .sort()
-      .join(":");
-    return `${op.op}:${op.document}:concept:${concept.id}:${fields}`;
-  } else {
-    const relationship = op.relationship;
-    const fields = Object.keys(relationship)
-      .filter((k) => k !== "id")
-      .sort()
-      .join(":");
-    return `${op.op}:${op.document}:relationship:${relationship.id}:${fields}`;
+    return `${op.op}:${op.document}:concept:${concept.id}:${changedFields(concept, ["id"])}`;
   }
+  if ("relationship" in op) {
+    const relationship = op.relationship;
+    return `${op.op}:${op.document}:relationship:${relationship.id}:${changedFields(relationship, ["id"])}`;
+  }
+  const observation = op.observation;
+  const address = `${observation.subject ?? observation.claim}:${observation.key ?? ""}`;
+  return `${op.op}:${op.document}:observation:${address}:${changedFields(
+    observation,
+    ["subject", "claim", "key"],
+  )}`;
 };
 
 const transition = (
