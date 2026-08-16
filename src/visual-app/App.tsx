@@ -101,6 +101,8 @@ const CommandStrip = ({
   onToggleConversation,
   onToggleDirection,
   onSelectLayout,
+  notation,
+  onSelectNotation,
   showLifecycle,
   showEvidence,
   showOwnership,
@@ -123,9 +125,10 @@ const CommandStrip = ({
   readonly direction: 'top-down' | 'left-right'
   readonly views: readonly VisualViewSummary[]
   readonly onToggleDetails: () => void
-  readonly onToggleConversation: () => void
-  readonly onToggleDirection: () => void
   readonly onSelectLayout: (layout: 'layered' | 'radial' | 'force') => void
+  readonly notation: 'native' | 'archimate'
+  readonly onSelectNotation: (notation: 'native' | 'archimate') => void
+  readonly onToggleDirection: () => void
   readonly showLifecycle: boolean
   readonly showEvidence: boolean
   readonly showOwnership: boolean
@@ -178,6 +181,7 @@ const CommandStrip = ({
         query={state.activeFilter?.query ?? null}
         layout={layout}
         direction={direction}
+        notation={notation}
         showLifecycle={showLifecycle}
         showEvidence={showEvidence}
         showOwnership={showOwnership}
@@ -196,6 +200,16 @@ const CommandStrip = ({
         <option value="layered">Layered</option>
         <option value="radial">Radial</option>
         <option value="force">Force</option>
+      </select>
+      <select
+        aria-label="Notation"
+        value={notation}
+        onChange={(e) =>
+          onSelectNotation(e.currentTarget.value as 'native' | 'archimate')
+        }
+      >
+        <option value="native">Native</option>
+        <option value="archimate">ArchiMate</option>
       </select>
       <button type="button" onClick={onToggleDirection} disabled={layout !== 'layered'}>
         {direction === 'top-down' ? 'Top-Down' : 'Left-Right'}
@@ -303,6 +317,7 @@ const DiagramWorkspace = ({
   waiting,
   layout,
   direction,
+  notation,
   showLifecycle,
   showEvidence,
   showOwnership,
@@ -316,6 +331,7 @@ const DiagramWorkspace = ({
   readonly waiting: string | null
   readonly layout: 'layered' | 'radial' | 'force'
   readonly direction: 'top-down' | 'left-right'
+  readonly notation: 'native' | 'archimate'
   readonly showLifecycle: boolean
   readonly showEvidence: boolean
   readonly showOwnership: boolean
@@ -369,6 +385,7 @@ const DiagramWorkspace = ({
             quickFilterText={state.quickFilterText}
             layout={layout}
             direction={direction}
+            notation={notation}
             showLifecycle={showLifecycle}
             showEvidence={showEvidence}
             showOwnership={showOwnership}
@@ -854,6 +871,7 @@ export const App = () => {
         unread={workspace.conversation.unread}
         layout={workspace.layout}
         direction={workspace.direction}
+        notation={workspace.notation}
         showLifecycle={workspace.showLifecycle}
         showEvidence={workspace.showEvidence}
         showOwnership={workspace.showOwnership}
@@ -868,6 +886,7 @@ export const App = () => {
             direction: workspace.direction === 'top-down' ? 'left-right' : 'top-down',
           })
         }
+        onSelectNotation={(notation) => dispatchWorkspace({ type: 'notation.set', notation })}
         onSelectLayout={(layout) => dispatchWorkspace({ type: 'layout.set', layout })}
         onTogglePresentation={(flag, value) =>
           dispatchWorkspace({ type: 'presentation.toggled', flag, value })
@@ -898,6 +917,7 @@ export const App = () => {
           waiting={waiting}
           layout={workspace.layout}
           direction={workspace.direction}
+        notation={workspace.notation}
           showLifecycle={workspace.showLifecycle}
           showEvidence={workspace.showEvidence}
           showOwnership={workspace.showOwnership}

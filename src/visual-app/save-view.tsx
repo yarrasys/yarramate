@@ -15,6 +15,7 @@ export interface SaveViewControlProps {
   readonly showLifecycle: boolean
   readonly showEvidence: boolean
   readonly showOwnership: boolean
+  readonly notation: 'native' | 'archimate'
   readonly pendingSave: boolean
   readonly notice: boolean
   readonly onSave: (payload: VisualViewSavePayload) => void
@@ -36,6 +37,7 @@ export interface BuildPayloadParams {
   readonly showLifecycle: boolean
   readonly showEvidence: boolean
   readonly showOwnership: boolean
+  readonly notation: 'native' | 'archimate'
 }
 
 /** Pure translation from the form's local state to the wire payload — no
@@ -52,12 +54,13 @@ export const buildPayload = ({
   showLifecycle,
   showEvidence,
   showOwnership,
+  notation,
 }: BuildPayloadParams): VisualViewSavePayload => ({
   ...(id === undefined ? {} : { id }),
   title,
   description,
   query: query ?? {},
-  presentation: { layout, direction, seed: SAVE_SEED, showLifecycle, showEvidence, showOwnership },
+  presentation: { layout, direction, seed: SAVE_SEED, showLifecycle, showEvidence, showOwnership, notation },
 })
 
 /**
@@ -76,6 +79,7 @@ export function SaveViewControl({
   showLifecycle,
   showEvidence,
   showOwnership,
+  notation,
   pendingSave,
   notice,
   onSave,
@@ -111,6 +115,7 @@ export function SaveViewControl({
       showLifecycle,
       showEvidence,
       showOwnership,
+      notation,
     })
 
   const submit = (id: string | undefined) => {

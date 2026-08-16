@@ -108,6 +108,7 @@ export interface VisualWorkspaceState {
   readonly showLifecycle: boolean
   readonly showEvidence: boolean
   readonly showOwnership: boolean
+  readonly notation: 'native' | 'archimate'
 }
 
 export type VisualWorkspaceAction =
@@ -118,9 +119,9 @@ export type VisualWorkspaceAction =
   | { readonly type: 'subject.selected'; readonly subject: SelectedDiagramSubject }
   | { readonly type: 'subject.cleared' }
   | { readonly type: 'description.toggled' }
-  | { readonly type: 'details.toggled' }
   | { readonly type: 'direction.set'; readonly direction: 'top-down' | 'left-right' }
   | { readonly type: 'layout.set'; readonly layout: 'layered' | 'radial' | 'force' }
+  | { readonly type: 'notation.set'; readonly notation: 'native' | 'archimate' }
   | {
       readonly type: 'presentation.toggled'
       readonly flag: 'showLifecycle' | 'showEvidence' | 'showOwnership'
@@ -144,6 +145,7 @@ export const presentationActionsFor = (
     | {
         readonly layout?: 'layered' | 'radial' | 'force'
         readonly direction?: 'top-down' | 'left-right'
+        readonly notation?: 'native' | 'archimate'
         readonly showLifecycle?: boolean
         readonly showEvidence?: boolean
         readonly showOwnership?: boolean
@@ -156,6 +158,9 @@ export const presentationActionsFor = (
   }
   if (presentation?.direction !== undefined) {
     actions.push({ type: 'direction.set', direction: presentation.direction })
+  }
+  if (presentation?.notation !== undefined) {
+    actions.push({ type: 'notation.set', notation: presentation.notation })
   }
   if (presentation?.showLifecycle !== undefined) {
     actions.push({ type: 'presentation.toggled', flag: 'showLifecycle', value: presentation.showLifecycle })
@@ -218,6 +223,7 @@ export const createVisualWorkspaceState = (
   // `yarramate/ownership/owner` claims, so every chip would render
   // identically - uniform noise until real ownership diversity exists.
   showOwnership: false,
+  notation: 'native',
 })
 
 export const visualWorkspaceReducer = (
@@ -292,6 +298,8 @@ export const visualWorkspaceReducer = (
       return { ...state, direction: action.direction }
     case 'layout.set':
       return { ...state, layout: action.layout }
+    case 'notation.set':
+      return { ...state, notation: action.notation }
     case 'presentation.toggled':
       return { ...state, [action.flag]: action.value }
     case 'model.replaced': {

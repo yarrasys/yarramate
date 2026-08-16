@@ -56,6 +56,7 @@ export interface ProjectionDefinition {
     readonly showLifecycle?: boolean
     readonly showEvidence?: boolean
     readonly showOwnership?: boolean
+    readonly notation?: 'native' | 'archimate'
   }
 }
 
@@ -121,6 +122,7 @@ export function canonicalProjection(
             ...(presentation.showLifecycle === undefined ? {} : { showLifecycle: presentation.showLifecycle }),
             ...(presentation.showEvidence === undefined ? {} : { showEvidence: presentation.showEvidence }),
             ...(presentation.showOwnership === undefined ? {} : { showOwnership: presentation.showOwnership }),
+            ...(presentation.notation === undefined ? {} : { notation: presentation.notation }),
           },
         }),
   }
@@ -405,6 +407,9 @@ export function evaluateProjection(
             ...(projection.presentation.showOwnership === undefined
               ? {}
               : { showOwnership: projection.presentation.showOwnership }),
+            ...(projection.presentation.notation === undefined
+              ? {}
+              : { notation: projection.presentation.notation }),
           },
         }),
     documents: graph.documents.filter(({ id }) => selectedDocuments.has(id)),
