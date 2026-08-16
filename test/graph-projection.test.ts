@@ -168,6 +168,7 @@ relationships: []
         kind: 'yarramate/core@0.1#applicationComponent',
         kindLabel: 'applicationComponent',
         layer: 'application',
+        aspect: 'active-structure',
         name: 'Bare component',
         description: null,
         aka: [],

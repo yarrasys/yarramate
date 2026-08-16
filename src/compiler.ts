@@ -206,6 +206,7 @@ export interface ResolvedProfileContext {
   readonly conceptKindLineages: ReadonlyMap<string, readonly string[]>
   readonly relationshipKindLineages: ReadonlyMap<string, readonly string[]>
   readonly conceptKindLayers: ReadonlyMap<string, string>
+  readonly conceptKindAspects: ReadonlyMap<string, string>
   readonly relationshipKindEndpointAspects: ReadonlyMap<
     string,
     RelationshipEndpointAspects
@@ -1983,7 +1984,12 @@ function compileWorkspaceResolved(
       conceptKindLayers: immutableMap(
         [...conceptKindByIdentity]
           .sort(([left], [right]) => left.localeCompare(right))
-          .map(([identity, kind]) => [identity, kind.layer] as const),
+        .map(([identity, kind]) => [identity, kind.layer] as const),
+      ),
+      conceptKindAspects: immutableMap(
+        [...conceptKindByIdentity]
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([identity, kind]) => [identity, kind.aspect] as const),
       ),
       relationshipKindEndpointAspects: immutableMap(
         [...relationshipKindByIdentity]

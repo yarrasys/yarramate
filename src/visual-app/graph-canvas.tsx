@@ -358,6 +358,13 @@ export function buildStylesheet(
       },
     },
     {
+      selector: 'node[layer = "motivation"]',
+      style: {
+        'background-color': LAYER_COLORS.motivation.fill,
+        'border-color': LAYER_COLORS.motivation.border,
+      },
+    },
+    {
       selector: 'node[layer = "strategy"]',
       style: {
         'background-color': LAYER_COLORS.strategy.fill,
@@ -941,6 +948,7 @@ export function GraphCanvas({
       // `showLifecycle`/`showEvidence`/`showOwnership` and threads them
       // through here) - all stay off (no badges drawn) until that wiring lands.
       style: buildStylesheet(false, false, false),
+      wheelSensitivity: 0.1,
       layout: { name: 'null' },
     })
 

@@ -75,6 +75,7 @@ const modelWith = (): VisualModel => ({
         kindLabel: 'applicationComponent',
         document: 'main.yaml',
         layer: null,
+        aspect: null,
         name: 'System',
         description: null,
         aka: [],

@@ -14,6 +14,7 @@ export interface CanvasNode {
   readonly kind: string // resolved kind identity, e.g. "yarramate/core@0.1#applicationComponent"
   readonly kindLabel: string // local id stripped of profile prefix, e.g. "applicationComponent"
   readonly layer: string | null // from profileContext.conceptKindLayers, null if unresolved
+  readonly aspect: string | null // from profileContext.conceptKindAspects, null if unresolved
   readonly name: string
   readonly description: string | null
   readonly aka: readonly string[]
@@ -215,6 +216,7 @@ const projectConcept = (
     kind,
     kindLabel: kindLabelOf(kind),
     layer: profileContext.conceptKindLayers.get(kind) ?? null,
+    aspect: profileContext.conceptKindAspects.get(kind) ?? null,
     name: claimValue(nameClaim),
     description: descriptionClaim === undefined ? null : claimValue(descriptionClaim),
     aka: claims
