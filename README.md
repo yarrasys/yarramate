@@ -184,7 +184,8 @@ people, CI, skills, and agent harnesses.
 
 Optional adapters provide LikeC4 visualization from semantic projections,
 Graphify observations as evidence overlays, loopback-only visual
-conversations over a published protocol (beta), and separately governed
+conversations that render the native model and land reviewer edits through
+the same validated `apply` batch (beta), and separately governed
 compatibility profiles for external languages. Core depends on none of them.
 
 YarraMate is not affiliated with or certified by The Open Group. ArchiMate®

@@ -2,6 +2,27 @@
 
 ## 0.19.0
 
+- Render and edit the native model in the browser. `yarramate-visual` now
+  draws the compiled graph v2 model directly with cytoscape.js — no LikeC4
+  DSL, no compiler round-trip, no external renderer to resolve or consent to.
+  Inspector fields are constrained to what the model allows, edits stage as a
+  changeset, and **Commit changes** lands them as one `yarramate/operations/v1`
+  batch through the same validated `yarramate apply` write the CLI performs;
+  a refused batch writes nothing and shows the diagnostics on the row that
+  caused them. The runtime never runs `git commit`, so Git review still
+  decides what becomes declared architecture. Dragged positions persist per
+  projection in `.yarramate/visual-layout/` sidecars. The wire is
+  `yarramate/visual-protocol/v2`: the agent's `model.replace` mutation path is
+  gone, so a v1 child is refused rather than misread (ADRs 0084 to 0088).
+- Resolve a chat-issued filter server-side against the compiled graph. A
+  delegated agent sets `appliedQuery: { query }` and the runtime evaluates the
+  `ProjectionQuery`, so the panel and the chat agent can no longer produce two
+  different match sets for one query; an agent-supplied `matchedIds` is
+  refused with `YMVS311`. A chat-issued narrowing is badged with the query
+  that produced it and dismissible in one click (ADR 0090).
+- Land evidence observations through `yarramate apply`. An observation is a
+  write addressed by its `(target, key)` pair, batched and validated with
+  every other operation rather than written by a separate path (ADR 0089).
 - Rename the question catalogue's `authority: evidence` to `agent`, matching
   the runtime, `yarramate-interrogation-report/v1`, and `docs/INTERROGATION.md`.
   A catalogue that declared `evidence` passed catalogue validation and then

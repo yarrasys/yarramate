@@ -165,29 +165,35 @@ provides the journey. Neither contains the other.
 
 What the journey guarantees:
 
-- **Authority is labelled.** Repository architecture is rendered only from a
-  workspace that passes `yarramate check`, through
-  `yarramate ask <workspace> "<topic>" --json`. Everything else — general
-  questions, hypotheticals, comparisons of undecided options — is rendered as
-  a temporary `ad-hoc` model the browser labels non-canonical. A choice
-  confirmed in the browser is a recorded selection, not declared intent; it
-  becomes canonical only through the normal design journey and Git review.
+- **Authority is canonical, and labelled.** A session renders one workspace
+  that passed `yarramate check`, through
+  `yarramate ask <workspace> "<topic>" --json`. There is no non-canonical
+  rendering mode: the browser names the model it is showing, and every edit is
+  judged against that workspace.
 - **The server is local only.** It binds `127.0.0.1` on a random port, issues
   separate browser and agent credentials, ships no external assets, and stores
   no provider credentials. Session state lives under the ignored
   `.yarramate-out/visual/` directory and is never canonical.
-- **The renderer is consented.** The skill prefers a repository-local
-  `likec4` in `>=1.59.2 <1.60.0`. With none available it asks once before
-  resolving the pinned `likec4@1.59.2` runner, which needs Node `>=22.22.3`
-  and adds no dependency to your repository. The semantic binaries keep the
-  package's existing Node contract.
-- **Chat is capability-gated.** Where the harness can delegate a child agent,
-  deliver its completion back, and stay interruptible, the browser carries a
-  chat widget answered by a bounded visual agent. That agent may replace only
-  the temporary session model; it cannot edit repository files, `.yarramate/`,
-  credentials, or harness configuration.
-- **Otherwise you get diagram-only mode.** The same custom renderer and view
-  navigation, with the conversation continuing in the main harness.
+- **The renderer is native and dependency-free.** cytoscape.js draws the
+  compiled graph v2 model directly in the prebuilt browser application. There
+  is no DSL round-trip, no external renderer to resolve, and no consent
+  prompt; the visual binary keeps the package's existing Node contract.
+- **Editing is mechanical, and it lands through `apply`.** Inspector fields are
+  constrained to what the model allows, edits accumulate in a changeset, and
+  **Commit changes** submits them as one `yarramate/operations/v1` batch
+  through the same validated `yarramate apply` write the CLI performs. A
+  refused batch writes nothing and returns the diagnostics that refused it. A
+  landed batch is an ordinary working-tree change — the runtime never runs
+  `git commit`, so Git review still decides what becomes declared
+  architecture, and revert is `git revert`.
+- **Chat explains, filters, and focuses; it cannot mutate.** Where the harness
+  can delegate a child agent, deliver its completion back, and stay
+  interruptible, the browser carries a chat widget answered by a bounded visual
+  agent. That agent cannot author a model, edit repository files,
+  `.yarramate/`, credentials, or harness configuration; a filter it applies is
+  evaluated server-side, badged on the canvas, and dismissible in one click.
+- **Otherwise you get diagram-only mode.** The same renderer, view navigation,
+  filtering, and editing, with the conversation continuing in the main harness.
 - **Recovery is the main agent's.** On End, cancellation, or any failure the
   main agent recovers a structured handoff — confirmed decisions, requested
   changes, unresolved questions, final views, termination reason — before

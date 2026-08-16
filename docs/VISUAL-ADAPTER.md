@@ -92,6 +92,25 @@ Line notation (element-line convention pairs) covers all 11 core relationship ki
 
 ArchiMate mode is pure rendering: the schema, vocabulary, kinds, relationships, and semantic model are completely unchanged. Switching notation changes only what is drawn on the canvas, not what is compiled or what lands when a reviewer commits changes.
 
+## A filter is a query the server evaluates
+
+Narrowing the canvas is one mechanic with one evaluator. The browser sends
+`filter.query` carrying a `ProjectionQuery`; the runtime evaluates it against
+the compiled graph the session is already rendering and answers a
+`filter-result` frame with `{ query, matchedIds }`. The panel and the chat
+agent both go through it: an agent asked to "show me only the application
+layer" sets `appliedQuery: { query }` on its `chat.response` and the runtime
+resolves `matchedIds` server-side, so the same query never lights up two
+different sets. An agent that sends its own `matchedIds` is refused with
+`YMVS311` ([ADR 0090](adr/0090-a-chat-filter-is-a-query-not-a-match-set.md)).
+
+A filter is ephemeral: it narrows what is drawn, never what is saved, and
+appears in no changeset. A chat-issued filter is badged on the canvas with the
+query that produced it and a one-click way back to the full model, because a
+narrowing the reviewer did not perform is one they must be able to see and
+undo. Clearing a filter also returns the picker to the unfiltered view rather
+than leaving a stale named view selected.
+
 
 ## Commands
 
