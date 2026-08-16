@@ -1,7 +1,7 @@
 import type React from 'react'
 import { useEffect, useRef } from 'react'
 import cytoscape from 'cytoscape'
-import type { Core, CollectionReturnValue, ElementDefinition, Layouts, NodeCollection } from 'cytoscape'
+import type { Core, CollectionReturnValue, ElementDefinition, Layouts, NodeCollection, NodeSingular } from 'cytoscape'
 import elk from 'cytoscape-elk'
 import type {
   CanvasGraph,
@@ -12,6 +12,12 @@ import type {
   VisualLayoutPositions,
   VisualLayoutSavePayload,
 } from '../adapters/visual/protocol-contract.js'
+import {
+  EVIDENCE_BADGE_URI,
+  LIFECYCLE_BADGE_URI,
+  isLifecycleStatus,
+  ownerInitialsOf,
+} from './badges.js'
 
 // Register elk extension once at module load, guarded against re-registration
 let elkRegistered = false
@@ -214,134 +220,202 @@ export function buildLayoutConfig(
   return config as unknown as cytoscape.LayoutOptions
 }
 
+// Badge layer geometry: cytoscape has no single "layer" style value - each
+// `background-*` property below takes its own same-length array, and index
+// `i` across all of them describes one badge. `badgeLayersFor` is the one
+// place that decides which badges exist and in what order, so the seven
+// mapper functions in the `node` rule below can never disagree on length.
+interface BadgeLayer {
+  readonly image: string
+  readonly positionX: string
+  readonly positionY: string
+}
+
+const BADGE_SIZE = 12
+
+// Lifecycle top-right, evidence bottom-left - opposite corners so a node
+// with both never overlaps them. Each is gated by its own presentation flag
+// *and* the data it needs, so `showEvidence: true` on a concept with no
+// attestations draws nothing - the same binary presence/absence rule
+// `applyFilter` uses for hide/show, never a dimmed "maybe" state.
+function badgeLayersFor(
+  ele: NodeSingular,
+  showLifecycle: boolean,
+  showEvidence: boolean,
+): BadgeLayer[] {
+  const layers: BadgeLayer[] = []
+  const status: unknown = ele.data('status')
+  if (showLifecycle && isLifecycleStatus(status)) {
+    layers.push({ image: LIFECYCLE_BADGE_URI[status], positionX: '100%', positionY: '0%' })
+  }
+  if (showEvidence && ele.data('hasAttestations') === true) {
+    layers.push({ image: EVIDENCE_BADGE_URI, positionX: '0%', positionY: '100%' })
+  }
+  return layers
+}
+
 // Build the cytoscape stylesheet with base node style, layer-specific overrides,
 // edge style, and selected-state highlight class.
 // Stylesheet entries match StylesheetStyle shape (selector + style properties)
-const STYLESHEET: cytoscape.StylesheetJsonBlock[] = [
-  {
-    selector: 'node',
-    style: {
-      'background-color': DEFAULT_FILL,
-      'border-color': DEFAULT_BORDER,
-      'border-width': 2,
-      shape: 'roundrectangle',
-      width: NODE_WIDTH,
-      height: NODE_HEIGHT,
-      padding: '8px',
-      label: 'data(wrapLabel)',
-      'font-size': 12,
-      'text-wrap': 'wrap',
-      'text-max-width': `${LABEL_MAX_TEXT_WIDTH}px`,
-      'text-halign': 'center',
-      'text-valign': 'center',
-      color: '#333333',
+// `showLifecycle`/`showEvidence` are parameters, not module state, so the
+// mount effect that builds a fresh cytoscape instance and a future toggle
+// effect (Task 7 wires the checkboxes to `GraphCanvasProps`; Task 11 passes
+// notation mode the same way) both call this with whatever is current
+// instead of racing a shared mutable stylesheet.
+export function buildStylesheet(
+  showLifecycle: boolean,
+  showEvidence: boolean,
+): cytoscape.StylesheetJsonBlock[] {
+  return [
+    {
+      selector: 'node',
+      style: {
+        'background-color': DEFAULT_FILL,
+        'border-color': DEFAULT_BORDER,
+        'border-width': 2,
+        shape: 'roundrectangle',
+        width: NODE_WIDTH,
+        height: NODE_HEIGHT,
+        padding: '8px',
+        label: 'data(wrapLabel)',
+        'font-size': 12,
+        'text-wrap': 'wrap',
+        'text-max-width': `${LABEL_MAX_TEXT_WIDTH}px`,
+        'text-halign': 'center',
+        'text-valign': 'center',
+        color: '#333333',
+      },
     },
-  },
-  {
-    selector: 'node[layer = "motivation"]',
-    style: {
-      'background-color': LAYER_COLORS.motivation.fill,
-      'border-color': LAYER_COLORS.motivation.border,
+    {
+      // Multi-value `background-image` family (verified present on the
+      // installed cytoscape version): each property is a same-length array,
+      // one entry per badge, composited over the shape fill rather than
+      // clipped to it (`containment: 'over'`, `clip: 'none'`) so a badge can
+      // sit right on a node's corner instead of being cropped by its border.
+      selector: 'node',
+      style: {
+        'background-image': (ele: NodeSingular) =>
+          badgeLayersFor(ele, showLifecycle, showEvidence).map((layer) => layer.image),
+        'background-position-x': (ele: NodeSingular) =>
+          badgeLayersFor(ele, showLifecycle, showEvidence).map((layer) => layer.positionX),
+        'background-position-y': (ele: NodeSingular) =>
+          badgeLayersFor(ele, showLifecycle, showEvidence).map((layer) => layer.positionY),
+        'background-width': (ele: NodeSingular) =>
+          badgeLayersFor(ele, showLifecycle, showEvidence).map(() => BADGE_SIZE),
+        'background-height': (ele: NodeSingular) =>
+          badgeLayersFor(ele, showLifecycle, showEvidence).map(() => BADGE_SIZE),
+        'background-image-containment': (ele: NodeSingular) =>
+          badgeLayersFor(ele, showLifecycle, showEvidence).map((): 'over' => 'over'),
+        'background-clip': (ele: NodeSingular) =>
+          badgeLayersFor(ele, showLifecycle, showEvidence).map((): 'none' => 'none'),
+      },
     },
-  },
-  {
-    selector: 'node[layer = "strategy"]',
-    style: {
-      'background-color': LAYER_COLORS.strategy.fill,
-      'border-color': LAYER_COLORS.strategy.border,
+    {
+      selector: 'node[layer = "motivation"]',
+      style: {
+        'background-color': LAYER_COLORS.motivation.fill,
+        'border-color': LAYER_COLORS.motivation.border,
+      },
     },
-  },
-  {
-    selector: 'node[layer = "business"]',
-    style: {
-      'background-color': LAYER_COLORS.business.fill,
-      'border-color': LAYER_COLORS.business.border,
+    {
+      selector: 'node[layer = "strategy"]',
+      style: {
+        'background-color': LAYER_COLORS.strategy.fill,
+        'border-color': LAYER_COLORS.strategy.border,
+      },
     },
-  },
-  {
-    selector: 'node[layer = "application"]',
-    style: {
-      'background-color': LAYER_COLORS.application.fill,
-      'border-color': LAYER_COLORS.application.border,
+    {
+      selector: 'node[layer = "business"]',
+      style: {
+        'background-color': LAYER_COLORS.business.fill,
+        'border-color': LAYER_COLORS.business.border,
+      },
     },
-  },
-  {
-    selector: 'node[layer = "technology"]',
-    style: {
-      'background-color': LAYER_COLORS.technology.fill,
-      'border-color': LAYER_COLORS.technology.border,
+    {
+      selector: 'node[layer = "application"]',
+      style: {
+        'background-color': LAYER_COLORS.application.fill,
+        'border-color': LAYER_COLORS.application.border,
+      },
     },
-  },
-  {
-    selector: 'node[layer = "implementation"]',
-    style: {
-      'background-color': LAYER_COLORS.implementation.fill,
-      'border-color': LAYER_COLORS.implementation.border,
+    {
+      selector: 'node[layer = "technology"]',
+      style: {
+        'background-color': LAYER_COLORS.technology.fill,
+        'border-color': LAYER_COLORS.technology.border,
+      },
     },
-  },
-  {
-    // Compound container (see resolveCompositionParents below): keeps its own
-    // layer fill/border from the rules above but at low opacity with a dashed
-    // border, so its ArchiMate type stays legible while still reading as a
-    // grouping box rather than a plain node. The label is drawn above the box
-    // entirely, in the `CONTAINER_LABEL_GAP` band ELK reserves but cytoscape
-    // does not draw into, so it clears both the children and its own border.
-    selector: 'node:parent',
-    style: {
-      shape: 'roundrectangle',
-      'background-opacity': 0.25,
-      'border-width': 2,
-      'border-style': 'dashed',
-      padding: `${CONTAINER_PADDING}px`,
-      label: 'data(wrapLabel)',
-      'font-size': 13,
-      'font-weight': 'bold',
-      'text-halign': 'center',
-      'text-valign': 'top',
-      'text-margin-y': -8,
-      color: '#333333',
+    {
+      selector: 'node[layer = "implementation"]',
+      style: {
+        'background-color': LAYER_COLORS.implementation.fill,
+        'border-color': LAYER_COLORS.implementation.border,
+      },
     },
-  },
-  {
-    selector: 'node.selected',
-    style: {
-      'border-color': '#FF6B6B',
-      'border-width': 4,
+    {
+      // Compound container (see resolveCompositionParents below): keeps its own
+      // layer fill/border from the rules above but at low opacity with a dashed
+      // border, so its ArchiMate type stays legible while still reading as a
+      // grouping box rather than a plain node. The label is drawn above the box
+      // entirely, in the `CONTAINER_LABEL_GAP` band ELK reserves but cytoscape
+      // does not draw into, so it clears both the children and its own border.
+      selector: 'node:parent',
+      style: {
+        shape: 'roundrectangle',
+        'background-opacity': 0.25,
+        'border-width': 2,
+        'border-style': 'dashed',
+        padding: `${CONTAINER_PADDING}px`,
+        label: 'data(wrapLabel)',
+        'font-size': 13,
+        'font-weight': 'bold',
+        'text-halign': 'center',
+        'text-valign': 'top',
+        'text-margin-y': -8,
+        color: '#333333',
+      },
     },
-  },
-  {
-    selector: 'edge',
-    style: {
-      'line-color': '#999999',
-      width: 1.5,
-      'curve-style': 'round-taxi',
-      'taxi-radius': 25,
-      'target-arrow-shape': 'triangle',
-      'target-arrow-color': '#999999',
-      label: 'data(wrapLabel)',
-      'font-size': 10,
-      // ELK reserves no space for edge text (cytoscape-elk's `makeEdge` never
-      // emits `labels[]`), so a long relationship name renders as one wide
-      // banner across the midpoint and collides with whatever else routes
-      // through there. Wrapping caps how far that text can reach sideways.
-      'text-wrap': 'wrap',
-      'text-max-width': `${EDGE_LABEL_MAX_TEXT_WIDTH}px`,
-      'text-background-color': '#FFFFFF',
-      'text-background-padding': '3px',
-      // Fully opaque: labels that still overlap occlude cleanly instead of
-      // interleaving into unreadable text.
-      'text-background-opacity': 1,
+    {
+      selector: 'node.selected',
+      style: {
+        'border-color': '#FF6B6B',
+        'border-width': 4,
+      },
     },
-  },
-  {
-    selector: 'edge.selected',
-    style: {
-      'line-color': '#FF6B6B',
-      'target-arrow-color': '#FF6B6B',
-      width: 2.5,
+    {
+      selector: 'edge',
+      style: {
+        'line-color': '#999999',
+        width: 1.5,
+        'curve-style': 'round-taxi',
+        'taxi-radius': 25,
+        'target-arrow-shape': 'triangle',
+        'target-arrow-color': '#999999',
+        label: 'data(wrapLabel)',
+        'font-size': 10,
+        // ELK reserves no space for edge text (cytoscape-elk's `makeEdge` never
+        // emits `labels[]`), so a long relationship name renders as one wide
+        // banner across the midpoint and collides with whatever else routes
+        // through there. Wrapping caps how far that text can reach sideways.
+        'text-wrap': 'wrap',
+        'text-max-width': `${EDGE_LABEL_MAX_TEXT_WIDTH}px`,
+        'text-background-color': '#FFFFFF',
+        'text-background-padding': '3px',
+        // Fully opaque: labels that still overlap occlude cleanly instead of
+        // interleaving into unreadable text.
+        'text-background-opacity': 1,
+      },
     },
-  },
-]
+    {
+      selector: 'edge.selected',
+      style: {
+        'line-color': '#FF6B6B',
+        'target-arrow-color': '#FF6B6B',
+        width: 2.5,
+      },
+    },
+  ]
+}
 
 // Composition expresses exclusive whole-part structure (ADR 0004: a workspace
 // cannot claim both composition and aggregation over the same ordered pair),
@@ -439,6 +513,10 @@ function graphToElements(graph: CanvasGraph): ElementDefinition[] {
         kindLabel: node.kindLabel,
         layer: node.layer,
         status: node.status,
+        hasAttestations: node.attestations.length > 0,
+        // Derived here, not drawn here - Task 6's owner-initials chip
+        // consumes this same field rather than recomputing it from `owner`.
+        ownerInitials: ownerInitialsOf(node.owner),
         // `parent` is cytoscape's live nesting pointer and `applyFilter` moves
         // it as views come and go, so the model's own claim is kept alongside
         // it under a key cytoscape does not interpret. Without this the
@@ -818,7 +896,10 @@ export function GraphCanvas({
     const cy = cytoscape({
       container: containerRef.current,
       elements: graphToElements(graph),
-      style: STYLESHEET,
+      // `GraphCanvasProps` carries no presentation toggles yet (Task 7 adds
+      // `showLifecycle`/`showEvidence` and threads them through here) - both
+      // stay off (no badges drawn) until that wiring lands.
+      style: buildStylesheet(false, false),
       wheelSensitivity: 0.1,
       layout: { name: 'null' },
     })
