@@ -88,6 +88,16 @@ const endTransitionStatus = (state: VisualAppState): string => {
   return 'Ending conversation — preparing a handoff for the main agent.'
 }
 
+// ArchiMate notation pins `elk.direction` to `DOWN` when it builds a layered
+// config (`buildLayoutConfig`), and elk's direction is the only thing the
+// stored `direction` ever steers - so the strip reports Top-Down for that one
+// combination whatever is stored, and leaves every other one alone. Radial and
+// force never read a direction at all, so ArchiMate pins nothing there.
+const directionPinned = (
+  layout: 'layered' | 'radial' | 'force',
+  notation: 'native' | 'archimate'
+): boolean => layout === 'layered' && notation === 'archimate'
+
 const CommandStrip = ({
   state,
   connection,
@@ -213,7 +223,7 @@ const CommandStrip = ({
         <option value="archimate">ArchiMate</option>
       </select>
       <span className="direction-notice" role="status">
-        {notation === 'archimate'
+        {directionPinned(layout, notation)
           ? 'ArchiMate notation fixes direction to Top-Down.'
           : ''}
       </span>
@@ -222,7 +232,9 @@ const CommandStrip = ({
         onClick={onToggleDirection}
         disabled={layout !== 'layered' || notation === 'archimate'}
       >
-        {direction === 'top-down' ? 'Top-Down' : 'Left-Right'}
+        {directionPinned(layout, notation) || direction === 'top-down'
+          ? 'Top-Down'
+          : 'Left-Right'}
       </button>
       <button
         type="button"

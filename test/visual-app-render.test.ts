@@ -1,6 +1,6 @@
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { VisualAppState } from '../src/visual-app/state.js'
 import type * as WorkspaceState from '../src/visual-app/workspace-state.js'
 
@@ -66,10 +66,13 @@ vi.mock('../src/visual-app/session-client.js', () => ({
 // direction button disabled under a non-`layered` backend has to override
 // the reducer's initial value the same way `session` overrides session state
 // above, rather than driving it through props the App component doesn't have.
-// `notationOverride` follows the same pattern for the ArchiMate direction pin.
+// `notationOverride` follows the same pattern for the ArchiMate direction pin,
+// and `directionOverride` for a stored direction the pin has to override in
+// the label without touching what is stored.
 const workspace = vi.hoisted(() => ({
   layoutOverride: undefined as 'layered' | 'radial' | 'force' | undefined,
   notationOverride: undefined as 'native' | 'archimate' | undefined,
+  directionOverride: undefined as 'top-down' | 'left-right' | undefined,
 }))
 
 vi.mock('../src/visual-app/workspace-state.js', async (importOriginal) => {
@@ -84,6 +87,9 @@ vi.mock('../src/visual-app/workspace-state.js', async (importOriginal) => {
       ...(workspace.notationOverride === undefined
         ? {}
         : { notation: workspace.notationOverride }),
+      ...(workspace.directionOverride === undefined
+        ? {}
+        : { direction: workspace.directionOverride }),
     }),
   }
 })
@@ -259,9 +265,16 @@ describe('visual conversation rendering', () => {
 })
 
 describe('layout control', () => {
+  beforeEach(() => {
+    workspace.layoutOverride = undefined
+    workspace.notationOverride = undefined
+    workspace.directionOverride = undefined
+  })
+
   afterAll(() => {
     workspace.layoutOverride = undefined
     workspace.notationOverride = undefined
+    workspace.directionOverride = undefined
   })
 
   it('enables the direction button under the default layered backend', () => {
@@ -297,6 +310,26 @@ describe('layout control', () => {
     workspace.notationOverride = 'native'
     const markup = renderSession()
 
+    expect(markup).toContain('<span class="direction-notice" role="status"></span>')
+  })
+
+  it('reports the pinned direction while archimate makes a stored left-right inert', () => {
+    workspace.notationOverride = 'archimate'
+    workspace.directionOverride = 'left-right'
+    const markup = renderSession()
+
+    // The canvas laid out DOWN, so the strip cannot advertise the stored value.
+    expect(markup).toContain('<button type="button" disabled="">Top-Down</button>')
+  })
+
+  it('keeps the stored direction and drops the notice where archimate pins nothing', () => {
+    workspace.layoutOverride = 'radial'
+    workspace.notationOverride = 'archimate'
+    workspace.directionOverride = 'left-right'
+    const markup = renderSession()
+
+    // Radial never reads a direction, so the pin is not what disabled this.
+    expect(markup).toContain('<button type="button" disabled="">Left-Right</button>')
     expect(markup).toContain('<span class="direction-notice" role="status"></span>')
   })
 })
