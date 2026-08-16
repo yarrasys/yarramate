@@ -46,6 +46,7 @@ export interface CanvasEdge {
   readonly document: string // manifest-relative path, from the relationship's kind claim source
   readonly kind: string
   readonly kindLabel: string
+  readonly coreKindLabel: string // resolved core-vocabulary kind, from profileContext.relationshipKindLineages[0]
   readonly from: string // node id
   readonly to: string // node id
   readonly name: string | null
@@ -261,6 +262,7 @@ const projectRelationship = (
   relationshipId: string,
   allClaims: readonly GraphClaim[],
   ownClaims: readonly GraphClaim[],
+  profileContext: ResolvedProfileContext,
 ): CanvasEdge => {
   // A relationship's defining claim is asymmetric: its id is the
   // relationship's subject id, but its own `subject` field is the
@@ -286,6 +288,7 @@ const projectRelationship = (
     document: definingClaim.source.path,
     kind,
     kindLabel: kindLabelOf(kind),
+    coreKindLabel: kindLabelOf(profileContext.relationshipKindLineages.get(kind)?.[0] ?? kind),
     from: definingClaim.subject,
     to: claimRef(definingClaim),
     name: nameClaim === undefined ? null : claimValue(nameClaim),
@@ -329,7 +332,7 @@ export function projectGraphForCanvas(
     if (subject.type === 'concept') {
       nodes.push(projectConcept(subject.id, ownClaims, profileContext))
     } else {
-      edges.push(projectRelationship(subject.id, graph.claims, ownClaims))
+      edges.push(projectRelationship(subject.id, graph.claims, ownClaims, profileContext))
     }
   }
 

@@ -291,6 +291,7 @@ export function buildStylesheet(
   showLifecycle: boolean,
   showEvidence: boolean,
   showOwnership: boolean,
+  notation: 'native' | 'archimate',
 ): cytoscape.StylesheetJsonBlock[] {
   // Cytoscape re-evaluates every mapper on each style recalculation - a single
   // selection change re-runs all seven over every node - and rebuilding the
@@ -320,7 +321,7 @@ export function buildStylesheet(
     return built
   }
 
-  return [
+  const baseStylesheet: cytoscape.StylesheetJsonBlock[] = [
     {
       selector: 'node',
       style: {
@@ -462,6 +463,148 @@ export function buildStylesheet(
       },
     },
   ]
+
+  if (notation !== 'archimate') return baseStylesheet
+
+  // ArchiMate notation mode (Task 11): node shape by `aspect` (Task 8) and
+  // relationship line/arrow treatment by `coreKindLabel` - the edge's
+  // resolved core-vocabulary kind (Task 11), not its raw `kindLabel`, so a
+  // derived kind (e.g. `implements` -> `realization`) renders through its
+  // lineage identically to the core kind it inherits from. Appended after
+  // `baseStylesheet` rather than folded in, so `notation === 'native'`
+  // returns the exact same array untouched.
+  const archimateNodeShapes: cytoscape.StylesheetJsonBlock[] = [
+    {
+      selector: 'node[aspect = "active-structure"]',
+      style: { shape: 'rectangle' },
+    },
+    {
+      selector: 'node[aspect = "behavior"]',
+      style: { shape: 'round-rectangle' },
+    },
+    {
+      // Rectangle with a top accent band: a short gradient from the neutral
+      // border color into the neutral fill stands in for ArchiMate's passive
+      // structure header stripe without a second stacked shape.
+      selector: 'node[aspect = "passive-structure"]',
+      style: {
+        shape: 'rectangle',
+        'background-fill': 'linear-gradient',
+        'background-gradient-direction': 'to-bottom',
+        'background-gradient-stop-colors': [DEFAULT_BORDER, DEFAULT_FILL],
+        'background-gradient-stop-positions': ['0%', '20%'],
+      },
+    },
+    {
+      selector: 'node[aspect = "motivation"]',
+      style: { shape: 'octagon' },
+    },
+    {
+      selector: 'node[aspect = "composite"]',
+      style: { shape: 'rectangle', 'border-style': 'dashed' },
+    },
+  ]
+
+  const archimateEdgeStyles: cytoscape.StylesheetJsonBlock[] = [
+    {
+      selector: 'edge[coreKindLabel = "composition"]',
+      style: {
+        'line-style': 'solid',
+        'source-arrow-shape': 'diamond',
+        'source-arrow-fill': 'filled',
+        'target-arrow-shape': 'none',
+      },
+    },
+    {
+      selector: 'edge[coreKindLabel = "aggregation"]',
+      style: {
+        'line-style': 'solid',
+        'source-arrow-shape': 'diamond',
+        'source-arrow-fill': 'hollow',
+        'target-arrow-shape': 'none',
+      },
+    },
+    {
+      selector: 'edge[coreKindLabel = "assignment"]',
+      style: {
+        'line-style': 'solid',
+        'source-arrow-shape': 'circle',
+        'source-arrow-fill': 'filled',
+        'target-arrow-shape': 'triangle',
+        'target-arrow-fill': 'filled',
+      },
+    },
+    {
+      selector: 'edge[coreKindLabel = "realization"]',
+      style: {
+        'line-style': 'dotted',
+        'source-arrow-shape': 'none',
+        'target-arrow-shape': 'triangle',
+        'target-arrow-fill': 'hollow',
+      },
+    },
+    {
+      selector: 'edge[coreKindLabel = "specialization"]',
+      style: {
+        'line-style': 'solid',
+        'source-arrow-shape': 'none',
+        'target-arrow-shape': 'triangle',
+        'target-arrow-fill': 'hollow',
+      },
+    },
+    {
+      selector: 'edge[coreKindLabel = "serving"]',
+      style: {
+        'line-style': 'solid',
+        'source-arrow-shape': 'none',
+        'target-arrow-shape': 'vee',
+      },
+    },
+    {
+      selector: 'edge[coreKindLabel = "access"]',
+      style: {
+        'line-style': 'dotted',
+        'source-arrow-shape': 'none',
+        'target-arrow-shape': 'vee',
+      },
+    },
+    {
+      selector: 'edge[coreKindLabel = "influence"]',
+      style: {
+        'line-style': 'dashed',
+        'source-arrow-shape': 'none',
+        'target-arrow-shape': 'vee',
+      },
+    },
+    {
+      selector: 'edge[coreKindLabel = "triggering"]',
+      style: {
+        'line-style': 'solid',
+        'source-arrow-shape': 'none',
+        'target-arrow-shape': 'triangle',
+        'target-arrow-fill': 'filled',
+      },
+    },
+    {
+      selector: 'edge[coreKindLabel = "flow"]',
+      style: {
+        'line-style': 'dashed',
+        'source-arrow-shape': 'none',
+        'target-arrow-shape': 'triangle',
+        'target-arrow-fill': 'filled',
+      },
+    },
+    {
+      selector: 'edge[coreKindLabel = "association"]',
+      style: {
+        'line-style': 'solid',
+        'source-arrow-shape': 'none',
+        'target-arrow-shape': 'none',
+      },
+    },
+  ]
+
+  return [...baseStylesheet, ...archimateNodeShapes, ...archimateEdgeStyles]
 }
 
 // Composition expresses exclusive whole-part structure (ADR 0004: a workspace
@@ -558,6 +701,7 @@ function graphToElements(graph: CanvasGraph): ElementDefinition[] {
         wrapLabel: withWrapPoints(node.name),
         kind: node.kind,
         kindLabel: node.kindLabel,
+        aspect: node.aspect,
         layer: node.layer,
         status: node.status,
         hasAttestations: node.attestations.length > 0,
@@ -585,6 +729,7 @@ function graphToElements(graph: CanvasGraph): ElementDefinition[] {
           target: edge.to,
           label: edge.name ?? edge.kindLabel,
           wrapLabel: withWrapPoints(edge.name ?? edge.kindLabel),
+          coreKindLabel: edge.coreKindLabel,
         },
         group: 'edges',
       })
@@ -863,6 +1008,7 @@ interface GraphCanvasProps {
   readonly showLifecycle: boolean
   readonly showEvidence: boolean
   readonly showOwnership: boolean
+  readonly notation: 'native' | 'archimate'
   readonly activeViewId: string
   /** Saved layout for the active view, or undefined when it has none yet. */
   readonly savedPositions: VisualLayoutPositions | undefined
@@ -894,6 +1040,7 @@ export function GraphCanvas({
   showLifecycle,
   showEvidence,
   showOwnership,
+  notation,
 }: GraphCanvasProps): React.ReactElement {
   const containerRef = useRef<HTMLDivElement>(null)
   const cyRef = useRef<Core | null>(null)
@@ -954,7 +1101,7 @@ export function GraphCanvas({
       // `showLifecycle`/`showEvidence`/`showOwnership` seed the stylesheet the
       // mount builds; the effect below re-applies it to the live instance on
       // every later toggle, without remounting or re-laying-out.
-      style: buildStylesheet(showLifecycle, showEvidence, showOwnership),
+      style: buildStylesheet(showLifecycle, showEvidence, showOwnership, notation),
       wheelSensitivity: 0.1,
       layout: { name: 'null' },
     })
@@ -1006,8 +1153,8 @@ export function GraphCanvas({
       isInitialPresentationSyncRef.current = false
       return
     }
-    cyRef.current.style(buildStylesheet(showLifecycle, showEvidence, showOwnership))
-  }, [showLifecycle, showEvidence, showOwnership])
+    cyRef.current.style(buildStylesheet(showLifecycle, showEvidence, showOwnership, notation))
+  }, [showLifecycle, showEvidence, showOwnership, notation])
 
   // Update elements whenever the graph itself changes, laying out with the
   // current layout and direction. Deliberately NOT keyed on `layout`/

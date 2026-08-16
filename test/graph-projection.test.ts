@@ -219,6 +219,7 @@ relationships:
         document: 'main.yaml',
         kind: 'yarramate/core@0.1#access',
         kindLabel: 'access',
+        coreKindLabel: 'access',
         from: 'main#consumer',
         to: 'main#store',
         name: 'Reads store',
@@ -336,5 +337,56 @@ relationships:
       'main#alpha-relationship',
       'main#zulu-relationship',
     ])
+  })
+
+  it('projects coreKindLabel: equal to kindLabel for a core kind, collapsed onto the core ancestor for a derived kind', () => {
+    const result = compileWorkspaceWithProfileContext([
+      {
+        path: 'development-profile.yaml',
+        source: `format: yarramate/profile/v1
+id: yarramate/development
+version: "1.0"
+extends: yarramate/core@0.1
+conceptKinds: []
+relationshipKinds:
+  - id: implements
+    name: Implements
+    parent: yarramate/core@0.1#realization
+`,
+      },
+      {
+        path: 'main.yaml',
+        source: `format: yarramate/v1
+id: main
+profile: yarramate/development@1.0
+concepts:
+  - id: consumer
+    kind: applicationComponent
+    name: Consumer
+  - id: store
+    kind: dataObject
+    name: Store
+relationships:
+  - id: consumer-implements-store
+    kind: implements
+    from: consumer
+    to: store
+  - id: consumer-realizes-store
+    kind: realization
+    from: consumer
+    to: store
+`,
+      },
+    ])
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+
+    const projected = projectGraphForCanvas(result.graph, result.profileContext)
+    const derived = projected.edges.find((edge) => edge.localId === 'consumer-implements-store')
+    const core = projected.edges.find((edge) => edge.localId === 'consumer-realizes-store')
+    expect(derived?.kindLabel).toBe('implements')
+    expect(derived?.coreKindLabel).toBe('realization')
+    expect(core?.kindLabel).toBe('realization')
+    expect(core?.coreKindLabel).toBe('realization')
   })
 })

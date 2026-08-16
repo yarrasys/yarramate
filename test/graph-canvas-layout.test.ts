@@ -4,6 +4,7 @@ import {
   applySavedPositions,
   buildLayoutConfig,
   buildPositionMap,
+  buildStylesheet,
   DRAG_SAVE_DEBOUNCE_MS,
   registerDragSave,
   relayoutVisible,
@@ -389,5 +390,73 @@ describe('relayoutVisible force second pass', () => {
     expect(waitingCalls.at(-1)).toBeNull()
     expect(waitingCalls.filter((w) => w === null)).toHaveLength(1)
     expect(inFlightRef.current).toBeNull()
+  })
+})
+
+// Task 11: ArchiMate notation mode. `buildStylesheet`'s edge rules key off
+// `coreKindLabel` (the edge's resolved core-vocabulary kind, projected in
+// graph-projection.ts) rather than `kindLabel`, so a derived development
+// kind like `yarramate/development@1.0#implements` - which projects with
+// kindLabel "implements" but coreKindLabel "realization" - renders through
+// the exact same rule as a directly-declared core "realization" edge.
+describe('buildStylesheet ArchiMate notation', () => {
+  const edgeRule = (
+    sheet: cytoscape.StylesheetJsonBlock[],
+    coreKindLabel: string,
+  ): cytoscape.Css.Edge => {
+    const rule = sheet.find(
+      (block): block is cytoscape.StylesheetStyle =>
+        'style' in block && block.selector === `edge[coreKindLabel = "${coreKindLabel}"]`,
+    )
+    if (rule === undefined) {
+      throw new Error(`missing archimate edge rule for coreKindLabel "${coreKindLabel}"`)
+    }
+    return rule.style as cytoscape.Css.Edge
+  }
+
+  it('renders a realization edge as a dotted line with a hollow target triangle', () => {
+    const style = edgeRule(buildStylesheet(false, false, false, 'archimate'), 'realization')
+    expect(style['line-style']).toBe('dotted')
+    expect(style['source-arrow-shape']).toBe('none')
+    expect(style['target-arrow-shape']).toBe('triangle')
+    expect(style['target-arrow-fill']).toBe('hollow')
+  })
+
+  it('resolves a derived development kind to its core lineage style via coreKindLabel, not kindLabel', () => {
+    const sheet = buildStylesheet(false, false, false, 'archimate')
+    const cy = cytoscape({
+      headless: true,
+      styleEnabled: true,
+      style: sheet,
+      elements: [
+        { data: { id: 'a' }, group: 'nodes' },
+        { data: { id: 'b' }, group: 'nodes' },
+        {
+          data: { id: 'core-edge', source: 'a', target: 'b', coreKindLabel: 'realization', kindLabel: 'realization' },
+          group: 'edges',
+        },
+        {
+          // Simulates a `yarramate/development@1.0#implements` edge after
+          // graph-projection.ts resolves its lineage: kindLabel stays
+          // "implements", but coreKindLabel collapses onto "realization".
+          data: { id: 'derived-edge', source: 'a', target: 'b', coreKindLabel: 'realization', kindLabel: 'implements' },
+          group: 'edges',
+        },
+      ],
+    })
+    const core = cy.getElementById('core-edge')
+    const derived = cy.getElementById('derived-edge')
+    for (const prop of ['line-style', 'source-arrow-shape', 'target-arrow-shape', 'target-arrow-fill'] as const) {
+      expect(derived.css(prop)).toEqual(core.css(prop))
+    }
+    expect(derived.css('line-style')).toBe('dotted')
+    expect(derived.css('target-arrow-shape')).toBe('triangle')
+    expect(derived.css('target-arrow-fill')).toBe('hollow')
+  })
+
+  it('adds no ArchiMate rules under native notation', () => {
+    const native = buildStylesheet(true, true, true, 'native')
+    expect(native.some((block) => block.selector.startsWith('edge[coreKindLabel'))).toBe(false)
+    expect(native.some((block) => block.selector.startsWith('node[aspect'))).toBe(false)
   })
 })

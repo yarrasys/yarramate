@@ -124,4 +124,31 @@ relationships:
       }),
     ).toBe(false)
   })
+
+  it('rejects a canvas edge missing coreKindLabel', () => {
+    expect(
+      validateVisualGraph({
+        nodes: [],
+        edges: [
+          {
+            id: 'main#calls',
+            localId: 'calls',
+            document: 'main.yaml',
+            kind: 'yarramate/core@0.1#flow',
+            kindLabel: 'flow',
+            // coreKindLabel intentionally omitted
+            from: 'main#service',
+            to: 'main#consumer',
+            name: null,
+            description: null,
+            mode: null,
+            content: null,
+            status: null,
+            references: [],
+            presentIn: [],
+          },
+        ],
+      }),
+    ).toBe(false)
+  })
 })

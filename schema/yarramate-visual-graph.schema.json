@@ -133,6 +133,7 @@
         "document",
         "kind",
         "kindLabel",
+        "coreKindLabel",
         "from",
         "to",
         "name",
@@ -159,6 +160,9 @@
           "type": "string"
         },
         "kindLabel": {
+          "type": "string"
+        },
+        "coreKindLabel": {
           "type": "string"
         },
         "from": {
