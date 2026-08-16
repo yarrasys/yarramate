@@ -164,6 +164,24 @@
         }
       }
     },
+    "chatAppliedQuery": {
+      "description": "The filter a chat turn resolved to. The agent states the query; the runtime evaluates it against the same graph a filter.query event is evaluated against, and fills matchedIds in before the response is journaled or streamed. matchedIds is optional here so a resolved response round-trips through the transcript, not so an agent may assert one.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["query"],
+      "properties": {
+        "query": {
+          "$ref": "https://yarramate.org/schema/projection/v1#/$defs/query"
+        },
+        "matchedIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "chatResponsePayload": {
       "type": "object",
       "additionalProperties": false,
@@ -174,7 +192,7 @@
           "minLength": 1,
           "maxLength": 65536
         },
-        "appliedQuery": { "$ref": "#/$defs/filterResultPayload" }
+        "appliedQuery": { "$ref": "#/$defs/chatAppliedQuery" }
       }
     },
     "agentStatusPayload": {

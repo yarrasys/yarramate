@@ -37,7 +37,10 @@ import {
   type VisualServerHandle,
   type VisualServerOptions,
 } from "../src/adapters/visual/session-server.js";
-import type { VisualViewSummary } from "../src/adapters/visual/protocol-contract.js";
+import type {
+  VisualChatAppliedQuery,
+  VisualViewSummary,
+} from "../src/adapters/visual/protocol-contract.js";
 import { compileWorkspaceWithProfileContext } from "../src/compiler.js";
 import { projectGraphForCanvas } from "../src/graph-projection.js";
 
@@ -2457,6 +2460,160 @@ evidence: []
         await agentFetch(server, capability, "/api/agent/events?after=0")
       ).json(),
     ).resolves.toMatchObject({ waiting: true, lastSequence: 2 });
+    socket.close();
+  });
+});
+
+describe("startVisualServer chat applied query", () => {
+  // The same fixture the panel filter resolves against, so the two paths can
+  // be asserted to agree on one query rather than on two similar ones.
+  const document = `format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts:
+  - id: user
+    kind: businessActor
+    name: User
+  - id: todo-service
+    kind: applicationService
+    name: Todo service
+    status: planned
+relationships:
+  - id: service-serves-user
+    kind: serving
+    from: todo-service
+    to: user
+`;
+  const manifest = `format: yarramate/workspace/v1
+id: chat-filter-fixture
+documents:
+  - architecture/main.yaml
+profiles: []
+projections: []
+adapterMappings: []
+evidence: []
+`;
+
+  const withWorkspace = async () => {
+    await mkdir(join(baseDir, ".yarramate/architecture"), { recursive: true });
+    await writeFile(
+      join(baseDir, ".yarramate/architecture/main.yaml"),
+      document,
+      "utf8",
+    );
+    await writeFile(
+      join(baseDir, ".yarramate/workspace.yaml"),
+      manifest,
+      "utf8",
+    );
+  };
+
+  const chatFilter = (
+    handle: VisualServerHandle,
+    eventId: string,
+    appliedQuery: VisualChatAppliedQuery,
+  ): VisualResponse => ({
+    format: "yarramate/visual-response/v1",
+    sessionId: handle.started.sessionId,
+    responseId: identifier(1),
+    eventId,
+    type: "chat.response",
+    timestamp: "2026-08-08T00:00:02.000Z",
+    payload: { text: "Showing the actors.", appliedQuery },
+  });
+
+  it("resolves the agent's query against the compiled graph", async () => {
+    await withWorkspace();
+    const server = await start();
+    const capability = await capabilityOf(server);
+    const { cookie } = await bootstrap(server);
+    const socket = await openBrowserSocket(server, cookie);
+    const accepted = await sendChat(socket, "show me the actors");
+
+    const broadcast = nextFrame(socket, "response");
+    const posted = await postResponse(
+      server,
+      capability,
+      chatFilter(server, accepted.eventId, {
+        query: { kinds: ["yarramate/core@0.1#businessActor"] },
+      }),
+    );
+
+    expect(posted.status).toBe(200);
+    // The identical assertion the panel's `filter.query` test makes, reached
+    // through chat: one evaluator, one graph, one answer.
+    expect((await broadcast).response).toMatchObject({
+      type: "chat.response",
+      payload: {
+        appliedQuery: {
+          query: { kinds: ["yarramate/core@0.1#businessActor"] },
+          matchedIds: ["main#user"],
+        },
+      },
+    });
+    // Journaled resolved, so a replay highlights what the reviewer saw.
+    expect((await journalOf(server)).at(-1)).toMatchObject({
+      type: "chat.response",
+      payload: { appliedQuery: { matchedIds: ["main#user"] } },
+    });
+    socket.close();
+  });
+
+  it("forwards a query that resolves to nothing as an empty match", async () => {
+    await withWorkspace();
+    const server = await start();
+    const capability = await capabilityOf(server);
+    const { cookie } = await bootstrap(server);
+    const socket = await openBrowserSocket(server, cookie);
+    const accepted = await sendChat(socket, "show me the retired parts");
+
+    const broadcast = nextFrame(socket, "response");
+    await postResponse(
+      server,
+      capability,
+      chatFilter(server, accepted.eventId, {
+        query: { statuses: ["retired"] },
+      }),
+    );
+
+    // An empty resolution still lands: the reviewer sees their filter selected
+    // nothing rather than watching the previous one stay lit.
+    expect((await broadcast).response).toMatchObject({
+      payload: { appliedQuery: { matchedIds: [] } },
+    });
+    socket.close();
+  });
+
+  it("refuses a chat response that asserts its own match set", async () => {
+    await withWorkspace();
+    const server = await start();
+    const capability = await capabilityOf(server);
+    const { cookie } = await bootstrap(server);
+    const socket = await openBrowserSocket(server, cookie);
+    const accepted = await sendChat(socket, "show me the actors");
+
+    const posted = await postResponse(
+      server,
+      capability,
+      chatFilter(server, accepted.eventId, {
+        query: { kinds: ["yarramate/core@0.1#businessActor"] },
+        matchedIds: ["main#user"],
+      }),
+    );
+
+    expect(posted.status).toBe(400);
+    await expect(posted.json()).resolves.toMatchObject({
+      accepted: false,
+      diagnostics: [
+        { code: "YMVS311", pointer: "/payload/appliedQuery/matchedIds" },
+      ],
+    });
+    // Refused before the append: nothing about the turn was recorded.
+    expect(
+      (await journalOf(server)).filter(
+        (record) => record.format === "yarramate/visual-response/v1",
+      ),
+    ).toHaveLength(0);
     socket.close();
   });
 });

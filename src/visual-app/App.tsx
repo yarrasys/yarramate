@@ -386,10 +386,16 @@ const DiagramWorkspace = ({
 
   return (
     <section className="diagram-workspace" aria-label="Architecture diagram">
-      {state.activeFilter?.source === "chat" ? (
+      {/*
+       * A view's own query is named by the picker, so a pill would repeat it.
+       * Every other standing filter has nothing else naming it - the panel can
+       * be collapsed and chat can be scrolled away - so the canvas would show a
+       * subset while every control claimed the whole model.
+       */}
+      {state.activeFilter !== null && state.activeFilter.source !== "view" ? (
         <div className="filter-pill" role="status">
           <span>
-            Filtered by chat:{" "}
+            Filtered by {state.activeFilter.source}:{" "}
             <code>{describeQuery(state.activeFilter.query)}</code>
           </span>
           <button type="button" onClick={onClearFilter}>
@@ -851,7 +857,7 @@ export const App = () => {
     );
     if (view === null) return;
     appliedViewRef.current = view.id;
-    filter(view.query);
+    filter(view.query, "view");
     for (const action of presentationActionsFor(view.presentation)) {
       dispatchWorkspace(action);
     }

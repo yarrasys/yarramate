@@ -1,7 +1,10 @@
 import { posix } from 'node:path'
 import type { ErrorObject, ValidateFunction } from 'ajv'
 import Ajv2020Module from 'ajv/dist/2020.js'
-import { describeSchemaViolation } from '../../source-document.js'
+import {
+  describeSchemaViolation,
+  readableSchemaErrors,
+} from '../../source-document.js'
 import visualDiagnosticResultSchema from '../../../schema/yarramate-visual-diagnostic-result.schema.json' with {
   type: 'json',
 }
@@ -65,7 +68,10 @@ import {
 export * from './protocol-contract.js'
 
 const Ajv2020 = Ajv2020Module.default
-const ajv = new Ajv2020({ allErrors: true })
+// `discriminator` on Core's operation union routes a staged edit to the branch
+// its `op` names, so a browser changeset reports the fault the reviewer made
+// rather than one near-miss per operation kind.
+const ajv = new Ajv2020({ allErrors: true, discriminator: true })
 ajv.addSchema([
   visualDiagnosticResultSchema,
   visualEventSchema,
@@ -110,9 +116,31 @@ const validateVisualSessionStarted = visualValidator(
 const validateVisualSessionDescriptor = visualValidator(
   'visual-session-descriptor/v1',
 )
+const BROWSER_INPUT_REFERENCE =
+  'https://yarramate.org/schema/visual-event/v1#/$defs/browserInput'
 const validateVisualBrowserInput = visualValidator(
   'visual-browser-input/v1',
-  'https://yarramate.org/schema/visual-event/v1#/$defs/browserInput',
+  BROWSER_INPUT_REFERENCE,
+)
+
+/**
+ * One validator per input type, keyed by the `type` its branch fixes.
+ *
+ * The union reports every branch it tried, so a `changeset.commit` that gets
+ * one field wrong arrives as that one violation buried under seven other
+ * types' missing properties - unreadable, and it is the reviewer who has to
+ * read it. An input that names a type the protocol knows is answered against
+ * that type alone. The vocabulary is read off the schema rather than restated
+ * here, so a new input type cannot be added without one.
+ */
+const browserInputBranches = new Map<string, ValidateFunction>(
+  visualEventSchema.$defs.browserInput.oneOf.map((branch, index) => [
+    branch.properties.type.const,
+    visualValidator(
+      'visual-browser-input/v1',
+      `${BROWSER_INPUT_REFERENCE}/oneOf/${index}`,
+    ),
+  ]),
 )
 const validateVisualEvent = visualValidator('visual-event/v1')
 const validateVisualResponse = visualValidator('visual-response/v1')
@@ -377,6 +405,26 @@ const schemaDiagnostics = (
     )
   })
 
+/**
+ * The same violation, reported once.
+ *
+ * A union reports the branches it tried, and sibling branches that share a
+ * requirement each raise it - the reviewer reads one document, not the
+ * validator's search. Diagnostics are already sorted, so identical neighbours
+ * are adjacent; nothing that differs in code, pointer, or message is lost.
+ */
+const distinct = (
+  diagnostics: readonly VisualDiagnostic[],
+): readonly VisualDiagnostic[] =>
+  diagnostics.filter((diagnostic, index) => {
+    if (index === 0) return true
+    const previous = diagnostics[index - 1]
+    return (
+      previous === undefined ||
+      visualDiagnosticOrder(previous, diagnostic) !== 0
+    )
+  })
+
 const parseWith = <T>(
   validate: ValidateFunction,
   input: unknown,
@@ -384,12 +432,14 @@ const parseWith = <T>(
 ): ParseResult<T> => {
   const path = documentPaths.get(validate) ?? 'visual-document'
   const semantics = semanticsByDocument[path]
-  const diagnostics = [
-    ...(validate(input)
-      ? []
-      : schemaDiagnostics(validate.errors ?? [], code, path)),
-    ...(semantics ? semantics(input, path) : []),
-  ].sort(visualDiagnosticOrder)
+  const diagnostics = distinct(
+    [
+      ...(validate(input)
+        ? []
+        : schemaDiagnostics(readableSchemaErrors(validate.errors ?? []), code, path)),
+      ...(semantics ? semantics(input, path) : []),
+    ].sort(visualDiagnosticOrder),
+  )
   if (diagnostics.length > 0) return { ok: false, diagnostics }
   return { ok: true, value: input as T }
 }
@@ -412,10 +462,33 @@ export const parseVisualSessionDescriptor = (
 ): ParseResult<VisualSessionDescriptor> =>
   parseWith(validateVisualSessionDescriptor, input, 'YMVS103')
 
+/**
+ * The type an untrusted frame claims to be, when the protocol has that type.
+ *
+ * A refusal has to say what it refused, and the browser is holding a control
+ * open until it does. The claim is worth reporting before the document is
+ * known to be valid because the frame that named it is the one that failed.
+ */
+export const visualBrowserInputType = (
+  input: unknown,
+): VisualBrowserInput['type'] | undefined => {
+  const claimed = documentFields(input).type
+  return typeof claimed === 'string' && browserInputBranches.has(claimed)
+    ? (claimed as VisualBrowserInput['type'])
+    : undefined
+}
+
 export const parseVisualBrowserInput = (
   input: unknown,
-): ParseResult<VisualBrowserInput> =>
-  parseWith(validateVisualBrowserInput, input, 'YMVS109')
+): ParseResult<VisualBrowserInput> => {
+  const claimed = visualBrowserInputType(input)
+  const validate =
+    claimed === undefined
+      ? validateVisualBrowserInput
+      : // The branch is in the map because `claimed` came out of it.
+        (browserInputBranches.get(claimed) as ValidateFunction)
+  return parseWith(validate, input, 'YMVS109')
+}
 
 export const parseVisualEvent = (input: unknown): ParseResult<VisualEvent> =>
   parseWith(validateVisualEvent, input, 'YMVS104')

@@ -767,6 +767,55 @@ describe("visualAppReducer acknowledgement and refusal", () => {
     });
     expect(refused.pendingViewSave).toBeNull();
   });
+
+  it("retires a commit the server refused, on the rows it refused", () => {
+    const staged = visualAppReducer(activeState, {
+      type: "changeset.staged",
+      operation: {
+        op: "update-concept",
+        document: "model.yaml",
+        concept: { id: "Q1", name: " " },
+      } as const,
+    });
+    const sent = visualAppReducer(staged, { type: "changeset.commit.sent" });
+    expect(sent.commitStatus).toBe("committing");
+    // The gate refuses a blank name at ingress, so no `apply-result` follows:
+    // without the refusal answering the commit, the button never comes back.
+    const refused = visualAppReducer(sent, {
+      type: "input.refused",
+      refused: "changeset.commit",
+      diagnostics: [compileDiagnostic],
+      frozen: false,
+    });
+    expect(refused.commitStatus).toBe("idle");
+    expect(refused.commitDiagnostics).toEqual([compileDiagnostic]);
+    expect(refused.pendingChangeset.operations).toHaveLength(1);
+  });
+
+  it("leaves controls the refusal did not name alone", () => {
+    const sent = visualAppReducer(activeState, {
+      type: "view.save.sent",
+      payload: {
+        title: "Still saving",
+        description: "",
+        query: {},
+        presentation: {
+          layout: "layered",
+          direction: "top-down",
+          seed: "default",
+        },
+      },
+    });
+    const refused = visualAppReducer(sent, {
+      type: "input.refused",
+      refused: "changeset.commit",
+      diagnostics: [compileDiagnostic],
+      frozen: false,
+    });
+    // A refused commit says nothing about a save the server never answered.
+    expect(refused.pendingViewSave).not.toBeNull();
+    expect(refused.commitStatus).toBe("idle");
+  });
 });
 
 describe("visualBrowserInputFor", () => {
@@ -873,6 +922,23 @@ describe("visualAppActionsForFrame", () => {
     ]);
   });
 
+  it("names the input a refusal ended when the frame says which", () => {
+    expect(
+      actionsFor({
+        kind: "rejected",
+        refused: "changeset.commit",
+        diagnostics: [compileDiagnostic],
+      }),
+    ).toEqual([
+      {
+        type: "input.refused",
+        refused: "changeset.commit",
+        diagnostics: [compileDiagnostic],
+        frozen: false,
+      },
+    ]);
+  });
+
   it("replaces the rendered model from a model frame", () => {
     const rendered = model("choices");
     expect(actionsFor({ kind: "model", model: rendered })).toEqual([
@@ -973,6 +1039,50 @@ describe("visualAppReducer filter state", () => {
       matchedIds,
       source: "chat",
     });
+  });
+
+  it("labels a filter result with the origin the browser recorded", () => {
+    const frame = {
+      kind: "filter-result",
+      result: { query, matchedIds },
+    } as const;
+    expect(visualAppActionsForFrame(frame, "view")).toEqual([
+      { type: "filter.applied", query, matchedIds, source: "view" },
+    ]);
+    expect(visualAppActionsForFrame(frame)).toEqual([
+      { type: "filter.applied", query, matchedIds, source: "panel" },
+    ]);
+  });
+
+  it("keeps the named view standing when the view's own query lands", () => {
+    const filtered = visualAppReducer(activeState, {
+      type: "filter.applied",
+      query,
+      matchedIds,
+      source: "view",
+    });
+    expect(filtered.activeView).toBe(activeState.activeView);
+  });
+
+  it("stops claiming the named view when the panel filters", () => {
+    const filtered = visualAppReducer(activeState, {
+      type: "filter.applied",
+      query,
+      matchedIds,
+      source: "panel",
+    });
+    expect(activeState.activeView).not.toBe("");
+    expect(filtered.activeView).toBe("");
+  });
+
+  it("stops claiming the named view when chat filters", () => {
+    const filtered = visualAppReducer(activeState, {
+      type: "filter.applied",
+      query,
+      matchedIds,
+      source: "chat",
+    });
+    expect(filtered.activeView).toBe("");
   });
 
   it("clears the active filter on filter.cleared action", () => {

@@ -255,9 +255,22 @@ export type VisualEvent =
   | VisualEventEnvelope<"changeset.commit", VisualChangesetCommitPayload>
   | VisualEventEnvelope<"layout.save", VisualLayoutSavePayload>;
 
+/**
+ * The filter a chat turn resolved to. The agent states `query` and nothing
+ * else: the runtime evaluates it against the same graph a `filter.query`
+ * event is evaluated against and fills `matchedIds` in before the response
+ * is journaled or streamed (ADR 0090). `matchedIds` is optional so a
+ * resolved response survives a transcript round-trip - an agent that sends
+ * one is refused.
+ */
+export interface VisualChatAppliedQuery {
+  readonly query: ProjectionQuery;
+  readonly matchedIds?: readonly string[];
+}
+
 export interface VisualChatResponsePayload {
   readonly text: string;
-  readonly appliedQuery?: VisualFilterResultPayload;
+  readonly appliedQuery?: VisualChatAppliedQuery;
 }
 
 export interface VisualAgentStatusPayload {

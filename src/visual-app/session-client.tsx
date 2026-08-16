@@ -41,7 +41,7 @@ export interface VisualSession {
   readonly ask: (text: string) => void
   readonly choose: (optionId: string) => void
   readonly navigate: (viewId: string) => void
-  readonly filter: (query: ProjectionQuery) => void
+  readonly filter: (query: ProjectionQuery, origin?: 'view' | 'panel') => void
   readonly clearFilter: () => void
   readonly setQuickFilterText: (text: string) => void
   readonly saveView: (payload: VisualViewSavePayload) => void
@@ -62,6 +62,11 @@ export const useVisualSession = (): VisualSession => {
   // frame carries the sequence this browser has actually seen acknowledged.
   const stateRef = useRef(state)
   stateRef.current = state
+  // A filter result names what matched, never why it was asked. This records
+  // the reason the browser last asked, so a result can be told apart from a
+  // named view being applied. Panel is the honest default: an unsolicited
+  // result is not a view this browser can claim to be showing.
+  const filterOriginRef = useRef<'view' | 'panel'>('panel')
 
   useEffect(() => {
     let stopped = false
@@ -105,7 +110,11 @@ export const useVisualSession = (): VisualSession => {
         } catch {
           return
         }
-        for (const action of visualAppActionsForFrame(frame)) dispatch(action)
+        for (const action of visualAppActionsForFrame(
+          frame,
+          filterOriginRef.current,
+        ))
+          dispatch(action)
       })
       socket.addEventListener('close', () => {
         setConnected(false)
@@ -181,7 +190,8 @@ export const useVisualSession = (): VisualSession => {
   )
 
   const filter = useCallback(
-    (query: ProjectionQuery) => {
+    (query: ProjectionQuery, origin: 'view' | 'panel' = 'panel') => {
+      filterOriginRef.current = origin
       send({ kind: 'filter', query })
     },
     [send],

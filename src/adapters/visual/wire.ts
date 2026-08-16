@@ -3,6 +3,7 @@ import type {
   VISUAL_PROTOCOL_VERSION,
   VisualApplyResultPayload,
   VisualAuthority,
+  VisualBrowserInput,
   VisualCapabilities,
   VisualChoicePresentPayload,
   VisualDiagnostic,
@@ -104,6 +105,14 @@ export type VisualServerFrame =
     }
   | {
       readonly kind: 'rejected'
+      /**
+       * The input this refusal is about, as the frame that carried it named
+       * itself. A browser with a commit or a save in flight can only retire
+       * the right control if the refusal says which one died, and a refusal
+       * that never got as far as reading a type - a binary frame, a document
+       * that is not JSON - names nothing rather than guessing.
+       */
+      readonly refused?: VisualBrowserInput['type']
       readonly diagnostics: readonly VisualDiagnostic[]
       readonly frozen?: VisualFreezeReason
     }

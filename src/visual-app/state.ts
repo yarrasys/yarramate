@@ -186,6 +186,9 @@ export type VisualAppAction =
   | { readonly type: "event.acknowledged"; readonly sequence: number }
   | {
       readonly type: "input.refused";
+      /** Which input the server refused, when the frame was named enough to
+       * say. Absent only for a frame that parsed as no known input at all. */
+      readonly refused?: VisualBrowserInput["type"];
       readonly diagnostics: readonly VisualDiagnostic[];
       readonly frozen: boolean;
     }
@@ -428,17 +431,32 @@ const transition = (
         ...state,
         lastSequence: Math.max(state.lastSequence, action.sequence),
       };
-    case "input.refused":
+    case "input.refused": {
+      // A refused frame produces no result of its own, so whatever control was
+      // disabled while it was in flight has to be retired here or it stays
+      // dead for the rest of the session. The frame names which input died;
+      // a frame that parsed as no known input names nothing, and every control
+      // is retired rather than guessing which one to leave hanging.
+      const died = (type: VisualBrowserInput["type"]) =>
+        action.refused === undefined || action.refused === type;
       return {
         ...state,
         diagnostics: action.diagnostics,
         frozen: state.frozen || action.frozen,
-        // A refused frame never produces a `view-save-result`, so the save
-        // that was in flight has to be retired here or the control stays
-        // disabled for the rest of the session.
-        pendingViewSave: null,
-        ...turnAnswered,
+        ...(died("view.save") ? { pendingViewSave: null } : {}),
+        // The refusal is the commit's answer, and it points at the rows it
+        // refused, so the tray shows it where the reviewer is already looking.
+        ...(died("changeset.commit")
+          ? {
+              commitStatus: "idle" as const,
+              commitDiagnostics: action.diagnostics,
+            }
+          : {}),
+        ...(died("chat.message") || died("choice.selected")
+          ? turnAnswered
+          : {}),
       };
+    }
     case "end.requested":
       return {
         ...state,
@@ -462,6 +480,10 @@ const transition = (
           matchedIds: action.matchedIds,
           source: action.source,
         },
+        // Only a view's own query leaves its name standing. A filter from the
+        // panel or from chat draws something the named view does not describe,
+        // so the picker stops claiming it rather than naming what is not shown.
+        activeView: action.source === "view" ? state.activeView : "",
       };
     case "filter.cleared":
       // Clearing the filter also leaves whatever named view was active -
@@ -683,9 +705,15 @@ export const visualBrowserInputFor = (
 /**
  * One server frame as the actions it means. Translation is pure so the socket
  * owns nothing but the socket.
+ *
+ * A `filter-result` says what matched, never why it was asked. Only the
+ * browser knows whether it sent that query because the reviewer picked a
+ * named view or edited the filter panel, so the caller reports the origin
+ * it recorded when it asked.
  */
 export const visualAppActionsForFrame = (
   frame: VisualServerFrame,
+  filterOrigin: "view" | "panel" = "panel",
 ): readonly VisualAppAction[] => {
   switch (frame.kind) {
     case "ready":
@@ -698,10 +726,12 @@ export const visualAppActionsForFrame = (
     case "accepted":
       return [{ type: "event.acknowledged", sequence: frame.sequence }];
     case "rejected":
-      // One refusal, however many reasons it carries.
+      // One refusal, however many reasons it carries, naming the input it
+      // ended so the control that input disabled comes back.
       return [
         {
           type: "input.refused",
+          ...(frame.refused === undefined ? {} : { refused: frame.refused }),
           diagnostics: frame.diagnostics,
           frozen: frame.frozen !== undefined,
         },
@@ -716,7 +746,7 @@ export const visualAppActionsForFrame = (
           type: "filter.applied",
           query: frame.result.query,
           matchedIds: frame.result.matchedIds,
-          source: "panel",
+          source: filterOrigin,
         },
       ];
     case "view-save-result":
@@ -731,11 +761,15 @@ export const visualAppActionsForFrame = (
               text: frame.response.payload.text,
             },
           ];
-          if (frame.response.payload.appliedQuery) {
+          const applied = frame.response.payload.appliedQuery;
+          if (applied) {
             actions.push({
               type: "filter.applied",
-              query: frame.response.payload.appliedQuery.query,
-              matchedIds: frame.response.payload.appliedQuery.matchedIds,
+              query: applied.query,
+              // The runtime fills `matchedIds` in before this frame is sent
+              // (ADR 0090); a query it resolved to nothing still highlights
+              // nothing rather than leaving the previous filter standing.
+              matchedIds: applied.matchedIds ?? [],
               source: "chat",
             });
           }

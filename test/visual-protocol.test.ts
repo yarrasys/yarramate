@@ -412,6 +412,65 @@ describe('visual protocol', () => {
     ).toMatchObject({ ok: false })
   })
 
+  describe('a staged edit is judged against the branch its op names', () => {
+    const commit = (operation: unknown) =>
+      parseVisualBrowserInput({
+        type: 'changeset.commit',
+        lastAcknowledgedSequence: 0,
+        payload: { operations: [operation] },
+      })
+
+    it('reports a blank field once, on the field', () => {
+      const result = commit({
+        op: 'update-concept',
+        document: 'architecture/engine.yaml',
+        concept: { id: 'engine#check', name: '   ' },
+      })
+      expect(result.ok).toBe(false)
+      if (result.ok) return
+      expect(result.diagnostics).toHaveLength(1)
+      expect(result.diagnostics[0]).toMatchObject({
+        pointer: '/payload/operations/0/concept/name',
+        message: expect.stringContaining('must not be blank'),
+      })
+    })
+
+    it('names an operation kind that does not exist, rather than every kind that does', () => {
+      const result = commit({ op: 'rename-concept', document: 'a.yaml' })
+      expect(result.ok).toBe(false)
+      if (result.ok) return
+      expect(result.diagnostics).toHaveLength(1)
+      expect(result.diagnostics[0]).toMatchObject({
+        pointer: '/payload/operations/0',
+        message: expect.stringContaining('unknown "op" value "rename-concept"'),
+      })
+    })
+
+    it('reports a missing op once, without restating it as a tag fault', () => {
+      const result = commit({ document: 'a.yaml' })
+      expect(result.ok).toBe(false)
+      if (result.ok) return
+      expect(result.diagnostics).toHaveLength(1)
+      expect(result.diagnostics[0]).toMatchObject({
+        message: expect.stringContaining("must have required property 'op'"),
+      })
+    })
+
+    it('keeps every fault when one operation has more than one', () => {
+      const result = commit({
+        op: 'update-concept',
+        document: 'a.yaml',
+        relationship: { id: 'r' },
+      })
+      expect(result.ok).toBe(false)
+      if (result.ok) return
+      expect(result.diagnostics.map((d) => d.message)).toEqual([
+        expect.stringContaining("must have required property 'concept'"),
+        expect.stringContaining('Property "relationship" is not allowed'),
+      ])
+    })
+  })
+
   it.each([-1, 1.5, '1', null])(
     'rejects %s as a last acknowledged sequence',
     (lastAcknowledgedSequence) => {

@@ -8,8 +8,14 @@ interface ViewPickerProps {
 }
 
 export function ViewPicker({ views, activeViewId, onSelect, onClear }: ViewPickerProps) {
+  const activeTitle =
+    views.find((v) => v.id === activeViewId)?.title ?? 'All (unfiltered)'
+
   return (
     <select
+      // The control is width-capped, so a long authored view title is elided
+      // on screen. Hover recovers what the picker is actually showing.
+      title={activeTitle}
       value={activeViewId === '' ? '__all__' : activeViewId}
       onChange={(e) => {
         const value = e.currentTarget.value

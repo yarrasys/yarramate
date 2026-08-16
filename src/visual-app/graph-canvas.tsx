@@ -104,6 +104,11 @@ const CONTAINER_PADDING = 30
 // `text-valign: top` - somewhere to sit that isn't the box above it.
 const CONTAINER_LABEL_GAP = 22
 
+// Padding left around the graph when reframing after a canvas resize. Matches
+// cytoscape-elk's own `padding: 20` fit default, so a resize-driven refit lands
+// on the same framing the layout would have produced at the new canvas size.
+const FIT_PADDING = 20
+
 // Spacing, shared by the root graph and every compound container.
 //
 // ELK's defaults are ~20px throughout, which is too tight for 170x50 nodes
@@ -1162,6 +1167,12 @@ export function GraphCanvas({
   // Keep latest onWaitingChange for effects and the layoutstop handlers
   // `runLayout` sets up, which must always report through the current prop.
   const onWaitingChangeRef = useRef(onWaitingChange)
+  // The viewport a layout (or a resize refit) last left behind. Anything else
+  // on screen is the reviewer's own pan/zoom, which a resize must not discard.
+  const autoViewportRef = useRef<{
+    zoom: number
+    pan: { x: number; y: number }
+  } | null>(null)
 
   // Keep onSelectRef up-to-date so tap handlers always call the latest prop
   useEffect(() => {
@@ -1227,12 +1238,52 @@ export function GraphCanvas({
       (payload) => onSaveLayoutRef.current(payload),
     )
 
-    // After each layout run completes, pin nodes to their saved positions
+    const rememberFraming = (): void => {
+      autoViewportRef.current = { zoom: cy.zoom(), pan: { ...cy.pan() } }
+    }
+
+    // After each layout run completes, pin nodes to their saved positions. The
+    // layout's own `fit: true` has already framed the graph by the time this
+    // runs, and saved positions can move nodes after it - so the framing worth
+    // recording is the one standing once both have happened.
     cy.on('layoutstop', () => {
       applySavedPositions(cy, savedPositionsRef.current)
+      rememberFraming()
     })
 
+    // A layout frames the graph against the canvas as it was when the layout
+    // ran. Opening the conversation or details panel - or resizing the window -
+    // narrows that canvas without touching zoom or pan, so a graph that just
+    // filled the old box is drawn past the edge of the new one, off-screen with
+    // no scrollbar to reach it. Reframe on resize, but only while the framing
+    // on screen is still the one a layout left: once the reviewer pans or
+    // zooms, that viewport is their answer and a panel toggle must not take it.
+    const container = containerRef.current
+    let pendingFrame = 0
+    const observer = new ResizeObserver(() => {
+      // A panel animating open fires this every frame; only the last matters.
+      cancelAnimationFrame(pendingFrame)
+      pendingFrame = requestAnimationFrame(() => {
+        cy.resize()
+        const auto = autoViewportRef.current
+        if (auto === null) return
+        const pan = cy.pan()
+        const framingIsOurs =
+          Math.abs(cy.zoom() - auto.zoom) < 1e-6 &&
+          Math.abs(pan.x - auto.pan.x) < 0.5 &&
+          Math.abs(pan.y - auto.pan.y) < 0.5
+        if (!framingIsOurs) return
+        const visible = cy.elements(':visible')
+        if (visible.empty()) return
+        cy.fit(visible, FIT_PADDING)
+        rememberFraming()
+      })
+    })
+    observer.observe(container)
+
     return () => {
+      cancelAnimationFrame(pendingFrame)
+      observer.disconnect()
       dragSaveHandleRef.current?.dispose()
       forceLayoutRef.current?.stop()
       forceLayoutRef.current = null

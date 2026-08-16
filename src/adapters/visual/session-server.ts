@@ -25,6 +25,7 @@ import {
   parseVisualResponse,
   parseVisualSessionStarted,
   parseVisualStatus,
+  visualBrowserInputType,
   type VisualAuthority,
   type VisualBrowserInput,
   type VisualCapabilities,
@@ -1125,6 +1126,22 @@ export const startVisualServer = async (
 
   // ------------------------------------------------------------ browser input
 
+  /**
+   * What a raw frame claims to be, for a refusal that never got a document.
+   *
+   * Admitting can fail before anything parsed, and the browser is still
+   * holding a control open for whatever it sent. Reading the claim back off
+   * the bytes costs a parse only on the path where admitting already failed.
+   */
+  const claimedBrowserInput = (raw: RawData, binary: boolean) => {
+    if (binary) return undefined;
+    try {
+      return visualBrowserInputType(JSON.parse(raw.toString()));
+    } catch {
+      return undefined;
+    }
+  };
+
   const admitBrowserInput = async (
     socket: WebSocket,
     raw: RawData,
@@ -1151,9 +1168,17 @@ export const startVisualServer = async (
       });
       return;
     }
+    // What the frame says it is, before anything has agreed that it is well
+    // formed. A browser holding a control open for this input is told which
+    // one died even when the document that named it is the thing at fault.
+    const refused = visualBrowserInputType(parsed);
     const input = parseVisualBrowserInput(parsed);
     if (!input.ok) {
-      sendFrame(socket, { kind: "rejected", diagnostics: input.diagnostics });
+      sendFrame(socket, {
+        kind: "rejected",
+        ...(refused === undefined ? {} : { refused }),
+        diagnostics: input.diagnostics,
+      });
       return;
     }
     await admit(async () => {
@@ -1163,6 +1188,7 @@ export const startVisualServer = async (
       if (active.lifecycle !== "running") {
         sendFrame(socket, {
           kind: "rejected",
+          refused: input.value.type,
           diagnostics: [
             serverDiagnostic(
               "YMVS306",
@@ -1175,6 +1201,7 @@ export const startVisualServer = async (
       if (frozen !== undefined) {
         sendFrame(socket, {
           kind: "rejected",
+          refused: input.value.type,
           frozen,
           diagnostics: [
             serverDiagnostic("YMVS304", `Session input is frozen: ${frozen}`),
@@ -1193,6 +1220,7 @@ export const startVisualServer = async (
       if (!granted) {
         sendFrame(socket, {
           kind: "rejected",
+          refused: input.value.type,
           diagnostics: [
             serverDiagnostic(
               "YMVS309",
@@ -1211,6 +1239,7 @@ export const startVisualServer = async (
       if (input.value.lastAcknowledgedSequence > lastSequence) {
         sendFrame(socket, {
           kind: "rejected",
+          refused: input.value.type,
           diagnostics: [
             serverDiagnostic(
               "YMVS308",
@@ -1233,6 +1262,7 @@ export const startVisualServer = async (
         freeze("pending-events");
         sendFrame(socket, {
           kind: "rejected",
+          refused: input.value.type,
           frozen,
           diagnostics: [
             serverDiagnostic(
@@ -1249,6 +1279,7 @@ export const startVisualServer = async (
         if (appended.freeze !== undefined) freeze(appended.freeze);
         sendFrame(socket, {
           kind: "rejected",
+          refused: input.value.type,
           ...(frozen === undefined ? {} : { frozen }),
           diagnostics: appended.diagnostics,
         });
@@ -1501,9 +1532,11 @@ export const startVisualServer = async (
       // process as an unhandled one and take the runtime down with it. The
       // browser is told its frame failed; the session stays up.
       admitBrowserInput(socket, raw, binary).catch((cause: unknown) => {
+        const refused = claimedBrowserInput(raw, binary);
         try {
           sendFrame(socket, {
             kind: "rejected",
+            ...(refused === undefined ? {} : { refused }),
             diagnostics: [
               serverDiagnostic(
                 "YMVS307",
@@ -1672,6 +1705,43 @@ export const startVisualServer = async (
       } satisfies VisualResponseAcceptance);
       return;
     }
+    // A chat filter is a query, not a match set (ADR 0090). The agent states
+    // what to filter by; the runtime evaluates it through `filterMatchedIds`
+    // - the same evaluator, over the same compiled graph, that a `filter.query`
+    // event from the panel goes through - so a chat filter and a panel filter
+    // carrying the same query can never highlight different subjects. The
+    // resolution happens here, before the append, so the transcript records
+    // what the browser was actually shown.
+    let delivered: VisualResponse = response;
+    if (
+      response.type === "chat.response" &&
+      response.payload.appliedQuery !== undefined
+    ) {
+      const applied = response.payload.appliedQuery;
+      if (applied.matchedIds !== undefined) {
+        respondJson(server, 400, {
+          accepted: false,
+          diagnostics: [
+            serverDiagnostic(
+              "YMVS311",
+              "A chat filter states a query and the runtime resolves the match set; send appliedQuery.query without matchedIds",
+              "/payload/appliedQuery/matchedIds",
+            ),
+          ],
+        } satisfies VisualResponseAcceptance);
+        return;
+      }
+      delivered = {
+        ...response,
+        payload: {
+          ...response.payload,
+          appliedQuery: {
+            query: applied.query,
+            matchedIds: filterMatchedIds(applied.query),
+          },
+        },
+      };
+    }
     const result = await admit(
       async (): Promise<{
         readonly code: number;
@@ -1693,7 +1763,7 @@ export const startVisualServer = async (
             },
           };
         }
-        const appended = await appendVisualResponse(paths, response);
+        const appended = await appendVisualResponse(paths, delivered);
         if (!appended.ok) {
           if (appended.freeze !== undefined) freeze(appended.freeze);
           return {
@@ -1715,10 +1785,10 @@ export const startVisualServer = async (
             },
           };
         }
-        recordResponse(response);
-        markAnswered(response);
-        broadcast({ kind: "response", response });
-        completeTurn(response);
+        recordResponse(delivered);
+        markAnswered(delivered);
+        broadcast({ kind: "response", response: delivered });
+        completeTurn(delivered);
         return {
           code: 200,
           body: {

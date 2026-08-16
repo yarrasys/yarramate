@@ -169,17 +169,26 @@ The child loops on one event at a time:
    not a failure - call again from the same sequence.
 2. Answer from the rendered model. Outside it, say so rather than inferring.
    When the turn resolves a filter or focus request rather than a pure
-   explain request, call the `yarramate_ask` MCP tool with the resolved
-   query text and no `budget` (the server then appends `--json`, so the CLI
-   returns a `yarramate/ask-result/v1` document carrying `seeds` and
-   `result.subjects` instead of budgeted prose). Build
-   `query: { subjects: seeds, relationships: 'connected' }` - the identical
-   seed-focus `ProjectionQuery` shape `ask-command.ts`'s `sliceProjection`
-   already builds internally (`ask-command.ts:398`) - and set
-   `appliedQuery: { query, matchedIds: result.subjects.map(s => s.id) }` on
-   the `chat.response` payload (`VisualChatResponsePayload`,
-   `protocol-contract.ts:254`) before calling `respond`. A pure explain
-   request sends no `appliedQuery`, unchanged.
+   explain request, set `appliedQuery: { query }` on the `chat.response`
+   payload (`VisualChatResponsePayload`, `protocol-contract.ts:271`) - the
+   `ProjectionQuery` alone, never a match set. The runtime evaluates it
+   through the same evaluator a `filter.query` event from the panel goes
+   through and fills `matchedIds` in before the browser sees the response
+   (ADR 0090); a response that already carries `matchedIds` is refused with
+   `YMVS311`. A pure explain request sends no `appliedQuery`, unchanged.
+
+   The query is built from the rendered model the child already holds, with
+   no MCP call and no second compile. The whole `ProjectionQuery` vocabulary
+   is available, not just seed focus:
+
+   | The reviewer asks | `query` |
+   | --- | --- |
+   | "focus on the checkout service" | `{ subjects: ['architecture/main.yaml#checkout'], relationships: 'connected' }` |
+   | "show only the application layer" | `{ layers: ['application'] }` |
+   | "hide anything retired" | `{ excludeStatuses: ['retired'] }` |
+   | "just the services" | `{ kinds: ['yarramate/core@0.1#applicationService'], kindMatching: 'descendants' }` |
+   | "what does the platform team own?" | `{ owners: ['architecture/main.yaml#platform-team'] }` |
+   | "only the serving edges" | `{ relationshipKinds: ['yarramate/core@0.1#serving'], relationships: 'between' }` |
 3. `respond <descriptor> <response.json>` with a
    `yarramate/visual-response/v1` document whose `sessionId` is this session's
    own identifier, `eventId` is the event being answered, `responseId` is a

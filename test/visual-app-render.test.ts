@@ -200,33 +200,29 @@ describe('visual conversation rendering', () => {
     },
   )
 
-  it('shows a chat filter pill naming the active chat-issued query', () => {
-    const markup = renderSession({
-      activeFilter: {
-        query: { layers: ['application'] },
-        matchedIds: ['a'],
-        source: 'chat',
-      },
-    })
-
-    expect(markup).toContain('class="filter-pill"')
-    expect(markup).toContain('Filtered by chat:')
-    expect(markup).toContain('layers: application')
-    expect(markup).toContain('>Show all</button>')
-  })
-
-  it.each(['view', 'panel'] as const)(
-    'hides the chat filter pill for a %s-sourced filter',
+  it.each(['chat', 'panel'] as const)(
+    'shows a filter pill naming a %s-issued query the picker cannot name',
     (source) => {
       const markup = renderSession({
         activeFilter: { query: { layers: ['application'] }, matchedIds: ['a'], source },
       })
 
-      expect(markup).not.toContain('class="filter-pill"')
+      expect(markup).toContain('class="filter-pill"')
+      expect(markup).toContain(`Filtered by ${source}:`)
+      expect(markup).toContain('layers: application')
+      expect(markup).toContain('>Show all</button>')
     },
   )
 
-  it('hides the chat filter pill when there is no active filter', () => {
+  it('hides the filter pill for a view-sourced filter the picker already names', () => {
+    const markup = renderSession({
+      activeFilter: { query: { layers: ['application'] }, matchedIds: ['a'], source: 'view' },
+    })
+
+    expect(markup).not.toContain('class="filter-pill"')
+  })
+
+  it('hides the filter pill when there is no active filter', () => {
     const markup = renderSession()
 
     expect(markup).not.toContain('class="filter-pill"')

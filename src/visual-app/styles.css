@@ -82,9 +82,17 @@ body {
 .command-strip {
   position: relative;
   z-index: 10;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  /* Flex, not a two-column grid: the actions are a variable-length row of
+     controls whose intrinsic width grows with the model (view names, saved
+     views, labels). An `auto` grid track sized to that content clipped the
+     right-hand controls against `.visual-shell`'s `overflow: hidden`, so
+     Conversation and End became unreachable between 900px and 1255px. Wrapping
+     is content-driven: it needs no breakpoint and no control ever leaves the
+     viewport. */
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
   gap: calc(var(--step) * 2);
   min-height: 48px;
   padding: calc(var(--step) * 0.75) calc(var(--step) * 2);
@@ -100,8 +108,24 @@ body {
   gap: var(--step);
 }
 
+.command-identity {
+  /* Shrinks — the title ellipsises — down to a floor that still reads as a
+     session name. Below it the actions take their own row rather than
+     squeezing the title to nothing, which is what the old grid did before it
+     ran out of width and clipped instead. */
+  flex: 1 1 10rem;
+}
+
+.command-actions {
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .command-identity h1 {
-  min-width: 0;
+  /* A floor, not zero: an elided-to-nothing title is a session with no name
+     on screen. Past this the strip wraps instead. */
+  min-width: 8ch;
   margin: 0;
   overflow: hidden;
   font-family: var(--display);
@@ -124,6 +148,15 @@ body {
   border: 1px solid var(--rule-firm);
   border-radius: 0;
   cursor: pointer;
+}
+
+.command-actions select {
+  /* A select is as wide as its longest option, and view titles are authored
+     in the model - without a cap the strip grows with the model until it
+     wraps or clips. Long titles ellipsise; the full text stays in the open
+     list and the title attribute. */
+  max-width: 12rem;
+  text-overflow: ellipsis;
 }
 
 .command-actions .quick-filter {
@@ -204,6 +237,11 @@ body {
 }
 
 .authority {
+  /* Never wraps or shrinks: it is the session's authority claim, and a
+     squeezed strip must ellipsise the title instead of stacking this into
+     three lines and growing the strip. */
+  flex: none;
+  white-space: nowrap;
   margin: 0;
   font-family: var(--utility);
   font-size: 11px;
@@ -338,10 +376,12 @@ body {
   overflow: auto;
 }
 
-/* A chat-issued filter narrows the diagram from outside the reviewer's own
-   panel, so it earns a badge that says so and a one-click way back to the
-   full model — never a silent narrowing the reviewer has to notice on their
-   own. */
+/* A filter the picker cannot name — issued by chat, or composed in a panel
+   that is now collapsed — narrows the diagram with nothing else on screen
+   saying so, and so earns a badge that names it and a one-click way back to
+   the full model. Long queries (a seeded subject list) are clipped rather
+   than allowed to span the canvas: the badge reports that a filter stands,
+   the panel reports what is in it. */
 .diagram-workspace > .filter-pill {
   position: absolute;
   inset: var(--step) auto auto var(--step);
@@ -349,7 +389,7 @@ body {
   display: flex;
   align-items: center;
   gap: var(--step);
-  max-width: calc(100% - var(--step) * 2);
+  max-width: min(52ch, calc(100% - var(--step) * 2));
   padding: 0.35rem 0.7rem;
   border: 1px solid var(--rule-firm);
   border-radius: 999px;
@@ -915,9 +955,9 @@ body {
 .filter-checkbox-option input {
   cursor: pointer;
 }
+
 @media (max-width: 899px) {
   .command-strip {
-    grid-template-columns: 1fr;
     gap: calc(var(--step) * 0.5);
     padding-inline: var(--step);
   }
@@ -925,10 +965,6 @@ body {
   .command-identity,
   .command-actions {
     gap: calc(var(--step) * 0.5);
-  }
-
-  .command-actions {
-    overflow-x: auto;
   }
 
   .workspace {
