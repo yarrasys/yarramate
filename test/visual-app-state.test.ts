@@ -20,11 +20,6 @@ import {
   type VisualAppState,
 } from '../src/visual-app/state.js'
 import type { ProjectionQuery } from '../src/projection.js'
-import {
-  createVisualWorkspaceState,
-  presentationActionsFor,
-  visualWorkspaceReducer,
-} from '../src/visual-app/workspace-state.js'
 
 /** A rendered model with an empty canvas graph — only initialView matters here. */
 const model = (initialView: string): VisualRenderedModel => ({
@@ -1159,40 +1154,5 @@ describe('visualAppReducer view save', () => {
     })
     expect(reloaded.pendingViewSave).toBe(null)
     expect(reloaded.viewSaveNotice).toBe(false)
-  })
-})
-
-describe('visualWorkspaceReducer layout', () => {
-  const workspaceState = createVisualWorkspaceState(1280)
-
-  it('starts on the layered backend', () => {
-    expect(workspaceState.layout).toBe('layered')
-  })
-
-  it('sets the layout backend on layout.set', () => {
-    const next = visualWorkspaceReducer(workspaceState, {
-      type: 'layout.set',
-      layout: 'force',
-    })
-    expect(next.layout).toBe('force')
-    expect(next.direction).toBe(workspaceState.direction)
-  })
-
-  it('adopts a selected view declared layout and direction', () => {
-    const actions = presentationActionsFor({ layout: 'radial', direction: 'left-right' })
-    const next = actions.reduce(visualWorkspaceReducer, workspaceState)
-    expect(next.layout).toBe('radial')
-    expect(next.direction).toBe('left-right')
-  })
-
-  it('leaves layout and direction untouched when a view declares neither', () => {
-    const actions = presentationActionsFor({})
-    const next = actions.reduce(visualWorkspaceReducer, workspaceState)
-    expect(next).toBe(workspaceState)
-  })
-
-  it('adopts only the field a view actually declares', () => {
-    const actions = presentationActionsFor({ layout: 'force' })
-    expect(actions).toEqual([{ type: 'layout.set', layout: 'force' }])
   })
 })

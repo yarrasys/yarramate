@@ -6,6 +6,7 @@ import {
   formatContextualQuestion,
   normalizeSelectedElement,
   normalizeSelectedRelationship,
+  presentationActionsFor,
   visualWorkspaceReducer,
   type SelectedDiagramSubject,
 } from '../src/visual-app/workspace-state.js'
@@ -270,5 +271,40 @@ describe('selected diagram subjects', () => {
     expect(formatContextualQuestion('  General question  ', null)).toBe(
       'General question',
     )
+  })
+})
+
+describe('visualWorkspaceReducer layout', () => {
+  const workspaceState = createVisualWorkspaceState(1280)
+
+  it('starts on the layered backend', () => {
+    expect(workspaceState.layout).toBe('layered')
+  })
+
+  it('sets the layout backend on layout.set', () => {
+    const next = visualWorkspaceReducer(workspaceState, {
+      type: 'layout.set',
+      layout: 'force',
+    })
+    expect(next.layout).toBe('force')
+    expect(next.direction).toBe(workspaceState.direction)
+  })
+
+  it('adopts a selected view declared layout and direction', () => {
+    const actions = presentationActionsFor({ layout: 'radial', direction: 'left-right' })
+    const next = actions.reduce(visualWorkspaceReducer, workspaceState)
+    expect(next.layout).toBe('radial')
+    expect(next.direction).toBe('left-right')
+  })
+
+  it('leaves layout and direction untouched when a view declares neither', () => {
+    const actions = presentationActionsFor({})
+    const next = actions.reduce(visualWorkspaceReducer, workspaceState)
+    expect(next).toBe(workspaceState)
+  })
+
+  it('adopts only the field a view actually declares', () => {
+    const actions = presentationActionsFor({ layout: 'force' })
+    expect(actions).toEqual([{ type: 'layout.set', layout: 'force' }])
   })
 })
