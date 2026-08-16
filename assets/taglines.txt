@@ -9,4 +9,5 @@ a model that knows what's missing.
 intent your code can contradict.
 the handover between your agents.
 a diagram you can talk to.
+a diagram that writes back.
 who signed off, and who held the pen.
