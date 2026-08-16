@@ -1635,6 +1635,38 @@ relationships:
     }
   })
 
+  it('rejects text that is present but says nothing', () => {
+    const result = compileWorkspace([
+      {
+        path: 'blank-name.yaml',
+        source: `format: yarramate/v1
+id: blank
+profile: yarramate/core@0.1
+concepts:
+  - id: user
+    kind: businessActor
+    name: "   "
+relationships: []
+`,
+      },
+    ])
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.diagnostics).toEqual([
+        {
+          severity: 'error',
+          code: 'YM201',
+          message: 'Document schema violation: must not be blank',
+          path: 'blank-name.yaml',
+          pointer: '/concepts/0/name',
+          line: 7,
+          column: 11,
+        },
+      ])
+    }
+  })
+
   it('reports malformed profile YAML through the parse taxonomy', () => {
     const result = compileWorkspace([
       {

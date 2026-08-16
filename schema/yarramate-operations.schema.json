@@ -24,7 +24,7 @@
   "$defs": {
     "nonEmptyText": {
       "type": "string",
-      "minLength": 1
+      "pattern": "\\S"
     },
     "identifiedReference": {
       "type": "object",
@@ -379,6 +379,14 @@
       ]
     },
     "operation": {
+      "description": "A discriminated union: the `op` tag selects exactly one branch, so a malformed operation is reported against the shape its author named rather than against all nine.",
+      "type": "object",
+      "required": [
+        "op"
+      ],
+      "discriminator": {
+        "propertyName": "op"
+      },
       "oneOf": [
         {
           "type": "object",

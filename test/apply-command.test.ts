@@ -146,6 +146,70 @@ describe('apply command', () => {
     ).toBe(before)
   })
 
+  it('refuses a name that is only whitespace', () => {
+    writeFileSync(
+      join(workspace, 'operations.yaml'),
+      `format: yarramate/operations/v1
+operations:
+  - op: update-concept
+    document: architecture/main.yaml
+    concept:
+      id: user
+      name: "   "
+`,
+      'utf8',
+    )
+    const before = readFileSync(
+      join(workspace, 'architecture/main.yaml'),
+      'utf8',
+    )
+    const result = runCli(
+      ['apply', 'operations.yaml', 'workspace.yaml'],
+      workspace,
+    )
+    expect(result.exitCode).toBe(1)
+    expect(result.stdout).toContain(
+      'Operations schema violation: must not be blank',
+    )
+    expect(result.stdout).toMatch(/^operations\.yaml:\d+:\d+ /)
+    expect(
+      readFileSync(join(workspace, 'architecture/main.yaml'), 'utf8'),
+    ).toBe(before)
+  })
+
+  it('names an operation kind that does not exist, once', () => {
+    writeFileSync(
+      join(workspace, 'operations.yaml'),
+      `format: yarramate/operations/v1
+operations:
+  - op: rename-concept
+    document: architecture/main.yaml
+    concept:
+      id: user
+      name: Person
+`,
+      'utf8',
+    )
+    const before = readFileSync(
+      join(workspace, 'architecture/main.yaml'),
+      'utf8',
+    )
+    const result = runCli(
+      ['apply', 'operations.yaml', 'workspace.yaml'],
+      workspace,
+    )
+    expect(result.exitCode).toBe(1)
+    const lines = result.stdout.trim().split('\n')
+    expect(lines).toHaveLength(1)
+    expect(lines[0]).toContain(
+      'Operations schema violation: unknown "op" value "rename-concept"',
+    )
+    expect(lines[0]).toMatch(/^operations\.yaml:\d+:\d+ /)
+    expect(
+      readFileSync(join(workspace, 'architecture/main.yaml'), 'utf8'),
+    ).toBe(before)
+  })
+
   it('locates an update aimed at a subject that does not exist', () => {
     writeFileSync(
       join(workspace, 'operations.yaml'),

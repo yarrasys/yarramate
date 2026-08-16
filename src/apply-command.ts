@@ -40,9 +40,12 @@ import type {
 } from './operations.js'
 
 const Ajv2020 = Ajv2020Module.default
-const validateOperations = new Ajv2020({ allErrors: true }).compile(
-  operationsSchema,
-)
+// `discriminator` routes a batch entry to the single branch its `op` names, so
+// one malformed operation reports one fault instead of nine near-misses.
+const validateOperations = new Ajv2020({
+  allErrors: true,
+  discriminator: true,
+}).compile(operationsSchema)
 
 // Scalar fields replace; list fields append; `remove` retracts (ADR 0062).
 // An answer enriches what is there and may explicitly take back what it

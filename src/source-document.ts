@@ -47,8 +47,37 @@ export const describeSchemaViolation = (
       .join(', ')
     return `${base}: ${shown}${allowed.length > 8 ? ', …' : ''}`
   }
+  // The one pattern in these schemas that is a rule rather than a shape:
+  // `must match pattern "\S"` names the regex, not what the author did wrong.
+  if (error.keyword === 'pattern' && error.params.pattern === '\\S') {
+    return 'must not be blank'
+  }
+  // A tag naming no branch reads as a search failure ("must be in oneOf").
+  // Say what was named instead, since that is the value to correct.
+  if (error.keyword === 'discriminator' && error.params.error === 'mapping') {
+    return `unknown ${JSON.stringify(error.params.tag)} value ${JSON.stringify(
+      error.params.tagValue,
+    )}`
+  }
   return base
 }
+
+/**
+ * The errors worth reading, in the order Ajv found them.
+ *
+ * A discriminated union raises two errors when the tag itself is missing or
+ * mistyped: the `required`/`type` fault that names the property, and a
+ * `discriminator` row restating it. The second says nothing the first did not,
+ * so it is dropped. A tag that is present but names no branch keeps its row -
+ * that one is the only report of the fault.
+ */
+export const readableSchemaErrors = <T extends Pick<ErrorObject, 'keyword' | 'params'>>(
+  errors: readonly T[],
+): readonly T[] =>
+  errors.filter(
+    (error) =>
+      error.keyword !== 'discriminator' || error.params.error === 'mapping',
+  )
 
 const editDistance = (left: string, right: string): number => {
   const previous = Array.from(
@@ -144,7 +173,7 @@ export function loadSourceDocument<T>(
   if (!validate(value)) {
     return {
       ok: false,
-      diagnostics: (validate.errors ?? [])
+      diagnostics: readableSchemaErrors(validate.errors ?? [])
         .map((error): Diagnostic => {
           const property =
             error.keyword === 'additionalProperties'
