@@ -287,6 +287,7 @@ const DiagramWorkspace = ({
   onSelect,
   onClearFilter,
   onSaveLayout,
+  onWaitingChange,
 }: {
   readonly state: VisualAppState
   readonly selectedId: string | null
@@ -296,6 +297,7 @@ const DiagramWorkspace = ({
   readonly onSelect: (subject: SelectedDiagramSubject) => void
   readonly onClearFilter: () => void
   readonly onSaveLayout: (payload: VisualLayoutSavePayload) => void
+  readonly onWaitingChange: (waiting: string | null) => void
 }) => {
   // An edge names its endpoints by node id; the reviewer reads titles. The
   // rendering model the renderer itself draws answers that, so nothing here
@@ -345,6 +347,7 @@ const DiagramWorkspace = ({
             activeViewId={state.activeView}
             savedPositions={state.model.layouts[state.activeView]}
             onSaveLayout={onSaveLayout}
+            onWaitingChange={onWaitingChange}
           />
         )}
         {state.layoutNotice === null ? null : (
@@ -738,6 +741,8 @@ export const App = () => {
     createVisualWorkspaceState,
   )
 
+  const [layoutWaiting, setLayoutWaiting] = useState<string | null>(null)
+
   useEffect(() => {
     const resized = () =>
       dispatchWorkspace({
@@ -797,10 +802,11 @@ export const App = () => {
   }, [state.model])
 
   // "No model to draw" is only true before anything has arrived; once a
-  // model exists there is always something on the canvas to show.
+  // model exists, `waiting` reflects the canvas's own busy state (e.g. a
+  // `force` layout's two-pass run) instead of always being null.
   const waiting =
     state.model !== null
-      ? null
+      ? layoutWaiting
       : state.lifecycle === 'connecting'
         ? 'Reading the session'
         : 'No model to draw'
@@ -863,6 +869,7 @@ export const App = () => {
           }
           onClearFilter={clearFilter}
           onSaveLayout={saveLayout}
+          onWaitingChange={setLayoutWaiting}
         />
         {conversationOpen ? (
           <ConversationSeparator

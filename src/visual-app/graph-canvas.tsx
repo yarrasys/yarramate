@@ -1,7 +1,7 @@
 import type React from 'react'
 import { useEffect, useRef } from 'react'
 import cytoscape from 'cytoscape'
-import type { Core, ElementDefinition, NodeCollection } from 'cytoscape'
+import type { Core, CollectionReturnValue, ElementDefinition, Layouts, NodeCollection } from 'cytoscape'
 import elk from 'cytoscape-elk'
 import type {
   CanvasGraph,
@@ -560,6 +560,69 @@ export function applyFilter(
     .style('display', 'element')
 }
 
+// Shown while a `force` run is in flight. Measured at 5.4 s on this repo's
+// 258-node graph, so the canvas must say something rather than sit frozen.
+const LAYOUT_BUSY_NOTICE = 'Laying out...'
+
+// elk's overlap-removal algorithm, run as `force`'s second pass over the same
+// collection the first pass just placed. It reads the positions already on the
+// nodes, so it carries no configuration of its own.
+const SPORE_OVERLAP_CONFIG: ElkLayoutOptions = {
+  name: 'elk',
+  elk: { algorithm: 'sporeOverlap' },
+}
+
+// The `force` backend's first pass (elk `stress`) still leaves nodes
+// overlapping; `sporeOverlap` is a second elk pass that spreads them apart
+// once the first has settled, so it can only start after the first pass's
+// own `layoutstop` fires. Every other backend stays the single synchronous
+// pass it always was - built once by `buildLayoutConfig` and run.
+//
+// `inFlightRef` is shared by every caller (the graph-change effect and
+// `relayoutVisible`) so a newer request - of either kind - supersedes a
+// force chain still running: it becomes the new `inFlightRef.current`, and
+// each layoutstop handler below compares itself against `inFlightRef.current`
+// before acting, so a superseded run can neither start its second pass over
+// a collection a newer request has already moved past nor flip `waiting`
+// back to idle after that newer request claimed it. `.stop()` is still
+// called on the way out for any future backend whose `stop()` really does
+// cancel a running layout.
+function runLayout(
+  eles: Core | CollectionReturnValue,
+  layout: 'layered' | 'radial' | 'force',
+  direction: 'top-down' | 'left-right',
+  inFlightRef: { current: Layouts | null },
+  onWaitingChange: (waiting: string | null) => void,
+): void {
+  // Clear the ref *before* stopping: `stop()` can emit `layoutstop`
+  // synchronously, and the superseded run's handler must already see itself
+  // disowned when it does.
+  const superseded = inFlightRef.current
+  inFlightRef.current = null
+  superseded?.stop()
+
+  const first = eles.layout(buildLayoutConfig(layout, direction))
+  if (layout !== 'force') {
+    first.run()
+    return
+  }
+
+  inFlightRef.current = first
+  onWaitingChange(LAYOUT_BUSY_NOTICE)
+  first.one('layoutstop', () => {
+    if (inFlightRef.current !== first) return
+    const second = eles.layout(SPORE_OVERLAP_CONFIG as unknown as cytoscape.LayoutOptions)
+    inFlightRef.current = second
+    second.one('layoutstop', () => {
+      if (inFlightRef.current !== second) return
+      inFlightRef.current = null
+      onWaitingChange(null)
+    })
+    second.run()
+  })
+  first.run()
+}
+
 // Positions come from the last full-graph layout, which packs every node
 // (including ones a view hides) into one shared coordinate space. Reusing
 // those positions for a disjoint visible subset leaves it scattered across
@@ -567,15 +630,18 @@ export function applyFilter(
 // each view a fresh, compact layout instead. cytoscape-elk's own `fit: true`
 // default re-frames the viewport to the result, so no separate fit call is
 // needed; `layout()` is a no-op on an empty visible collection, so callers
-// never need to guard against "the new view matched nothing".
+// never need to guard against "the new view matched nothing". `inFlightRef`
+// and `onWaitingChange` default to a fresh, unshared guard and a no-op
+// callback so every existing caller that only cares about layered/radial's
+// synchronous behaviour keeps working unchanged.
 export function relayoutVisible(
   cy: Core,
   layout: 'layered' | 'radial' | 'force',
   direction: 'top-down' | 'left-right',
+  inFlightRef: { current: Layouts | null } = { current: null },
+  onWaitingChange: (waiting: string | null) => void = () => {},
 ): void {
-  cy.elements(':visible')
-    .layout(buildLayoutConfig(layout, direction))
-    .run()
+  runLayout(cy.elements(':visible'), layout, direction, inFlightRef, onWaitingChange)
 }
 
 // `dragfree` fires once per drag (unlike `position`, which fires on every
@@ -667,6 +733,7 @@ interface GraphCanvasProps {
   /** Saved layout for the active view, or undefined when it has none yet. */
   readonly savedPositions: VisualLayoutPositions | undefined
   readonly onSaveLayout: (payload: VisualLayoutSavePayload) => void
+  readonly onWaitingChange: (waiting: string | null) => void
 }
 
 /**
@@ -689,6 +756,7 @@ export function GraphCanvas({
   activeViewId,
   savedPositions,
   onSaveLayout,
+  onWaitingChange,
 }: GraphCanvasProps): React.ReactElement {
   const containerRef = useRef<HTMLDivElement>(null)
   const cyRef = useRef<Core | null>(null)
@@ -702,6 +770,13 @@ export function GraphCanvas({
   const onSaveLayoutRef = useRef(onSaveLayout)
   const savedPositionsRef = useRef(savedPositions)
   const dragSaveHandleRef = useRef<DragSaveHandle | null>(null)
+  // The force backend's in-flight layout (see `runLayout`), shared by the
+  // graph-change effect and the view-switch relayout so either can supersede
+  // the other instead of stacking a second stress+sporeOverlap chain on top.
+  const forceLayoutRef = useRef<Layouts | null>(null)
+  // Keep latest onWaitingChange for effects and the layoutstop handlers
+  // `runLayout` sets up, which must always report through the current prop.
+  const onWaitingChangeRef = useRef(onWaitingChange)
 
   // Keep onSelectRef up-to-date so tap handlers always call the latest prop
   useEffect(() => {
@@ -717,6 +792,12 @@ export function GraphCanvas({
   useEffect(() => {
     savedPositionsRef.current = savedPositions
   }, [savedPositions])
+
+  // Keep onWaitingChangeRef up-to-date so runLayout's layoutstop handlers
+  // always report busy state through the latest prop
+  useEffect(() => {
+    onWaitingChangeRef.current = onWaitingChange
+  }, [onWaitingChange])
 
   // Cancel pending drag-save when the active view changes, so a queued save
   // never lands against a different view's sidecar. Also cleared on unmount.
@@ -765,6 +846,9 @@ export function GraphCanvas({
 
     return () => {
       dragSaveHandleRef.current?.dispose()
+      forceLayoutRef.current?.stop()
+      forceLayoutRef.current = null
+      onWaitingChangeRef.current(null)
       cy.destroy()
       cyRef.current = null
     }
@@ -789,8 +873,7 @@ export function GraphCanvas({
       cyRef.current.add(elements)
     }
 
-    const layoutRun = cyRef.current.layout(buildLayoutConfig(layout, direction))
-    layoutRun.run()
+    runLayout(cyRef.current, layout, direction, forceLayoutRef, onWaitingChangeRef.current)
   }, [graph])
 
   // Update selection highlight when selectedId or graph changes
@@ -833,7 +916,7 @@ export function GraphCanvas({
     applyFilter(cyRef.current, matchedIds, quickFilterText)
     if (pendingViewFitRef.current) {
       pendingViewFitRef.current = false
-      relayoutVisible(cyRef.current, layout, direction)
+      relayoutVisible(cyRef.current, layout, direction, forceLayoutRef, onWaitingChangeRef.current)
     }
   }, [matchedIds, quickFilterText, graph, layout, direction])
 

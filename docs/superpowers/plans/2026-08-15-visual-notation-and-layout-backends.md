@@ -59,9 +59,14 @@ Three corrections the design's wording does not survive:
 `force` scaling, 0 overlaps throughout: 25 nodes 73 ms / 50 nodes 123 ms /
 100 nodes 917 ms / 258 nodes **5.4 s**. It is not a per-keystroke layout.
 
-`elk.randomSeed` is honoured deterministically (identical seed -> identical
-position hash), so the existing `presentation.seed` field stays meaningful for
-`layered` and `force`. `concentric` is deterministic by construction.
+`elk.randomSeed` is INT-typed, but `presentation.seed` is a string on the wire
+(`nonEmptyText`), so the browser hashes it (FNV-1a -> int32) before handing it
+to elk. Measured per backend on a seed-sensitive fixture: `layered` is
+deterministic and ignores the seed outright; `stress` (the `force` backend)
+places initial positions randomly and is the one backend the seed visibly
+moves; `concentric` is deterministic by construction and is not elk-based.
+So `presentation.seed` stays saved for every view but only reproduces a
+`force` layout.
 
 Vocabulary, counted from the compiled graph:
 
@@ -157,23 +162,25 @@ No new events, no new response kinds. `view.save` already carries the whole
 returning `cytoscape.LayoutOptions`:
 
 - `layered` - today's elk config unchanged (`ELK_SPACING`, `nodeLayoutOptions`,
-  `elk.direction` from `direction`), plus `elk.randomSeed` when `seed` is given.
+  `elk.direction` from `direction`). No seed: measured to have no effect.
 - `radial` - `{ name: 'concentric', avoidOverlap: true, spacingFactor: 1.4,
   animate: false, nodeDimensionsIncludeLabels: false }`. Cytoscape's built-in
   concentric filters compound parents itself (`eles.nodes().not(':parent')`), so
   parents wrap their children; measured 0 parent overlaps on the repo graph.
 - `force` - returns the **first** pass only:
-  `{ name: 'elk', elk: { algorithm: 'stress', 'org.eclipse.elk.stress.desiredEdgeLength': 320 }, ... }`.
-  The second `sporeOverlap` pass is Task 3's business (it needs the first pass to
-  have finished).
+  `{ name: 'elk', elk: { algorithm: 'stress', 'org.eclipse.elk.stress.desiredEdgeLength': 320 }, ... }`,
+  plus `elk.randomSeed` (the FNV-1a int32 of `seed`) when `seed` is given -
+  this is the only backend the seed affects. The second `sporeOverlap` pass is
+  Task 3's business (it needs the first pass to have finished).
 
 Keep it a pure function with no cytoscape instance argument so
 `test/graph-canvas-layout.test.ts` can assert on it headlessly.
 
 **Testing:** extend `test/graph-canvas-layout.test.ts` - for each backend, run it
 over a fixture graph in headless cytoscape and assert 0 overlapping bounding
-boxes; assert `radial`/`force` configs carry no `elk.direction`; assert `layered`
-with `seed` twice produces identical positions.
+boxes; assert `radial`/`force` configs carry no `elk.direction`; assert a `force`
+config built with two different seeds produces different positions and the same
+seed twice produces identical positions.
 
 ### Task 2: thread `layout` through props, state, and App
 
@@ -209,15 +216,17 @@ Surface a busy state through the existing `waiting` prop path (`App.tsx:268`
 destructure / `:276` type, rendered at `:336`) - `"Laying out..."` - so a 5.4 s
 pass is not a frozen canvas.
 
-The filter effect (`graph-canvas.tsx:752-760`, `applyFilter` then
-`relayoutVisible`) must **not** re-run a `force` layout on quick-filter
-narrowing: when the active backend is `force`, filter changes re-fit the
-viewport to the visible subgraph without re-laying-out.
-`layered`/`concentric` keep today's relayout behaviour.
+The filter effect (`graph-canvas.tsx:831-838`, `applyFilter` then a gated
+`relayoutVisible`) already scopes relayouts to the `pendingViewFitRef`-armed
+case - a view, layout, or direction change - so bare quick-filter/structural-
+filter narrowing never re-runs a layout under any backend, `force` included.
+No change to that gate; `relayoutVisible` itself gains the supersede ref and
+busy callback so a `force` view switch shows `"Laying out..."` too.
 
 **Testing:** `test/graph-canvas-layout.test.ts` - `force` over the fixture ends
-with 0 overlaps; a filter change under `force` leaves positions byte-identical
-while a filter change under `layered` does not.
+with 0 overlapping node pairs; a second layout request superseding one still
+in flight neither stacks a second `sporeOverlap` pass nor lets the superseded
+run's `layoutstop` flip busy state back to idle.
 
 ### Task 4: `buildPayload` carries the real presentation
 

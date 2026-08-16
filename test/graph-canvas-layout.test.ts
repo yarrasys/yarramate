@@ -6,6 +6,7 @@ import {
   buildPositionMap,
   DRAG_SAVE_DEBOUNCE_MS,
   registerDragSave,
+  relayoutVisible,
 } from '../src/visual-app/graph-canvas.js'
 import type {
   VisualLayoutPositions,
@@ -173,6 +174,30 @@ const buildLayoutFixture = () =>
     ],
   })
 
+// A hub with many leaves at the same graph distance from it and from each
+// other: a `stress` pass places them equidistant from the hub on a circle
+// too small for `desiredEdgeLength: 320`'s worth of leaves to fit without
+// their fixed-size boxes overlapping their neighbours on that circle. This
+// is what makes the fixture actually exercise the second `sporeOverlap`
+// pass below, instead of a topology small enough to never overlap.
+const buildHubFixture = () =>
+  cytoscape({
+    styleEnabled: true,
+    style: LAYOUT_FIXTURE_STYLE,
+    layout: { name: 'null' },
+    elements: [
+      { data: { id: 'hub' }, group: 'nodes' as const },
+      ...Array.from({ length: 16 }, (_, i) => ({
+        data: { id: `leaf${i}` },
+        group: 'nodes' as const,
+      })),
+      ...Array.from({ length: 16 }, (_, i) => ({
+        data: { id: `edge${i}`, source: 'hub', target: `leaf${i}` },
+        group: 'edges' as const,
+      })),
+    ],
+  })
+
 // elk-backed layouts (layered, force) resolve asynchronously; the built-in
 // concentric layout (radial) resolves synchronously but still fires
 // `layoutstop`, so one helper covers all three. This file is compiled under
@@ -233,5 +258,103 @@ describe('buildLayoutConfig', () => {
     await runLayout(cyB, buildLayoutConfig('force', 'top-down', 'seed-beta'))
 
     expect(buildPositionMap(cyA.nodes())).not.toEqual(buildPositionMap(cyB.nodes()))
+  })
+})
+
+describe('relayoutVisible force second pass', () => {
+  it('resolves overlaps a single stress pass leaves, and signals busy state through onWaitingChange', async () => {
+    const baseline = buildHubFixture()
+    await runLayout(baseline, buildLayoutConfig('force', 'top-down'))
+    expect(countOverlappingPairs(baseline)).toBeGreaterThan(0)
+
+    const cy = buildHubFixture()
+    const waitingCalls: (string | null)[] = []
+    const idle = Promise.withResolvers<void>()
+    relayoutVisible(cy, 'force', 'top-down', { current: null }, (waiting) => {
+      waitingCalls.push(waiting)
+      if (waiting === null) idle.resolve()
+    })
+    await idle.promise
+
+    expect(waitingCalls[0]).toBe('Laying out...')
+    expect(waitingCalls.at(-1)).toBeNull()
+    expect(countOverlappingPairs(cy)).toBe(0)
+  })
+
+  it('supersedes an in-flight force run instead of stacking a second pass on top', async () => {
+    const cy = buildHubFixture()
+    const inFlightRef: { current: cytoscape.Layouts | null } = { current: null }
+    const waitingCalls: (string | null)[] = []
+    // Every `.run()` emits exactly one `layoutstart`, a stopped run included,
+    // so this counts layout passes actually started. The superseded run's own
+    // `layoutstop` necessarily precedes the winner's (it started first over
+    // the same collection), so by the time busy goes idle a stray fourth pass
+    // would already have been started and counted - no settling wait needed.
+    let started = 0
+    cy.on('layoutstart', () => {
+      started++
+    })
+
+    const idle = Promise.withResolvers<void>()
+    const onWaitingChange = (waiting: string | null) => {
+      waitingCalls.push(waiting)
+      if (waiting === null) idle.resolve()
+    }
+    relayoutVisible(cy, 'force', 'top-down', inFlightRef, onWaitingChange)
+    // Supersede before the first request's own layoutstop can fire.
+    relayoutVisible(cy, 'force', 'top-down', inFlightRef, onWaitingChange)
+    await idle.promise
+
+    // Three passes, and only three: the superseded stress run, the winning
+    // stress run, and the winner's single `sporeOverlap` pass. A fourth means
+    // the superseded run's `layoutstop` started an overlap pass of its own
+    // over a collection the newer request had already claimed.
+    expect(started).toBe(3)
+    // Nor may that superseded chain flip busy back to idle a second time:
+    // exactly one idle transition, however many busy announcements preceded it.
+    expect(waitingCalls.filter((w) => w === null)).toHaveLength(1)
+    expect(countOverlappingPairs(cy)).toBe(0)
+  })
+
+  it('keeps a run superseded during its second pass from reporting idle', async () => {
+    const cy = buildHubFixture()
+    const inFlightRef: { current: cytoscape.Layouts | null } = { current: null }
+    const waitingCalls: (string | null)[] = []
+
+    // Five passes in total, all sequenced by layout events rather than
+    // wall-clock waits: request A's stress run, request B's stress run and
+    // its `sporeOverlap` pass, then request C's two. C is issued as B's
+    // overlap pass starts, so it lands while that pass is in flight - the
+    // only way to reach the second pass's own supersede guard. On the real
+    // 258-node graph that window is seconds wide and the event loop stays
+    // free throughout, so a reviewer's click lands here routinely; on this
+    // fixture the pass settles within its own task, so the request has to be
+    // issued from `layoutstart` to fall inside it at all.
+    const settled = Promise.withResolvers<void>()
+    const onWaitingChange = (waiting: string | null) => {
+      waitingCalls.push(waiting)
+    }
+    let started = 0
+    cy.on('layoutstart', () => {
+      started++
+      if (started === 3) relayoutVisible(cy, 'force', 'top-down', inFlightRef, onWaitingChange)
+    })
+    let stopped = 0
+    cy.on('layoutstop', () => {
+      stopped++
+      if (stopped === 5) settled.resolve()
+    })
+
+    relayoutVisible(cy, 'force', 'top-down', inFlightRef, onWaitingChange)
+    relayoutVisible(cy, 'force', 'top-down', inFlightRef, onWaitingChange)
+    await settled.promise
+
+    expect(started).toBe(5)
+    // Only the last request may report idle. An overlap pass whose collection
+    // a newer request already claimed must stay silent, or the canvas drops
+    // its "Laying out..." notice while a layout is still moving nodes.
+    expect(waitingCalls.filter((w) => w === null)).toHaveLength(1)
+    expect(waitingCalls.at(-1)).toBeNull()
+    expect(countOverlappingPairs(cy)).toBe(0)
   })
 })
