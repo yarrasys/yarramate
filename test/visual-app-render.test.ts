@@ -2,6 +2,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import type { VisualAppState } from '../src/visual-app/state.js'
+import type * as WorkspaceState from '../src/visual-app/workspace-state.js'
 
 const session = vi.hoisted(() => {
   const baseState: VisualAppState = {
@@ -59,6 +60,28 @@ vi.mock('../src/visual-app/session-client.js', () => ({
     end: vi.fn(),
   }),
 }))
+
+// The command strip's layout control lives on local `useReducer` workspace
+// state, not `VisualAppState` - so a render test that wants to see the
+// direction button disabled under a non-`layered` backend has to override
+// the reducer's initial value the same way `session` overrides session state
+// above, rather than driving it through props the App component doesn't have.
+const workspace = vi.hoisted(() => ({
+  layoutOverride: undefined as 'layered' | 'radial' | 'force' | undefined,
+}))
+
+vi.mock('../src/visual-app/workspace-state.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof WorkspaceState>()
+  return {
+    ...actual,
+    createVisualWorkspaceState: (viewportWidth: number) => ({
+      ...actual.createVisualWorkspaceState(viewportWidth),
+      ...(workspace.layoutOverride === undefined
+        ? {}
+        : { layout: workspace.layoutOverride }),
+    }),
+  }
+})
 
 import { App } from '../src/visual-app/App.js'
 
@@ -228,4 +251,27 @@ describe('visual conversation rendering', () => {
     expect(markup).toContain('class="filter-panel"')
     expect(markup).toContain('>Filter</button>')
   })
+})
+
+describe('layout control', () => {
+  afterAll(() => {
+    workspace.layoutOverride = undefined
+  })
+
+  it('enables the direction button under the default layered backend', () => {
+    workspace.layoutOverride = undefined
+    const markup = renderSession()
+
+    expect(markup).toContain('<button type="button">Top-Down</button>')
+  })
+
+  it.each(['radial', 'force'] as const)(
+    'disables the direction button under %s',
+    (layout) => {
+      workspace.layoutOverride = layout
+      const markup = renderSession()
+
+      expect(markup).toContain('<button type="button" disabled="">Top-Down</button>')
+    },
+  )
 })

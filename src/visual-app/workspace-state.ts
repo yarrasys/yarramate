@@ -104,6 +104,7 @@ export interface VisualWorkspaceState {
   readonly descriptionExpanded: boolean
   readonly detailsOpen: boolean
   readonly direction: 'top-down' | 'left-right'
+  readonly layout: 'layered' | 'radial' | 'force'
 }
 
 export type VisualWorkspaceAction =
@@ -116,12 +117,37 @@ export type VisualWorkspaceAction =
   | { readonly type: 'description.toggled' }
   | { readonly type: 'details.toggled' }
   | { readonly type: 'direction.set'; readonly direction: 'top-down' | 'left-right' }
+  | { readonly type: 'layout.set'; readonly layout: 'layered' | 'radial' | 'force' }
   | {
       readonly type: 'model.replaced'
       /** The graph that replaced it, so a subject that survived the commit can
        * be re-read from it instead of being dropped along with the old model. */
       readonly graph: CanvasGraph | null
     }
+
+// A view switch adopts the view's own presentation: a field the view
+// declares replaces whatever the workspace currently shows; a field it
+// leaves unset keeps the workspace's current value untouched. Returns the
+// `direction.set`/`layout.set` actions to dispatch, in declaration order,
+// so App.tsx has nothing left to decide - it only has to dispatch what
+// comes back.
+export const presentationActionsFor = (
+  presentation:
+    | {
+        readonly layout?: 'layered' | 'radial' | 'force'
+        readonly direction?: 'top-down' | 'left-right'
+      }
+    | undefined,
+): readonly VisualWorkspaceAction[] => {
+  const actions: VisualWorkspaceAction[] = []
+  if (presentation?.layout !== undefined) {
+    actions.push({ type: 'layout.set', layout: presentation.layout })
+  }
+  if (presentation?.direction !== undefined) {
+    actions.push({ type: 'direction.set', direction: presentation.direction })
+  }
+  return actions
+}
 
 // `min(45vw, 640px)`, never below the 320px floor the panel is usable at.
 export const conversationWidthBounds = (viewportWidth: number) => ({
@@ -165,6 +191,7 @@ export const createVisualWorkspaceState = (
   descriptionExpanded: false,
   detailsOpen: false,
   direction: 'top-down',
+  layout: 'layered',
 })
 
 export const visualWorkspaceReducer = (
@@ -237,6 +264,8 @@ export const visualWorkspaceReducer = (
       return { ...state, detailsOpen: !state.detailsOpen }
     case 'direction.set':
       return { ...state, direction: action.direction }
+    case 'layout.set':
+      return { ...state, layout: action.layout }
     case 'model.replaced': {
       const held = state.selectedSubject
       if (held === null) return state

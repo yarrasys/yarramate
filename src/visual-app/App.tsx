@@ -36,6 +36,7 @@ import {
   formatContextualQuestion,
   normalizeSelectedElement,
   normalizeSelectedRelationship,
+  presentationActionsFor,
   visualWorkspaceReducer,
   type SelectedDiagramSubject,
 } from './workspace-state.js'
@@ -93,11 +94,13 @@ const CommandStrip = ({
   detailsOpen,
   conversationOpen,
   unread,
+  layout,
   direction,
   views,
   onToggleDetails,
   onToggleConversation,
   onToggleDirection,
+  onSelectLayout,
   onSelectView,
   onClearFilter,
   onApplyFilter,
@@ -112,11 +115,13 @@ const CommandStrip = ({
   readonly detailsOpen: boolean
   readonly conversationOpen: boolean
   readonly unread: number
+  readonly layout: 'layered' | 'radial' | 'force'
   readonly direction: 'top-down' | 'left-right'
   readonly views: readonly VisualViewSummary[]
   readonly onToggleDetails: () => void
   readonly onToggleConversation: () => void
   readonly onToggleDirection: () => void
+  readonly onSelectLayout: (layout: 'layered' | 'radial' | 'force') => void
   readonly onSelectView: (view: VisualViewSummary) => void
   readonly onClearFilter: () => void
   readonly onApplyFilter: (query: ProjectionQuery) => void
@@ -162,7 +167,18 @@ const CommandStrip = ({
         onSave={onSaveView}
         onDismissNotice={onDismissSavedNotice}
       />
-      <button type="button" onClick={onToggleDirection}>
+      <select
+        aria-label="Layout"
+        value={layout}
+        onChange={(e) =>
+          onSelectLayout(e.currentTarget.value as 'layered' | 'radial' | 'force')
+        }
+      >
+        <option value="layered">Layered</option>
+        <option value="radial">Radial</option>
+        <option value="force">Force</option>
+      </select>
+      <button type="button" onClick={onToggleDirection} disabled={layout !== 'layered'}>
         {direction === 'top-down' ? 'Top-Down' : 'Left-Right'}
       </button>
       <button
@@ -266,6 +282,7 @@ const DiagramWorkspace = ({
   state,
   selectedId,
   waiting,
+  layout,
   direction,
   onSelect,
   onClearFilter,
@@ -274,6 +291,7 @@ const DiagramWorkspace = ({
   readonly state: VisualAppState
   readonly selectedId: string | null
   readonly waiting: string | null
+  readonly layout: 'layered' | 'radial' | 'force'
   readonly direction: 'top-down' | 'left-right'
   readonly onSelect: (subject: SelectedDiagramSubject) => void
   readonly onClearFilter: () => void
@@ -322,6 +340,7 @@ const DiagramWorkspace = ({
             }}
             matchedIds={state.activeFilter?.matchedIds ?? null}
             quickFilterText={state.quickFilterText}
+            layout={layout}
             direction={direction}
             activeViewId={state.activeView}
             savedPositions={state.model.layouts[state.activeView]}
@@ -799,6 +818,7 @@ export const App = () => {
         detailsOpen={workspace.detailsOpen}
         conversationOpen={conversationOpen}
         unread={workspace.conversation.unread}
+        layout={workspace.layout}
         direction={workspace.direction}
         views={state.views}
         onToggleDetails={() => dispatchWorkspace({ type: 'details.toggled' })}
@@ -811,11 +831,12 @@ export const App = () => {
             direction: workspace.direction === 'top-down' ? 'left-right' : 'top-down',
           })
         }
+        onSelectLayout={(layout) => dispatchWorkspace({ type: 'layout.set', layout })}
         onSelectView={(view) => {
           navigate(view.id)
           filter(view.query)
-          if (view.presentation?.layout === 'layered' && view.presentation.direction) {
-            dispatchWorkspace({ type: 'direction.set', direction: view.presentation.direction })
+          for (const action of presentationActionsFor(view.presentation)) {
+            dispatchWorkspace(action)
           }
         }}
         onClearFilter={clearFilter}
@@ -835,6 +856,7 @@ export const App = () => {
           state={state}
           selectedId={workspace.selectedSubject?.id ?? null}
           waiting={waiting}
+          layout={workspace.layout}
           direction={workspace.direction}
           onSelect={(subject) =>
             dispatchWorkspace({ type: 'subject.selected', subject })

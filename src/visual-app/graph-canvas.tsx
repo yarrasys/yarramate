@@ -568,9 +568,13 @@ export function applyFilter(
 // default re-frames the viewport to the result, so no separate fit call is
 // needed; `layout()` is a no-op on an empty visible collection, so callers
 // never need to guard against "the new view matched nothing".
-export function relayoutVisible(cy: Core, direction: 'top-down' | 'left-right'): void {
+export function relayoutVisible(
+  cy: Core,
+  layout: 'layered' | 'radial' | 'force',
+  direction: 'top-down' | 'left-right',
+): void {
   cy.elements(':visible')
-    .layout(buildLayoutConfig('layered', direction))
+    .layout(buildLayoutConfig(layout, direction))
     .run()
 }
 
@@ -657,6 +661,7 @@ interface GraphCanvasProps {
   readonly onSelect: (id: string, type: 'node' | 'edge') => void
   readonly matchedIds: readonly string[] | null
   readonly quickFilterText: string
+  readonly layout: 'layered' | 'radial' | 'force'
   readonly direction: 'top-down' | 'left-right'
   readonly activeViewId: string
   /** Saved layout for the active view, or undefined when it has none yet. */
@@ -679,6 +684,7 @@ export function GraphCanvas({
   onSelect,
   matchedIds,
   quickFilterText,
+  layout,
   direction,
   activeViewId,
   savedPositions,
@@ -690,6 +696,7 @@ export function GraphCanvas({
   const isInitialSyncRef = useRef(true)
   const activeViewIdRef = useRef(activeViewId)
   const directionRef = useRef(direction)
+  const layoutRef = useRef(layout)
   const pendingViewFitRef = useRef(false)
   // Keep latest onSaveLayout and savedPositions for the drag-save handler
   const onSaveLayoutRef = useRef(onSaveLayout)
@@ -764,12 +771,13 @@ export function GraphCanvas({
   }, [])
 
   // Update elements whenever the graph itself changes, laying out with the
-  // current direction. Deliberately NOT keyed on `direction` - a full
-  // remove/re-add + unscoped layout over every element (not just what's
-  // currently visible) on every direction toggle would blow away the
+  // current layout and direction. Deliberately NOT keyed on `layout`/
+  // `direction` - a full remove/re-add + unscoped layout over every element
+  // (not just what's currently visible) on every toggle would blow away the
   // filtered/view-scoped canvas and reintroduce the sprawl a view switch
-  // once had. Direction-only changes are handled by the pending-fit effect
-  // below, which reruns `relayoutVisible` scoped to what's actually shown.
+  // once had. Layout/direction-only changes are handled by the pending-fit
+  // effect below, which reruns `relayoutVisible` scoped to what's actually
+  // shown.
   useEffect(() => {
     if (!cyRef.current) return
 
@@ -781,8 +789,8 @@ export function GraphCanvas({
       cyRef.current.add(elements)
     }
 
-    const layout = cyRef.current.layout(buildLayoutConfig('layered', direction))
-    layout.run()
+    const layoutRun = cyRef.current.layout(buildLayoutConfig(layout, direction))
+    layoutRun.run()
   }, [graph])
 
   // Update selection highlight when selectedId or graph changes
@@ -799,19 +807,21 @@ export function GraphCanvas({
     }
   }, [selectedId, graph])
 
-  // Arms a pending fit whenever the active view or layout direction
-  // changes. Declared before the filter-apply effect below - same-phase
-  // effects commit in source order, so a view switch whose filter result
-  // lands in the very same render (e.g. clearing back to "All") is still
-  // armed in time for that commit.
+  // Arms a pending fit whenever the active view, layout backend, or layout
+  // direction changes. Declared before the filter-apply effect below -
+  // same-phase effects commit in source order, so a view switch whose
+  // filter result lands in the very same render (e.g. clearing back to
+  // "All") is still armed in time for that commit.
   useEffect(() => {
     const viewChanged = activeViewId !== activeViewIdRef.current
+    const layoutChanged = layout !== layoutRef.current
     const directionChanged = direction !== directionRef.current
-    if (!viewChanged && !directionChanged) return
+    if (!viewChanged && !layoutChanged && !directionChanged) return
     activeViewIdRef.current = activeViewId
+    layoutRef.current = layout
     directionRef.current = direction
     pendingViewFitRef.current = true
-  }, [activeViewId, direction])
+  }, [activeViewId, layout, direction])
 
   // Apply structural filter (matchedIds) and quick-filter narrowing, then,
   // only once a pending view-switch relayout is armed and its filter result
@@ -823,9 +833,9 @@ export function GraphCanvas({
     applyFilter(cyRef.current, matchedIds, quickFilterText)
     if (pendingViewFitRef.current) {
       pendingViewFitRef.current = false
-      relayoutVisible(cyRef.current, direction)
+      relayoutVisible(cyRef.current, layout, direction)
     }
-  }, [matchedIds, quickFilterText, graph, direction])
+  }, [matchedIds, quickFilterText, graph, layout, direction])
 
   return <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
 }
