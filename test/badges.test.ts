@@ -90,8 +90,8 @@ describe('buildStylesheet badge layers', () => {
         (block): block is cytoscape.StylesheetStyle =>
           'style' in block && block.selector === `node[layer = "${layer}"]`,
       )
-      expect(rule, `missing selector for layer "${layer}"`).toBeDefined()
-      expect((rule!.style as cytoscape.Css.Node)['background-color']).toBe(
+      if (rule === undefined) throw new Error(`missing selector for layer "${layer}"`)
+      expect((rule.style as cytoscape.Css.Node)['background-color']).toBe(
         LAYER_COLORS[layer as keyof typeof LAYER_COLORS].fill,
       )
     }

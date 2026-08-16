@@ -1984,7 +1984,7 @@ function compileWorkspaceResolved(
       conceptKindLayers: immutableMap(
         [...conceptKindByIdentity]
           .sort(([left], [right]) => left.localeCompare(right))
-        .map(([identity, kind]) => [identity, kind.layer] as const),
+          .map(([identity, kind]) => [identity, kind.layer] as const),
       ),
       conceptKindAspects: immutableMap(
         [...conceptKindByIdentity]
