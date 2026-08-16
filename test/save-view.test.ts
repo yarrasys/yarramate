@@ -11,6 +11,7 @@ describe('buildPayload', () => {
       title: 'My View',
       description: 'desc',
       query,
+      layout: 'layered',
       direction: 'top-down',
     })
 
@@ -29,6 +30,7 @@ describe('buildPayload', () => {
       title: 'New View',
       description: 'desc',
       query,
+      layout: 'layered',
       direction: 'left-right',
     })
 
@@ -47,12 +49,14 @@ describe('buildPayload', () => {
       title: 'Exact Title',
       description: 'Exact description',
       query,
+      layout: 'layered',
       direction: 'top-down',
     })
 
     expect(payload.title).toBe('Exact Title')
     expect(payload.description).toBe('Exact description')
     expect(payload.presentation?.direction).toBe('top-down')
+    expect(payload.presentation?.layout).toBe('layered')
   })
 
   it('substitutes an empty query object when no filter is active', () => {
@@ -61,9 +65,29 @@ describe('buildPayload', () => {
       title: 'Unfiltered',
       description: 'desc',
       query: null,
+      layout: 'layered',
       direction: 'top-down',
     })
 
     expect(payload.query).toEqual({})
+  })
+
+  it('carries layout through to presentation when radial is selected', () => {
+    const payload = buildPayload({
+      id: 'view-id',
+      title: 'Radial View',
+      description: 'A radial layout test',
+      query,
+      layout: 'radial',
+      direction: 'top-down',
+    })
+
+    expect(payload.presentation?.layout).toBe('radial')
+    expect(payload.id).toBe('view-id')
+    expect(payload.title).toBe('Radial View')
+    expect(payload.description).toBe('A radial layout test')
+    expect(payload.query).toEqual(query)
+    expect(payload.presentation?.direction).toBe('top-down')
+    expect(payload.presentation?.seed).toBe('default')
   })
 })

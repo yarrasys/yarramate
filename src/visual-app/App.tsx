@@ -161,6 +161,7 @@ const CommandStrip = ({
         views={views}
         activeViewId={state.activeView}
         query={state.activeFilter?.query ?? null}
+        layout={layout}
         direction={direction}
         pendingSave={state.pendingViewSave !== null}
         notice={state.viewSaveNotice}

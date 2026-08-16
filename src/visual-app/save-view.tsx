@@ -10,6 +10,7 @@ export interface SaveViewControlProps {
   readonly views: readonly VisualViewSummary[]
   readonly activeViewId: string
   readonly query: ProjectionQuery | null
+  readonly layout: 'layered' | 'radial' | 'force'
   readonly direction: 'top-down' | 'left-right'
   readonly pendingSave: boolean
   readonly notice: boolean
@@ -27,6 +28,7 @@ export interface BuildPayloadParams {
   readonly title: string
   readonly description: string
   readonly query: ProjectionQuery | null
+  readonly layout: 'layered' | 'radial' | 'force'
   readonly direction: 'top-down' | 'left-right'
 }
 
@@ -39,13 +41,14 @@ export const buildPayload = ({
   title,
   description,
   query,
+  layout,
   direction,
 }: BuildPayloadParams): VisualViewSavePayload => ({
   ...(id === undefined ? {} : { id }),
   title,
   description,
   query: query ?? {},
-  presentation: { layout: 'layered', direction, seed: SAVE_SEED },
+  presentation: { layout, direction, seed: SAVE_SEED },
 })
 
 /**
@@ -59,6 +62,7 @@ export function SaveViewControl({
   views,
   activeViewId,
   query,
+  layout,
   direction,
   pendingSave,
   notice,
@@ -85,7 +89,7 @@ export function SaveViewControl({
   }
 
   const submitPayload = (id: string | undefined) =>
-    buildPayload({ id, title, description, query, direction })
+    buildPayload({ id, title, description, query, layout, direction })
 
   const submit = (id: string | undefined) => {
     if (title.trim() === '') return
