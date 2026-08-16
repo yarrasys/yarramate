@@ -177,11 +177,19 @@ function seedToInt32(seed: string): number {
 //
 // `elk.direction` is ignored by every elk algorithm except `layered`
 // (verified: identical container boxes for DOWN and RIGHT on `stress`), so
-// only `layered` reads `direction`.
+// only `layered` reads `direction`. Under ArchiMate notation, `layered`
+// pins `elk.direction: 'DOWN'` regardless of `direction` - ArchiMate's
+// layer bands (motivation/strategy/business/application/technology) only
+// read top-down, so a left-right layered run under ArchiMate would draw
+// bands that don't correspond to anything. The pin is applied here, at
+// config-build time, and nowhere else: stored `direction` in workspace
+// state is never overwritten, so switching back to native notation
+// restores whatever direction the reviewer had declared.
 export function buildLayoutConfig(
   layout: 'layered' | 'radial' | 'force',
   direction: 'top-down' | 'left-right',
-  seed?: string
+  seed?: string,
+  notation: 'native' | 'archimate' = 'native',
 ): cytoscape.LayoutOptions {
   if (layout === 'radial') {
     return {
@@ -210,7 +218,8 @@ export function buildLayoutConfig(
   // 10-node asymmetric crossing-prone fixture)
   const elk: ElkLayoutOptions['elk'] = {
     algorithm: 'layered',
-    'elk.direction': direction === 'top-down' ? 'DOWN' : 'LEFT',
+    'elk.direction':
+      notation === 'archimate' ? 'DOWN' : direction === 'top-down' ? 'DOWN' : 'RIGHT',
     ...ELK_SPACING,
   }
   const config: ElkLayoutOptions = {
@@ -864,6 +873,7 @@ function runLayout(
   direction: 'top-down' | 'left-right',
   inFlightRef: { current: Layouts | null },
   onWaitingChange: (waiting: string | null) => void,
+  notation: 'native' | 'archimate' = 'native',
 ): void {
   // Clear the ref *before* stopping: `stop()` can emit `layoutstop`
   // synchronously, and the superseded run's handler must already see itself
@@ -872,7 +882,7 @@ function runLayout(
   inFlightRef.current = null
   superseded?.stop()
 
-  const first = eles.layout(buildLayoutConfig(layout, direction))
+  const first = eles.layout(buildLayoutConfig(layout, direction, undefined, notation))
   if (layout !== 'force') {
     // A superseded force chain's handlers all bail on the guards below, so
     // nobody else will retire its busy notice. This run owns the canvas now,
@@ -909,15 +919,18 @@ function runLayout(
 // never need to guard against "the new view matched nothing". `inFlightRef`
 // and `onWaitingChange` default to a fresh, unshared guard and a no-op
 // callback so every existing caller that only cares about layered/radial's
-// synchronous behaviour keeps working unchanged.
+// synchronous behaviour keeps working unchanged. `notation` likewise
+// defaults to `'native'` so a caller that has never heard of ArchiMate
+// notation gets the direction mapping it always did.
 export function relayoutVisible(
   cy: Core,
   layout: 'layered' | 'radial' | 'force',
   direction: 'top-down' | 'left-right',
   inFlightRef: { current: Layouts | null } = { current: null },
   onWaitingChange: (waiting: string | null) => void = () => {},
+  notation: 'native' | 'archimate' = 'native',
 ): void {
-  runLayout(cy.elements(':visible'), layout, direction, inFlightRef, onWaitingChange)
+  runLayout(cy.elements(':visible'), layout, direction, inFlightRef, onWaitingChange, notation)
 }
 
 // `dragfree` fires once per drag (unlike `position`, which fires on every
@@ -1178,8 +1191,13 @@ export function GraphCanvas({
     // Read through the ref inside the wrapper, not once at the call site:
     // an async force chain keeps calling this long after the effect ran, and
     // it must always reach the current prop (same reason as `registerDragSave`).
-    runLayout(cyRef.current, layout, direction, forceLayoutRef, (waiting) =>
-      onWaitingChangeRef.current(waiting),
+    runLayout(
+      cyRef.current,
+      layout,
+      direction,
+      forceLayoutRef,
+      (waiting) => onWaitingChangeRef.current(waiting),
+      notation,
     )
   }, [graph])
 
@@ -1223,8 +1241,13 @@ export function GraphCanvas({
     applyFilter(cyRef.current, matchedIds, quickFilterText)
     if (pendingViewFitRef.current) {
       pendingViewFitRef.current = false
-      relayoutVisible(cyRef.current, layout, direction, forceLayoutRef, (waiting) =>
-        onWaitingChangeRef.current(waiting),
+      relayoutVisible(
+        cyRef.current,
+        layout,
+        direction,
+        forceLayoutRef,
+        (waiting) => onWaitingChangeRef.current(waiting),
+        notation,
       )
     }
   }, [matchedIds, quickFilterText, graph, layout, direction])

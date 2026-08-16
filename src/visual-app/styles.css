@@ -189,6 +189,20 @@ body {
   display: none;
 }
 
+/* Reason the direction control is disabled under ArchiMate notation -
+   same empty-string/:empty idiom as .end-transition-status above. */
+.direction-notice {
+  max-width: 16rem;
+  font-family: var(--utility);
+  font-size: 11px;
+  line-height: 1.25;
+  color: var(--quiet);
+}
+
+.direction-notice:empty {
+  display: none;
+}
+
 .authority {
   margin: 0;
   font-family: var(--utility);

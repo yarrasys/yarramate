@@ -241,6 +241,36 @@ describe('buildLayoutConfig', () => {
     expect(Object.keys(force.elk)).not.toContain('elk.direction')
   })
 
+  it('archimate notation pins layered direction to DOWN regardless of the stored direction', () => {
+    const archimate = buildLayoutConfig('layered', 'left-right', undefined, 'archimate') as unknown as {
+      elk: Record<string, unknown>
+    }
+    expect(archimate.elk['elk.direction']).toBe('DOWN')
+
+    const native = buildLayoutConfig('layered', 'left-right', undefined, 'native') as unknown as {
+      elk: Record<string, unknown>
+    }
+    expect(native.elk['elk.direction']).toBe('RIGHT')
+
+    const nativeTopDown = buildLayoutConfig('layered', 'top-down', undefined, 'native') as unknown as {
+      elk: Record<string, unknown>
+    }
+    expect(nativeTopDown.elk['elk.direction']).toBe('DOWN')
+  })
+
+  it('archimate notation does not add elk.direction to radial or force', () => {
+    const radial = buildLayoutConfig('radial', 'left-right', undefined, 'archimate') as unknown as Record<
+      string,
+      unknown
+    >
+    expect(radial).not.toHaveProperty('elk')
+
+    const force = buildLayoutConfig('force', 'left-right', undefined, 'archimate') as unknown as {
+      elk: Record<string, unknown>
+    }
+    expect(Object.keys(force.elk)).not.toContain('elk.direction')
+  })
+
   it('force backend with the same seed produces identical positions across two runs', async () => {
     const cyA = buildLayoutFixture()
     const cyB = buildLayoutFixture()

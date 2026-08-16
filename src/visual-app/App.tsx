@@ -212,7 +212,16 @@ const CommandStrip = ({
         <option value="native">Native</option>
         <option value="archimate">ArchiMate</option>
       </select>
-      <button type="button" onClick={onToggleDirection} disabled={layout !== 'layered'}>
+      <span className="direction-notice" role="status">
+        {notation === 'archimate'
+          ? 'ArchiMate notation fixes direction to Top-Down.'
+          : ''}
+      </span>
+      <button
+        type="button"
+        onClick={onToggleDirection}
+        disabled={layout !== 'layered' || notation === 'archimate'}
+      >
         {direction === 'top-down' ? 'Top-Down' : 'Left-Right'}
       </button>
       <button
@@ -918,7 +927,7 @@ export const App = () => {
           waiting={waiting}
           layout={workspace.layout}
           direction={workspace.direction}
-        notation={workspace.notation}
+          notation={workspace.notation}
           showLifecycle={workspace.showLifecycle}
           showEvidence={workspace.showEvidence}
           showOwnership={workspace.showOwnership}
