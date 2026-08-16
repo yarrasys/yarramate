@@ -4,6 +4,8 @@ import {
   EVIDENCE_BADGE_URI,
   LIFECYCLE_BADGE_URI,
   isLifecycleStatus,
+  ownerBadgeUri,
+  ownerColorOf,
   ownerInitialsOf,
   type LifecycleStatus,
 } from '../src/visual-app/badges.js'
@@ -58,8 +60,12 @@ describe('ownerInitialsOf', () => {
 })
 
 describe('buildStylesheet badge layers', () => {
-  const nodeRule = (showLifecycle: boolean, showEvidence: boolean): cytoscape.StylesheetStyle =>
-    buildStylesheet(showLifecycle, showEvidence).find(
+  const nodeRule = (
+    showLifecycle: boolean,
+    showEvidence: boolean,
+    showOwnership: boolean,
+  ): cytoscape.StylesheetStyle =>
+    buildStylesheet(showLifecycle, showEvidence, showOwnership).find(
       (block): block is cytoscape.StylesheetStyle =>
         'style' in block && block.selector === 'node' && 'background-image' in block.style,
     )!
@@ -67,34 +73,77 @@ describe('buildStylesheet badge layers', () => {
   const layersFor = (
     showLifecycle: boolean,
     showEvidence: boolean,
+    showOwnership: boolean,
     data: Record<string, unknown>,
   ): string[] => {
-    const rule = nodeRule(showLifecycle, showEvidence)
+    const rule = nodeRule(showLifecycle, showEvidence, showOwnership)
     const style = rule.style as cytoscape.Css.Node
     const mapper = style['background-image'] as (ele: { data: (key: string) => unknown }) => string[]
     return mapper({ data: (key) => data[key] })
   }
 
+
   it('draws no badges when both toggles are off', () => {
-    expect(layersFor(false, false, { status: 'current', hasAttestations: true })).toEqual([])
+    expect(layersFor(false, false, false, { status: 'current', hasAttestations: true })).toEqual([])
   })
 
   it('draws the lifecycle badge only when showLifecycle is on and status is set', () => {
-    expect(layersFor(true, false, { status: 'current', hasAttestations: false })).toEqual([
+    expect(layersFor(true, false, false, { status: 'current', hasAttestations: false })).toEqual([
       LIFECYCLE_BADGE_URI.current,
     ])
-    expect(layersFor(true, false, { status: null, hasAttestations: false })).toEqual([])
+    expect(layersFor(true, false, false, { status: null, hasAttestations: false })).toEqual([])
   })
 
   it('a node with no attestations gets no evidence badge, even with showEvidence on', () => {
-    expect(layersFor(false, true, { status: null, hasAttestations: false })).toEqual([])
-    expect(layersFor(false, true, { status: null, hasAttestations: true })).toEqual([EVIDENCE_BADGE_URI])
+    expect(layersFor(false, true, false, { status: null, hasAttestations: false })).toEqual([])
+    expect(layersFor(false, true, false, { status: null, hasAttestations: true })).toEqual([EVIDENCE_BADGE_URI])
   })
 
   it('draws both badges, lifecycle first, when both apply', () => {
-    expect(layersFor(true, true, { status: 'retired', hasAttestations: true })).toEqual([
+    expect(layersFor(true, true, false, { status: 'retired', hasAttestations: true })).toEqual([
       LIFECYCLE_BADGE_URI.retired,
       EVIDENCE_BADGE_URI,
     ])
+  })
+
+})
+
+describe('ownerColorOf hash function', () => {
+  it('same ref always maps to the same colour', () => {
+    const ref = 'test-doc#test-owner'
+    const color1 = ownerColorOf(ref)
+    const color2 = ownerColorOf(ref)
+    expect(color1).toBe(color2)
+  })
+
+  it('null in, null out', () => {
+    expect(ownerColorOf(null)).toBeNull()
+  })
+
+  it('fixed set of synthetic refs spreads across all four palette slots', () => {
+    // FNV-1a hash should distribute these four refs across the four-slot palette.
+    const refs = ['owner-a', 'owner-b', 'owner-c', 'owner-d']
+    const colors = refs.map((ref) => ownerColorOf(ref))
+    // Check that we got all four distinct colors (implies all palette slots used)
+    const byColor: Record<string, number> = {}
+    for (const color of colors) {
+      byColor[color!] = (byColor[color!] ?? 0) + 1
+    }
+    expect(Object.keys(byColor).length).toBe(4)
+  })
+  it('no ref ever maps outside the palette', () => {
+    const palette = ['#416f65', '#8c4d18', '#2457a6', '#182228']
+    const testRefs = [
+      'simple-owner',
+      'yarramate-product#yarramate-maintainers',
+      'repo#team-member-1',
+      'repo#team-member-2',
+      'repo#another-team',
+    ]
+    for (const ref of testRefs) {
+      const color = ownerColorOf(ref)
+      expect(color).not.toBeNull()
+      expect(palette).toContain(color)
+    }
   })
 })

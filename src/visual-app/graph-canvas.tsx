@@ -16,6 +16,7 @@ import {
   EVIDENCE_BADGE_URI,
   LIFECYCLE_BADGE_URI,
   isLifecycleStatus,
+  ownerBadgeUri,
   ownerInitialsOf,
 } from './badges.js'
 
@@ -232,16 +233,19 @@ interface BadgeLayer {
 }
 
 const BADGE_SIZE = 12
-
-// Lifecycle top-right, evidence bottom-left - opposite corners so a node
-// with both never overlaps them. Each is gated by its own presentation flag
-// *and* the data it needs, so `showEvidence: true` on a concept with no
-// attestations draws nothing - the same binary presence/absence rule
-// `applyFilter` uses for hide/show, never a dimmed "maybe" state.
+// Lifecycle top-right, evidence bottom-left, ownership bottom-right - each
+// corner gets at most one badge, so none ever overlap on a single node. Each
+// is gated by its own presentation flag *and* the data it needs, so
+// `showEvidence: true` on a concept with no attestations draws nothing - the
+// same binary presence/absence rule `applyFilter` uses for hide/show, never a
+// dimmed "maybe" state. Ownership requires both owner (non-null) and derived
+// ownerInitials (non-null), since ownerInitialsOf filters out malformed local
+// ids that leave no words (e.g., "###" or a bare document prefix).
 function badgeLayersFor(
   ele: NodeSingular,
   showLifecycle: boolean,
   showEvidence: boolean,
+  showOwnership: boolean,
 ): BadgeLayer[] {
   const layers: BadgeLayer[] = []
   const status: unknown = ele.data('status')
@@ -251,20 +255,30 @@ function badgeLayersFor(
   if (showEvidence && ele.data('hasAttestations') === true) {
     layers.push({ image: EVIDENCE_BADGE_URI, positionX: '0%', positionY: '100%' })
   }
+  const owner = ele.data('owner')
+  const ownerInitials = ele.data('ownerInitials')
+  if (showOwnership && owner !== null && ownerInitials !== null) {
+    layers.push({
+      image: ownerBadgeUri(owner, ownerInitials),
+      positionX: '100%',
+      positionY: '100%',
+    })
+  }
   return layers
 }
 
 // Build the cytoscape stylesheet with base node style, layer-specific overrides,
 // edge style, and selected-state highlight class.
 // Stylesheet entries match StylesheetStyle shape (selector + style properties)
-// `showLifecycle`/`showEvidence` are parameters, not module state, so the
-// mount effect that builds a fresh cytoscape instance and a future toggle
-// effect (Task 7 wires the checkboxes to `GraphCanvasProps`; Task 11 passes
-// notation mode the same way) both call this with whatever is current
-// instead of racing a shared mutable stylesheet.
+// `showLifecycle`/`showEvidence`/`showOwnership` are parameters, not module
+// state, so the mount effect that builds a fresh cytoscape instance and a
+// future toggle effect (Task 7 wires the checkboxes to `GraphCanvasProps`;
+// Task 11 passes notation mode the same way) both call this with whatever is
+// current instead of racing a shared mutable stylesheet.
 export function buildStylesheet(
   showLifecycle: boolean,
   showEvidence: boolean,
+  showOwnership: boolean,
 ): cytoscape.StylesheetJsonBlock[] {
   return [
     {
@@ -295,26 +309,33 @@ export function buildStylesheet(
       selector: 'node',
       style: {
         'background-image': (ele: NodeSingular) =>
-          badgeLayersFor(ele, showLifecycle, showEvidence).map((layer) => layer.image),
+          badgeLayersFor(ele, showLifecycle, showEvidence, showOwnership).map(
+            (layer) => layer.image,
+          ),
         'background-position-x': (ele: NodeSingular) =>
-          badgeLayersFor(ele, showLifecycle, showEvidence).map((layer) => layer.positionX),
+          badgeLayersFor(ele, showLifecycle, showEvidence, showOwnership).map(
+            (layer) => layer.positionX,
+          ),
         'background-position-y': (ele: NodeSingular) =>
-          badgeLayersFor(ele, showLifecycle, showEvidence).map((layer) => layer.positionY),
+          badgeLayersFor(ele, showLifecycle, showEvidence, showOwnership).map(
+            (layer) => layer.positionY,
+          ),
         'background-width': (ele: NodeSingular) =>
-          badgeLayersFor(ele, showLifecycle, showEvidence).map(() => BADGE_SIZE),
+          badgeLayersFor(ele, showLifecycle, showEvidence, showOwnership).map(
+            () => BADGE_SIZE,
+          ),
         'background-height': (ele: NodeSingular) =>
-          badgeLayersFor(ele, showLifecycle, showEvidence).map(() => BADGE_SIZE),
+          badgeLayersFor(ele, showLifecycle, showEvidence, showOwnership).map(
+            () => BADGE_SIZE,
+          ),
         'background-image-containment': (ele: NodeSingular) =>
-          badgeLayersFor(ele, showLifecycle, showEvidence).map((): 'over' => 'over'),
+          badgeLayersFor(ele, showLifecycle, showEvidence, showOwnership).map(
+            (): 'over' => 'over',
+          ),
         'background-clip': (ele: NodeSingular) =>
-          badgeLayersFor(ele, showLifecycle, showEvidence).map((): 'none' => 'none'),
-      },
-    },
-    {
-      selector: 'node[layer = "motivation"]',
-      style: {
-        'background-color': LAYER_COLORS.motivation.fill,
-        'border-color': LAYER_COLORS.motivation.border,
+          badgeLayersFor(ele, showLifecycle, showEvidence, showOwnership).map(
+            (): 'none' => 'none',
+          ),
       },
     },
     {
@@ -514,6 +535,7 @@ function graphToElements(graph: CanvasGraph): ElementDefinition[] {
         layer: node.layer,
         status: node.status,
         hasAttestations: node.attestations.length > 0,
+        owner: node.owner,
         // Derived here, not drawn here - Task 6's owner-initials chip
         // consumes this same field rather than recomputing it from `owner`.
         ownerInitials: ownerInitialsOf(node.owner),
@@ -897,10 +919,9 @@ export function GraphCanvas({
       container: containerRef.current,
       elements: graphToElements(graph),
       // `GraphCanvasProps` carries no presentation toggles yet (Task 7 adds
-      // `showLifecycle`/`showEvidence` and threads them through here) - both
-      // stay off (no badges drawn) until that wiring lands.
-      style: buildStylesheet(false, false),
-      wheelSensitivity: 0.1,
+      // `showLifecycle`/`showEvidence`/`showOwnership` and threads them
+      // through here) - all stay off (no badges drawn) until that wiring lands.
+      style: buildStylesheet(false, false, false),
       layout: { name: 'null' },
     })
 

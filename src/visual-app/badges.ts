@@ -20,7 +20,8 @@ export function isLifecycleStatus(value: unknown): value is LifecycleStatus {
 // hex - named beside each constant. No invented palette: these are the same
 // four tokens the design names for lifecycle/evidence (`--ink`, `--eucalyptus`,
 // `--failure`, `--quiet`), one token per badge variant, none reused across
-// variants within this module.
+// variants within this module. (The ownership palette below is a separate
+// concern with its own reuse rule - see its comment.)
 const INK = '#182228' // --ink (styles.css:12) - evidence chip
 const EUCALYPTUS = '#416f65' // --eucalyptus (styles.css:13) - lifecycle: current
 const FAILURE = '#a3403a' // --failure (styles.css:16) - lifecycle: retired
@@ -28,6 +29,21 @@ const FAILURE = '#a3403a' // --failure (styles.css:16) - lifecycle: retired
 // var(--paper))`, not a literal - resolved once (oklab mix of #182228 62% /
 // #e8eef0 38%) to the sRGB hex a browser would actually paint.
 const QUIET = '#5f686d' // --quiet - lifecycle: planned
+
+// Task 6's ownership-chip palette: the four hue-bearing tokens in
+// `styles.css`'s `:root` (`src/visual-app/styles.css:11-16`) that carry a
+// distinct hue, in declaration order. `--eucalyptus` and `--ink` are
+// literal-value reuses of the `EUCALYPTUS`/`INK` constants above - same hex,
+// a different badge purpose (painting an owner's initials, not a
+// lifecycle/evidence state) - so unlike the lifecycle/evidence set this
+// palette does reuse tokens across variants. `--failure` (`#a3403a`) is a
+// fifth hue-bearing token in `:root` but is deliberately excluded: Task 5
+// already spends it on lifecycle `retired`, and a red ownership chip would
+// misread as "this concept is in trouble" when it only means "this person
+// owns it".
+const OCHRE = '#8c4d18' // --ochre (styles.css:14)
+const COBALT = '#2457a6' // --cobalt (styles.css:15)
+const OWNER_PALETTE: readonly string[] = [EUCALYPTUS, OCHRE, COBALT, INK]
 
 // 12px: legible at the small size a corner badge on a 170x50 node box can
 // occupy without crowding the label text it sits beside.
@@ -67,6 +83,51 @@ const EVIDENCE_SVG = svg(
 )
 
 export const EVIDENCE_BADGE_URI = toDataUri(EVIDENCE_SVG)
+
+
+// FNV-1a 32-bit hash of a ref string, modulo palette length, selecting a
+// stable colour across reloads and machines. Task 3's `seedToInt32` in
+// graph-canvas.tsx does the same algorithm for layout seeding; we keep this
+// local to badges.ts to preserve this module's pure-string/no-imports status
+// - a testable 5-line FNV-1a function is cleaner than an avoidable
+// cross-module dependency for the same 32-line operation.
+function fnv1aHash(input: string): number {
+  let hash = 0x811c9dc5 // FNV-1a 32-bit offset basis
+  const prime = 0x01000193 // FNV-1a 32-bit prime
+  for (let i = 0; i < input.length; i++) {
+    hash = Math.imul(hash ^ input.charCodeAt(i), prime)
+  }
+  return hash
+}
+
+// Hash the owner ref string onto the ownership palette (0..3). FNV-1a is
+// stable across machines and reloads. `null` in, `null` out - a node with no
+// owner's chip builder never gets called (Task 6's badgeLayersFor gate).
+export function ownerColorOf(owner: string | null): string | null {
+  if (owner === null) return null
+  const hash = fnv1aHash(owner)
+  // Derive a non-negative palette index. Math.abs is lossy for -2^31, but
+  // that corner case hashes to the same modulo class as -2^31 % 4 anyway.
+  const index = Math.abs(hash) % OWNER_PALETTE.length
+  return OWNER_PALETTE[index]!
+}
+
+// Build an SVG data URI for the ownership chip: a filled circle carrying the
+// owner's initials (two uppercase letters). `owner` and `initials` must both
+// be non-null (the caller, badgeLayersFor in graph-canvas.tsx, only calls
+// this when both exist). Initials are unsanitized - they come from
+// ownerInitialsOf, which only emits uppercase ASCII letters, never markup.
+function ownerBadgeSvg(owner: string, initials: string): string {
+  const color = ownerColorOf(owner)!
+  return svg(
+    `<circle cx="6" cy="6" r="5" fill="${color}"/>` +
+      `<text x="6" y="7.5" font-size="8" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">${initials}</text>`,
+  )
+}
+
+export function ownerBadgeUri(owner: string, initials: string): string {
+  return toDataUri(ownerBadgeSvg(owner, initials))
+}
 
 // `owner` is a qualified ref (`document#localId`, e.g.
 // "yarramate-product#yarramate-maintainers" - the one owner this repo's own
