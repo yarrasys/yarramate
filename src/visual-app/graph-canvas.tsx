@@ -852,6 +852,35 @@ const SPORE_OVERLAP_CONFIG: ElkLayoutOptions = {
   elk: { algorithm: 'sporeOverlap' },
 }
 
+// Runs `work` only once the browser has had its chance to paint the notice the
+// caller just announced. Two hops are needed, and neither one covers the other:
+//
+//   1. React does not commit a `setState` made from inside an effect during
+//      that effect - it schedules the re-render as a task. So the notice is
+//      still absent from the DOM when this function is called, and a frame
+//      taken right now would paint the canvas exactly as it already was. The
+//      timer yields to that already-queued render task first.
+//   2. A `requestAnimationFrame` callback runs *before* its own frame renders,
+//      so one frame is not enough either: the second frame's callback is the
+//      first point at which the previous frame - now carrying the committed
+//      notice - is on screen.
+//
+// Without rAF (the headless tests) or with the tab hidden, where rAF never
+// fires at all and there is nothing to paint anyway, the work runs straight
+// away rather than never.
+function paintFirst(work: () => void): void {
+  const hidden = typeof document !== 'undefined' && document.hidden
+  if (typeof requestAnimationFrame !== 'function' || hidden) {
+    work()
+    return
+  }
+  setTimeout(() => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => work())
+    })
+  }, 0)
+}
+
 // The `force` backend's first pass (elk `stress`) still leaves nodes
 // overlapping; `sporeOverlap` is a second elk pass that spreads them apart
 // once the first has settled, so it can only start after the first pass's
@@ -906,7 +935,17 @@ function runLayout(
     })
     second.run()
   })
-  first.run()
+  // elk's `stress` pass blocks the main thread outright - measured 6.1 s on this
+  // repo's 258-node graph - so React cannot commit the notice above until the
+  // pass is already over: it would only ever paint *after* the freeze it exists
+  // to explain. Yielding until the notice has actually painted (see
+  // `paintFirst`) puts it on screen first, then the pass runs. A newer request
+  // can claim `inFlightRef` while this one waits for its frames, so it
+  // re-checks that it still owns the canvas before handing elk the thread.
+  paintFirst(() => {
+    if (inFlightRef.current !== first) return
+    first.run()
+  })
 }
 
 // Positions come from the last full-graph layout, which packs every node

@@ -290,6 +290,43 @@ describe('buildLayoutConfig', () => {
   })
 })
 
+// `requestAnimationFrame` does not exist in this environment, so
+// `relayoutVisible`'s paint-first yield runs its work straight away and every
+// test above sees the single synchronous chain it always did. Installing a
+// queue-backed rAF holds a `force` request where the browser holds it: after
+// the busy notice is announced, before elk takes the main thread.
+const withFrameQueue = (
+  body: (frames: {
+    readonly step: () => void
+    readonly drain: () => void
+    readonly pending: () => number
+  }) => Promise<void>
+): Promise<void> => {
+  const frames: FrameRequestCallback[] = []
+  const host = globalThis as {
+    requestAnimationFrame?: (callback: FrameRequestCallback) => number
+  }
+  let frame = 0
+  host.requestAnimationFrame = (callback) => frames.push(callback)
+  // One `step` is one frame: it runs the callbacks registered for it, and any
+  // callback they register lands in the next frame rather than this one - which
+  // is what lets a test see a yield that spans two frames as two steps.
+  const step = () => {
+    frames.splice(0, frames.length).forEach((callback) => callback(frame++))
+  }
+  const drain = () => {
+    for (let guard = 0; guard < 8 && frames.length > 0; guard++) step()
+  }
+  return body({ step, drain, pending: () => frames.length }).finally(() => {
+    delete host.requestAnimationFrame
+  })
+}
+
+// The render task React would use to commit the notice: `relayoutVisible`
+// yields to it before it starts counting frames, so a test that never lets a
+// task run never sees a frame armed at all.
+const nextTask = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0))
+
 describe('relayoutVisible force second pass', () => {
   it('resolves overlaps a single stress pass leaves, and signals busy state through onWaitingChange', async () => {
     const baseline = buildHubFixture()
@@ -420,6 +457,86 @@ describe('relayoutVisible force second pass', () => {
     expect(waitingCalls.at(-1)).toBeNull()
     expect(waitingCalls.filter((w) => w === null)).toHaveLength(1)
     expect(inFlightRef.current).toBeNull()
+  })
+
+  it('arms the blocking pass on a painted frame rather than the task that announces it', async () => {
+    await withFrameQueue(async (frames) => {
+      const cy = buildHubFixture()
+      const inFlightRef: { current: cytoscape.Layouts | null } = { current: null }
+      const waitingCalls: (string | null)[] = []
+      let started = 0
+      cy.on('layoutstart', () => {
+        started++
+      })
+      const idle = Promise.withResolvers<void>()
+
+      relayoutVisible(cy, 'force', 'top-down', inFlightRef, (waiting) => {
+        waitingCalls.push(waiting)
+        if (waiting === null) idle.resolve()
+      })
+
+      // The notice is announced and nothing is armed yet: React commits a
+      // `setState` made from inside an effect as a task, so a frame taken in
+      // this task would paint the canvas exactly as it already was.
+      expect(waitingCalls).toEqual(['Laying out...'])
+      expect(frames.pending()).toBe(0)
+      expect(started).toBe(0)
+
+      // Once that render task has had its turn, the pass that blocks the main
+      // thread for seconds is waiting on a frame rather than running here.
+      await nextTask()
+      expect(frames.pending()).toBe(1)
+      expect(started).toBe(0)
+
+      // A callback runs *before* its own frame renders, so the first frame is
+      // only the one that carries the notice: elk must still be waiting after
+      // it, for the frame after the notice has actually gone to the screen.
+      frames.step()
+      expect(started).toBe(0)
+      expect(frames.pending()).toBe(1)
+
+      frames.drain()
+      await idle.promise
+
+      expect(started).toBe(2)
+      expect(waitingCalls.at(-1)).toBeNull()
+      expect(countOverlappingPairs(cy)).toBe(0)
+    })
+  })
+
+  it('drops a force request superseded before its frames arrive without ever reaching elk', async () => {
+    await withFrameQueue(async (frames) => {
+      const cy = buildHubFixture()
+      const inFlightRef: { current: cytoscape.Layouts | null } = { current: null }
+      const waitingCalls: (string | null)[] = []
+      let started = 0
+      cy.on('layoutstart', () => {
+        started++
+      })
+      const idle = Promise.withResolvers<void>()
+      const onWaitingChange = (waiting: string | null) => {
+        waitingCalls.push(waiting)
+        if (waiting === null) idle.resolve()
+      }
+
+      // A reviewer switching direction while the first request is still waiting
+      // for its frames. The first request has nothing running to `stop()`, so
+      // only its own guard can keep its multi-second pass off the main thread.
+      relayoutVisible(cy, 'force', 'top-down', inFlightRef, onWaitingChange)
+      relayoutVisible(cy, 'force', 'left-right', inFlightRef, onWaitingChange)
+      expect(started).toBe(0)
+
+      await nextTask()
+      expect(frames.pending()).toBe(2)
+      frames.drain()
+      await idle.promise
+
+      // The winner's stress and sporeOverlap passes, and no third pass from the
+      // request that lost the canvas before it started.
+      expect(started).toBe(2)
+      expect(inFlightRef.current).toBeNull()
+      expect(countOverlappingPairs(cy)).toBe(0)
+    })
   })
 })
 
