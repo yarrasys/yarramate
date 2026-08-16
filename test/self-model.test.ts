@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { compileWorkspace } from '../src/compiler.js'
@@ -258,6 +258,50 @@ describe('YarraMate repository model', () => {
     expect(report.unobservedSubjects).toBeUndefined()
     expect(report.summary.contradicted).toBe(0)
     expect(report.summary.notObserved).toBe(0)
+  })
+
+  it('keeps every modelled repository file in step with the working tree', () => {
+    const result = compileWorkspace(selfModelSources)
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+
+    const stated = (subject: string, predicate: string) => {
+      const claim = result.graph.claims.find(
+        (candidate) =>
+          candidate.subject === subject && candidate.predicate === predicate,
+      )
+      return claim && 'value' in claim.object ? claim.object.value : undefined
+    }
+
+    const repositoryFiles = result.graph.claims.filter(
+      (claim) =>
+        claim.predicate === 'yarramate/concept/kind' &&
+        'value' in claim.object &&
+        claim.object.value === 'yarramate/development@1.0#repository-file',
+    )
+
+    expect(repositoryFiles.length).toBeGreaterThan(0)
+
+    // A `repository-file` concept names a path in this repository, so the
+    // model only stays honest while the path agrees with the status: a
+    // `current` file must exist and a `retired` one must not. Deleting a
+    // shipped file without retiring its concept - or retiring one that is
+    // still on disk - is drift `yarramate check` cannot see, because Core
+    // validates the graph, never the working tree.
+    const drift = repositoryFiles.flatMap((claim) => {
+      const name = stated(claim.subject, 'yarramate/concept/name')
+      if (typeof name !== 'string') return []
+      const present = existsSync(
+        fileURLToPath(new URL(`../${name}`, import.meta.url)),
+      )
+      if (stated(claim.subject, 'yarramate/lifecycle/status') === 'retired') {
+        return present ? [`retired but present: ${name}`] : []
+      }
+      return present ? [] : [`current but absent: ${name}`]
+    })
+
+    expect(drift).toEqual([])
   })
 
   it('renders its architecture-state change through the optional LikeC4 adapter', () => {

@@ -250,6 +250,8 @@ claims of compatibility with an external viewpoint catalogue.
 ## Optional integrations
 
 - LikeC4 is an authoring and visualization adapter.
+- The visual conversation adapter is a loopback browser renderer and
+  reviewer-edit surface.
 - Graphify is an evidence and repository-analysis adapter.
 - ArchiMate is an optional compatibility profile.
 
@@ -295,6 +297,17 @@ ownership includes the ordered comparison.
 The adapter project may likewise order projected relationships as dynamic
 steps or instantiate projected concepts into a closed deployment hierarchy.
 Those declarations remain presentation hints and do not extend graph v2.
+
+The visual conversation adapter renders one checked workspace's compiled graph
+v2 model directly in a loopback browser session. It does not generate, consume,
+or round-trip a DSL, and it is not a LikeC4 client: the two visualization
+adapters are independent and either may be absent. Layout, notation, badges,
+and dragged positions are presentation; a saved view is an ordinary projection
+document and a dragged position an adapter-owned sidecar, never a graph claim.
+Reviewer field edits are constrained to the compiled model's own vocabulary,
+accumulate as a staged changeset, and land only as one `yarramate/operations/v1`
+batch through the same validated `apply` the CLI calls. The adapter holds no
+private write path, never commits to Git, and Core does not import it.
 
 Optional adapter mappings are versioned companion documents outside Core.
 They map globally qualified compiled native subject identities to opaque

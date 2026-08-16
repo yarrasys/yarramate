@@ -226,6 +226,17 @@ ordered LikeC4 interaction view. Its description may present the native
 relationship description, but order is not a Core workflow claim.
 _Avoid_: Native workflow step, executable transition, completeness rule
 
+**Visual conversation**:
+An adapter-owned loopback browser session that renders one checked workspace's
+compiled graph directly and returns a reviewer's decisions to the harness.
+_Avoid_: Canonical authoring surface, DSL round-trip, governance UI
+
+**Reviewer changeset**:
+Vocabulary-constrained field edits staged in a visual conversation and
+committed as one operations batch through the same validated `apply` the CLI
+calls.
+_Avoid_: Partial patch, browser-authored model, private write path
+
 **Evidence provider**:
 An adapter that resolves declared claims against observed sources such as
 repositories, catalogues, tests, or runtime systems.
