@@ -10,6 +10,7 @@ import {
   type LifecycleStatus,
 } from '../src/visual-app/badges.js'
 import { LAYER_COLORS, buildStylesheet } from '../src/visual-app/graph-canvas.js'
+import { ICON_SIZE, kindIconUriOf } from '../src/visual-app/kind-icons.js'
 
 describe('lifecycle badge URIs', () => {
   it('generates a distinct data:image/svg+xml URI per status', () => {
@@ -64,23 +65,47 @@ describe('buildStylesheet badge layers', () => {
     showLifecycle: boolean,
     showEvidence: boolean,
     showOwnership: boolean,
+    notation: 'native' | 'archimate' = 'native',
   ): cytoscape.StylesheetStyle =>
-    buildStylesheet(showLifecycle, showEvidence, showOwnership, 'native').find(
+    buildStylesheet(showLifecycle, showEvidence, showOwnership, notation).find(
       (block): block is cytoscape.StylesheetStyle =>
         'style' in block && block.selector === 'node' && 'background-image' in block.style,
     )!
+
+  // Every parallel `background-*` array comes from the same layer list, so a
+  // test reads any one of them the way cytoscape does: call the mapper with a
+  // stand-in node and compare the array it returns.
+  const mapperFor = <T>(
+    property: 'background-image' | 'background-width',
+    showLifecycle: boolean,
+    showEvidence: boolean,
+    showOwnership: boolean,
+    data: Record<string, unknown>,
+    notation: 'native' | 'archimate',
+  ): T => {
+    const rule = nodeRule(showLifecycle, showEvidence, showOwnership, notation)
+    const style = rule.style as cytoscape.Css.Node
+    const mapper = style[property] as (ele: { data: (key: string) => unknown }) => T
+    return mapper({ data: (key) => data[key] })
+  }
 
   const layersFor = (
     showLifecycle: boolean,
     showEvidence: boolean,
     showOwnership: boolean,
     data: Record<string, unknown>,
-  ): string[] => {
-    const rule = nodeRule(showLifecycle, showEvidence, showOwnership)
-    const style = rule.style as cytoscape.Css.Node
-    const mapper = style['background-image'] as (ele: { data: (key: string) => unknown }) => string[]
-    return mapper({ data: (key) => data[key] })
-  }
+    notation: 'native' | 'archimate' = 'native',
+  ): string[] =>
+    mapperFor<string[]>('background-image', showLifecycle, showEvidence, showOwnership, data, notation)
+
+  const sizesFor = (
+    showLifecycle: boolean,
+    showEvidence: boolean,
+    showOwnership: boolean,
+    data: Record<string, unknown>,
+    notation: 'native' | 'archimate' = 'native',
+  ): number[] =>
+    mapperFor<number[]>('background-width', showLifecycle, showEvidence, showOwnership, data, notation)
 
   it('draws a background-color rule for every LAYER_COLORS key', () => {
     const sheet = buildStylesheet(false, false, false, 'native')
@@ -117,6 +142,44 @@ describe('buildStylesheet badge layers', () => {
       LIFECYCLE_BADGE_URI.retired,
       EVIDENCE_BADGE_URI,
     ])
+  })
+
+  it('draws the ArchiMate kind icon in the corner the badges leave free', () => {
+    // The stylesheet is the only wiring between `kind-icons.ts` and the canvas,
+    // so this mapper is where an unrendered icon shows up as a missing layer.
+    expect(
+      layersFor(
+        true,
+        false,
+        false,
+        { status: 'current', kindLabel: 'applicationComponent' },
+        'archimate',
+      ),
+    ).toEqual([kindIconUriOf('applicationComponent'), LIFECYCLE_BADGE_URI.current])
+  })
+
+  it('draws no kind icon under native notation', () => {
+    expect(
+      layersFor(false, false, false, { kindLabel: 'applicationComponent' }, 'native'),
+    ).toEqual([])
+  })
+
+  it('leaves the icon slot empty for a kind the catalogue does not map', () => {
+    expect(layersFor(false, false, false, { kindLabel: 'notAKind' }, 'archimate')).toEqual([])
+  })
+
+  it('sizes the kind icon and the badges independently', () => {
+    // One `sizes` array serves every layer, so the icon's 14px and the badges'
+    // 12px have to line up index-for-index with the images above.
+    expect(
+      sizesFor(
+        true,
+        true,
+        false,
+        { status: 'current', hasAttestations: true, kindLabel: 'applicationComponent' },
+        'archimate',
+      ),
+    ).toEqual([ICON_SIZE, 12, 12])
   })
 
   it('gives each node its own badge set from one shared stylesheet', () => {

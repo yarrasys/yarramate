@@ -19,6 +19,7 @@ import {
   ownerBadgeUri,
   ownerInitialsOf,
 } from './badges.js'
+import { ICON_SIZE, kindIconUriOf } from './kind-icons.js'
 
 // Register elk extension once at module load, guarded against re-registration
 let elkRegistered = false
@@ -239,6 +240,7 @@ interface BadgeLayer {
   readonly image: string
   readonly positionX: string
   readonly positionY: string
+  readonly size: number
 }
 
 // One node's seven badge style values, pre-split into the parallel arrays
@@ -254,27 +256,49 @@ interface BadgeStyleArrays {
 }
 
 const BADGE_SIZE = 12
-// Lifecycle top-right, evidence bottom-left, ownership bottom-right - each
-// corner gets at most one badge, so none ever overlap on a single node. Each
-// is gated by its own presentation flag *and* the data it needs, so
+// Kind icon top-left (ArchiMate notation only), lifecycle top-right, evidence
+// bottom-left, ownership bottom-right - each corner gets at most one image, so
+// none ever overlap on a single node. Plan Task 10 named the top-right slot for
+// the icon, but Task 5 had already spent that corner on the lifecycle chip
+// (on by default), so the icon takes the one free corner rather than stacking.
+// Each layer is gated by its own presentation flag *and* the data it needs, so
 // `showEvidence: true` on a concept with no attestations draws nothing - the
 // same binary presence/absence rule `applyFilter` uses for hide/show, never a
 // dimmed "maybe" state. Ownership requires both owner (non-null) and derived
 // ownerInitials (non-null), since ownerInitialsOf filters out malformed local
-// ids that leave no words (e.g., "###" or a bare document prefix).
+// ids that leave no words (e.g., "###" or a bare document prefix). The kind
+// icon is an ArchiMate element glyph, so it draws only under that notation, and
+// only for a kind the catalogue maps - an unmapped kind leaves the slot empty.
 function badgeLayersFor(
   ele: NodeSingular,
   showLifecycle: boolean,
   showEvidence: boolean,
   showOwnership: boolean,
+  notation: 'native' | 'archimate',
 ): BadgeLayer[] {
   const layers: BadgeLayer[] = []
+  if (notation === 'archimate') {
+    const icon = kindIconUriOf(String(ele.data('kindLabel')))
+    if (icon !== null) {
+      layers.push({ image: icon, positionX: '0%', positionY: '0%', size: ICON_SIZE })
+    }
+  }
   const status: unknown = ele.data('status')
   if (showLifecycle && isLifecycleStatus(status)) {
-    layers.push({ image: LIFECYCLE_BADGE_URI[status], positionX: '100%', positionY: '0%' })
+    layers.push({
+      image: LIFECYCLE_BADGE_URI[status],
+      positionX: '100%',
+      positionY: '0%',
+      size: BADGE_SIZE,
+    })
   }
   if (showEvidence && ele.data('hasAttestations') === true) {
-    layers.push({ image: EVIDENCE_BADGE_URI, positionX: '0%', positionY: '100%' })
+    layers.push({
+      image: EVIDENCE_BADGE_URI,
+      positionX: '0%',
+      positionY: '100%',
+      size: BADGE_SIZE,
+    })
   }
   const owner = ele.data('owner')
   const ownerInitials = ele.data('ownerInitials')
@@ -283,6 +307,7 @@ function badgeLayersFor(
       image: ownerBadgeUri(owner, ownerInitials),
       positionX: '100%',
       positionY: '100%',
+      size: BADGE_SIZE,
     })
   }
   return layers
@@ -304,9 +329,9 @@ export function buildStylesheet(
 ): cytoscape.StylesheetJsonBlock[] {
   // Cytoscape re-evaluates every mapper on each style recalculation - a single
   // selection change re-runs all seven over every node - and rebuilding the
-  // percent-encoded SVG payloads that often is pure waste. Which badges a node
-  // gets is a pure function of four data fields (the three toggles are fixed
-  // for this stylesheet's lifetime), so keying on those collapses 7 x N builds
+  // percent-encoded SVG payloads that often is pure waste. Which images a node
+  // gets is a pure function of five data fields (the three toggles and the
+  // notation mode are fixed for this stylesheet's lifetime), so keying on those
   // per recalculation into one per distinct badge combination on the graph.
   // Cytoscape only reads these arrays, so nodes sharing a combination share
   // one set.
@@ -314,15 +339,16 @@ export function buildStylesheet(
   const badgeStyleFor = (ele: NodeSingular): BadgeStyleArrays => {
     const key =
       `${String(ele.data('status'))}\u0000${String(ele.data('hasAttestations'))}` +
-      `\u0000${String(ele.data('owner'))}\u0000${String(ele.data('ownerInitials'))}`
+      `\u0000${String(ele.data('owner'))}\u0000${String(ele.data('ownerInitials'))}` +
+      `\u0000${String(ele.data('kindLabel'))}`
     const cached = badgeStyleCache.get(key)
     if (cached !== undefined) return cached
-    const layers = badgeLayersFor(ele, showLifecycle, showEvidence, showOwnership)
+    const layers = badgeLayersFor(ele, showLifecycle, showEvidence, showOwnership, notation)
     const built: BadgeStyleArrays = {
       images: layers.map((layer) => layer.image),
       positionsX: layers.map((layer) => layer.positionX),
       positionsY: layers.map((layer) => layer.positionY),
-      sizes: layers.map(() => BADGE_SIZE),
+      sizes: layers.map((layer) => layer.size),
       containments: layers.map((): 'over' => 'over'),
       clips: layers.map((): 'none' => 'none'),
     }

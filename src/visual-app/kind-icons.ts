@@ -2,9 +2,9 @@
 // `data:` URI) per element kind this repo's graph actually uses. No
 // cytoscape/DOM dependency here, same isolation as `badges.ts` (the sibling
 // module for the same stylesheet) - this stays testable as a plain
-// string-in/string-out lookup. Not wired to `graph-canvas.tsx` yet: Task 11
-// consumes this from the stylesheet as a `background-image` on the node's
-// top-right slot.
+// string-in/string-out lookup. `graph-canvas.tsx` consumes it from the
+// stylesheet as one `background-image` layer on the node's top-left corner,
+// under `notation === 'archimate'` only.
 
 // An SVG `data:` URI can't read `var(--token)`, so the stroke colour below
 // is `--ink` (`src/visual-app/styles.css:11-21`), resolved once to its
@@ -13,8 +13,10 @@
 // zero-dependency footprint.
 const INK = '#182228' // --ink (styles.css:12)
 
-// 14px: the brief's fixed icon size for the node's top-right badge slot.
-const ICON_SIZE = 14
+// 14px: the brief's fixed icon size. `graph-canvas.tsx` reads it for the
+// background-image layer's `background-width`/`background-height`, so the
+// drawn glyph and the SVG's own viewport stay the same size.
+export const ICON_SIZE = 14
 
 function toDataUri(svg: string): string {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
