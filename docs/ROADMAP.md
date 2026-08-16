@@ -135,6 +135,20 @@ notation.
   styling parity remain future adapter work.
   Adapter-owned deployment nodes and named instances of projected concepts
   are implemented with regression validation.**
+- Native browser visualization and mechanical editing adapter.
+  **`yarramate-visual` runs a foreground session that publishes a browser URL;
+  cytoscape.js renders the native graph v2 model directly, with no DSL and no
+  LikeC4 round-trip. Layered, radial, and force layout backends, native and
+  ArchiMate notation modes, kind icons, and lifecycle, evidence, and ownership
+  badges are implemented. Saved views persist as ordinary
+  `.yarramate/projections/*.yaml` documents and dragged positions as
+  `.yarramate/visual-layout` sidecars. Dropdown-constrained field edits
+  accumulate in a changeset that commits through `yarramate/operations/v1` and
+  `yarramate apply`, so the browser holds no private write path. The wire is
+  the published `yarramate/visual-protocol/v2` contract; see
+  `docs/VISUAL-ADAPTER.md` and ADRs 0081 and 0084 to 0088. In-app undo and
+  redo, renaming a subject identity, and concurrent-edit conflict resolution
+  across browsers remain future adapter work.**
 - Generic evidence-provider interface.
   **A provider-neutral existing-claim evidence overlay and deterministic report
   are implemented. Constraint assessment reuses that seam; the first optional
