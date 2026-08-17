@@ -118,5 +118,5 @@ session, protocol, and app suites. Further adapters in any of these
 categories still need their own four answers.
 
 When one of these gates is resolved, add a bounded roadmap item and ADR before
-implementation. Until then the local backlog holds only the named actionable
-item above, rather than being silently expanded.
+implementation. Until then the local backlog stays empty rather than being
+silently expanded: the gated items above are decisions, not queued work.
