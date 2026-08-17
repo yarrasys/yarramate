@@ -347,6 +347,14 @@ Graph ordering is lexical and independent of workspace input order. Graph v2
 is the version-scoped normative interchange contract defined in
 `docs/SEMANTIC-GRAPH.md`; a breaking change requires a new graph format.
 
+`compileWorkspaceIncremental(sources, previous)` compiles the same graph for a
+consumer that recompiles the whole workspace on every write. It re-parses only
+the sources whose text differs from the opaque cache the previous call
+returned, and reports `incremental: false` when it fell back to a full
+compile. Reuse is decided by source-text equality rather than a declared
+change set, so a stale or wrong cache costs parse work and cannot change the
+compiled result (ADR 0091).
+
 ## Diagnostics
 
 Diagnostics have stable codes, severity, message, source path, YAML pointer,

@@ -225,6 +225,48 @@ export type ContextualCompilationResult =
     }
 
   | { readonly ok: false; readonly diagnostics: readonly Diagnostic[] }
+
+/**
+ * One parsed workspace source, retained by a {@link CompilationCache}. Hold it
+ * and hand it back; never construct one. `value` is the composed YAML of
+ * `source` and nothing else, so an entry is a pure function of its text.
+ */
+export interface ParsedWorkspaceSource {
+  readonly source: string
+  readonly kind: 'profile' | 'document'
+  readonly value: unknown
+  readonly schemaDiagnostics: readonly Diagnostic[]
+  /**
+   * Line/column already resolved for this text, keyed by YAML path. An
+   * internal memo of the compiler, filled as positions are asked for; a
+   * consumer that mutates it corrupts the `source` of later claims.
+   */
+  readonly positions: Map<string, ResolvedPosition>
+}
+
+/**
+ * Opaque parse cache returned by {@link compileWorkspaceIncremental} and
+ * accepted by its next call. Reuse is decided by exact source-text equality,
+ * not by a caller-declared change set and not by a digest, so a stale cache
+ * cannot change the compiled output - it can only fail to save work.
+ */
+export interface CompilationCache {
+  readonly sources: ReadonlyMap<string, ParsedWorkspaceSource>
+}
+
+export type IncrementalCompilationResult = (
+  | {
+      readonly ok: true
+      readonly graph: SemanticGraph
+      readonly profileContext: ResolvedProfileContext
+    }
+  | { readonly ok: false; readonly diagnostics: readonly Diagnostic[] }
+) & {
+  /** False when every source had to be parsed, e.g. the first call. */
+  readonly incremental: boolean
+  readonly cache: CompilationCache
+}
+
 const immutableMap = <K, V>(
   entries: Iterable<readonly [K, V]>,
 ): ReadonlyMap<K, V> => {
@@ -366,26 +408,180 @@ const diagnosticFailure = (
   ),
 })
 
-function compileWorkspaceResolved(
-  sources: readonly WorkspaceSource[],
-): ContextualCompilationResult {
-  // One parse per source, reused by both loops below. Classification needs the
-  // composed `format` key, and parsing a second time to read it doubled the
-  // YAML cost of every compile - which the profiler puts at ~74% of the total.
-  // A `lineCounter` only accumulates offsets, so the composed value is the
-  // same one the discarded probe produced.
-  const parsedSources = sources.map((input) => {
-    const lineCounter = new LineCounter()
-    const yaml = parseDocument(input.source, { lineCounter })
-    return { input, lineCounter, yaml }
+type ParsedYaml = ReturnType<typeof parseDocument>
+
+interface ResolvedPosition {
+  readonly line: number
+  readonly col: number
+}
+
+const nodePosition = (
+  yaml: ParsedYaml,
+  lineCounter: LineCounter,
+  yamlPath: readonly (string | number)[],
+): ResolvedPosition => {
+  const node = yaml.getIn(yamlPath, true)
+  const offset =
+    typeof node === 'object' &&
+    node !== null &&
+    'range' in node &&
+    Array.isArray(node.range)
+      ? node.range[0]
+      : 0
+  return lineCounter.linePos(offset)
+}
+
+// A position is read for every emitted claim's `source`, not only for faults,
+// so a compile that re-derived them would re-parse every document however
+// fresh its cache was - that was measured as the whole delta-compile residual.
+// The reader therefore memoises into the parse entry, and only a path never
+// asked for before pays a parse. The composed `Document` and `LineCounter`
+// still go out of scope after the last miss: holding them for the whole
+// compile was the peak-memory term at scale.
+const positionReader = (
+  source: string,
+  positions: Map<string, ResolvedPosition>,
+) => {
+  let parsed: { yaml: ParsedYaml; lineCounter: LineCounter } | undefined
+  return (yamlPath: readonly (string | number)[]): ResolvedPosition => {
+    // Paths mix keys and indices; a JSON key cannot confuse `['a']` with
+    // `['a', 0]` the way a joined string could, and a wrong hit here would be
+    // a wrong line number in compiled output rather than lost work.
+    const key = JSON.stringify(yamlPath)
+    const memoised = positions.get(key)
+    if (memoised !== undefined) {
+      return memoised
+    }
+    if (parsed === undefined) {
+      const lineCounter = new LineCounter()
+      parsed = { yaml: parseDocument(source, { lineCounter }), lineCounter }
+    }
+    const position = nodePosition(parsed.yaml, parsed.lineCounter, yamlPath)
+    positions.set(key, position)
+    return position
+  }
+}
+
+// Every field of the entry is derived from `input.source` alone, which is what
+// makes an entry reusable across compiles: profile membership, the composed
+// value, and the faults the text carries on its own. Cross-document faults are
+// never cached - they are re-derived on every compile.
+const parseWorkspaceSource = (
+  input: WorkspaceSource,
+): ParsedWorkspaceSource => {
+  const lineCounter = new LineCounter()
+  const yaml = parseDocument(input.source, { lineCounter })
+  const value = yaml.toJS() as unknown
+  const parseDiagnostics: Diagnostic[] = yaml.errors.map((error) => {
+    const position = error.linePos?.[0] ?? { line: 1, col: 1 }
+    return {
+      severity: 'error',
+      code: 'YM101',
+      message: error.message.split(' at line ')[0] ?? error.message,
+      path: input.path,
+      pointer: '/',
+      line: position.line,
+      column: position.col,
+    }
   })
-  const profileInputs: typeof parsedSources = []
-  const documentInputs: typeof parsedSources = []
-  for (const parsed of parsedSources) {
-    if (parsed.yaml.get('format') === 'yarramate/profile/v1') {
-      profileInputs.push(parsed)
+  // Classification reads the composed mapping through the YAML document, which
+  // types the lookup as `unknown` - the same key the old probe pass read.
+  if (yaml.get('format') === 'yarramate/profile/v1') {
+    return {
+      source: input.source,
+      kind: 'profile',
+      value,
+      schemaDiagnostics: parseDiagnostics,
+      positions: new Map(),
+    }
+  }
+
+  const valid = parseDiagnostics.length === 0 && validateDocument(value)
+  const schemaDiagnostics: Diagnostic[] =
+    parseDiagnostics.length > 0
+      ? parseDiagnostics
+      : valid
+        ? []
+        : (validateDocument.errors ?? []).map((error) => {
+            const property =
+              error.keyword === 'additionalProperties'
+                ? String(error.params.additionalProperty)
+                : undefined
+            const pointer = property
+              ? `${error.instancePath}/${property}`
+              : error.instancePath || '/'
+            const yamlPath = pointer
+              .split('/')
+              .slice(1)
+              .map((segment) =>
+                /^\d+$/.test(segment) ? Number(segment) : segment,
+              )
+            const position = nodePosition(yaml, lineCounter, yamlPath)
+            return {
+              severity: 'error',
+              code: 'YM201',
+              message: property
+                ? `Property "${property}" is not allowed`
+                : `Document schema violation: ${describeSchemaViolation(error)}`,
+              path: input.path,
+              pointer,
+              line: position.line,
+              column: position.col,
+            }
+          })
+
+  return {
+    source: input.source,
+    kind: 'document',
+    value,
+    schemaDiagnostics,
+    positions: new Map(),
+  }
+}
+
+interface ParsedSource {
+  readonly input: WorkspaceSource
+  readonly entry: ParsedWorkspaceSource
+}
+
+// Reuse is decided by exact source-text equality against the previous cache, so
+// a wrong or stale cache can only cost work, never change output. Sources that
+// left the workspace leave the returned cache with them.
+const parseSources = (
+  sources: readonly WorkspaceSource[],
+  previous?: CompilationCache,
+): {
+  readonly parsed: readonly ParsedSource[]
+  readonly cache: CompilationCache
+  readonly reused: number
+} => {
+  const entries = new Map<string, ParsedWorkspaceSource>()
+  let reused = 0
+  const parsed = sources.map((input) => {
+    const cached = previous?.sources.get(input.path)
+    const entry =
+      cached !== undefined && cached.source === input.source
+        ? cached
+        : parseWorkspaceSource(input)
+    if (entry === cached) {
+      reused += 1
+    }
+    entries.set(input.path, entry)
+    return { input, entry }
+  })
+  return { parsed, cache: { sources: entries }, reused }
+}
+
+function compileWorkspaceResolved(
+  parsed: readonly ParsedSource[],
+): ContextualCompilationResult {
+  const profileInputs: ParsedSource[] = []
+  const documentInputs: ParsedSource[] = []
+  for (const source of parsed) {
+    if (source.entry.kind === 'profile') {
+      profileInputs.push(source)
     } else {
-      documentInputs.push(parsed)
+      documentInputs.push(source)
     }
   }
 
@@ -430,34 +626,15 @@ function compileWorkspaceResolved(
     readonly identity: string
     readonly positionFor: (
       yamlPath: readonly (string | number)[],
-    ) => { readonly line: number; readonly col: number }
+    ) => ResolvedPosition
   }> = []
-  for (const { input, lineCounter, yaml } of profileInputs) {
-    const value = yaml.toJS() as NativeProfile
-    const positionFor = (yamlPath: readonly (string | number)[]) => {
-      const node = yaml.getIn(yamlPath, true)
-      const offset =
-        typeof node === 'object' &&
-        node !== null &&
-        'range' in node &&
-        Array.isArray(node.range)
-          ? node.range[0]
-          : 0
-      return lineCounter.linePos(offset)
-    }
-    if (yaml.errors.length > 0) {
-      for (const error of yaml.errors) {
-        const position = error.linePos?.[0] ?? { line: 1, col: 1 }
-        profileDiagnostics.push({
-          severity: 'error',
-          code: 'YM101',
-          message: error.message.split(' at line ')[0] ?? error.message,
-          path: input.path,
-          pointer: '/',
-          line: position.line,
-          column: position.col,
-        })
-      }
+  for (const { input, entry } of profileInputs) {
+    // `validateProfile` below is what checks this shape; the cast carries the
+    // same pre-validation assumption the loop has always made.
+    const value = entry.value as NativeProfile
+    const positionFor = positionReader(input.source, entry.positions)
+    if (entry.schemaDiagnostics.length > 0) {
+      profileDiagnostics.push(...entry.schemaDiagnostics)
       continue
     }
     if (!validateProfile(value)) {
@@ -689,22 +866,17 @@ function compileWorkspaceResolved(
     return diagnosticFailure(profileDiagnostics)
   }
 
-  const documents = documentInputs.map(({ input, lineCounter, yaml }) => {
-    const value = yaml.toJS() as NativeDocument
+  const documents = documentInputs.map(({ input, entry }) => {
+    // Schema-checked by `parseWorkspaceSource`; the faults it found are the
+    // `schemaDiagnostics` returned below, and they gate every later phase.
+    const value = entry.value as NativeDocument
+    const positionAt = positionReader(input.source, entry.positions)
 
     const location = (
       yamlPath: readonly (string | number)[],
       pointer: string,
     ): GraphSource => {
-      const node = yaml.getIn(yamlPath, true)
-      const offset =
-        typeof node === 'object' &&
-        node !== null &&
-        'range' in node &&
-        Array.isArray(node.range)
-          ? node.range[0]
-          : 0
-      const position = lineCounter.linePos(offset)
+      const position = positionAt(yamlPath)
       return {
         document: value?.id ?? '<unknown>',
         path: input.path,
@@ -714,53 +886,12 @@ function compileWorkspaceResolved(
       }
     }
 
-    const parseDiagnostics: Diagnostic[] = yaml.errors.map((error) => {
-      const position = error.linePos?.[0] ?? { line: 1, col: 1 }
-      return {
-        severity: 'error',
-        code: 'YM101',
-        message: error.message.split(' at line ')[0] ?? error.message,
-        path: input.path,
-        pointer: '/',
-        line: position.line,
-        column: position.col,
-      }
-    })
-    const valid = parseDiagnostics.length === 0 && validateDocument(value)
-    const schemaDiagnostics: Diagnostic[] =
-      parseDiagnostics.length > 0
-        ? parseDiagnostics
-        : valid
-          ? []
-          : (validateDocument.errors ?? []).map((error) => {
-              const property =
-                error.keyword === 'additionalProperties'
-                  ? String(error.params.additionalProperty)
-                  : undefined
-              const pointer = property
-                ? `${error.instancePath}/${property}`
-                : error.instancePath || '/'
-              const yamlPath = pointer
-                .split('/')
-                .slice(1)
-                .map((segment) =>
-                  /^\d+$/.test(segment) ? Number(segment) : segment,
-                )
-              const source = location(yamlPath, pointer)
-              return {
-                severity: 'error',
-                code: 'YM201',
-                message: property
-                  ? `Property "${property}" is not allowed`
-                  : `Document schema violation: ${describeSchemaViolation(error)}`,
-                path: input.path,
-                pointer,
-                line: source.line,
-                column: source.column,
-              }
-            })
-
-    return { input, value, location, schemaDiagnostics }
+    return {
+      input,
+      value,
+      location,
+      schemaDiagnostics: entry.schemaDiagnostics,
+    }
   })
 
   const claims: GraphClaim[] = []
@@ -2033,10 +2164,32 @@ function compileWorkspaceResolved(
 export function compileWorkspace(
   sources: readonly WorkspaceSource[],
 ): CompilationResult {
-  const result = compileWorkspaceResolved(sources)
+  const result = compileWorkspaceResolved(parseSources(sources).parsed)
   return result.ok ? { ok: true, graph: result.graph } : result
 }
 
 export const compileWorkspaceWithProfileContext = (
   sources: readonly WorkspaceSource[],
-): ContextualCompilationResult => compileWorkspaceResolved(sources)
+): ContextualCompilationResult =>
+  compileWorkspaceResolved(parseSources(sources).parsed)
+
+/**
+ * Compiles the whole workspace, reusing the YAML parse of every source whose
+ * text is unchanged since `previous`. The compiled output is byte-identical to
+ * {@link compileWorkspaceWithProfileContext} for the same sources: the cache
+ * holds parse results only, and every cross-document decision is re-derived.
+ *
+ * Hold the returned `cache` and pass it to the next call. It retains one
+ * composed value per current source and drops sources that left the workspace.
+ */
+export const compileWorkspaceIncremental = (
+  sources: readonly WorkspaceSource[],
+  previous?: CompilationCache,
+): IncrementalCompilationResult => {
+  const { parsed, cache, reused } = parseSources(sources, previous)
+  return {
+    ...compileWorkspaceResolved(parsed),
+    incremental: reused > 0,
+    cache,
+  }
+}

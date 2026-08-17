@@ -1,5 +1,6 @@
 export {
   compileWorkspace,
+  compileWorkspaceIncremental,
   compileWorkspaceWithProfileContext,
 } from './compiler.js'
 export { serializeSemanticGraph } from './graph.js'
@@ -66,8 +67,11 @@ export {
   type RtmSource,
 } from './rtm.js'
 export type {
+  CompilationCache,
   CompilationResult,
   ContextualCompilationResult,
+  IncrementalCompilationResult,
+  ParsedWorkspaceSource,
   Diagnostic,
   GraphClaim,
   GraphSource,

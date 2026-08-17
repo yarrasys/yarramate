@@ -252,6 +252,13 @@ const result = compileWorkspace([
 lineage for operations that explicitly require kind ancestry. Graph v2
 remains the stable, graph-only interchange result.
 
+`compileWorkspaceIncremental(sources, previous)` is the entry point for a
+consumer that recompiles a whole workspace on every write. It returns the
+same result plus an opaque `cache` to hand back on the next call, and
+re-parses only the sources whose text changed; `incremental: false` reports
+that it fell back to a full compile. Reuse is decided by source-text
+equality, so a stale cache costs work but never changes output.
+
 Normative schemas are available through package exports such as
 `yarramate/schema/document`, `yarramate/schema/workspace`,
 `yarramate/schema/graph-v2`, `yarramate/schema/projection`,

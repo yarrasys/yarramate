@@ -1,5 +1,22 @@
 # Changelog
 
+- Add `compileWorkspaceIncremental`, a delta entry point for consumers that
+  compile a whole workspace on every commit. It takes the opaque
+  `CompilationCache` the previous call returned and re-parses only the
+  documents whose source text changed. Reuse is decided by exact source-text
+  equality, never by a caller-declared change set, so a stale cache can only
+  fail to save work — it can never alter compiled output (ADR 0091). A
+  40-document commit against a 40,000-document workspace costs 684ms instead
+  of 9.5s, and `compileWorkspace` and `compileWorkspaceWithProfileContext`
+  keep producing byte-identical graphs, profile contexts, and diagnostics.
+- Parse each workspace source once. `compileWorkspaceResolved` parsed every
+  source twice — once to read its `format` key for profile-versus-document
+  classification, then again in its own loop — and re-parsed a document to
+  resolve each claim's line and column. Classification now reads the composed
+  value the first parse produced, and positions are memoised per document:
+  a full compile of 1,000 documents falls 233ms → 154ms and 40,000 falls
+  7.9s → 4.6s, with output unchanged byte for byte.
+
 ## 0.19.0
 
 - Render and edit the native model in the browser. `yarramate-visual` now

@@ -21,13 +21,16 @@ const DESCRIPTION =
   'Synthetic subject used to measure compile cost at scale; the description ' +
   'carries enough text that claim values are realistic rather than empty.'
 
-export function generateWorkspace(documentCount) {
+// `targetModulus` bounds the documents a relationship may point at, so an
+// appended tail can target only the documents that existed before it: the
+// prefix a smaller call produces stays byte-identical.
+export function generateWorkspace(documentCount, targetModulus = documentCount) {
   const sources = []
   for (let index = 0; index < documentCount; index += 1) {
     const id = `syn-${index}`
     const relationships = [1, 2, 3]
       .map((step) => {
-        const target = `syn-${(index + step * 7 + 1) % documentCount}`
+        const target = `syn-${(index + step * 7 + 1) % targetModulus}`
         return [
           `  - id: rel-${step}`,
           '    kind: association',
