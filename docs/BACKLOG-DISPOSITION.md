@@ -61,21 +61,31 @@ These items need a new authoritative semantic or product decision:
   contract distinct from evidence and declared intent.
 - **CI policy for evidence findings** belongs to an opt-in consumer policy
   decision, not Core correctness.
-- **Renaming a subject identity** requires an identity-succession decision.
-  A globally qualified id is the identity: `yarramate/operations/v1` offers
-  add, update, and delete for concepts and relationships but no rename, and
-  `update-*` is enrich-only. A rename must therefore state what happens to
-  relationship endpoints, claim subjects, projection membership, evidence
-  observations, attestations, and `.yarramate/visual-layout` keys that name
-  the old id, and whether `supersedes` expresses the succession.
+- **Renaming a subject identity** requires an identity-succession decision
+  ([#200](https://github.com/yarrasys/yarramate/issues/200)). A globally
+  qualified id is the identity, and `yarramate/operations/v1` has no rename.
+  The graph half is expressible — `update-relationship` re-points `from` and
+  `to` across documents — but the identity half is not: a batch that adds the
+  successor with `supersedes`, moves the endpoints, and deletes the old
+  subject is refused with `YM312 Unresolved succession reference`, because
+  the batch's final state deletes the subject its own succession record names.
+  What lands instead is supersede-and-retire, which keeps both ids forever and
+  leaves the two document kinds `apply` cannot write — projection membership
+  and adapter-mapping entries — still naming the retired subject, resolving,
+  and reported by `check` as no errors. The decision must state whether
+  succession survives a delete, what repairs those two documents, and what a
+  retired subject still owes in evidence and attestations.
 - **Concurrent-edit conflict resolution across browsers** requires a
-  staleness contract. `changeset.commit` re-reads the workspace from disk, so
-  an operation naming a concurrently deleted subject already fails with Core
-  diagnostics; but an enrich-only `update-concept` staged against a stale
-  value overwrites a concurrent change undetected. Detection needs a base
-  digest on the wire, and the reviewer-facing answer to a refused batch —
-  rebase the staged operations, discard them, or review a three-way
-  difference — is a product decision.
+  staleness contract
+  ([#199](https://github.com/yarrasys/yarramate/issues/199)).
+  `changeset.commit` re-reads the workspace from disk, so a batch naming a
+  concurrently deleted subject is refused with a located `YM912`; but two
+  reviewers editing the same field is a silent lost update, because a scalar
+  update replaces and the payload carries no statement of what the browser
+  was looking at. Detection needs a base digest on the wire — a required
+  field, so `visual-protocol/v3` — and the reviewer-facing answer to a
+  refused batch, whether to rebase the staged operations, discard them, or
+  review a three-way difference, is a product decision.
 
 ## Externally blocked
 
