@@ -135,17 +135,24 @@ that purpose.
 ## Conservative extension
 
 Profiles are the extension point offered to users, so the safety property that
-makes extension sound is stated here rather than left to be discovered.
+makes extension sound is stated here rather than left to be discovered. It is
+two properties, because a profile and a document that selects it are different
+things.
 
-> **Loading a profile extension adds subjects. It never changes verdicts.**
+> **A vocabulary nobody selects changes nothing.**
 >
-> Let `W` be a workspace and let `E` be an extension: one or more profile
-> documents that no document in `W` selects, together with any documents that
-> select them. Then for every subject present in `W`, every diagnostic,
-> catalogue evaluation, and projection result concerning that subject is the
-> same in `W` and in `W + E`. Loading `E` may add outcomes concerning the
-> subjects `E` itself introduces. It may change no outcome concerning a
-> subject that was already there.
+> Let `W` be a workspace and let `P` be one or more profile documents that no
+> document in `W` selects. Then every diagnostic, catalogue evaluation, and
+> projection result over `W + P` is byte-identical to the one over `W`.
+
+> **An extension document is never a worse neighbour than its core twin.**
+>
+> Let `D` be a document that selects a kind declared in `P`, and let the
+> **core twin** of `D` be `D` rewritten to declare the same subjects under the
+> nearest core ancestor of each kind it uses. Then for every subject already
+> present in `W`, every verdict change caused by adding `D` is also caused by
+> adding the core twin. The converse does not hold: the core twin may change
+> more.
 
 The prior art is the standard ontology-modularization criterion: a module is a
 conservative extension when it adds nothing about the original vocabulary.
@@ -157,28 +164,53 @@ without auditing it.
 
 "A query about core kinds returns the same answer" is false here, and it is
 false by design. A core-kind selector with `kindMatching: descendants` returns
-more subjects once an extension exists: `yarramate/core@0.1#applicationComponent`
-matches an extension's `microservice`, which is exactly what ADR 0029 built it
-to do, and catalogue conditions resolve through lineage by default for the
-same reason. If the property forbade that, the property would be wrong rather
-than the behaviour.
+more subjects once an extension exists:
+`yarramate/core@0.1#applicationComponent` matches an extension's
+`microservice`, which is exactly what ADR 0029 built it to do, and catalogue
+conditions resolve through lineage by default for the same reason. If the
+property forbade that, the property would be wrong rather than the behaviour.
 
-It survives because it is quantified over subjects, not over queries. The
-extra matches are subjects the extension brought with it. Nothing that was in
-the answer has left it, and nothing that was already in the model has changed
-kind, status, lineage, or diagnosis. An extension may enlarge the domain. It
-may not revise the domain it enlarged.
+The unit is subjects, not queries. The extra matches are subjects the extension
+brought with it, and about every subject that was already there the answer is
+unchanged: same kind, same status, same lineage, same claims. An extension may
+enlarge the domain. It may not revise the domain it enlarged.
+
+### Why one property is not enough
+
+A single statement covering "the profile together with any documents that
+select it" was tried first, and it is false. Adding a document changes what a
+workspace-scoped catalogue asks about the subjects already in it — that is
+what workspace scope is for, and it happens whether or not a profile is
+involved. Measured on the bundled catalogue: an extension document declaring
+`orders` with a relationship to a pre-existing goal resolves that goal's
+`goal-unrealized` question. That is the feature working, and the single
+statement called it a violation.
+
+So the second property compares like with like. The question an importer
+needs answered is not "does adding documents change anything" — it does —
+but "does routing them through an extension profile expose me to anything
+plain modelling would not". The answer is no, and it is stronger than
+parity: the exposure is a subset.
 
 ### The testable form
 
-When `E` introduces no documents, a profile loaded but never selected, it adds
-no subjects at all. The property then collapses to exact output identity, and
-that is what `test/conservative-extension.test.ts` asserts: a core-only
-workspace compiles to a byte-identical graph, byte-identical diagnostics,
-byte-identical catalogue evaluation, and byte-identical projection results
-with and without an unrelated extension loaded. A fifth case covers the
-widening, asserting both that the answer grows and that every arrival is a
+The first property has a degenerate case that makes it exactly testable: a
+profile loaded but never selected adds no subjects at all, so "changes
+nothing" collapses to output identity and a string comparison settles it. That
+is what `test/conservative-extension.test.ts` asserts across four surfaces —
+graph, diagnostics, catalogue evaluation, and a descendant-matching projection
+— plus a case that asserts the widening happens and that every arrival is a
 subject the extension document introduced.
+
+The second property is tested by control rather than by assertion: run the
+same workspace with the extension document and with its core twin, and compare
+the verdict changes about pre-existing subjects. Two controls are pinned. An
+equality witness: both routes resolve the same `goal-unrealized` question, so
+the extension route is not doing something of its own. And a strictness
+witness: near-duplicate detection buckets by exact kind (ADR 0077), so an
+arrival named `Orders Gateway` under the extension's `microservice` leaves the
+pre-existing `Order Gateway`'s question closed, while the same arrival under
+`applicationComponent` opens it. The extension route changed strictly less.
 
 This is a test discipline rather than a mechanical check. A general proof over
 every future feature would be out of proportion to a property that currently
@@ -191,6 +223,14 @@ re-annotate, or constrain a kind it did not declare would violate this, and
 would therefore need to be a deliberate decision with this section rewritten,
 not a discovered consequence. Today no such feature exists: an extension may
 only add kinds, and may only narrow constraints on the kinds it adds.
+
+The second property rules out something narrower and easier to introduce by
+accident: a surface where an extension kind is treated as a wider participant
+than the core kind it specializes. Descendant bucketing in the near-duplicate
+check would do exactly that, which is why ADR 0077 buckets by exact kind and
+two regression tests pin it. A catalogue condition that resolved counterparts
+through lineage where the selector does not would be the same fault in another
+place.
 
 The rigidity annotation (ADR 0078) sits on the right side of this line for
 extensions, since a profile may only annotate kinds it declares. Annotating

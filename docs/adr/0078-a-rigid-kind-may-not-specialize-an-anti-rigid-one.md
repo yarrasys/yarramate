@@ -115,10 +115,10 @@ before this change, so no profile that validates today can trigger it, and the
 annotation reaches no graph, no claim, and no projection.
 
 It should still be said plainly that annotating core is an addition to what
-core says about core vocabulary, which is not a conservative extension in the
-sense ADR 0079 states. That is precisely why it is done in core rather than
-smuggled in through a profile: a change to core is allowed to change core, in
-the open, with a compatibility argument attached.
+core says about core vocabulary, which is not conservative in the sense of the
+ontology-modularization criterion ADR 0079 cites. That is precisely why it is
+done in core rather than smuggled in through a profile: a change to core is
+allowed to change core, in the open, with a compatibility argument attached.
 
 ## What is deliberately left out
 

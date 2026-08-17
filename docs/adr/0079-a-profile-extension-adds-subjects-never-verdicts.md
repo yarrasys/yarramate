@@ -1,4 +1,4 @@
-# A profile extension adds subjects, never verdicts
+# An unselected profile changes nothing; an extension document is no worse
 
 Status: accepted
 
@@ -14,18 +14,31 @@ the base said about base terms still holds, nothing new about base terms
 becomes derivable, and that is what lets someone import a module without
 auditing it.
 
-Decided: the property is stated in `docs/PROFILES.md` and defended by a
-property test, not by a mechanical check.
+Decided: the properties are stated in `docs/PROFILES.md` and defended by
+property tests, not by a mechanical check. There are two of them, and the
+first published version of this decision had them fused into one statement
+that was false; see "One statement was two" below.
 
-> **Loading a profile extension adds subjects. It never changes verdicts.**
+> **A vocabulary nobody selects changes nothing.**
 >
-> Let `W` be a workspace and let `E` be an extension: one or more profile
-> documents that no document in `W` selects, together with any documents that
-> select them. Then for every subject present in `W`, every diagnostic,
-> catalogue evaluation, and projection result concerning that subject is the
-> same in `W` and in `W + E`. Loading `E` may add outcomes concerning the
-> subjects `E` itself introduces. It may change no outcome concerning a
-> subject that was already there.
+> Let `W` be a workspace and let `P` be one or more profile documents that no
+> document in `W` selects. Then every diagnostic, catalogue evaluation, and
+> projection result over `W + P` is byte-identical to the one over `W`.
+
+> **An extension document is never a worse neighbour than its core twin.**
+>
+> Let `D` be a document that selects a kind declared in `P`, and let the
+> **core twin** of `D` be `D` rewritten to declare the same subjects under the
+> nearest core ancestor of each kind it uses. Then for every subject already
+> present in `W`, every verdict change caused by adding `D` is also caused by
+> adding the core twin. The converse does not hold: the core twin may change
+> more.
+
+Amended after publication (#172). One statement covered both the profile and
+the documents that select it, and in that form it was false: adding any
+document changes what a workspace-scoped catalogue asks about the subjects
+already there, whether or not a profile is involved. The correction is below
+under "One statement was two".
 
 ## The phrasing is the work
 
@@ -52,24 +65,55 @@ about base vocabulary. A new individual answering to a base predicate is not a
 new consequence about the base; it is a new individual. The naive phrasing
 conflated the vocabulary with the population, and the model is the population.
 
+## One statement was two
+
+The retracted wording, published as this decision's title and its single
+property, was "Loading a profile extension adds subjects. It never changes
+verdicts", quantified over "an extension: one or more profile documents that
+no document in `W` selects, together with any documents that select them".
+
+Bundling those two things is what made it false. Measured on the bundled
+catalogue: an extension document declaring `orders` with a realization to a
+pre-existing goal resolves that goal's `goal-unrealized` question - a verdict
+change about a subject that was already there. Nothing profile-specific
+happened, and the same document written in plain core does the same thing. The
+published phrasing called that a violation, so it condemned the feature
+instead of naming the fault.
+
+So the statement splits along the join. A profile nobody selects is the
+degenerate case and can be held to output identity. A document that selects an
+extension kind is a document, and documents change their neighbours' verdicts;
+the question an importer needs answered is whether routing one through an
+extension profile exposes the workspace to more than plain modelling would. It
+does not, and the answer is stronger than parity: the changes the extension
+route causes about pre-existing subjects are a subset of the changes its core
+twin causes. The near-duplicate check is where that gap is measurable, because
+it buckets by exact kind (ADR 0077): an arrival under an extension kind leaves
+closed a question the same arrival in plain core opens.
+
 ## Documentation and a property test, not a proof
 
 The issue leaned this way and the reasoning holds. A general mechanical check
 would have to quantify over every future feature, which is a proof obligation
-on a codebase, not a test. What exists instead is a five-case test that
-compiles a core-only workspace with and without an unrelated extension and
-asserts byte identity across the graph, the diagnostics, the catalogue
-evaluation, and a descendant-matching projection, plus a fifth case that
-asserts the widening happens and that every arrival is a subject the extension
-document introduced.
+on a codebase, not a test. What exists instead is a seven-case test. Five hold
+the first property, compiling a core-only workspace with and without an
+unrelated extension and asserting byte identity across the graph, the
+diagnostics, the catalogue evaluation, and a descendant-matching projection,
+plus a case that asserts the widening happens and that every arrival is a
+subject the extension document introduced. Two hold the second by control
+rather than by assertion, running the same arrival through an extension kind
+and through its core twin: an equality witness, where both routes resolve the
+same question about a pre-existing subject, and a strictness witness, where
+only the core twin opens a near-duplicate question about one.
 
-The degenerate case is what makes this testable at all. When `E` introduces no
-documents, a profile loaded but never selected, it adds no subjects, so "no
-verdict changes" collapses to exact output identity and a string comparison
-settles it.
+The degenerate case is what makes the first property testable at all. When `P`
+is loaded but never selected it adds no subjects, so "changes nothing"
+collapses to exact output identity and a string comparison settles it. The
+second property has no degenerate case, which is why it is measured against a
+twin rather than against the empty change.
 
-It is worth recording why the property holds today, because that is the list a
-future feature has to keep true. Profile resolution is additive by
+It is worth recording why the first property holds today, because that is the
+list a future feature has to keep true. Profile resolution is additive by
 construction: an extension may only introduce new local names, since YM409 and
 YM410 reject shadowing an inherited one, and may only narrow endpoint
 constraints, since YM412 rejects broadening. It cannot reach a resolved core
@@ -114,14 +158,24 @@ equally acceptable would be a rule worth nothing.
 
 ## Consequences
 
-The property constrains the roadmap, which is most of its value. Any future
-profile feature that lets an extension restate, re-parent, re-annotate, or
-constrain a kind it did not declare violates it, and now has to be argued for
-against a written statement rather than discovered afterwards by whoever
+The first property constrains the roadmap, which is most of its value. Any
+future profile feature that lets an extension restate, re-parent, re-annotate,
+or constrain a kind it did not declare violates it, and now has to be argued
+for against a written statement rather than discovered afterwards by whoever
 imported the profile. Overrides, deprecations of core kinds from an extension,
 and extension-supplied constraints on core kinds are all in that category.
 
-The cost is a test that can only ever check the degenerate case, and the
-honest limit is that it checks the four surfaces named here on one fixture. It
-would not catch a breach in a surface added later that nobody thought to
-include. The statement is what the test is measured against, not the reverse.
+The second constrains a subtler class. Any surface that treats an extension
+kind as a wider participant than the core kind it specializes breaks it
+without touching profile resolution at all: descendant bucketing in the
+near-duplicate check would do exactly that, and a catalogue condition
+resolving counterparts through lineage where the selector does not would be
+the same fault elsewhere.
+
+The costs are stated plainly. The first property's test can only ever check
+the degenerate case, and it checks the four surfaces named here on one
+fixture; it would not catch a breach in a surface added later that nobody
+thought to include. The second property's two witnesses are controls on one
+fixture pair, with the core twin written out by hand, so they demonstrate the
+subset direction rather than establish it. The statements are what the tests
+are measured against, not the reverse.
