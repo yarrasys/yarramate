@@ -402,4 +402,36 @@ relationships: []
     if (!result.ok) return
     expect(result.source).toContain('autoLayout LeftRight')
   })
+
+  it('refuses a projected concept that never reached the emitted model', () => {
+    const compilation = compileWorkspace([{ path: 'payments.yaml', source }])
+    expect(compilation.ok).toBe(true)
+    if (!compilation.ok) return
+
+    // A subject carrying no claims has no location for the unmapped-concept
+    // check to point at, so nothing but rendering coverage is left to notice
+    // that the element was silently emitted without an identifier.
+    const evaluated = evaluateProjection(compilation.graph, projection)
+    const result = exportLikeC4(
+      {
+        ...evaluated,
+        subjects: [
+          ...evaluated.subjects,
+          { id: 'payments#ghost', type: 'concept' },
+        ],
+      },
+      mapping,
+    )
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        code: 'YMLC112',
+        subject: 'payments#ghost',
+        message:
+          'Rendering coverage: 2 of 3 projected concepts reached the LikeC4 model',
+      }),
+    ])
+  })
 })

@@ -113,7 +113,8 @@
     "self:check:likec4": "pnpm build && node dist/adapters/likec4-cli.js check .yarramate/likec4-project.yaml .yarramate/workspace.yaml",
     "self:check:likec4:json": "pnpm build && node dist/adapters/likec4-cli.js check .yarramate/likec4-project.yaml --json .yarramate/workspace.yaml",
     "self:export:likec4": "pnpm build && node dist/adapters/likec4-cli.js export-project .yarramate/likec4-project.yaml .yarramate-out/likec4 .yarramate/workspace.yaml",
-    "validate": "pnpm self:export:likec4 && likec4 validate --no-layout .yarramate-out/likec4",
+    "self:check:likec4:output": "pnpm build && node dist/adapters/likec4-cli.js export-project --check .yarramate/likec4-project.yaml .yarramate-out/likec4 .yarramate/workspace.yaml",
+    "validate": "pnpm self:export:likec4 && pnpm self:check:likec4:output && likec4 validate --no-layout .yarramate-out/likec4",
     "verify": "pnpm typecheck && pnpm build && pnpm test && pnpm self:check && pnpm validate",
     "test": "vitest run",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.visual.json"
@@ -131,7 +132,7 @@
     "cytoscape": "^3.34.1",
     "cytoscape-elk": "^2.3.0",
     "elkjs": "^0.12.0",
-    "likec4": "^1.59.2",
+    "likec4": "1.59.2",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "typescript": "^7.0.2",

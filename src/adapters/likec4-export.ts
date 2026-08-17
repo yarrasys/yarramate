@@ -22,6 +22,7 @@ export interface LikeC4ExportDiagnostic {
     | 'YMLC108'
     | 'YMLC109'
     | 'YMLC111'
+    | 'YMLC112'
   readonly message: string
   readonly subject?: string
   readonly path: string
@@ -309,6 +310,42 @@ export function exportLikeC4(
         ...metadata,
         '  }',
       )
+    }
+  }
+  // `likec4 validate` accepts an empty model as valid, so it can never notice
+  // that selected concepts stopped reaching the emitted text. The shortfall is
+  // only visible here, and it is measured on the assembled lines rather than on
+  // loop iterations so that a dropped definition is what fails, not a skipped
+  // turn of the loop.
+  const rendered = new Set(
+    lines.flatMap((line) => {
+      if (!line.startsWith('  ') || line.startsWith('   ')) return []
+      const [head, ...rest] = line.slice(2).split(' = ')
+      return rest.length > 0 ? [head!] : []
+    }),
+  )
+  const unrendered = concepts.filter(
+    ({ id }) => !rendered.has(externalByNative.get(id)!),
+  )
+  const missing = unrendered[0]
+  if (missing !== undefined) {
+    const source =
+      sourceForConcept(projection.claims, missing.id) ??
+      adapterMappingLocation(mapping, 'adapter')
+    return {
+      ok: false,
+      diagnostics: [
+        {
+          severity: 'error',
+          code: 'YMLC112',
+          message: `Rendering coverage: ${concepts.length - unrendered.length} of ${concepts.length} projected concepts reached the LikeC4 model`,
+          subject: missing.id,
+          path: source.path,
+          pointer: source.pointer,
+          line: source.line,
+          column: source.column,
+        },
+      ],
     }
   }
 

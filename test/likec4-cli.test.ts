@@ -450,6 +450,56 @@ mappings:
       validate(JSON.parse(failure.stdout)),
       JSON.stringify(validate.errors ?? []),
     ).toBe(true)
+
+    // The relationship gate reports one summarized fault, and its code has to
+    // be one the published envelope admits - a report that cannot be read by
+    // the schema it names is worse than no report.
+    const parent = mkdtempSync(join(tmpdir(), 'yarramate-likec4-envelope-'))
+    try {
+      const authored = readFileSync(
+        join(
+          repositoryRoot,
+          'test/fixtures/valid/governed-change.likec4-mapping.yaml',
+        ),
+        'utf8',
+      )
+      const conceptOnly = authored
+        .split('  - native: ')
+        .filter(
+          (entry, index) => index === 0 || !entry.includes('type: relationship'),
+        )
+        .join('  - native: ')
+      writeFileSync(join(parent, 'concept-only.mapping.yaml'), conceptOnly)
+
+      const relationshipGap = runLikeC4Cli(
+        [
+          'check',
+          join(
+            repositoryRoot,
+            'test/fixtures/valid/governed-change.projection.yaml',
+          ),
+          join(parent, 'concept-only.mapping.yaml'),
+          '--json',
+          join(
+            repositoryRoot,
+            'test/fixtures/valid/governed-change.workspace.yaml',
+          ),
+        ],
+        repositoryRoot,
+      )
+
+      expect(JSON.parse(relationshipGap.stdout)).toMatchObject({
+        diagnostics: expect.arrayContaining([
+          expect.objectContaining({ code: 'YMLC111' }),
+        ]),
+      })
+      expect(
+        validate(JSON.parse(relationshipGap.stdout)),
+        JSON.stringify(validate.errors ?? []),
+      ).toBe(true)
+    } finally {
+      rmSync(parent, { recursive: true, force: true })
+    }
   })
 
   it('checks bundled kind compatibility without creating a project', () => {

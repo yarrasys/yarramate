@@ -34,7 +34,7 @@
                 "const": "error"
               },
               "code": {
-                "enum": ["YMLC101", "YMLC102", "YMLC103", "YMLC104", "YMLC105", "YMLC106", "YMLC107", "YMLC108", "YMLC109", "YMLC110"]
+                "enum": ["YMLC101", "YMLC102", "YMLC103", "YMLC104", "YMLC105", "YMLC106", "YMLC107", "YMLC108", "YMLC109", "YMLC110", "YMLC111", "YMLC112"]
               },
               "message": {
                 "type": "string",

@@ -137,6 +137,7 @@ the authored value that can correct the failure:
 | `YMLC109` | A deployment identity, parent, or projected subject is invalid. | The corresponding project deployment field. |
 | `YMLC110` | A project mapping, kind mapping, or projection is missing or unreadable. | The referencing project field. |
 | `YMLC111` | A projected relationship has no LikeC4 mapping. Reported by `check` only. | The relationship in its native document. |
+| `YMLC112` | A projected concept never reached the emitted model. `likec4 validate` reads an empty model as valid, so only the emitter can report the shortfall. | The concept's native `kind`, or the subject mapping `adapter` when the concept carries no claim. |
 
 Schema and source parsing failures retain their existing Core diagnostic
 codes in the same envelope. Mixed Core and adapter failures use the shared
