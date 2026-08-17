@@ -72,6 +72,8 @@ describe('applyOperations', () => {
       addedObservations: 0,
       updatedObservations: 0,
       deletedObservations: 0,
+      renamedConcepts: 0,
+      renamedRelationships: 0,
     })
     expect(outcome.result.documents).toEqual(['architecture/main.yaml'])
 
@@ -84,7 +86,7 @@ describe('applyOperations', () => {
     const before = readFileSync(join(cwd, 'architecture/main.yaml'), 'utf8')
     const invalidBatch = `format: yarramate/operations/v1
 operations:
-  - op: rename-concept
+  - op: resurrect-concept
     document: architecture/main.yaml
     concept:
       id: user
@@ -191,5 +193,334 @@ operations:
     } finally {
       rmSync(other, { recursive: true, force: true })
     }
+  })
+})
+
+// A rename is only an identity edit if it is total: the declaration and every
+// declarative reference to it move in one batch. References live in four kinds
+// of file, so each group below is a separate observable claim - a group the
+// walker misses leaves a reference to an id that stopped existing.
+
+const renameDocument = `format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts:
+  - id: platform
+    kind: businessActor
+    name: Platform
+  - id: checkout
+    kind: applicationService
+    name: Checkout
+    owner: platform
+    references:
+      - id: charter
+        ref: "main#platform"
+relationships:
+  - id: platform-serves-checkout
+    kind: serving
+    from: platform
+    to: checkout
+`
+
+const renameManifest = `format: yarramate/workspace/v1
+id: rename-fixture
+documents:
+  - architecture/main.yaml
+profiles: []
+projections:
+  - projections/actors.projection.yaml
+adapterMappings:
+  - adapters/likec4.yaml
+evidence:
+  - evidence/audit.yaml
+`
+
+const renameProjection = `format: yarramate/projection/v1
+id: actors
+version: "1.0"
+query:
+  subjects:
+    - main#platform
+  owners:
+    - main#platform
+`
+
+const renameEvidence = `format: yarramate/evidence/v1
+id: audit
+version: "1.0"
+provider: repository-audit
+observations:
+  - subject: main#platform
+    result: confirmed
+    evidence:
+      uri: repo:src/platform.ts
+  - claim: 'main#platform~name'
+    result: confirmed
+    evidence:
+      uri: repo:src/platform.ts
+`
+
+const renameMapping = `format: yarramate/adapter-mapping/v1
+id: likec4-main
+version: "1.0"
+adapter: likec4
+mappings:
+  - native: main#platform
+    external: main.platform
+    type: concept
+`
+
+const renameBatch = (
+  from: string,
+  to: string,
+  op = 'rename-concept',
+  collection = 'concept',
+) => `format: yarramate/operations/v1
+operations:
+  - op: ${op}
+    document: architecture/main.yaml
+    ${collection}:
+      id: ${from}
+    to: ${to}
+`
+
+describe('applyOperations rename', () => {
+  let cwd: string
+  const read = (path: string) => readFileSync(join(cwd, path), 'utf8')
+
+  beforeEach(() => {
+    cwd = mkdtempSync(join(tmpdir(), 'yarramate-apply-rename-'))
+    for (const directory of [
+      'architecture',
+      'projections',
+      'adapters',
+      'evidence',
+    ]) {
+      mkdirSync(join(cwd, directory))
+    }
+    writeFileSync(join(cwd, 'architecture/main.yaml'), renameDocument, 'utf8')
+    writeFileSync(
+      join(cwd, 'projections/actors.projection.yaml'),
+      renameProjection,
+      'utf8',
+    )
+    writeFileSync(join(cwd, 'adapters/likec4.yaml'), renameMapping, 'utf8')
+    writeFileSync(join(cwd, 'evidence/audit.yaml'), renameEvidence, 'utf8')
+  })
+
+  afterEach(() => {
+    rmSync(cwd, { recursive: true, force: true })
+  })
+
+  const apply = (source: string) =>
+    applyOperations(
+      { path: 'operations.yaml', source },
+      { path: 'workspace.yaml', source: renameManifest },
+      cwd,
+    )
+
+  it('moves the declaration and every reference in all four groups', () => {
+    const outcome = apply(renameBatch('platform', 'platform-team'))
+    if (!outcome.ok) throw new Error(JSON.stringify(outcome.diagnostics))
+    expect(outcome.result.applied.renamedConcepts).toBe(1)
+    expect(outcome.result.documents).toEqual([
+      'adapters/likec4.yaml',
+      'architecture/main.yaml',
+      'evidence/audit.yaml',
+      'projections/actors.projection.yaml',
+    ])
+
+    // Document: declaration, owner, a qualified `ref`, and an endpoint.
+    expect(read('architecture/main.yaml')).toBe(
+      renameDocument
+        .replace('  - id: platform\n', '  - id: platform-team\n')
+        .replace('owner: platform', 'owner: platform-team')
+        .replace('ref: "main#platform"', 'ref: "main#platform-team"')
+        .replace('from: platform', 'from: platform-team'),
+    )
+    // Projection selectors, always qualified.
+    expect(read('projections/actors.projection.yaml')).toBe(
+      renameProjection.replaceAll('main#platform', 'main#platform-team'),
+    )
+    // Evidence: a bare subject and a claim whose `~aspect` suffix survives.
+    expect(read('evidence/audit.yaml')).toBe(
+      renameEvidence
+        .replace('subject: main#platform', 'subject: main#platform-team')
+        .replace("'main#platform~name'", "'main#platform-team~name'"),
+    )
+    // Adapter mapping: the native address moves, the external name does not.
+    expect(read('adapters/likec4.yaml')).toBe(
+      renameMapping.replace('native: main#platform', 'native: main#platform-team'),
+    )
+  })
+
+  it('moves a relationship id and the references that name it', () => {
+    const withReference = renameDocument.replace(
+      '        ref: "main#platform"',
+      '        ref: platform-serves-checkout',
+    )
+    writeFileSync(join(cwd, 'architecture/main.yaml'), withReference, 'utf8')
+    const outcome = apply(
+      renameBatch(
+        'platform-serves-checkout',
+        'platform-serves-checkout-service',
+        'rename-relationship',
+        'relationship',
+      ),
+    )
+    if (!outcome.ok) throw new Error(JSON.stringify(outcome.diagnostics))
+    expect(outcome.result.applied.renamedRelationships).toBe(1)
+    expect(read('architecture/main.yaml')).toBe(
+      withReference.replaceAll(
+        'platform-serves-checkout',
+        'platform-serves-checkout-service',
+      ),
+    )
+  })
+
+  it('reads the first rename result when a second one follows in the batch', () => {
+    const outcome = apply(`format: yarramate/operations/v1
+operations:
+  - op: rename-concept
+    document: architecture/main.yaml
+    concept:
+      id: platform
+    to: platform-team
+  - op: rename-concept
+    document: architecture/main.yaml
+    concept:
+      id: platform-team
+    to: platform-group
+`)
+    if (!outcome.ok) throw new Error(JSON.stringify(outcome.diagnostics))
+    expect(outcome.result.applied.renamedConcepts).toBe(2)
+    expect(read('architecture/main.yaml')).toContain('owner: platform-group')
+    expect(read('projections/actors.projection.yaml')).toContain(
+      'main#platform-group',
+    )
+  })
+
+  it('refuses a rename whose target id is not declared, writing nothing', () => {
+    const before = read('architecture/main.yaml')
+    const outcome = apply(renameBatch('absent', 'present'))
+    expect(outcome.ok).toBe(false)
+    if (outcome.ok) throw new Error('expected refusal')
+    expect(outcome.diagnostics[0]?.code).toBe('YM912')
+    expect(outcome.diagnostics[0]?.message).toContain(
+      'renames "absent", which does not exist',
+    )
+    expect(read('architecture/main.yaml')).toBe(before)
+  })
+
+  it('refuses a rename to the same id rather than reporting residue', () => {
+    const before = read('architecture/main.yaml')
+    const outcome = apply(renameBatch('platform', 'platform'))
+    expect(outcome.ok).toBe(false)
+    if (outcome.ok) throw new Error('expected refusal')
+    expect(outcome.diagnostics[0]?.code).toBe('YM912')
+    expect(outcome.diagnostics[0]?.message).toContain(
+      'renames "platform" to itself',
+    )
+    // The residue walk would otherwise flag every reference to the id, reading
+    // as a rewrite fault instead of a batch that asks for nothing.
+    expect(
+      outcome.diagnostics.some((diagnostic) => diagnostic.code === 'YM913'),
+    ).toBe(false)
+    expect(read('architecture/main.yaml')).toBe(before)
+  })
+
+  it('refuses a rename onto an id the document already declares', () => {
+    const before = read('architecture/main.yaml')
+    const outcome = apply(renameBatch('platform', 'checkout'))
+    expect(outcome.ok).toBe(false)
+    if (outcome.ok) throw new Error('expected refusal')
+    // The compile gate owns id uniqueness, and it runs before a byte is
+    // written, so the duplicate is reported against the document.
+    expect(outcome.diagnostics[0]?.code).toBe('YM301')
+    expect(outcome.diagnostics[0]?.message).toContain('Duplicate local ID')
+    expect(read('architecture/main.yaml')).toBe(before)
+  })
+
+  it('refuses a rename that would collide with an architecture state id', () => {
+    writeFileSync(
+      join(cwd, 'architecture/main.yaml'),
+      `${renameDocument}states:
+  - id: platform-team
+    kind: baseline
+    name: Current
+`,
+      'utf8',
+    )
+    const outcome = apply(renameBatch('platform', 'platform-team'))
+    expect(outcome.ok).toBe(false)
+    if (outcome.ok) throw new Error('expected refusal')
+    expect(outcome.diagnostics[0]?.message).toContain(
+      'one address would name two things',
+    )
+  })
+
+  it('refuses a rename out of a document already ambiguous with a state', () => {
+    // The compile gate judges the batch's result, and moving the concept out
+    // leaves a result that compiles clean - so nothing but this refusal stops
+    // the walker guessing which of the two things a bare reference meant.
+    writeFileSync(
+      join(cwd, 'architecture/main.yaml'),
+      `${renameDocument}states:
+  - id: platform
+    kind: baseline
+    name: Current
+`,
+      'utf8',
+    )
+    const outcome = apply(renameBatch('platform', 'moved'))
+    expect(outcome.ok).toBe(false)
+    if (outcome.ok) throw new Error('expected refusal')
+    expect(outcome.diagnostics[0]?.code).toBe('YM912')
+    expect(outcome.diagnostics[0]?.message).toContain(
+      'one address would name two things',
+    )
+  })
+
+  it('refuses a rename when a reference position holds a YAML alias', () => {
+    writeFileSync(
+      join(cwd, 'architecture/main.yaml'),
+      renameDocument
+        .replace('  - id: platform\n', '  - id: &owner platform\n')
+        .replace('owner: platform', 'owner: *owner'),
+      'utf8',
+    )
+    const outcome = apply(renameBatch('platform', 'platform-team'))
+    expect(outcome.ok).toBe(false)
+    if (outcome.ok) throw new Error('expected refusal')
+    expect(outcome.diagnostics[0]?.message).toContain(
+      'holds an alias at /concepts/1/owner',
+    )
+  })
+
+  it('leaves a same-local id in another document alone', () => {
+    const other = `format: yarramate/v1
+id: other
+profile: yarramate/core@0.1
+concepts:
+  - id: platform
+    kind: businessActor
+    name: Platform
+relationships: []
+`
+    writeFileSync(join(cwd, 'architecture/other.yaml'), other, 'utf8')
+    const outcome = applyOperations(
+      { path: 'operations.yaml', source: renameBatch('platform', 'platform-team') },
+      {
+        path: 'workspace.yaml',
+        source: renameManifest.replace(
+          '  - architecture/main.yaml\n',
+          '  - architecture/main.yaml\n  - architecture/other.yaml\n',
+        ),
+      },
+      cwd,
+    )
+    if (!outcome.ok) throw new Error(JSON.stringify(outcome.diagnostics))
+    expect(read('architecture/other.yaml')).toBe(other)
+    expect(outcome.result.documents).not.toContain('architecture/other.yaml')
   })
 })

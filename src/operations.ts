@@ -121,6 +121,20 @@ export type YarramateOperation =
       readonly relationship: { readonly id: string }
     }
   | {
+      readonly op: 'rename-concept'
+      readonly document: string
+      readonly concept: { readonly id: string }
+      /** The local id this subject should have had. Every declarative
+       * reference to the old address moves with it; prose does not. */
+      readonly to: string
+    }
+  | {
+      readonly op: 'rename-relationship'
+      readonly document: string
+      readonly relationship: { readonly id: string }
+      readonly to: string
+    }
+  | {
       readonly op: 'add-observation'
       readonly document: string
       readonly observation: ObservationFields
@@ -152,6 +166,8 @@ export interface YarramateApplyResult {
     readonly updatedRelationships: number
     readonly deletedConcepts: number
     readonly deletedRelationships: number
+    readonly renamedConcepts: number
+    readonly renamedRelationships: number
     readonly addedObservations: number
     readonly updatedObservations: number
     readonly deletedObservations: number

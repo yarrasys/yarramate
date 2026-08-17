@@ -11,6 +11,7 @@ import {
   type YAMLSeq,
 } from 'yaml'
 import Ajv2020Module from 'ajv/dist/2020.js'
+import { loadAdapterMapping } from './adapter-mapping.js'
 import {
   diagnosticJson,
   humanDiagnostics,
@@ -19,10 +20,17 @@ import {
 } from './cli-support.js'
 import { compileWorkspace, type Diagnostic, type WorkspaceSource } from './compiler.js'
 import { evaluateEvidence, loadEvidence } from './evidence.js'
+import { loadProjection } from './projection.js'
 import {
   loadSourceDocument,
   locateSourcePath,
 } from './source-document.js'
+import {
+  declaredStateIds,
+  rewriteSubjectReferences,
+  scanSubjectReferences,
+  type SubjectReferenceGroup,
+} from './subject-references.js'
 import { loadWorkspaceManifest } from './workspace.js'
 import operationsSchema from '../schema/yarramate-operations.schema.json' with {
   type: 'json',
@@ -41,7 +49,7 @@ import type {
 
 const Ajv2020 = Ajv2020Module.default
 // `discriminator` routes a batch entry to the single branch its `op` names, so
-// one malformed operation reports one fault instead of nine near-misses.
+// one malformed operation reports one fault instead of ten near-misses.
 const validateOperations = new Ajv2020({
   allErrors: true,
   discriminator: true,
@@ -492,6 +500,28 @@ export const applyOperations = (
   const workspaceEvidence = new Map(
     resolvedWorkspace.evidence.map((path) => [resolve(cwd, path), path]),
   )
+  // A rename re-points references, and references live in four kinds of file,
+  // so the write set is wider than the two above. Projections and adapter
+  // mappings are never an operation's own target — they are only ever carried
+  // along by a rename — but they are written, so they carry their manifest
+  // path for the touched-document list and their group for the walker.
+  const referenceFiles: ReadonlyArray<{
+    readonly absolute: string
+    readonly path: string
+    readonly group: SubjectReferenceGroup
+  }> = (
+    [
+      ['document', resolvedWorkspace.documents],
+      ['projection', resolvedWorkspace.projections],
+      ['evidence', resolvedWorkspace.evidence],
+      ['adapter-mapping', resolvedWorkspace.adapterMappings],
+    ] as ReadonlyArray<readonly [SubjectReferenceGroup, readonly string[]]>
+  ).flatMap(([group, paths]) =>
+    paths.map((path) => ({ absolute: resolve(cwd, path), path, group })),
+  )
+  const referenceFileOf = new Map(
+    referenceFiles.map((file) => [file.absolute, file]),
+  )
   const candidates = new Map<string, string>()
   const counts = {
     addedConcepts: 0,
@@ -500,6 +530,8 @@ export const applyOperations = (
     updatedRelationships: 0,
     deletedConcepts: 0,
     deletedRelationships: 0,
+    renamedConcepts: 0,
+    renamedRelationships: 0,
     addedObservations: 0,
     updatedObservations: 0,
     deletedObservations: 0,
@@ -509,9 +541,16 @@ export const applyOperations = (
     readonly absolute: string
     readonly id: string
   }> = []
-  const locateOperation = (index: number, message: string): Diagnostic => ({
+  // Addresses this batch moved off, so the residue walk below can prove none of
+  // them survived anywhere.
+  const renames: Array<{ readonly index: number; readonly from: string }> = []
+  const locateOperation = (
+    index: number,
+    message: string,
+    code = 'YM912',
+  ): Diagnostic => ({
     severity: 'error',
-    code: 'YM912',
+    code,
     message,
     ...locateSourcePath(
       operationsPath,
@@ -579,6 +618,87 @@ export const applyOperations = (
         counts.deletedConcepts += 1
       } else {
         counts.deletedRelationships += 1
+      }
+    } else if (
+      operation.op === 'rename-concept' ||
+      operation.op === 'rename-relationship'
+    ) {
+      const collection =
+        operation.op === 'rename-concept' ? 'concepts' : 'relationships'
+      const id =
+        operation.op === 'rename-concept'
+          ? operation.concept.id
+          : operation.relationship.id
+      if (itemMap(source, collection, id) === undefined) {
+        return failed([
+          locate(
+            `Operation ${index} renames "${id}", which does not exist in ${operation.document}`,
+          ),
+        ])
+      }
+      // A rename that does not move the address would report every reference to
+      // it as residue below, which reads as a rewrite fault rather than what it
+      // is. Nothing would be written either, so `renamedConcepts: 1` over an
+      // empty document list would be a false receipt.
+      if (operation.to === id) {
+        return failed([
+          locate(
+            `Operation ${index} renames "${id}" to itself, so no address moves`,
+          ),
+        ])
+      }
+      // A state shares the `document#local` spelling with a subject but not the
+      // id space. A collision on either end would make one address name two
+      // things, so it is refused rather than re-pointed by guess.
+      const states = declaredStateIds(source)
+      const collision = states.includes(id)
+        ? id
+        : states.includes(operation.to)
+          ? operation.to
+          : undefined
+      if (collision !== undefined) {
+        return failed([
+          locate(
+            `Operation ${index} renames "${id}" to "${operation.to}", but ${operation.document} declares a state "${collision}" — one address would name two things`,
+          ),
+        ])
+      }
+      const { documentId } = scanSubjectReferences(source, 'document')
+      const rename = {
+        from: `${documentId}#${id}`,
+        to: `${documentId}#${operation.to}`,
+      }
+      // Total within the workspace: the declaration and every declarative
+      // reference to it move in this one batch, so nothing is left addressing an
+      // id that stopped existing. Staged text is the input, so a second rename
+      // in the same batch reads the first one's result.
+      for (const file of referenceFiles) {
+        const before =
+          candidates.get(file.absolute) ?? readFileSync(file.absolute, 'utf8')
+        const rewrite = rewriteSubjectReferences(before, file.group, rename)
+        if (!rewrite.ok) {
+          return failed([
+            locate(
+              `Operation ${index} cannot move "${rename.from}": ${
+                file.path
+              } holds ${
+                rewrite.aliases.length === 1 ? 'an alias' : 'aliases'
+              } at ${rewrite.aliases.join(', ')}, which the rewrite cannot re-point`,
+            ),
+          ])
+        }
+        if (rewrite.source !== before) {
+          candidates.set(file.absolute, rewrite.source)
+        }
+      }
+      // The target document's own declaration moved in that same walk, so the
+      // staged text is the authority from here on.
+      source = candidates.get(absolute) ?? source
+      renames.push({ index, from: rename.from })
+      if (operation.op === 'rename-concept') {
+        counts.renamedConcepts += 1
+      } else {
+        counts.renamedRelationships += 1
       }
     } else if (operation.op === 'add-observation') {
       const address = observationAddress(operation.observation)
@@ -879,14 +999,50 @@ export const applyOperations = (
     if (!evaluation.ok) return failed(evaluation.diagnostics)
   }
 
+  // Totality is checked, not trusted: no file this batch touched may still name
+  // an address a rename moved off. A splice that landed text re-parsing to the
+  // old value refuses here rather than shipping a reference to an id that
+  // stopped existing. A position the enumeration omits is invisible to this
+  // walk - the schema-derived completeness test is what covers that.
+  if (renames.length > 0) {
+    const movedFrom = new Map(renames.map(({ from, index }) => [from, index]))
+    const residue = referenceFiles.flatMap((file) => {
+      const source = candidates.get(file.absolute)
+      if (source === undefined) return []
+      return scanSubjectReferences(source, file.group)
+        .hits.filter((hit) => movedFrom.has(hit.address))
+        .map((hit) => {
+          const index = movedFrom.get(hit.address)!
+          return locateOperation(
+            index,
+            `Operation ${index} moved "${hit.address}", but ${file.path} still names it at ${hit.pointer}`,
+            'YM913',
+          )
+        })
+    })
+    if (residue.length > 0) return failed(residue)
+  }
+
+  // Projections and adapter mappings are not `compileWorkspace` input, so a
+  // rewrite that produced an unreadable address is caught here rather than by
+  // the next command to read the file.
+  for (const file of referenceFiles) {
+    const source = candidates.get(file.absolute)
+    if (source === undefined) continue
+    if (file.group === 'projection') {
+      const loaded = loadProjection({ path: file.path, source })
+      if (!loaded.ok) return failed(loaded.diagnostics)
+    } else if (file.group === 'adapter-mapping') {
+      const loaded = loadAdapterMapping({ path: file.path, source })
+      if (!loaded.ok) return failed(loaded.diagnostics)
+    }
+  }
+
   for (const [absolute, source] of candidates) {
     writeFileSync(absolute, source, 'utf8')
   }
   const touched = [...candidates.keys()]
-    .map(
-      (absolute) =>
-        workspaceDocuments.get(absolute) ?? workspaceEvidence.get(absolute)!,
-    )
+    .map((absolute) => referenceFileOf.get(absolute)!.path)
     .sort()
   return {
     ok: true,
@@ -953,16 +1109,12 @@ export function runApplyCommand(
         stderr: '',
       }
     }
-    const applied =
-      result.applied.addedConcepts +
-      result.applied.addedRelationships +
-      result.applied.updatedConcepts +
-      result.applied.updatedRelationships +
-      result.applied.deletedConcepts +
-      result.applied.deletedRelationships +
-      result.applied.addedObservations +
-      result.applied.updatedObservations +
-      result.applied.deletedObservations
+    // Every counter, summed by iteration rather than by hand, so a new
+    // operation kind cannot silently report zero work.
+    const applied = Object.values(result.applied).reduce(
+      (total, count) => total + count,
+      0,
+    )
     return {
       exitCode: 0,
       stdout: `Applied ${applied} operation${applied === 1 ? '' : 's'} to ${result.documents.join(', ')}\n`,

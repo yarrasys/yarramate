@@ -235,7 +235,8 @@
         }
       }
     },
-    "deleteTarget": {
+    "subjectTarget": {
+      "description": "A subject already declared in the named document, addressed by its local id. Deletes and renames name what is there rather than restating it.",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -563,7 +564,7 @@
               "$ref": "#/$defs/nonEmptyText"
             },
             "concept": {
-              "$ref": "#/$defs/deleteTarget"
+              "$ref": "#/$defs/subjectTarget"
             }
           }
         },
@@ -583,7 +584,57 @@
               "$ref": "#/$defs/nonEmptyText"
             },
             "relationship": {
-              "$ref": "#/$defs/deleteTarget"
+              "$ref": "#/$defs/subjectTarget"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "document",
+            "concept",
+            "to"
+          ],
+          "properties": {
+            "op": {
+              "const": "rename-concept"
+            },
+            "document": {
+              "$ref": "#/$defs/nonEmptyText"
+            },
+            "concept": {
+              "$ref": "#/$defs/subjectTarget"
+            },
+            "to": {
+              "description": "The local id this subject should have had. Every declarative reference to the old address is re-pointed in the same batch; prose is left exactly as written.",
+              "$ref": "#/$defs/nonEmptyText"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "document",
+            "relationship",
+            "to"
+          ],
+          "properties": {
+            "op": {
+              "const": "rename-relationship"
+            },
+            "document": {
+              "$ref": "#/$defs/nonEmptyText"
+            },
+            "relationship": {
+              "$ref": "#/$defs/subjectTarget"
+            },
+            "to": {
+              "description": "The local id this subject should have had. Sits at the operation level because a relationship's own `to` field is an endpoint.",
+              "$ref": "#/$defs/nonEmptyText"
             }
           }
         },

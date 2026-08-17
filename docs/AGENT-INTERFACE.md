@@ -74,6 +74,10 @@ Whole-subject deletion (`delete-concept` / `delete-relationship`)
 walks through the same door: rejected while anything still references
 the target, judged against the post-batch state so a subject and its
 referring relationships leave in one batch (ADR 0069).
+Identity edits (`rename-concept` / `rename-relationship`) move a local id
+and every declarative reference to it — across documents, projections,
+evidence overlays and adapter mappings — in that same batch, and are
+refused rather than partially applied (ADR 0094).
 
 - Harness use: landing a design answer; discovery-journey authoring;
   maintenance edits.

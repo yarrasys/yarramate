@@ -436,13 +436,15 @@ describe('visual protocol', () => {
     })
 
     it('names an operation kind that does not exist, rather than every kind that does', () => {
-      const result = commit({ op: 'rename-concept', document: 'a.yaml' })
+      const result = commit({ op: 'resurrect-concept', document: 'a.yaml' })
       expect(result.ok).toBe(false)
       if (result.ok) return
       expect(result.diagnostics).toHaveLength(1)
       expect(result.diagnostics[0]).toMatchObject({
         pointer: '/payload/operations/0',
-        message: expect.stringContaining('unknown "op" value "rename-concept"'),
+        message: expect.stringContaining(
+          'unknown "op" value "resurrect-concept"',
+        ),
       })
     })
 

@@ -49,7 +49,12 @@ notation.
   **The initial explicit-file commands were implemented with validated
   writes and repeatable explicit workspace sources, then consolidated into
   the seven-verb surface: atomic `yarramate apply` batches for writes,
-  `yarramate ask` and `yarramate export` for reading.**
+  `yarramate ask` and `yarramate export` for reading. `apply` also moves a
+  subject's local id: `rename-concept` and `rename-relationship` re-point the
+  declaration and every declarative reference to it — across documents,
+  projections, evidence overlays and adapter mappings — in one atomic batch,
+  as an identity edit rather than a succession, and refuse rather than
+  partially apply (ADR 0094).**
 - Define deterministic workspace input configuration. **Versioned explicit
   manifests, safe glob resolution, CLI consumption, and dogfooding
   implemented.**
@@ -153,8 +158,7 @@ notation.
   `git revert` (ADR 0092). Every commit pins the sha256 the browser rendered
   for each document it touches, so a batch staged against bytes another writer
   has replaced is refused with the rows kept and the fresh model pushed rather
-  than landing as a silent lost update (ADR 0093). Renaming a subject identity
-  is decision-gated — see `docs/BACKLOG-DISPOSITION.md`.**
+  than landing as a silent lost update (ADR 0093).**
 - Generic evidence-provider interface.
   **A provider-neutral existing-claim evidence overlay and deterministic report
   are implemented. Constraint assessment reuses that seam; the first optional

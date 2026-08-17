@@ -442,8 +442,9 @@ yarramate apply operations.yaml .yarramate/workspace.yaml
 ```
 
 The model operations are `add-concept`, `add-relationship`,
-`update-concept`, `update-relationship`, `delete-concept`, and
-`delete-relationship`. Concept and relationship records accept the same
+`update-concept`, `update-relationship`, `delete-concept`,
+`delete-relationship`, `rename-concept`, and `rename-relationship`.
+Concept and relationship records accept the same
 optional fields as the authoring format — for example `status`,
 `description`, `aka`, `owner`, `distinctFrom`, `supersedes`,
 `constraints`, `references`, `presentIn`, `attestations`, and the
@@ -464,6 +465,26 @@ Integrity is evaluated against the post-batch state, so a concept and its
 referring relationships can leave in one batch (ADR 0069). Retirement
 (`status: retired`) remains the descoping path; delete only when the
 history itself is noise.
+
+Two operations — `rename-concept` and `rename-relationship` — move a
+subject's local id. A rename is an identity edit, not a succession: it
+writes no `supersedes` entry and retires nothing, because one subject kept
+its identity and changed its address (ADR 0094). It is total within the
+workspace — the declaration and every declarative reference to it move in
+the same atomic batch, across documents, projections, evidence overlays and
+adapter mappings — so nothing is left addressing an id that stopped
+existing. Only matched scalars' own bytes change, so a bare reference stays
+bare, a qualified one stays qualified, an `~aspect` suffix is preserved, and
+the original quoting is kept. Comparison is on the qualified address, so a
+same-local id in another document is untouched, and prose is left exactly as
+written. A rename is refused when the id is not declared, when `to` equals
+the current id, when the document declares an architecture state with the
+old or new local id, when a reference position holds a YAML alias, and — by
+the compile gate, before a byte is written — when the new local id is
+already taken. `apply` re-reads every file it touched and refuses `YM913` if
+any of them still names an address it moved off. Use succession
+(`supersedes`, ADR 0080) when two real subjects are involved: split, merge,
+or responsibility moved.
 
 Three further operations — `add-observation`, `update-observation`, and
 `delete-observation` — address an evidence overlay declared by the

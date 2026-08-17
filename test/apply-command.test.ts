@@ -108,6 +108,8 @@ describe('apply command', () => {
       addedObservations: 0,
       updatedObservations: 0,
       deletedObservations: 0,
+      renamedConcepts: 0,
+      renamedRelationships: 0,
     })
     const validate = new Ajv2020({ allErrors: true }).compile(resultSchema)
     expect(validate(payload), JSON.stringify(validate.errors)).toBe(true)
@@ -182,7 +184,7 @@ operations:
       join(workspace, 'operations.yaml'),
       `format: yarramate/operations/v1
 operations:
-  - op: rename-concept
+  - op: resurrect-concept
     document: architecture/main.yaml
     concept:
       id: user
@@ -202,7 +204,7 @@ operations:
     const lines = result.stdout.trim().split('\n')
     expect(lines).toHaveLength(1)
     expect(lines[0]).toContain(
-      'Operations schema violation: unknown "op" value "rename-concept"',
+      'Operations schema violation: unknown "op" value "resurrect-concept"',
     )
     expect(lines[0]).toMatch(/^operations\.yaml:\d+:\d+ /)
     expect(
@@ -571,6 +573,8 @@ operations:
       addedObservations: 0,
       updatedObservations: 0,
       deletedObservations: 0,
+      renamedConcepts: 0,
+      renamedRelationships: 0,
     })
     const validate = new Ajv2020({ allErrors: true }).compile(resultSchema)
     expect(validate(payload), JSON.stringify(validate.errors)).toBe(true)

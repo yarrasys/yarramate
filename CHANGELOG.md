@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- Move a subject's local id through `apply`. Two operations,
+  `rename-concept` and `rename-relationship`, re-point the declaration and
+  every declarative reference to it — across documents, projections, evidence
+  overlays and adapter mappings — in one atomic batch. A rename is an identity
+  edit, not a succession: it writes no `supersedes` entry and retires nothing,
+  because one subject kept its identity and changed its address (ADR 0094).
+  Only matched scalars' own bytes change, so a bare reference stays bare, a
+  qualified one stays qualified, an `~aspect` suffix is preserved, and the
+  original quoting is kept; comparison is on the qualified address, so a
+  same-local id in another document is untouched. Refused when the id is not
+  declared, when `to` equals the current id, when the document declares an
+  architecture state with the old or new local id, when a reference position
+  holds a YAML alias, and — by the compile gate, before a byte is written —
+  when the new local id is already taken. New diagnostic `YM913`: `apply`
+  re-reads every file it touched and refuses if any of them still names an
+  address a rename moved off. The apply result gains `renamedConcepts` and
+  `renamedRelationships` counters.
 - Walk the staged visual changeset back and forward. The tray gains Undo and
   Redo beside Discard all, over an ordered history of whole staged-operation
   snapshots: staging replaces on a repeated `(target, field)`, so an inverse

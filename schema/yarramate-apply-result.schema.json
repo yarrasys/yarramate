@@ -18,6 +18,8 @@
         "updatedRelationships",
         "deletedConcepts",
         "deletedRelationships",
+        "renamedConcepts",
+        "renamedRelationships",
         "addedObservations",
         "updatedObservations",
         "deletedObservations"
@@ -29,6 +31,8 @@
         "updatedRelationships": { "type": "integer", "minimum": 0 },
         "deletedConcepts": { "type": "integer", "minimum": 0 },
         "deletedRelationships": { "type": "integer", "minimum": 0 },
+        "renamedConcepts": { "type": "integer", "minimum": 0 },
+        "renamedRelationships": { "type": "integer", "minimum": 0 },
         "addedObservations": { "type": "integer", "minimum": 0 },
         "updatedObservations": { "type": "integer", "minimum": 0 },
         "deletedObservations": { "type": "integer", "minimum": 0 }

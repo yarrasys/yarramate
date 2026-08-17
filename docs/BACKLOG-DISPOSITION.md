@@ -28,7 +28,9 @@ The current repository implements the agreed foundation for:
   `yarramate-visual` adapter, its published `yarramate/visual-protocol/v3`
   wire, and changeset commits that land through `yarramate apply`;
 - ordered in-app undo and redo over the staged visual changeset;
-- a staleness precondition on every visual commit.
+- a staleness precondition on every visual commit;
+- identity edits that move a subject's local id and every declarative
+  reference to it in one atomic batch.
 
 Nothing locally actionable remains in the agreed scope. Undo and redo landed as
 an ordered history in the reviewer's own state, not a new semantic, wire event,
@@ -52,6 +54,23 @@ rows staged and pushes the fresh model, so the reviewer decides; the runtime
 does not merge, and it does not offer a three-way resolution. Everything else
 in the agreed Core 0.1 and initial journey scope is implemented.
 
+Renaming closed the last gap in the write surface. A local id is part of a
+subject's address, and `yarramate/operations/v1` had no branch that could move
+one: `update-concept` writes scalar and list fields, and `id` is in neither
+list. `rename-concept` and `rename-relationship` move it, and a rename is an
+identity edit rather than a succession — it writes no `supersedes` entry and
+retires nothing, because one subject kept its identity and changed its address
+(ADR 0094). It is total within the workspace: the declaration and every
+declarative reference to it move in the same batch, across documents,
+projections, evidence overlays and adapter mappings. Totality is checked twice
+from different directions — a schema-derived test asserts the
+reference-position enumeration is still the whole set, and `apply` re-reads
+every file it touched and refuses `YM913` if any of them still names an address
+a rename moved off. Document ids, state ids, profiles, kinds, and
+cross-document moves are deliberately out of scope; prose is left exactly as
+written, because a description that names the old id is a human's sentence, not
+an address.
+
 ## Decision-gated
 
 These items need a new authoritative semantic or product decision:
@@ -71,20 +90,6 @@ These items need a new authoritative semantic or product decision:
   contract distinct from evidence and declared intent.
 - **CI policy for evidence findings** belongs to an opt-in consumer policy
   decision, not Core correctness.
-- **Renaming a subject identity** requires an identity-succession decision
-  ([#200](https://github.com/yarrasys/yarramate/issues/200)). A globally
-  qualified id is the identity, and `yarramate/operations/v1` has no rename.
-  The graph half is expressible — `update-relationship` re-points `from` and
-  `to` across documents — but the identity half is not: a batch that adds the
-  successor with `supersedes`, moves the endpoints, and deletes the old
-  subject is refused with `YM312 Unresolved succession reference`, because
-  the batch's final state deletes the subject its own succession record names.
-  What lands instead is supersede-and-retire, which keeps both ids forever and
-  leaves the two document kinds `apply` cannot write — projection membership
-  and adapter-mapping entries — still naming the retired subject, resolving,
-  and reported by `check` as no errors. The decision must state whether
-  succession survives a delete, what repairs those two documents, and what a
-  retired subject still owes in evidence and attestations.
 
 ## Externally blocked
 
