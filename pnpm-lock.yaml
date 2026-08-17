@@ -18,9 +18,6 @@ importers:
         specifier: ^2.8.1
         version: 2.9.0
     devDependencies:
-      '@likec4/core':
-        specifier: 1.59.2
-        version: 1.59.2
       '@types/node':
         specifier: ^26.1.2
         version: 26.1.2
