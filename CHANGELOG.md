@@ -1,5 +1,7 @@
 # Changelog
 
+## 0.20.0
+
 - Add `compileWorkspaceIncremental`, a delta entry point for consumers that
   compile a whole workspace on every commit. It takes the opaque
   `CompilationCache` the previous call returned and re-parses only the
