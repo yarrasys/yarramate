@@ -122,6 +122,21 @@ or warm, it exceeds a 448MB heap. The memory ceiling is 20,000 documents
 raising it (267MB warm vs 405MB cold at 20,000). The CPU blocker is cleared;
 the next ceiling is memory, not compile.
 
+## Correction (2026-08-17)
+
+The closing paragraph above claimed the CPU blocker "is cleared with a 43×
+margin" and that "the next ceiling is memory, not compile". Retracted as
+recorded in `docs/research/compile-scale/RESULTS-2026-08-17.md` (audit-pass
+correction): the margin divided a Cloudflare budget by a local measurement,
+holds only on the warm path, and the warm path fits the real platform budget
+(128MB per isolate, shared; not the brief's superseded 512MiB) only below
+~19,000 documents on the measured corpus, well under the ~32,929 documents
+where the consumer's CPU limit binds. Accumulated cost remains quadratic in
+commits on both paths; the delta shrinks the constant ~9×, not the exponent.
+The decision this record makes (reuse keyed on source text, byte-identical
+fallback) is unaffected and was re-verified: byte-identity held after 1,000
+chained cache generations.
+
 ## Byte-identity is tested, not asserted
 
 `test/compile-incremental.test.ts` runs 24 seeded random change sequences of 12
