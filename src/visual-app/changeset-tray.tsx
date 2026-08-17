@@ -1,6 +1,7 @@
 import type { VisualDiagnostic } from '../adapters/visual/protocol-contract.js'
 import type { CanvasGraph } from '../graph-projection.js'
 import type { YarramateOperation } from '../operations.js'
+import type { VisualRenderedModel } from '../adapters/visual/wire.js'
 import type { VisualAppState } from './state.js'
 
 /**
@@ -118,6 +119,28 @@ export const partitionDiagnostics = (
   return { byRow, batch }
 }
 
+/**
+ * A staged row whose document has been rewritten since the row was staged.
+ *
+ * Derived at render rather than stored: the only thing that can change the
+ * answer is a fresh `model` frame, and the server broadcasts one after any
+ * session lands a batch, so the mark appears while the reviewer is still
+ * sitting there rather than at commit time (ADR 0093).
+ *
+ * An unpinned row - one naming a document the model did not hold, which `apply`
+ * will create - has no prior value to be stale against.
+ */
+export const stagedRowConflict = (
+  operation: YarramateOperation,
+  pins: Readonly<Record<string, string>>,
+  model: VisualRenderedModel | null,
+): string | null => {
+  const pinned = pins[operation.document]
+  if (pinned === undefined) return null
+  const current = model?.sourceDigests[operation.document]
+  return current === undefined || current === pinned ? null : operation.document
+}
+
 const DiagnosticLine = ({
   diagnostic,
 }: {
@@ -137,20 +160,27 @@ const ChangesetRow = ({
   index,
   row,
   diagnostics,
+  conflict,
   onDiscard,
 }: {
   readonly index: number
   readonly row: ChangesetRowDescription
   readonly diagnostics: readonly VisualDiagnostic[]
+  readonly conflict: string | null
   readonly onDiscard: () => void
 }) => (
-  <li className="changeset-row">
+  <li className={conflict === null ? 'changeset-row' : 'changeset-row conflicted'}>
     <div className="changeset-row-line">
       <span className="changeset-row-label">{changesetRowLabel(row)}</span>
       <button type="button" className="changeset-row-discard" onClick={onDiscard}>
         Discard
       </button>
     </div>
+    {conflict === null ? null : (
+      <p className="changeset-row-conflict" role="status">
+        {conflict} changed after this edit was staged
+      </p>
+    )}
     {diagnostics.length === 0 ? null : (
       <ul className="changeset-row-diagnostics">
         {diagnostics.map((diagnostic) => (
@@ -252,6 +282,11 @@ export const ChangesetTray = ({
               index={index}
               row={describeChangesetRow(operation, graph)}
               diagnostics={byRow.get(index) ?? []}
+              conflict={stagedRowConflict(
+                operation,
+                state.pendingChangeset.sourceDigests,
+                state.model,
+              )}
               onDiscard={() => onDiscardChange(index)}
             />
           ))}

@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { loadProjection } from '../../projection.js'
@@ -7,7 +6,7 @@ import type {
   VisualDiagnostic,
   VisualSessionRequest,
 } from './protocol-contract.js'
-import { parseVisualSessionRequest } from './protocol.js'
+import { digestOf, parseVisualSessionRequest } from './protocol.js'
 import { buildVisualModelGraph } from './session-store.js'
 
 /**
@@ -47,9 +46,6 @@ const requestDiagnostic = (
   line: 1,
   column: 1,
 })
-
-const digestOf = (source: string): string =>
-  createHash('sha256').update(source).digest('hex')
 
 /**
  * Builds the `yarramate/visual-session-request/v1` document that `start`

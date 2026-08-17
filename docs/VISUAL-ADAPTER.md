@@ -40,6 +40,16 @@ The history is browser-local, reaches no wire event, and stops at the commit —
 what has landed is reverted with `git revert`, never from the browser
 ([ADR 0092](adr/0092-undo-restores-a-snapshot-not-an-inverse-operation.md)).
 
+A commit also states what it was staged against. Each row pins the sha256 the
+browser rendered for the document it targets, taken from the model frame that
+row was staged against and never refreshed from a later one, and the server
+refuses the whole batch if any document it touches no longer matches
+(`YMVS312`) or was left unpinned (`YMVS313`). The refusal is
+preserve-and-refresh: the rows stay staged, the freshly compiled model is
+pushed, and the affected rows are marked with the value that is there now, so
+two reviewers editing one field can no longer produce a silent lost update
+([ADR 0093](adr/0093-a-commit-states-what-it-was-staged-against.md)).
+
 The chat agent can no longer author a mutation — it explains, filters, and
 focuses. A commit lands in the working tree and nothing else: the runtime
 never runs `git commit`, so Git review still decides what becomes declared
@@ -156,7 +166,7 @@ Eleven closed `yarramate/visual-*/v1` JSON documents, each with
 `additionalProperties: false`, published from `./schema`:
 session request, session started, session descriptor, event, response,
 status, handoff, model, graph, layout, and diagnostic result.
-`yarramate/visual-protocol/v2` is the version the started result, the
+`yarramate/visual-protocol/v3` is the version the started result, the
 descriptor, and status agree on. The wire is a published contract, not a
 process-local convention, because the journal that recovers a crashed session
 has to be readable by a process that did not write it — see
@@ -165,6 +175,11 @@ v1 said `model.replace`: the delegated agent could re-author the whole model
 and the runtime would adopt it. That response no longer exists, so a v1 child
 is refused rather than misread — see
 [ADR 0088](adr/0088-removing-the-agents-mutation-path-bumps-the-wire.md).
+v2's commit payload said only which operations to apply. v3 requires
+`sourceDigests` alongside them, because a browser that omits the digests is
+exactly the one that cannot detect a concurrent change, so the precondition
+cannot be optional — see
+[ADR 0093](adr/0093-a-commit-states-what-it-was-staged-against.md).
 
 The journal carries ten event kinds. Eight are the browser's to send —
 `chat.message`, `choice.selected`, `view.navigate`, `view.save`,

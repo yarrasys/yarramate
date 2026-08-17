@@ -219,13 +219,23 @@
     "changesetCommitPayload": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["operations"],
+      "required": ["operations", "sourceDigests"],
       "properties": {
         "operations": {
           "type": "array",
           "minItems": 1,
           "items": {
             "$ref": "https://yarrasys.dev/schema/yarramate-operations.schema.json#/$defs/operation"
+          }
+        },
+        "sourceDigests": {
+          "type": "object",
+          "maxProperties": 4096,
+          "propertyNames": {
+            "$ref": "https://yarramate.org/schema/visual-model/v1#/$defs/relativePath"
+          },
+          "additionalProperties": {
+            "$ref": "https://yarramate.org/schema/visual-model/v1#/$defs/digest"
           }
         }
       }

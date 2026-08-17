@@ -417,7 +417,7 @@ describe('visual protocol', () => {
       parseVisualBrowserInput({
         type: 'changeset.commit',
         lastAcknowledgedSequence: 0,
-        payload: { operations: [operation] },
+        payload: { operations: [operation], sourceDigests: {} },
       })
 
     it('reports a blank field once, on the field', () => {
@@ -468,6 +468,55 @@ describe('visual protocol', () => {
         expect.stringContaining("must have required property 'concept'"),
         expect.stringContaining('Property "relationship" is not allowed'),
       ])
+    })
+
+    it('refuses a commit that states nothing about what it is replacing', () => {
+      // A v2 browser sends exactly this. The precondition is required rather
+      // than optional so an old client is refused, not silently trusted.
+      const result = parseVisualBrowserInput({
+        type: 'changeset.commit',
+        lastAcknowledgedSequence: 0,
+        payload: {
+          operations: [
+            {
+              op: 'update-concept',
+              document: 'architecture/engine.yaml',
+              concept: { id: 'engine#check', name: 'Check' },
+            },
+          ],
+        },
+      })
+      expect(result.ok).toBe(false)
+      if (result.ok) return
+      expect(result.diagnostics.map((d) => d.message)).toEqual([
+        expect.stringContaining("must have required property 'sourceDigests'"),
+      ])
+    })
+
+    it.each([
+      ['not a digest', 'nope'],
+      ['a truncated digest', 'a'.repeat(63)],
+      ['an upper-case digest', 'A'.repeat(64)],
+    ])('refuses %s as a pinned value', (_case, digest) => {
+      const result = parseVisualBrowserInput({
+        type: 'changeset.commit',
+        lastAcknowledgedSequence: 0,
+        payload: {
+          operations: [
+            {
+              op: 'update-concept',
+              document: 'architecture/engine.yaml',
+              concept: { id: 'engine#check', name: 'Check' },
+            },
+          ],
+          sourceDigests: { 'architecture/engine.yaml': digest },
+        },
+      })
+      expect(result.ok).toBe(false)
+      if (result.ok) return
+      expect(result.diagnostics[0]?.pointer).toBe(
+        '/payload/sourceDigests/architecture~1engine.yaml',
+      )
     })
   })
 

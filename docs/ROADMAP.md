@@ -145,14 +145,16 @@ notation.
   `.yarramate/visual-layout` sidecars. Dropdown-constrained field edits
   accumulate in a changeset that commits through `yarramate/operations/v1` and
   `yarramate apply`, so the browser holds no private write path. The wire is
-  the published `yarramate/visual-protocol/v2` contract; see
+  the published `yarramate/visual-protocol/v3` contract; see
   `docs/VISUAL-ADAPTER.md` and ADRs 0081 and 0084 to 0088. Ordered in-app
   undo and redo over the staged changeset walks an ordered history of whole
   staged-operation snapshots, covering staging, one discarded row, and a
   discard-all alike, and stops at the commit: what has landed is reverted with
-  `git revert` (ADR 0092). Renaming a subject identity and concurrent-edit
-  conflict resolution across browsers are decision-gated — see
-  `docs/BACKLOG-DISPOSITION.md`.**
+  `git revert` (ADR 0092). Every commit pins the sha256 the browser rendered
+  for each document it touches, so a batch staged against bytes another writer
+  has replaced is refused with the rows kept and the fresh model pushed rather
+  than landing as a silent lost update (ADR 0093). Renaming a subject identity
+  is decision-gated — see `docs/BACKLOG-DISPOSITION.md`.**
 - Generic evidence-provider interface.
   **A provider-neutral existing-claim evidence overlay and deterministic report
   are implemented. Constraint assessment reuses that seam; the first optional

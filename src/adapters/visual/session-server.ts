@@ -21,6 +21,7 @@ import { parse, stringify } from "yaml";
 import {
   VISUAL_LIMITS,
   VISUAL_PROTOCOL_VERSION,
+  digestOf,
   parseVisualBrowserInput,
   parseVisualResponse,
   parseVisualSessionStarted,
@@ -653,6 +654,7 @@ export const startVisualServer = async (
     documents: [],
     vocabulary: { conceptKinds: [], relationshipKinds: [] },
     layouts,
+    sourceDigests: request.initialModel.sourceDigests,
   };
 
   const capabilities: VisualCapabilities = {
@@ -716,6 +718,11 @@ export const startVisualServer = async (
         documents: resolvedWorkspace.documents,
         vocabulary: { conceptKinds, relationshipKinds },
         layouts: rendered.layouts,
+        // Minted from the bytes this compile just read, so what the browser
+        // renders and what it can later claim it rendered are the same read.
+        sourceDigests: Object.fromEntries(
+          sources.map(({ path, source }) => [path, digestOf(source)]),
+        ),
       };
       return true;
     } catch {
@@ -1363,6 +1370,71 @@ export const startVisualServer = async (
         // the agent anything, so it is answered here directly rather than
         // through the pending queue a poll would drain. This never runs
         // `git commit` - the user reverts a landed batch with `git revert`.
+        // A batch states what it expected each document it touches to hold, and
+        // that expectation is checked against the files before anything is
+        // written. Without it `applyOperations` below would read the workspace
+        // at commit time and do exactly as told, so a row staged against a
+        // value some other writer has since replaced overwrites that writer
+        // silently - the one path left where this adapter loses a write it
+        // reports as landed (ADR 0093).
+        //
+        // Every targeted document that exists is checked, not just every pin
+        // sent: a batch that vouches for nothing would otherwise buy back the
+        // unconditional write by omission, and a precondition nobody has to
+        // state is decoration.
+        const pins = event.payload.sourceDigests;
+        const refused: VisualDiagnostic[] = [];
+        for (const path of new Set(
+          event.payload.operations.map((operation) => operation.document),
+        )) {
+          let held: string | undefined;
+          try {
+            held = digestOf(readFileSync(resolve(options.cwd, path), "utf8"));
+          } catch {
+            // Not there to read: `apply` creates it, or something removed it.
+            held = undefined;
+          }
+          const pinned = pins[path];
+          if (held === undefined) {
+            if (pinned !== undefined) {
+              refused.push(
+                serverDiagnostic(
+                  "YMVS312",
+                  `Document "${path}" no longer exists; these edits were staged against it`,
+                ),
+              );
+            }
+            continue;
+          }
+          if (pinned === undefined) {
+            refused.push(
+              serverDiagnostic(
+                "YMVS313",
+                `Document "${path}" is edited without stating what it held when the edit was staged`,
+              ),
+            );
+            continue;
+          }
+          if (pinned !== held) {
+            refused.push(
+              serverDiagnostic(
+                "YMVS312",
+                `Document "${path}" changed after these edits were staged`,
+              ),
+            );
+          }
+        }
+        if (refused.length > 0) {
+          // Preserve-and-refresh: the rows stay staged in the browser exactly as
+          // a refused apply already leaves them, and the fresh model follows so
+          // the reviewer re-reads the value before deciding what to do with it.
+          sendFrame(socket, {
+            kind: "apply-result",
+            result: { ok: false, diagnostics: refused },
+          });
+          if (recompileWorkspace()) broadcast({ kind: "model", model: rendered });
+          return;
+        }
         const operationsSource = stringify({
           format: "yarramate/operations/v1",
           operations: event.payload.operations,

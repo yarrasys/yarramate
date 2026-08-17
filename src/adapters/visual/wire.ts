@@ -42,6 +42,13 @@ export interface VisualRenderedModel {
   }
   /** Every saved layout sidecar, keyed by projection id (Plan-level decision 1). */
   readonly layouts: { readonly [projectionId: string]: VisualLayoutPositions }
+  /**
+   * The sha256 of every workspace source this graph was compiled from, keyed by
+   * manifest-relative path — the same map `visual-model/v1` already requires of
+   * a canonical model (`YMVS112`), forwarded rather than dropped so the browser
+   * can state what it rendered when it asks for a commit.
+   */
+  readonly sourceDigests: Readonly<Record<string, string>>
 }
 
 /**

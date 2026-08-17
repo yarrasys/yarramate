@@ -23,7 +23,10 @@ import {
 import type { ProjectionQuery } from "../src/projection.js";
 
 /** A rendered model with an empty canvas graph — only initialView matters here. */
-const model = (initialView: string): VisualRenderedModel => ({
+const model = (
+  initialView: string,
+  sourceDigests: Readonly<Record<string, string>> = {},
+): VisualRenderedModel => ({
   authority: "canonical",
   initialView,
   graph: { nodes: [], edges: [] },
@@ -33,10 +36,14 @@ const model = (initialView: string): VisualRenderedModel => ({
     relationshipKinds: [],
   },
   layouts: {},
+  sourceDigests,
 });
 
+/** A plausible sha256, distinct per seed, for pins the reducer only compares. */
+const digest = (seed: string): string => seed.repeat(64).slice(0, 64);
+
 const serverSnapshot: VisualSessionSnapshot = {
-  protocolVersion: "yarramate/visual-protocol/v2",
+  protocolVersion: "yarramate/visual-protocol/v3",
   sessionId: "0".repeat(32),
   authority: "canonical",
   title: "Choose a delivery design",
@@ -673,6 +680,128 @@ describe("visualAppReducer changeset undo and redo", () => {
     expect(landed.undoStack).toEqual([]);
     expect(landed.redoStack).toEqual([]);
     expect(visualAppReducer(landed, { type: "changeset.undone" })).toBe(landed);
+  });
+});
+
+describe("visualAppReducer staged digests", () => {
+  const held = digest("a");
+  const replaced = digest("b");
+  const other = digest("c");
+
+  /** A session whose model names two documents with known contents. */
+  const pinnedState = loaded({
+    model: model("choices", {
+      "model.yaml": held,
+      "other.yaml": other,
+    }),
+  });
+
+  const rename = (document: string, id: string, name: string) =>
+    ({ op: "update-concept", document, concept: { id, name } }) as const;
+
+  it("pins the document the row targets, and only that one", () => {
+    const staged = visualAppReducer(pinnedState, {
+      type: "changeset.staged",
+      operation: rename("model.yaml", "Q1", "A"),
+    });
+
+    // `other.yaml` is in the model but untouched: vouching for it would refuse
+    // a commit over a change that has nothing to do with this batch.
+    expect(staged.pendingChangeset.sourceDigests).toEqual({
+      "model.yaml": held,
+    });
+  });
+
+  it("keeps the digest the first row saw when a newer model arrives", () => {
+    // The whole point: another session landed a write, the fresh model says so,
+    // and the pin must still say what was on screen when the row was written.
+    // Refreshing it here would let the next edit overwrite that write silently.
+    const staged = visualAppReducer(pinnedState, {
+      type: "changeset.staged",
+      operation: rename("model.yaml", "Q1", "A"),
+    });
+    const refreshed = visualAppReducer(staged, {
+      type: "model.received",
+      model: model("choices", { "model.yaml": replaced, "other.yaml": other }),
+    });
+    const again = visualAppReducer(refreshed, {
+      type: "changeset.staged",
+      operation: rename("model.yaml", "Q1", "B"),
+    });
+
+    expect(again.pendingChangeset.sourceDigests).toEqual({
+      "model.yaml": held,
+    });
+  });
+
+  it("stops vouching for a document once its last row is discarded", () => {
+    const staged = [
+      rename("model.yaml", "Q1", "A"),
+      rename("other.yaml", "Q2", "B"),
+    ].reduce(
+      (state, operation) =>
+        visualAppReducer(state, { type: "changeset.staged", operation }),
+      pinnedState,
+    );
+    expect(Object.keys(staged.pendingChangeset.sourceDigests)).toEqual([
+      "model.yaml",
+      "other.yaml",
+    ]);
+
+    const discarded = visualAppReducer(staged, {
+      type: "changeset.discarded",
+      index: 1,
+    });
+    expect(discarded.pendingChangeset.sourceDigests).toEqual({
+      "model.yaml": held,
+    });
+  });
+
+  it("restores the pins a snapshot was staged against, not today's", () => {
+    const staged = visualAppReducer(pinnedState, {
+      type: "changeset.staged",
+      operation: rename("model.yaml", "Q1", "A"),
+    });
+    const cleared = visualAppReducer(staged, { type: "changeset.cleared" });
+    expect(cleared.pendingChangeset.sourceDigests).toEqual({});
+
+    const undone = visualAppReducer(
+      visualAppReducer(cleared, {
+        type: "model.received",
+        model: model("choices", { "model.yaml": replaced }),
+      }),
+      { type: "changeset.undone" },
+    );
+    expect(undone.pendingChangeset.sourceDigests).toEqual({
+      "model.yaml": held,
+    });
+  });
+
+  it("leaves a row unpinned when the model does not have the document", () => {
+    const staged = visualAppReducer(pinnedState, {
+      type: "changeset.staged",
+      operation: rename("new.yaml", "Q1", "A"),
+    });
+
+    // Nothing to be stale against: `apply` creates it, and a pin nobody minted
+    // would refuse a commit for a file that never existed.
+    expect(staged.pendingChangeset.sourceDigests).toEqual({});
+  });
+
+  it("sends the rows and the digests they were staged against together", () => {
+    const staged = visualAppReducer(pinnedState, {
+      type: "changeset.staged",
+      operation: rename("model.yaml", "Q1", "A"),
+    });
+    const input = visualBrowserInputFor({ kind: "commit-changeset" }, staged);
+
+    expect(input).toMatchObject({
+      type: "changeset.commit",
+      payload: {
+        operations: staged.pendingChangeset.operations,
+        sourceDigests: { "model.yaml": held },
+      },
+    });
   });
 });
 

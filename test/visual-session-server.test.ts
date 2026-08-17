@@ -1720,7 +1720,7 @@ describe("startVisualServer lifecycle", () => {
     );
     expect(descriptor).toMatchObject({
       format: "yarramate/visual-session-descriptor/v1",
-      protocolVersion: "yarramate/visual-protocol/v2",
+      protocolVersion: "yarramate/visual-protocol/v3",
       sessionId: server.started.sessionId,
       origin: server.started.origin,
       sessionRoot: server.started.sessionRoot,

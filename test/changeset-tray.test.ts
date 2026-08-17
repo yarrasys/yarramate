@@ -1,7 +1,10 @@
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import type { VisualDiagnostic } from '../src/adapters/visual/protocol-contract.js'
+import type {
+  VisualChangesetCommitPayload,
+  VisualDiagnostic,
+} from '../src/adapters/visual/protocol-contract.js'
 import type { CanvasGraph } from '../src/graph-projection.js'
 import type { YarramateOperation } from '../src/operations.js'
 import type { VisualAppState } from '../src/visual-app/state.js'
@@ -268,6 +271,13 @@ describe('partitionDiagnostics', () => {
   })
 })
 
+/** A staged set as the tray takes it: pins ride along, and only the tests about
+ * staleness care what is in them. */
+const staged = (
+  operations: readonly YarramateOperation[],
+  sourceDigests: Readonly<Record<string, string>> = {},
+): VisualChangesetCommitPayload => ({ operations, sourceDigests })
+
 const baseState: VisualAppState = {
   lifecycle: 'active',
   authority: 'canonical',
@@ -281,6 +291,7 @@ const baseState: VisualAppState = {
     documents: [],
     vocabulary: { conceptKinds: [], relationshipKinds: [] },
     layouts: {},
+    sourceDigests: {},
   },
   styleNonce: '',
   activeView: '',
@@ -300,7 +311,7 @@ const baseState: VisualAppState = {
   closedReason: null,
   pendingViewSave: null,
   viewSaveNotice: false,
-  pendingChangeset: { operations: [] },
+  pendingChangeset: { operations: [], sourceDigests: {} },
   undoStack: [],
   redoStack: [],
   commitStatus: 'idle',
@@ -343,7 +354,7 @@ describe('ChangesetTray', () => {
   it('never gates on composerEnabled or the agent turn', () => {
     // chatEnabled: false and composerEnabled: false in baseState already; a
     // non-empty changeset must still render the tray and an enabled button.
-    const html = render({ pendingChangeset: { operations: [updateOp] } })
+    const html = render({ pendingChangeset: staged([updateOp]) })
     expect(html).not.toBe('')
     expect(commitButtonTag(html)).not.toContain('disabled')
   })
@@ -355,7 +366,7 @@ describe('ChangesetTray', () => {
 
   it('disables Commit changes and marks it aria-busy while a commit is in flight', () => {
     const html = render({
-      pendingChangeset: { operations: [updateOp] },
+      pendingChangeset: staged([updateOp]),
       commitStatus: 'committing',
     })
     const tag = commitButtonTag(html)
@@ -364,7 +375,7 @@ describe('ChangesetTray', () => {
   })
 
   it('enables Commit changes once operations are staged and idle', () => {
-    const html = render({ pendingChangeset: { operations: [updateOp] } })
+    const html = render({ pendingChangeset: staged([updateOp]) })
     expect(commitButtonTag(html)).not.toContain('disabled')
   })
 
@@ -379,7 +390,7 @@ describe('ChangesetTray', () => {
 
   it('keeps the staged rows on a failed commit instead of clearing the tray', () => {
     const html = render({
-      pendingChangeset: { operations: [updateOp] },
+      pendingChangeset: staged([updateOp]),
       commitDiagnostics: [
         {
           severity: 'error',
@@ -398,14 +409,14 @@ describe('ChangesetTray', () => {
   })
 
   it('offers Undo and Redo, each disabled while its stack is empty', () => {
-    const html = render({ pendingChangeset: { operations: [updateOp] } })
+    const html = render({ pendingChangeset: staged([updateOp]) })
     expect(historyButtonTag(html, 'undo')).toContain('disabled=""')
     expect(historyButtonTag(html, 'redo')).toContain('disabled=""')
 
     const withHistory = render({
-      pendingChangeset: { operations: [updateOp] },
-      undoStack: [[]],
-      redoStack: [[updateOp]],
+      pendingChangeset: staged([updateOp]),
+      undoStack: [staged([])],
+      redoStack: [staged([updateOp])],
     })
     expect(historyButtonTag(withHistory, 'undo')).not.toContain('disabled')
     expect(historyButtonTag(withHistory, 'redo')).not.toContain('disabled')
@@ -414,13 +425,53 @@ describe('ChangesetTray', () => {
   it('stays mounted with nothing staged so history is still reachable', () => {
     // Undoing the last row empties the changeset; hiding the tray here would
     // strand the redo entry it just created.
-    const undoneToEmpty = render({ redoStack: [[updateOp]] })
+    const undoneToEmpty = render({ redoStack: [staged([updateOp])] })
     expect(undoneToEmpty).not.toBe('')
     expect(historyButtonTag(undoneToEmpty, 'redo')).not.toContain('disabled')
 
-    const discardedAll = render({ undoStack: [[updateOp]] })
+    const discardedAll = render({ undoStack: [staged([updateOp])] })
     expect(historyButtonTag(discardedAll, 'undo')).not.toContain('disabled')
     // Nothing staged, so there is nothing to discard again.
     expect(discardedAll).not.toContain('changeset-discard-all')
+  })
+
+  it('marks a row whose document moved after it was staged', () => {
+    const html = render({
+      pendingChangeset: staged([updateOp], {
+        'architecture/main.yaml': 'a'.repeat(64),
+      }),
+      model: {
+        ...baseState.model!,
+        sourceDigests: { 'architecture/main.yaml': 'b'.repeat(64) },
+      },
+    })
+    expect(html).toContain('changeset-row conflicted')
+    expect(html).toContain('changed after this edit was staged')
+  })
+
+  it('leaves a row unmarked while its pin still matches the model', () => {
+    const html = render({
+      pendingChangeset: staged([updateOp], {
+        'architecture/main.yaml': 'a'.repeat(64),
+      }),
+      model: {
+        ...baseState.model!,
+        sourceDigests: { 'architecture/main.yaml': 'a'.repeat(64) },
+      },
+    })
+    expect(html).not.toContain('conflicted')
+  })
+
+  it('leaves an unpinned row unmarked: there is nothing it can be stale against', () => {
+    // A row that creates a document has no pin, and the model that lands it
+    // will name a digest the row never saw. That is not a conflict.
+    const html = render({
+      pendingChangeset: staged([updateOp]),
+      model: {
+        ...baseState.model!,
+        sourceDigests: { 'architecture/main.yaml': 'b'.repeat(64) },
+      },
+    })
+    expect(html).not.toContain('conflicted')
   })
 })

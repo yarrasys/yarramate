@@ -13,8 +13,24 @@
   empties them, because what has landed is reverted with `git revert`, never
   from the browser. Index-attributed commit diagnostics are dropped whenever
   the staged rows move, so row 1's error is never redrawn against whatever now
-  occupies row 1. Local state only: the stacks never reach the wire, so
-  `yarramate/visual-protocol/v2` is unchanged.
+  occupies row 1. Local state only: the stacks never reach the wire.
+- Refuse a visual commit staged against bytes another writer has replaced. Each
+  staged row pins the sha256 the browser rendered for the document it targets,
+  taken from the model frame the row was staged against and never refreshed
+  from a later one, and the commit carries those pins as
+  `sourceDigests`. The server checks every document the batch targets — not
+  just every pin sent, so a batch that vouches for nothing is refused rather
+  than trusted — and answers a mismatch with preserve-and-refresh: the rows
+  stay staged, the freshly compiled model is broadcast, and the affected rows
+  are marked with the value that is there now. Two reviewers editing the same
+  field previously produced one silent overwrite reported as landed (ADR 0093).
+  New diagnostics `YMVS312` (a pinned document changed or is gone) and
+  `YMVS313` (an existing targeted document was left unpinned).
+- **Breaking:** the wire is `yarramate/visual-protocol/v3`.
+  `VisualChangesetCommitPayload.sourceDigests` is required, so a v2 browser's
+  commit is refused rather than written unconditionally, and
+  `VisualRenderedModel` now forwards the per-document `sourceDigests` the
+  session request already minted.
 
 ## 0.20.0
 

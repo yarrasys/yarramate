@@ -3,6 +3,7 @@ import {
   type VisualAgentStatusPayload,
   type VisualAuthority,
   type VisualBrowserInput,
+  type VisualChangesetCommitPayload,
   type VisualChoicePresentPayload,
   type VisualDiagnostic,
   type VisualHandoffSummary,
@@ -107,20 +108,26 @@ export interface VisualAppState {
   /** Shown once a save lands ok, until the reviewer dismisses it or a fresh
    * save starts. */
   readonly viewSaveNotice: boolean;
-  /** Operations staged for commit; replaces on same-field re-edit. */
-  readonly pendingChangeset: {
-    readonly operations: readonly YarramateOperation[];
-  };
-  /** Prior `pendingChangeset.operations` values, oldest first, for ordered
-   * undo. Whole snapshots rather than inverse operations: staging replaces on
-   * the same `(target, field)` key, so a re-edit destroys the value an inverse
-   * operation would need to restore. Local only - never on the wire, never
-   * persisted, and cleared once a batch lands, because a landed batch is
-   * reverted with `git revert`, not from the browser. */
-  readonly undoStack: readonly (readonly YarramateOperation[])[];
+  /**
+   * Operations staged for commit; replaces on same-field re-edit. Typed as the
+   * commit payload itself, so the tray holds exactly what the wire takes and
+   * `sourceDigests` cannot drift from the rows it vouches for: each row pins the
+   * digest of the document it targets as it is staged, and the pin is never
+   * refreshed while the row is staged - a pin that followed the newest model
+   * frame would agree with disk and let the overwrite through (ADR 0093).
+   */
+  readonly pendingChangeset: VisualChangesetCommitPayload;
+  /** Prior `pendingChangeset` values, oldest first, for ordered undo. Whole
+   * snapshots rather than inverse operations: staging replaces on the same
+   * `(target, field)` key, so a re-edit destroys the value an inverse
+   * operation would need to restore. The pins travel inside the snapshot, so an
+   * undone row is restored still vouching for what it was staged against. Local
+   * only - never on the wire, never persisted, and cleared once a batch lands,
+   * because a landed batch is reverted with `git revert`, not from the browser. */
+  readonly undoStack: readonly VisualChangesetCommitPayload[];
   /** Values taken off `undoStack`, most recently undone last. Any fresh
    * staging, discard or clear drops it: the reviewer took a new branch. */
-  readonly redoStack: readonly (readonly YarramateOperation[])[];
+  readonly redoStack: readonly VisualChangesetCommitPayload[];
   /** Idle when no commit in flight; committing while waiting for apply-result. */
   readonly commitStatus: "idle" | "committing";
   /** Diagnostics from the most recent failed commit; null when idle or on success. */
@@ -233,7 +240,7 @@ export const initialVisualAppState: VisualAppState = {
   closedReason: null,
   pendingViewSave: null,
   viewSaveNotice: false,
-  pendingChangeset: { operations: [] },
+  pendingChangeset: { operations: [], sourceDigests: {} },
   undoStack: [],
   redoStack: [],
   commitStatus: "idle",
@@ -330,6 +337,35 @@ const changesetTargetKey = (op: YarramateOperation): string => {
     observation,
     ["subject", "claim", "key"],
   )}`;
+};
+
+/**
+ * The digests a staged set vouches for: one per document its rows target, taken
+ * from the model the row was staged against.
+ *
+ * An existing pin is kept rather than re-read, which is the whole point. A pin
+ * refreshed from a newer model frame would match the file on disk and let a
+ * same-field overwrite of a write the reviewer never saw land silently — the pin
+ * has to keep saying what was on screen when the row was written (ADR 0093).
+ * Documents no longer targeted drop out, so discarding the last row that named a
+ * document stops vouching for it and cannot refuse a later commit on its behalf.
+ */
+const pinnedDigests = (
+  operations: readonly YarramateOperation[],
+  previous: Readonly<Record<string, string>>,
+  model: VisualRenderedModel | null,
+): Readonly<Record<string, string>> => {
+  const pins: Record<string, string> = {};
+  for (const operation of operations) {
+    if (pins[operation.document] !== undefined) continue;
+    const pinned =
+      previous[operation.document] ?? model?.sourceDigests[operation.document];
+    // A document the model does not name is one `apply` will create: there is no
+    // prior value to be stale against, so it is left unpinned rather than
+    // pinned to a digest nobody minted.
+    if (pinned !== undefined) pins[operation.document] = pinned;
+  }
+  return pins;
 };
 
 const transition = (
@@ -557,12 +593,18 @@ const transition = (
       const filtered = state.pendingChangeset.operations.filter(
         (op) => changesetTargetKey(op) !== key,
       );
+      const operations = [...filtered, action.operation];
       return {
         ...state,
         pendingChangeset: {
-          operations: [...filtered, action.operation],
+          operations,
+          sourceDigests: pinnedDigests(
+            operations,
+            state.pendingChangeset.sourceDigests,
+            state.model,
+          ),
         },
-        undoStack: [...state.undoStack, state.pendingChangeset.operations],
+        undoStack: [...state.undoStack, state.pendingChangeset],
         redoStack: [],
         commitDiagnostics: null,
         // A fresh edit makes the last commit's receipt stale, not wrong: drop it.
@@ -574,14 +616,20 @@ const transition = (
       if (index < 0 || index >= state.pendingChangeset.operations.length) {
         return state;
       }
+      const operations = state.pendingChangeset.operations.filter(
+        (_, i) => i !== index,
+      );
       return {
         ...state,
         pendingChangeset: {
-          operations: state.pendingChangeset.operations.filter(
-            (_, i) => i !== index,
+          operations,
+          sourceDigests: pinnedDigests(
+            operations,
+            state.pendingChangeset.sourceDigests,
+            state.model,
           ),
         },
-        undoStack: [...state.undoStack, state.pendingChangeset.operations],
+        undoStack: [...state.undoStack, state.pendingChangeset],
         redoStack: [],
         // Diagnostics point at rows by index, so a shorter list mis-attributes them.
         commitDiagnostics: null,
@@ -592,11 +640,11 @@ const transition = (
       // would restore the same empty list.
       return {
         ...state,
-        pendingChangeset: { operations: [] },
+        pendingChangeset: { operations: [], sourceDigests: {} },
         undoStack:
           state.pendingChangeset.operations.length === 0
             ? state.undoStack
-            : [...state.undoStack, state.pendingChangeset.operations],
+            : [...state.undoStack, state.pendingChangeset],
         redoStack:
           state.pendingChangeset.operations.length === 0 ? state.redoStack : [],
         commitDiagnostics: null,
@@ -608,9 +656,9 @@ const transition = (
       }
       return {
         ...state,
-        pendingChangeset: { operations: restored },
+        pendingChangeset: restored,
         undoStack: state.undoStack.slice(0, -1),
-        redoStack: [...state.redoStack, state.pendingChangeset.operations],
+        redoStack: [...state.redoStack, state.pendingChangeset],
         commitDiagnostics: null,
       };
     }
@@ -621,9 +669,9 @@ const transition = (
       }
       return {
         ...state,
-        pendingChangeset: { operations: restored },
+        pendingChangeset: restored,
         redoStack: state.redoStack.slice(0, -1),
-        undoStack: [...state.undoStack, state.pendingChangeset.operations],
+        undoStack: [...state.undoStack, state.pendingChangeset],
         commitDiagnostics: null,
       };
     }
@@ -635,7 +683,7 @@ const transition = (
       // A landed batch is reverted with `git revert`, never resurrected here.
       return {
         ...state,
-        pendingChangeset: { operations: [] },
+        pendingChangeset: { operations: [], sourceDigests: {} },
         undoStack: [],
         redoStack: [],
         commitStatus: "idle",
@@ -748,7 +796,9 @@ export const visualBrowserInputFor = (
       return {
         type: "changeset.commit",
         lastAcknowledgedSequence,
-        payload: { operations: state.pendingChangeset.operations },
+        // The staged set is the payload: the rows and the digests they were
+        // staged against travel together or the check they exist for is a lie.
+        payload: state.pendingChangeset,
       };
     case "save-layout":
       return {

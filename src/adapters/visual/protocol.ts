@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { posix } from 'node:path'
 import type { ErrorObject, ValidateFunction } from 'ajv'
 import Ajv2020Module from 'ajv/dist/2020.js'
@@ -91,6 +92,19 @@ ajv.addSchema([
   operationsSchema,
   applyResultSchema,
 ])
+
+/**
+ * The one way this adapter mints a source digest.
+ *
+ * `visual-model/v1` requires a canonical model to record the digests it was
+ * derived from (`YMVS112`) and pins their shape to 64 lowercase hex characters,
+ * so the value lives beside the validator that enforces it: the request builder
+ * mints them for the initial model, the session server re-mints them on every
+ * recompile and checks a commit's pins against the files on disk, and all three
+ * are the same hash by construction rather than by three matching literals.
+ */
+export const digestOf = (source: string): string =>
+  createHash('sha256').update(source).digest('hex')
 
 // Diagnostics report the document they came from rather than a source file,
 // because visual protocol documents arrive as parsed JSON over the wire.

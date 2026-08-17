@@ -23,6 +23,7 @@ import {
 } from '../src/adapters/visual/client.js'
 import {
   VISUAL_LIMITS,
+  digestOf,
   type VisualBrowserInput,
   type VisualEvent,
   type VisualHandoff,
@@ -1041,6 +1042,156 @@ describe('the visual recovery matrix', () => {
       'browser.connected',
       'view.navigate',
     ])
+    await closeSocket(browser)
+  })
+})
+
+describe('a commit lands only against the values it was staged on', () => {
+  /** A workspace with one real document, so `apply` has something to land on. */
+  const plantWorkspace = async (name: string) => {
+    await writeFile(
+      join(baseDir, '.yarramate/workspace.yaml'),
+      `format: yarramate/workspace/v1
+id: staleness-fixture
+documents:
+  - ${name}
+profiles: []
+projections: []
+adapterMappings: []
+evidence: []
+contracts: []
+`,
+      'utf8',
+    )
+    const source = `format: yarramate/v1
+id: staleness
+profile: yarramate/core@0.1
+concepts:
+  - id: checkout
+    kind: capability
+    name: Checkout
+relationships: []
+`
+    await writeFile(join(baseDir, '.yarramate', name), source, 'utf8')
+    return { path: `.yarramate/${name}`, source }
+  }
+
+  const commit = (
+    document: string,
+    name: string,
+    sourceDigests: Readonly<Record<string, string>>,
+  ): VisualBrowserInput => ({
+    type: 'changeset.commit',
+    lastAcknowledgedSequence: 0,
+    payload: {
+      operations: [
+        { op: 'update-concept', document, concept: { id: 'checkout', name } },
+      ],
+      sourceDigests,
+    },
+  })
+
+  it('lands a batch whose pin still matches the file', async () => {
+    const document = await plantWorkspace('engine.yaml')
+    const visual = await startVisualFixture()
+    const browser = await connectFixtureBrowser(visual)
+    await nextFrame(browser, 'ready')
+
+    send(
+      browser,
+      commit(document.path, 'Checkout Service', {
+        [document.path]: digestOf(document.source),
+      }),
+    )
+    expect(await nextFrame(browser, 'apply-result')).toMatchObject({
+      result: { ok: true },
+    })
+    expect(await readFile(join(baseDir, document.path), 'utf8')).toContain(
+      'Checkout Service',
+    )
+    await closeSocket(browser)
+  })
+
+  it('refuses a batch staged against bytes another writer has replaced', async () => {
+    const document = await plantWorkspace('engine.yaml')
+    const visual = await startVisualFixture()
+    const browser = await connectFixtureBrowser(visual)
+    await nextFrame(browser, 'ready')
+
+    // The second reviewer's session: same document, a value the first one's
+    // browser never saw. Landing this batch is exactly the lost write.
+    const replaced = document.source.replace('Checkout', 'Checkout Desk')
+    await writeFile(join(baseDir, document.path), replaced, 'utf8')
+
+    send(
+      browser,
+      commit(document.path, 'Checkout Service', {
+        [document.path]: digestOf(document.source),
+      }),
+    )
+    expect(await nextFrame(browser, 'apply-result')).toMatchObject({
+      result: {
+        ok: false,
+        diagnostics: [
+          {
+            code: 'YMVS312',
+            message: expect.stringContaining('changed after these edits'),
+          },
+        ],
+      },
+    })
+
+    // Nothing written, and the fresh model follows so the reviewer can read
+    // what is there now before deciding what to do with their rows.
+    expect(await readFile(join(baseDir, document.path), 'utf8')).toBe(replaced)
+    expect(await nextFrame(browser, 'model')).toMatchObject({
+      model: { sourceDigests: { [document.path]: digestOf(replaced) } },
+    })
+    await closeSocket(browser)
+  })
+
+  it('refuses a batch that states nothing about a document it edits', async () => {
+    const document = await plantWorkspace('engine.yaml')
+    const visual = await startVisualFixture()
+    const browser = await connectFixtureBrowser(visual)
+    await nextFrame(browser, 'ready')
+
+    // A pin nobody has to state is decoration: omission would buy back the
+    // unconditional write the check exists to close.
+    send(browser, commit(document.path, 'Checkout Service', {}))
+    expect(await nextFrame(browser, 'apply-result')).toMatchObject({
+      result: { ok: false, diagnostics: [{ code: 'YMVS313' }] },
+    })
+    expect(await readFile(join(baseDir, document.path), 'utf8')).toBe(
+      document.source,
+    )
+    await closeSocket(browser)
+  })
+
+  it('refuses a batch whose document was deleted after it was staged', async () => {
+    const document = await plantWorkspace('engine.yaml')
+    const visual = await startVisualFixture()
+    const browser = await connectFixtureBrowser(visual)
+    await nextFrame(browser, 'ready')
+
+    await rm(join(baseDir, document.path))
+    send(
+      browser,
+      commit(document.path, 'Checkout Service', {
+        [document.path]: digestOf(document.source),
+      }),
+    )
+    expect(await nextFrame(browser, 'apply-result')).toMatchObject({
+      result: {
+        ok: false,
+        diagnostics: [
+          {
+            code: 'YMVS312',
+            message: expect.stringContaining('no longer exists'),
+          },
+        ],
+      },
+    })
     await closeSocket(browser)
   })
 })

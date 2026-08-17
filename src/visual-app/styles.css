@@ -1230,6 +1230,21 @@ body {
   background: var(--paper);
 }
 
+/* A row whose document moved under it. Bordered rather than red-texted: the
+   edit is still exactly what the reviewer wrote, and the commit will still be
+   attempted - it is the value underneath that is no longer what they saw. */
+.changeset-row.conflicted {
+  border-color: var(--ochre);
+  background: color-mix(in oklab, var(--ochre) 6%, var(--paper));
+}
+
+.changeset-row-conflict {
+  margin: calc(var(--step) * 0.5) 0 0;
+  font-family: var(--utility);
+  font-size: 11px;
+  color: var(--ochre);
+}
+
 .changeset-row-line {
   display: flex;
   align-items: center;

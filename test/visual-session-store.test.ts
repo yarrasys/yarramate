@@ -257,7 +257,7 @@ describe("visual session store", () => {
       overrides: Partial<VisualSessionDescriptor> = {},
     ): VisualSessionDescriptor => ({
       format: "yarramate/visual-session-descriptor/v1",
-      protocolVersion: "yarramate/visual-protocol/v2",
+      protocolVersion: "yarramate/visual-protocol/v3",
       sessionId,
       origin: "http://127.0.0.1:49152",
       agentCapability: "5c".repeat(32),

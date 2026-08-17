@@ -36,7 +36,7 @@ const session = vi.hoisted(() => {
     closedReason: null,
     pendingViewSave: null,
     viewSaveNotice: false,
-    pendingChangeset: { operations: [] },
+    pendingChangeset: { operations: [], sourceDigests: {} },
     undoStack: [],
     redoStack: [],
     commitStatus: 'idle',

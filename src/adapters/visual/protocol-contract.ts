@@ -18,7 +18,7 @@ import type {
   ProjectionQuery,
 } from "../../projection.js";
 
-export const VISUAL_PROTOCOL_VERSION = "yarramate/visual-protocol/v2" as const;
+export const VISUAL_PROTOCOL_VERSION = "yarramate/visual-protocol/v3" as const;
 
 export const VISUAL_LIMITS = {
   messageBytes: 64 * 1024,
@@ -147,6 +147,18 @@ export interface VisualLayoutPositions {
 
 export interface VisualChangesetCommitPayload {
   readonly operations: readonly YarramateOperation[];
+  /**
+   * What the browser believed each targeted document held when the rows were
+   * staged — sha256 keyed by manifest-relative path, pinned at staging time and
+   * never refreshed while rows remain staged. The runtime refuses the batch when
+   * a pin no longer matches the file, so a same-field overwrite of a write the
+   * reviewer never saw cannot land silently (ADR 0093).
+   *
+   * Required, not optional: a browser that omits it is exactly the browser that
+   * cannot detect the conflict, which is why this field is what makes the
+   * protocol `v3`.
+   */
+  readonly sourceDigests: Readonly<Record<string, string>>;
 }
 
 export interface VisualLayoutSavePayload {
