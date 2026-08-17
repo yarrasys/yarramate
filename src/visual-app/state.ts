@@ -111,6 +111,16 @@ export interface VisualAppState {
   readonly pendingChangeset: {
     readonly operations: readonly YarramateOperation[];
   };
+  /** Prior `pendingChangeset.operations` values, oldest first, for ordered
+   * undo. Whole snapshots rather than inverse operations: staging replaces on
+   * the same `(target, field)` key, so a re-edit destroys the value an inverse
+   * operation would need to restore. Local only - never on the wire, never
+   * persisted, and cleared once a batch lands, because a landed batch is
+   * reverted with `git revert`, not from the browser. */
+  readonly undoStack: readonly (readonly YarramateOperation[])[];
+  /** Values taken off `undoStack`, most recently undone last. Any fresh
+   * staging, discard or clear drops it: the reviewer took a new branch. */
+  readonly redoStack: readonly (readonly YarramateOperation[])[];
   /** Idle when no commit in flight; committing while waiting for apply-result. */
   readonly commitStatus: "idle" | "committing";
   /** Diagnostics from the most recent failed commit; null when idle or on success. */
@@ -165,6 +175,8 @@ export type VisualAppAction =
     }
   | { readonly type: "changeset.discarded"; readonly index: number }
   | { readonly type: "changeset.cleared" }
+  | { readonly type: "changeset.undone" }
+  | { readonly type: "changeset.redone" }
   | { readonly type: "changeset.commit.sent" }
   | {
       readonly type: "changeset.committed";
@@ -222,6 +234,8 @@ export const initialVisualAppState: VisualAppState = {
   pendingViewSave: null,
   viewSaveNotice: false,
   pendingChangeset: { operations: [] },
+  undoStack: [],
+  redoStack: [],
   commitStatus: "idle",
   commitDiagnostics: null,
   commitNotice: null,
@@ -548,6 +562,8 @@ const transition = (
         pendingChangeset: {
           operations: [...filtered, action.operation],
         },
+        undoStack: [...state.undoStack, state.pendingChangeset.operations],
+        redoStack: [],
         commitDiagnostics: null,
         // A fresh edit makes the last commit's receipt stale, not wrong: drop it.
         commitNotice: null,
@@ -565,22 +581,63 @@ const transition = (
             (_, i) => i !== index,
           ),
         },
+        undoStack: [...state.undoStack, state.pendingChangeset.operations],
+        redoStack: [],
+        // Diagnostics point at rows by index, so a shorter list mis-attributes them.
+        commitDiagnostics: null,
       };
     }
     case "changeset.cleared":
+      // Clearing an already-empty changeset must not stack an undo step that
+      // would restore the same empty list.
       return {
         ...state,
         pendingChangeset: { operations: [] },
+        undoStack:
+          state.pendingChangeset.operations.length === 0
+            ? state.undoStack
+            : [...state.undoStack, state.pendingChangeset.operations],
+        redoStack:
+          state.pendingChangeset.operations.length === 0 ? state.redoStack : [],
         commitDiagnostics: null,
       };
+    case "changeset.undone": {
+      const restored = state.undoStack.at(-1);
+      if (restored === undefined) {
+        return state;
+      }
+      return {
+        ...state,
+        pendingChangeset: { operations: restored },
+        undoStack: state.undoStack.slice(0, -1),
+        redoStack: [...state.redoStack, state.pendingChangeset.operations],
+        commitDiagnostics: null,
+      };
+    }
+    case "changeset.redone": {
+      const restored = state.redoStack.at(-1);
+      if (restored === undefined) {
+        return state;
+      }
+      return {
+        ...state,
+        pendingChangeset: { operations: restored },
+        redoStack: state.redoStack.slice(0, -1),
+        undoStack: [...state.undoStack, state.pendingChangeset.operations],
+        commitDiagnostics: null,
+      };
+    }
     case "changeset.commit.sent":
       // The button locks the moment the frame leaves, so one changeset cannot be
       // committed twice while the runtime is still validating the first attempt.
       return { ...state, commitStatus: "committing", commitDiagnostics: null };
     case "changeset.committed":
+      // A landed batch is reverted with `git revert`, never resurrected here.
       return {
         ...state,
         pendingChangeset: { operations: [] },
+        undoStack: [],
+        redoStack: [],
         commitStatus: "idle",
         commitDiagnostics: null,
         commitNotice: action.documents,

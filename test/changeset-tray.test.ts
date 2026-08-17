@@ -301,6 +301,8 @@ const baseState: VisualAppState = {
   pendingViewSave: null,
   viewSaveNotice: false,
   pendingChangeset: { operations: [] },
+  undoStack: [],
+  redoStack: [],
   commitStatus: 'idle',
   commitDiagnostics: null,
   commitNotice: null,
@@ -313,6 +315,8 @@ const render = (overrides: Partial<VisualAppState> = {}): string =>
       state: { ...baseState, ...overrides },
       onDiscardChange: () => {},
       onClearChangeset: () => {},
+      onUndoChangeset: () => {},
+      onRedoChangeset: () => {},
       onCommitChangeset: () => {},
     }),
   )
@@ -320,6 +324,14 @@ const render = (overrides: Partial<VisualAppState> = {}): string =>
 const commitButtonTag = (html: string): string => {
   const match = /<button[^>]*class="changeset-commit"[^>]*>/.exec(html)
   if (match === null) throw new Error('commit button not found in: ' + html)
+  return match[0]
+}
+
+const historyButtonTag = (html: string, which: 'undo' | 'redo'): string => {
+  const match = new RegExp(
+    `<button[^>]*class="changeset-${which}"[^>]*>`,
+  ).exec(html)
+  if (match === null) throw new Error(`${which} button not found in: ` + html)
   return match[0]
 }
 
@@ -383,5 +395,32 @@ describe('ChangesetTray', () => {
     expect(html).toContain('update-concept')
     expect(html).toContain('Checkout Service')
     expect(html).toContain('YM912')
+  })
+
+  it('offers Undo and Redo, each disabled while its stack is empty', () => {
+    const html = render({ pendingChangeset: { operations: [updateOp] } })
+    expect(historyButtonTag(html, 'undo')).toContain('disabled=""')
+    expect(historyButtonTag(html, 'redo')).toContain('disabled=""')
+
+    const withHistory = render({
+      pendingChangeset: { operations: [updateOp] },
+      undoStack: [[]],
+      redoStack: [[updateOp]],
+    })
+    expect(historyButtonTag(withHistory, 'undo')).not.toContain('disabled')
+    expect(historyButtonTag(withHistory, 'redo')).not.toContain('disabled')
+  })
+
+  it('stays mounted with nothing staged so history is still reachable', () => {
+    // Undoing the last row empties the changeset; hiding the tray here would
+    // strand the redo entry it just created.
+    const undoneToEmpty = render({ redoStack: [[updateOp]] })
+    expect(undoneToEmpty).not.toBe('')
+    expect(historyButtonTag(undoneToEmpty, 'redo')).not.toContain('disabled')
+
+    const discardedAll = render({ undoStack: [[updateOp]] })
+    expect(historyButtonTag(discardedAll, 'undo')).not.toContain('disabled')
+    // Nothing staged, so there is nothing to discard again.
+    expect(discardedAll).not.toContain('changeset-discard-all')
   })
 })

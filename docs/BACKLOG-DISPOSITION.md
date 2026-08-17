@@ -26,19 +26,21 @@ The current repository implements the agreed foundation for:
 - explicit Graphify node observation producing standard evidence overlays;
 - native browser visualization and mechanical model editing through the
   `yarramate-visual` adapter, its published `yarramate/visual-protocol/v2`
-  wire, and changeset commits that land through `yarramate apply`.
+  wire, and changeset commits that land through `yarramate apply`;
+- ordered in-app undo and redo over the staged visual changeset.
 
-One concrete, locally actionable item remains in the agreed scope: ordered
-in-app undo and redo over the staged visual changeset. The browser already
-discards a staged operation by index and clears the tray, so what is missing
-is an ordered history in the reviewer's own state, not a new semantic, wire
-event, or write path. Its scope is deliberately the staged operations alone:
-dragged positions and saved views persist as their own documents with their
-own save and discard paths, so one shared stack would make a single undo
-gesture ambiguous between un-staging an edit and moving a node back. A
-landed batch is still reverted with `git revert`, never from the browser.
-Everything else in the agreed Core 0.1 and initial journey scope is
-implemented.
+Nothing locally actionable remains in the agreed scope. Undo and redo were the
+last item, and they landed as an ordered history in the reviewer's own state,
+not a new semantic, wire event, or write path: the history holds whole
+snapshots of the staged operations, because staging replaces on a repeated
+`(target, field)` and an inverse operation would have nothing left to restore
+the replaced value from (ADR 0092). Its scope is deliberately the staged
+operations alone: dragged positions and saved views persist as their own
+documents with their own save and discard paths, so one shared stack would
+make a single undo gesture ambiguous between un-staging an edit and moving a
+node back. A landed batch is still reverted with `git revert`, never from the
+browser, so both stacks are dropped once a commit lands. Everything else in
+the agreed Core 0.1 and initial journey scope is implemented.
 
 ## Decision-gated
 

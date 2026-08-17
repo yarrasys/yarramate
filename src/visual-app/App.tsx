@@ -583,6 +583,8 @@ const ConversationPanel = ({
   onDiscardChange,
   onStageChange,
   onClearChangeset,
+  onUndoChangeset,
+  onRedoChangeset,
   onCommitChangeset,
 }: {
   readonly state: VisualAppState;
@@ -597,6 +599,8 @@ const ConversationPanel = ({
   readonly onDiscardChange: (index: number) => void;
   readonly onStageChange: (operation: YarramateOperation) => void;
   readonly onClearChangeset: () => void;
+  readonly onUndoChangeset: () => void;
+  readonly onRedoChangeset: () => void;
   readonly onCommitChangeset: () => void;
 }) => {
   const [draft, setDraft] = useState("");
@@ -642,6 +646,8 @@ const ConversationPanel = ({
           state={state}
           onDiscardChange={onDiscardChange}
           onClearChangeset={onClearChangeset}
+          onUndoChangeset={onUndoChangeset}
+          onRedoChangeset={onRedoChangeset}
           onCommitChangeset={onCommitChangeset}
         />
 
@@ -815,6 +821,8 @@ export const App = () => {
     discardChange,
     stageChange,
     clearChangeset,
+    undoChangeset,
+    redoChangeset,
     commitChangeset,
     end,
   } = useVisualSession();
@@ -1020,6 +1028,8 @@ export const App = () => {
           onDiscardChange={discardChange}
           onStageChange={stageChange}
           onClearChangeset={clearChangeset}
+          onUndoChangeset={undoChangeset}
+          onRedoChangeset={redoChangeset}
           onCommitChangeset={commitChangeset}
         />
       </div>

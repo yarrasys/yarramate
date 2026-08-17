@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+- Walk the staged visual changeset back and forward. The tray gains Undo and
+  Redo beside Discard all, over an ordered history of whole staged-operation
+  snapshots: staging replaces on a repeated `(target, field)`, so an inverse
+  operation would have nothing left to restore a value a re-edit had already
+  overwritten, and re-editing one field twice then undoing once now returns
+  the earlier edit rather than skipping to the model's own value (ADR 0092).
+  Staging, discarding one row, and discarding all are undoable by the same
+  mechanism; a refused commit keeps the rows and both stacks; a landed batch
+  empties them, because what has landed is reverted with `git revert`, never
+  from the browser. Index-attributed commit diagnostics are dropped whenever
+  the staged rows move, so row 1's error is never redrawn against whatever now
+  occupies row 1. Local state only: the stacks never reach the wire, so
+  `yarramate/visual-protocol/v2` is unchanged.
+
 ## 0.20.0
 
 - Add `compileWorkspaceIncremental`, a delta entry point for consumers that

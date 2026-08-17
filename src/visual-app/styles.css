@@ -1191,6 +1191,30 @@ body {
   text-decoration: underline;
 }
 
+.changeset-history-controls {
+  display: flex;
+  align-items: baseline;
+  gap: var(--step);
+}
+
+.changeset-undo,
+.changeset-redo {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--eucalyptus);
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.changeset-undo:disabled,
+.changeset-redo:disabled {
+  color: var(--quiet);
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
 .changeset-rows {
   margin: var(--step) 0 0;
   padding: 0;

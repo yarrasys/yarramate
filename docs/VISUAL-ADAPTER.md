@@ -32,6 +32,14 @@ writes nothing and the browser is shown exactly the diagnostics that refused
 it, pointed at the changeset row that produced them
 ([ADR 0062](adr/0062-an-apply-diff-is-exactly-the-answer-it-landed.md)).
 
+Before a commit, the tray walks its own staged set: **Undo** and **Redo** step
+through whole snapshots of the staged operations, so staging, discarding one
+row, and discarding all are reversible by the same control, and undoing a
+field edited twice returns the earlier edit rather than the model's own value.
+The history is browser-local, reaches no wire event, and stops at the commit —
+what has landed is reverted with `git revert`, never from the browser
+([ADR 0092](adr/0092-undo-restores-a-snapshot-not-an-inverse-operation.md)).
+
 The chat agent can no longer author a mutation — it explains, filters, and
 focuses. A commit lands in the working tree and nothing else: the runtime
 never runs `git commit`, so Git review still decides what becomes declared

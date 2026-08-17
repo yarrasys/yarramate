@@ -165,23 +165,36 @@ const ChangesetRow = ({
  * The pending changeset, the commit control, and whatever the last attempt
  * said. A batch that failed stays exactly as staged - the reviewer corrects
  * and retries the same rows, never a redrawn guess of them.
+ *
+ * Undo and redo walk whole staged-set snapshots, so they cover staging, a
+ * same-field replacement, a single discard and a discard-all alike. They stop
+ * at the last commit: what landed is Git's to revert.
  */
 export const ChangesetTray = ({
   state,
   onDiscardChange,
   onClearChangeset,
+  onUndoChangeset,
+  onRedoChangeset,
   onCommitChangeset,
 }: {
   readonly state: VisualAppState
   readonly onDiscardChange: (index: number) => void
   readonly onClearChangeset: () => void
+  readonly onUndoChangeset: () => void
+  readonly onRedoChangeset: () => void
   readonly onCommitChangeset: () => void
 }) => {
   const operations = state.pendingChangeset.operations
+  // History keeps the tray mounted even with nothing staged: undoing the last
+  // row back to an empty set must leave Redo reachable, and discarding all of
+  // them must leave Undo reachable.
   if (
     operations.length === 0 &&
     state.commitNotice === null &&
-    state.commitDiagnostics === null
+    state.commitDiagnostics === null &&
+    state.undoStack.length === 0 &&
+    state.redoStack.length === 0
   ) {
     return null
   }
@@ -194,15 +207,33 @@ export const ChangesetTray = ({
     <section className="changeset-tray" aria-labelledby="changeset-heading">
       <div className="changeset-heading-row">
         <h2 id="changeset-heading">Pending changes</h2>
-        {operations.length === 0 ? null : (
+        <div className="changeset-history-controls">
           <button
             type="button"
-            className="changeset-discard-all"
-            onClick={onClearChangeset}
+            className="changeset-undo"
+            disabled={state.undoStack.length === 0}
+            onClick={onUndoChangeset}
           >
-            Discard all
+            Undo
           </button>
-        )}
+          <button
+            type="button"
+            className="changeset-redo"
+            disabled={state.redoStack.length === 0}
+            onClick={onRedoChangeset}
+          >
+            Redo
+          </button>
+          {operations.length === 0 ? null : (
+            <button
+              type="button"
+              className="changeset-discard-all"
+              onClick={onClearChangeset}
+            >
+              Discard all
+            </button>
+          )}
+        </div>
       </div>
 
       {batch.length === 0 ? null : (

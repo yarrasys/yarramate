@@ -48,6 +48,8 @@ export interface VisualSession {
   readonly stageChange: (operation: YarramateOperation) => void
   readonly discardChange: (index: number) => void
   readonly clearChangeset: () => void
+  readonly undoChangeset: () => void
+  readonly redoChangeset: () => void
   readonly commitChangeset: () => void
   readonly saveLayout: (payload: VisualLayoutSavePayload) => void
   readonly dismissSavedNotice: () => void
@@ -226,6 +228,16 @@ export const useVisualSession = (): VisualSession => {
     dispatch({ type: 'changeset.cleared' })
   }, [])
 
+  // Undo/redo stay entirely in the browser: they move the staged set around,
+  // never the workspace, which only `commit-changeset` touches.
+  const undoChangeset = useCallback(() => {
+    dispatch({ type: 'changeset.undone' })
+  }, [])
+
+  const redoChangeset = useCallback(() => {
+    dispatch({ type: 'changeset.redone' })
+  }, [])
+
   const commitChangeset = useCallback(() => {
     // An empty changeset has nothing to validate: the runtime would refuse it,
     // so the button never spends a round trip proving that.
@@ -263,6 +275,8 @@ export const useVisualSession = (): VisualSession => {
     stageChange,
     discardChange,
     clearChangeset,
+    undoChangeset,
+    redoChangeset,
     commitChangeset,
     saveLayout,
     dismissSavedNotice,

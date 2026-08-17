@@ -17,6 +17,7 @@ import {
   visualAppReducer,
   visualAppSnapshotFrom,
   visualBrowserInputFor,
+  type VisualAppAction,
   type VisualAppState,
 } from "../src/visual-app/state.js";
 import type { ProjectionQuery } from "../src/projection.js";
@@ -506,6 +507,172 @@ describe("visualAppReducer changeset management", () => {
     expect(committed.commitStatus).toBe("idle");
     expect(committed.commitDiagnostics).toBeNull();
     expect(committed.commitNotice).toEqual(["model.yaml"]);
+  });
+});
+
+describe("visualAppReducer changeset undo and redo", () => {
+  const rename = (id: string, name: string) =>
+    ({
+      op: "update-concept",
+      document: "model.yaml",
+      concept: { id, name },
+    }) as const;
+
+  /** Drives the reducer through a sequence, the way the browser would. */
+  const replay = (
+    state: VisualAppState,
+    ...actions: readonly VisualAppAction[]
+  ): VisualAppState => actions.reduce(visualAppReducer, state);
+
+
+  it("restores the value a same-field replacement destroyed", () => {
+    const first = rename("Q1", "First name");
+    const second = rename("Q1", "Revised name");
+    const replaced = replay(
+      activeState,
+      { type: "changeset.staged", operation: first },
+      { type: "changeset.staged", operation: second },
+    );
+    expect(replaced.pendingChangeset.operations).toEqual([second]);
+
+    // An inverse operation could not do this: the replacement dropped `first`
+    // from the staged set, so only a snapshot still holds it.
+    const undone = visualAppReducer(replaced, { type: "changeset.undone" });
+    expect(undone.pendingChangeset.operations).toEqual([first]);
+
+    const redone = visualAppReducer(undone, { type: "changeset.redone" });
+    expect(redone.pendingChangeset.operations).toEqual([second]);
+  });
+
+  it("walks back and forward one edit at a time, newest first", () => {
+    const a = rename("Q1", "A");
+    const b = rename("Q2", "B");
+    const c = rename("Q3", "C");
+    const staged = replay(
+      activeState,
+      ...[a, b, c].map(
+        (operation) => ({ type: "changeset.staged", operation }) as const,
+      ),
+    );
+    expect(staged.pendingChangeset.operations).toEqual([a, b, c]);
+
+    const back1 = visualAppReducer(staged, { type: "changeset.undone" });
+    const back2 = visualAppReducer(back1, { type: "changeset.undone" });
+    const back3 = visualAppReducer(back2, { type: "changeset.undone" });
+    expect(back1.pendingChangeset.operations).toEqual([a, b]);
+    expect(back2.pendingChangeset.operations).toEqual([a]);
+    expect(back3.pendingChangeset.operations).toEqual([]);
+
+    // Bottom of the stack: nothing further to restore, and no state churn.
+    expect(visualAppReducer(back3, { type: "changeset.undone" })).toBe(back3);
+
+    const forward = replay(
+      back3,
+      { type: "changeset.redone" },
+      { type: "changeset.redone" },
+      { type: "changeset.redone" },
+    );
+    expect(forward.pendingChangeset.operations).toEqual([a, b, c]);
+    expect(visualAppReducer(forward, { type: "changeset.redone" })).toBe(
+      forward,
+    );
+  });
+
+  it("drops the redo branch once a fresh edit is staged", () => {
+    const a = rename("Q1", "A");
+    const b = rename("Q2", "B");
+    const undone = replay(
+      activeState,
+      { type: "changeset.staged", operation: a },
+      { type: "changeset.undone" },
+    );
+    expect(undone.redoStack).toHaveLength(1);
+
+    const diverged = visualAppReducer(undone, {
+      type: "changeset.staged",
+      operation: b,
+    });
+    expect(diverged.redoStack).toEqual([]);
+    expect(diverged.pendingChangeset.operations).toEqual([b]);
+  });
+
+  it("undoes a single discard and a discard-all alike", () => {
+    const a = rename("Q1", "A");
+    const b = rename("Q2", "B");
+    const staged = replay(
+      activeState,
+      ...[a, b].map(
+        (operation) => ({ type: "changeset.staged", operation }) as const,
+      ),
+    );
+
+    const discarded = visualAppReducer(staged, {
+      type: "changeset.discarded",
+      index: 0,
+    });
+    expect(discarded.pendingChangeset.operations).toEqual([b]);
+    expect(
+      visualAppReducer(discarded, { type: "changeset.undone" })
+        .pendingChangeset.operations,
+    ).toEqual([a, b]);
+
+    const cleared = visualAppReducer(staged, { type: "changeset.cleared" });
+    expect(cleared.pendingChangeset.operations).toEqual([]);
+    expect(
+      visualAppReducer(cleared, { type: "changeset.undone" })
+        .pendingChangeset.operations,
+    ).toEqual([a, b]);
+  });
+
+  it("does not stack a dead undo step when clearing nothing", () => {
+    const cleared = visualAppReducer(activeState, {
+      type: "changeset.cleared",
+    });
+    expect(cleared.undoStack).toEqual([]);
+    expect(cleared.redoStack).toEqual([]);
+  });
+
+  it("clears index-attributed diagnostics whenever the staged rows move", () => {
+    const diagnostic = {
+      severity: "error" as const,
+      code: "YM913",
+      message: "Invalid update",
+      path: "model.yaml",
+      pointer: "/operations/1/concept/name",
+      line: 1,
+      column: 1,
+    } as const;
+    const failed = replay(
+      activeState,
+      { type: "changeset.staged", operation: rename("Q1", "A") },
+      { type: "changeset.staged", operation: rename("Q2", "B") },
+      { type: "apply.failed", diagnostics: [diagnostic] },
+    );
+    expect(failed.commitDiagnostics).toEqual([diagnostic]);
+
+    // Row 1's diagnostics would otherwise be redrawn against a different row.
+    for (const action of [
+      { type: "changeset.discarded" as const, index: 0 },
+      { type: "changeset.undone" as const },
+    ]) {
+      expect(visualAppReducer(failed, action).commitDiagnostics).toBeNull();
+    }
+  });
+
+  it("forgets both stacks once a batch lands", () => {
+    const landed = replay(
+      activeState,
+      { type: "changeset.staged", operation: rename("Q1", "A") },
+      { type: "changeset.undone" },
+      { type: "changeset.staged", operation: rename("Q2", "B") },
+      { type: "changeset.commit.sent" },
+      { type: "changeset.committed", documents: ["model.yaml"] },
+    );
+
+    // What landed is reverted with `git revert`, not resurrected here.
+    expect(landed.undoStack).toEqual([]);
+    expect(landed.redoStack).toEqual([]);
+    expect(visualAppReducer(landed, { type: "changeset.undone" })).toBe(landed);
   });
 });
 
