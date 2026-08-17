@@ -73,5 +73,5 @@ operations the staged set already holds.
 
 Undo and redo are two local reducer actions and two controls in the changeset
 tray. No server frame, no browser input, and no protocol field changes, so
-`yarramate/visual-protocol/v2` is unaffected: the runtime still learns what the
-reviewer decided only when a commit arrives.
+the published protocol is unaffected by this change: the runtime still learns
+what the reviewer decided only when a commit arrives.
