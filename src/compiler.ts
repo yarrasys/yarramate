@@ -369,14 +369,23 @@ const diagnosticFailure = (
 function compileWorkspaceResolved(
   sources: readonly WorkspaceSource[],
 ): ContextualCompilationResult {
-  const profileInputs: WorkspaceSource[] = []
-  const documentInputs: WorkspaceSource[] = []
-  for (const source of sources) {
-    const probe = parseDocument(source.source)
-    if (probe.get('format') === 'yarramate/profile/v1') {
-      profileInputs.push(source)
+  // One parse per source, reused by both loops below. Classification needs the
+  // composed `format` key, and parsing a second time to read it doubled the
+  // YAML cost of every compile - which the profiler puts at ~74% of the total.
+  // A `lineCounter` only accumulates offsets, so the composed value is the
+  // same one the discarded probe produced.
+  const parsedSources = sources.map((input) => {
+    const lineCounter = new LineCounter()
+    const yaml = parseDocument(input.source, { lineCounter })
+    return { input, lineCounter, yaml }
+  })
+  const profileInputs: typeof parsedSources = []
+  const documentInputs: typeof parsedSources = []
+  for (const parsed of parsedSources) {
+    if (parsed.yaml.get('format') === 'yarramate/profile/v1') {
+      profileInputs.push(parsed)
     } else {
-      documentInputs.push(source)
+      documentInputs.push(parsed)
     }
   }
 
@@ -423,9 +432,7 @@ function compileWorkspaceResolved(
       yamlPath: readonly (string | number)[],
     ) => { readonly line: number; readonly col: number }
   }> = []
-  for (const input of profileInputs) {
-    const lineCounter = new LineCounter()
-    const yaml = parseDocument(input.source, { lineCounter })
+  for (const { input, lineCounter, yaml } of profileInputs) {
     const value = yaml.toJS() as NativeProfile
     const positionFor = (yamlPath: readonly (string | number)[]) => {
       const node = yaml.getIn(yamlPath, true)
@@ -682,9 +689,7 @@ function compileWorkspaceResolved(
     return diagnosticFailure(profileDiagnostics)
   }
 
-  const documents = documentInputs.map((input) => {
-    const lineCounter = new LineCounter()
-    const yaml = parseDocument(input.source, { lineCounter })
+  const documents = documentInputs.map(({ input, lineCounter, yaml }) => {
     const value = yaml.toJS() as NativeDocument
 
     const location = (
