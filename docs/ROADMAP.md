@@ -146,9 +146,12 @@ notation.
   accumulate in a changeset that commits through `yarramate/operations/v1` and
   `yarramate apply`, so the browser holds no private write path. The wire is
   the published `yarramate/visual-protocol/v2` contract; see
-  `docs/VISUAL-ADAPTER.md` and ADRs 0081 and 0084 to 0088. In-app undo and
-  redo, renaming a subject identity, and concurrent-edit conflict resolution
-  across browsers remain future adapter work.**
+  `docs/VISUAL-ADAPTER.md` and ADRs 0081 and 0084 to 0088. Ordered in-app
+  undo and redo over the staged changeset is the next bounded item: the
+  browser already discards one staged operation by index and clears the whole
+  tray, but keeps no ordered history. Renaming a subject identity and
+  concurrent-edit conflict resolution across browsers are decision-gated —
+  see `docs/BACKLOG-DISPOSITION.md`.**
 - Generic evidence-provider interface.
   **A provider-neutral existing-claim evidence overlay and deterministic report
   are implemented. Constraint assessment reuses that seam; the first optional

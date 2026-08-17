@@ -28,8 +28,17 @@ The current repository implements the agreed foundation for:
   `yarramate-visual` adapter, its published `yarramate/visual-protocol/v2`
   wire, and changeset commits that land through `yarramate apply`.
 
-There is no remaining concrete, locally actionable item in the agreed Core 0.1
-or initial journey scope.
+One concrete, locally actionable item remains in the agreed scope: ordered
+in-app undo and redo over the staged visual changeset. The browser already
+discards a staged operation by index and clears the tray, so what is missing
+is an ordered history in the reviewer's own state, not a new semantic, wire
+event, or write path. Its scope is deliberately the staged operations alone:
+dragged positions and saved views persist as their own documents with their
+own save and discard paths, so one shared stack would make a single undo
+gesture ambiguous between un-staging an edit and moving a node back. A
+landed batch is still reverted with `git revert`, never from the browser.
+Everything else in the agreed Core 0.1 and initial journey scope is
+implemented.
 
 ## Decision-gated
 
@@ -50,6 +59,21 @@ These items need a new authoritative semantic or product decision:
   contract distinct from evidence and declared intent.
 - **CI policy for evidence findings** belongs to an opt-in consumer policy
   decision, not Core correctness.
+- **Renaming a subject identity** requires an identity-succession decision.
+  A globally qualified id is the identity: `yarramate/operations/v1` offers
+  add, update, and delete for concepts and relationships but no rename, and
+  `update-*` is enrich-only. A rename must therefore state what happens to
+  relationship endpoints, claim subjects, projection membership, evidence
+  observations, attestations, and `.yarramate/visual-layout` keys that name
+  the old id, and whether `supersedes` expresses the succession.
+- **Concurrent-edit conflict resolution across browsers** requires a
+  staleness contract. `changeset.commit` re-reads the workspace from disk, so
+  an operation naming a concurrently deleted subject already fails with Core
+  diagnostics; but an enrich-only `update-concept` staged against a stale
+  value overwrites a concurrent change undetected. Detection needs a base
+  digest on the wire, and the reviewer-facing answer to a refused batch —
+  rebase the staged operations, discard them, or review a three-way
+  difference — is a product decision.
 
 ## Externally blocked
 
@@ -78,5 +102,5 @@ session, protocol, and app suites. Further adapters in any of these
 categories still need their own four answers.
 
 When one of these gates is resolved, add a bounded roadmap item and ADR before
-implementation. Until then, the local backlog is exhausted rather than
-silently expanded.
+implementation. Until then the local backlog holds only the named actionable
+item above, rather than being silently expanded.
