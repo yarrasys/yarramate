@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.21.0
 
 - Move a subject's local id through `apply`. Two operations,
   `rename-concept` and `rename-relationship`, re-point the declaration and
