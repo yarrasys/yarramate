@@ -6,7 +6,7 @@ A per-commit consumer compiles a project's whole architecture model on every
 write, inside a Cloudflare Durable Object. `compileWorkspaceWithProfileContext`
 was the only entry point, so a commit that appends 40 documents to a 40,000
 document workspace paid for all 40,000. Compile itself is linear and fast —
-measured at ~200µs per document, flat from 1,000 to 40,000 — but a thousand
+measured at 130–190µs a document, flat from 1,000 to 40,000 — but a thousand
 successive commits over a growing workspace accumulate quadratically. The
 consumer measured ~28 minutes of compile per project and a Durable Object that
 exceeded its CPU time limit and was reset.
@@ -60,32 +60,51 @@ The position memo matters more than it looks. Positions were being resolved by
 re-parsing the source on demand, which a comment claimed was rare because only
 diagnostics read a position. The profile disagreed: every emitted claim carries
 a `source` line and column, so every document was re-parsed to build its
-claims. Caching the resolved positions per YAML path is what turned the delta
-from 56% of a full compile into 7%.
+claims. Caching the resolved positions per YAML path is what makes a delta a
+delta at all: with the memo disabled and everything else unchanged, a
+40-document commit against 40,000 documents costs 5,078ms against a 5,348ms
+full compile — 95% — because every cached document is re-parsed to answer a
+position read.
+
+The memo alone was not enough, and getting this wrong cost a wrong number in
+the first draft of this record. Dropping the parsed document at the end of
+`parseWorkspaceSource` made a *cold* compile re-parse each source on its first
+position read — reintroducing the double parse the section below removes, and
+measuring 9,438ms at 40,000 documents where the fixed path costs 5,285ms. A
+source parsed in this call now hands its composed document straight to the
+position reader, and only a source served from the cache resolves an
+unmemoised path by parsing. The document is transient either way: what the
+returned cache holds is the memo, never the parse.
 
 ## The double parse it exposed
 
 Classification (is this text a profile or a document?) re-read the composed
 `format` key by parsing the source a second time. Reading it from the document
-the first parse already produced is byte-identical and 42% faster on the full
-compile path — 40,000 documents fell from 7,939ms to 4,627ms. That win is not
-part of the delta feature; it belongs to every caller.
+the first parse already produced is byte-identical and drops 40,000 documents
+from 7,939ms to 4,627ms. That win is not part of the delta feature; it belongs
+to every caller. The memo costs part of it back — 5,285ms at 40,000 documents,
+still 33% under the two-parse baseline — and buying that back is what makes
+every later commit cheap.
 
 ## The boundary this does not cross
 
-A delta is 7% of a full compile, not proportional to the change:
+A delta is 13% of a full compile, not proportional to the change:
 
 | documents | full ms | delta ms | delta share | proportional ms |
 |---:|---:|---:|---:|---:|
-| 1,000 | 271.9 | 24.6 | 0.09 | 10.5 |
-| 5,000 | 1,246.2 | 87.3 | 0.07 | 9.9 |
-| 10,000 | 2,308.8 | 153.1 | 0.066 | 9.2 |
-| 40,000 | 9,482.5 | 683.9 | 0.072 | 9.5 |
+| 1,000 | 172.7 | 21.7 | 0.126 | 6.6 |
+| 5,000 | 694.5 | 79.9 | 0.115 | 5.5 |
+| 10,000 | 1,330.7 | 190.1 | 0.143 | 5.3 |
+| 20,000 | 2,592.3 | 354.0 | 0.137 | 5.2 |
+| 40,000 | 5,431.1 | 697.5 | 0.128 | 5.4 |
 
 The residual is whole-workspace claim emission, the total-order sort over all
 claims and subjects, and the cross-document validation passes. Profiled at
-40,000 documents, the 684ms splits roughly 40% sort (`compareById`), 40% claim
-emission, and the rest global validation and collection.
+40,000 documents with the profiler started after the seed compile — so the
+samples are the delta and nothing else — the 698ms is 26% sort
+(`compareById`), 50% claim emission with its closures and kind resolution,
+12% garbage collection, and 0.5% YAML parse. That last number is the cache
+working: only the 40 appended documents are parsed.
 
 None of that is per-document pure. Claim emission interleaves cross-document
 lookups that feed diagnostics, so caching a document's claims does not let
@@ -96,12 +115,12 @@ global indices, and a splice-merge into a retained sorted output. That is a
 larger design with real byte-identity risk, and it is a separate decision.
 
 Two measurements bound the value of taking it: the worst single commit at
-40,000 documents is 684ms against a 30s CPU budget, a 44× margin, and a
+40,000 documents is 698ms against a 30s CPU budget, a 43× margin, and a
 40,000 document workspace does not fit a 512MiB Durable Object at all — cold
-or warm, it exceeds a 448MB heap. The memory ceiling is ~20,000 documents,
-and holding the cache lowers heap rather than raising it (264MB warm vs
-393MB cold at 20,000). The CPU blocker is cleared; the next ceiling is
-memory, not compile.
+or warm, it exceeds a 448MB heap. The memory ceiling is 20,000 documents
+(25,000 fails cold and warm), and holding the cache lowers heap rather than
+raising it (267MB warm vs 405MB cold at 20,000). The CPU blocker is cleared;
+the next ceiling is memory, not compile.
 
 ## Byte-identity is tested, not asserted
 
@@ -114,3 +133,12 @@ corpus failing to compile.
 
 `Intl.Collator` was measured as a byte-identical replacement for
 `localeCompare` in the sort and rejected: same order, 2× slower.
+
+## Where the numbers come from
+
+Every figure in this record is reproducible by a harness in
+`docs/research/compile-scale/` (`measure.mjs`, `delta.mjs`, `memory.mjs`,
+`cache-memory.mjs`, `cap.mjs`). The full record — machine, toolchain, corpus
+shape, rejected alternatives, and the two measurement defects found and
+corrected while producing it — is
+`docs/research/compile-scale/RESULTS-2026-08-17.md`.

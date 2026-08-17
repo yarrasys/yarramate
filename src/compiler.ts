@@ -431,18 +431,25 @@ const nodePosition = (
   return lineCounter.linePos(offset)
 }
 
+interface FreshParse {
+  readonly yaml: ParsedYaml
+  readonly lineCounter: LineCounter
+}
+
 // A position is read for every emitted claim's `source`, not only for faults,
-// so a compile that re-derived them would re-parse every document however
-// fresh its cache was - that was measured as the whole delta-compile residual.
-// The reader therefore memoises into the parse entry, and only a path never
-// asked for before pays a parse. The composed `Document` and `LineCounter`
-// still go out of scope after the last miss: holding them for the whole
-// compile was the peak-memory term at scale.
+// so a compile that re-derived them from text would parse every fresh source
+// twice - measured at 282us/document against 193us/document for one parse.
+// A source parsed in this call hands its composed document straight to the
+// reader; a source served from cache carries the memo its earlier compile
+// filled and parses only for a path never asked for before. The reader
+// memoises either way, so the returned cache answers next time without the
+// document - and without the memo a delta costs 95% of a full compile.
 const positionReader = (
   source: string,
   positions: Map<string, ResolvedPosition>,
+  fresh?: FreshParse,
 ) => {
-  let parsed: { yaml: ParsedYaml; lineCounter: LineCounter } | undefined
+  let parsed: FreshParse | undefined = fresh
   return (yamlPath: readonly (string | number)[]): ResolvedPosition => {
     // Paths mix keys and indices; a JSON key cannot confuse `['a']` with
     // `['a', 0]` the way a joined string could, and a wrong hit here would be
@@ -468,7 +475,7 @@ const positionReader = (
 // never cached - they are re-derived on every compile.
 const parseWorkspaceSource = (
   input: WorkspaceSource,
-): ParsedWorkspaceSource => {
+): { readonly entry: ParsedWorkspaceSource; readonly fresh: FreshParse } => {
   const lineCounter = new LineCounter()
   const yaml = parseDocument(input.source, { lineCounter })
   const value = yaml.toJS() as unknown
@@ -486,13 +493,17 @@ const parseWorkspaceSource = (
   })
   // Classification reads the composed mapping through the YAML document, which
   // types the lookup as `unknown` - the same key the old probe pass read.
+  const fresh: FreshParse = { yaml, lineCounter }
   if (yaml.get('format') === 'yarramate/profile/v1') {
     return {
-      source: input.source,
-      kind: 'profile',
-      value,
-      schemaDiagnostics: parseDiagnostics,
-      positions: new Map(),
+      entry: {
+        source: input.source,
+        kind: 'profile',
+        value,
+        schemaDiagnostics: parseDiagnostics,
+        positions: new Map(),
+      },
+      fresh,
     }
   }
 
@@ -531,17 +542,24 @@ const parseWorkspaceSource = (
           })
 
   return {
-    source: input.source,
-    kind: 'document',
-    value,
-    schemaDiagnostics,
-    positions: new Map(),
+    entry: {
+      source: input.source,
+      kind: 'document',
+      value,
+      schemaDiagnostics,
+      positions: new Map(),
+    },
+    fresh,
   }
 }
 
 interface ParsedSource {
   readonly input: WorkspaceSource
   readonly entry: ParsedWorkspaceSource
+  // Present only for a source parsed in this call, and held no longer than the
+  // compile that asked for it: the returned cache carries the position memo,
+  // never the composed document.
+  readonly fresh?: FreshParse
 }
 
 // Reuse is decided by exact source-text equality against the previous cache, so
@@ -557,17 +575,16 @@ const parseSources = (
 } => {
   const entries = new Map<string, ParsedWorkspaceSource>()
   let reused = 0
-  const parsed = sources.map((input) => {
+  const parsed = sources.map((input): ParsedSource => {
     const cached = previous?.sources.get(input.path)
-    const entry =
-      cached !== undefined && cached.source === input.source
-        ? cached
-        : parseWorkspaceSource(input)
-    if (entry === cached) {
+    if (cached !== undefined && cached.source === input.source) {
       reused += 1
+      entries.set(input.path, cached)
+      return { input, entry: cached }
     }
+    const { entry, fresh } = parseWorkspaceSource(input)
     entries.set(input.path, entry)
-    return { input, entry }
+    return { input, entry, fresh }
   })
   return { parsed, cache: { sources: entries }, reused }
 }
@@ -628,11 +645,11 @@ function compileWorkspaceResolved(
       yamlPath: readonly (string | number)[],
     ) => ResolvedPosition
   }> = []
-  for (const { input, entry } of profileInputs) {
+  for (const { input, entry, fresh } of profileInputs) {
     // `validateProfile` below is what checks this shape; the cast carries the
     // same pre-validation assumption the loop has always made.
     const value = entry.value as NativeProfile
-    const positionFor = positionReader(input.source, entry.positions)
+    const positionFor = positionReader(input.source, entry.positions, fresh)
     if (entry.schemaDiagnostics.length > 0) {
       profileDiagnostics.push(...entry.schemaDiagnostics)
       continue
@@ -866,11 +883,11 @@ function compileWorkspaceResolved(
     return diagnosticFailure(profileDiagnostics)
   }
 
-  const documents = documentInputs.map(({ input, entry }) => {
+  const documents = documentInputs.map(({ input, entry, fresh }) => {
     // Schema-checked by `parseWorkspaceSource`; the faults it found are the
     // `schemaDiagnostics` returned below, and they gate every later phase.
     const value = entry.value as NativeDocument
-    const positionAt = positionReader(input.source, entry.positions)
+    const positionAt = positionReader(input.source, entry.positions, fresh)
 
     const location = (
       yamlPath: readonly (string | number)[],
