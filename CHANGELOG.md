@@ -18,6 +18,25 @@
   value the first parse produced, and positions are memoised per document:
   a full compile of 1,000 documents falls 233ms → 193ms and 40,000 falls
   7.9s → 5.3s, with output unchanged byte for byte.
+- Refuse a LikeC4 export whose selected concepts never reach the emitted
+  model. `likec4 validate` reads an empty model as valid, so the emitter was
+  the only place that could notice a projected concept silently missing from
+  the generated text; it now compares the assembled definition lines against
+  the projection and reports `YMLC112`, located at the concept that went
+  missing. `YMLC111` joins the published diagnostic envelope, which never
+  admitted the code its own relationship-gap report emits, and `pnpm validate`
+  runs `export-project --check` before handing the directory to
+  `likec4 validate`, which passes vacuously on absent output. `likec4` is
+  pinned to the exact `1.59.2` the docs already name, so the grammar oracle
+  cannot drift away from the emitter under a caret range.
+- Delete a visual session's entries in a decided order. Recursive removal
+  rejects on the first entry that refuses deletion while the sibling
+  deletions it already started are still in flight, so a failed cleanup could
+  still take `journal.jsonl` with it and leave the retry the failure invites
+  nothing to recover from — 40 of 40 runs lost the journal on Linux Node 22,
+  8 of 40 on macOS, which is why the suite was green here and red there.
+  Removal now walks one awaited entry at a time and keeps back the journal a
+  retry reads and the marker that authorises deleting the directory at all.
 
 ## 0.19.0
 
