@@ -497,6 +497,11 @@ describe('descriptor confinement', () => {
     expect(refusalCodes(result)).toEqual(['YMVS401'])
   })
 
+  // Opening a FIFO for read blocks until a writer appears, so any finite bound
+  // proves the CLI refused instead of opening it. The bound is deliberately
+  // loose: a cold `visual-cli.js` start costs ~700ms on an idle machine and
+  // over 1s when the suite saturates every core, so a tight bound fails as a
+  // SIGTERM under load rather than reporting the invariant it guards.
   it.runIf(process.platform !== 'win32')(
     'refuses a FIFO descriptor without waiting for a writer',
     () => {
@@ -509,7 +514,7 @@ describe('descriptor confinement', () => {
         {
           cwd: repositoryRoot,
           encoding: 'utf8',
-          timeout: 1000,
+          timeout: 4000,
         },
       )
 
@@ -522,6 +527,7 @@ describe('descriptor confinement', () => {
         value: { diagnostics: [{ code: 'YMVS401' }] },
       })
     },
+    15_000,
   )
 
   it('refuses a descriptor that is not JSON', async () => {
