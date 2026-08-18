@@ -20,6 +20,7 @@ import {
   ownerInitialsOf,
 } from './badges.js'
 import { ICON_SIZE, kindIconUriOf } from './kind-icons.js'
+import { ASPECT_SHAPES, LAYER_COLORS, RELATIONSHIP_NOTATION } from '../notation/archimate.js'
 
 // Register elk extension once at module load, guarded against re-registration
 let elkRegistered = false
@@ -28,20 +29,17 @@ if (!elkRegistered) {
   elkRegistered = true
 }
 
-// Layer → color palette from approved ArchiMate mockups (6 of 8 union values used)
-export const LAYER_COLORS = {
-  motivation: { fill: '#CCCCFF', border: '#8F8FE0' },
-  strategy: { fill: '#F5DEAA', border: '#C9A355' },
-  business: { fill: '#FFFF99', border: '#C9C355' },
-  application: { fill: '#CCFFFF', border: '#4FB8B8' },
-  technology: { fill: '#CCFFCC', border: '#5FAE5F' },
-  implementation: { fill: '#FFE0E0', border: '#D89999' },
-} as const satisfies Record<
-  'motivation' | 'strategy' | 'business' | 'application' | 'technology' | 'implementation',
-  { readonly fill: string; readonly border: string }
->
+// Re-exported so `badges.test.ts` (and any other existing consumer of this
+// module's `LAYER_COLORS`) keeps working - the palette itself now lives in
+// `src/notation/archimate.ts`, the single source of truth shared with any
+// future standalone notation consumer.
+export { LAYER_COLORS }
 
-// Default neutral style for uncolored layers (physical, composite, or null)
+// Base node fill/border, used when a node has no `layer` attribute at all
+// (falls through every `node[layer = "…"]` rule below) and reused as the
+// passive-structure gradient's two stop colors further down. `physical` and
+// `composite` resolve through `LAYER_COLORS` to these same values now, not
+// through this fallback - they carry an explicit neutral row of their own.
 const DEFAULT_FILL = '#F0F0F0'
 const DEFAULT_BORDER = '#999999'
 
@@ -399,48 +397,18 @@ export function buildStylesheet(
         'background-clip': (ele: NodeSingular) => badgeStyleFor(ele).clips,
       },
     },
-    {
-      selector: 'node[layer = "motivation"]',
-      style: {
-        'background-color': LAYER_COLORS.motivation.fill,
-        'border-color': LAYER_COLORS.motivation.border,
-      },
-    },
-    {
-      selector: 'node[layer = "strategy"]',
-      style: {
-        'background-color': LAYER_COLORS.strategy.fill,
-        'border-color': LAYER_COLORS.strategy.border,
-      },
-    },
-    {
-      selector: 'node[layer = "business"]',
-      style: {
-        'background-color': LAYER_COLORS.business.fill,
-        'border-color': LAYER_COLORS.business.border,
-      },
-    },
-    {
-      selector: 'node[layer = "application"]',
-      style: {
-        'background-color': LAYER_COLORS.application.fill,
-        'border-color': LAYER_COLORS.application.border,
-      },
-    },
-    {
-      selector: 'node[layer = "technology"]',
-      style: {
-        'background-color': LAYER_COLORS.technology.fill,
-        'border-color': LAYER_COLORS.technology.border,
-      },
-    },
-    {
-      selector: 'node[layer = "implementation"]',
-      style: {
-        'background-color': LAYER_COLORS.implementation.fill,
-        'border-color': LAYER_COLORS.implementation.border,
-      },
-    },
+    // One rule per `LAYER_COLORS` entry (8, including `physical` and
+    // `composite`'s explicit neutral row) instead of six hand-written
+    // blocks - coverage tracks the notation module's palette automatically.
+    ...Object.entries(LAYER_COLORS).map(
+      ([layer, colors]): cytoscape.StylesheetJsonBlock => ({
+        selector: `node[layer = "${layer}"]`,
+        style: {
+          'background-color': colors.fill,
+          'border-color': colors.border,
+        },
+      }),
+    ),
     {
       // Compound container (see resolveCompositionParents below): keeps its own
       // layer fill/border from the rules above but at low opacity with a dashed
@@ -514,136 +482,44 @@ export function buildStylesheet(
   // lineage identically to the core kind it inherits from. Appended after
   // `baseStylesheet` rather than folded in, so `notation === 'native'`
   // returns the exact same array untouched.
-  const archimateNodeShapes: cytoscape.StylesheetJsonBlock[] = [
-    {
-      selector: 'node[aspect = "active-structure"]',
-      style: { shape: 'rectangle' },
+  // Node shapes: one rule per `ASPECT_SHAPES` entry, translating the
+  // notation module's ShapeMeta into cytoscape node style. Passive
+  // structure's top accent band and composite's dashed border are decoded
+  // from `accent`/`borderStyle` here, using the same DEFAULT_BORDER /
+  // DEFAULT_FILL gradient stops as before - only the table's source moved.
+  const archimateNodeShapes: cytoscape.StylesheetJsonBlock[] = Object.entries(ASPECT_SHAPES).map(
+    ([aspect, meta]): cytoscape.StylesheetJsonBlock => {
+      const style: cytoscape.Css.Node = { shape: meta.shape }
+      if (meta.accent === 'top-band') {
+        style['background-fill'] = 'linear-gradient'
+        style['background-gradient-direction'] = 'to-bottom'
+        style['background-gradient-stop-colors'] = [DEFAULT_BORDER, DEFAULT_FILL]
+        style['background-gradient-stop-positions'] = ['0%', '20%']
+      }
+      if (meta.borderStyle === 'dashed') {
+        style['border-style'] = 'dashed'
+      }
+      return { selector: `node[aspect = "${aspect}"]`, style }
     },
-    {
-      selector: 'node[aspect = "behavior"]',
-      style: { shape: 'round-rectangle' },
-    },
-    {
-      // Rectangle with a top accent band: a short gradient from the neutral
-      // border color into the neutral fill stands in for ArchiMate's passive
-      // structure header stripe without a second stacked shape.
-      selector: 'node[aspect = "passive-structure"]',
-      style: {
-        shape: 'rectangle',
-        'background-fill': 'linear-gradient',
-        'background-gradient-direction': 'to-bottom',
-        'background-gradient-stop-colors': [DEFAULT_BORDER, DEFAULT_FILL],
-        'background-gradient-stop-positions': ['0%', '20%'],
-      },
-    },
-    {
-      selector: 'node[aspect = "motivation"]',
-      style: { shape: 'octagon' },
-    },
-    {
-      selector: 'node[aspect = "composite"]',
-      style: { shape: 'rectangle', 'border-style': 'dashed' },
-    },
-  ]
+  )
 
-  const archimateEdgeStyles: cytoscape.StylesheetJsonBlock[] = [
-    {
-      selector: 'edge[coreKindLabel = "composition"]',
-      style: {
-        'line-style': 'solid',
-        'source-arrow-shape': 'diamond',
-        'source-arrow-fill': 'filled',
-        'target-arrow-shape': 'none',
-      },
+  // Edges: one rule per `RELATIONSHIP_NOTATION` row, translating
+  // lineStyle/sourceArrow/targetArrow into cytoscape's edge style keys. An
+  // arrow fill is only emitted when the notation row declares one (a
+  // `'none'` shape never carries a fill), matching the arrow mappings
+  // exactly - only the table's source moved, arrows unchanged.
+  const archimateEdgeStyles: cytoscape.StylesheetJsonBlock[] = RELATIONSHIP_NOTATION.map(
+    (rel): cytoscape.StylesheetJsonBlock => {
+      const style: cytoscape.Css.Edge = {
+        'line-style': rel.lineStyle,
+        'source-arrow-shape': rel.sourceArrow.shape,
+        'target-arrow-shape': rel.targetArrow.shape,
+      }
+      if (rel.sourceArrow.fill !== undefined) style['source-arrow-fill'] = rel.sourceArrow.fill
+      if (rel.targetArrow.fill !== undefined) style['target-arrow-fill'] = rel.targetArrow.fill
+      return { selector: `edge[coreKindLabel = "${rel.id}"]`, style }
     },
-    {
-      selector: 'edge[coreKindLabel = "aggregation"]',
-      style: {
-        'line-style': 'solid',
-        'source-arrow-shape': 'diamond',
-        'source-arrow-fill': 'hollow',
-        'target-arrow-shape': 'none',
-      },
-    },
-    {
-      selector: 'edge[coreKindLabel = "assignment"]',
-      style: {
-        'line-style': 'solid',
-        'source-arrow-shape': 'circle',
-        'source-arrow-fill': 'filled',
-        'target-arrow-shape': 'triangle',
-        'target-arrow-fill': 'filled',
-      },
-    },
-    {
-      selector: 'edge[coreKindLabel = "realization"]',
-      style: {
-        'line-style': 'dotted',
-        'source-arrow-shape': 'none',
-        'target-arrow-shape': 'triangle',
-        'target-arrow-fill': 'hollow',
-      },
-    },
-    {
-      selector: 'edge[coreKindLabel = "specialization"]',
-      style: {
-        'line-style': 'solid',
-        'source-arrow-shape': 'none',
-        'target-arrow-shape': 'triangle',
-        'target-arrow-fill': 'hollow',
-      },
-    },
-    {
-      selector: 'edge[coreKindLabel = "serving"]',
-      style: {
-        'line-style': 'solid',
-        'source-arrow-shape': 'none',
-        'target-arrow-shape': 'vee',
-      },
-    },
-    {
-      selector: 'edge[coreKindLabel = "access"]',
-      style: {
-        'line-style': 'dotted',
-        'source-arrow-shape': 'none',
-        'target-arrow-shape': 'vee',
-      },
-    },
-    {
-      selector: 'edge[coreKindLabel = "influence"]',
-      style: {
-        'line-style': 'dashed',
-        'source-arrow-shape': 'none',
-        'target-arrow-shape': 'vee',
-      },
-    },
-    {
-      selector: 'edge[coreKindLabel = "triggering"]',
-      style: {
-        'line-style': 'solid',
-        'source-arrow-shape': 'none',
-        'target-arrow-shape': 'triangle',
-        'target-arrow-fill': 'filled',
-      },
-    },
-    {
-      selector: 'edge[coreKindLabel = "flow"]',
-      style: {
-        'line-style': 'dashed',
-        'source-arrow-shape': 'none',
-        'target-arrow-shape': 'triangle',
-        'target-arrow-fill': 'filled',
-      },
-    },
-    {
-      selector: 'edge[coreKindLabel = "association"]',
-      style: {
-        'line-style': 'solid',
-        'source-arrow-shape': 'none',
-        'target-arrow-shape': 'none',
-      },
-    },
-  ]
+  )
 
   return [...baseStylesheet, ...archimateNodeShapes, ...archimateEdgeStyles]
 }
