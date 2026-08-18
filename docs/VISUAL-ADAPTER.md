@@ -102,6 +102,10 @@ None of these toggle a projection query or compose a `filter.query` event; toggl
 
 Under `notation === 'archimate'`, the stylesheet swaps node shapes by aspect (resolved from each concept kind's inheritance), applies line-notation conventions by core relationship kind (derived kinds resolve through lineage), and forces `layered` direction to `DOWN` with the direction toggle disabled and a reason shown (`"ArchiMate notation fixes direction to Top-Down."`). The direction pin is applied only at layout-config build time; nothing is overwritten in state, so switching back to `native` restores the projection's declared direction on the next layout.
 
+The kind colours, aspect shapes, glyphs, and relationship line styles are
+defined once in the published `yarramate/notation/archimate` module; this app
+imports that module rather than keeping a parallel table.
+
 Node shapes by aspect: `active-structure` → `rectangle`, `behavior` → `round-rectangle`, `passive-structure` → `rectangle` + top accent, `motivation` → `octagon`, `composite` → `rectangle` + dashed border.
 
 Line notation (element-line convention pairs) covers all 11 core relationship kinds: `composition` (solid, filled diamond → none), `aggregation` (solid, hollow diamond → none), `assignment` (solid, filled circle → filled triangle), `realization` (dotted, none → hollow triangle), `specialization` (solid, none → hollow triangle), `serving` (solid, none → vee), `access` (dotted, none → vee), `influence` (dashed, none → vee), `triggering` (solid, none → filled triangle), `flow` (dashed, none → filled triangle), `association` (solid, none → none). Derived kinds like `implements` (inherits `realization`) resolve to their core ancestor and render with the core kind's notation.
