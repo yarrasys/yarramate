@@ -151,4 +151,70 @@ relationships:
       }),
     ).toBe(false)
   })
+
+  it('accepts every profile layer and aspect enum value and null', () => {
+    const baseNode = {
+      id: 'main#service',
+      localId: 'service',
+      document: 'main.yaml',
+      kind: 'yarramate/core@0.1#applicationComponent',
+      kindLabel: 'applicationComponent',
+      layer: 'application',
+      aspect: 'active-structure',
+      name: 'Service',
+      description: null,
+      aka: [],
+      status: null,
+      owner: null,
+      distinctFrom: [],
+      supersedes: [],
+      constraints: [],
+      references: [],
+      presentIn: [],
+      attestations: [],
+    }
+    const layers = [
+      'motivation', 'strategy', 'business', 'application',
+      'technology', 'physical', 'implementation', 'composite', null,
+    ]
+    const aspects = [
+      'motivation', 'active-structure', 'behavior',
+      'passive-structure', 'composite', null,
+    ]
+    for (const layer of layers) {
+      expect(validateVisualGraph({ nodes: [{ ...baseNode, layer }], edges: [] })).toBe(true)
+    }
+    for (const aspect of aspects) {
+      expect(validateVisualGraph({ nodes: [{ ...baseNode, aspect }], edges: [] })).toBe(true)
+    }
+  })
+
+  it('rejects free-string layer and aspect values', () => {
+    const baseNode = {
+      id: 'main#service',
+      localId: 'service',
+      document: 'main.yaml',
+      kind: 'yarramate/core@0.1#applicationComponent',
+      kindLabel: 'applicationComponent',
+      layer: 'application',
+      aspect: 'active-structure',
+      name: 'Service',
+      description: null,
+      aka: [],
+      status: null,
+      owner: null,
+      distinctFrom: [],
+      supersedes: [],
+      constraints: [],
+      references: [],
+      presentIn: [],
+      attestations: [],
+    }
+    expect(
+      validateVisualGraph({ nodes: [{ ...baseNode, layer: 'not-a-layer' }], edges: [] }),
+    ).toBe(false)
+    expect(
+      validateVisualGraph({ nodes: [{ ...baseNode, aspect: 'not-an-aspect' }], edges: [] }),
+    ).toBe(false)
+  })
 })

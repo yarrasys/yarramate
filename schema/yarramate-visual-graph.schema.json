@@ -63,10 +63,35 @@
           "type": "string"
         },
         "layer": {
-          "type": ["string", "null"]
+          "anyOf": [
+            {
+              "enum": [
+                "motivation",
+                "strategy",
+                "business",
+                "application",
+                "technology",
+                "physical",
+                "implementation",
+                "composite"
+              ]
+            },
+            { "type": "null" }
+          ]
         },
         "aspect": {
-          "type": ["string", "null"]
+          "anyOf": [
+            {
+              "enum": [
+                "motivation",
+                "active-structure",
+                "behavior",
+                "passive-structure",
+                "composite"
+              ]
+            },
+            { "type": "null" }
+          ]
         },
         "name": {
           "type": "string"
