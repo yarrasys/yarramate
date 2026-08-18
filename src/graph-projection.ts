@@ -9,14 +9,15 @@ import type {
   SemanticGraph,
 } from './compiler.js'
 import { kindLabelOf } from './kind-label.js'
+import type { Aspect, Layer } from './profile.js'
 export interface CanvasNode {
   readonly id: string // qualified subject id, e.g. "yarramate-engine#compiler-module"
   readonly localId: string // authored id inside its document, e.g. "compiler-module"
   readonly document: string // manifest-relative path, from the subject's kind claim source
   readonly kind: string // resolved kind identity, e.g. "yarramate/core@0.1#applicationComponent"
   readonly kindLabel: string // local id stripped of profile prefix, e.g. "applicationComponent"
-  readonly layer: string | null // from profileContext.conceptKindLayers, null if unresolved
-  readonly aspect: string | null // from profileContext.conceptKindAspects, null if unresolved
+  readonly layer: Layer | null // from profileContext.conceptKindLayers, null if unresolved
+  readonly aspect: Aspect | null // from profileContext.conceptKindAspects, null if unresolved
   readonly name: string
   readonly description: string | null
   readonly aka: readonly string[]
@@ -218,8 +219,8 @@ const projectConcept = (
     document: kindClaim.source.path,
     kind,
     kindLabel: kindLabelOf(kind),
-    layer: profileContext.conceptKindLayers.get(kind) ?? null,
-    aspect: profileContext.conceptKindAspects.get(kind) ?? null,
+    layer: (profileContext.conceptKindLayers.get(kind) as Layer | undefined) ?? null,
+    aspect: (profileContext.conceptKindAspects.get(kind) as Aspect | undefined) ?? null,
     name: claimValue(nameClaim),
     description: descriptionClaim === undefined ? null : claimValue(descriptionClaim),
     aka: claims
