@@ -52,7 +52,7 @@ pnpm pack --pack-destination /tmp/yarramate-package
 In a consuming project:
 
 ```sh
-npm install --save-dev /tmp/yarramate-package/yarramate-0.1.0.tgz
+npm install --save-dev /tmp/yarramate-package/yarramate-<version>.tgz
 npx yarramate init .
 npx yarramate check .yarramate/workspace.yaml --json
 ```

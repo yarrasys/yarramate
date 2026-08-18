@@ -16,9 +16,11 @@ genuine design decisions to a human. This directory contains:
   trigger is deterministic against a compiled graph-v2 workspace.
 
 The seed catalogue graduated to the product: it ships as
-`catalogues/core-enrichment.yaml`, and the gap engine is the stable
-`yarramate interrogate` command (ADR 0053). This directory remains the
-design record and the standalone reference implementation.
+`catalogues/core-enrichment.yaml`, and the gap engine runs inside
+`yarramate design` and `yarramate ask --open` (ADR 0053; the standalone
+`interrogate` verb was folded into those two by the 0.7.0 clean break, ADR
+0061). This directory remains the design record and the standalone
+reference implementation.
 
 ## Evaluation model
 
@@ -53,15 +55,18 @@ design record and the standalone reference implementation.
 Run against this repository's compiled workspace:
 
 ```sh
-yarramate interrogate catalogues/core-enrichment.yaml .yarramate/workspace.yaml
+yarramate ask .yarramate/workspace.yaml --open --catalogue catalogues/core-enrichment.yaml
 ```
 
-Or through the standalone reference evaluator:
+Or through the standalone reference evaluator. Validate against the
+normative schema under `schema/`: the shipped catalogue has moved past the
+research draft in this directory (its trigger shapes no longer validate
+against the draft), and the evaluator reads the graph `export graph` writes:
 
 ```sh
-yarramate compile .yarramate/workspace.yaml > /tmp/graph.json
+yarramate export graph .yarramate/workspace.yaml --out /tmp/graph.json
 node docs/research/question-catalogue/evaluate-catalogue.mjs \
-  docs/research/question-catalogue/yarramate-question-catalogue.schema.json \
+  schema/yarramate-question-catalogue.schema.json \
   catalogues/core-enrichment.yaml \
   /tmp/graph.json
 ```
@@ -104,7 +109,9 @@ from the graph each session — nothing was stored between them.
 4. **Where catalogues live.** Options: workspace manifest entries (like
    evidence), standalone files passed to a future `yarramate interrogate`,
    or shipped with the skill. Draft assumes standalone explicit files,
-   matching the CLI's explicit-source convention.
+   matching the CLI's explicit-source convention. **Resolved**: standalone
+   explicit files, passed as `--catalogue` to `design` and `ask --open`; the
+   seed catalogue ships in the package under `catalogues/`.
 5. **`extends` composition semantics** (union, no shadowing — mirroring
    profiles) are declared in the schema but deferred to the gap engine.
 6. **Ranking.** Open-question ordering (e.g. by graph centrality of the

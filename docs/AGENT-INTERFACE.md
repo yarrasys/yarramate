@@ -1,10 +1,10 @@
 # The agent-harness interface
 
-Status: target contract for **0.7.0, a clean break** (decided
-2026-07-31). The current fourteen commands accreted bottom-up and are
-individually justified but collectively incoherent; pre-release with
-near-zero adoption is the only cheap moment to fix that. This document
-is the top-down contract the break lands on: **seven verbs, one per
+Status: the contract of the **0.7.0 clean break** (decided 2026-07-31,
+executed under ADR 0061). Fourteen commands had accreted bottom-up,
+individually justified but collectively incoherent, and pre-release with
+near-zero adoption was the only cheap moment to fix that. This document
+is the top-down contract the break landed on: **seven verbs, one per
 lifecycle stage**. Planned surfaces are direction, not contract, until
 they ship with their own ADRs.
 
@@ -260,17 +260,17 @@ vocabulary as a read.
 | Observed problem (evidence) | Owner | Status |
 | --- | --- | --- |
 | Weak tier never opens the workspace unprompted (sweep 0/5; AGENTS.md read in 0 of 28 runs) | `init` pointer + skill + `design` entry | pointer shipped; entry gap open |
-| ~67k tokens per interview question (loop cost) | `design` (one-step), `apply` (batch), agent card #89 | planned |
-| A five-word goal closes `outcome-missing` forever | `design` adequacy conditions | planned |
+| ~67k tokens per interview question (loop cost) | `design` (one-step), `apply` (batch), agent card #89 | owners shipped (ADRs 0057, 0058, 0061) |
+| A five-word goal closes `outcome-missing` forever | `design` adequacy conditions | shipped (ADR 0056) |
 | Same spec modeled at 47 vs 27 concepts (sank H5) | `design` catalogue granularity guidance | planned |
-| Interview exhausts after ~10 answers | `design` deep catalogue | planned |
-| Agents batch the whole model; no incremental discipline | `design` | planned |
+| Interview exhausts after ~10 answers | `design` deep catalogue | shipped (ADR 0056) |
+| Agents batch the whole model; no incremental discipline | `design` | owner shipped (ADR 0058) |
 | Harness must know catalogue file paths | `design` (catalogue internal) | fixed by this contract |
 | Fourteen sibling commands, four of them just to read | `ask` / `export` consolidation | fixed by this contract |
 | Engine blind to requirement words (privacy-leak text passes) | permanent boundary; mitigated by `ask --advise` + attestations | by design |
 | Lies absorbed silently pre-code (family run 1 C) | `reconcile` once code exists; adequacy raises the witness count before | partial by design |
-| Strong tiers never use add/connect | `apply` batch | planned |
-| Agents read src/profile.ts to learn kinds | agent card #89 (entry) | planned |
+| Strong tiers never use add/connect | `apply` batch | owner shipped (ADR 0057) |
+| Agents read src/profile.ts to learn kinds | agent card #89 (entry) | shipped (`ask --kinds`, ADR 0061) |
 | `status` not backlog-oriented | `ask` (bare) | fixed (ADR 0059) |
 | Brief reads "is assigned to" both directions | brief renderer phrase table (`ask`/`export`) | small fix open |
 
