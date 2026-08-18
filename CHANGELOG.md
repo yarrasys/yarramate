@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+- Correct the conservative-extension property in `docs/PROFILES.md` and ADR
+  0079. It was published as one statement — loading a profile extension adds
+  subjects and never changes verdicts — quantified over the profile together
+  with any documents that select it, and quantified that way it is false: an
+  extension document declaring `orders` with a realization to a pre-existing
+  goal resolves that goal's `goal-unrealized` question, and so does the same
+  document written in plain core. It is now two properties: a vocabulary
+  nobody selects changes nothing, and an extension document is never a worse
+  neighbour than its core twin — the same subjects declared under the nearest
+  core ancestor of each kind it uses. The first keeps its degenerate-case
+  identity test; the second is measured by control, running one arrival
+  through an extension kind and through its core twin and comparing the
+  verdict changes about pre-existing subjects, with a witness that the
+  inclusion is strict: exact-kind bucketing leaves a near-duplicate question
+  closed where the core twin opens it. No engine change — the properties hold,
+  the single sentence overclaimed (#172).
+
 ## 0.21.0
 
 - Move a subject's local id through `apply`. Two operations,

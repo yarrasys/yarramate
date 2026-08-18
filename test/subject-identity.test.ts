@@ -280,9 +280,10 @@ relationships: []
   })
 })
 
-// ADR 0079 says loading a profile extension adds subjects and never changes
-// verdicts about subjects already present. A pairwise condition is the
-// obvious place for that to break, so the two safe cases are pinned here.
+// ADR 0079's second property says an extension document is never a worse
+// neighbour than its core twin. A pairwise condition is the obvious place for
+// that to break, so the two safe cases are pinned here; the strictness
+// witness lives in test/conservative-extension.test.ts.
 describe('near-duplicate detection is conservative over profile extensions', () => {
   const coreOnly = {
     path: 'architecture/core-only.yaml',

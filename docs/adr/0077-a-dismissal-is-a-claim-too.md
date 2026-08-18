@@ -148,13 +148,13 @@ regressed".
 
 ## Interaction with conservative extension (ADR 0079)
 
-ADR 0079 states that loading a profile extension adds subjects and never
-changes verdicts about subjects already present. A pairwise condition is
-the obvious place for that to break, so it was measured rather than
-assumed.
+ADR 0079 states two properties: a profile nobody selects changes nothing, and
+an extension document is never a worse neighbour than its core twin. A
+pairwise condition is the obvious place for the second to break, so it was
+measured rather than assumed.
 
-The degenerate case holds, which is the case the property test covers and
-the one that makes importing a profile safe: an extension profile that no
+The first property's degenerate case holds, which is the case its test covers
+and the one that makes importing a profile safe: an extension profile that no
 document selects introduces no subjects, so it creates no pairs and the
 catalogue evaluation is byte-identical. The merged property test loads the
 bundled catalogue, so it exercises this question directly.
@@ -168,6 +168,10 @@ with a core subject that was already there. A near-duplicate arriving as
 `yarramate/core@0.1#applicationComponent` verdict untouched. Descendant
 bucketing would have merged those buckets and made extension documents
 routinely reopen questions about subjects they had nothing to do with.
+
+That gap is now pinned as the strictness witness for ADR 0079's second
+property: the same arrival under `microservice` leaves a pre-existing
+question closed where the same arrival under `applicationComponent` opens it.
 
 The boundary is worth stating plainly rather than claiming more than is
 true. When an extension brings a document that declares an *inherited*
