@@ -54,6 +54,11 @@ describe('package export purity', () => {
     const { hits } = runtimeImportGraph('adapters/visual-graph-entry.ts')
     expect(hits).toEqual([])
   })
+
+  it('notation/archimate import graph stays free of Node, ws, session, and compiler runtime', () => {
+    const { hits } = runtimeImportGraph('notation/archimate.ts')
+    expect(hits).toEqual([])
+  })
 })
 
 describe('adapter/visual-graph barrel', () => {
