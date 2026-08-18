@@ -45,6 +45,10 @@
       "types": "./dist/adapters/graphify-entry.d.ts",
       "import": "./dist/adapters/graphify-entry.js"
     },
+    "./adapter/visual-graph": {
+      "types": "./dist/adapters/visual-graph-entry.d.ts",
+      "import": "./dist/adapters/visual-graph-entry.js"
+    },
     "./schema/document": "./schema/yarramate-document.schema.json",
     "./schema/profile": "./schema/yarramate-profile.schema.json",
     "./schema/projection": "./schema/yarramate-projection.schema.json",
