@@ -1,10 +1,12 @@
 import {
   ATTESTATION_PREDICATE_PREFIX,
-  type GraphClaim,
-  type ResolvedProfileContext,
-  type SemanticGraph,
   parseAttestationClaimValue,
   parseConstraintExpectsValue,
+} from './graph-claims.js'
+import type {
+  GraphClaim,
+  ResolvedProfileContext,
+  SemanticGraph,
 } from './compiler.js'
 import { kindLabelOf } from './kind-label.js'
 export interface CanvasNode {
