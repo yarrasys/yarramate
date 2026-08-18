@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.22.0
 
 - Export a Workers-safe visual-graph projector as
   `yarramate/adapter/visual-graph` (`projectGraphForCanvas`) and a
