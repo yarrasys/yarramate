@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Export a Workers-safe visual-graph projector as
+  `yarramate/adapter/visual-graph` (`projectGraphForCanvas`) and a
+  renderer-neutral ArchiMate notation vocabulary as
+  `yarramate/notation/archimate` (layer colours, aspect shapes, kind glyphs,
+  relationship line styles). The local visual app consumes the same
+  vocabulary. `canvasNode.layer` / `aspect` in
+  `yarramate/visual-graph/v1` are closed on the profile enums (plus null).
+  No session-protocol or apply changes (#201).
+
 - Correct the conservative-extension property in `docs/PROFILES.md` and ADR
   0079. It was published as one statement — loading a profile extension adds
   subjects and never changes verdicts — quantified over the profile together

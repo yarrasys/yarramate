@@ -206,6 +206,31 @@ Consumers validating the protocol can import the versioned documents directly,
 for example `yarramate/schema/visual-handoff` or
 `yarramate/schema/visual-session-request`.
 
+## Hosted or browser rendering of the visual graph
+
+Consumers that compile a workspace themselves (or receive a compiled
+`SemanticGraph` and profile context) and render with their own cytoscape (or
+other) host can import the pure projection and notation surfaces — without
+starting `yarramate-visual`:
+
+```ts
+import { projectGraphForCanvas } from 'yarramate/adapter/visual-graph'
+import {
+  conceptNotationOf,
+  relationshipNotationOf,
+  kindGlyphDataUriOf,
+  LAYER_COLORS,
+} from 'yarramate/notation/archimate'
+```
+
+These subpaths are Workers/browser-safe: no Node built-ins, no `ws`, and no
+visual session server. The local `yarramate-visual` runtime remains the
+optional loopback conversation product and is not required for projection.
+`presentation.notation: 'archimate'` is still a rendering mode only
+([ADR 0087](adr/0087-archimate-notation-is-a-rendering-mode-not-a-vocabulary.md));
+the notation module is descriptive vocabulary for that mode, not an ArchiMate
+conformance package.
+
 ## MCP server for agent harnesses
 
 Harnesses that load MCP servers can connect the bundled read-only adapter:
