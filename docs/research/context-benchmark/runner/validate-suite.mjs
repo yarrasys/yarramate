@@ -1,4 +1,4 @@
-// Draft validator for yarramate/benchmark-suite/v1 task suites.
+// Draft validator for yarramate/benchmark-suite v1 and v2 task suites.
 // Schema validation plus the cross-checks the schema cannot express:
 // unique task ids, per-family minimums, and condition-neutral prompts.
 // Usage: node validate-suite.mjs <schema.json> <suite.yaml> [suite.yaml ...]

@@ -8,11 +8,16 @@ const BASE = 'Work in the repository at the current directory.';
 // `yarramate init` writes (ADR 0040): an adopted repository advertises its
 // workspace to agent harnesses, so B/C mirror an adopted repository rather
 // than a bare model drop. The pilot (2026-07-29) ran without the pointer and
-// the weak tier never discovered the workspace; the instruction text below is
-// unchanged so prompt neutrality is preserved.
+// the weak tier never discovered the workspace.
+//
+// Harness v3: the 2026-07-29 sweep's text named `status` and `context`, both
+// removed by the 0.7.0 seven-verb break (ADR 0061); an instruction telling the
+// agent to run verbs that exit with a usage dump is a harness defect, not a
+// frozen artifact. The named query surface is now the current one. B and C
+// still share the string byte for byte.
 const MODEL_AVAILABLE =
   `${BASE} It contains a committed .yarramate architecture workspace; the ` +
-  'yarramate CLI is installed and can query it (status, context, check).';
+  'yarramate CLI is installed and can query it (ask, check, reconcile).';
 
 export const CONDITIONS = {
   A: {

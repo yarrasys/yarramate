@@ -12,7 +12,13 @@
 //     --toolchain <dir with yarramate bins> --out <results-dir> \
 //     [--conditions A,B,C] [--tasks id,id] [--label tier-name] \
 //     [--harness 'claude -p --output-format json'] [--keep-subject-agent-config] \
-//     [--dry-run]
+//     [--dry-run] [--resume]
+//
+// --resume skips matrix cells that already have a record in <out>/runs.jsonl
+// (same suite, label, condition, task). A killed sweep appends no record for
+// the run it died in, so rerunning with --resume picks up exactly where it
+// stopped; the 2026-07-29 sweep lost seven tail runs to a session cap and had
+// to be retried by hand.
 //
 // The harness command receives the composed prompt on stdin and runs with the
 // task workdir as cwd. Anything printed to stdout is captured as the transcript.
@@ -53,6 +59,7 @@ const label = opt('label', 'default');
 const conditionIds = opt('conditions', 'A,B,C').split(',');
 const onlyTasks = opt('tasks') ? new Set(opt('tasks').split(',')) : null;
 const dryRun = flag('dry-run');
+const resume = flag('resume');
 const agentConfigPolicy = flag('keep-subject-agent-config') ? 'keep' : 'neutralize';
 
 const modelSourceDir = () => {
@@ -90,6 +97,15 @@ if (!toolchain) {
   process.exit(2);
 }
 
+// Provenance: the 2026-07-29 sweep recorded no toolchain version anywhere in
+// runs.jsonl — the version under test lived only in the results write-up. The
+// gallery model is likewise unpinned by the suite schema (a path, not a SHA),
+// so the clone's HEAD is captured here.
+const toolchainVersion = execFileSync(join(toolchain, 'yarramate'), ['--version'], { encoding: 'utf8' }).trim();
+const galleryCommit = suite.repository.gallery
+  ? execSync('git rev-parse HEAD', { cwd: galleryDir, encoding: 'utf8' }).trim()
+  : null;
+
 mkdirSync(outDir, { recursive: true });
 const cacheDir = join(outDir, 'cache', suite.suite);
 if (!existsSync(cacheDir)) {
@@ -119,7 +135,20 @@ const pointerFiles = () => {
 };
 
 const runsPath = join(outDir, 'runs.jsonl');
+const recorded = new Set();
+if (resume && existsSync(runsPath)) {
+  for (const line of readFileSync(runsPath, 'utf8').split('\n')) {
+    if (!line.trim()) continue;
+    const record = JSON.parse(line);
+    recorded.add(`${record.suite}|${record.label}|${record.condition}|${record.task}`);
+  }
+}
+
 for (const [index, { conditionId, condition, task }] of matrix.entries()) {
+  if (resume && recorded.has(`${suite.suite}|${label}|${conditionId}|${task.id}`)) {
+    console.log(`[${index + 1}/${matrix.length}] ${suite.suite} ${conditionId} ${task.id} — already recorded, skipped`);
+    continue;
+  }
   const runDir = join(outDir, suite.suite, label, conditionId, task.id);
   const workdir = join(runDir, 'repo');
   rmSync(runDir, { recursive: true, force: true });
@@ -186,6 +215,8 @@ for (const [index, { conditionId, condition, task }] of matrix.entries()) {
     suite: suite.suite,
     suiteType: suite.type,
     headline: suite.headline,
+    toolchainVersion,
+    galleryCommit,
     label,
     condition: conditionId,
     task: task.id,
