@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.23.0
 
 - Interrogation: `has-linkage`, `exists-linkage` (`direction` includes
   `either`), `missing-constraint`, and `missing-flow-content` conditions.
