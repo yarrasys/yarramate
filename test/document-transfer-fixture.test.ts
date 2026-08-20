@@ -14,7 +14,7 @@ const workspace =
 describe('document-transfer capture fixture', () => {
   it('checks and renders distinct authn and capacity subjects in the brief', () => {
     const checked = runCli(['check', workspace], repositoryRoot)
-    expect(checked.exitCode).toBe(0, checked.stderr)
+    expect(checked.exitCode).toBe(0)
 
     const asked = runCli(
       [
@@ -24,7 +24,7 @@ describe('document-transfer capture fixture', () => {
       ],
       repositoryRoot,
     )
-    expect(asked.exitCode).toBe(0, asked.stderr)
+    expect(asked.exitCode).toBe(0)
     expect(asked.stdout).toContain('OAuth client-credentials')
     expect(asked.stdout).toContain('100 requests per client per second')
     expect(asked.stdout).toContain('No caller-facing rate limit')

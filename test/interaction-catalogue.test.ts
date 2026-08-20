@@ -84,7 +84,7 @@ describe('core-enrichment 0.9 interaction wave', () => {
       ['design', 'workspace.yaml', '--subject', 'main#exp', '--json'],
       workspace,
     )
-    expect(result.exitCode).toBe(0, result.stderr)
+    expect(result.exitCode).toBe(0)
     const payload = JSON.parse(result.stdout) as {
       step: { questionId: string; wave: string }
     }
@@ -97,7 +97,7 @@ describe('core-enrichment 0.9 interaction wave', () => {
       ['ask', 'workspace.yaml', '--open', '--json'],
       workspace,
     )
-    expect(result.exitCode).toBe(0, result.stderr)
+    expect(result.exitCode).toBe(0)
     const ids = JSON.parse(result.stdout)
       .report.waves.flatMap(
         (wave: { questions: { id: string }[] }) => wave.questions,
@@ -165,7 +165,7 @@ evidence: []
       ['ask', 'workspace.yaml', '--open', '--json'],
       workspace,
     )
-    expect(result.exitCode).toBe(0, result.stderr)
+    expect(result.exitCode).toBe(0)
     const ids = JSON.parse(result.stdout)
       .report.waves.flatMap(
         (wave: { questions: { id: string; open: boolean }[] }) =>
@@ -184,7 +184,7 @@ describe('document-transfer against shipped catalogue 0.9', () => {
 
   it('selects yarramate/policy@0.1 with no profile file in the workspace', () => {
     const checked = runCli(['check', workspace, '--json'], repositoryRoot)
-    expect(checked.exitCode).toBe(0, checked.stderr)
+    expect(checked.exitCode).toBe(0)
   })
 
   it('has a quiet interaction wave on the reified hops', () => {
@@ -192,7 +192,7 @@ describe('document-transfer against shipped catalogue 0.9', () => {
       ['ask', workspace, '--open', '--json'],
       repositoryRoot,
     )
-    expect(result.exitCode).toBe(0, result.stderr)
+    expect(result.exitCode).toBe(0)
     const interaction = JSON.parse(result.stdout).report.waves.find(
       (wave: { id: string }) => wave.id === 'interaction',
     ) as { questions: { id: string; open: boolean }[] }
@@ -263,7 +263,7 @@ evidence: []
         ['ask', 'workspace.yaml', '--open', '--json'],
         workspaceDir,
       )
-      expect(result.exitCode).toBe(0, result.stderr)
+      expect(result.exitCode).toBe(0)
       const authn = JSON.parse(result.stdout)
         .report.waves.flatMap(
           (wave: { questions: { id: string; open: boolean }[] }) =>
