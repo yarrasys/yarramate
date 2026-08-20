@@ -1,12 +1,21 @@
-import { readFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
-
 export const shippedPolicyIdentity = 'yarramate/policy@0.1'
 
-const here = dirname(fileURLToPath(import.meta.url))
-
-export const shippedPolicySource = readFileSync(
-  join(here, '..', 'profiles', 'yarramate-policy.yaml'),
-  'utf8',
-)
+export const shippedPolicySource = `format: yarramate/profile/v1
+id: yarramate/policy
+version: "0.1"
+extends: yarramate/core@0.1
+conceptKinds:
+  - id: authentication-constraint
+    name: Authentication constraint
+    parent: yarramate/core@0.1#constraint
+  - id: rate-limit-constraint
+    name: Rate-limit constraint
+    parent: yarramate/core@0.1#constraint
+  - id: reliability-constraint
+    name: Reliability constraint
+    parent: yarramate/core@0.1#constraint
+  - id: mechanism-constraint
+    name: Mechanism constraint
+    parent: yarramate/core@0.1#constraint
+relationshipKinds: []
+`
