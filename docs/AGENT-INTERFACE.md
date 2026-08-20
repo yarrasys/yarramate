@@ -42,8 +42,8 @@ guidance; the harness/LLM loops: answer arrives as prose → agent
 translates it into `apply` operations → re-invoke `design`.
 
 - **The catalogue is internal.** It ships inside the product, versioned
-  with it — the deep ArchiMate path (motivation + business +
-  application waves first, ~35–45 questions with in-wave ordering;
+  with it — the deep ArchiMate path (motivation + interaction +
+  business + application waves first, with in-wave ordering;
   technology/implementation later) plus adequacy conditions (below).
   `--catalogue <path>` exists only as an override for teams authoring
   their own. Harnesses never pass or read catalogue files.

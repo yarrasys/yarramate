@@ -108,6 +108,7 @@ describe('design command', () => {
     expect(payload.step?.wave).toBe('motivation')
     expect(payload.progress.waves.map(({ id }) => id)).toEqual([
       'motivation',
+      'interaction',
       'business',
       'application',
       'technology',

@@ -1,0 +1,17 @@
+format: yarramate/projection/v1
+id: document-transfer-slice
+version: "1.0"
+query:
+  subjects:
+    - document-transfer#accept-document
+    - document-transfer#orchestrate-store
+    - document-transfer#persist-document
+    - document-transfer-policy#oauth-m2m
+    - document-transfer-policy#experience-rate-limit
+    - document-transfer-policy#ratelimit-not-applicable
+    - document-transfer-policy#at-least-once
+    - document-transfer-policy#https-rest
+  relationships: connected
+presentation:
+  title: Document transfer hop
+  description: Experience to process to eDRMS document store.

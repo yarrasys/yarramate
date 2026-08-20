@@ -1,0 +1,102 @@
+format: yarramate/v1
+id: document-transfer
+profile: yarramate/core@0.1
+concepts:
+  - id: claimant
+    kind: businessActor
+    name: Claimant
+  - id: document-exp-api
+    kind: applicationComponent
+    name: Document Experience API
+    status: planned
+  - id: document-prc-api
+    kind: applicationComponent
+    name: Document Process API
+    status: planned
+  - id: edrms-sys-api
+    kind: applicationComponent
+    name: eDRMS System API
+    status: planned
+  - id: accept-document
+    kind: applicationProcess
+    name: Accept document upload
+    status: planned
+    constraints:
+      - id: authn
+        ref: document-transfer-policy#oauth-m2m
+      - id: capacity
+        ref: document-transfer-policy#experience-rate-limit
+        expects:
+          provider: gateway
+          key: rps-per-client
+          value: "100"
+      - id: mechanism
+        ref: document-transfer-policy#https-rest
+      - id: reliability
+        ref: document-transfer-policy#at-least-once
+  - id: orchestrate-store
+    kind: applicationProcess
+    name: Orchestrate document store
+    status: planned
+    constraints:
+      - id: authn
+        ref: document-transfer-policy#oauth-m2m
+      - id: reliability
+        ref: document-transfer-policy#at-least-once
+  - id: persist-document
+    kind: applicationProcess
+    name: Persist document
+    status: planned
+    constraints:
+      - id: authn
+        ref: document-transfer-policy#oauth-m2m
+      - id: capacity
+        ref: document-transfer-policy#ratelimit-not-applicable
+      - id: reliability
+        ref: document-transfer-policy#at-least-once
+  - id: document-record
+    kind: contract
+    name: Document record
+    description: Authoritative document identifier and payload metadata.
+relationships:
+  - id: exp-assigned-accept
+    kind: assignment
+    from: document-exp-api
+    to: accept-document
+  - id: prc-assigned-orchestrate
+    kind: assignment
+    from: document-prc-api
+    to: orchestrate-store
+  - id: sys-assigned-persist
+    kind: assignment
+    from: edrms-sys-api
+    to: persist-document
+  - id: claimant-uses-accept
+    kind: serving
+    from: accept-document
+    to: claimant
+  - id: accept-flows-orchestrate
+    kind: flow
+    from: accept-document
+    to: orchestrate-store
+    content: Document payload
+  - id: orchestrate-flows-persist
+    kind: flow
+    from: orchestrate-store
+    to: persist-document
+    content: Document payload
+  - id: accept-writes-record
+    kind: access
+    from: accept-document
+    to: document-record
+    mode: write
+  - id: orchestrate-writes-record
+    kind: access
+    from: orchestrate-store
+    to: document-record
+    mode: read-write
+  - id: persist-writes-record
+    kind: access
+    from: persist-document
+    to: document-record
+    mode: write
