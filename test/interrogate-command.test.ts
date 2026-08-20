@@ -558,6 +558,450 @@ describe('ask --open interrogation', () => {
     ).toEqual(['main#customer'])
   })
 
+  it('opens has-linkage including a flow sink via direction either', () => {
+    const linkageCatalogue =
+      'format: yarramate/question-catalogue/v1\n' +
+      'id: linkage-fixture\n' +
+      'version: "1.0"\n' +
+      'profile: yarramate/core@0.1\n' +
+      'waves:\n' +
+      '  - id: interaction\n' +
+      '    name: Interaction\n' +
+      'questions:\n' +
+      '  - id: hop-unrealised\n' +
+      '    wave: interaction\n' +
+      '    scope: subject\n' +
+      '    subjects:\n' +
+      '      kinds: ["yarramate/core@0.1#applicationComponent"]\n' +
+      '    trigger:\n' +
+      '      - condition: has-linkage\n' +
+      '        kinds: ["yarramate/core@0.1#flow"]\n' +
+      '        direction: either\n' +
+      '        counterpartKinds: ["yarramate/core@0.1#applicationComponent"]\n' +
+      '      - condition: missing-linkage\n' +
+      '        kinds: ["yarramate/core@0.1#assignment"]\n' +
+      '        direction: outgoing\n' +
+      '        counterpartKinds: ["yarramate/core@0.1#applicationProcess"]\n' +
+      '    question: What process is {subject.name} assigned to for this hop?\n' +
+      '    materiality: A hop with no assigned behavior is inventory.\n' +
+      '    authority: either\n' +
+      '    resolution: Assign a process.\n'
+    writeFileSync(join(workspace, 'catalogue.yaml'), linkageCatalogue, 'utf8')
+    writeFileSync(
+      join(workspace, 'architecture/main.yaml'),
+      'format: yarramate/v1\n' +
+        'id: main\n' +
+        'profile: yarramate/core@0.1\n' +
+        'concepts:\n' +
+        '  - id: source\n' +
+        '    kind: applicationComponent\n' +
+        '    name: Source\n' +
+        '  - id: sink\n' +
+        '    kind: applicationComponent\n' +
+        '    name: Sink\n' +
+        'relationships:\n' +
+        '  - id: source-flows-sink\n' +
+        '    kind: flow\n' +
+        '    from: source\n' +
+        '    to: sink\n',
+      'utf8',
+    )
+    writeFileSync(
+      join(workspace, 'workspace.yaml'),
+      'format: yarramate/workspace/v1\n' +
+        'id: interrogate-fixture\n' +
+        'documents:\n' +
+        '  - architecture/main.yaml\n' +
+        'profiles: []\n' +
+        'projections: []\n' +
+        'adapterMappings: []\n' +
+        'evidence: []\n',
+      'utf8',
+    )
+    const before = runCli(
+      ['ask', 'workspace.yaml', '--open', '--catalogue', 'catalogue.yaml', '--json'],
+      workspace,
+    )
+    expect(before.exitCode).toBe(0)
+    const openIds = JSON.parse(before.stdout)
+      .report.waves[0].questions[0].subjects.map(
+        (subject: { readonly id: string }) => subject.id,
+      )
+      .sort()
+    expect(openIds).toEqual(['main#sink', 'main#source'])
+
+    writeFileSync(
+      join(workspace, 'architecture/main.yaml'),
+      'format: yarramate/v1\n' +
+        'id: main\n' +
+        'profile: yarramate/core@0.1\n' +
+        'concepts:\n' +
+        '  - id: source\n' +
+        '    kind: applicationComponent\n' +
+        '    name: Source\n' +
+        '  - id: sink\n' +
+        '    kind: applicationComponent\n' +
+        '    name: Sink\n' +
+        '  - id: ship\n' +
+        '    kind: applicationProcess\n' +
+        '    name: Ship\n' +
+        'relationships:\n' +
+        '  - id: source-flows-sink\n' +
+        '    kind: flow\n' +
+        '    from: source\n' +
+        '    to: sink\n' +
+        '  - id: source-assigned\n' +
+        '    kind: assignment\n' +
+        '    from: source\n' +
+        '    to: ship\n' +
+        '  - id: sink-assigned\n' +
+        '    kind: assignment\n' +
+        '    from: sink\n' +
+        '    to: ship\n',
+      'utf8',
+    )
+    const after = runCli(
+      ['ask', 'workspace.yaml', '--open', '--catalogue', 'catalogue.yaml', '--json'],
+      workspace,
+    )
+    expect(after.exitCode).toBe(0)
+    expect(JSON.parse(after.stdout).report.summary.open).toBe(0)
+  })
+
+  it('omits questions that name unselected profile kinds rather than closing or sticking open', () => {
+    const policyCatalogue =
+      'format: yarramate/question-catalogue/v1\n' +
+      'id: policy-fixture\n' +
+      'version: "1.0"\n' +
+      'profile: yarramate/core@0.1\n' +
+      'waves:\n' +
+      '  - id: interaction\n' +
+      '    name: Interaction\n' +
+      'questions:\n' +
+      '  - id: authn-standard-missing\n' +
+      '    wave: interaction\n' +
+      '    scope: workspace\n' +
+      '    trigger:\n' +
+      '      - condition: no-subject-of-kind\n' +
+      '        kinds: ["example/policy@1.0#authentication-constraint"]\n' +
+      '    question: What is the default authentication mechanism?\n' +
+      '    materiality: Unbound hops pick a mechanism in code.\n' +
+      '    authority: human\n' +
+      '    resolution: Add an authentication-constraint.\n' +
+      '  - id: hop-trust\n' +
+      '    wave: interaction\n' +
+      '    scope: subject\n' +
+      '    subjects:\n' +
+      '      kinds: ["example/policy@1.0#authentication-constraint"]\n' +
+      '    trigger:\n' +
+      '      - condition: isolated\n' +
+      '    question: Isolated policy subject {subject.name}?\n' +
+      '    materiality: Unused policy is noise.\n' +
+      '    authority: either\n' +
+      '    resolution: Bind it or remove it.\n' +
+      '  - id: outcome-missing\n' +
+      '    wave: interaction\n' +
+      '    scope: workspace\n' +
+      '    trigger:\n' +
+      '      - condition: no-subject-of-kind\n' +
+      '        kinds: ["yarramate/core@0.1#goal"]\n' +
+      '    question: What outcome justifies this system?\n' +
+      '    materiality: Without a goal every trade-off becomes taste.\n' +
+      '    authority: human\n' +
+      '    resolution: Add a goal.\n'
+    writeFileSync(join(workspace, 'catalogue.yaml'), policyCatalogue, 'utf8')
+    writeFileSync(
+      join(workspace, 'profiles/policy.yaml'),
+      readFileSync(
+        join(repositoryRoot, 'test/fixtures/valid/document-transfer.profile.yaml'),
+        'utf8',
+      ),
+      'utf8',
+    )
+    writeFileSync(
+      join(workspace, 'workspace.yaml'),
+      'format: yarramate/workspace/v1\n' +
+        'id: interrogate-fixture\n' +
+        'documents:\n' +
+        '  - architecture/main.yaml\n' +
+        'profiles:\n' +
+        '  - profiles/platform.yaml\n' +
+        '  - profiles/policy.yaml\n' +
+        'projections: []\n' +
+        'adapterMappings: []\n' +
+        'evidence: []\n',
+      'utf8',
+    )
+    const loadedUnselected = runCli(
+      ['ask', 'workspace.yaml', '--open', '--catalogue', 'catalogue.yaml', '--json'],
+      workspace,
+    )
+    expect(loadedUnselected.exitCode).toBe(0)
+    const loadedReport = JSON.parse(loadedUnselected.stdout).report
+    expect(loadedReport.summary.questions).toBe(1)
+    expect(loadedReport.waves[0].questions.map((q: { id: string }) => q.id)).toEqual(
+      ['outcome-missing'],
+    )
+
+    writeFileSync(
+      join(workspace, 'workspace.yaml'),
+      'format: yarramate/workspace/v1\n' +
+        'id: interrogate-fixture\n' +
+        'documents:\n' +
+        '  - architecture/main.yaml\n' +
+        'profiles:\n' +
+        '  - profiles/platform.yaml\n' +
+        'projections: []\n' +
+        'adapterMappings: []\n' +
+        'evidence: []\n',
+      'utf8',
+    )
+    const coreOnly = runCli(
+      ['ask', 'workspace.yaml', '--open', '--catalogue', 'catalogue.yaml', '--json'],
+      workspace,
+    )
+    expect(coreOnly.exitCode).toBe(0)
+    expect(JSON.parse(coreOnly.stdout).report).toEqual(loadedReport)
+  })
+
+  it('closes no-subject-of-kind when the only match is a descendant kind', () => {
+    writeFileSync(
+      join(workspace, 'profiles/platform.yaml'),
+      'format: yarramate/profile/v1\n' +
+        'id: example/platform\n' +
+        'version: "1.0"\n' +
+        'extends: yarramate/core@0.1\n' +
+        'conceptKinds:\n' +
+        '  - id: platform-team\n' +
+        '    name: Platform team\n' +
+        '    parent: yarramate/core@0.1#businessActor\n' +
+        '  - id: specialized-goal\n' +
+        '    name: Specialized goal\n' +
+        '    parent: yarramate/core@0.1#goal\n' +
+        'relationshipKinds: []\n',
+      'utf8',
+    )
+    writeFileSync(
+      join(workspace, 'architecture/main.yaml'),
+      'format: yarramate/v1\n' +
+        'id: main\n' +
+        'profile: example/platform@1.0\n' +
+        'concepts:\n' +
+        '  - id: north-star\n' +
+        '    kind: specialized-goal\n' +
+        '    name: North star\n' +
+        'relationships: []\n',
+      'utf8',
+    )
+    const result = runCli(
+      ['ask', 'workspace.yaml', '--open', '--catalogue', 'catalogue.yaml', '--json'],
+      workspace,
+    )
+    expect(result.exitCode).toBe(0)
+    const report = JSON.parse(result.stdout).report
+    const goalMissing = report.waves
+      .flatMap((wave: { questions: { id: string; open: boolean }[] }) =>
+        wave.questions,
+      )
+      .find((question: { id: string }) => question.id === 'goal-missing')
+    expect(goalMissing.open).toBe(false)
+  })
+
+  it('does not let a rate-limit constraint close a missing authentication constraint', () => {
+    writeFileSync(
+      join(workspace, 'profiles/policy.yaml'),
+      readFileSync(
+        join(repositoryRoot, 'test/fixtures/valid/document-transfer.profile.yaml'),
+        'utf8',
+      ),
+      'utf8',
+    )
+    const constraintCatalogue =
+      'format: yarramate/question-catalogue/v1\n' +
+      'id: constraint-fixture\n' +
+      'version: "1.0"\n' +
+      'profile: yarramate/core@0.1\n' +
+      'waves:\n' +
+      '  - id: interaction\n' +
+      '    name: Interaction\n' +
+      'questions:\n' +
+      '  - id: trust-unbound\n' +
+      '    wave: interaction\n' +
+      '    scope: subject\n' +
+      '    subjects:\n' +
+      '      kinds: ["yarramate/core@0.1#applicationProcess"]\n' +
+      '    trigger:\n' +
+      '      - condition: missing-constraint\n' +
+      '        kinds: ["example/policy@1.0#authentication-constraint"]\n' +
+      '    question: How is trust established for {subject.name}?\n' +
+      '    materiality: An unbound hop picks a mechanism in code.\n' +
+      '    authority: either\n' +
+      '    resolution: Bind an authentication-constraint.\n'
+    writeFileSync(join(workspace, 'catalogue.yaml'), constraintCatalogue, 'utf8')
+    writeFileSync(
+      join(workspace, 'architecture/policy.yaml'),
+      'format: yarramate/v1\n' +
+        'id: policy\n' +
+        'profile: example/policy@1.0\n' +
+        'concepts:\n' +
+        '  - id: oauth\n' +
+        '    kind: authentication-constraint\n' +
+        '    name: OAuth\n' +
+        '  - id: rps\n' +
+        '    kind: rate-limit-constraint\n' +
+        '    name: 100 rps\n' +
+        'relationships: []\n',
+      'utf8',
+    )
+    writeFileSync(
+      join(workspace, 'architecture/main.yaml'),
+      'format: yarramate/v1\n' +
+        'id: main\n' +
+        'profile: yarramate/core@0.1\n' +
+        'concepts:\n' +
+        '  - id: accept\n' +
+        '    kind: applicationProcess\n' +
+        '    name: Accept\n' +
+        '    constraints:\n' +
+        '      - id: capacity\n' +
+        '        ref: policy#rps\n' +
+        'relationships: []\n',
+      'utf8',
+    )
+    writeFileSync(
+      join(workspace, 'workspace.yaml'),
+      'format: yarramate/workspace/v1\n' +
+        'id: interrogate-fixture\n' +
+        'documents:\n' +
+        '  - architecture/main.yaml\n' +
+        '  - architecture/policy.yaml\n' +
+        'profiles:\n' +
+        '  - profiles/policy.yaml\n' +
+        'projections: []\n' +
+        'adapterMappings: []\n' +
+        'evidence: []\n',
+      'utf8',
+    )
+    const onlyRate = runCli(
+      ['ask', 'workspace.yaml', '--open', '--catalogue', 'catalogue.yaml', '--json'],
+      workspace,
+    )
+    expect(onlyRate.exitCode).toBe(0)
+    expect(JSON.parse(onlyRate.stdout).report.summary.open).toBe(1)
+
+    writeFileSync(
+      join(workspace, 'architecture/main.yaml'),
+      'format: yarramate/v1\n' +
+        'id: main\n' +
+        'profile: yarramate/core@0.1\n' +
+        'concepts:\n' +
+        '  - id: accept\n' +
+        '    kind: applicationProcess\n' +
+        '    name: Accept\n' +
+        '    constraints:\n' +
+        '      - id: capacity\n' +
+        '        ref: policy#rps\n' +
+        '      - id: authn\n' +
+        '        ref: policy#oauth\n' +
+        'relationships: []\n',
+      'utf8',
+    )
+    const both = runCli(
+      ['ask', 'workspace.yaml', '--open', '--catalogue', 'catalogue.yaml', '--json'],
+      workspace,
+    )
+    expect(both.exitCode).toBe(0)
+    expect(JSON.parse(both.stdout).report.summary.open).toBe(0)
+  })
+
+  it('opens missing-flow-content until every touching flow has content', () => {
+    const flowCatalogue =
+      'format: yarramate/question-catalogue/v1\n' +
+      'id: flow-fixture\n' +
+      'version: "1.0"\n' +
+      'profile: yarramate/core@0.1\n' +
+      'waves:\n' +
+      '  - id: interaction\n' +
+      '    name: Interaction\n' +
+      'questions:\n' +
+      '  - id: content-unknown\n' +
+      '    wave: interaction\n' +
+      '    scope: subject\n' +
+      '    subjects:\n' +
+      '      kinds: ["yarramate/core@0.1#applicationProcess"]\n' +
+      '    trigger:\n' +
+      '      - condition: missing-flow-content\n' +
+      '    question: What does {subject.name} move?\n' +
+      '    materiality: A flow with no content is an unnamed payload.\n' +
+      '    authority: either\n' +
+      '    resolution: Set flow content.\n'
+    writeFileSync(join(workspace, 'catalogue.yaml'), flowCatalogue, 'utf8')
+    writeFileSync(
+      join(workspace, 'architecture/main.yaml'),
+      'format: yarramate/v1\n' +
+        'id: main\n' +
+        'profile: yarramate/core@0.1\n' +
+        'concepts:\n' +
+        '  - id: send\n' +
+        '    kind: applicationProcess\n' +
+        '    name: Send\n' +
+        '  - id: receive\n' +
+        '    kind: applicationProcess\n' +
+        '    name: Receive\n' +
+        'relationships:\n' +
+        '  - id: send-flows-receive\n' +
+        '    kind: flow\n' +
+        '    from: send\n' +
+        '    to: receive\n',
+      'utf8',
+    )
+    writeFileSync(
+      join(workspace, 'workspace.yaml'),
+      'format: yarramate/workspace/v1\n' +
+        'id: interrogate-fixture\n' +
+        'documents:\n' +
+        '  - architecture/main.yaml\n' +
+        'profiles: []\n' +
+        'projections: []\n' +
+        'adapterMappings: []\n' +
+        'evidence: []\n',
+      'utf8',
+    )
+    const before = runCli(
+      ['ask', 'workspace.yaml', '--open', '--catalogue', 'catalogue.yaml', '--json'],
+      workspace,
+    )
+    expect(before.exitCode).toBe(0)
+    expect(JSON.parse(before.stdout).report.summary.open).toBe(2)
+
+    writeFileSync(
+      join(workspace, 'architecture/main.yaml'),
+      'format: yarramate/v1\n' +
+        'id: main\n' +
+        'profile: yarramate/core@0.1\n' +
+        'concepts:\n' +
+        '  - id: send\n' +
+        '    kind: applicationProcess\n' +
+        '    name: Send\n' +
+        '  - id: receive\n' +
+        '    kind: applicationProcess\n' +
+        '    name: Receive\n' +
+        'relationships:\n' +
+        '  - id: send-flows-receive\n' +
+        '    kind: flow\n' +
+        '    from: send\n' +
+        '    to: receive\n' +
+        '    content: Document payload\n',
+      'utf8',
+    )
+    const after = runCli(
+      ['ask', 'workspace.yaml', '--open', '--catalogue', 'catalogue.yaml', '--json'],
+      workspace,
+    )
+    expect(after.exitCode).toBe(0)
+    expect(JSON.parse(after.stdout).report.summary.open).toBe(0)
+  })
+
   it('keeps the shipped catalogue fully closed on the repository self-model', () => {
     const result = runCli(
       ['ask', '.yarramate/workspace.yaml', '--open', '--json'],

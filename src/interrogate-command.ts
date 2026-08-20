@@ -39,6 +39,7 @@ type CatalogueCondition =
   | {
       readonly condition: 'no-subject-of-kind'
       readonly kinds: readonly string[]
+      readonly kindMatching?: 'exact' | 'descendants'
     }
   | { readonly condition: 'no-state-defined' }
   | {
@@ -48,6 +49,26 @@ type CatalogueCondition =
       readonly counterpartKinds: readonly string[]
       readonly kindMatching?: 'exact' | 'descendants'
     }
+  | {
+      readonly condition: 'has-linkage'
+      readonly kinds: readonly string[]
+      readonly direction: 'incoming' | 'outgoing' | 'either'
+      readonly counterpartKinds: readonly string[]
+      readonly kindMatching?: 'exact' | 'descendants'
+    }
+  | {
+      readonly condition: 'exists-linkage'
+      readonly kinds: readonly string[]
+      readonly direction: 'incoming' | 'outgoing' | 'either'
+      readonly counterpartKinds: readonly string[]
+      readonly kindMatching?: 'exact' | 'descendants'
+    }
+  | {
+      readonly condition: 'missing-constraint'
+      readonly kinds: readonly string[]
+      readonly kindMatching?: 'exact' | 'descendants'
+    }
+  | { readonly condition: 'missing-flow-content' }
   | {
       readonly condition: 'missing-reference'
       readonly predicate: string
@@ -315,6 +336,92 @@ const relationshipKindMatches = (
           ?.includes(selected) === true),
   )
 
+const profileIdentityOfKind = (qualifiedKind: string): string => {
+  const separator = qualifiedKind.indexOf('#')
+  return separator === -1 ? qualifiedKind : qualifiedKind.slice(0, separator)
+}
+
+const namedKinds = (question: CatalogueQuestion): readonly string[] => {
+  const kinds = [...(question.subjects?.kinds ?? [])]
+  for (const condition of question.trigger) {
+    switch (condition.condition) {
+      case 'missing-relationship':
+      case 'no-subject-of-kind':
+      case 'missing-constraint':
+        kinds.push(...condition.kinds)
+        break
+      case 'missing-linkage':
+      case 'has-linkage':
+      case 'exists-linkage':
+        kinds.push(...condition.kinds, ...condition.counterpartKinds)
+        break
+      default:
+        break
+    }
+  }
+  return kinds
+}
+
+const questionIsApplicable = (
+  question: CatalogueQuestion,
+  selectedProfiles: readonly string[],
+): boolean => {
+  const selected = new Set(selectedProfiles)
+  return namedKinds(question).every((kind) =>
+    selected.has(profileIdentityOfKind(kind)),
+  )
+}
+
+type LinkageShape = {
+  readonly kinds: readonly string[]
+  readonly direction: 'incoming' | 'outgoing' | 'either'
+  readonly counterpartKinds: readonly string[]
+  readonly kindMatching?: 'exact' | 'descendants'
+}
+
+const linkageHits = (
+  index: GraphIndex,
+  condition: LinkageShape,
+  subjectId: string,
+  profileContext: ResolvedProfileContext | undefined,
+): boolean => {
+  const matching = condition.kindMatching ?? 'descendants'
+  return index.relationshipClaims.some((claim) => {
+    if (!('ref' in claim.object)) return false
+    if (
+      !relationshipKindMatches(
+        claim.predicate,
+        condition.kinds,
+        matching,
+        profileContext,
+      )
+    ) {
+      return false
+    }
+    const counterparts: string[] = []
+    if (
+      (condition.direction === 'outgoing' || condition.direction === 'either') &&
+      claim.subject === subjectId
+    ) {
+      counterparts.push(claim.object.ref)
+    }
+    if (
+      (condition.direction === 'incoming' || condition.direction === 'either') &&
+      claim.object.ref === subjectId
+    ) {
+      counterparts.push(claim.subject)
+    }
+    return counterparts.some((counterpart) =>
+      kindMatches(
+        index.kindOf.get(counterpart),
+        condition.counterpartKinds,
+        matching,
+        profileContext,
+      ),
+    )
+  })
+}
+
 const conditionHolds = (
   index: GraphIndex,
   condition: CatalogueCondition,
@@ -360,46 +467,74 @@ const conditionHolds = (
           ({ object }) => 'ref' in object && object.ref === subjectId,
         )
       )
-    case 'no-subject-of-kind':
+    case 'no-subject-of-kind': {
+      const matching = condition.kindMatching ?? 'descendants'
       return ![...index.concepts].some((id) =>
-        condition.kinds.includes(index.kindOf.get(id) ?? ''),
+        kindMatches(
+          index.kindOf.get(id),
+          condition.kinds,
+          matching,
+          profileContext,
+        ),
       )
+    }
     case 'no-state-defined':
       return !index.hasStates
-    case 'missing-linkage': {
+    case 'missing-linkage':
       // The linkage-depth primitive: the subject lacks a relationship of
       // these kinds, in this direction, whose counterpart is of one of
       // these kinds. Both relationship and counterpart kinds resolve
       // through profile lineage by default, matching the selector rule.
+      return !linkageHits(
+        index,
+        condition,
+        subjectId!,
+        profileContext,
+      )
+    case 'has-linkage':
+      return (
+        subjectId !== undefined &&
+        linkageHits(index, condition, subjectId, profileContext)
+      )
+    case 'exists-linkage':
+      return [...index.concepts].some((id) =>
+        linkageHits(index, condition, id, profileContext),
+      )
+    case 'missing-constraint': {
       const matching = condition.kindMatching ?? 'descendants'
-      return !index.relationshipClaims.some((claim) => {
+      return !(index.claimsBySubject.get(subjectId!) ?? []).some(
+        (claim) =>
+          claim.predicate === 'yarramate/constraint/requires' &&
+          'ref' in claim.object &&
+          kindMatches(
+            index.kindOf.get(claim.object.ref),
+            condition.kinds,
+            matching,
+            profileContext,
+          ),
+      )
+    }
+    case 'missing-flow-content': {
+      if (subjectId === undefined) return false
+      const matching = 'descendants' as const
+      return index.relationshipClaims.some((claim) => {
         if (!('ref' in claim.object)) return false
         if (
           !relationshipKindMatches(
             claim.predicate,
-            condition.kinds,
+            ['yarramate/core@0.1#flow'],
             matching,
             profileContext,
           )
         ) {
           return false
         }
-        const counterpart =
-          condition.direction === 'outgoing'
-            ? claim.subject === subjectId
-              ? claim.object.ref
-              : undefined
-            : claim.object.ref === subjectId
-              ? claim.subject
-              : undefined
-        return (
-          counterpart !== undefined &&
-          kindMatches(
-            index.kindOf.get(counterpart),
-            condition.counterpartKinds,
-            matching,
-            profileContext,
-          )
+        if (claim.subject !== subjectId && claim.object.ref !== subjectId) {
+          return false
+        }
+        return !(index.claimsBySubject.get(claim.id) ?? []).some(
+          ({ predicate, object }) =>
+            predicate === 'yarramate/flow/content' && 'value' in object,
         )
       })
     }
@@ -497,10 +632,13 @@ export function evaluateCatalogue(
   const index = indexGraph(graph)
   let open = 0
   let openQuestions = 0
+  const applicableQuestions = catalogue.questions.filter((question) =>
+    questionIsApplicable(question, graph.profiles),
+  )
   const waves = catalogue.waves.map((wave) => ({
     id: wave.id,
     name: wave.name,
-    questions: catalogue.questions
+    questions: applicableQuestions
       .filter((question) => question.wave === wave.id)
       .map((question): ReportQuestion => {
         const base = {
@@ -559,7 +697,7 @@ export function evaluateCatalogue(
     format: 'yarramate/interrogation-report/v1',
     catalogue: `${catalogue.id}@${catalogue.version}`,
     summary: {
-      questions: catalogue.questions.length,
+      questions: applicableQuestions.length,
       openQuestions,
       open,
     },

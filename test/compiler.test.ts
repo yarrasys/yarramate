@@ -1716,4 +1716,52 @@ relationships: []
       ],
     })
   })
+
+  it('resolves yarramate/policy@0.1 without a workspace profile file', () => {
+    const result = compileWorkspaceWithProfileContext([
+      {
+        path: 'policy.yaml',
+        source: `format: yarramate/v1
+id: policy
+profile: yarramate/policy@0.1
+concepts:
+  - id: oauth
+    kind: authentication-constraint
+    name: OAuth
+relationships: []
+`,
+      },
+    ])
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.graph.profiles).toEqual([
+      'yarramate/core@0.1',
+      'yarramate/policy@0.1',
+    ])
+    expect(
+      result.profileContext.conceptKindLineages.get(
+        'yarramate/policy@0.1#authentication-constraint',
+      ),
+    ).toEqual([
+      'yarramate/core@0.1#constraint',
+      'yarramate/policy@0.1#authentication-constraint',
+    ])
+  })
+
+  it('does not inject yarramate/policy@0.1 when no document selects it', () => {
+    const result = compileWorkspaceWithProfileContext([
+      {
+        path: 'minimal.yaml',
+        source: fixture('valid/minimal.yaml'),
+      },
+    ])
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.graph.profiles).toEqual(['yarramate/core@0.1'])
+    expect(
+      result.profileContext.conceptKindLineages.has(
+        'yarramate/policy@0.1#authentication-constraint',
+      ),
+    ).toBe(false)
+  })
 })

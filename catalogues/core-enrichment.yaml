@@ -1,12 +1,13 @@
 format: yarramate/question-catalogue/v1
 id: core-enrichment
-version: "0.8"
+version: "0.9"
 profile: yarramate/core@0.1
 presentation:
   title: Core enrichment interview
   description: >-
-    The guided design path: motivation, business, application, technology,
-    and implementation waves plus cross-cutting hygiene. Each question
+    The guided design path: motivation, interaction, business, application,
+    technology, and implementation waves plus cross-cutting hygiene. Each
+    question
     states the decision its answer changes; a question that cannot is
     deleted, not softened. Adequacy is enforced by linkage depth and
     attestation, never by reading words. Versioning is additive within a
@@ -18,6 +19,12 @@ waves:
   - id: motivation
     name: Motivation
     description: Why the system exists and what constrains it.
+  - id: interaction
+    name: Interaction
+    description: >-
+      Load-bearing hops: the behavior a component is assigned to, the
+      serving/triggering/flow mechanism, payload, trust, reliability, and
+      capacity. Hygiene waits.
   - id: business
     name: Business
     description: Who acts, what is served, and what information matters.
@@ -332,6 +339,398 @@ questions:
       Review the subject's description and linkage, then record an
       attestation with topic "adequacy" (revoke by deleting it; Git
       reviews both).
+
+  # ---- interaction ---------------------------------------------------------
+  - id: authn-standard-missing
+    wave: interaction
+    since: "0.9"
+    scope: workspace
+    trigger:
+      - condition: exists-linkage
+        kinds:
+          - yarramate/core@0.1#serving
+          - yarramate/core@0.1#flow
+          - yarramate/core@0.1#triggering
+        direction: either
+        counterpartKinds:
+          - yarramate/core@0.1#applicationComponent
+          - yarramate/core@0.1#applicationInterface
+          - yarramate/core@0.1#businessActor
+      - condition: no-subject-of-kind
+        kinds:
+          - yarramate/policy@0.1#authentication-constraint
+    question: >-
+      What is the default authentication mechanism for interactions in this
+      architecture?
+    askPlain: >-
+      When one system talks to another here, how do they prove who they
+      are? Pick the default now so each hop is not inventing its own.
+    materiality: >-
+      An unauthenticated hop to another system is a trust-boundary decision
+      nobody recorded. Implementers will pick a mechanism in code, and the
+      next hop will assume a different one. This question does not cover
+      authorization or transport security.
+    authority: human
+    resolution: >-
+      Add an authentication-constraint (the standard, or a not-applicable
+      subject with the reason in its description) in a document that
+      selects yarramate/policy@0.1.
+
+  - id: ratelimit-standard-missing
+    wave: interaction
+    since: "0.9"
+    scope: workspace
+    trigger:
+      - condition: exists-linkage
+        kinds:
+          - yarramate/core@0.1#serving
+        direction: either
+        counterpartKinds:
+          - yarramate/core@0.1#businessActor
+      - condition: no-subject-of-kind
+        kinds:
+          - yarramate/policy@0.1#rate-limit-constraint
+    question: >-
+      Where is rate limiting a requirement, and what is the default rule?
+    askPlain: >-
+      Do caller-facing APIs have a capacity cap? If yes, what is it? If
+      no, say so so we do not keep asking per hop.
+    materiality: >-
+      Caller-facing hops without a capacity rule are sized by whoever
+      implements first. An explicit none is a decision; silence is not.
+    authority: human
+    resolution: >-
+      Add a rate-limit-constraint for the default cap, or a
+      ratelimit-not-applicable subject. Bind hop-specific values with
+      expects on the binding.
+
+  - id: reliability-standard-missing
+    wave: interaction
+    since: "0.9"
+    scope: workspace
+    trigger:
+      - condition: exists-linkage
+        kinds:
+          - yarramate/core@0.1#flow
+          - yarramate/core@0.1#triggering
+        direction: either
+        counterpartKinds:
+          - yarramate/core@0.1#applicationComponent
+          - yarramate/core@0.1#applicationInterface
+          - yarramate/core@0.1#applicationProcess
+          - yarramate/core@0.1#applicationFunction
+          - yarramate/core@0.1#applicationInteraction
+          - yarramate/core@0.1#applicationEvent
+          - yarramate/core@0.1#businessActor
+      - condition: no-subject-of-kind
+        kinds:
+          - yarramate/policy@0.1#reliability-constraint
+    question: >-
+      What is the default delivery, retry, and idempotency rule for
+      asynchronous or content-moving interactions?
+    askPlain: >-
+      When a message or payload does not arrive, do we retry, and what
+      makes a retry safe to repeat?
+    materiality: >-
+      Retry without idempotency duplicates work; no retry without a
+      recorded choice leaves timeout behaviour to each implementer.
+    authority: human
+    resolution: >-
+      Add a reliability-constraint (the standard, or not-applicable with
+      the reason in its description).
+
+  - id: hop-unrealised
+    wave: interaction
+    since: "0.9"
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#applicationComponent
+      statuses:
+        - planned
+        - current
+    trigger:
+      - condition: has-linkage
+        kinds:
+          - yarramate/core@0.1#serving
+          - yarramate/core@0.1#flow
+          - yarramate/core@0.1#triggering
+        direction: either
+        counterpartKinds:
+          - yarramate/core@0.1#applicationComponent
+          - yarramate/core@0.1#applicationInterface
+          - yarramate/core@0.1#businessActor
+      - condition: missing-linkage
+        kinds:
+          - yarramate/core@0.1#assignment
+        direction: outgoing
+        counterpartKinds:
+          - yarramate/core@0.1#applicationProcess
+          - yarramate/core@0.1#applicationFunction
+          - yarramate/core@0.1#applicationInteraction
+          - yarramate/core@0.1#applicationEvent
+          - yarramate/core@0.1#applicationInterface
+    question: >-
+      {subject.name} participates in an application interaction, but
+      nothing it is assigned to is that interaction. What process,
+      function, interaction, event, or interface is the hop?
+    askPlain: >-
+      {subject.name} talks to something else, but the model never names
+      the work it does in that talk. What is the actual step?
+    materiality: >-
+      A component-to-component edge with no assigned behavior is
+      inventory. Protocol, trust, payload, and failure have nowhere to
+      bind until the hop is a subject.
+    authority: either
+    resolution: >-
+      Add an application process, function, interaction, event, or
+      interface, assign this component to it, and relate that behavior
+      with serving, triggering, or flow to its counterpart. Do not answer
+      by deleting the component or adding a realization instead.
+
+  - id: interaction-protocol-unbound
+    wave: interaction
+    since: "0.9"
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#applicationProcess
+        - yarramate/core@0.1#applicationFunction
+        - yarramate/core@0.1#applicationInteraction
+        - yarramate/core@0.1#applicationEvent
+        - yarramate/core@0.1#applicationInterface
+      statuses:
+        - planned
+        - current
+    trigger:
+      - condition: has-linkage
+        kinds:
+          - yarramate/core@0.1#serving
+        direction: either
+        counterpartKinds:
+          - yarramate/core@0.1#applicationComponent
+          - yarramate/core@0.1#applicationInterface
+          - yarramate/core@0.1#applicationProcess
+          - yarramate/core@0.1#applicationFunction
+          - yarramate/core@0.1#applicationInteraction
+          - yarramate/core@0.1#applicationEvent
+          - yarramate/core@0.1#businessActor
+      - condition: missing-constraint
+        kinds:
+          - yarramate/policy@0.1#mechanism-constraint
+    question: >-
+      {subject.name} is a serving hop. Which protocol is it — REST/HTTP,
+      SOAP, GraphQL, or something else?
+    askPlain: >-
+      When {subject.name} is called, what is the wire protocol?
+    materiality: >-
+      Serving names the pattern, not the contract. A REST hop and a SOAP
+      hop fail, version, and authenticate differently.
+    authority: either
+    resolution: >-
+      Bind a mechanism-constraint on this behavior (or a not-applicable
+      subject if the serving kind is already the whole answer).
+
+  - id: interaction-content-unknown
+    wave: interaction
+    since: "0.9"
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#applicationProcess
+        - yarramate/core@0.1#applicationFunction
+        - yarramate/core@0.1#applicationInteraction
+        - yarramate/core@0.1#applicationEvent
+        - yarramate/core@0.1#applicationInterface
+      statuses:
+        - planned
+        - current
+    trigger:
+      - condition: missing-flow-content
+    question: >-
+      {subject.name} sends a flow with no content. What moves?
+    askPlain: >-
+      {subject.name} sends something on. What is that something called?
+    materiality: >-
+      A flow with no content is an unnamed payload. Retry, scanning, and
+      the counterpart contract have nothing to name.
+    authority: either
+    resolution: >-
+      Set content on the flow relationship.
+
+  - id: interaction-contract-unknown
+    wave: interaction
+    since: "0.9"
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#applicationProcess
+        - yarramate/core@0.1#applicationFunction
+        - yarramate/core@0.1#applicationInteraction
+        - yarramate/core@0.1#applicationEvent
+        - yarramate/core@0.1#applicationInterface
+      statuses:
+        - planned
+        - current
+    trigger:
+      - condition: has-linkage
+        kinds:
+          - yarramate/core@0.1#serving
+          - yarramate/core@0.1#flow
+          - yarramate/core@0.1#triggering
+        direction: either
+        counterpartKinds:
+          - yarramate/core@0.1#applicationComponent
+          - yarramate/core@0.1#applicationInterface
+          - yarramate/core@0.1#applicationProcess
+          - yarramate/core@0.1#applicationFunction
+          - yarramate/core@0.1#applicationInteraction
+          - yarramate/core@0.1#applicationEvent
+          - yarramate/core@0.1#businessActor
+      - condition: missing-linkage
+        kinds:
+          - yarramate/core@0.1#access
+        direction: outgoing
+        counterpartKinds:
+          - yarramate/core@0.1#dataObject
+          - yarramate/core@0.1#contract
+    question: >-
+      {subject.name} participates in a hop but accesses no contract or
+      data object. What information does it read or write?
+    askPlain: >-
+      What record or contract is {subject.name} working with?
+    materiality: >-
+      Schema ownership, identifiers, and classification have nowhere to
+      attach until the hop names the information it moves.
+    authority: either
+    resolution: >-
+      Add access from this behavior to a dataObject or contract.
+
+  - id: interaction-trust-unbound
+    wave: interaction
+    since: "0.9"
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#applicationProcess
+        - yarramate/core@0.1#applicationFunction
+        - yarramate/core@0.1#applicationInteraction
+        - yarramate/core@0.1#applicationEvent
+        - yarramate/core@0.1#applicationInterface
+      statuses:
+        - planned
+        - current
+    trigger:
+      - condition: has-linkage
+        kinds:
+          - yarramate/core@0.1#serving
+          - yarramate/core@0.1#flow
+          - yarramate/core@0.1#triggering
+        direction: either
+        counterpartKinds:
+          - yarramate/core@0.1#applicationComponent
+          - yarramate/core@0.1#applicationInterface
+          - yarramate/core@0.1#applicationProcess
+          - yarramate/core@0.1#applicationFunction
+          - yarramate/core@0.1#applicationInteraction
+          - yarramate/core@0.1#applicationEvent
+          - yarramate/core@0.1#businessActor
+      - condition: missing-constraint
+        kinds:
+          - yarramate/policy@0.1#authentication-constraint
+    question: >-
+      How is trust established for {subject.name}?
+    askPlain: >-
+      Who does {subject.name} authenticate as, and with what?
+    materiality: >-
+      An unauthenticated hop to another system is a trust-boundary
+      decision nobody recorded. This is authentication only — not
+      authorization or transport security.
+    authority: either
+    resolution: >-
+      Bind an authentication-constraint on this behavior, or a
+      not-applicable subject if this hop is deliberately unauthenticated.
+
+  - id: interaction-reliability-unbound
+    wave: interaction
+    since: "0.9"
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#applicationProcess
+        - yarramate/core@0.1#applicationFunction
+        - yarramate/core@0.1#applicationInteraction
+        - yarramate/core@0.1#applicationEvent
+        - yarramate/core@0.1#applicationInterface
+      statuses:
+        - planned
+        - current
+    trigger:
+      - condition: has-linkage
+        kinds:
+          - yarramate/core@0.1#triggering
+          - yarramate/core@0.1#flow
+        direction: either
+        counterpartKinds:
+          - yarramate/core@0.1#applicationComponent
+          - yarramate/core@0.1#applicationInterface
+          - yarramate/core@0.1#applicationProcess
+          - yarramate/core@0.1#applicationFunction
+          - yarramate/core@0.1#applicationInteraction
+          - yarramate/core@0.1#applicationEvent
+          - yarramate/core@0.1#businessActor
+      - condition: missing-constraint
+        kinds:
+          - yarramate/policy@0.1#reliability-constraint
+    question: >-
+      What happens when {subject.name} fails — retry, idempotency,
+      dead-letter, compensation?
+    askPlain: >-
+      If {subject.name} does not finish, do we retry, and what makes a
+      retry safe?
+    materiality: >-
+      A content-moving hop without a reliability rule duplicates or
+      drops work at the first timeout.
+    authority: either
+    resolution: >-
+      Bind a reliability-constraint. A named failure process is stronger
+      and may come later; the constraint is the 0.9 closer.
+
+  - id: interaction-capacity-unbound
+    wave: interaction
+    since: "0.9"
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#applicationProcess
+        - yarramate/core@0.1#applicationFunction
+        - yarramate/core@0.1#applicationInteraction
+        - yarramate/core@0.1#applicationEvent
+        - yarramate/core@0.1#applicationInterface
+      statuses:
+        - planned
+        - current
+    trigger:
+      - condition: has-linkage
+        kinds:
+          - yarramate/core@0.1#serving
+        direction: either
+        counterpartKinds:
+          - yarramate/core@0.1#businessActor
+      - condition: missing-constraint
+        kinds:
+          - yarramate/policy@0.1#rate-limit-constraint
+    question: >-
+      What is the capacity rule for {subject.name}?
+    askPlain: >-
+      How hard may callers hit {subject.name}, or is there no cap?
+    materiality: >-
+      An Experience-facing hop without a capacity rule is sized by
+      whoever implements first. Explicit none is a decision.
+    authority: either
+    resolution: >-
+      Bind a rate-limit-constraint, with expects on the binding for the
+      numeric cap, or a not-applicable subject.
 
   # ---- business ------------------------------------------------------------
   - id: service-consumer-unknown

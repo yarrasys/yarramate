@@ -33,7 +33,12 @@ questions. Each question binds:
   `isolated`, `no-subject-of-kind`, `no-state-defined`,
   `missing-linkage` (no relationship of given kinds, in a given
   direction, whose counterpart is of a given kind — the linkage-depth
-  primitive), `missing-reference` (no reference-bearing claim such as a
+  primitive), `has-linkage` (the positive of `missing-linkage`;
+  `direction` may be `either`), `exists-linkage` (workspace: some
+  concept would satisfy `has-linkage`), `missing-constraint` (no
+  `yarramate/constraint/requires` binding whose target matches the
+  given kinds), `missing-flow-content` (the subject is an endpoint of a
+  `flow` that has no `content`), `missing-reference` (no reference-bearing claim such as a
   constraint binding, by direction), `missing-attestation` (no
   recorded `yarramate/attestation/<topic>` claim; see ADR 0056),
   `near-duplicate` (the subject resembles another subject of the same
@@ -68,8 +73,11 @@ questions. Each question binds:
   (ADR 0072).
 
 The engine ships an internal core-enrichment catalogue, seed questions
-across motivation, business, application, and hygiene waves for
-`yarramate/core@0.1`, evaluated when no `--catalogue` is given.
+across motivation, interaction, business, application, technology,
+implementation, and hygiene waves for `yarramate/core@0.1`, evaluated
+when no `--catalogue` is given. Interaction questions that name
+`yarramate/policy@0.1` kinds are omitted unless a document selects that
+profile (ADR 0095).
 Catalogues are ordinary versioned data: extend the shipped one under a new
 identity or write one per organisation, then pass it with `--catalogue`.
 Composition via `extends` is deferred from v1 (ADR 0053).
@@ -77,10 +85,13 @@ Composition via `extends` is deferred from v1 (ADR 0053).
 ## Evaluation model
 
 A question is **open** iff its trigger matches, and **closed** the moment it
-no longer does. Interview state is recomputed from model plus catalogue on
-every run and never stored: no session files, no second canonical store,
-nothing to resume. Editing the model and re-running yields exactly the
-still-open questions.
+no longer does. A question is **not applicable** when any kind it names
+belongs to a profile that no document in the workspace has selected
+(`graph.profiles`). Inapplicable questions are omitted from the report and
+from `summary.questions`; they are not `open: false`. Interview state is
+recomputed from model plus catalogue on every run and never stored: no
+session files, no second canonical store, nothing to resume. Editing the
+model and re-running yields exactly the still-open questions.
 
 Open questions are not findings against anyone. `check` answers "is this
 model well-formed", `reconcile` answers "does reality agree", and

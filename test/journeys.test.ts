@@ -131,6 +131,10 @@ describe('agent journeys through the stable CLI', () => {
     expect(skill).toContain('yarramate ask')
     expect(skill).toContain('yarramate apply')
     expect(skill).toContain('yarramate design')
+    expect(skill).toContain('design --json')
+    expect(skill).toContain('wave')
+    expect(skill).toContain('yarramate/policy@0.1')
+    expect(skill).toContain('interaction')
     expect(skill.match(/yarramate export graph/g)).toHaveLength(2)
     for (const removed of [
       'yarramate status',

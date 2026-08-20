@@ -140,15 +140,24 @@ yarramate design .yarramate/workspace.yaml
    or read catalogue files. Answer one question at a time: questions the
    model or evidence can answer, answer from your authority; questions
    marked `human`, relay verbatim with their materiality. Land each answer
-   as one atomic batch (`yarramate apply <operations.yaml>
-   .yarramate/workspace.yaml`), then re-run `design` — the next question is
-   recomputed from the model, so the loop is resumable across sessions and
-   agents with no handover. Use `--subject <id>` to focus the interview on
-   one element. When a step reports many `openSubjects` sharing one
-   question (ownership is the classic case), do not interview N times:
-   collect the policy answer once — "who owns what, by area" — and land it
-   across every listed subject as one apply batch. The interview is
-   complete when `design` says so.
+   as subjects and relationships in one atomic batch (`yarramate apply
+   <operations.yaml> .yarramate/workspace.yaml`), never as description
+   alone. Then re-run `design` — the next question is recomputed from the
+   model, so the loop is resumable across sessions and agents with no
+   handover. Use `--subject <id>` to focus the interview on one element.
+   When a step reports many `openSubjects` sharing one question (ownership
+   is the classic case), do not interview N times: collect the policy
+   answer once — "who owns what, by area" — and land it across every listed
+   subject as one apply batch.
+
+   After motivation, work the `interaction` wave (hops, mechanism, payload,
+   trust, reliability, capacity) before ownership and hygiene. Policy
+   subjects (`authentication-constraint`, `rate-limit-constraint`, and
+   siblings) live in a document that selects `yarramate/policy@0.1`; hops
+   bind them with qualified `constraints[].ref`. One batch may create and
+   bind. When `design --json` returns a step whose `wave` is not
+   `interaction` for the slice in focus, stop, render the brief, and do not
+   drain `owner-missing`. The interview is complete when `design` says so.
 5. Create:
    - an alternatives projection for the decision;
    - a bounded target projection for implementation agents.

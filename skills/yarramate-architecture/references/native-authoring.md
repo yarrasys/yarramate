@@ -200,6 +200,16 @@ rationale in the description and it becomes the non-goal record.
 Ownership is one accountable reference, not approval workflow. Constraints are
 identified references, not a policy engine or free-form metadata bag.
 
+Distinct NFR rules (authentication, rate limit, reliability, serving
+protocol) use `yarramate/policy@0.1` kinds, not Core `constraint` alone.
+Select that profile on the document that declares the policy subjects;
+other documents may keep their existing profile and bind with a
+qualified `constraints[].ref`. Do not copy a profile file into the
+workspace. A hop that must not have a rate limit binds a
+`ratelimit-not-applicable` subject of kind `rate-limit-constraint` with
+the reason in its description. Numeric caps go in `expects` on the
+binding.
+
 ## Attestations
 
 ```yaml

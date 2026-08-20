@@ -1,0 +1,31 @@
+format: yarramate/v1
+id: document-transfer-policy
+profile: yarramate/policy@0.1
+concepts:
+  - id: oauth-m2m
+    kind: authentication-constraint
+    name: OAuth client-credentials
+    description: >-
+      Service identity uses OAuth 2.0 client credentials. User identity is
+      not propagated on this hop.
+  - id: experience-rate-limit
+    kind: rate-limit-constraint
+    name: 100 requests per client per second
+    description: Caller-facing Experience APIs are capacity-capped at the gateway.
+  - id: ratelimit-not-applicable
+    kind: rate-limit-constraint
+    name: No caller-facing rate limit
+    description: >-
+      System APIs are not caller-facing; capacity is owned by the Experience
+      hop. This records the decision not to apply a rate limit here.
+  - id: at-least-once
+    kind: reliability-constraint
+    name: At-least-once with idempotent store
+    description: >-
+      Document transfer retries on timeout; the eDRMS identifier is the
+      idempotency key.
+  - id: https-rest
+    kind: mechanism-constraint
+    name: HTTPS REST
+    description: Synchronous HTTP/JSON over TLS on Experience serving hops.
+relationships: []

@@ -19,6 +19,10 @@ import profileSchema from '../schema/yarramate-profile.schema.json' with {
   type: 'json',
 }
 import { ATTESTATION_PREDICATE_PREFIX, attestationClaimValue } from './graph-claims.js'
+import {
+  shippedPolicyIdentity,
+  shippedPolicySource,
+} from './shipped-profile.js'
 
 const coreProfile = 'yarramate/core@0.1'
 // `ajv/dist/2020.js` is CJS. Its default-export shape is resolved
@@ -639,6 +643,49 @@ function compileWorkspaceResolved(
 
     const identity = `${value.id}@${value.version}`
     pendingProfiles.push({ input, value, identity, positionFor })
+  }
+
+  const alreadyDeclaresPolicy = pendingProfiles.some(
+    ({ identity }) => identity === shippedPolicyIdentity,
+  )
+  if (!alreadyDeclaresPolicy) {
+    const selected = documentInputs.some(({ entry }) => {
+      const value = entry.value as { readonly profile?: unknown }
+      return value.profile === shippedPolicyIdentity
+    })
+    const extended = pendingProfiles.some(
+      ({ value }) => value.extends === shippedPolicyIdentity,
+    )
+    if (selected || extended) {
+      const input = {
+        path: 'yarramate:profile:yarramate/policy@0.1',
+        source: shippedPolicySource,
+      }
+      const { entry, fresh } = parseWorkspaceSource(input)
+      const value = entry.value as NativeProfile
+      if (entry.schemaDiagnostics.length > 0) {
+        profileDiagnostics.push(...entry.schemaDiagnostics)
+      } else if (!validateProfile(value)) {
+        for (const error of validateProfile.errors ?? []) {
+          profileDiagnostics.push({
+            severity: 'error',
+            code: 'YM201',
+            message: `Profile schema violation: ${describeSchemaViolation(error)}`,
+            path: input.path,
+            pointer: error.instancePath || '/',
+            line: 1,
+            column: 1,
+          })
+        }
+      } else {
+        pendingProfiles.push({
+          input,
+          value,
+          identity: shippedPolicyIdentity,
+          positionFor: positionReader(input.source, entry.positions, fresh),
+        })
+      }
+    }
   }
 
   let unresolvedProfiles = pendingProfiles.sort((left, right) =>

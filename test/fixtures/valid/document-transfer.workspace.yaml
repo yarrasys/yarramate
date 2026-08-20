@@ -1,0 +1,10 @@
+format: yarramate/workspace/v1
+id: document-transfer
+documents:
+  - document-transfer.yaml
+  - document-transfer.policy.yaml
+profiles: []
+projections:
+  - document-transfer.projection.yaml
+adapterMappings: []
+evidence: []

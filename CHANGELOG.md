@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+- Interrogation: `has-linkage`, `exists-linkage` (`direction` includes
+  `either`), `missing-constraint`, and `missing-flow-content` conditions.
+  Questions that name kinds from a profile no document has selected are
+  omitted from the report rather than reported closed or stuck open.
+  `no-subject-of-kind` honours `kindMatching` (default `descendants`), a
+  loosening of `outcome-missing`, `stakeholders-missing`,
+  `constraints-missing`, and `no-service-declared` for profile-derived
+  kinds.
+- Ship `yarramate/policy@0.1` as a built-in optional profile (ADR 0095):
+  `authentication-constraint`, `rate-limit-constraint`,
+  `reliability-constraint`, `mechanism-constraint`. Select it on a
+  document; do not copy a file. Catalogue `core-enrichment` 0.9 adds an
+  `interaction` wave before business so hop questions rank ahead of
+  `owner-missing`.
+
 ## 0.22.0
 
 - Export a Workers-safe visual-graph projector as

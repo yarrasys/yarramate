@@ -2,7 +2,15 @@
 
 YarraMate projects extend the bundled vocabulary through explicit profile
 documents. Their normative structure is
-`schema/yarramate-profile.schema.json`.
+`schema/yarramate-profile.schema.json`. One optional profile also ships
+inside the package: `yarramate/policy@0.1` (ADR 0095). A document may
+select `profile: yarramate/policy@0.1` without copying a file; the
+compiler injects it when selected or extended. It is not an interrogation
+switch. Webapps that call a system API need `authentication-constraint`
+too. Policy subjects belong in a document that selects this profile;
+other documents may keep an existing org profile and bind with qualified
+`constraints[].ref`. Re-basing an org profile onto policy is allowed and
+not required.
 
 ## Smallest profile
 

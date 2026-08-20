@@ -45,6 +45,7 @@ describe('consumer package contract', () => {
       'assets/likec4',
       'schema',
       'catalogues',
+      'profiles',
       'skills/yarramate-architecture',
       'docs/CONSUMING-YARRAMATE.md',
     ])
@@ -102,6 +103,8 @@ describe('consumer package contract', () => {
       expect(files).toContain('package/dist/cli.js')
       expect(files).toContain('package/assets/likec4/specification.likec4')
       expect(files).toContain('package/schema/yarramate-document.schema.json')
+      expect(files).toContain('package/profiles/yarramate-policy.yaml')
+      expect(files).toContain('package/catalogues/core-enrichment.yaml')
       expect(files).toContain(
         'package/schema/yarramate-reconciliation-report.schema.json',
       )
