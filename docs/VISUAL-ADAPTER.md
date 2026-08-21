@@ -140,11 +140,11 @@ than leaving a stale named view selected.
 yarramate-visual request [--view <id>] [--title <text>]
                          [--description <text>] [--chat]
 yarramate-visual start <request.json>
-yarramate-visual wait <descriptor.json> [--after <sequence>]
-yarramate-visual respond <descriptor.json> <response.json>
-yarramate-visual status <descriptor.json>
-yarramate-visual recover <descriptor.json> [--transcript]
-yarramate-visual stop <descriptor.json> [--transcript]
+yarramate-visual wait <descriptor-uri> [--after <sequence>]
+yarramate-visual respond <descriptor-uri> <response.json>
+yarramate-visual status <descriptor-uri>
+yarramate-visual recover <descriptor-uri> [--transcript]
+yarramate-visual stop <descriptor-uri> [--transcript]
 ```
 
 `request` is the only verb that reads the repository instead of a session: it
@@ -157,10 +157,12 @@ hand-authors one. A workspace that cannot be read or cannot compile refuses
 here, before any session exists, with the compiler's own diagnostics.
 
 `start` is a managed foreground process, not a one-shot call: it publishes one
-`yarramate/visual-session-started/v1` line on stdout carrying `browserUrl` and
+`yarramate/visual-session-started/v2` line on stdout carrying `browserUrl` and
 `descriptorPath`, then blocks, serving the session until `stop` ends it. Every
 other command is an ordinary one-shot call against the printed
-`descriptorPath`. A harness with no facility for hosting a foreground process
+`descriptorPath`, which is a canonical local `file:` URI and is passed back
+verbatim: it is never hand-typed as a native path and never resolved against
+the working directory (ADR 0096). A harness with no facility for hosting a foreground process
 across tool calls cannot run this journey; fall back to `yarramate ask`,
 `export markdown`, or `yarramate-likec4 export-project`.
 
@@ -170,8 +172,12 @@ Eleven closed `yarramate/visual-*/v1` JSON documents, each with
 `additionalProperties: false`, published from `./schema`:
 session request, session started, session descriptor, event, response,
 status, handoff, model, graph, layout, and diagnostic result.
-`yarramate/visual-protocol/v3` is the version the started result, the
-descriptor, and status agree on. The wire is a published contract, not a
+`yarramate/visual-protocol/v4` is the version the started result, the
+descriptor, and status agree on. Every filesystem path any of these documents
+carries - `sessionRoot`, `descriptorPath`, `journalPath`, `transcriptPath` - is
+a canonical local `file:` URI rather than a bare path string, which is why the
+three documents that carry one are at `v2` while the eight that do not stay at
+`v1` (ADR 0096). The wire is a published contract, not a
 process-local convention, because the journal that recovers a crashed session
 has to be readable by a process that did not write it — see
 [ADR 0081](adr/0081-a-visual-conversation-is-an-adapter-with-a-published-protocol.md).

@@ -3,18 +3,20 @@ import { lstat, open, readFile, stat } from 'node:fs/promises'
 import { basename, dirname, join, resolve } from 'node:path'
 import {
   VISUAL_PROTOCOL_VERSION,
+  fromWireFileUri,
   parseVisualDiagnosticResult,
   parseVisualEvent,
   parseVisualHandoff,
   parseVisualSessionDescriptor,
   parseVisualStatus,
-  toWireAbsolutePath,
+  toWireFileUri,
   type ParseResult,
   type VisualDiagnostic,
   type VisualHandoff,
   type VisualResponse,
   type VisualSessionDescriptor,
   type VisualStatus,
+  type WireFileUriRefusal,
 } from './protocol.js'
 import {
   VISUAL_SERVER_LIMITS,
@@ -80,6 +82,38 @@ export const visualClientDiagnostic = (
 const refused = <T>(
   diagnostics: readonly VisualDiagnostic[],
 ): ParseResult<T> => ({ ok: false, diagnostics })
+
+/**
+ * How each way a wire path can be refused reads. One code carries all three,
+ * the way `YMVS401` already covers two distinct underlying causes.
+ */
+const WIRE_URI_REFUSAL: Readonly<Record<WireFileUriRefusal, string>> = {
+  malformed: 'is not a canonical file: URI',
+  nonlocal: 'names a nonlocal location',
+  noncanonical: 'is not the canonical encoding of its own target',
+}
+
+/**
+ * Decode one untrusted wire path to native, or refuse it.
+ *
+ * Nothing is resolved against `cwd`. A `file:` URI is inherently absolute, so
+ * the ambiguous, platform-dependent path string this representation retires
+ * cannot re-enter through the one argument an operator still passes by hand:
+ * `wait`/`respond`/`status`/`recover`/`stop` take the exact `descriptorPath`
+ * URI `start` published, copied back verbatim. A native path is refused here
+ * visibly rather than half-working.
+ */
+const decodeWireUri = (label: string, uri: string): ParseResult<string> => {
+  const decoded = fromWireFileUri(uri)
+  return decoded.ok
+    ? { ok: true, value: decoded.value }
+    : refused([
+        visualClientDiagnostic(
+          'YMVS414',
+          `${label} "${uri}" ${WIRE_URI_REFUSAL[decoded.reason]}`,
+        ),
+      ])
+}
 
 export const visualFailureDiagnostics = (
   cause: unknown,
@@ -177,10 +211,13 @@ const readsStoppedMarker = async (
  * teardown and names the vanished session directory.
  */
 export const visualSessionAlreadyStopped = async (
-  path: string,
-  cwd: string = process.cwd(),
+  uri: string,
 ): Promise<boolean> => {
-  const target = resolve(cwd, path)
+  // A descriptor URI that will not decode names no session at all, so it is
+  // not evidence that one was stopped; the caller's own refusal stands.
+  const decoded = fromWireFileUri(uri)
+  if (!decoded.ok) return false
+  const target = decoded.value
   const sessionRoot = dirname(target)
   const sessionId = basename(sessionRoot)
   return (
@@ -197,14 +234,15 @@ export const visualSessionAlreadyStopped = async (
  * capability, so a redirected or planted one must never be spent.
  */
 export const readVisualSessionDescriptor = async (
-  path: string,
-  cwd: string = process.cwd(),
+  uri: string,
 ): Promise<ParseResult<VisualSessionDescriptor>> => {
-  // `target` is native, for `open()`; `targetWire` is the wire form the
-  // ownership check below compares byte-for-byte against the normalized
-  // `descriptorPath`/`journalPath` a descriptor names.
-  const target = resolve(cwd, path)
-  const targetWire = toWireAbsolutePath(target)
+  // The URI is proven to be one specific local file before that file is
+  // opened, and long before the capability inside it is spent. `target` is the
+  // native path `open()` needs; `uri` itself is already canonical past this
+  // point, so the ownership check below compares it directly.
+  const decoded = decodeWireUri('Session descriptor path', uri)
+  if (!decoded.ok) return decoded
+  const target = decoded.value
   let raw: string
   // One handle, opened once: the descriptor is the only file carrying the agent
   // capability, so the thing that is checked has to be the thing that is read.
@@ -260,13 +298,27 @@ export const readVisualSessionDescriptor = async (
   }
   const parsed = parseVisualSessionDescriptor(document)
   if (!parsed.ok) return parsed
-  const paths = visualSessionPaths(parsed.value.sessionRoot)
+  // The document's own path fields are untrusted too, and are decoded on the
+  // same terms as the argument: `sessionRoot` because it is about to be used
+  // as a filesystem path, `journalPath` so a refusal names the field that was
+  // malformed rather than reporting it as a vaguer ownership mismatch.
+  const root = decodeWireUri('Session root', parsed.value.sessionRoot)
+  if (!root.ok) return root
+  const journal = decodeWireUri(
+    'Session journal path',
+    parsed.value.journalPath,
+  )
+  if (!journal.ok) return journal
+  const paths = visualSessionPaths(root.value)
   // A descriptor authorises work on the session it lives in and no other: this
   // is the same invariant the runtime enforced when it published the file, so a
   // copied or planted descriptor cannot direct a stop at another directory.
+  // Both sides of each compare are now canonical by construction, so a match
+  // proves the descriptor names the exact file that was opened rather than
+  // merely failing to disprove it.
   if (
-    toWireAbsolutePath(paths.descriptor) !== targetWire ||
-    toWireAbsolutePath(paths.journal) !== parsed.value.journalPath
+    toWireFileUri(paths.descriptor) !== uri ||
+    toWireFileUri(paths.journal) !== parsed.value.journalPath
   ) {
     return refused([
       visualClientDiagnostic(
@@ -276,6 +328,25 @@ export const readVisualSessionDescriptor = async (
     ])
   }
   return parsed
+}
+
+/**
+ * The session directory a verified descriptor names.
+ *
+ * Every descriptor that reaches the commands below came through
+ * `readVisualSessionDescriptor`, which already proved `sessionRoot` decodes to
+ * one canonical local path. The only way this can fail is a caller that
+ * skipped that gate, which is a programming error rather than a protocol
+ * fault, so it throws where the surrounding refusals return.
+ */
+const sessionPathsOf = (descriptor: VisualSessionDescriptor) => {
+  const decoded = fromWireFileUri(descriptor.sessionRoot)
+  if (!decoded.ok) {
+    throw new Error(
+      `Session root "${descriptor.sessionRoot}" was never decoded: ${decoded.reason}`,
+    )
+  }
+  return visualSessionPaths(decoded.value)
 }
 
 /** One JSON document the agent hands to a command, read from the filesystem. */
@@ -481,7 +552,7 @@ export const sendVisualResponse = async (
 const localVisualStatus = async (
   descriptor: VisualSessionDescriptor,
 ): Promise<ParseResult<VisualStatus>> => {
-  const paths = visualSessionPaths(descriptor.sessionRoot)
+  const paths = sessionPathsOf(descriptor)
   let lastSequence = 0
   let transcriptBytes = 0
   try {
@@ -545,7 +616,7 @@ export const recoverVisualSessionClient = async (
     return {
       ok: true,
       value: await recoverVisualSession(
-        visualSessionPaths(descriptor.sessionRoot),
+        sessionPathsOf(descriptor),
         includeTranscript,
       ),
     }
@@ -585,7 +656,7 @@ export const stopVisualSessionClient = async (
   descriptor: VisualSessionDescriptor,
   includeTranscript = false,
 ): Promise<ParseResult<VisualHandoff | undefined>> => {
-  const paths = visualSessionPaths(descriptor.sessionRoot)
+  const paths = sessionPathsOf(descriptor)
   if (!(await exists(paths.root))) return { ok: true, value: undefined }
   const recovered = await recoverVisualSessionClient(
     descriptor,

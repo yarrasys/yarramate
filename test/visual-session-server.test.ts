@@ -20,6 +20,7 @@ import { WebSocket } from "ws";
 import { parse } from "yaml";
 import {
   VISUAL_LIMITS,
+  fromWireFileUri,
   parseVisualDiagnosticResult,
   parseVisualSessionDescriptor,
   type VisualDiagnostic,
@@ -112,16 +113,29 @@ const start = async (overrides: Partial<VisualServerOptions> = {}) => {
 };
 
 /**
+ * The wire publishes `file:` URIs, so a test that goes on to touch the
+ * filesystem decodes one exactly the way a client does — which also asserts
+ * that what the runtime published is decodable at all.
+ */
+const nativePath = (uri: string): string => {
+  const decoded = fromWireFileUri(uri);
+  if (!decoded.ok) {
+    throw new Error(`"${uri}" is not a canonical wire path: ${decoded.reason}`);
+  }
+  return decoded.value;
+};
+
+/**
  * Reads the private descriptor through the protocol parser, so a test that
  * depends on one of its fields also asserts the document is valid.
  */
-const readDescriptor = async (descriptorPath: string) => {
+const readDescriptor = async (descriptorUri: string) => {
   const parsed = parseVisualSessionDescriptor(
-    JSON.parse(await readFile(descriptorPath, "utf8")),
+    JSON.parse(await readFile(nativePath(descriptorUri), "utf8")),
   );
   if (!parsed.ok) {
     throw new Error(
-      `descriptor "${descriptorPath}" is invalid: ${parsed.diagnostics[0]?.message}`,
+      `descriptor "${descriptorUri}" is invalid: ${parsed.diagnostics[0]?.message}`,
     );
   }
   return parsed.value;
@@ -304,11 +318,13 @@ const chatResponse = (
  * next would hand one of those back as the event under test.
  */
 const waitForVisualEvent = async <Type extends VisualEvent["type"]>(
-  descriptorPath: string,
+  descriptorUri: string,
   after: number,
   type: Type,
 ): Promise<Extract<VisualEvent, { readonly type: Type }>> => {
-  const { journalPath } = await readDescriptor(descriptorPath);
+  const journalPath = nativePath(
+    (await readDescriptor(descriptorUri)).journalPath,
+  );
   // The callback watcher, not `fs/promises.watch`: the promise form is an async
   // generator that registers nothing until its first iteration, so it cannot be
   // armed ahead of the read the way this window needs. This one is watching
@@ -347,7 +363,7 @@ const waitForVisualEvent = async <Type extends VisualEvent["type"]>(
 };
 
 const journalOf = async (handle: VisualServerHandle) =>
-  (await readFile(join(handle.started.sessionRoot, "journal.jsonl"), "utf8"))
+  (await readFile(join(nativePath(handle.started.sessionRoot), "journal.jsonl"), "utf8"))
     .split("\n")
     .filter((line) => line.length > 0)
     .map((line) => JSON.parse(line) as VisualEvent | VisualResponse);
@@ -1716,11 +1732,11 @@ describe("startVisualServer lifecycle", () => {
   it("writes a private descriptor carrying only the agent capability", async () => {
     const server = await start();
     const descriptor: unknown = JSON.parse(
-      await readFile(server.started.descriptorPath, "utf8"),
+      await readFile(nativePath(server.started.descriptorPath), "utf8"),
     );
     expect(descriptor).toMatchObject({
-      format: "yarramate/visual-session-descriptor/v1",
-      protocolVersion: "yarramate/visual-protocol/v3",
+      format: "yarramate/visual-session-descriptor/v2",
+      protocolVersion: "yarramate/visual-protocol/v4",
       sessionId: server.started.sessionId,
       origin: server.started.origin,
       sessionRoot: server.started.sessionRoot,
@@ -1730,7 +1746,9 @@ describe("startVisualServer lifecycle", () => {
     ) as string;
     expect(JSON.stringify(descriptor)).not.toContain(token);
     if (process.platform !== "win32") {
-      expect((await stat(server.started.descriptorPath)).mode & 0o777).toBe(
+      expect(
+        (await stat(nativePath(server.started.descriptorPath))).mode & 0o777,
+      ).toBe(
         0o600,
       );
     }
@@ -1756,7 +1774,7 @@ describe("startVisualServer lifecycle", () => {
       capability,
       chatResponse(server, accepted.eventId, 1),
     );
-    const root = server.started.sessionRoot;
+    const root = nativePath(server.started.sessionRoot);
 
     const closed = await server.stop("user-ended");
     expect(closed).toMatchObject({
@@ -1764,7 +1782,7 @@ describe("startVisualServer lifecycle", () => {
       alreadyStopped: false,
     });
     expect(closed.handoff).toMatchObject({
-      format: "yarramate/visual-handoff/v1",
+      format: "yarramate/visual-handoff/v2",
       sessionId: server.started.sessionId,
       // The reviewer's own End was never journaled here, so the shutdown's
       // terminal event is the record past the chat it recovered.
@@ -1802,7 +1820,7 @@ describe("startVisualServer lifecycle", () => {
     await expect(response.json()).resolves.toMatchObject({
       reason: "user-ended",
       alreadyStopped: false,
-      handoff: { format: "yarramate/visual-handoff/v1" },
+      handoff: { format: "yarramate/visual-handoff/v2" },
     });
     await server.closed;
     await expect(
@@ -1940,7 +1958,10 @@ describe("startVisualServer lifecycle", () => {
   it("does not admit a browser whose connected event cannot be journaled", async () => {
     const server = await start();
     const { cookie } = await bootstrap(server);
-    await chmod(join(server.started.sessionRoot, "journal.jsonl"), 0o400);
+    await chmod(
+      join(nativePath(server.started.sessionRoot), "journal.jsonl"),
+      0o400,
+    );
 
     const socket = await openBrowserSocket(server, cookie);
     await once(socket, "close");
@@ -2034,7 +2055,9 @@ describe("startVisualServer shutdown and admission races", () => {
       alreadyStopped: true,
     });
     // Nothing may recreate the session directory after recovery deleted it.
-    await expect(stat(server.started.sessionRoot)).rejects.toThrow();
+    await expect(
+      stat(nativePath(server.started.sessionRoot)),
+    ).rejects.toThrow();
     expect(await rejections.settled()).toEqual([]);
   });
 
@@ -2099,7 +2122,9 @@ describe("startVisualServer shutdown and admission races", () => {
       .filter((record) => record.type === "chat.message")
       .map((record) => JSON.stringify(record.payload));
     expect(texts).toEqual([JSON.stringify({ text: "in time" })]);
-    await expect(stat(server.started.sessionRoot)).rejects.toThrow();
+    await expect(
+      stat(nativePath(server.started.sessionRoot)),
+    ).rejects.toThrow();
     expect(await rejections.settled()).toEqual([]);
   });
 });
@@ -2226,7 +2251,7 @@ describe("startVisualServer teardown retries", () => {
     "retries a teardown the first stop failed to finish",
     async () => {
       const server = await start();
-      const root = server.started.sessionRoot;
+      const root = nativePath(server.started.sessionRoot);
       // Readable and traversable, so the recovery the stop reads still
       // succeeds; not writable, so the removal that follows it cannot.
       await chmod(root, 0o500);
@@ -2244,7 +2269,7 @@ describe("startVisualServer teardown retries", () => {
         alreadyStopped: false,
       });
       expect(closed.handoff).toMatchObject({
-        format: "yarramate/visual-handoff/v1",
+        format: "yarramate/visual-handoff/v2",
         sessionId: server.started.sessionId,
       });
       await expect(stat(root)).rejects.toThrow();

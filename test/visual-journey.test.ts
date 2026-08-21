@@ -24,6 +24,7 @@ import {
 import {
   VISUAL_LIMITS,
   digestOf,
+  fromWireFileUri,
   type VisualBrowserInput,
   type VisualEvent,
   type VisualHandoff,
@@ -159,9 +160,23 @@ const completeHandoff = (event: VisualEvent, summary: VisualHandoffSummary) =>
 
 // -------------------------------------------------------------------- harness
 
+/**
+ * The wire publishes `file:` URIs, so a test that goes on to touch the
+ * filesystem decodes one the way a client does.
+ */
+const nativePath = (uri: string): string => {
+  const decoded = fromWireFileUri(uri)
+  if (!decoded.ok) {
+    throw new Error(`"${uri}" is not a canonical wire path: ${decoded.reason}`)
+  }
+  return decoded.value
+}
+
 interface VisualFixture {
   readonly handle: VisualServerHandle
+  /** The URI every client command takes, exactly as `start` published it. */
   readonly descriptorPath: string
+  /** Decoded, because the assertions here reach for the directory itself. */
   readonly sessionRoot: string
   readonly sessionId: string
   readonly origin: string
@@ -208,7 +223,7 @@ const startVisualFixture = async (
   return {
     handle,
     descriptorPath: handle.started.descriptorPath,
-    sessionRoot: handle.started.sessionRoot,
+    sessionRoot: nativePath(handle.started.sessionRoot),
     sessionId: handle.started.sessionId,
     origin: handle.started.origin,
     graceScheduled: armed.promise,
@@ -388,7 +403,9 @@ const waitForVisualEvent = async <Type extends VisualEvent['type']>(
   after: number,
   type: Type,
 ): Promise<Extract<VisualEvent, { readonly type: Type }>> => {
-  const { journalPath } = await descriptorAt(descriptorPath)
+  const journalPath = nativePath(
+    (await descriptorAt(descriptorPath)).journalPath,
+  )
   // The callback watcher, not `fs/promises.watch`: the promise form is an async
   // generator that registers nothing until its first iteration, so it cannot be
   // armed ahead of the read. This one is watching from the moment it is

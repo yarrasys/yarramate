@@ -28,7 +28,8 @@ import {
   parseVisualHandoff,
   parseVisualSessionStarted,
   parseVisualStatus,
-  toWireAbsolutePath,
+  fromWireFileUri,
+  toWireFileUri,
   type VisualBrowserInput,
   type VisualEvent,
   type VisualHandoff,
@@ -152,8 +153,22 @@ const refusalCodes = (result: CliResult): readonly string[] => {
   return parsed.value.diagnostics.map((diagnostic) => diagnostic.code)
 }
 
-const readDescriptorFile = async (path: string) =>
-  JSON.parse(await readFile(path, 'utf8')) as VisualSessionDescriptor
+/**
+ * The wire publishes `file:` URIs, so a test that goes on to touch the
+ * filesystem decodes one the way a client does.
+ */
+const nativePath = (uri: string): string => {
+  const decoded = fromWireFileUri(uri)
+  if (!decoded.ok) {
+    throw new Error(`"${uri}" is not a canonical wire path: ${decoded.reason}`)
+  }
+  return decoded.value
+}
+
+const readDescriptorFile = async (uri: string) =>
+  JSON.parse(
+    await readFile(nativePath(uri), 'utf8'),
+  ) as VisualSessionDescriptor
 
 // ------------------------------------------------------- live browser traffic
 
@@ -299,18 +314,27 @@ const plantSession = async (
     { mode: 0o600 },
   )
   const descriptor: VisualSessionDescriptor = {
-    format: 'yarramate/visual-session-descriptor/v1',
+    format: 'yarramate/visual-session-descriptor/v2',
     protocolVersion: VISUAL_PROTOCOL_VERSION,
     sessionId: id,
     origin: `http://127.0.0.1:${options.port ?? CLOSED_PORT}`,
     agentCapability: 'a'.repeat(64),
-    sessionRoot: toWireAbsolutePath(root),
-    journalPath: toWireAbsolutePath(join(root, 'journal.jsonl')),
+    sessionRoot: toWireFileUri(root),
+    journalPath: toWireFileUri(join(root, 'journal.jsonl')),
     createdAt,
   }
   const descriptorPath = join(root, 'descriptor.json')
   await writeJson(descriptorPath, descriptor)
-  return { id, root, descriptor, descriptorPath, records }
+  return {
+    id,
+    root,
+    descriptor,
+    // Native, for the tests that plant, break, or remove the file itself.
+    descriptorPath,
+    // What `start` would have published, and what every command now takes.
+    descriptorUri: toWireFileUri(descriptorPath),
+    records,
+  }
 }
 
 // --------------------------------------------------------- foreground `start`
@@ -426,41 +450,41 @@ describe('runVisualClientCli usage', () => {
   })
 
   it('prints usage for an unknown flag', async () => {
-    const { descriptorPath } = await plantSession()
+    const { descriptorUri } = await plantSession()
     for (const rest of [['--since', '1'], ['--transcript']]) {
       await expect(
-        runVisualClientCli(['wait', descriptorPath, ...rest], workDir),
+        runVisualClientCli(['wait', descriptorUri, ...rest], workDir),
       ).resolves.toMatchObject({ exitCode: 2, stderr: visualUsage })
     }
   })
 
   it('prints usage for an --after that is not a sequence', async () => {
-    const { descriptorPath } = await plantSession()
+    const { descriptorUri } = await plantSession()
     for (const value of ['-1', 'first', '1.5', '', '0x2', ' 1']) {
       await expect(
-        runVisualClientCli(['wait', descriptorPath, '--after', value], workDir),
+        runVisualClientCli(['wait', descriptorUri, '--after', value], workDir),
       ).resolves.toMatchObject({ exitCode: 2, stderr: visualUsage })
     }
     await expect(
-      runVisualClientCli(['wait', descriptorPath, '--after'], workDir),
+      runVisualClientCli(['wait', descriptorUri, '--after'], workDir),
     ).resolves.toMatchObject({ exitCode: 2, stderr: visualUsage })
   })
 
   it('prints usage when respond has no response document', async () => {
-    const { descriptorPath } = await plantSession()
+    const { descriptorUri } = await plantSession()
     await expect(
-      runVisualClientCli(['respond', descriptorPath], workDir),
+      runVisualClientCli(['respond', descriptorUri], workDir),
     ).resolves.toMatchObject({ exitCode: 2, stderr: visualUsage })
   })
 
   it('prints usage for a trailing argument', async () => {
-    const { descriptorPath } = await plantSession()
+    const { descriptorUri } = await plantSession()
     const rejected: readonly (readonly string[])[] = [
-      ['status', descriptorPath, '--transcript'],
-      ['recover', descriptorPath, '--transcript', '--transcript'],
-      ['stop', descriptorPath, 'now'],
-      ['respond', descriptorPath, 'response.json', 'extra.json'],
-      ['wait', descriptorPath, '--after', '1', '--transcript'],
+      ['status', descriptorUri, '--transcript'],
+      ['recover', descriptorUri, '--transcript', '--transcript'],
+      ['stop', descriptorUri, 'now'],
+      ['respond', descriptorUri, 'response.json', 'extra.json'],
+      ['wait', descriptorUri, '--after', '1', '--transcript'],
     ]
     for (const args of rejected) {
       await expect(runVisualClientCli(args, workDir)).resolves.toMatchObject({
@@ -482,7 +506,7 @@ describe('runVisualClientCli usage', () => {
 describe('descriptor confinement', () => {
   it('refuses a descriptor that is not there', async () => {
     const result = await runVisualClientCli(
-      ['status', join(workDir, 'missing.json')],
+      ['status', toWireFileUri(join(workDir, 'missing.json'))],
       workDir,
     )
     expect(result).toMatchObject({ exitCode: 1, stdout: '' })
@@ -490,10 +514,13 @@ describe('descriptor confinement', () => {
   })
 
   it('refuses a descriptor that is a symlink', async () => {
-    const { descriptorPath } = await plantSession()
+    const { descriptorPath, descriptorUri } = await plantSession()
     const link = join(workDir, 'linked.json')
     await symlink(descriptorPath, link)
-    const result = await runVisualClientCli(['status', link], workDir)
+    const result = await runVisualClientCli(
+      ['status', toWireFileUri(link)],
+      workDir,
+    )
     expect(result.exitCode).toBe(1)
     expect(refusalCodes(result)).toEqual(['YMVS401'])
   })
@@ -511,7 +538,7 @@ describe('descriptor confinement', () => {
 
       const result = spawnSync(
         process.execPath,
-        ['dist/adapters/visual-cli.js', 'status', fifo],
+        ['dist/adapters/visual-cli.js', 'status', toWireFileUri(fifo)],
         {
           cwd: repositoryRoot,
           encoding: 'utf8',
@@ -534,7 +561,10 @@ describe('descriptor confinement', () => {
   it('refuses a descriptor that is not JSON', async () => {
     const path = join(workDir, 'descriptor.json')
     await writeFile(path, '{"format":')
-    const result = await runVisualClientCli(['status', path], workDir)
+    const result = await runVisualClientCli(
+      ['status', toWireFileUri(path)],
+      workDir,
+    )
     expect(result.exitCode).toBe(1)
     expect(refusalCodes(result)).toEqual(['YMVS402'])
   })
@@ -542,7 +572,10 @@ describe('descriptor confinement', () => {
   it('refuses a document that is not a session descriptor', async () => {
     const path = join(workDir, 'descriptor.json')
     await writeJson(path, { format: 'yarramate/visual-status/v1' })
-    const result = await runVisualClientCli(['status', path], workDir)
+    const result = await runVisualClientCli(
+      ['status', toWireFileUri(path)],
+      workDir,
+    )
     expect(result.exitCode).toBe(1)
     expect(refusalCodes(result)).toContain('YMVS103')
   })
@@ -551,7 +584,10 @@ describe('descriptor confinement', () => {
     const { descriptor, root } = await plantSession()
     const path = join(root, 'descriptor.json')
     await writeJson(path, { ...descriptor, origin: 'http://model.example.com' })
-    const result = await runVisualClientCli(['status', path], workDir)
+    const result = await runVisualClientCli(
+      ['status', toWireFileUri(path)],
+      workDir,
+    )
     expect(result.exitCode).toBe(1)
     expect(refusalCodes(result)).toContain('YMVS103')
   })
@@ -560,11 +596,14 @@ describe('descriptor confinement', () => {
     const { descriptor } = await plantSession()
     const copied = join(workDir, 'descriptor.json')
     await writeJson(copied, descriptor)
-    const result = await runVisualClientCli(['stop', copied], workDir)
+    const result = await runVisualClientCli(
+      ['stop', toWireFileUri(copied)],
+      workDir,
+    )
     expect(result.exitCode).toBe(1)
     expect(refusalCodes(result)).toEqual(['YMVS403'])
     // The session a redirected descriptor would have deleted is still there.
-    expect(existsSync(descriptor.sessionRoot)).toBe(true)
+    expect(existsSync(nativePath(descriptor.sessionRoot))).toBe(true)
   })
 
   it('refuses a descriptor whose journal is not the session journal', async () => {
@@ -572,20 +611,41 @@ describe('descriptor confinement', () => {
     const path = join(root, 'descriptor.json')
     await writeJson(path, {
       ...descriptor,
-      journalPath: toWireAbsolutePath(join(root, 'candidates', 'journal.jsonl')),
+      journalPath: toWireFileUri(join(root, 'candidates', 'journal.jsonl')),
     })
-    const result = await runVisualClientCli(['recover', path], workDir)
+    const result = await runVisualClientCli(
+      ['recover', toWireFileUri(path)],
+      workDir,
+    )
     expect(result.exitCode).toBe(1)
     expect(refusalCodes(result)).toEqual(['YMVS403'])
   })
 
-  it('resolves a descriptor path against the working directory', async () => {
-    const { descriptor, root } = await plantSession()
-    const result = await runVisualClientCli(['recover', 'descriptor.json'], root)
-    expect(result.exitCode).toBe(0)
-    expect(JSON.parse(result.stdout)).toMatchObject({
-      sessionId: descriptor.sessionId,
-    })
+  it.each([
+    ['a working-directory-relative path', 'descriptor.json'],
+    ['an absolute native path', null],
+  ])('refuses %s as a descriptor argument', async (_label, relative) => {
+    // The v4 argument is the URI `start` published, copied back verbatim.
+    // Nothing is resolved against `cwd`, so the ambiguous path string this
+    // representation retires cannot re-enter through the one remaining
+    // hand-passed argument. This is the intended breaking change.
+    const { descriptorPath, root } = await plantSession()
+    const result = await runVisualClientCli(
+      ['recover', relative ?? descriptorPath],
+      root,
+    )
+    expect(result.exitCode).toBe(1)
+    expect(refusalCodes(result)).toEqual(['YMVS414'])
+  })
+
+  it.each([
+    ['a nonlocal location', 'file://server/share/descriptor.json'],
+    ['a noncanonical encoding', 'file:///tmp/yarra%2Dmate/descriptor.json'],
+    ['a non-file scheme', 'http://127.0.0.1:51234/descriptor.json'],
+  ])('refuses %s before it opens anything', async (_label, argument) => {
+    const result = await runVisualClientCli(['status', argument], workDir)
+    expect(result.exitCode).toBe(1)
+    expect(refusalCodes(result)).toEqual(['YMVS414'])
   })
 })
 
@@ -654,7 +714,7 @@ describe('wait', () => {
   it('reports a server that refuses the descriptor capability', async () => {
     const handle = await startServer()
     const descriptor = await readDescriptorFile(handle.started.descriptorPath)
-    await writeJson(handle.started.descriptorPath, {
+    await writeJson(nativePath(handle.started.descriptorPath), {
       ...descriptor,
       agentCapability: 'b'.repeat(64),
     })
@@ -667,8 +727,8 @@ describe('wait', () => {
   })
 
   it('reports a session server that is not listening', async () => {
-    const { descriptorPath } = await plantSession()
-    const result = await runVisualClientCli(['wait', descriptorPath], workDir)
+    const { descriptorUri } = await plantSession()
+    const result = await runVisualClientCli(['wait', descriptorUri], workDir)
     expect(result.exitCode).toBe(1)
     expect(refusalCodes(result)).toEqual(['YMVS404'])
   })
@@ -705,7 +765,7 @@ describe('respond', () => {
       lastSequence: 2,
     })
     expect(
-      await readFile(join(handle.started.sessionRoot, 'journal.jsonl'), 'utf8'),
+      await readFile(join(nativePath(handle.started.sessionRoot), 'journal.jsonl'), 'utf8'),
     ).toContain('"type":"chat.response"')
   })
 
@@ -764,7 +824,7 @@ describe('respond', () => {
     expect(result.exitCode).toBe(1)
     expect(refusalCodes(result)).toContain('YMVS105')
     expect(
-      await readFile(join(handle.started.sessionRoot, 'journal.jsonl'), 'utf8'),
+      await readFile(join(nativePath(handle.started.sessionRoot), 'journal.jsonl'), 'utf8'),
     ).not.toContain('"type":"chat.response"')
   })
 
@@ -804,14 +864,14 @@ describe('respond', () => {
   })
 
   it('reports a session server that is not listening', async () => {
-    const { descriptor, descriptorPath } = await plantSession()
+    const { descriptor, descriptorUri } = await plantSession()
     const responsePath = join(workDir, 'response.json')
     await writeJson(
       responsePath,
       responseFor(descriptor.sessionId, identifier(1)),
     )
     const result = await runVisualClientCli(
-      ['respond', descriptorPath, responsePath],
+      ['respond', descriptorUri, responsePath],
       workDir,
     )
     expect(result.exitCode).toBe(1)
@@ -841,8 +901,8 @@ describe('status', () => {
   })
 
   it('falls back to a stopped status when the server is gone', async () => {
-    const { descriptorPath, id } = await plantSession()
-    const result = await runVisualClientCli(['status', descriptorPath], workDir)
+    const { descriptorUri, id } = await plantSession()
+    const result = await runVisualClientCli(['status', descriptorUri], workDir)
     expect(result).toMatchObject({ exitCode: 0, stderr: '' })
     const status: unknown = JSON.parse(result.stdout)
     expect(parseVisualStatus(status).ok).toBe(true)
@@ -860,13 +920,14 @@ describe('status', () => {
   })
 
   it('reports a stopped status for a session that is already gone', async () => {
-    const { descriptor, descriptorPath, root } = await plantSession()
+    const { descriptor, descriptorPath, descriptorUri, root } =
+      await plantSession()
     await rm(root, { recursive: true, force: true })
     // Only the descriptor is restored, so confinement still holds while every
     // other session document has gone with the runtime that owned it.
     await mkdir(root, { recursive: true, mode: 0o700 })
     await writeJson(descriptorPath, descriptor)
-    const result = await runVisualClientCli(['status', descriptorPath], workDir)
+    const result = await runVisualClientCli(['status', descriptorUri], workDir)
     expect(result.exitCode).toBe(0)
     expect(JSON.parse(result.stdout)).toMatchObject({
       lifecycle: 'stopped',
@@ -878,13 +939,13 @@ describe('status', () => {
 
 describe('recover', () => {
   it('recovers the journaled handoff while the server is gone', async () => {
-    const { descriptorPath, id, root } = await plantSession()
-    const result = await runVisualClientCli(['recover', descriptorPath], workDir)
+    const { descriptorUri, id, root } = await plantSession()
+    const result = await runVisualClientCli(['recover', descriptorUri], workDir)
     expect(result).toMatchObject({ exitCode: 0, stderr: '' })
     const handoff = JSON.parse(result.stdout) as VisualHandoff
     expect(parseVisualHandoff(handoff).ok).toBe(true)
     expect(handoff).toMatchObject({
-      format: 'yarramate/visual-handoff/v1',
+      format: 'yarramate/visual-handoff/v2',
       sessionId: id,
       authority: 'canonical',
       decision: 'completed',
@@ -893,7 +954,7 @@ describe('recover', () => {
       summary: 'Design A isolates delivery.',
       confirmedDecisions: ['Isolate delivery'],
       finalViews: ['choices'],
-      transcriptPath: toWireAbsolutePath(join(root, 'journal.jsonl')),
+      transcriptPath: toWireFileUri(join(root, 'journal.jsonl')),
     })
     expect('transcript' in handoff).toBe(false)
     // Recovery is a read: the session survives it.
@@ -901,9 +962,9 @@ describe('recover', () => {
   })
 
   it('includes the raw transcript when asked', async () => {
-    const { descriptorPath } = await plantSession()
+    const { descriptorUri } = await plantSession()
     const result = await runVisualClientCli(
-      ['recover', descriptorPath, '--transcript'],
+      ['recover', descriptorUri, '--transcript'],
       workDir,
     )
     expect(result.exitCode).toBe(0)
@@ -916,15 +977,15 @@ describe('recover', () => {
   })
 
   it('refuses a journal that is not a valid transcript', async () => {
-    const { descriptorPath, root } = await plantSession()
+    const { descriptorUri, root } = await plantSession()
     await writeFile(join(root, 'journal.jsonl'), '{"format":"nonsense"}\n')
-    const result = await runVisualClientCli(['recover', descriptorPath], workDir)
+    const result = await runVisualClientCli(['recover', descriptorUri], workDir)
     expect(result.exitCode).toBe(1)
     expect(refusalCodes(result)).toEqual(['YMVS123'])
   })
 
   it('refuses a directory whose marker names another session', async () => {
-    const { descriptorPath, root } = await plantSession({
+    const { descriptorUri, root } = await plantSession({
       marker: {
         format: 'yarramate/visual-session-marker/v1',
         id: identifier(0xfeed),
@@ -932,7 +993,7 @@ describe('recover', () => {
         authority: 'canonical',
       },
     })
-    const result = await runVisualClientCli(['recover', descriptorPath], workDir)
+    const result = await runVisualClientCli(['recover', descriptorUri], workDir)
     expect(result.exitCode).toBe(1)
     expect(refusalCodes(result)).toEqual(['YMVS125'])
     expect(existsSync(root)).toBe(true)
@@ -949,7 +1010,7 @@ describe('stop', () => {
     )
     expect(result).toMatchObject({ exitCode: 0, stderr: '' })
     expect(JSON.parse(result.stdout)).toMatchObject({
-      format: 'yarramate/visual-handoff/v1',
+      format: 'yarramate/visual-handoff/v2',
       sessionId: handle.started.sessionId,
       // The runtime's own terminal event, past the arrival and the chat
       // message, and the cause this stop closed the session under.
@@ -958,7 +1019,7 @@ describe('stop', () => {
     })
     // Recovered before cleanup: the summary above came out of a journal the
     // same command then deleted.
-    expect(existsSync(handle.started.sessionRoot)).toBe(false)
+    expect(existsSync(nativePath(handle.started.sessionRoot))).toBe(false)
     await expect(handle.closed).resolves.toMatchObject({
       reason: 'main-cancelled',
       alreadyStopped: false,
@@ -970,8 +1031,8 @@ describe('stop', () => {
   })
 
   it('converges when the server is already absent', async () => {
-    const { descriptorPath, root, id } = await plantSession()
-    const result = await runVisualClientCli(['stop', descriptorPath], workDir)
+    const { descriptorUri, root, id } = await plantSession()
+    const result = await runVisualClientCli(['stop', descriptorUri], workDir)
     expect(result).toMatchObject({ exitCode: 0, stderr: '' })
     expect(JSON.parse(result.stdout)).toMatchObject({
       sessionId: id,
@@ -982,9 +1043,9 @@ describe('stop', () => {
   })
 
   it('includes the raw transcript when asked', async () => {
-    const { descriptorPath } = await plantSession()
+    const { descriptorUri } = await plantSession()
     const result = await runVisualClientCli(
-      ['stop', descriptorPath, '--transcript'],
+      ['stop', descriptorUri, '--transcript'],
       workDir,
     )
     expect(result.exitCode).toBe(0)
@@ -1007,27 +1068,27 @@ describe('stop', () => {
   })
 
   it('reports the already-stopped state when the stop is repeated', async () => {
-    const { descriptorPath, root } = await plantSession()
+    const { descriptorUri, root } = await plantSession()
     expect(
-      (await runVisualClientCli(['stop', descriptorPath], workDir)).exitCode,
+      (await runVisualClientCli(['stop', descriptorUri], workDir)).exitCode,
     ).toBe(0)
     expect(existsSync(root)).toBe(false)
 
     // The first stop took the descriptor and the session root together, which
     // is the one shape of unreadable descriptor that means "already stopped".
     await expect(
-      runVisualClientCli(['stop', descriptorPath], workDir),
+      runVisualClientCli(['stop', descriptorUri], workDir),
     ).resolves.toEqual({ exitCode: 0, stdout: '', stderr: '' })
     await expect(
-      runVisualClientCli(['stop', descriptorPath, '--transcript'], workDir),
+      runVisualClientCli(['stop', descriptorUri, '--transcript'], workDir),
     ).resolves.toEqual({ exitCode: 0, stdout: '', stderr: '' })
   })
 
   it('keeps a descriptor missing from a live session root fail-closed', async () => {
-    const { descriptorPath, root } = await plantSession()
+    const { descriptorPath, descriptorUri, root } = await plantSession()
     await rm(descriptorPath)
 
-    const orphaned = await runVisualClientCli(['stop', descriptorPath], workDir)
+    const orphaned = await runVisualClientCli(['stop', descriptorUri], workDir)
 
     expect(orphaned.exitCode).toBe(1)
     expect(refusalCodes(orphaned)).toEqual(['YMVS401'])
@@ -1036,10 +1097,10 @@ describe('stop', () => {
   })
 
   it('refuses an unreadable descriptor rather than calling it stopped', async () => {
-    const { descriptorPath } = await plantSession()
+    const { descriptorPath, descriptorUri } = await plantSession()
     await writeFile(descriptorPath, '{"format":')
 
-    const corrupt = await runVisualClientCli(['stop', descriptorPath], workDir)
+    const corrupt = await runVisualClientCli(['stop', descriptorUri], workDir)
 
     expect(corrupt.exitCode).toBe(1)
     expect(refusalCodes(corrupt)).toEqual(['YMVS402'])
@@ -1047,7 +1108,7 @@ describe('stop', () => {
     // A path that never was a session directory is not a stop either: only
     // commands aimed at a vanished session root report the benign state.
     const stray = await runVisualClientCli(
-      ['stop', join(workDir, 'stray.json')],
+      ['stop', toWireFileUri(join(workDir, 'stray.json'))],
       workDir,
     )
     expect(stray.exitCode).toBe(1)
@@ -1056,14 +1117,17 @@ describe('stop', () => {
 
   it('does not call an arbitrary missing parent an already-stopped session', async () => {
     const missing = join(workDir, 'missing', 'parent', 'descriptor.json')
-    const result = await runVisualClientCli(['stop', missing], workDir)
+    const result = await runVisualClientCli(
+      ['stop', toWireFileUri(missing)],
+      workDir,
+    )
 
     expect(result.exitCode).toBe(1)
     expect(refusalCodes(result)).toEqual(['YMVS401'])
   })
 
   it('never deletes a directory whose marker names another session', async () => {
-    const { descriptorPath, root } = await plantSession({
+    const { descriptorUri, root } = await plantSession({
       marker: {
         format: 'yarramate/visual-session-marker/v1',
         id: identifier(0xfeed),
@@ -1071,7 +1135,7 @@ describe('stop', () => {
         authority: 'canonical',
       },
     })
-    const result = await runVisualClientCli(['stop', descriptorPath], workDir)
+    const result = await runVisualClientCli(['stop', descriptorUri], workDir)
     expect(result.exitCode).toBe(1)
     expect(refusalCodes(result)).toEqual(['YMVS125'])
     expect(existsSync(root)).toBe(true)
@@ -1080,7 +1144,7 @@ describe('stop', () => {
   it('never deletes a session the server refused to hand over', async () => {
     const handle = await startServer()
     const descriptor = await readDescriptorFile(handle.started.descriptorPath)
-    await writeJson(handle.started.descriptorPath, {
+    await writeJson(nativePath(handle.started.descriptorPath), {
       ...descriptor,
       agentCapability: 'b'.repeat(64),
     })
@@ -1090,7 +1154,7 @@ describe('stop', () => {
     )
     expect(result.exitCode).toBe(1)
     expect(refusalCodes(result)).toEqual(['YMVS405'])
-    expect(existsSync(handle.started.sessionRoot)).toBe(true)
+    expect(existsSync(nativePath(handle.started.sessionRoot))).toBe(true)
     expect(handle.status().lifecycle).toBe('running')
   })
 })
@@ -1109,7 +1173,7 @@ describe('runVisualStart', () => {
     expect(foreground.stdout).toEqual([line(started)])
     expect(foreground.stderr).toEqual([])
     expect(started).toMatchObject({
-      format: 'yarramate/visual-session-started/v1',
+      format: 'yarramate/visual-session-started/v2',
       protocolVersion: VISUAL_PROTOCOL_VERSION,
       authority: 'canonical',
       title: 'Choose a delivery design',
@@ -1117,7 +1181,7 @@ describe('runVisualStart', () => {
       capabilities: { chat: true, transcript: true },
     })
     expect(started.sessionRoot).toBe(
-      toWireAbsolutePath(join(workDir, VISUAL_SESSION_DIRECTORY, started.sessionId)),
+      toWireFileUri(join(workDir, VISUAL_SESSION_DIRECTORY, started.sessionId)),
     )
 
     foreground.signals.emit('SIGTERM')
@@ -1148,7 +1212,7 @@ describe('runVisualStart', () => {
 
     foreground.signals.emit('SIGTERM')
     await expect(foreground.result).resolves.toMatchObject({ exitCode: 0 })
-    expect(existsSync(started.sessionRoot)).toBe(false)
+    expect(existsSync(nativePath(started.sessionRoot))).toBe(false)
     await expect(fetch(`${started.origin}/api/session`)).rejects.toThrow()
   })
 
@@ -1158,7 +1222,7 @@ describe('runVisualStart', () => {
 
     foreground.signals.emit('SIGINT')
     await expect(foreground.result).resolves.toMatchObject({ exitCode: 0 })
-    expect(existsSync(started.sessionRoot)).toBe(false)
+    expect(existsSync(nativePath(started.sessionRoot))).toBe(false)
   })
 
   it('removes its signal handlers once it returns', async () => {
@@ -1185,7 +1249,7 @@ describe('runVisualStart', () => {
       stdout: '',
       stderr: '',
     })
-    expect(existsSync(started.sessionRoot)).toBe(false)
+    expect(existsSync(nativePath(started.sessionRoot))).toBe(false)
   })
 
   /**
@@ -1210,7 +1274,7 @@ describe('runVisualStart', () => {
     async () => {
       const foreground = startForeground(await writeRequest(), workDir)
       const started = await foreground.started
-      const journal = join(started.sessionRoot, 'journal.jsonl')
+      const journal = join(nativePath(started.sessionRoot), 'journal.jsonl')
       const rejections: unknown[] = []
       const observe = (reason: unknown) => rejections.push(reason)
       // One turn of the loop, which is also one turn of the teardown's own
@@ -1225,7 +1289,7 @@ describe('runVisualStart', () => {
       try {
         // Readable and traversable, so the recovery a stop reads still
         // succeeds; not writable, so the removal that follows it cannot.
-        await chmod(started.sessionRoot, 0o500)
+        await chmod(nativePath(started.sessionRoot), 0o500)
         foreground.signals.emit('SIGTERM')
 
         // The terminal event is the last thing journaled before the removal
@@ -1251,13 +1315,13 @@ describe('runVisualStart', () => {
         // The teardown failed: the command is still blocked, its session is
         // still on disk, and the runtime was told about none of it.
         expect(blocked).toBeUndefined()
-        expect(existsSync(started.sessionRoot)).toBe(true)
+        expect(existsSync(nativePath(started.sessionRoot))).toBe(true)
         expect(rejections).toEqual([])
 
         // A stop that failed stopped nothing: a later signal runs the teardown
         // again. One that lands on an attempt still in flight is absorbed by
         // it, so the command is signalled every turn until it returns.
-        await chmod(started.sessionRoot, 0o700)
+        await chmod(nativePath(started.sessionRoot), 0o700)
         let closed = await turn()
         for (
           let spin = 0;
@@ -1269,14 +1333,14 @@ describe('runVisualStart', () => {
         }
 
         expect(closed).toMatchObject({ exitCode: 0 })
-        expect(existsSync(started.sessionRoot)).toBe(false)
+        expect(existsSync(nativePath(started.sessionRoot))).toBe(false)
         expect(rejections).toEqual([])
       } finally {
         process.off('unhandledRejection', observe)
         // Whatever failed, the temporary directory cannot be collected while
         // one of its sessions refuses to be unlinked from.
-        if (existsSync(started.sessionRoot)) {
-          await chmod(started.sessionRoot, 0o700)
+        if (existsSync(nativePath(started.sessionRoot))) {
+          await chmod(nativePath(started.sessionRoot), 0o700)
         }
       }
     },
@@ -1336,13 +1400,13 @@ describe('runVisualStart', () => {
       // The runtime recovered the handoff before it deleted the session.
       expect(await stopped.json()).toMatchObject({
         reason,
-        handoff: { format: 'yarramate/visual-handoff/v1' },
+        handoff: { format: 'yarramate/visual-handoff/v2' },
       })
 
       const result = await foreground.result
       expect(result).toMatchObject({ exitCode: 1, stdout: '' })
       expect(refusalCodes(result)).toEqual(['YMVS409'])
-      expect(existsSync(started.sessionRoot)).toBe(false)
+      expect(existsSync(nativePath(started.sessionRoot))).toBe(false)
       expect(foreground.signals.listenerCount('SIGTERM')).toBe(0)
     },
   )
@@ -1421,7 +1485,7 @@ describe('runVisualStart', () => {
     const foreground = startForeground(await writeRequest(), workDir)
     const started = await foreground.started
     expect(existsSync(root)).toBe(false)
-    expect(existsSync(started.sessionRoot)).toBe(true)
+    expect(existsSync(nativePath(started.sessionRoot))).toBe(true)
 
     foreground.signals.emit('SIGTERM')
     await expect(foreground.result).resolves.toMatchObject({ exitCode: 0 })
@@ -1433,8 +1497,8 @@ describe('runVisualStart', () => {
       stdout: `yarramate-visual ${packageVersion}\n`,
       stderr: '',
     })
-    const { descriptorPath, id } = await plantSession()
-    const dispatched = await runVisualCli(['recover', descriptorPath], workDir)
+    const { descriptorUri, id } = await plantSession()
+    const dispatched = await runVisualCli(['recover', descriptorUri], workDir)
     expect(dispatched).toMatchObject({ exitCode: 0, stderr: '' })
     expect(JSON.parse(dispatched.stdout)).toMatchObject({ sessionId: id })
   })

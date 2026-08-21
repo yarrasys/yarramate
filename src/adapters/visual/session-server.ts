@@ -26,7 +26,7 @@ import {
   parseVisualResponse,
   parseVisualSessionStarted,
   parseVisualStatus,
-  toWireAbsolutePath,
+  toWireFileUri,
   visualBrowserInputType,
   type VisualAuthority,
   type VisualBrowserInput,
@@ -2211,17 +2211,17 @@ export const startVisualServer = async (
   let started: VisualSessionStarted;
   try {
     await writeVisualSessionDescriptor(paths, {
-      format: "yarramate/visual-session-descriptor/v1",
+      format: "yarramate/visual-session-descriptor/v2",
       protocolVersion: VISUAL_PROTOCOL_VERSION,
       sessionId,
       origin,
       agentCapability: session.agentToken,
-      sessionRoot: toWireAbsolutePath(paths.root),
-      journalPath: toWireAbsolutePath(paths.journal),
+      sessionRoot: toWireFileUri(paths.root),
+      journalPath: toWireFileUri(paths.journal),
       createdAt: stamp(),
     });
     started = {
-      format: "yarramate/visual-session-started/v1",
+      format: "yarramate/visual-session-started/v2",
       protocolVersion: VISUAL_PROTOCOL_VERSION,
       sessionId,
       authority: request.authority,
@@ -2230,8 +2230,8 @@ export const startVisualServer = async (
       browserUrl: `${origin}/bootstrap?key=${session.browserToken}`,
       webSocketUrl,
       origin,
-      descriptorPath: toWireAbsolutePath(paths.descriptor),
-      sessionRoot: toWireAbsolutePath(paths.root),
+      descriptorPath: toWireFileUri(paths.descriptor),
+      sessionRoot: toWireFileUri(paths.root),
       capabilities,
       startedAt: stamp(),
     };

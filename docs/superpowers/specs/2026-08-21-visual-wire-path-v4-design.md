@@ -1,8 +1,14 @@
 # Visual wire paths as canonical `file:` URIs (protocol v4)
 
 **Date:** 2026-08-21
-**Status:** Approved design — not yet implemented. This document specifies
-the change; no source, schema, or test file is touched by it.
+**Status:** Implemented. This document specified the change; it is recorded as
+[ADR 0096](../../adr/0096-visual-session-paths-are-published-as-canonical-file-uris.md)
+and landed on this branch. Two details resolved differently in implementation
+and are noted where they occur: a `localhost` file host lands in the
+`noncanonical` refusal rather than `nonlocal` (WHATWG `URL` normalizes that
+host away before the host check can see it), and an over-encoded path
+separator lands in `malformed` because `fileURLToPath` refuses it itself. Both
+are still refused; only the reported reason differs from the sketch below.
 
 Supersedes the intent of commit `7663f0a` ("keep VisualSessionPaths native,
 wire-normalize only at the boundary") on this branch. That commit is a

@@ -19,7 +19,7 @@ import {
   parseVisualResponse,
   parseVisualSessionDescriptor,
   parseVisualSessionRequest,
-  toWireAbsolutePath,
+  toWireFileUri,
   type VisualAuthority,
   type VisualDiagnostic,
   type VisualEvent,
@@ -256,8 +256,8 @@ const writePrivateJson = async (path: string, value: unknown) => {
  * maps keyed by `paths.journal`, and directory cleanup all need — because
  * this is consumed as a filesystem path far more often than it is ever
  * serialized. The few sites that write one of these fields into a
- * schema-checked wire document normalize it there, with `toWireAbsolutePath`,
- * rather than here.
+ * schema-checked wire document encode it there, with `toWireFileUri`, rather
+ * than here.
  */
 export const visualSessionPaths = (root: string): VisualSessionPaths => {
   const base = resolve(root)
@@ -514,8 +514,8 @@ export const writeVisualSessionDescriptor = async (
     )
   }
   if (
-    validated.value.sessionRoot !== toWireAbsolutePath(paths.root) ||
-    validated.value.journalPath !== toWireAbsolutePath(paths.journal)
+    validated.value.sessionRoot !== toWireFileUri(paths.root) ||
+    validated.value.journalPath !== toWireFileUri(paths.journal)
   ) {
     throw storeError(
       'YMVS125',
@@ -808,7 +808,7 @@ export const recoverVisualSession = async (
 
   const last = journal.records.at(-1)
   const handoff: VisualHandoff = {
-    format: 'yarramate/visual-handoff/v1',
+    format: 'yarramate/visual-handoff/v2',
     sessionId: marker.id,
     authority: marker.authority,
     decision,
@@ -821,7 +821,7 @@ export const recoverVisualSession = async (
     requestedChanges: summary?.requestedChanges ?? [],
     unresolvedQuestions: summary?.unresolvedQuestions ?? [],
     finalViews: summary?.finalViews ?? visited.slice(-256),
-    transcriptPath: toWireAbsolutePath(paths.journal),
+    transcriptPath: toWireFileUri(paths.journal),
     completedAt: last?.timestamp ?? marker.createdAt,
     // Present and undefined rather than absent, so a caller cannot mistake the
     // summary-only handoff for one whose transcript it forgot to read.

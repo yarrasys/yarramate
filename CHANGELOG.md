@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+- **Breaking.** Visual session paths are published as canonical local `file:`
+  URIs rather than bare path strings (ADR 0096). `sessionRoot`,
+  `descriptorPath`, `journalPath`, and `transcriptPath` are encoded with
+  `pathToFileURL` and decoded with `fileURLToPath`, refusing anything
+  malformed, nonlocal, or noncanonical as `YMVS414` before a descriptor's
+  bearer capabilities are read. This closes two defects the old
+  backslash-to-slash transform could not: two distinct native paths could
+  produce one indistinguishable wire string, and a UNC path passed as an
+  ordinary local one. `yarramate/visual-protocol/v3` becomes `v4`;
+  `visual-session-started`, `visual-session-descriptor`, and `visual-handoff`
+  become `v2`; the eight documents that carry no path stay at `v1`. A v3
+  document is refused, never translated. `yarramate-visual
+  wait|respond|status|recover|stop` now take the exact `descriptorPath` URI
+  `start` published, copied back verbatim: a native path is refused, and the
+  argument is no longer resolved against the working directory (#208).
+
 ## 0.23.0
 
 - Interrogation: `has-linkage`, `exists-linkage` (`direction` includes

@@ -17,7 +17,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   VISUAL_LIMITS,
   parseVisualDiagnosticResult,
-  toWireAbsolutePath,
+  toWireFileUri,
   type VisualDiagnostic,
   type VisualEvent,
   type VisualModel,
@@ -283,13 +283,13 @@ describe("visual session store", () => {
       paths: VisualSessionPaths,
       overrides: Partial<VisualSessionDescriptor> = {},
     ): VisualSessionDescriptor => ({
-      format: "yarramate/visual-session-descriptor/v1",
-      protocolVersion: "yarramate/visual-protocol/v3",
+      format: "yarramate/visual-session-descriptor/v2",
+      protocolVersion: "yarramate/visual-protocol/v4",
       sessionId,
       origin: "http://127.0.0.1:49152",
       agentCapability: "5c".repeat(32),
-      sessionRoot: paths.root,
-      journalPath: paths.journal,
+      sessionRoot: toWireFileUri(paths.root),
+      journalPath: toWireFileUri(paths.journal),
       createdAt: "2026-08-08T00:00:00.000Z",
       ...overrides,
     });
@@ -338,7 +338,7 @@ describe("visual session store", () => {
         writeVisualSessionDescriptor(
           session.paths,
           descriptorFor(session.paths, {
-            journalPath: toWireAbsolutePath(join(parent, "x.jsonl")),
+            journalPath: toWireFileUri(join(parent, "x.jsonl")),
           }),
         ),
       ).rejects.toThrow(/YMVS125/);
@@ -683,7 +683,7 @@ describe("visual session store", () => {
       await appendVisualResponse(session.paths, handoffResponse);
 
       expect(await recoverVisualSession(session.paths, false)).toMatchObject({
-        format: "yarramate/visual-handoff/v1",
+        format: "yarramate/visual-handoff/v2",
         summary: handoffResponse.payload.summary,
         transcript: undefined,
         lastSequence: 1,
@@ -705,7 +705,7 @@ describe("visual session store", () => {
         decision: "completed",
         terminationReason: "user-ended",
         lastSequence: 2,
-        transcriptPath: session.paths.journal,
+        transcriptPath: toWireFileUri(session.paths.journal),
         completedAt: "2026-08-08T00:01:00.000Z",
         confirmedDecisions: handoffResponse.payload.confirmedDecisions,
         unresolvedQuestions: handoffResponse.payload.unresolvedQuestions,
