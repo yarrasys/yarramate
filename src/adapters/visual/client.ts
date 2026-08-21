@@ -200,9 +200,11 @@ export const readVisualSessionDescriptor = async (
   path: string,
   cwd: string = process.cwd(),
 ): Promise<ParseResult<VisualSessionDescriptor>> => {
-  // Normalized to match `paths.descriptor` below: both name the same file,
-  // and the ownership check just past the read is a literal string compare.
-  const target = toWireAbsolutePath(resolve(cwd, path))
+  // `target` is native, for `open()`; `targetWire` is the wire form the
+  // ownership check below compares byte-for-byte against the normalized
+  // `descriptorPath`/`journalPath` a descriptor names.
+  const target = resolve(cwd, path)
+  const targetWire = toWireAbsolutePath(target)
   let raw: string
   // One handle, opened once: the descriptor is the only file carrying the agent
   // capability, so the thing that is checked has to be the thing that is read.
@@ -262,7 +264,10 @@ export const readVisualSessionDescriptor = async (
   // A descriptor authorises work on the session it lives in and no other: this
   // is the same invariant the runtime enforced when it published the file, so a
   // copied or planted descriptor cannot direct a stop at another directory.
-  if (paths.descriptor !== target || paths.journal !== parsed.value.journalPath) {
+  if (
+    toWireAbsolutePath(paths.descriptor) !== targetWire ||
+    toWireAbsolutePath(paths.journal) !== parsed.value.journalPath
+  ) {
     return refused([
       visualClientDiagnostic(
         'YMVS403',

@@ -26,6 +26,7 @@ import {
   parseVisualResponse,
   parseVisualSessionStarted,
   parseVisualStatus,
+  toWireAbsolutePath,
   visualBrowserInputType,
   type VisualAuthority,
   type VisualBrowserInput,
@@ -2215,8 +2216,8 @@ export const startVisualServer = async (
       sessionId,
       origin,
       agentCapability: session.agentToken,
-      sessionRoot: paths.root,
-      journalPath: paths.journal,
+      sessionRoot: toWireAbsolutePath(paths.root),
+      journalPath: toWireAbsolutePath(paths.journal),
       createdAt: stamp(),
     });
     started = {
@@ -2229,8 +2230,8 @@ export const startVisualServer = async (
       browserUrl: `${origin}/bootstrap?key=${session.browserToken}`,
       webSocketUrl,
       origin,
-      descriptorPath: paths.descriptor,
-      sessionRoot: paths.root,
+      descriptorPath: toWireAbsolutePath(paths.descriptor),
+      sessionRoot: toWireAbsolutePath(paths.root),
       capabilities,
       startedAt: stamp(),
     };

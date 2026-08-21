@@ -247,6 +247,35 @@ describe("visual session store", () => {
         expect(await modeOf(session.paths.journal)).toBe(0o600);
       },
     );
+
+    it.skipIf(!posixOnly)(
+      "keeps a base directory name containing a literal backslash on its own native directory",
+      async () => {
+        const weird = await mkdtemp(
+          join(tmpdir(), "yarramate-visual-\\store-"),
+        );
+        try {
+          const session = await createVisualSession(
+            request,
+            sessionDeps(weird),
+          );
+
+          expect(session.paths.root).toBe(join(weird, sessionId));
+          expect(session.paths.marker).toBe(
+            join(weird, sessionId, "session.json"),
+          );
+          expect(session.paths.journal).toBe(
+            join(weird, sessionId, "journal.jsonl"),
+          );
+          expect(JSON.parse(await readFile(session.paths.marker, "utf8"))).toMatchObject(
+            { id: sessionId },
+          );
+          expect(await readFile(session.paths.journal, "utf8")).toBe("");
+        } finally {
+          await rm(weird, { recursive: true, force: true });
+        }
+      },
+    );
   });
 
   describe("agent descriptor", () => {

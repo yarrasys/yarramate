@@ -251,19 +251,21 @@ const writePrivateJson = async (path: string, value: unknown) => {
 }
 
 /**
- * The one place `VisualSessionPaths` is constructed, so it is the one place
- * that has to know a platform's own `join`/`resolve` can answer in its
- * native separator: every field is normalized to the wire's forward-slash
- * form here, once, rather than at each of the several sites that later
- * serialize one of these paths into a schema-checked document.
+ * The one place `VisualSessionPaths` is constructed. Every field stays a
+ * native filesystem path — the form `fs`/`path` APIs, the in-process state
+ * maps keyed by `paths.journal`, and directory cleanup all need — because
+ * this is consumed as a filesystem path far more often than it is ever
+ * serialized. The few sites that write one of these fields into a
+ * schema-checked wire document normalize it there, with `toWireAbsolutePath`,
+ * rather than here.
  */
 export const visualSessionPaths = (root: string): VisualSessionPaths => {
   const base = resolve(root)
   return {
-    root: toWireAbsolutePath(base),
-    marker: toWireAbsolutePath(join(base, 'session.json')),
-    descriptor: toWireAbsolutePath(join(base, 'descriptor.json')),
-    journal: toWireAbsolutePath(join(base, 'journal.jsonl')),
+    root: base,
+    marker: join(base, 'session.json'),
+    descriptor: join(base, 'descriptor.json'),
+    journal: join(base, 'journal.jsonl'),
   }
 }
 
@@ -512,8 +514,8 @@ export const writeVisualSessionDescriptor = async (
     )
   }
   if (
-    validated.value.sessionRoot !== paths.root ||
-    validated.value.journalPath !== paths.journal
+    validated.value.sessionRoot !== toWireAbsolutePath(paths.root) ||
+    validated.value.journalPath !== toWireAbsolutePath(paths.journal)
   ) {
     throw storeError(
       'YMVS125',
@@ -819,7 +821,7 @@ export const recoverVisualSession = async (
     requestedChanges: summary?.requestedChanges ?? [],
     unresolvedQuestions: summary?.unresolvedQuestions ?? [],
     finalViews: summary?.finalViews ?? visited.slice(-256),
-    transcriptPath: paths.journal,
+    transcriptPath: toWireAbsolutePath(paths.journal),
     completedAt: last?.timestamp ?? marker.createdAt,
     // Present and undefined rather than absent, so a caller cannot mistake the
     // summary-only handoff for one whose transcript it forgot to read.
