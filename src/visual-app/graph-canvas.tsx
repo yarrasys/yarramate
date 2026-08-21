@@ -416,16 +416,16 @@ export function buildStylesheet(
       // grouping box rather than a plain node. The label is drawn above the box
       // entirely, in the `CONTAINER_LABEL_GAP` band ELK reserves but cytoscape
       // does not draw into, so it clears both the children and its own border.
-      // `background-image-opacity` is pinned to 1 so the kind icon and lifecycle/
-      // evidence/ownership badges - a separate image layer from the fill - stay
-      // fully legible; without it they'd fade with the low background-opacity,
-      // and a container is exactly where a reader most needs its own kind glyph
-      // (an applicationComponent shown as a group is still an applicationComponent).
+      // The low `background-opacity` fades only the shape fill, never the badge
+      // layers: cytoscape passes it to its own fill colour and computes image
+      // alpha from `background-image-opacity` alone, which already defaults to
+      // 1. So a container's kind glyph and its lifecycle/evidence/ownership
+      // badges are drawn at full strength here with nothing pinned, and an
+      // applicationComponent shown as a group still reads as one.
       selector: 'node:parent',
       style: {
         shape: 'roundrectangle',
         'background-opacity': 0.25,
-        'background-image-opacity': 1,
         'border-width': 2,
         'border-style': 'dashed',
         padding: `${CONTAINER_PADDING}px`,

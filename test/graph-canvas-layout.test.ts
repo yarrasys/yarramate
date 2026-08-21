@@ -626,6 +626,72 @@ describe('buildStylesheet ArchiMate notation', () => {
     expect(derived.css('target-arrow-fill')).toBe('hollow')
   })
 
+  // A compound container is an ordinary concept node that acquired children
+  // (graphToElements sets `parent` from composition claims), so it carries the
+  // same `aspect`, `layer`, and `kindLabel` as any leaf of its kind. That is
+  // what makes the cascade order load-bearing: the per-aspect rules are
+  // appended after `node:parent`, so an unscoped `node[aspect = "..."]` would
+  // hand a container whatever shape its own kind implies and silently undo the
+  // grouping-box presentation. Asserted through resolved style on real
+  // elements rather than by reading the selector string, because the selector
+  // being right is not the same claim as the cascade landing right.
+  describe('compound containers', () => {
+    const containerGraph = () => {
+      const node = (id: string, parent?: string) => ({
+        group: 'nodes' as const,
+        data: {
+          id,
+          parent,
+          label: id,
+          wrapLabel: id,
+          kindLabel: 'applicationComponent',
+          aspect: 'active-structure',
+          layer: 'application',
+          status: null,
+          hasAttestations: false,
+          owner: null,
+          ownerInitials: null,
+        },
+      })
+      return cytoscape({
+        headless: true,
+        styleEnabled: true,
+        style: buildStylesheet(true, true, true, 'archimate'),
+        elements: [node('container'), node('child', 'container'), node('leaf')],
+      })
+    }
+
+    it('keeps the grouping-box shape a leaf of the same aspect does not get', () => {
+      const cy = containerGraph()
+      const container = cy.getElementById('container')
+      const leaf = cy.getElementById('leaf')
+      expect(container.isParent()).toBe(true)
+      expect(container.css('shape')).toBe('roundrectangle')
+      expect(container.css('border-style')).toBe('dashed')
+      // Same aspect, no children: this is the rule the container must not take.
+      expect(leaf.css('shape')).toBe('rectangle')
+      expect(leaf.css('border-style')).toBe('solid')
+    })
+
+    it('draws its own kind glyph at full strength despite the faded fill', () => {
+      const cy = containerGraph()
+      const container = cy.getElementById('container')
+      const leaf = cy.getElementById('leaf')
+      // The glyph reaches a parent exactly as it reaches a leaf: same data,
+      // same badge layer, and cytoscape has no compound-node carve-out in its
+      // image drawing.
+      expect(container.css('background-image')).toEqual(leaf.css('background-image'))
+      expect(String(container.css('background-image'))).toMatch(/^data:image\/svg\+xml/)
+      // The faded fill is the container's alone and never reaches the glyph,
+      // which is why no `background-image-opacity` is pinned here.
+      expect(container.numericStyle('background-opacity')).toBe(0.25)
+      // One entry per image layer, so a container's single glyph reads as [1]
+      // with nothing pinned - the same value the leaf resolves to.
+      expect(container.numericStyle('background-image-opacity')).toEqual([1])
+      expect(leaf.numericStyle('background-image-opacity')).toEqual([1])
+    })
+  })
+
   it('adds no ArchiMate rules under native notation', () => {
     const native = buildStylesheet(true, true, true, 'native')
     expect(native.some((block) => block.selector.startsWith('edge[coreKindLabel'))).toBe(false)
