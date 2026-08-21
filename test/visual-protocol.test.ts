@@ -10,6 +10,8 @@ import {
   parseVisualSessionRequest,
   parseVisualSessionStarted,
   parseVisualStatus,
+  fromWireFileUri,
+  toWireFileUri,
   VISUAL_LIMITS,
   VISUAL_PROTOCOL_VERSION,
 } from '../src/adapters/visual/protocol.js'
@@ -57,6 +59,8 @@ const sessionRequest = {
   initialModel: model,
 } as const
 
+const posixOnly = process.platform !== 'win32'
+
 const capabilities = {
   chat: true,
   choices: true,
@@ -65,7 +69,7 @@ const capabilities = {
 } as const
 
 const sessionStarted = {
-  format: 'yarramate/visual-session-started/v1',
+  format: 'yarramate/visual-session-started/v2',
   protocolVersion: VISUAL_PROTOCOL_VERSION,
   sessionId,
   authority: 'canonical',
@@ -74,21 +78,21 @@ const sessionStarted = {
   browserUrl: 'http://127.0.0.1:51234/bootstrap?key=0123456789abcdef',
   webSocketUrl: 'ws://127.0.0.1:51234/socket',
   origin: 'http://127.0.0.1:51234',
-  descriptorPath: '/tmp/yarramate-visual/session/descriptor.json',
-  sessionRoot: '/tmp/yarramate-visual/session',
+  descriptorPath: 'file:///tmp/yarramate-visual/session/descriptor.json',
+  sessionRoot: 'file:///tmp/yarramate-visual/session',
   capabilities,
   startedAt: timestamp,
 } as const
 
 const sessionDescriptor = {
-  format: 'yarramate/visual-session-descriptor/v1',
+  format: 'yarramate/visual-session-descriptor/v2',
   protocolVersion: VISUAL_PROTOCOL_VERSION,
   sessionId,
   origin: 'http://127.0.0.1:51234',
   agentCapability:
     '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-  sessionRoot: '/tmp/yarramate-visual/session',
-  journalPath: '/tmp/yarramate-visual/session/journal.jsonl',
+  sessionRoot: 'file:///tmp/yarramate-visual/session',
+  journalPath: 'file:///tmp/yarramate-visual/session/journal.jsonl',
   createdAt: timestamp,
 } as const
 
@@ -162,13 +166,13 @@ const responsePayloads: Readonly<Record<string, unknown>> = {
 }
 
 const handoff = {
-  format: 'yarramate/visual-handoff/v1',
+  format: 'yarramate/visual-handoff/v2',
   sessionId,
   authority: 'canonical',
   decision: 'completed',
   terminationReason: 'user-ended',
   lastSequence: 3,
-  transcriptPath: '/tmp/yarramate-visual/session/journal.jsonl',
+  transcriptPath: 'file:///tmp/yarramate-visual/session/journal.jsonl',
   completedAt: timestamp,
   ...handoffSummary,
 } as const
@@ -252,6 +256,66 @@ describe('visual protocol', () => {
     expect(parseVisualStatus(status)).toMatchObject({ ok: true })
     expect(parseVisualDiagnosticResult(diagnosticResult)).toMatchObject({
       ok: true,
+    })
+  })
+
+  it('accepts a Windows drive-root file URI', () => {
+    expect(
+      parseVisualSessionStarted({
+        ...sessionStarted,
+        descriptorPath:
+          'file:///C:/Users/nabsha/.yarramate-visual/abc123/descriptor.json',
+        sessionRoot: 'file:///C:/Users/nabsha/.yarramate-visual/abc123',
+      }),
+    ).toMatchObject({ ok: true })
+    expect(
+      parseVisualSessionDescriptor({
+        ...sessionDescriptor,
+        sessionRoot: 'file:///C:/Users/nabsha/.yarramate-visual/abc123',
+        journalPath:
+          'file:///C:/Users/nabsha/.yarramate-visual/abc123/journal.jsonl',
+      }),
+    ).toMatchObject({ ok: true })
+  })
+
+  it.each([
+    ['a raw POSIX path', '/tmp/yarramate-visual/abc123/descriptor.json'],
+    [
+      'a raw Windows path',
+      'C:\\Users\\nabsha\\.yarramate-visual\\abc123\\descriptor.json',
+    ],
+    [
+      'a forward-slash Windows path, the v3 wire form',
+      'C:/Users/nabsha/.yarramate-visual/abc123/descriptor.json',
+    ],
+    ['a UNC-derived URI', 'file://server/share/abc123/descriptor.json'],
+    ['a non-file scheme', 'http://127.0.0.1:51234/descriptor.json'],
+  ])('rejects %s as a wire path', (_label, descriptorPath) => {
+    expect(
+      parseVisualSessionStarted({ ...sessionStarted, descriptorPath }),
+    ).toMatchObject({ ok: false })
+  })
+
+  it('refuses a v3 document rather than translating it', () => {
+    // No bespoke "v3 detected" code: the version consts fail like any other
+    // schema violation, which is what makes the incompatibility detectable.
+    expect(
+      parseVisualSessionDescriptor({
+        ...sessionDescriptor,
+        format: 'yarramate/visual-session-descriptor/v1',
+        protocolVersion: 'yarramate/visual-protocol/v3',
+        sessionRoot: '/tmp/yarramate-visual/session',
+        journalPath: '/tmp/yarramate-visual/session/journal.jsonl',
+      }),
+    ).toMatchObject({
+      ok: false,
+      diagnostics: expect.arrayContaining([
+        expect.objectContaining({ code: 'YMVS103', pointer: '/format' }),
+        expect.objectContaining({
+          code: 'YMVS103',
+          pointer: '/protocolVersion',
+        }),
+      ]),
     })
   })
 
@@ -788,5 +852,100 @@ describe('visual protocol', () => {
         },
       }),
     ).toMatchObject({ ok: true })
+  })
+})
+
+describe('toWireFileUri', () => {
+  it('encodes a POSIX path as a local file URI that round-trips', () => {
+    expect(toWireFileUri('/tmp/yarramate-visual/abc123')).toBe(
+      'file:///tmp/yarramate-visual/abc123',
+    )
+    expect(
+      fromWireFileUri('file:///tmp/yarramate-visual/abc123'),
+    ).toMatchObject({ ok: true, value: '/tmp/yarramate-visual/abc123' })
+  })
+
+  it.each([
+    ['a space', '/tmp/yarra mate/abc123'],
+    ['a hash', '/tmp/yarramate#1/abc123'],
+    ['a question mark', '/tmp/yarramate?1/abc123'],
+    ['a non-ASCII byte', '/tmp/yarramaté/abc123'],
+  ])('percent-encodes %s and round-trips it', (_label, native) => {
+    const uri = toWireFileUri(native)
+    expect(uri.startsWith('file:///')).toBe(true)
+    expect(fromWireFileUri(uri)).toMatchObject({ ok: true, value: native })
+  })
+
+  // The defect that motivated the change: under the forward-slash transform
+  // this directory and a Windows path joined with native separators
+  // collapsed to the same wire string, and `fs` calls then missed the
+  // directory the session actually created.
+  it.skipIf(!posixOnly)(
+    'keeps a directory name containing a backslash distinct from a separator',
+    () => {
+      const native = '/tmp/yarramate-visual-\\store-abc/journal.jsonl'
+      const uri = toWireFileUri(native)
+      expect(uri).toBe('file:///tmp/yarramate-visual-%5Cstore-abc/journal.jsonl')
+      expect(uri).not.toBe(toWireFileUri('/tmp/yarramate-visual-/store-abc/journal.jsonl'))
+      expect(fromWireFileUri(uri)).toMatchObject({ ok: true, value: native })
+    },
+  )
+
+  it.skipIf(posixOnly)('encodes a Windows drive-root path', () => {
+    const uri = toWireFileUri('C:\\Users\\nabsha\\.yarramate-visual\\abc123')
+    expect(uri).toBe('file:///C:/Users/nabsha/.yarramate-visual/abc123')
+    expect(fromWireFileUri(uri)).toMatchObject({
+      ok: true,
+      value: 'C:\\Users\\nabsha\\.yarramate-visual\\abc123',
+    })
+  })
+
+  it('refuses to encode a relative path: that is a programming error', () => {
+    expect(() => toWireFileUri('relative/segment')).toThrow(
+      /must be absolute/,
+    )
+  })
+})
+
+describe('fromWireFileUri', () => {
+  it.each([
+    ['a non-file scheme', 'http://127.0.0.1/tmp/abc123'],
+    ['a data URI', 'data:text/plain,abc123'],
+    ['a bare POSIX path', '/tmp/yarramate-visual/abc123'],
+    ['a bare Windows path', 'C:\\Users\\nabsha\\abc123'],
+    ['a forward-slash Windows path', 'C:/Users/nabsha/abc123'],
+    ['an unbalanced percent escape', 'file:///tmp/abc%2'],
+    // `fileURLToPath` refuses an encoded separator itself: a path segment
+    // that decodes to one containing `/` is not a path this runtime can open.
+    ['an over-encoded separator', 'file:///tmp%2Fyarramate-visual/abc123'],
+  ])('refuses %s as malformed', (_label, uri) => {
+    expect(fromWireFileUri(uri)).toEqual({ ok: false, reason: 'malformed' })
+  })
+
+  it('refuses a UNC-derived URI as nonlocal', () => {
+    // Read off the parsed URL, not inferred from a `fileURLToPath` failure,
+    // so the same URI earns the same refusal on POSIX and on Windows.
+    expect(fromWireFileUri('file://server/share/abc123')).toEqual({
+      ok: false,
+      reason: 'nonlocal',
+    })
+  })
+
+  it.each([
+    [
+      'an explicit localhost host',
+      'file://localhost/tmp/abc123',
+      // WHATWG `URL` normalizes a `localhost` file host away, so this never
+      // reaches the host check: it is caught one step later, as the second
+      // spelling of a target whose canonical form is `file:///tmp/abc123`.
+    ],
+    ['an unnecessary escape', 'file:///tmp/yarramate%2Dvisual/abc123'],
+    ['a dot segment', 'file:///tmp/yarramate-visual/./abc123'],
+    ['a parent segment', 'file:///tmp/yarramate-visual/x/../abc123'],
+  ])('refuses %s as noncanonical', (_label, uri) => {
+    // One native target has exactly one accepted spelling. A second spelling
+    // is refused rather than normalized: normalizing is what made two
+    // distinct paths indistinguishable in the first place.
+    expect(fromWireFileUri(uri)).toEqual({ ok: false, reason: 'noncanonical' })
   })
 })

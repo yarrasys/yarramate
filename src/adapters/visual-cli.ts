@@ -29,11 +29,14 @@ export const visualUsage =
   '  yarramate-visual request [--view <id>] [--title <text>]\n' +
   '                           [--description <text>] [--chat]\n' +
   '  yarramate-visual start <request.json>\n' +
-  '  yarramate-visual wait <descriptor.json> [--after <sequence>]\n' +
-  '  yarramate-visual respond <descriptor.json> <response.json>\n' +
-  '  yarramate-visual status <descriptor.json>\n' +
-  '  yarramate-visual recover <descriptor.json> [--transcript]\n' +
-  '  yarramate-visual stop <descriptor.json> [--transcript]\n' +
+  '  yarramate-visual wait <descriptor-uri> [--after <sequence>]\n' +
+  '  yarramate-visual respond <descriptor-uri> <response.json>\n' +
+  '  yarramate-visual status <descriptor-uri>\n' +
+  '  yarramate-visual recover <descriptor-uri> [--transcript]\n' +
+  '  yarramate-visual stop <descriptor-uri> [--transcript]\n' +
+  '\n' +
+  '<descriptor-uri> is the `descriptorPath` file: URI `start` published,\n' +
+  'copied back verbatim. It is never resolved against the working directory.\n' +
   '  yarramate-visual --version\n'
 
 /**
@@ -161,13 +164,12 @@ const requestCliCommand = (
 }
 
 const waitCliCommand = async (
-  descriptorPath: string,
+  descriptorUri: string,
   rest: readonly string[],
-  cwd: string,
 ): Promise<CliResult> => {
   const after = sequenceFlag(rest)
   if (after === undefined) return usageResult
-  const descriptor = await readVisualSessionDescriptor(descriptorPath, cwd)
+  const descriptor = await readVisualSessionDescriptor(descriptorUri)
   if (!descriptor.ok) return refusalResult(descriptor.diagnostics)
   const delivery = await waitForVisualEvent(descriptor.value, after)
   if (!delivery.ok) return refusalResult(delivery.diagnostics)
@@ -181,14 +183,17 @@ const waitCliCommand = async (
 }
 
 const respondCliCommand = async (
-  descriptorPath: string,
+  descriptorUri: string,
   rest: readonly string[],
   cwd: string,
 ): Promise<CliResult> => {
   const [responsePath, ...trailing] = rest
   if (responsePath === undefined || trailing.length > 0) return usageResult
-  const descriptor = await readVisualSessionDescriptor(descriptorPath, cwd)
+  const descriptor = await readVisualSessionDescriptor(descriptorUri)
   if (!descriptor.ok) return refusalResult(descriptor.diagnostics)
+  // The response document is the agent's own file, named however the agent
+  // likes: it is not a protocol path field, so it stays a native path
+  // resolved against `cwd`.
   const document = await readVisualJsonDocument(responsePath, cwd)
   if (!document.ok) return refusalResult(document.diagnostics)
   // Validated here as well as by the runtime, so an invalid response never
@@ -201,12 +206,11 @@ const respondCliCommand = async (
 }
 
 const statusCliCommand = async (
-  descriptorPath: string,
+  descriptorUri: string,
   rest: readonly string[],
-  cwd: string,
 ): Promise<CliResult> => {
   if (rest.length > 0) return usageResult
-  const descriptor = await readVisualSessionDescriptor(descriptorPath, cwd)
+  const descriptor = await readVisualSessionDescriptor(descriptorUri)
   if (!descriptor.ok) return refusalResult(descriptor.diagnostics)
   const status = await fetchVisualStatus(descriptor.value)
   if (!status.ok) return refusalResult(status.diagnostics)
@@ -214,13 +218,12 @@ const statusCliCommand = async (
 }
 
 const recoverCliCommand = async (
-  descriptorPath: string,
+  descriptorUri: string,
   rest: readonly string[],
-  cwd: string,
 ): Promise<CliResult> => {
   const includeTranscript = transcriptFlag(rest)
   if (includeTranscript === undefined) return usageResult
-  const descriptor = await readVisualSessionDescriptor(descriptorPath, cwd)
+  const descriptor = await readVisualSessionDescriptor(descriptorUri)
   if (!descriptor.ok) return refusalResult(descriptor.diagnostics)
   const handoff = await recoverVisualSessionClient(
     descriptor.value,
@@ -245,15 +248,14 @@ const recoverCliCommand = async (
  * descriptor fails exactly as before.
  */
 const stopCliCommand = async (
-  descriptorPath: string,
+  descriptorUri: string,
   rest: readonly string[],
-  cwd: string,
 ): Promise<CliResult> => {
   const includeTranscript = transcriptFlag(rest)
   if (includeTranscript === undefined) return usageResult
-  const descriptor = await readVisualSessionDescriptor(descriptorPath, cwd)
+  const descriptor = await readVisualSessionDescriptor(descriptorUri)
   if (!descriptor.ok) {
-    return (await visualSessionAlreadyStopped(descriptorPath, cwd))
+    return (await visualSessionAlreadyStopped(descriptorUri))
       ? { exitCode: 0, stdout: '', stderr: '' }
       : refusalResult(descriptor.diagnostics)
   }
@@ -285,17 +287,20 @@ export async function runVisualClientCli(
   if (command === '--version') return versionResult('yarramate-visual')
   if (command === 'request') return requestCliCommand(args.slice(1), cwd)
   if (descriptor === undefined) return usageResult
+  // `cwd` reaches only the commands that still read a native path of their
+  // own. The descriptor argument is a `file:` URI and is never resolved
+  // against anything.
   switch (command) {
     case 'wait':
-      return waitCliCommand(descriptor, rest, cwd)
+      return waitCliCommand(descriptor, rest)
     case 'respond':
       return respondCliCommand(descriptor, rest, cwd)
     case 'status':
-      return statusCliCommand(descriptor, rest, cwd)
+      return statusCliCommand(descriptor, rest)
     case 'recover':
-      return recoverCliCommand(descriptor, rest, cwd)
+      return recoverCliCommand(descriptor, rest)
     case 'stop':
-      return stopCliCommand(descriptor, rest, cwd)
+      return stopCliCommand(descriptor, rest)
     default:
       return usageResult
   }
@@ -323,7 +328,7 @@ const processIo: VisualStartIo = {
  * Serves one visual session in the foreground.
  *
  * The request is validated before any filesystem or network effect, so a bad
- * document costs nothing. Exactly one public `visual-session-started/v1` line is
+ * document costs nothing. Exactly one public `visual-session-started/v2` line is
  * published before the command blocks — it names the private descriptor but
  * never carries the agent capability, which lives only in that mode 0600 file.
  * The command then holds the session open until the runtime closes it, whether

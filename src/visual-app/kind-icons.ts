@@ -1,6 +1,6 @@
 // Thin wrapper around the shared `src/notation/archimate.ts` glyph catalogue:
 // resolves a graph node's kind label to its `data:image/svg+xml` icon URI.
-// The 17 core-vocabulary glyphs and their SVG rendering live in the notation
+// All 62 core-vocabulary glyphs and their SVG rendering live in the notation
 // module now (the single source of truth for both this canvas and any future
 // standalone consumer); this file only adds the two local profile aliases
 // that inherit their parent's glyph verbatim.
