@@ -43,7 +43,7 @@ const model = (
 const digest = (seed: string): string => seed.repeat(64).slice(0, 64);
 
 const serverSnapshot: VisualSessionSnapshot = {
-  protocolVersion: "yarramate/visual-protocol/v3",
+  protocolVersion: "yarramate/visual-protocol/v4",
   sessionId: "0".repeat(32),
   authority: "canonical",
   title: "Choose a delivery design",

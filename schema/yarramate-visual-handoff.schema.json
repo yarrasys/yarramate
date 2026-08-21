@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://yarramate.org/schema/visual-handoff/v1",
+  "$id": "https://yarramate.org/schema/visual-handoff/v2",
   "title": "YarraMate visual conversation handoff",
   "description": "Recoverable summary returned to the main agent. The raw transcript appears only when it was explicitly requested.",
   "type": "object",
@@ -22,7 +22,7 @@
   ],
   "properties": {
     "format": {
-      "const": "yarramate/visual-handoff/v1"
+      "const": "yarramate/visual-handoff/v2"
     },
     "sessionId": {
       "$ref": "https://yarramate.org/schema/visual-event/v1#/$defs/identifier"
@@ -56,7 +56,7 @@
       "$ref": "https://yarramate.org/schema/visual-response/v1#/$defs/viewList"
     },
     "transcriptPath": {
-      "$ref": "https://yarramate.org/schema/visual-session-started/v1#/$defs/absolutePath"
+      "$ref": "https://yarramate.org/schema/visual-session-started/v2#/$defs/sessionFileUri"
     },
     "transcript": {
       "type": "array",

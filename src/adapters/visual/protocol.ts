@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
-import { posix } from 'node:path'
+import { isAbsolute, posix } from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import type { ErrorObject, ValidateFunction } from 'ajv'
 import Ajv2020Module from 'ajv/dist/2020.js'
 import {
@@ -125,10 +126,10 @@ const validateVisualSessionRequest = visualValidator(
   'visual-session-request/v1',
 )
 const validateVisualSessionStarted = visualValidator(
-  'visual-session-started/v1',
+  'visual-session-started/v2',
 )
 const validateVisualSessionDescriptor = visualValidator(
-  'visual-session-descriptor/v1',
+  'visual-session-descriptor/v2',
 )
 const BROWSER_INPUT_REFERENCE =
   'https://yarramate.org/schema/visual-event/v1#/$defs/browserInput'
@@ -158,7 +159,7 @@ const browserInputBranches = new Map<string, ValidateFunction>(
 )
 const validateVisualEvent = visualValidator('visual-event/v1')
 const validateVisualResponse = visualValidator('visual-response/v1')
-const validateVisualHandoff = visualValidator('visual-handoff/v1')
+const validateVisualHandoff = visualValidator('visual-handoff/v2')
 const validateVisualStatus = visualValidator('visual-status/v1')
 const validateVisualDiagnosticResult = visualValidator(
   'visual-diagnostic-result/v1',
@@ -224,6 +225,88 @@ const isConfinedRelativePath = (candidate: string): boolean => {
       (segment) =>
         segment.length > 0 && segment !== '.' && segment !== '..',
     )
+}
+
+/**
+ * Encode a native absolute path for the wire.
+ *
+ * Every filesystem path a protocol document carries is a canonical local
+ * `file:` URI, minted by Node's own `pathToFileURL`. A URI is invertible
+ * where the forward-slash string transform it replaces was not: a POSIX
+ * directory whose own name contains a literal backslash percent-encodes to
+ * `%5C` and stays distinguishable from a Windows separator, and a UNC path
+ * grows a non-empty host rather than passing as an ordinary POSIX-rooted
+ * path.
+ *
+ * Encoding cannot fail. `pathToFileURL` has no error path for an
+ * already-absolute native string, and every caller holds a `resolve`/`join`
+ * result it produced itself. A relative path reaching here is a programming
+ * error rather than a protocol fault, and throws as one.
+ */
+export const toWireFileUri = (native: string): string => {
+  if (!isAbsolute(native)) {
+    throw new Error(`A visual wire path must be absolute, not "${native}"`)
+  }
+  return pathToFileURL(native).href
+}
+
+/** Why one wire path was refused. Each shape is reported as `YMVS414`. */
+export type WireFileUriRefusal = 'malformed' | 'nonlocal' | 'noncanonical'
+
+export type WireFileUriResult =
+  | { readonly ok: true; readonly value: string }
+  | { readonly ok: false; readonly reason: WireFileUriRefusal }
+
+/**
+ * Decode a wire path back to native, the way untrusted input has to be read.
+ *
+ * A descriptor's bearer capabilities are never spent on a document whose path
+ * fields have not passed this first, so the three refusals are checked in a
+ * fixed order and none of them is ever quietly repaired:
+ *
+ * - `malformed` — not a parseable `file:` URI, or one `fileURLToPath` itself
+ *   rejects (`ERR_INVALID_URL`, `ERR_INVALID_URL_SCHEME`,
+ *   `ERR_INVALID_FILE_URL_PATH`). A bare native path lands here too: it has
+ *   no scheme, or, for a Windows drive root, one that is not `file:`.
+ * - `nonlocal` — a non-empty host, which `pathToFileURL` never produces for a
+ *   local path: `file://server/share/x` names a network share. The host is
+ *   read off the parsed URL rather than inferred from a `fileURLToPath`
+ *   failure, because that call refuses a foreign host on POSIX but resolves
+ *   one to a UNC path on Windows, and reading it directly is the only way one
+ *   URI earns the same refusal on both.
+ * - `noncanonical` — decodes, host is empty, but re-encoding the decoded path
+ *   does not reproduce the input byte-for-byte. Two spellings of one target is
+ *   the aliasing this representation exists to close, so the other spelling is
+ *   refused rather than normalized into the canonical one. `file://localhost/x`
+ *   lands here rather than in `nonlocal`: WHATWG `URL` normalizes a
+ *   `localhost` file host away, leaving a URI that is simply not the spelling
+ *   this codec mints for `/x`.
+ */
+export const fromWireFileUri = (uri: string): WireFileUriResult => {
+  let parsed: URL
+  try {
+    parsed = new URL(uri)
+  } catch {
+    return { ok: false, reason: 'malformed' }
+  }
+  if (parsed.protocol !== 'file:') return { ok: false, reason: 'malformed' }
+  if (parsed.hostname !== '') return { ok: false, reason: 'nonlocal' }
+  let native: string
+  try {
+    native = fileURLToPath(parsed)
+  } catch {
+    return { ok: false, reason: 'malformed' }
+  }
+  let canonical: string
+  try {
+    canonical = toWireFileUri(native)
+  } catch {
+    // `fileURLToPath` answering with something this platform does not call
+    // absolute is not a path this runtime can act on, whatever the URI meant.
+    return { ok: false, reason: 'malformed' }
+  }
+  if (canonical !== uri) return { ok: false, reason: 'noncanonical' }
+  return { ok: true, value: native }
 }
 
 const modelSemantics = (
@@ -393,7 +476,7 @@ const semanticsByDocument: Readonly<Record<string, DocumentSemantics>> = {
   'visual-browser-input/v1': chatCarryingSemantics,
   'visual-event/v1': chatCarryingSemantics,
   'visual-response/v1': responseSemantics,
-  'visual-handoff/v1': handoffSemantics,
+  'visual-handoff/v2': handoffSemantics,
 }
 
 const schemaDiagnostics = (

@@ -24,7 +24,7 @@
       "const": "yarramate/visual-status/v1"
     },
     "protocolVersion": {
-      "const": "yarramate/visual-protocol/v3"
+      "const": "yarramate/visual-protocol/v4"
     },
     "sessionId": {
       "$ref": "https://yarramate.org/schema/visual-event/v1#/$defs/identifier"
@@ -42,7 +42,7 @@
       "properties": {
         "listening": { "type": "boolean" },
         "origin": {
-          "$ref": "https://yarramate.org/schema/visual-session-started/v1#/$defs/localOrigin"
+          "$ref": "https://yarramate.org/schema/visual-session-started/v2#/$defs/localOrigin"
         }
       }
     },
@@ -110,7 +110,7 @@
       }
     },
     "capabilities": {
-      "$ref": "https://yarramate.org/schema/visual-session-started/v1#/$defs/capabilities"
+      "$ref": "https://yarramate.org/schema/visual-session-started/v2#/$defs/capabilities"
     },
     "transcriptBytes": {
       "type": "integer",
