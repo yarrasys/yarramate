@@ -19,6 +19,7 @@ import {
   parseVisualResponse,
   parseVisualSessionDescriptor,
   parseVisualSessionRequest,
+  toWireAbsolutePath,
   type VisualAuthority,
   type VisualDiagnostic,
   type VisualEvent,
@@ -249,13 +250,20 @@ const writePrivateJson = async (path: string, value: unknown) => {
   await syncDirectory(dirname(path))
 }
 
+/**
+ * The one place `VisualSessionPaths` is constructed, so it is the one place
+ * that has to know a platform's own `join`/`resolve` can answer in its
+ * native separator: every field is normalized to the wire's forward-slash
+ * form here, once, rather than at each of the several sites that later
+ * serialize one of these paths into a schema-checked document.
+ */
 export const visualSessionPaths = (root: string): VisualSessionPaths => {
   const base = resolve(root)
   return {
-    root: base,
-    marker: join(base, 'session.json'),
-    descriptor: join(base, 'descriptor.json'),
-    journal: join(base, 'journal.jsonl'),
+    root: toWireAbsolutePath(base),
+    marker: toWireAbsolutePath(join(base, 'session.json')),
+    descriptor: toWireAbsolutePath(join(base, 'descriptor.json')),
+    journal: toWireAbsolutePath(join(base, 'journal.jsonl')),
   }
 }
 

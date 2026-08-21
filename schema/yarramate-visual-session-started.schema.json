@@ -93,10 +93,11 @@
       "pattern": "^http://127\\.0\\.0\\.1:[0-9]{1,5}$"
     },
     "absolutePath": {
+      "description": "Forward-slash absolute path, on every platform: either POSIX-rooted (leading /) or a normalized Windows drive root (e.g. C:/Users/...). Never a literal backslash, so a descriptor is byte-identical regardless of which platform's `yarramate-visual` wrote it.",
       "type": "string",
       "minLength": 1,
       "maxLength": 4096,
-      "pattern": "^/[^\\u0000]*$"
+      "pattern": "^(?:/|[A-Za-z]:/)[^\\u0000\\\\]*$"
     },
     "capabilities": {
       "description": "Features the browser session may use. Diagram-only mode disables chat.",

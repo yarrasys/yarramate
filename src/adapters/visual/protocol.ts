@@ -226,6 +226,22 @@ const isConfinedRelativePath = (candidate: string): boolean => {
     )
 }
 
+/**
+ * Every absolute path on the wire is forward-slash, on every platform,
+ * matching the rule `isConfinedRelativePath` already holds relative paths
+ * to: a backslash is never a wire separator, POSIX host or not. `join`/
+ * `resolve` answer in the platform's own separator, so a Windows caller
+ * building `sessionRoot`, `descriptorPath`, `journalPath`, or
+ * `transcriptPath` produces a native path that must be converted before it
+ * is placed in a schema-checked document. The conversion is unconditional
+ * rather than gated on the running platform's `path.sep`, so it behaves
+ * identically under test on any host. Node's own `fs`/`path` APIs accept
+ * forward slashes back on Windows, so the conversion loses nothing a later
+ * read needs.
+ */
+export const toWireAbsolutePath = (native: string): string =>
+  native.replace(/\\/g, '/')
+
 const modelSemantics = (
   input: unknown,
   path: string,

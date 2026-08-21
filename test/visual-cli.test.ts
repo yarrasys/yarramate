@@ -28,6 +28,7 @@ import {
   parseVisualHandoff,
   parseVisualSessionStarted,
   parseVisualStatus,
+  toWireAbsolutePath,
   type VisualBrowserInput,
   type VisualEvent,
   type VisualHandoff,
@@ -303,8 +304,8 @@ const plantSession = async (
     sessionId: id,
     origin: `http://127.0.0.1:${options.port ?? CLOSED_PORT}`,
     agentCapability: 'a'.repeat(64),
-    sessionRoot: root,
-    journalPath: join(root, 'journal.jsonl'),
+    sessionRoot: toWireAbsolutePath(root),
+    journalPath: toWireAbsolutePath(join(root, 'journal.jsonl')),
     createdAt,
   }
   const descriptorPath = join(root, 'descriptor.json')
@@ -571,7 +572,7 @@ describe('descriptor confinement', () => {
     const path = join(root, 'descriptor.json')
     await writeJson(path, {
       ...descriptor,
-      journalPath: join(root, 'candidates', 'journal.jsonl'),
+      journalPath: toWireAbsolutePath(join(root, 'candidates', 'journal.jsonl')),
     })
     const result = await runVisualClientCli(['recover', path], workDir)
     expect(result.exitCode).toBe(1)
@@ -892,7 +893,7 @@ describe('recover', () => {
       summary: 'Design A isolates delivery.',
       confirmedDecisions: ['Isolate delivery'],
       finalViews: ['choices'],
-      transcriptPath: join(root, 'journal.jsonl'),
+      transcriptPath: toWireAbsolutePath(join(root, 'journal.jsonl')),
     })
     expect('transcript' in handoff).toBe(false)
     // Recovery is a read: the session survives it.
@@ -1116,7 +1117,7 @@ describe('runVisualStart', () => {
       capabilities: { chat: true, transcript: true },
     })
     expect(started.sessionRoot).toBe(
-      join(workDir, VISUAL_SESSION_DIRECTORY, started.sessionId),
+      toWireAbsolutePath(join(workDir, VISUAL_SESSION_DIRECTORY, started.sessionId)),
     )
 
     foreground.signals.emit('SIGTERM')

@@ -8,6 +8,7 @@ import {
   parseVisualHandoff,
   parseVisualSessionDescriptor,
   parseVisualStatus,
+  toWireAbsolutePath,
   type ParseResult,
   type VisualDiagnostic,
   type VisualHandoff,
@@ -199,7 +200,9 @@ export const readVisualSessionDescriptor = async (
   path: string,
   cwd: string = process.cwd(),
 ): Promise<ParseResult<VisualSessionDescriptor>> => {
-  const target = resolve(cwd, path)
+  // Normalized to match `paths.descriptor` below: both name the same file,
+  // and the ownership check just past the read is a literal string compare.
+  const target = toWireAbsolutePath(resolve(cwd, path))
   let raw: string
   // One handle, opened once: the descriptor is the only file carrying the agent
   // capability, so the thing that is checked has to be the thing that is read.

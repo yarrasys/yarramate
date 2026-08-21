@@ -10,6 +10,7 @@ import {
   parseVisualSessionRequest,
   parseVisualSessionStarted,
   parseVisualStatus,
+  toWireAbsolutePath,
   VISUAL_LIMITS,
   VISUAL_PROTOCOL_VERSION,
 } from '../src/adapters/visual/protocol.js'
@@ -253,6 +254,34 @@ describe('visual protocol', () => {
     expect(parseVisualDiagnosticResult(diagnosticResult)).toMatchObject({
       ok: true,
     })
+  })
+
+  it('accepts a normalized Windows drive root as an absolute path', () => {
+    expect(
+      parseVisualSessionStarted({
+        ...sessionStarted,
+        descriptorPath: 'C:/Users/nabsha/.yarramate-visual/abc123/descriptor.json',
+        sessionRoot: 'C:/Users/nabsha/.yarramate-visual/abc123',
+      }),
+    ).toMatchObject({ ok: true })
+    expect(
+      parseVisualSessionDescriptor({
+        ...sessionDescriptor,
+        sessionRoot: 'C:/Users/nabsha/.yarramate-visual/abc123',
+        journalPath: 'C:/Users/nabsha/.yarramate-visual/abc123/journal.jsonl',
+      }),
+    ).toMatchObject({ ok: true })
+  })
+
+  it('rejects a raw Windows path: a backslash is never a wire separator', () => {
+    expect(
+      parseVisualSessionStarted({
+        ...sessionStarted,
+        descriptorPath:
+          'C:\\Users\\nabsha\\.yarramate-visual\\abc123\\descriptor.json',
+        sessionRoot: 'C:\\Users\\nabsha\\.yarramate-visual\\abc123',
+      }),
+    ).toMatchObject({ ok: false })
   })
 
   it.each(Object.keys(eventPayloads))('accepts the %s event', (type) => {
@@ -788,5 +817,27 @@ describe('visual protocol', () => {
         },
       }),
     ).toMatchObject({ ok: true })
+  })
+})
+
+describe('toWireAbsolutePath', () => {
+  it('converts a Windows drive path to forward slashes', () => {
+    expect(toWireAbsolutePath('C:\\Users\\nabsha\\.yarramate-visual\\abc123')).toBe(
+      'C:/Users/nabsha/.yarramate-visual/abc123',
+    )
+  })
+
+  it('leaves a POSIX path unchanged', () => {
+    expect(toWireAbsolutePath('/tmp/yarramate-visual/abc123')).toBe(
+      '/tmp/yarramate-visual/abc123',
+    )
+  })
+
+  it('is unconditional: it does not depend on the running platform', () => {
+    // A backslash is never a wire separator (matching isConfinedRelativePath's
+    // rule for relative paths), so the conversion always runs rather than
+    // being gated on this process's own path.sep — otherwise the Windows
+    // branch would be untestable on a POSIX CI runner.
+    expect(toWireAbsolutePath('relative\\segment')).toBe('relative/segment')
   })
 })

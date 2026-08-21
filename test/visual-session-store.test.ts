@@ -17,6 +17,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   VISUAL_LIMITS,
   parseVisualDiagnosticResult,
+  toWireAbsolutePath,
   type VisualDiagnostic,
   type VisualEvent,
   type VisualModel,
@@ -160,16 +161,11 @@ describe("visual session store", () => {
     it("places every session artefact inside one private directory", async () => {
       const session = await startSession();
 
-      expect(session.paths).toEqual(
-        visualSessionPaths(join(parent, sessionId)),
-      );
-      expect(session.paths.root).toBe(join(parent, sessionId));
-      expect(session.paths.marker).toBe(
-        join(parent, sessionId, "session.json"),
-      );
-      expect(session.paths.journal).toBe(
-        join(parent, sessionId, "journal.jsonl"),
-      );
+      const expected = visualSessionPaths(join(parent, sessionId));
+      expect(session.paths).toEqual(expected);
+      expect(session.paths.root).toBe(expected.root);
+      expect(session.paths.marker).toBe(expected.marker);
+      expect(session.paths.journal).toBe(expected.journal);
       expect(await readFile(session.paths.journal, "utf8")).toBe("");
     });
 
@@ -230,7 +226,9 @@ describe("visual session store", () => {
       expect(session.browserToken).toHaveLength(64);
       expect(session.agentToken).toHaveLength(64);
       expect(session.browserToken).not.toBe(session.agentToken);
-      expect(session.paths.root).toBe(join(parent, "01".repeat(16)));
+      expect(session.paths.root).toBe(
+        visualSessionPaths(join(parent, "01".repeat(16))).root,
+      );
     });
 
     it("never reuses an existing session directory", async () => {
@@ -311,7 +309,7 @@ describe("visual session store", () => {
         writeVisualSessionDescriptor(
           session.paths,
           descriptorFor(session.paths, {
-            journalPath: join(parent, "x.jsonl"),
+            journalPath: toWireAbsolutePath(join(parent, "x.jsonl")),
           }),
         ),
       ).rejects.toThrow(/YMVS125/);
