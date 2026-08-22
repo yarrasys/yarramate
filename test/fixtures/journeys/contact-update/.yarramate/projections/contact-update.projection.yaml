@@ -17,6 +17,12 @@ query:
     - contact-update#orchestrate-contact-update
     - contact-update#update-salesforce-contact
     - contact-update#contact-record
+    - contact-update#contact-api-contract
+    - contact-update#contact-update-service
+    - contact-update#contact-orchestration-service
+    - contact-update#salesforce-write-service
+    - contact-update#salesforce-contact-service
+    - contact-update#serve-contact-sobject
     - contact-update-policy#gateway-oauth
     - contact-update-policy#salesforce-jwt-bearer
     - contact-update-policy#experience-rate-limit

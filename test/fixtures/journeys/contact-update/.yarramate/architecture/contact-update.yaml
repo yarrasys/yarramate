@@ -2,30 +2,93 @@ format: yarramate/v1
 id: contact-update
 profile: yarramate/core@0.1
 concepts:
+  # ============================================================== motivation
+  - id: crm-product-owner
+    kind: stakeholder
+    name: CRM Product Owner
+    description: >-
+      Accountable for what a Contact means in Salesforce, who may write one,
+      and the org's API allocation. Owns the vendor relationship this
+      integration depends on.
+    status: current
+  - id: sales-systems-team
+    kind: stakeholder
+    name: Sales Systems Team
+    description: Accountable for the three Contact APIs and the CloudHub deployment.
+    status: current
+  - id: duplicate-contacts-erode-trust
+    kind: driver
+    name: Duplicate contacts erode trust in the CRM
+    description: >-
+      A retried update that inserts rather than upserts leaves two Contacts for
+      one person, and a sales rep who finds duplicates stops trusting the
+      record. This is the pressure that makes idempotency load-bearing rather
+      than a nicety.
+    status: current
+  - id: salesforce-allocation-is-shared
+    kind: driver
+    name: The Salesforce API allocation is shared and org-wide
+    description: >-
+      Every integration draws on one daily request allocation and the same
+      per-transaction governor limits. No single team controls it, which is why
+      writes funnel through one System API rather than going direct.
+    status: current
+  - id: one-sanctioned-write-path
+    kind: goal
+    name: Exactly one sanctioned write path into Salesforce
+    description: >-
+      Every Contact write crosses the System API, so the Connected App
+      credential, the External ID upsert key, and the request budget have one
+      owner and one place to change.
+    status: planned
+  - id: reps-update-contacts-without-crm-logins
+    kind: outcome
+    name: Reps update contacts without opening Salesforce
+    description: >-
+      A sales rep corrects a contact in the tool they already have open and the
+      CRM stays authoritative, which is what makes the integration worth
+      building rather than handing out more CRM seats.
+    status: planned
+
+  # ================================================================ business
   - id: sales-rep
     kind: businessActor
     name: Sales Representative
+    description: Corrects customer contact details while working an account.
     status: current
+  - id: work-an-account
+    kind: businessProcess
+    name: Work an account
+    description: >-
+      What the rep actually does with the Experience API. Named so the actor is
+      tested by behaviour rather than floating as a label.
+    status: current
+  - id: contact-api-contract
+    kind: contract
+    name: Contact API contract
+    description: >-
+      The published OAS document consumers build against, versioned separately
+      from the implementation. This is what must not break when the Salesforce
+      Contact layout changes underneath.
+    status: planned
+
+  # ====================================================== experience layer
   - id: contact-exp-api
     kind: applicationComponent
     name: Contact Experience API
+    description: >-
+      Channel-shaped API. Owns the request format the rep's tool sends and
+      nothing about how Salesforce stores a Contact.
     status: planned
-  - id: contact-prc-api
-    kind: applicationComponent
-    name: Contact Process API
-    status: planned
-  - id: contact-sys-api
-    kind: applicationComponent
-    name: Contact System API
-    status: planned
-  - id: salesforce-crm
-    kind: applicationComponent
-    name: Salesforce CRM
-    description: External Salesforce org; system of record for customer contacts.
-    status: current
+    owner: contact-update#sales-systems-team
   - id: contact-exp-api-interface
     kind: applicationInterface
     name: Contact Experience API interface
+    description: >-
+      The technical access point: PATCH /api/v1/contacts/{id} over HTTPS on
+      443, JSON body, bearer token in Authorization, client id in x-client-id
+      for rate-limit attribution. Answers 200, 401, 404, 409, 429, and 503 with
+      a problem+json body.
     status: planned
     constraints:
       - id: authn
@@ -38,24 +101,139 @@ concepts:
           value: "100"
       - id: mechanism
         ref: contact-update-policy#https-rest
+      - id: reliability
+        ref: contact-update-policy#at-least-once-upsert
+  - id: contact-update-service
+    kind: applicationService
+    name: Contact update
+    description: >-
+      The externally consumable service: submit corrected contact details and
+      have them land in the CRM. The solution boundary a consumer buys into.
+    status: planned
+    owner: contact-update#sales-systems-team
+  - id: accept-contact-update
+    kind: applicationProcess
+    name: Accept contact update
+    description: >-
+      Validates the token, applies the rate limit, and hands a canonical
+      contact update to the Process API.
+    status: planned
+    constraints:
+      - id: authn
+        ref: contact-update-policy#gateway-oauth
+      - id: mechanism
+        ref: contact-update-policy#https-rest
+      - id: reliability
+        ref: contact-update-policy#at-least-once-upsert
+
+  # ========================================================= process layer
+  - id: contact-prc-api
+    kind: applicationComponent
+    name: Contact Process API
+    description: >-
+      Orchestration. Owns the rule for what a complete contact update is,
+      independent of any one channel.
+    status: planned
+    owner: contact-update#sales-systems-team
   - id: contact-prc-api-interface
     kind: applicationInterface
     name: Contact Process API interface
+    description: >-
+      Internal-only access point on the VPC, no public DNS record. Accepts a
+      canonical contact update and returns the applied result.
     status: planned
     constraints:
       - id: authn
         ref: contact-update-policy#gateway-oauth
+      - id: mechanism
+        ref: contact-update-policy#https-rest
+      - id: reliability
+        ref: contact-update-policy#at-least-once-upsert
+  - id: contact-orchestration-service
+    kind: applicationService
+    name: Canonical contact update
+    description: Internal service applying a canonical contact update on behalf of any channel.
+    status: planned
+    owner: contact-update#sales-systems-team
+  - id: orchestrate-contact-update
+    kind: applicationProcess
+    name: Orchestrate contact update
+    description: >-
+      Applies the completeness rules, maps the canonical contact onto the
+      Salesforce field names, and calls the System API.
+    status: planned
+    constraints:
+      - id: authn
+        ref: contact-update-policy#gateway-oauth
+      - id: mechanism
+        ref: contact-update-policy#https-rest
+      - id: reliability
+        ref: contact-update-policy#at-least-once-upsert
+
+  # ========================================================== system layer
+  - id: contact-sys-api
+    kind: applicationComponent
+    name: Contact System API
+    description: >-
+      The single sanctioned write path into Salesforce. Owns the Connected App
+      credential, the External ID upsert key, and the API version pin.
+    status: planned
+    owner: contact-update#sales-systems-team
   - id: contact-sys-api-interface
     kind: applicationInterface
     name: Contact System API interface
+    description: >-
+      Internal-only access point exposing the agreed Contact projection.
+      Deliberately not a passthrough, so an unused Salesforce field cannot
+      silently become a consumer dependency.
     status: planned
     constraints:
       - id: authn
         ref: contact-update-policy#gateway-oauth
+      - id: mechanism
+        ref: contact-update-policy#https-rest
+      - id: reliability
+        ref: contact-update-policy#at-least-once-upsert
+  - id: salesforce-write-service
+    kind: applicationService
+    name: Salesforce contact write
+    description: The only sanctioned write into the CRM's Contact object.
+    status: planned
+    owner: contact-update#sales-systems-team
+  - id: update-salesforce-contact
+    kind: applicationProcess
+    name: Update Salesforce contact
+    description: >-
+      Authenticates with the JWT bearer flow, upserts on the External ID, and
+      translates Salesforce faults into the integration's own error vocabulary.
+    status: planned
+    constraints:
+      - id: authn
+        ref: contact-update-policy#salesforce-jwt-bearer
+      - id: mechanism
+        ref: contact-update-policy#salesforce-rest-api
+      - id: reliability
+        ref: contact-update-policy#at-least-once-upsert
+
+  # ============================================================ salesforce
+  - id: salesforce-crm
+    kind: applicationComponent
+    name: Salesforce CRM
+    description: >-
+      External Salesforce org; system of record for customer contacts. Not
+      deployed by this team, not versioned by this team, and subject to an API
+      retirement schedule this team does not set.
+    status: current
+    owner: contact-update#crm-product-owner
+    distinctFrom:
+      - contact-update#contact-sys-api
   - id: salesforce-contact-interface
     kind: applicationInterface
     name: Salesforce REST API (sObjects/Contact)
-    description: The actual Salesforce contract this flow calls; owned by Salesforce, not this project.
+    description: >-
+      The actual Salesforce contract this flow calls; owned by Salesforce, not
+      this project. PATCH /services/data/vXX.X/sobjects/Contact/{ExternalId}
+      performs the upsert that makes a retry safe.
     status: current
     constraints:
       - id: authn
@@ -64,50 +242,48 @@ concepts:
         ref: contact-update-policy#salesforce-api-limit
       - id: mechanism
         ref: contact-update-policy#salesforce-rest-api
-  - id: cloudhub2
-    kind: node
-    name: MuleSoft CloudHub 2.0
-    description: Runtime the three Contact APIs are deployed to.
-    status: planned
-  - id: accept-contact-update
-    kind: applicationProcess
-    name: Accept contact update
-    status: planned
-    constraints:
       - id: reliability
         ref: contact-update-policy#at-least-once-upsert
-  - id: orchestrate-contact-update
+  - id: salesforce-contact-service
+    kind: applicationService
+    name: Salesforce Contact data access
+    description: The vendor's own Contact read and write service, consumed through the REST API.
+    status: current
+    owner: contact-update#crm-product-owner
+  - id: serve-contact-sobject
     kind: applicationProcess
-    name: Orchestrate contact update
-    status: planned
-    constraints:
-      - id: reliability
-        ref: contact-update-policy#at-least-once-upsert
-  - id: update-salesforce-contact
-    kind: applicationProcess
-    name: Update Salesforce contact
-    status: planned
-    constraints:
-      - id: reliability
-        ref: contact-update-policy#at-least-once-upsert
+    name: Serve Contact SObject
+    description: Salesforce's own request handling, opaque to this model.
+    status: current
   - id: contact-record
     kind: dataObject
     name: Contact record
-    description: Customer contact fields synchronized to Salesforce (name, email, phone, mailing address).
+    description: >-
+      Customer contact fields synchronized to Salesforce (name, email, phone,
+      mailing address), carrying the External ID used as the upsert key.
     status: current
+    owner: contact-update#crm-product-owner
+
+  # ============================================================ technology
+  - id: cloudhub2
+    kind: node
+    name: MuleSoft CloudHub 2.0
+    description: >-
+      Runtime the three Contact APIs are deployed to. Modelled as a node rather
+      than systemSoftware or applicationComponent: per ADR 0083 the engine
+      cannot adjudicate that choice, so it is recorded as a decision an owner
+      confirmed rather than one the model derived.
+    status: planned
+  - id: salesforce-tenant-infrastructure
+    kind: node
+    name: Salesforce-operated multi-tenant infrastructure
+    description: >-
+      The vendor's own runtime. Recorded so the CRM does not read as something
+      this team deploys.
+    status: current
+
 relationships:
-  - id: exp-assigned-accept
-    kind: assignment
-    from: contact-exp-api
-    to: accept-contact-update
-  - id: prc-assigned-orchestrate
-    kind: assignment
-    from: contact-prc-api
-    to: orchestrate-contact-update
-  - id: sys-assigned-update
-    kind: assignment
-    from: contact-sys-api
-    to: update-salesforce-contact
+  # --- components own the interfaces they expose (renders as nesting) -------
   - id: exp-composes-interface
     kind: composition
     from: contact-exp-api
@@ -124,22 +300,90 @@ relationships:
     kind: composition
     from: salesforce-crm
     to: salesforce-contact-interface
-  - id: cloudhub-hosts-exp
+
+  # --- components perform their behaviour -----------------------------------
+  - id: exp-assigned-accept
     kind: assignment
-    from: cloudhub2
+    from: contact-exp-api
+    to: accept-contact-update
+  - id: prc-assigned-orchestrate
+    kind: assignment
+    from: contact-prc-api
+    to: orchestrate-contact-update
+  - id: sys-assigned-update
+    kind: assignment
+    from: contact-sys-api
+    to: update-salesforce-contact
+  - id: salesforce-assigned-serve
+    kind: assignment
+    from: salesforce-crm
+    to: serve-contact-sobject
+  - id: rep-assigned-account-work
+    kind: assignment
+    from: sales-rep
+    to: work-an-account
+
+  # --- each interface exposes a declared service ----------------------------
+  # This is what tests the interface kind: without an assigned behaviour, an
+  # applicationInterface would compile identically as a goal (ADR 0083).
+  - id: exp-interface-exposes-service
+    kind: assignment
+    from: contact-exp-api-interface
+    to: contact-update-service
+  - id: prc-interface-exposes-service
+    kind: assignment
+    from: contact-prc-api-interface
+    to: contact-orchestration-service
+  - id: sys-interface-exposes-service
+    kind: assignment
+    from: contact-sys-api-interface
+    to: salesforce-write-service
+  - id: salesforce-interface-exposes-service
+    kind: assignment
+    from: salesforce-contact-interface
+    to: salesforce-contact-service
+
+  # --- behaviour realizes the service it stands behind ----------------------
+  - id: accept-realizes-update-service
+    kind: realization
+    from: accept-contact-update
+    to: contact-update-service
+  - id: orchestrate-realizes-orchestration-service
+    kind: realization
+    from: orchestrate-contact-update
+    to: contact-orchestration-service
+  - id: update-realizes-write-service
+    kind: realization
+    from: update-salesforce-contact
+    to: salesforce-write-service
+  - id: salesforce-serve-realizes-contact-service
+    kind: realization
+    from: serve-contact-sobject
+    to: salesforce-contact-service
+
+  # --- each declared service names who consumes it --------------------------
+  - id: update-service-serves-rep
+    kind: serving
+    from: contact-update-service
+    to: sales-rep
+  - id: orchestration-service-serves-exp
+    kind: serving
+    from: contact-orchestration-service
     to: contact-exp-api
-  - id: cloudhub-hosts-prc
-    kind: assignment
-    from: cloudhub2
+  - id: write-service-serves-prc
+    kind: serving
+    from: salesforce-write-service
     to: contact-prc-api
-  - id: cloudhub-hosts-sys
-    kind: assignment
-    from: cloudhub2
+  - id: salesforce-service-serves-sys
+    kind: serving
+    from: salesforce-contact-service
     to: contact-sys-api
   - id: interface-serves-sales-rep
     kind: serving
     from: contact-exp-api-interface
     to: sales-rep
+
+  # --- the write path, hop by hop -------------------------------------------
   - id: accept-flows-prc-interface
     kind: flow
     from: accept-contact-update
@@ -155,6 +399,8 @@ relationships:
     from: update-salesforce-contact
     to: salesforce-contact-interface
     content: Contact update payload
+
+  # --- what each hop reads and writes ---------------------------------------
   - id: accept-writes-record
     kind: access
     from: accept-contact-update
@@ -170,3 +416,79 @@ relationships:
     from: update-salesforce-contact
     to: contact-record
     mode: write
+  - id: exp-interface-reads-contract
+    kind: access
+    from: contact-exp-api-interface
+    to: contact-api-contract
+    mode: read
+  - id: prc-interface-accesses-record
+    kind: access
+    from: contact-prc-api-interface
+    to: contact-record
+    mode: read-write
+  - id: sys-interface-accesses-record
+    kind: access
+    from: contact-sys-api-interface
+    to: contact-record
+    mode: read-write
+  - id: salesforce-interface-accesses-record
+    kind: access
+    from: salesforce-contact-interface
+    to: contact-record
+    mode: read-write
+  - id: exp-interface-realizes-contract
+    kind: realization
+    from: contact-exp-api-interface
+    to: contact-api-contract
+
+  # --- motivation -----------------------------------------------------------
+  - id: duplicates-drive-goal
+    kind: influence
+    from: duplicate-contacts-erode-trust
+    to: one-sanctioned-write-path
+  - id: allocation-drives-goal
+    kind: influence
+    from: salesforce-allocation-is-shared
+    to: one-sanctioned-write-path
+  - id: duplicates-drive-outcome
+    kind: influence
+    from: duplicate-contacts-erode-trust
+    to: reps-update-contacts-without-crm-logins
+  - id: crm-owner-cares-about-duplicates
+    kind: association
+    from: crm-product-owner
+    to: duplicate-contacts-erode-trust
+  - id: crm-owner-cares-about-allocation
+    kind: association
+    from: crm-product-owner
+    to: salesforce-allocation-is-shared
+  - id: sales-systems-cares-about-goal
+    kind: association
+    from: sales-systems-team
+    to: one-sanctioned-write-path
+  - id: sys-api-realizes-goal
+    kind: realization
+    from: contact-sys-api
+    to: one-sanctioned-write-path
+  - id: update-service-realizes-outcome
+    kind: realization
+    from: contact-update-service
+    to: reps-update-contacts-without-crm-logins
+
+  # --- where it runs --------------------------------------------------------
+  - id: cloudhub-hosts-exp
+    kind: assignment
+    from: cloudhub2
+    to: contact-exp-api
+  - id: cloudhub-hosts-prc
+    kind: assignment
+    from: cloudhub2
+    to: contact-prc-api
+  - id: cloudhub-hosts-sys
+    kind: assignment
+    from: cloudhub2
+    to: contact-sys-api
+  - id: sf-infra-hosts-crm
+    kind: assignment
+    from: salesforce-tenant-infrastructure
+    to: salesforce-crm
