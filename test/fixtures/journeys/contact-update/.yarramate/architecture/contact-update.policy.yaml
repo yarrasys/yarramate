@@ -1,0 +1,41 @@
+format: yarramate/v1
+id: contact-update-policy
+profile: yarramate/policy@0.1
+concepts:
+  - id: gateway-oauth
+    kind: authentication-constraint
+    name: OAuth client-credentials
+    description: >-
+      Service identity uses OAuth 2.0 client credentials at the API gateway.
+      User identity is not propagated on the Experience or Process hops.
+  - id: salesforce-jwt-bearer
+    kind: authentication-constraint
+    name: OAuth JWT bearer (Salesforce Connected App)
+    description: >-
+      System API authenticates to Salesforce as a Connected App using the
+      OAuth 2.0 JWT bearer flow. No end-user identity is propagated.
+  - id: experience-rate-limit
+    kind: rate-limit-constraint
+    name: 100 requests per client per second
+    description: Caller-facing Experience API is capacity-capped at the gateway.
+  - id: salesforce-api-limit
+    kind: rate-limit-constraint
+    name: Salesforce org daily API request limit
+    description: >-
+      Capacity is bounded by the Salesforce org's daily API request and
+      per-transaction governor limits, not by the gateway.
+  - id: at-least-once-upsert
+    kind: reliability-constraint
+    name: At-least-once with idempotent upsert
+    description: >-
+      Contact update retries on timeout; the Salesforce Contact External ID
+      field is the idempotency key used to upsert rather than insert.
+  - id: https-rest
+    kind: mechanism-constraint
+    name: HTTPS REST
+    description: Synchronous HTTP/JSON over TLS on the Experience serving hop.
+  - id: salesforce-rest-api
+    kind: mechanism-constraint
+    name: Salesforce REST API (sObjects)
+    description: System API calls the Salesforce REST API /sobjects/Contact endpoint.
+relationships: []
