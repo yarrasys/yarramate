@@ -75,16 +75,19 @@ session offers: `chat`, `choices`, `navigation`, `transcript`.
 
 ```sh
 yarramate-visual start <request.json>
-yarramate-visual wait <descriptor.json> [--after <sequence>]
-yarramate-visual respond <descriptor.json> <response.json>
-yarramate-visual status <descriptor.json>
-yarramate-visual recover <descriptor.json> [--transcript]
-yarramate-visual stop <descriptor.json> [--transcript]
+yarramate-visual wait <descriptor-uri> [--after <sequence>]
+yarramate-visual respond <descriptor-uri> <response.json>
+yarramate-visual status <descriptor-uri>
+yarramate-visual recover <descriptor-uri> [--transcript]
+yarramate-visual stop <descriptor-uri> [--transcript]
 ```
 
-`start` publishes one `yarramate/visual-session-started/v1` line on stdout
+`start` publishes one `yarramate/visual-session-started/v2` line on stdout
 carrying `browserUrl`, `descriptorPath`, `sessionRoot`, and `capabilities`,
-then blocks, serving the session until it is stopped.
+then blocks, serving the session until it is stopped. `descriptorPath` is a
+canonical local `file:` URI (`file:///...`): copy it back verbatim as the
+argument to every other command. A native path is refused with `YMVS414`, and
+nothing is resolved against the working directory.
 
 It is a managed foreground process, not a shell job and not a daemon. Launch it
 through the harness's long-running-process facility: register it under a stable
@@ -224,9 +227,9 @@ all take one path. You are the parent and the source of authority; the child is
 disposable.
 
 ```sh
-yarramate-visual recover <descriptor.json>              # structured handoff
-yarramate-visual recover <descriptor.json> --transcript # only if the summary is not enough
-yarramate-visual stop <descriptor.json>                 # shuts down, prints the handoff, then deletes
+yarramate-visual recover <descriptor-uri>              # structured handoff
+yarramate-visual recover <descriptor-uri> --transcript # only if the summary is not enough
+yarramate-visual stop <descriptor-uri>                 # shuts down, prints the handoff, then deletes
 ```
 
 1. `recover` first, always, before anything is torn down. It returns

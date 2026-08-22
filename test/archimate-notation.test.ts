@@ -9,26 +9,6 @@ import {
   relationshipNotationOf,
 } from '../src/notation/archimate.js'
 
-const KNOWN_GLYPHS = [
-  'applicationComponent',
-  'applicationFunction',
-  'applicationService',
-  'artifact',
-  'businessActor',
-  'businessFunction',
-  'capability',
-  'dataObject',
-  'deliverable',
-  'driver',
-  'goal',
-  'node',
-  'plateau',
-  'representation',
-  'requirement',
-  'systemSoftware',
-  'technologyFunction',
-] as const
-
 describe('archimate notation vocabulary', () => {
   it('covers every core concept kind exactly once', () => {
     const ids = CONCEPT_NOTATION.map((row) => row.id).sort()
@@ -83,15 +63,11 @@ describe('archimate notation vocabulary', () => {
     })
   })
 
-  it('ships glyphs for the 17 kinds the canvas already drew; null otherwise is allowed', () => {
-    for (const id of KNOWN_GLYPHS) {
-      expect(conceptNotationOf(id)?.glyph).toEqual(expect.any(String))
-      expect(kindGlyphDataUriOf(id)).toMatch(/^data:image\/svg\+xml;utf8,/)
+  it('ships a glyph for every core concept kind', () => {
+    for (const kind of conceptKinds) {
+      expect(conceptNotationOf(kind.id)?.glyph).toEqual(expect.any(String))
+      expect(kindGlyphDataUriOf(kind.id)).toMatch(/^data:image\/svg\+xml;utf8,/)
     }
-    // A core kind never drawn before may be null — stakeholder is one.
-    const stakeholder = conceptNotationOf('stakeholder')
-    expect(stakeholder).not.toBeNull()
-    // glyph may be null or string; lookup still works
     expect(conceptNotationOf('notAKind')).toBeNull()
     expect(kindGlyphDataUriOf('notAKind')).toBeNull()
   })

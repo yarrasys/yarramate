@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://yarramate.org/schema/visual-session-started/v1",
+  "$id": "https://yarramate.org/schema/visual-session-started/v2",
   "title": "YarraMate visual session started",
   "description": "Public first line printed by `yarramate-visual start`. It never carries the private agent capability.",
   "type": "object",
@@ -22,10 +22,10 @@
   ],
   "properties": {
     "format": {
-      "const": "yarramate/visual-session-started/v1"
+      "const": "yarramate/visual-session-started/v2"
     },
     "protocolVersion": {
-      "const": "yarramate/visual-protocol/v3"
+      "const": "yarramate/visual-protocol/v4"
     },
     "sessionId": {
       "$ref": "https://yarramate.org/schema/visual-event/v1#/$defs/identifier"
@@ -53,10 +53,10 @@
       "$ref": "#/$defs/localOrigin"
     },
     "descriptorPath": {
-      "$ref": "#/$defs/absolutePath"
+      "$ref": "#/$defs/sessionFileUri"
     },
     "sessionRoot": {
-      "$ref": "#/$defs/absolutePath"
+      "$ref": "#/$defs/sessionFileUri"
     },
     "capabilities": {
       "$ref": "#/$defs/capabilities"
@@ -92,11 +92,12 @@
       "type": "string",
       "pattern": "^http://127\\.0\\.0\\.1:[0-9]{1,5}$"
     },
-    "absolutePath": {
+    "sessionFileUri": {
+      "description": "Canonical local `file:` URI naming one filesystem path, as minted by Node's `pathToFileURL`. This pattern is a coarse structural gate only: every URI a local path encodes to begins `file:///` (empty host, then a POSIX `/` root or a Windows `/C:/` drive root), so a UNC-derived `file://server/share/x` fails it outright. The real check cannot be written as a schema keyword and lives beside these validators in `protocol.ts`: decode with `fileURLToPath`, refuse a non-empty host, and require that re-encoding the decoded path reproduces this string byte-for-byte. `maxLength` is double the 4096-byte native path bound because a fully percent-encoded path costs three characters per byte; it widens the wire envelope, not the path-length invariant.",
       "type": "string",
-      "minLength": 1,
-      "maxLength": 4096,
-      "pattern": "^/[^\\u0000]*$"
+      "minLength": 8,
+      "maxLength": 8192,
+      "pattern": "^file:///[^\\u0000]*$"
     },
     "capabilities": {
       "description": "Features the browser session may use. Diagram-only mode disables chat.",

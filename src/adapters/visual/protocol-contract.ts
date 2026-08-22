@@ -18,7 +18,14 @@ import type {
   ProjectionQuery,
 } from "../../projection.js";
 
-export const VISUAL_PROTOCOL_VERSION = "yarramate/visual-protocol/v3" as const;
+/**
+ * The wire this adapter speaks. v4 retypes every path-carrying field from a
+ * bare native string to a canonical local `file:` URI (ADR 0096), which is a
+ * field-shape change rather than an additive one, so it mints a new protocol
+ * version and new `format` versions on the three documents that carry a path.
+ * A v3 peer and a v4 peer refuse each other at the first document exchanged.
+ */
+export const VISUAL_PROTOCOL_VERSION = "yarramate/visual-protocol/v4" as const;
 
 export const VISUAL_LIMITS = {
   messageBytes: 64 * 1024,
@@ -71,7 +78,7 @@ export interface VisualSessionRequest {
 }
 
 export interface VisualSessionStarted {
-  readonly format: "yarramate/visual-session-started/v1";
+  readonly format: "yarramate/visual-session-started/v2";
   readonly protocolVersion: typeof VISUAL_PROTOCOL_VERSION;
   readonly sessionId: string;
   readonly authority: VisualAuthority;
@@ -80,19 +87,26 @@ export interface VisualSessionStarted {
   readonly browserUrl: string;
   readonly webSocketUrl: string;
   readonly origin: string;
+  /** Canonical local `file:` URI. Copy it back verbatim as the argument to
+   * `wait`/`respond`/`status`/`recover`/`stop`; it is never hand-typed as a
+   * native path. Minted by `toWireFileUri`, read by `fromWireFileUri`. */
   readonly descriptorPath: string;
+  /** Canonical local `file:` URI, as `descriptorPath`. */
   readonly sessionRoot: string;
   readonly capabilities: VisualCapabilities;
   readonly startedAt: string;
 }
 
 export interface VisualSessionDescriptor {
-  readonly format: "yarramate/visual-session-descriptor/v1";
+  readonly format: "yarramate/visual-session-descriptor/v2";
   readonly protocolVersion: typeof VISUAL_PROTOCOL_VERSION;
   readonly sessionId: string;
   readonly origin: string;
   readonly agentCapability: string;
+  /** Canonical local `file:` URI. Proven against the session actually opened
+   * before `agentCapability` is ever spent. */
   readonly sessionRoot: string;
+  /** Canonical local `file:` URI, as `sessionRoot`. */
   readonly journalPath: string;
   readonly createdAt: string;
 }
@@ -354,12 +368,13 @@ export type VisualTerminationReason =
   | "compiler-failed";
 
 export interface VisualHandoff extends VisualHandoffSummary {
-  readonly format: "yarramate/visual-handoff/v1";
+  readonly format: "yarramate/visual-handoff/v2";
   readonly sessionId: string;
   readonly authority: VisualAuthority;
   readonly decision: VisualHandoffDecision;
   readonly terminationReason: VisualTerminationReason;
   readonly lastSequence: number;
+  /** Canonical local `file:` URI. */
   readonly transcriptPath: string;
   readonly transcript?: readonly (VisualEvent | VisualResponse)[];
   readonly completedAt: string;
