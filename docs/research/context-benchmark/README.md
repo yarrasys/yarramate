@@ -8,6 +8,8 @@ directory adds the task suites and the runner that make it executable.
 context-benchmark/
   DESIGN.md                              # frozen protocol: hypotheses, conditions, metrics
   DESIGN-HANDOFF-FAMILY.md               # settled design: building from a published spec (H4-H6)
+  RESULTS-2026-07-29.md                  # first sweep, yarramate@0.4.0, v1 suites, 4 repos
+  RESULTS-2026-08-19.md                  # second sweep, yarramate@0.22.0, v2 + kafka/keycloak
   ELICITATION-PILOT-2026-07-31.md        # pilot: freehand vs interrogate across 3 tiers (8 runs)
   spec-build/                            # H4-H6 executable family: frozen delta + prompts + runner
   yarramate-benchmark-suite.schema.json  # draft schema for yarramate/benchmark-suite v1-v2
@@ -42,16 +44,17 @@ The `type:` field is the suite version, and a suite is frozen per version.
 - **v2** — `tasks/v2/*.yaml`. The same tasks with the sweep's errata
   corrected: one incomplete ground truth, two incomplete `touches` lists, and
   the additive form of the catalogue gate. Each file's header lists its own
-  errata. `yarramate-self.yaml` has no v2 — no erratum applies to it.
+  errata. `yarramate-self.yaml` has no v2 — no erratum applies to it. The
+  2026-08-19 sweep ran these files plus `tasks/kafka.yaml` and
+  `tasks/keycloak.yaml` ([RESULTS-2026-08-19.md](RESULTS-2026-08-19.md)).
 
 Never pool results across versions, and give each version its own `--out`
 directory: run directories are keyed on the suite slug, which does not change
 with the version.
 
-⚠️ v2 is errata only. The sweep's other finding — the comprehension family is
-saturated at both tiers on all four repositories, so H1 cannot be measured
-from it — needs new multi-hop, cross-component tasks authored against the
-subject repos. That authoring is still outstanding (#56).
+⚠️ v2 is errata plus harder multi-hop comprehension on the original four
+repos. Kafka and Keycloak were authored multi-hop from the start. Absolute
+pass rates are not comparable across sweeps.
 
 ## Corpus
 
