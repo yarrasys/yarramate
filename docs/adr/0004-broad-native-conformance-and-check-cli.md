@@ -2,6 +2,11 @@
 
 Status: accepted
 
+> The endpoint policy in this decision - broad aspect restrictions, no
+> external kind-to-kind matrix - is superseded by ADR 0097. Access mode, flow
+> content, the whole-part contradiction (YM501), and the check exit codes
+> remain in force.
+
 ## Context
 
 The product contract requires deterministic correctness checks without making

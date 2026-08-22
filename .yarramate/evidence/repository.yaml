@@ -19,6 +19,26 @@ observations:
     result: confirmed
     evidence:
       uri: repo:src/compiler.ts
+  - subject: yarramate-engine#relationship-table
+    result: confirmed
+    evidence:
+      uri: repo:src/archimate-relationships.generated.ts
+  - subject: yarramate-repository#relationship-table-source
+    result: confirmed
+    evidence:
+      uri: repo:vendor/archi/relationships.xml
+  - subject: yarramate-repository#relationship-table-generator
+    result: confirmed
+    evidence:
+      uri: repo:scripts/generate-archimate-relationships.mjs
+  - subject: yarramate-repository#relationship-table-module
+    result: confirmed
+    evidence:
+      uri: repo:src/archimate-relationships.generated.ts
+  - subject: yarramate-repository#relationship-matrix-source
+    result: confirmed
+    evidence:
+      uri: repo:src/relationship-matrix.ts
   - subject: yarramate-engine#architecture-state-engine
     result: confirmed
     evidence:

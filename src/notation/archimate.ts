@@ -1,4 +1,4 @@
-// Single source of truth for ArchiMate-inspired rendering data: layer
+// Single source of truth for ArchiMate rendering data: layer
 // palette, aspect-driven shape tokens, per-concept-kind glyphs, and
 // per-relationship-kind line/arrow styles. Pure data + lookups, no
 // cytoscape/DOM dependency - the same zero-import discipline as

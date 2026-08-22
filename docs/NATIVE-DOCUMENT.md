@@ -365,7 +365,7 @@ and one-based line and column.
 | `YM1xx` | YAML parsing | `YM101` malformed YAML |
 | `YM2xx` | Document structure | `YM201` JSON Schema violation |
 | `YM3xx` | Identity and references | `YM301` duplicate local ID; `YM302` unresolved concept reference; `YM303` duplicate document ID; `YM304` unresolved owner or attestation authority; `YM305` unresolved constraint; `YM306` duplicate constraint ID; `YM307` unresolved architecture state; `YM308` unresolved subject reference; `YM309` duplicate reference ID; `YM310` unresolved distinct-from reference; `YM311` self-referential distinct-from; `YM312` unresolved succession reference; `YM313` self-referential succession |
-| `YM4xx` | Profile conformance | `YM401` unknown concept kind; `YM402` unknown relationship kind; `YM403` unavailable profile; `YM404` incompatible endpoint; `YM405` misplaced controlled field; `YM406` unavailable parent profile; `YM407`/`YM408` unavailable semantic parent; `YM409`/`YM410` inherited-name collision; `YM411` duplicate profile; `YM412` broadened constraint; `YM413` rigid kind specializing an anti-rigid one |
+| `YM4xx` | Profile conformance | `YM401` unknown concept kind; `YM402` unknown relationship kind; `YM403` unavailable profile; `YM404` incompatible endpoint; `YM405` misplaced controlled field; `YM406` unavailable parent profile; `YM407`/`YM408` unavailable semantic parent; `YM409`/`YM410` inherited-name collision; `YM411` duplicate profile; `YM412` broadened constraint; `YM413` rigid kind specializing an anti-rigid one; `YM414` mixed relationship kinds on one junction |
 | `YM5xx` | Claim consistency | `YM501` competing whole-part claims; `YM502` cyclic state ordering; `YM503` relationship present without an endpoint; `YM504` cyclic succession |
 | `YM6xx` | Adapter mapping integrity | `YM601` unknown native subject; `YM602` subject type mismatch; `YM603` duplicate native mapping; `YM604` duplicate external mapping; `YM605` duplicate versioned mapping |
 | `YM7xx` | Workspace resolution | `YM701` unsafe pattern; `YM702` unmatched pattern; `YM703` cross-category file |
@@ -374,13 +374,18 @@ and one-based line and column.
 Compilation returns no partial graph when an error diagnostic exists.
 Diagnostic arrays are ordered by path, line, column, code, and message.
 
-## Native conformance
+## Relationship endpoints
 
-The bundled profile applies its broad, original aspect restrictions to
-relationship endpoints. For example, `assignment` requires an
-active-structure source, `access` requires a passive-structure target,
-`influence` requires a motivation target, and `triggering` connects behavior.
-These are native YarraMate policies, not an external relationship matrix.
+The bundled profile validates every relationship against the ArchiMate 3.2
+relationship table (ADR 0097). Both endpoints and the relationship kind
+resolve to their core ancestors through profile lineage; the table then says
+whether that kind may join that pair, and a pair it does not list is a
+`YM404` error naming the kinds it does permit. Pairs the specification
+derives are in the table and are accepted when written; the compiler never
+derives a relationship that is not written. Every relationship on one
+junction must be the same kind (`YM414`). An extension relationship kind may
+narrow a permitted pair by aspect with `sourceAspects` or `targetAspects`
+(`YM412`).
 
 Declaring both `composition` and `aggregation` over the same ordered endpoints
 with overlapping relationship applicability is contradictory: one whole-part

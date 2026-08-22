@@ -1654,7 +1654,7 @@ views:
           // The six JSON Schema subjects are artifacts (ADR 0097), so the
           // technology viewpoint now carries them and, through `connected`,
           // the results they realize and the sources that realize them.
-          '    include consumerHost, consumerPackage, coreContractSchemaSource, deriveTraceabilityMatrix, engineCli, engineCoreContractManifest, engineCoreContractSchema, engineGraphifyEvidenceAdapter, engineLikec4CheckResultSchema, engineLikec4DiagnosticResultSchema, engineLoadCoreContract, engineProjectionResultSchema, executeShippedBinaries, likec4CheckResult, likec4CheckResultSchemaSource, likec4DiagnosticResult, likec4DiagnosticResultSchemaSource, likec4ExportAdapter, localWebBrowser, mcpAdapter, nodejsRuntime, npmPackage, packageConsumerTests, productDesignSolutionBeforeBuild, productDiscoverProjectArchitecture, productStableCli, projectionResult, projectionResultSchemaSource, renderVisualSessionPage, requirementsTraceabilityMatrix, rtmSchema, stateComparison, stateComparisonSchema, stateComparisonSchemaSource, visualBrowser, visualRuntime',
+          '    include consumerHost, consumerPackage, coreContractSchemaSource, deriveTraceabilityMatrix, engineCli, engineCoreContractManifest, engineCoreContractSchema, engineGraphifyEvidenceAdapter, engineLikec4CheckResultSchema, engineLikec4DiagnosticResultSchema, engineLoadCoreContract, engineProjectionResultSchema, engineRelationshipPolicyCatalogue, engineRelationshipTable, executeShippedBinaries, likec4CheckResult, likec4CheckResultSchemaSource, likec4DiagnosticResult, likec4DiagnosticResultSchemaSource, likec4ExportAdapter, localWebBrowser, mcpAdapter, nodejsRuntime, npmPackage, packageConsumerTests, productDesignSolutionBeforeBuild, productDiscoverProjectArchitecture, productStableCli, projectionResult, projectionResultSchemaSource, relationshipTableGenerator, relationshipTableModule, relationshipTableSource, renderVisualSessionPage, requirementsTraceabilityMatrix, rtmSchema, stateComparison, stateComparisonSchema, stateComparisonSchemaSource, visualBrowser, visualRuntime',
       )
       const marker = JSON.parse(
         readFileSync(
@@ -2632,7 +2632,7 @@ mappings:
             subject: 'yarramate-engine#likec4-adapter-provides-export',
             path: '.yarramate/architecture/engine.yaml',
             pointer: '/relationships/125',
-            line: 1380,
+            line: 1386,
             column: 5,
           },
           {
@@ -2643,7 +2643,7 @@ mappings:
             subject: 'yarramate-engine#likec4-adapter-provides-check',
             path: '.yarramate/architecture/engine.yaml',
             pointer: '/relationships/126',
-            line: 1384,
+            line: 1390,
             column: 5,
           },
           {
@@ -2652,28 +2652,6 @@ mappings:
             message:
               'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
             subject: 'yarramate-repository#likec4-export-source',
-            path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/21/kind',
-            line: 97,
-            column: 11,
-          },
-          {
-            severity: 'error',
-            code: 'YMLC104',
-            message:
-              'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
-            subject: 'yarramate-repository#likec4-prepare-source',
-            path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/24/kind',
-            line: 109,
-            column: 11,
-          },
-          {
-            severity: 'error',
-            code: 'YMLC104',
-            message:
-              'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
-            subject: 'yarramate-repository#likec4-project-source',
             path: '.yarramate/architecture/repository.yaml',
             pointer: '/concepts/25/kind',
             line: 113,
@@ -2684,10 +2662,32 @@ mappings:
             code: 'YMLC104',
             message:
               'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
+            subject: 'yarramate-repository#likec4-prepare-source',
+            path: '.yarramate/architecture/repository.yaml',
+            pointer: '/concepts/28/kind',
+            line: 125,
+            column: 11,
+          },
+          {
+            severity: 'error',
+            code: 'YMLC104',
+            message:
+              'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
+            subject: 'yarramate-repository#likec4-project-source',
+            path: '.yarramate/architecture/repository.yaml',
+            pointer: '/concepts/29/kind',
+            line: 129,
+            column: 11,
+          },
+          {
+            severity: 'error',
+            code: 'YMLC104',
+            message:
+              'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
             subject: 'yarramate-repository#likec4-project-definition-source',
             path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/26/kind',
-            line: 117,
+            pointer: '/concepts/30/kind',
+            line: 133,
             column: 11,
           },
           {
@@ -2697,8 +2697,8 @@ mappings:
               'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
             subject: 'yarramate-repository#likec4-project-schema-source',
             path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/53/kind',
-            line: 230,
+            pointer: '/concepts/57/kind',
+            line: 246,
             column: 11,
           },
           {
@@ -2708,8 +2708,8 @@ mappings:
               'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
             subject: 'yarramate-repository#likec4-generated-project-v2-schema-source',
             path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/54/kind',
-            line: 234,
+            pointer: '/concepts/58/kind',
+            line: 250,
             column: 11,
           },
         ],

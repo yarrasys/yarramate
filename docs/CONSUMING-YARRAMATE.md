@@ -228,8 +228,9 @@ visual session server. The local `yarramate-visual` runtime remains the
 optional loopback conversation product and is not required for projection.
 `presentation.notation: 'archimate'` is still a rendering mode only
 ([ADR 0087](adr/0087-archimate-notation-is-a-rendering-mode-not-a-vocabulary.md));
-the notation module is descriptive vocabulary for that mode, not an ArchiMate
-conformance package.
+the notation module is the rendering vocabulary for that mode; the element
+vocabulary and relationship table themselves are implemented in the core
+profile (ADR 0097).
 
 ## MCP server for agent harnesses
 

@@ -83,7 +83,7 @@ immediate parent, because specialization is transitive and an unannotated kind
 in between does not launder the violation.
 
 The core profile annotates five of its own kinds, all `anti-rigid`, and only
-where the ArchiMate-inspired semantics make the answer plain:
+where the ArchiMate semantics make the answer plain:
 `stakeholder`, `businessRole`, `businessCollaboration`,
 `applicationCollaboration`, and `technologyCollaboration`. Nothing is
 essentially a role or a collaboration; both are held for as long as they are

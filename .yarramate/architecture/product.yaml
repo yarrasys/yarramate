@@ -61,7 +61,7 @@ concepts:
   - id: tool-neutral-core
     kind: requirement
     name: Tool-neutral core
-    description: Core remains independent of authoring, visualization, evidence, and compatibility adapters.
+    description: Core remains independent of authoring, visualization, evidence, and compatibility adapters. Implementing a published language specification is not an adapter dependency.
     attestations:
       - topic: adequacy
         by: yarramate-maintainers

@@ -333,7 +333,7 @@ concepts:
     kind: dataObject
     owner: yarramate-product#yarramate-maintainers
     name: Native profile catalogue
-    description: The shipped core vocabulary - concept kinds with their aspects and rigidity, and the relationship policies that constrain endpoints. It is data a compilation resolves, not a component that runs.
+    description: The shipped core vocabulary - concept kinds with their aspects, lineage, and rigidity, and the ArchiMate 3.2 relationship table that decides which kind pairs a relationship kind may join. It is data a compilation resolves, not a component that runs.
     status: current
   - id: question-catalogue
     kind: dataObject
@@ -345,7 +345,13 @@ concepts:
     kind: dataObject
     owner: yarramate-product#yarramate-maintainers
     name: Relationship policy catalogue
-    description: Resolved relationship kinds with endpoint aspect constraints available to a compilation.
+    description: Resolved relationship kinds, each paired with the set of permitted source and target core kinds read from the vendored ArchiMate 3.2 relationship table, plus any aspect narrowing an extension declares.
+    status: current
+  - id: relationship-table
+    kind: artifact
+    owner: yarramate-product#yarramate-maintainers
+    name: ArchiMate 3.2 relationship table
+    description: Appendix B of the ArchiMate 3.2 specification as vendored from Archi's relationships.xml (MIT) and regenerated into a zero-import module by a checked-in script; never hand-edited, and a test fails on a byte of drift (ADR 0097).
     status: current
   - id: semantic-graph
     kind: dataObject
@@ -1826,3 +1832,7 @@ relationships:
     from: render-likec4-deployment-view
     to: projection-result
     mode: read
+  - id: relationship-table-realizes-policies
+    kind: realization
+    from: relationship-table
+    to: relationship-policy-catalogue
