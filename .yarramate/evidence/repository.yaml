@@ -7,6 +7,14 @@ observations:
     result: confirmed
     evidence:
       uri: repo:docs/BACKLOG-DISPOSITION.md
+  - subject: yarramate-product#run-discovery-journey
+    result: confirmed
+    evidence:
+      uri: repo:docs/PRODUCT-JOURNEYS.md
+  - subject: yarramate-product#run-design-journey
+    result: confirmed
+    evidence:
+      uri: repo:docs/PRODUCT-JOURNEYS.md
   - subject: yarramate-engine#compiler
     result: confirmed
     evidence:

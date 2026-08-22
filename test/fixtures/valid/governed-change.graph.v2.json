@@ -654,10 +654,10 @@
     },
     {
       "id": "governed-change#control-plane-assigned-to-edge",
-      "subject": "governed-change#control-plane",
-      "predicate": "yarramate/core@0.1#assignment",
+      "subject": "governed-change#edge-runtime",
+      "predicate": "yarramate/core@0.1#realization",
       "object": {
-        "ref": "governed-change#edge-runtime"
+        "ref": "governed-change#control-plane"
       },
       "origin": "declared",
       "source": {
@@ -814,10 +814,10 @@
     },
     {
       "id": "governed-change#decision-gate-realizes-capability",
-      "subject": "governed-change#explicit-decision-gate",
+      "subject": "governed-change#govern-ai-change",
       "predicate": "yarramate/core@0.1#realization",
       "object": {
-        "ref": "governed-change#govern-ai-change"
+        "ref": "governed-change#explicit-decision-gate"
       },
       "origin": "declared",
       "source": {
@@ -833,7 +833,7 @@
       "subject": "governed-change#decision-gate-realizes-capability",
       "predicate": "yarramate/relationship/name",
       "object": {
-        "value": "implements strategy"
+        "value": "is implemented by"
       },
       "origin": "declared",
       "source": {
@@ -1230,10 +1230,10 @@
     },
     {
       "id": "governed-change#journey-realizes-capability",
-      "subject": "governed-change#safe-change-journey",
-      "predicate": "yarramate/core@0.1#realization",
+      "subject": "governed-change#govern-ai-change",
+      "predicate": "yarramate/core@0.1#serving",
       "object": {
-        "ref": "governed-change#govern-ai-change"
+        "ref": "governed-change#safe-change-journey"
       },
       "origin": "declared",
       "source": {
@@ -1249,7 +1249,7 @@
       "subject": "governed-change#journey-realizes-capability",
       "predicate": "yarramate/relationship/name",
       "object": {
-        "value": "delivers"
+        "value": "serves"
       },
       "origin": "declared",
       "source": {
@@ -1791,7 +1791,7 @@
     {
       "id": "governed-change#suite-realizes-traceability",
       "subject": "governed-change#conformance-suite",
-      "predicate": "yarramate/core@0.1#realization",
+      "predicate": "yarramate/core@0.1#association",
       "object": {
         "ref": "governed-change#structured-traceability"
       },

@@ -17,7 +17,7 @@ concepts:
     kind: constraint
     name: Australian data residency
   - id: modular-monolith
-    kind: courseOfAction
+    kind: applicationComponent
     name: Modular monolith option
   - id: microservices
     kind: courseOfAction
@@ -58,10 +58,11 @@ relationships:
     to: delivery-api
     presentIn:
       - target
-  - id: monolith-contains-data
-    kind: composition
+  - id: monolith-accesses-data
+    kind: access
     from: modular-monolith
     to: delivery-data
+    mode: read-write
     presentIn:
       - target
   - id: api-realizes-service

@@ -698,7 +698,7 @@ query: {}
       "controlPlane = applicationComponent 'Control plane'",
     )
     expect(result.stdout).toContain(
-      "controlPlane -[assignment]-> edgeRuntime 'deployed on'",
+      "edgeRuntime -[realization]-> controlPlane 'deployed on'",
     )
   })
 
@@ -1651,7 +1651,10 @@ views:
         "view starter-technology-deployment {\n" +
           "    title '4 · ArchiMate viewpoints / Technology and deployment'\n" +
           "    description 'Technology structure, behavior, services, networks, and deployed artifacts.'\n" +
-          '    include consumerHost, consumerPackage, engineCli, engineGraphifyEvidenceAdapter, executeShippedBinaries, likec4ExportAdapter, localWebBrowser, mcpAdapter, nodejsRuntime, npmPackage, packageConsumerTests, productDesignSolutionBeforeBuild, productDiscoverProjectArchitecture, productStableCli, renderVisualSessionPage, visualBrowser, visualRuntime',
+          // The six JSON Schema subjects are artifacts (ADR 0097), so the
+          // technology viewpoint now carries them and, through `connected`,
+          // the results they realize and the sources that realize them.
+          '    include consumerHost, consumerPackage, coreContractSchemaSource, deriveTraceabilityMatrix, engineCli, engineCoreContractManifest, engineCoreContractSchema, engineGraphifyEvidenceAdapter, engineLikec4CheckResultSchema, engineLikec4DiagnosticResultSchema, engineLoadCoreContract, engineProjectionResultSchema, executeShippedBinaries, likec4CheckResult, likec4CheckResultSchemaSource, likec4DiagnosticResult, likec4DiagnosticResultSchemaSource, likec4ExportAdapter, localWebBrowser, mcpAdapter, nodejsRuntime, npmPackage, packageConsumerTests, productDesignSolutionBeforeBuild, productDiscoverProjectArchitecture, productStableCli, projectionResult, projectionResultSchemaSource, renderVisualSessionPage, requirementsTraceabilityMatrix, rtmSchema, stateComparison, stateComparisonSchema, stateComparisonSchemaSource, visualBrowser, visualRuntime',
       )
       const marker = JSON.parse(
         readFileSync(
@@ -2629,7 +2632,7 @@ mappings:
             subject: 'yarramate-engine#likec4-adapter-provides-export',
             path: '.yarramate/architecture/engine.yaml',
             pointer: '/relationships/125',
-            line: 1379,
+            line: 1380,
             column: 5,
           },
           {
@@ -2640,7 +2643,7 @@ mappings:
             subject: 'yarramate-engine#likec4-adapter-provides-check',
             path: '.yarramate/architecture/engine.yaml',
             pointer: '/relationships/126',
-            line: 1383,
+            line: 1384,
             column: 5,
           },
           {
@@ -2651,7 +2654,7 @@ mappings:
             subject: 'yarramate-repository#likec4-export-source',
             path: '.yarramate/architecture/repository.yaml',
             pointer: '/concepts/21/kind',
-            line: 96,
+            line: 97,
             column: 11,
           },
           {
@@ -2662,7 +2665,7 @@ mappings:
             subject: 'yarramate-repository#likec4-prepare-source',
             path: '.yarramate/architecture/repository.yaml',
             pointer: '/concepts/24/kind',
-            line: 108,
+            line: 109,
             column: 11,
           },
           {
@@ -2673,7 +2676,7 @@ mappings:
             subject: 'yarramate-repository#likec4-project-source',
             path: '.yarramate/architecture/repository.yaml',
             pointer: '/concepts/25/kind',
-            line: 112,
+            line: 113,
             column: 11,
           },
           {
@@ -2684,7 +2687,7 @@ mappings:
             subject: 'yarramate-repository#likec4-project-definition-source',
             path: '.yarramate/architecture/repository.yaml',
             pointer: '/concepts/26/kind',
-            line: 116,
+            line: 117,
             column: 11,
           },
           {
@@ -2695,7 +2698,7 @@ mappings:
             subject: 'yarramate-repository#likec4-project-schema-source',
             path: '.yarramate/architecture/repository.yaml',
             pointer: '/concepts/53/kind',
-            line: 229,
+            line: 230,
             column: 11,
           },
           {
@@ -2706,7 +2709,7 @@ mappings:
             subject: 'yarramate-repository#likec4-generated-project-v2-schema-source',
             path: '.yarramate/architecture/repository.yaml',
             pointer: '/concepts/54/kind',
-            line: 233,
+            line: 234,
             column: 11,
           },
         ],

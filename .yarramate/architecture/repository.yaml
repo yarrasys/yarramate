@@ -6,8 +6,9 @@ concepts:
     kind: deliverable
     name: Product contract
   - id: architecture-decisions
-    kind: deliverable
+    kind: representation
     name: Architecture decision records
+    description: The decisions as reviewable documents. A representation, not a deliverable - each records why; the merged work realizes it.
   - id: roadmap
     kind: representation
     name: Product roadmap
@@ -501,11 +502,13 @@ relationships:
     from: product-contract
     to: yarramate-product#stable-cli
   - id: decisions-realize-contract
-    kind: realization
+    kind: association
+    name: decides
     from: architecture-decisions
     to: product-contract
   - id: roadmap-serves-contract
-    kind: serving
+    kind: association
+    name: stages
     from: roadmap
     to: product-contract
   - id: journey-guide-realizes-discovery

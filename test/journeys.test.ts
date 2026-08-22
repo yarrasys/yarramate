@@ -111,8 +111,8 @@ describe('agent journeys through the stable CLI', () => {
       { id: 'delivery-design#delivery-service', type: 'concept' },
       { id: 'delivery-design#modular-monolith', type: 'concept' },
       { id: 'delivery-design#modular-monolith-realizes-delivery', type: 'relationship' },
+      { id: 'delivery-design#monolith-accesses-data', type: 'relationship' },
       { id: 'delivery-design#monolith-contains-api', type: 'relationship' },
-      { id: 'delivery-design#monolith-contains-data', type: 'relationship' },
       { id: 'delivery-design#reliable-delivery', type: 'concept' },
     ])
     expect(JSON.parse(comparison.stdout).comparison.added).toHaveLength(6)

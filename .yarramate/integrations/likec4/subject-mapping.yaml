@@ -774,6 +774,18 @@ mappings:
   - native: yarramate-product#repository-stewardship
     external: repositoryStewardship
     type: concept
+  - native: yarramate-product#run-discovery-journey
+    external: runDiscoveryJourney
+    type: concept
+  - native: yarramate-product#run-design-journey
+    external: runDesignJourney
+    type: concept
+  - native: yarramate-product#discovery-journey-realizes-discovery
+    external: discoveryJourneyRealizesDiscovery
+    type: relationship
+  - native: yarramate-product#design-journey-realizes-design
+    external: designJourneyRealizesDesign
+    type: relationship
   - native: yarramate-product#trustworthy-agent-context
     external: trustworthyAgentContext
     type: concept

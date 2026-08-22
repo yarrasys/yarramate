@@ -26,6 +26,20 @@ concepts:
     kind: businessFunction
     name: Repository stewardship
     description: Review, merge, and ADR governance for the YarraMate repository as described in GOVERNANCE.md.
+  - id: run-discovery-journey
+    kind: businessFunction
+    name: Run the discovery journey
+    description: >-
+      Sweeps a repository and proposes its architecture model for the
+      compiler to gate: the agent is the extractor, the engine the verifier.
+    status: current
+  - id: run-design-journey
+    kind: businessFunction
+    name: Run the design journey
+    description: >-
+      Answers the interview one question at a time and lands each answer as a
+      validated write, so the model leads the build rather than recording it.
+    status: current
   - id: shared-architecture-context
     kind: goal
     name: Shared architecture context
@@ -202,14 +216,22 @@ relationships:
   - id: harness-performs-discovery
     kind: assignment
     from: agent-harness
-    to: discover-project-architecture
+    to: run-discovery-journey
   - id: harness-performs-design
     kind: assignment
     from: agent-harness
-    to: design-solution-before-build
+    to: run-design-journey
   - id: adopting-team-performs-design
     kind: assignment
     from: adopting-team
+    to: run-design-journey
+  - id: discovery-journey-realizes-discovery
+    kind: realization
+    from: run-discovery-journey
+    to: discover-project-architecture
+  - id: design-journey-realizes-design
+    kind: realization
+    from: run-design-journey
     to: design-solution-before-build
   - id: drift-drives-shared-context
     kind: influence
