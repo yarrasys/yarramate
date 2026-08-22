@@ -14,6 +14,7 @@
 ## Native semantics and interfaces
 
 - [Native documents](NATIVE-DOCUMENT.md)
+- [Core vocabulary reference](VOCABULARY.md)
 - [Profiles](PROFILES.md)
 - [Workspaces](WORKSPACES.md)
 - [Semantic graph](SEMANTIC-GRAPH.md)
