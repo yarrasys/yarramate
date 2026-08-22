@@ -1,0 +1,9 @@
+format: yarramate/workspace/v1
+id: contact-update
+documents:
+  - architecture/*.yaml
+profiles: []
+projections:
+  - projections/*.yaml
+adapterMappings: []
+evidence: []

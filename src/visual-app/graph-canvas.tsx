@@ -416,6 +416,12 @@ export function buildStylesheet(
       // grouping box rather than a plain node. The label is drawn above the box
       // entirely, in the `CONTAINER_LABEL_GAP` band ELK reserves but cytoscape
       // does not draw into, so it clears both the children and its own border.
+      // The low `background-opacity` fades only the shape fill, never the badge
+      // layers: cytoscape passes it to its own fill colour and computes image
+      // alpha from `background-image-opacity` alone, which already defaults to
+      // 1. So a container's kind glyph and its lifecycle/evidence/ownership
+      // badges are drawn at full strength here with nothing pinned, and an
+      // applicationComponent shown as a group still reads as one.
       selector: 'node:parent',
       style: {
         shape: 'roundrectangle',
@@ -499,7 +505,13 @@ export function buildStylesheet(
       if (meta.borderStyle === 'dashed') {
         style['border-style'] = 'dashed'
       }
-      return { selector: `node[aspect = "${aspect}"]`, style }
+      // `:childless` confines this to leaf nodes: these rules run after
+      // `node:parent` in the array below, so without it an aspect's shape
+      // (e.g. active-structure's plain `rectangle`) would win the cascade
+      // and silently undo the container's own `roundrectangle` + dashed
+      // border - a compound box would look like whatever aspect its own
+      // kind happens to be, not like a container.
+      return { selector: `node[aspect = "${aspect}"]:childless`, style }
     },
   )
 

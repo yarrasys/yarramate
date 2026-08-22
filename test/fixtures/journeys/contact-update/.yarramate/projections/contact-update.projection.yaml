@@ -1,0 +1,36 @@
+format: yarramate/projection/v1
+id: contact-update-slice
+version: "1.0"
+query:
+  subjects:
+    - contact-update#sales-rep
+    - contact-update#contact-exp-api
+    - contact-update#contact-prc-api
+    - contact-update#contact-sys-api
+    - contact-update#salesforce-crm
+    - contact-update#contact-exp-api-interface
+    - contact-update#contact-prc-api-interface
+    - contact-update#contact-sys-api-interface
+    - contact-update#salesforce-contact-interface
+    - contact-update#cloudhub2
+    - contact-update#accept-contact-update
+    - contact-update#orchestrate-contact-update
+    - contact-update#update-salesforce-contact
+    - contact-update#contact-record
+    - contact-update#contact-api-contract
+    - contact-update#contact-update-service
+    - contact-update#contact-orchestration-service
+    - contact-update#salesforce-write-service
+    - contact-update#salesforce-contact-service
+    - contact-update#serve-contact-sobject
+    - contact-update-policy#gateway-oauth
+    - contact-update-policy#salesforce-jwt-bearer
+    - contact-update-policy#experience-rate-limit
+    - contact-update-policy#salesforce-api-limit
+    - contact-update-policy#at-least-once-upsert
+    - contact-update-policy#https-rest
+    - contact-update-policy#salesforce-rest-api
+  relationships: connected
+presentation:
+  title: Contact update hop
+  description: Experience to process to Salesforce contact update, on CloudHub 2.0.
