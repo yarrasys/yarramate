@@ -50,10 +50,10 @@ describe('YarraMate semantic profile', () => {
     )
   })
 
-  it('records compatibility as an explicit pointer', () => {
+  it('records the ArchiMate element each kind implements', () => {
     expect(
       conceptKinds.every(({ inspiredBy }) =>
-        inspiredBy.startsWith('ArchiMate-inspired:'),
+        inspiredBy.startsWith('archimate:'),
       ),
     ).toBe(true)
   })

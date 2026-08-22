@@ -82,6 +82,8 @@ const canonicalProfileContext = (
           'conceptKindLayers',
           'conceptKindAspects',
           'relationshipKindEndpointAspects',
+          'conceptKindCoreAncestors',
+          'relationshipKindCoreAncestors',
         ] as const
       ).map((field) => [
         field,

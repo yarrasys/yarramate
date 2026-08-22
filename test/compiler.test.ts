@@ -1062,10 +1062,10 @@ relationships:
           severity: 'error',
           code: 'YM404',
           message:
-            'Relationship "assignment" requires a source with aspect "active-structure"; "intent" has aspect "motivation"; assign from an active-structure element (an actor, component, or node), or use "association"; source is motivation and target is behavior; valid candidates: composition, aggregation, realization, serving, association, flow, specialization',
+            'Relationship "assignment" is not permitted from "intent" (goal) to "work" (businessProcess); ArchiMate 3.2 permits: association',
           path: 'incompatible.yaml',
-          pointer: '/relationships/0/from',
-          line: 14,
+          pointer: '/relationships/0/kind',
+          line: 13,
           column: 11,
         },
       ],
@@ -1087,11 +1087,11 @@ relationships:
           severity: 'error',
           code: 'YM404',
           message:
-            'Relationship "access" requires a target with aspect "passive-structure"; "intent" has aspect "motivation"; point "access" at passive structure (a business object, data object, or artifact), or use "association"; source is active structure and target is motivation; valid candidates: composition, aggregation, assignment, realization, serving, influence, association, flow, specialization',
+            'Relationship "access" is not permitted from "actor" (businessActor) to "intent" (goal); ArchiMate 3.2 permits: realization, influence, association',
           path: 'incompatible-target.yaml',
-          pointer: '/relationships/0/to',
-          line: 15,
-          column: 9,
+          pointer: '/relationships/0/kind',
+          line: 13,
+          column: 11,
         },
       ],
     })
@@ -1424,7 +1424,10 @@ relationships:
     }
   })
 
-  it('enforces endpoint constraints declared by an extension profile', () => {
+  it('validates an extension relationship kind by its core ancestor', () => {
+    // `owns` descends from assignment, and an actor is never assigned to a
+    // goal, so the table rejects the pair before the profile's own narrowing
+    // is reached. The diagnostic names the declared kind and its ancestor.
     const result = compileWorkspace([
       {
         path: 'profiles/platform.yaml',
@@ -1443,14 +1446,184 @@ relationships:
           severity: 'error',
           code: 'YM404',
           message:
-            'Relationship "owns" requires a target with aspect "behavior"; "target" has aspect "motivation"; source is active structure and target is motivation; valid candidates: composition, aggregation, assignment, realization, serving, influence, association, flow, specialization',
+            'Relationship "owns" (assignment) is not permitted from "team" (platform-team, a businessActor) to "target" (goal); ArchiMate 3.2 permits: realization, influence, association',
           path: 'architecture/constrained.yaml',
-          pointer: '/relationships/0/to',
-          line: 15,
-          column: 9,
+          pointer: '/relationships/0/kind',
+          line: 13,
+          column: 11,
         },
       ],
     })
+  })
+
+  it('accepts every relationship the ArchiMate table permits, including triggering between active structure', () => {
+    const source = (relationships: string) =>
+      `format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts:
+  - id: cli
+    kind: applicationComponent
+    name: CLI
+  - id: engine
+    kind: applicationComponent
+    name: Engine
+  - id: ops
+    kind: businessActor
+    name: Ops
+  - id: support
+    kind: businessActor
+    name: Support
+  - id: host
+    kind: node
+    name: Host
+relationships:
+${relationships}`
+    expect(
+      compileWorkspace([
+        {
+          path: 'main.yaml',
+          source: source(`  - id: cli-triggers-engine
+    kind: triggering
+    from: cli
+    to: engine
+  - id: ops-triggers-support
+    kind: triggering
+    from: ops
+    to: support
+  - id: host-realizes-engine
+    kind: realization
+    from: host
+    to: engine
+  - id: host-serves-cli
+    kind: serving
+    from: host
+    to: cli
+`),
+        },
+      ]).ok,
+    ).toBe(true)
+  })
+
+  it('lets relationships pass through a junction but keeps the junction row', () => {
+    const source = (relationships: string) =>
+      `format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts:
+  - id: first
+    kind: businessProcess
+    name: First
+  - id: second
+    kind: businessProcess
+    name: Second
+  - id: both
+    kind: andJunction
+    name: Both
+  - id: why
+    kind: goal
+    name: Why
+relationships:
+${relationships}`
+    expect(
+      compileWorkspace([
+        {
+          path: 'main.yaml',
+          source: source(`  - id: first-to-junction
+    kind: triggering
+    from: first
+    to: both
+  - id: junction-to-second
+    kind: triggering
+    from: both
+    to: second
+`),
+        },
+      ]).ok,
+    ).toBe(true)
+    const rejected = compileWorkspace([
+      {
+        path: 'main.yaml',
+        source: source(`  - id: junction-to-goal
+    kind: triggering
+    from: both
+    to: why
+`),
+      },
+    ])
+    expect(rejected.ok).toBe(false)
+    if (rejected.ok) return
+    expect(rejected.diagnostics.map(({ code }) => code)).toEqual(['YM404'])
+  })
+
+  it('requires every relationship on one junction to be the same kind', () => {
+    const result = compileWorkspace([
+      {
+        path: 'main.yaml',
+        source: `format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts:
+  - id: first
+    kind: businessProcess
+    name: First
+  - id: second
+    kind: businessProcess
+    name: Second
+  - id: both
+    kind: andJunction
+    name: Both
+relationships:
+  - id: first-triggers-junction
+    kind: triggering
+    from: first
+    to: both
+  - id: junction-flows-second
+    kind: flow
+    from: both
+    to: second
+`,
+      },
+    ])
+    expect(result).toEqual({
+      ok: false,
+      diagnostics: [
+        {
+          severity: 'error',
+          code: 'YM414',
+          message:
+            'Relationship "junction-flows-second" (flow) joins junction "main#both" whose relationships are "triggering"; every relationship on one junction must be the same kind',
+          path: 'main.yaml',
+          pointer: '/relationships/1/kind',
+          line: 20,
+          column: 11,
+        },
+      ],
+    })
+  })
+
+  it('says nothing about a pair whose endpoint never resolved', () => {
+    const result = compileWorkspace([
+      {
+        path: 'main.yaml',
+        source: `format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts:
+  - id: intent
+    kind: goal
+    name: Intent
+relationships:
+  - id: dangling
+    kind: assignment
+    from: intent
+    to: nowhere
+`,
+      },
+    ])
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.diagnostics.map(({ code }) => code)).toEqual(['YM302'])
   })
 
   it('rejects an extension kind whose semantic parent is unavailable', () => {

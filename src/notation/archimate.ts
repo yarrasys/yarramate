@@ -29,7 +29,7 @@ export interface ShapeMeta {
   readonly shape: 'rectangle' | 'round-rectangle' | 'octagon'
   /** Passive-structure's ArchiMate header-stripe convention. */
   readonly accent?: 'top-band'
-  /** Composite (grouping/location/junction) convention. */
+  /** Grouping's convention. The other composites draw a solid border. */
   readonly borderStyle?: 'dashed'
 }
 
@@ -40,7 +40,15 @@ export const ASPECT_SHAPES: Record<Aspect, ShapeMeta> = {
   'active-structure': { shape: 'rectangle' },
   behavior: { shape: 'round-rectangle' },
   'passive-structure': { shape: 'rectangle', accent: 'top-band' },
-  composite: { shape: 'rectangle', borderStyle: 'dashed' },
+  composite: { shape: 'rectangle' },
+}
+
+// Per-kind overrides layered over the aspect default. ArchiMate draws
+// Grouping with a dashed border and every other composite - product,
+// location, plateau, gap, the junctions - with a solid one, so the dashed
+// convention belongs to the one kind rather than to the aspect.
+const KIND_SHAPE_OVERRIDES: Readonly<Partial<Record<string, Partial<ShapeMeta>>>> = {
+  grouping: { borderStyle: 'dashed' },
 }
 
 function svg(body: string): string {
@@ -224,6 +232,7 @@ export const CONCEPT_NOTATION: readonly ConceptNotation[] = conceptKinds.map((ki
   layer: kind.layer,
   aspect: kind.aspect,
   ...ASPECT_SHAPES[kind.aspect],
+  ...KIND_SHAPE_OVERRIDES[kind.id],
   glyph: BASE_KIND_SVG[kind.id] ?? null,
   colors: LAYER_COLORS[kind.layer],
 }))

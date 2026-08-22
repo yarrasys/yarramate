@@ -558,28 +558,74 @@ const conditionHolds = (
       // existence is the whole signal (ADR 0056).
       return (index.nearDuplicates().get(subjectId!) ?? []).length > 0
     case 'unconstrained-kind': {
-      // A compiled graph already satisfies every aspect rule it is subject to
-      // (YM404), so participation in a kind that pins the aspect at this
-      // subject's end is the whole test: reclassify the subject to another
-      // aspect and the workspace stops compiling. Where no such claim exists
-      // the kind is a label the engine can never contradict (ADR 0083).
-      // Without a profile context the rules are unknown, not absent, so the
-      // condition reports nothing rather than inventing a finding.
+      // A kind is a label when nothing in the model could tell it apart from
+      // a kind of another aspect: every relationship the subject has would
+      // still be permitted by the ArchiMate relationship table with the
+      // subject reclassified. Two exclusions keep this the question ADR 0083
+      // meant rather than a hum. Same-aspect siblings are not compared: node
+      // and device share most of a row, and a question that fires on that
+      // gap is the one ADR 0083 declined to ship. Composite kinds are not
+      // offered as alternatives: a grouping, location, or junction carries a
+      // row broad enough to stand in for almost anything, and none of them
+      // is a classification a subject could honestly be moved to. A subject
+      // with no relationships at all is untested by definition. Without a
+      // profile context the table is unknown, not absent, so the condition
+      // reports nothing rather than inventing a finding.
       if (profileContext === undefined) return false
-      return !index.relationshipClaims.some((claim) => {
-        const endpoints = profileContext.relationshipKindEndpointAspects.get(
-          claim.predicate,
-        )
-        if (endpoints === undefined) return false
-        if (endpoints.source !== undefined && claim.subject === subjectId) {
-          return true
+      const subjectKind = index.kindOf.get(subjectId!)
+      if (subjectKind === undefined) return false
+      const subjectAspect = profileContext.conceptKindAspects.get(subjectKind)
+      if (subjectAspect === undefined) return false
+      const touching: {
+        readonly claim: GraphClaim
+        readonly end: 'source' | 'target'
+        readonly counterpart: string
+      }[] = []
+      for (const claim of index.relationshipClaims) {
+        if (!('ref' in claim.object)) continue
+        if (claim.subject === subjectId) {
+          touching.push({ claim, end: 'source', counterpart: claim.object.ref })
+        } else if (claim.object.ref === subjectId) {
+          touching.push({ claim, end: 'target', counterpart: claim.subject })
         }
-        return (
-          endpoints.target !== undefined &&
-          'ref' in claim.object &&
-          claim.object.ref === subjectId
+      }
+      if (touching.length === 0) return true
+      const alternatives = [...profileContext.conceptKindCoreAncestors.keys()]
+        .filter((identity) => identity.startsWith('yarramate/core@'))
+        .map((identity) => ({
+          identity,
+          aspect: profileContext.conceptKindAspects.get(identity),
+        }))
+        .filter(
+          ({ aspect }) =>
+            aspect !== undefined &&
+            aspect !== subjectAspect &&
+            aspect !== 'composite',
         )
-      })
+      return alternatives.some(({ identity, aspect }) =>
+        touching.every(({ claim, end, counterpart }) => {
+          const relationshipKind =
+            profileContext.relationshipKindCoreAncestors.get(claim.predicate)
+          const counterpartKind = index.kindOf.get(counterpart)
+          if (relationshipKind === undefined || counterpartKind === undefined) {
+            return false
+          }
+          const permitted =
+            end === 'source'
+              ? profileContext.permittedRelationshipKinds(identity, counterpartKind)
+              : profileContext.permittedRelationshipKinds(counterpartKind, identity)
+          if (permitted === undefined || !permitted.has(relationshipKind)) {
+            return false
+          }
+          // An extension relationship kind may narrow by aspect beyond the
+          // table; the alternative has to clear that narrowing as well.
+          const narrowing = profileContext.relationshipKindEndpointAspects.get(
+            claim.predicate,
+          )
+          const allowed = end === 'source' ? narrowing?.source : narrowing?.target
+          return allowed === undefined || allowed.some((entry) => entry === aspect)
+        }),
+      )
     }
   }
 }
