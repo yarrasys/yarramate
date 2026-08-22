@@ -174,8 +174,7 @@ They use original YarraMate query definitions, tolerate partial adoption, and
 may produce an empty view when a workspace has no matching concepts. Broad
 starter views may exclude isolated concepts to keep diagrams readable; sparse
 business and roadmap views retain them. The views are not mandatory
-documentation and do not reproduce or claim conformance with an external
-viewpoint catalogue.
+documentation and do not reproduce the ArchiMate viewpoint catalogue.
 
 Architecture-state authoring and comparison are described in
 `docs/ARCHITECTURE-STATES.md`. The schemas are exported as `yarramate/schema/projection` and

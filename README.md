@@ -183,10 +183,16 @@ projections, evidence, and architecture states; and exposes a stable CLI for
 people, CI, skills, and agent harnesses.
 
 Optional adapters provide LikeC4 visualization from semantic projections,
-Graphify observations as evidence overlays, loopback-only visual
+Graphify observations as evidence overlays, and loopback-only visual
 conversations that render the native model and land reviewer edits through
-the same validated `apply` batch (beta), and separately governed
-compatibility profiles for external languages. Core depends on none of them.
+the same validated `apply` batch (beta). Core depends on none of them.
+
+YarraMate's core profile implements the ArchiMate® 3.2 element vocabulary
+and relationship table: a relationship between two kinds is valid exactly
+when the table permits it. The custody layer YarraMate adds - evidence,
+attestations, lifecycle status, ownership, architecture states - is
+annotation that never changes what an ArchiMate element or relationship
+means (ADR 0097).
 
 YarraMate is not affiliated with or certified by The Open Group. ArchiMate®
 is a registered trademark of The Open Group. LikeC4 and Graphify are

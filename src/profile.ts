@@ -43,8 +43,8 @@ export interface ConceptKind {
    */
   readonly rigidity?: Rigidity
   /**
-   * A compatibility pointer, not a claim of standards conformance.
-   * Exact external identifiers can be added after licensing review.
+   * The ArchiMate 3.2 element this kind implements, kept as data so a
+   * profile author can read the mapping off the kind itself.
    */
   readonly inspiredBy: string
 }
@@ -62,7 +62,7 @@ const kind = (
     layer,
     aspect,
     ...(rigidity === undefined ? {} : { rigidity }),
-    inspiredBy: `ArchiMate-inspired:${name}`,
+    inspiredBy: `archimate:${name}`,
   }))
 
 export const conceptKinds: readonly ConceptKind[] = [
@@ -109,8 +109,10 @@ export const conceptKinds: readonly ConceptKind[] = [
     ['businessObject', 'Business object'],
     ['contract', 'Contract'],
     ['representation', 'Representation'],
-    ['product', 'Product'],
   ]),
+  // A product aggregates services, objects, and a contract: ArchiMate
+  // classes it as a composite element, not as passive structure.
+  ...kind('business', 'composite', [['product', 'Product']]),
   ...kind('application', 'active-structure', [
     ['applicationComponent', 'Application component'],
     ['applicationCollaboration', 'Application collaboration', 'anti-rigid'],
@@ -153,6 +155,10 @@ export const conceptKinds: readonly ConceptKind[] = [
   ]),
   ...kind('implementation', 'passive-structure', [
     ['deliverable', 'Deliverable'],
+  ]),
+  // A plateau aggregates any core element and a gap is associated with the
+  // plateaus it separates: neither is passive structure in ArchiMate.
+  ...kind('implementation', 'composite', [
     ['plateau', 'Plateau'],
     ['gap', 'Gap'],
   ]),
@@ -182,20 +188,17 @@ export type RelationshipKind = (typeof relationshipKinds)[number]
 
 export interface RelationshipPolicy {
   readonly id: RelationshipKind
+  /** Documentary. Which endpoint pairs a kind may join is decided by the relationship table, not by prose. */
   readonly intent: string
-  readonly sourceAspects?: readonly Aspect[]
-  readonly targetAspects?: readonly Aspect[]
-  /**
-   * Repair hint appended to endpoint-aspect diagnostics (YM404). A remedy,
-   * never a correction: the compiler still rejects the input.
-   */
-  readonly repair?: string
 }
 
 /**
- * Safe, intentionally broad semantic constraints. A future licensed
- * compatibility package may layer an exact external relationship matrix over
- * these native YarraMate rules.
+ * The eleven core relationship kinds. Which (source kind, target kind) pairs
+ * each may join is the ArchiMate 3.2 relationship table, vendored under
+ * `vendor/archi` and decoded by `relationship-matrix.ts` (ADR 0097). An
+ * extension profile may narrow its own relationship kind further with
+ * `sourceAspects`/`targetAspects`; the core kinds carry no narrowing of
+ * their own because the table already says everything there is to say.
  */
 export const relationshipPolicies: readonly RelationshipPolicy[] = [
   { id: 'composition', intent: 'Strong whole-part structure' },
@@ -203,35 +206,13 @@ export const relationshipPolicies: readonly RelationshipPolicy[] = [
   {
     id: 'assignment',
     intent: 'Allocate an active structure to behavior or responsibility',
-    sourceAspects: ['active-structure'],
-    repair:
-      'assign from an active-structure element (an actor, component, or node), or use "association"',
   },
   { id: 'realization', intent: 'Fulfil a more abstract concept' },
   { id: 'serving', intent: 'Make behavior or an interface available' },
-  {
-    id: 'access',
-    intent: 'Read, write, create, or use passive structure',
-    targetAspects: ['passive-structure'],
-    repair:
-      'point "access" at passive structure (a business object, data object, or artifact), or use "association"',
-  },
-  {
-    id: 'influence',
-    intent: 'Affect a motivation concept',
-    targetAspects: ['motivation'],
-    repair:
-      'point "influence" at a motivation concept (a goal, requirement, or principle), or use "association"',
-  },
+  { id: 'access', intent: 'Read, write, create, or use passive structure' },
+  { id: 'influence', intent: 'Affect a motivation concept' },
   { id: 'association', intent: 'Relevant connection with no stronger meaning' },
-  {
-    id: 'triggering',
-    intent: 'Express temporal or causal precedence',
-    sourceAspects: ['behavior'],
-    targetAspects: ['behavior'],
-    repair:
-      'use "flow" between active-structure elements, or introduce a behavior concept and "assignment"',
-  },
+  { id: 'triggering', intent: 'Express temporal or causal precedence' },
   { id: 'flow', intent: 'Transfer information, value, goods, or material' },
   { id: 'specialization', intent: 'Express a more specific form' },
 ]

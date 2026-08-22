@@ -91,13 +91,18 @@ These items need a new authoritative semantic or product decision:
 - **CI policy for evidence findings** belongs to an opt-in consumer policy
   decision, not Core correctness.
 
+## Landed after being blocked
+
+- ArchiMate 3.2 relationship-table validation (ADR 0097). The licensing
+  question it waited on was a misreading: the specification is published to
+  be implemented, and the table is vendored from Archi's MIT-licensed
+  encoding with provenance recorded beside it.
+
 ## Externally blocked
 
 - Graphify relationship observation needs stable external edge identities and
   their documented semantics. The consumed Graphify graph currently provides
   stable node IDs but not an equivalent edge identity contract.
-- ArchiMate or another external-language compatibility profile needs licensing
-  confirmation and independently governed mappings.
 
 Publication preparation is complete: the repository identity is
 `yarrasys/yarramate`, all repository material uses the MIT licence, and normal

@@ -45,10 +45,10 @@ questions. Each question binds:
   kind closely enough to be the same thing under two names, and no
   `yarramate/identity/distinct-from` claim dismisses the pair; the
   algorithm and its thresholds are stated in ADR 0077), or
-  `unconstrained-kind` (no relationship claim pins the aspect at this
-  subject's end, so its kind is a label no check can contradict — only
-  `assignment`, `access`, `triggering`, and `influence` constrain an
-  endpoint's aspect; see ADR 0083).
+  `unconstrained-kind` (every relationship the subject participates in
+  would still be permitted by the ArchiMate relationship table if the
+  subject were reclassified to a kind of another aspect, so its kind is a
+  label no check can contradict; see ADR 0083 as amended by ADR 0097).
   Relationship kinds in conditions resolve through profile lineage by
   default, the same rule as subject selectors;
 - a **scope** — `workspace` (asked once) or `subject` (asked per matching

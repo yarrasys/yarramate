@@ -1,6 +1,6 @@
 format: yarramate/question-catalogue/v1
 id: core-enrichment
-version: "0.9"
+version: "1.0"
 profile: yarramate/core@0.1
 presentation:
   title: Core enrichment interview
@@ -22,9 +22,9 @@ waves:
   - id: interaction
     name: Interaction
     description: >-
-      Load-bearing hops: the behavior a component is assigned to, the
-      serving/triggering/flow mechanism, payload, trust, reliability, and
-      capacity. Hygiene waits.
+      Load-bearing hops: the behavior a component is assigned to or the
+      interface it composes, the serving/triggering/flow mechanism,
+      payload, trust, reliability, and capacity. Hygiene waits.
   - id: business
     name: Business
     description: Who acts, what is served, and what information matters.
@@ -287,9 +287,11 @@ questions:
       influences is what makes it enforceable in review.
     authority: either
     resolution: >-
-      Add influence relationships to the decisions the principle governs,
-      or realization from the elements that embody it.
-
+      Add influence from the principle to the goals, outcomes, or
+      requirements it shapes, or realization from the requirements and
+      constraints that make it concrete. Influence only points at
+      motivation elements; a decision is recorded as the requirement it
+      produced.
   - id: assessment-unlinked
     wave: motivation
     since: "0.3"
@@ -417,6 +419,7 @@ questions:
         counterpartKinds:
           - yarramate/core@0.1#applicationComponent
           - yarramate/core@0.1#applicationInterface
+          - yarramate/core@0.1#applicationService
           - yarramate/core@0.1#applicationProcess
           - yarramate/core@0.1#applicationFunction
           - yarramate/core@0.1#applicationInteraction
@@ -459,6 +462,7 @@ questions:
         counterpartKinds:
           - yarramate/core@0.1#applicationComponent
           - yarramate/core@0.1#applicationInterface
+          - yarramate/core@0.1#applicationService
           - yarramate/core@0.1#businessActor
       - condition: missing-linkage
         kinds:
@@ -469,24 +473,33 @@ questions:
           - yarramate/core@0.1#applicationFunction
           - yarramate/core@0.1#applicationInteraction
           - yarramate/core@0.1#applicationEvent
+      - condition: missing-linkage
+        kinds:
+          - yarramate/core@0.1#composition
+          - yarramate/core@0.1#aggregation
+        direction: outgoing
+        counterpartKinds:
           - yarramate/core@0.1#applicationInterface
     question: >-
       {subject.name} participates in an application interaction, but
-      nothing it is assigned to is that interaction. What process,
-      function, interaction, event, or interface is the hop?
+      nothing it is assigned to or composes is that interaction. What
+      process, function, interaction, event, or interface is the hop?
     askPlain: >-
       {subject.name} talks to something else, but the model never names
       the work it does in that talk. What is the actual step?
     materiality: >-
-      A component-to-component edge with no assigned behavior is
-      inventory. Protocol, trust, payload, and failure have nowhere to
-      bind until the hop is a subject.
+      A component-to-component edge with no assigned behavior or composed
+      interface is inventory. Protocol, trust, payload, and failure have
+      nowhere to bind until the hop is a subject.
     authority: either
     resolution: >-
-      Add an application process, function, interaction, event, or
-      interface, assign this component to it, and relate that behavior
-      with serving, triggering, or flow to its counterpart. Do not answer
-      by deleting the component or adding a realization instead.
+      Add the application process, function, interaction, or event this
+      component performs and assign the component to it, or add the
+      application interface it exposes and compose it into the component;
+      then relate that behavior or interface with serving, triggering, or
+      flow to its counterpart. Realizing a service does not close this:
+      the service is what the hop offers, the process or interface is the
+      hop. Do not answer by deleting the component.
 
   - id: interaction-protocol-unbound
     wave: interaction
@@ -510,6 +523,7 @@ questions:
         counterpartKinds:
           - yarramate/core@0.1#applicationComponent
           - yarramate/core@0.1#applicationInterface
+          - yarramate/core@0.1#applicationService
           - yarramate/core@0.1#applicationProcess
           - yarramate/core@0.1#applicationFunction
           - yarramate/core@0.1#applicationInteraction
@@ -528,7 +542,7 @@ questions:
       hop fail, version, and authenticate differently.
     authority: either
     resolution: >-
-      Bind a mechanism-constraint on this behavior (or a not-applicable
+      Bind a mechanism-constraint on this behavior or interface (or a not-applicable
       subject if the serving kind is already the whole answer).
 
   - id: interaction-content-unknown
@@ -569,6 +583,7 @@ questions:
         - yarramate/core@0.1#applicationInteraction
         - yarramate/core@0.1#applicationEvent
         - yarramate/core@0.1#applicationInterface
+        - yarramate/core@0.1#applicationService
       statuses:
         - planned
         - current
@@ -582,6 +597,7 @@ questions:
         counterpartKinds:
           - yarramate/core@0.1#applicationComponent
           - yarramate/core@0.1#applicationInterface
+          - yarramate/core@0.1#applicationService
           - yarramate/core@0.1#applicationProcess
           - yarramate/core@0.1#applicationFunction
           - yarramate/core@0.1#applicationInteraction
@@ -630,6 +646,7 @@ questions:
         counterpartKinds:
           - yarramate/core@0.1#applicationComponent
           - yarramate/core@0.1#applicationInterface
+          - yarramate/core@0.1#applicationService
           - yarramate/core@0.1#applicationProcess
           - yarramate/core@0.1#applicationFunction
           - yarramate/core@0.1#applicationInteraction
@@ -674,6 +691,7 @@ questions:
         counterpartKinds:
           - yarramate/core@0.1#applicationComponent
           - yarramate/core@0.1#applicationInterface
+          - yarramate/core@0.1#applicationService
           - yarramate/core@0.1#applicationProcess
           - yarramate/core@0.1#applicationFunction
           - yarramate/core@0.1#applicationInteraction
@@ -940,7 +958,6 @@ questions:
           - yarramate/core@0.1#businessFunction
           - yarramate/core@0.1#applicationService
           - yarramate/core@0.1#applicationComponent
-          - yarramate/core@0.1#capability
     question: >-
       What actually delivers {subject.name}?
     askPlain: >-
@@ -952,10 +969,9 @@ questions:
       wrong.
     authority: either
     resolution: >-
-      Add realization from the process, function, or application element
-      that delivers it.
-
-
+      Add realization from the business process or function that delivers
+      it, or from the application service or component that automates it.
+      A capability is realized by the service, not the other way round.
   # ---- application ---------------------------------------------------------
   - id: app-service-unrealized
     wave: application
@@ -1033,8 +1049,7 @@ questions:
         counterpartKinds:
           - yarramate/core@0.1#applicationComponent
           - yarramate/core@0.1#applicationCollaboration
-          - yarramate/core@0.1#businessActor
-          - yarramate/core@0.1#businessRole
+          - yarramate/core@0.1#applicationInterface
     question: >-
       Who or what performs {subject.name}?
     materiality: >-
@@ -1043,9 +1058,11 @@ questions:
       to put it.
     authority: either
     resolution: >-
-      Add assignment from the component, collaboration, or actor that
-      performs the behavior.
-
+      Add assignment from the application component, collaboration, or
+      interface that performs the behavior. A business actor or role does
+      not perform application behavior: assign the actor to the business
+      process that uses it and let the application service serve that
+      process.
   - id: event-triggers-nothing
     wave: application
     since: "0.3"
@@ -1132,14 +1149,15 @@ questions:
     trigger:
       - condition: missing-linkage
         kinds:
+          - yarramate/core@0.1#realization
           - yarramate/core@0.1#serving
-          - yarramate/core@0.1#assignment
         direction: incoming
         counterpartKinds:
           - yarramate/core@0.1#node
           - yarramate/core@0.1#device
           - yarramate/core@0.1#systemSoftware
           - yarramate/core@0.1#technologyService
+          - yarramate/core@0.1#artifact
     question: >-
       Where does {subject.name} run?
     materiality: >-
@@ -1150,9 +1168,12 @@ questions:
       hosting rather than answering separately.
     authority: either
     resolution: >-
-      Add the node, device, or system software that hosts it with a
-      serving or assignment relationship into the component.
-
+      Add realization or serving from the node, device, or system
+      software that hosts it, or from the technology service it runs on;
+      or add the artifact that materializes it, with realization to the
+      component and assignment from the node that deploys the artifact.
+      Technology is never assigned to a component: assignment runs from a
+      node to the artifacts and technology behavior it carries.
   - id: node-serves-nothing
     wave: technology
     since: "0.4"
@@ -1166,6 +1187,7 @@ questions:
       - condition: missing-relationship
         kinds:
           - yarramate/core@0.1#serving
+          - yarramate/core@0.1#realization
           - yarramate/core@0.1#assignment
         direction: outgoing
     question: >-
@@ -1176,9 +1198,9 @@ questions:
       deployment budget.
     authority: either
     resolution: >-
-      Add serving or assignment relationships to the applications and
-      behavior it hosts, or remove it.
-
+      Add realization or serving to the application components it hosts,
+      or assignment to the artifacts it deploys and the technology
+      behavior it performs, or remove it.
   - id: technology-service-unrealized
     wave: technology
     since: "0.4"
@@ -1232,9 +1254,9 @@ questions:
       starts from exactly these links.
     authority: either
     resolution: >-
-      Assign the artifact to the node that deploys it and add realization
-      to the component or data it materializes.
-
+      Add assignment from the node that deploys the artifact and
+      realization from the artifact to the component or data object it
+      materializes.
   # ---- implementation ------------------------------------------------------
   - id: workpackage-delivers-nothing
     wave: implementation
@@ -1341,7 +1363,6 @@ questions:
       - condition: missing-relationship
         kinds:
           - yarramate/core@0.1#association
-          - yarramate/core@0.1#realization
         direction: any
     question: >-
       What closes {subject.name}?
@@ -1350,9 +1371,10 @@ questions:
       work closes it or the acceptance of it should be on record.
     authority: human
     resolution: >-
-      Associate the gap with the plateaus it separates and the
-      deliverable that closes it, or record the decision to accept it.
-
+      Associate the gap with the plateaus it separates and with the
+      deliverable or work package that closes it - a gap is only ever
+      associated, never realized - or associate it with the assessment
+      that records the decision to accept it.
   # ---- hygiene -------------------------------------------------------------
   - id: concept-isolated
     wave: hygiene
@@ -1503,25 +1525,27 @@ questions:
       - condition: unconstrained-kind
     question: >-
       Nothing in the model tests that {subject.name} is a structural element
-      at all: no behaviour is assigned to it, so reclassifying it as a
-      service, an object, or a goal would compile exactly the same. What
-      does it run, host, or perform?
+      at all: every relationship it has would be just as legal if it were
+      a service, an object, or a goal. What does it run, host, or perform?
     askPlain: >-
       What does {subject.name} actually do, or what runs on it? The model
       says what it is but nothing says what it takes part in.
     materiality: >-
       A structural kind is a promise that something behaves through this
-      element. Only four relationship kinds constrain the aspect of an
-      endpoint, so where none of them touches the subject the kind is a
-      label no check can contradict — the choice between a node, a piece of
-      system software, and an application component stops carrying
-      information, and diagrams inherit a distinction the model never made.
+      element. ArchiMate permits a different set of relationships for
+      every pair of kinds, so a subject whose relationships would all
+      survive reclassification to another aspect carries a kind no check
+      can contradict — the choice between a node, a piece of system
+      software, and an application component stops carrying information,
+      and diagrams inherit a distinction the model never made.
     authority: either
     resolution: >-
       Assign {subject.name} to the behaviour it performs — the process,
-      function, service, or capability it carries. Assignment is the one
-      claim whose source endpoint must be an active structure, so recording
-      it makes the classification falsifiable. If nothing in scope is
-      assigned to it, reclassify it to a kind that does carry a claim, or
-      retire it with a description saying why it sits outside this
-      architecture.
+      function, or interaction it carries; an interface to the service it
+      exposes; a node to the artifacts and system software it runs; a
+      resource to the capability it supports. Assignment from an active
+      structure is the claim no behavior, object, or motivation element
+      could make in its place, so recording it makes the classification
+      falsifiable. If nothing in scope is assigned to it, reclassify it
+      to a kind that does carry a claim, or retire it with a description
+      saying why it sits outside this architecture.

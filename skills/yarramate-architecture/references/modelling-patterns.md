@@ -12,50 +12,27 @@ names its source so a reader can check it rather than trust the summary.
 
 ## Invocation chain
 
-**Problem.** "The user invokes the command" and "this component invokes that
-one" are the two most natural sentences in an architecture conversation, and
-both fail when written as `triggering`. Triggering requires behavior at both
-ends. An actor and a component are active structure, so the compiler rejects
-the relationship.
+**Problem.** "This component invokes that one" is the most natural sentence
+in an architecture conversation, and drawn as one edge between two
+components it names no step for anything to bind to. Protocol, trust,
+payload, and failure handling all attach to behaviour, so a model made of
+component-to-component lines has nowhere to record them.
 
-**Solution.** Name the behavior that is invoked, assign every performer to it,
-and reserve `triggering` for edges between behaviors. The invocation becomes
-two assignments, and the chain becomes a sequence of behavior-to-behavior
-steps. This is the model the diagnostic itself recommends: its repair hint
-reads `introduce a behavior concept and "assignment"`.
+**Solution.** Name the behaviour that is invoked, assign its performer, and
+chain steps as behaviour-to-behaviour `triggering` or `flow`. The edge between
+components stays legal and may stay drawn; the behaviour is what the interview
+and the dynamic views address.
 
-**Prevents.** `YM404` on `triggering`, whose source and target must both be
-behavior.
+**Prevents.** An interaction wave with nothing to interrogate
+(`hop-unrealised`), and a dynamic view with nothing to order.
 
-**Worked example.** `native-authoring.md`, section "Invocation chains".
+**Worked example.** `native-authoring.md`, section "Interactions between
+components".
 
-The named behavior is also what makes the step addressable later. A dynamic
-view orders relationships between behaviors, so a chain modelled as actors
-invoking components has nothing to order.
-
-## Degraded edge
-
-**Problem.** Aspect policy blocks the kind that carries the meaning you want.
-The common case is `triggering` between two components, where the relationship
-is real and the kind is illegal.
-
-**Solution.** Keep the edge legal with `kind: flow` and carry the invocation
-semantics on the edge's `name` and `description`. Both compile into claims, so
-evidence can later confirm or contradict the recorded semantics. The
-degradation loses no reviewable information: it moves the meaning from the
-kind to two fields that are still checked and still rendered.
-
-`serving` and `flow` declare no endpoint aspect constraints, so neither can
-raise `YM404`. That is what makes them available as the legal carrier.
-
-**Prevents.** `YM404`, and the worse alternative of dropping a real
-relationship because no kind fits.
-
-**Worked example.** `native-authoring.md`, section "Degrading a blocked kind".
-
-Reach for the invocation chain first. Degrading records that the edge exists;
-the chain records the behavior, which is the better model whenever the
-behavior has a name worth having.
+Retired: *degraded edge*. Until ADR 0097, `triggering` between two components
+was rejected and authors carried the meaning on a `flow`. ArchiMate permits
+that triggering, so an edge recorded as `flow` only to dodge the old rule
+should be re-kinded to `triggering` or `serving`.
 
 ## Delivery with content
 
@@ -167,10 +144,12 @@ carry it.
 **Problem.** A component is modelled with no runtime. The model then says what
 the system does and nothing about where it does it.
 
-**Solution.** Give the component a host with `serving` or `assignment` from a
-`node`, `device`, or `systemSoftware`. Give each build output an `artifact`,
+**Solution.** Give the component a host with `realization` or `serving` from
+a `node`, `device`, or `systemSoftware`. Give each build output an `artifact`,
 assigned to the node that deploys it, with `realization` to the component or
-data it materializes.
+data it materializes. Technology is never assigned to a component: assignment
+runs from the node to what it carries, and "deployed on" is the realization
+that chain derives.
 
 ```yaml
 concepts:
@@ -185,7 +164,7 @@ concepts:
     name: Delivery container image
 relationships:
   - id: cluster-hosts-api
-    kind: assignment
+    kind: realization
     from: delivery-cluster
     to: delivery-api
   - id: cluster-deploys-image

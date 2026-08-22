@@ -160,7 +160,7 @@ relationships:
     // The YM404 message enumerates the relationship kinds that would have
     // worked. That list is the likeliest place for an extension to leak into
     // an answer about core, so the comparison below is load-bearing.
-    expect(without.diagnostics[0]?.message).toContain('valid candidates:')
+    expect(without.diagnostics[0]?.message).toContain('ArchiMate 3.2 permits:')
     expect(without.diagnostics[0]?.message).not.toContain('implements')
     expect(JSON.stringify(withExtension)).toBe(JSON.stringify(without))
   })

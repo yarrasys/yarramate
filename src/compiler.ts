@@ -6,8 +6,15 @@ import {
   relationshipPolicies,
   type Aspect,
   type Layer,
+  type RelationshipKind,
   type Rigidity,
 } from './profile.js'
+import {
+  isCoreConceptKindId,
+  matrixEndpointAspects,
+  permittedRelationshipKinds as tablePermittedKinds,
+  type CoreConceptKindId,
+} from './relationship-matrix.js'
 import {
   closestCandidate,
   describeSchemaViolation,
@@ -155,9 +162,17 @@ interface ResolvedConceptKind {
 interface ResolvedRelationshipKind {
   readonly identity: string
   readonly lineage: readonly string[]
+  /**
+   * The core relationship kind this one resolves to: `lineage[0]`'s local
+   * id, which is the letter the relationship table is read by.
+   */
+  readonly coreKind: RelationshipKind
+  /**
+   * Declared narrowing on an extension kind only. Core kinds carry none:
+   * the table already says which pairs they may join.
+   */
   readonly sourceAspects?: readonly (typeof conceptKinds)[number]['aspect'][]
   readonly targetAspects?: readonly (typeof conceptKinds)[number]['aspect'][]
-  readonly repair?: string
 }
 
 interface ResolvedProfile {
@@ -198,13 +213,15 @@ export interface SemanticGraph {
   readonly claims: readonly GraphClaim[]
 }
 
-// Which endpoint aspects a relationship kind pins, resolved through profile
-// lineage. An absent side is the honest reading: that endpoint accepts any
-// aspect, so a claim of this kind tests nothing about how its subject was
-// classified (ADR 0083).
+// The aspects a relationship kind may carry at each endpoint, resolved
+// through profile lineage: an extension's declared narrowing where it has
+// one, otherwise the shadow the ArchiMate relationship table casts on the
+// aspect axis. Both sides are always present now that every kind is
+// constrained by the table (ADR 0097); the coarse aspect view survives
+// because extension profiles still narrow in those terms (YM412).
 export interface RelationshipEndpointAspects {
-  readonly source?: readonly Aspect[]
-  readonly target?: readonly Aspect[]
+  readonly source: readonly Aspect[]
+  readonly target: readonly Aspect[]
 }
 
 export interface ResolvedProfileContext {
@@ -216,6 +233,19 @@ export interface ResolvedProfileContext {
     string,
     RelationshipEndpointAspects
   >
+  /** Kind identity -> the core kind it resolves to through lineage. */
+  readonly conceptKindCoreAncestors: ReadonlyMap<string, CoreConceptKindId>
+  readonly relationshipKindCoreAncestors: ReadonlyMap<string, RelationshipKind>
+  /**
+   * The core relationship kinds the ArchiMate table permits between two
+   * concept kind identities, resolved through lineage; undefined when either
+   * identity is unknown. An extension relationship kind's own narrowing is
+   * not applied here: read `relationshipKindEndpointAspects` for that.
+   */
+  readonly permittedRelationshipKinds: (
+    fromKindIdentity: string,
+    toKindIdentity: string,
+  ) => ReadonlySet<RelationshipKind> | undefined
 }
 
 export type CompilationResult =
@@ -321,34 +351,30 @@ export {
   type ConstraintExpectsParts,
 } from './graph-claims.js'
 
-const describeAspect = (aspect: (typeof conceptKinds)[number]['aspect']) =>
-  aspect.replace('-', ' ')
+const localKindId = (identity: string): string =>
+  identity.slice(identity.indexOf('#') + 1)
 
-// Candidate order is the policy-matrix declaration order: the resolved kind
-// map inserts core policies first, then extension kinds as declared.
-const candidateKindHint = (
+// Candidate order is the resolved kind map's insertion order: core kinds
+// first, then extension kinds as declared. Scoped to the selected profile
+// (ADR 0079), so a profile nobody selected never surfaces here. A candidate
+// has to clear both the table and any narrowing the kind declares, or the
+// suggestion would be the next rejection.
+const permittedCandidates = (
   kinds: ReadonlyMap<string, ResolvedRelationshipKind>,
   rejected: string,
-  sourceAspect: (typeof conceptKinds)[number]['aspect'],
-  targetAspect: (typeof conceptKinds)[number]['aspect'],
-) => {
-  const candidates = [...kinds]
+  permitted: ReadonlySet<RelationshipKind>,
+  sourceAspect: Aspect,
+  targetAspect: Aspect,
+): string[] =>
+  [...kinds]
     .filter(
       ([id, kind]) =>
         id !== rejected &&
+        permitted.has(kind.coreKind) &&
         (kind.sourceAspects?.includes(sourceAspect) ?? true) &&
         (kind.targetAspects?.includes(targetAspect) ?? true),
     )
     .map(([id]) => id)
-  if (candidates.length === 0) {
-    return ''
-  }
-  const observed =
-    sourceAspect === targetAspect
-      ? `both endpoints are ${describeAspect(sourceAspect)}`
-      : `source is ${describeAspect(sourceAspect)} and target is ${describeAspect(targetAspect)}`
-  return `; ${observed}; valid candidates: ${candidates.join(', ')}`
-}
 
 const diagnosticFailure = (
   diagnostics: readonly Diagnostic[],
@@ -578,9 +604,7 @@ function compileWorkspaceResolved(
     const resolved = {
       identity: `${coreProfile}#${policy.id}`,
       lineage: [`${coreProfile}#${policy.id}`],
-      sourceAspects: policy.sourceAspects,
-      targetAspects: policy.targetAspects,
-      repair: policy.repair,
+      coreKind: policy.id,
     } satisfies ResolvedRelationshipKind
     coreRelationshipKinds.set(policy.id, resolved)
     relationshipKindByIdentity.set(resolved.identity, resolved)
@@ -815,10 +839,14 @@ function compileWorkspaceResolved(
         for (const endpoint of ['source', 'target'] as const) {
           const field = `${endpoint}Aspects` as const
           const declared = kind[field]
-          const inherited = parent[field]
+          // A parent that declares no narrowing is bounded by the table:
+          // an extension may not admit an aspect its core ancestor can never
+          // carry at that end.
+          const inherited =
+            parent[field] ??
+            [...matrixEndpointAspects(parent.coreKind, endpoint)]
           if (
             declared !== undefined &&
-            inherited !== undefined &&
             declared.some((aspect) => !inherited.includes(aspect))
           ) {
             const position = positionFor([
@@ -844,6 +872,7 @@ function compileWorkspaceResolved(
         const resolved = {
           identity: `${identity}#${kind.id}`,
           lineage: [...parent.lineage, `${identity}#${kind.id}`],
+          coreKind: parent.coreKind,
           sourceAspects: kind.sourceAspects ?? parent.sourceAspects,
           targetAspects: kind.targetAspects ?? parent.targetAspects,
         } satisfies ResolvedRelationshipKind
@@ -1611,56 +1640,91 @@ function compileWorkspaceResolved(
       }
       const policy = selectedProfile.relationshipKinds.get(relationship.kind)
       if (policy !== undefined) {
-        const aspectOf = (reference: string) => {
+        // Each endpoint resolves to the core kind its declared kind descends
+        // from: the ArchiMate relationship table is defined over core kinds,
+        // and an extension inherits its parent's row and column (ADR 0097).
+        const endpointKind = (reference: string) => {
           const resolvedConcept = conceptByQualifiedId.get(
             qualifyReference(value.id, reference),
           )
-          return resolvedConcept === undefined
-            ? undefined
-            : profiles
-                .get(resolvedConcept.profile)
-                ?.conceptKinds.get(resolvedConcept.concept.kind)?.aspect
+          if (resolvedConcept === undefined) return undefined
+          const resolvedKind = profiles
+            .get(resolvedConcept.profile)
+            ?.conceptKinds.get(resolvedConcept.concept.kind)
+          if (resolvedKind === undefined) return undefined
+          const core = localKindId(
+            resolvedKind.lineage[0] ?? resolvedKind.identity,
+          )
+          return isCoreConceptKindId(core)
+            ? { declared: resolvedConcept.concept.kind, core, aspect: resolvedKind.aspect }
+            : undefined
         }
-        const sourceAspect = aspectOf(relationship.from)
-        const targetAspect = aspectOf(relationship.to)
-        const candidates =
-          sourceAspect === undefined || targetAspect === undefined
-            ? ''
-            : candidateKindHint(
-                selectedProfile.relationshipKinds,
-                relationship.kind,
-                sourceAspect,
-                targetAspect,
-              )
-        for (const endpoint of ['source', 'target'] as const) {
-          const reference =
-            endpoint === 'source' ? relationship.from : relationship.to
-          const aspect =
-            endpoint === 'source' ? sourceAspect : targetAspect
-          const allowed =
-            endpoint === 'source'
-              ? policy.sourceAspects
-              : policy.targetAspects
-          if (
-            aspect !== undefined &&
-            allowed !== undefined &&
-            !allowed.includes(aspect)
-          ) {
-            const field = endpoint === 'source' ? 'from' : 'to'
-            const pointer = `/relationships/${index}/${field}`
-            const source = location(
-              ['relationships', index, field],
-              pointer,
-            )
+        const from = endpointKind(relationship.from)
+        const to = endpointKind(relationship.to)
+        // An unresolved endpoint was already reported as YM302; nothing more
+        // can be said about a pair that does not exist.
+        if (from !== undefined && to !== undefined) {
+          const permitted = tablePermittedKinds(from.core, to.core)
+          const describe = (endpoint: { declared: string; core: string }) =>
+            endpoint.declared === endpoint.core
+              ? endpoint.core
+              : `${endpoint.declared}, a ${endpoint.core}`
+          const candidates = permittedCandidates(
+            selectedProfile.relationshipKinds,
+            relationship.kind,
+            permitted,
+            from.aspect,
+            to.aspect,
+          )
+          const tail =
+            candidates.length === 0
+              ? ''
+              : `; ArchiMate 3.2 permits: ${candidates.join(', ')}`
+          if (!permitted.has(policy.coreKind)) {
+            const pointer = `/relationships/${index}/kind`
+            const source = location(['relationships', index, 'kind'], pointer)
+            const kindLabel =
+              relationship.kind === policy.coreKind
+                ? `"${relationship.kind}"`
+                : `"${relationship.kind}" (${policy.coreKind})`
             diagnostics.push({
               severity: 'error',
               code: 'YM404',
-              message: `Relationship "${relationship.kind}" requires a ${endpoint} with aspect ${allowed.map((entry) => `"${entry}"`).join(' or ')}; "${reference}" has aspect "${aspect}"${policy.repair === undefined ? '' : `; ${policy.repair}`}${candidates}`,
+              message: `Relationship ${kindLabel} is not permitted from "${relationship.from}" (${describe(from)}) to "${relationship.to}" (${describe(to)})${tail}`,
               path: input.path,
               pointer,
               line: source.line,
               column: source.column,
             })
+          } else {
+            // The table permits the pair; an extension kind may still
+            // narrow it by aspect, and that narrowing is reported per end.
+            for (const endpoint of ['source', 'target'] as const) {
+              const reference =
+                endpoint === 'source' ? relationship.from : relationship.to
+              const aspect = endpoint === 'source' ? from.aspect : to.aspect
+              const allowed =
+                endpoint === 'source'
+                  ? policy.sourceAspects
+                  : policy.targetAspects
+              if (allowed !== undefined && !allowed.includes(aspect)) {
+                const field = endpoint === 'source' ? 'from' : 'to'
+                const pointer = `/relationships/${index}/${field}`
+                const source = location(
+                  ['relationships', index, field],
+                  pointer,
+                )
+                diagnostics.push({
+                  severity: 'error',
+                  code: 'YM404',
+                  message: `Relationship "${relationship.kind}" requires a ${endpoint} with aspect ${allowed.map((entry) => `"${entry}"`).join(' or ')}; "${reference}" has aspect "${aspect}"${tail}`,
+                  path: input.path,
+                  pointer,
+                  line: source.line,
+                  column: source.column,
+                })
+              }
+            }
           }
         }
       }
@@ -2110,6 +2174,83 @@ function compileWorkspaceResolved(
     wholePartByEndpoints.set(endpointKey, previousRelationships)
   }
 
+  // A junction takes the kind of the relationships that pass through it, so
+  // every relationship on one junction must be the same kind (ArchiMate 3.2,
+  // junctions). The table cannot say this: it rules on one pair at a time,
+  // and this is a property of the set. Sorted by id, so the first-listed
+  // relationship's kind is the one the others are measured against and the
+  // diagnostic lands on the later ones.
+  const junctionKinds: ReadonlySet<string> = new Set([
+    'andJunction',
+    'orJunction',
+  ])
+  const junctionRelationships = documents
+    .flatMap(({ value, location }) =>
+      value.relationships.flatMap((relationship, index) => {
+        const policy = profiles
+          .get(value.profile)
+          ?.relationshipKinds.get(relationship.kind)
+        if (policy === undefined) return []
+        return (['from', 'to'] as const).flatMap((endpoint) => {
+          const junction = qualifyReference(value.id, relationship[endpoint])
+          const resolvedConcept = conceptByQualifiedId.get(junction)
+          const resolvedKind =
+            resolvedConcept === undefined
+              ? undefined
+              : profiles
+                  .get(resolvedConcept.profile)
+                  ?.conceptKinds.get(resolvedConcept.concept.kind)
+          if (
+            resolvedKind === undefined ||
+            !junctionKinds.has(
+              localKindId(resolvedKind.lineage[0] ?? resolvedKind.identity),
+            )
+          ) {
+            return []
+          }
+          return [
+            {
+              id: `${value.id}#${relationship.id}`,
+              localId: relationship.id,
+              junction,
+              kind: relationship.kind,
+              coreKind: policy.coreKind,
+              source: location(
+                ['relationships', index, 'kind'],
+                `/relationships/${index}/kind`,
+              ),
+            },
+          ]
+        })
+      }),
+    )
+    .sort(compareById)
+  const relationshipsByJunction = new Map<
+    string,
+    typeof junctionRelationships
+  >()
+  for (const entry of junctionRelationships) {
+    const group = relationshipsByJunction.get(entry.junction) ?? []
+    group.push(entry)
+    relationshipsByJunction.set(entry.junction, group)
+  }
+  for (const [junction, group] of relationshipsByJunction) {
+    const expected = group[0]?.coreKind
+    if (expected === undefined) continue
+    for (const entry of group) {
+      if (entry.coreKind === expected) continue
+      diagnostics.push({
+        severity: 'error',
+        code: 'YM414',
+        message: `Relationship "${entry.localId}" (${entry.kind}) joins junction "${junction}" whose relationships are "${expected}"; every relationship on one junction must be the same kind`,
+        path: entry.source.path,
+        pointer: entry.source.pointer,
+        line: entry.source.line,
+        column: entry.source.column,
+      })
+    }
+  }
+
   if (diagnostics.length > 0) {
     return diagnosticFailure(diagnostics)
   }
@@ -2149,15 +2290,42 @@ function compileWorkspaceResolved(
           .map(([identity, kind]) => [
             identity,
             Object.freeze({
-              ...(kind.sourceAspects === undefined
-                ? {}
-                : { source: Object.freeze([...kind.sourceAspects]) }),
-              ...(kind.targetAspects === undefined
-                ? {}
-                : { target: Object.freeze([...kind.targetAspects]) }),
+              source: Object.freeze([
+                ...(kind.sourceAspects ??
+                  matrixEndpointAspects(kind.coreKind, 'source')),
+              ]),
+              target: Object.freeze([
+                ...(kind.targetAspects ??
+                  matrixEndpointAspects(kind.coreKind, 'target')),
+              ]),
             }) as RelationshipEndpointAspects,
           ] as const),
       ),
+      conceptKindCoreAncestors: immutableMap(
+        [...conceptKindByIdentity]
+          .sort(([left], [right]) => left.localeCompare(right))
+          .flatMap(([identity, kind]) => {
+            const core = localKindId(kind.lineage[0] ?? identity)
+            return isCoreConceptKindId(core)
+              ? [[identity, core] as const]
+              : []
+          }),
+      ),
+      relationshipKindCoreAncestors: immutableMap(
+        [...relationshipKindByIdentity]
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([identity, kind]) => [identity, kind.coreKind] as const),
+      ),
+      permittedRelationshipKinds: (fromKindIdentity, toKindIdentity) => {
+        const from = conceptKindByIdentity.get(fromKindIdentity)
+        const to = conceptKindByIdentity.get(toKindIdentity)
+        if (from === undefined || to === undefined) return undefined
+        const fromCore = localKindId(from.lineage[0] ?? from.identity)
+        const toCore = localKindId(to.lineage[0] ?? to.identity)
+        return isCoreConceptKindId(fromCore) && isCoreConceptKindId(toCore)
+          ? tablePermittedKinds(fromCore, toCore)
+          : undefined
+      },
     },
     graph: {
       format: 'yarramate/graph/v2',

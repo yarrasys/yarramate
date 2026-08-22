@@ -274,6 +274,24 @@ concepts:
       cannot adjudicate that choice, so it is recorded as a decision an owner
       confirmed rather than one the model derived.
     status: planned
+  - id: contact-api-deployables
+    kind: artifact
+    name: Contact API Mule applications
+    description: >-
+      The three deployable Mule applications, one per API layer. The artifact
+      is what CloudHub is assigned to; the components are what it realizes.
+    status: planned
+    owner: contact-update#sales-systems-team
+  - id: salesforce-platform
+    kind: artifact
+    name: Salesforce platform release
+    description: >-
+      The vendor's deployed platform code, opaque to this team: an artifact of
+      the vendor's own delivery, which is what its infrastructure is assigned
+      to and what realizes the CRM. The same hosting chain as CloudHub, on the
+      other side of the trust boundary.
+    status: current
+    owner: contact-update#crm-product-owner
   - id: salesforce-tenant-infrastructure
     kind: node
     name: Salesforce-operated multi-tenant infrastructure
@@ -436,10 +454,30 @@ relationships:
     from: salesforce-contact-interface
     to: contact-record
     mode: read-write
-  - id: exp-interface-realizes-contract
-    kind: realization
-    from: contact-exp-api-interface
-    to: contact-api-contract
+  # --- each declared service names the record it reads or writes -----------
+  # The consumer-facing data footprint lives on the service; a service may
+  # expose a subset of what its realizing process touches, so these are not
+  # duplicates of the process edges above.
+  - id: update-service-writes-record
+    kind: access
+    from: contact-update-service
+    to: contact-record
+    mode: write
+  - id: orchestration-service-accesses-record
+    kind: access
+    from: contact-orchestration-service
+    to: contact-record
+    mode: read-write
+  - id: write-service-writes-record
+    kind: access
+    from: salesforce-write-service
+    to: contact-record
+    mode: write
+  - id: salesforce-service-accesses-record
+    kind: access
+    from: salesforce-contact-service
+    to: contact-record
+    mode: read-write
 
   # --- motivation -----------------------------------------------------------
   - id: duplicates-drive-goal
@@ -476,19 +514,47 @@ relationships:
     to: reps-update-contacts-without-crm-logins
 
   # --- where it runs --------------------------------------------------------
+  # "Deployed on" is realization in ArchiMate: the node carries the artifact
+  # that realizes the component, and the derived relationship is the weaker
+  # of that chain. Serving would say the component uses the platform's
+  # services, which is a different claim.
   - id: cloudhub-hosts-exp
-    kind: assignment
+    kind: realization
     from: cloudhub2
     to: contact-exp-api
   - id: cloudhub-hosts-prc
-    kind: assignment
+    kind: realization
     from: cloudhub2
     to: contact-prc-api
   - id: cloudhub-hosts-sys
-    kind: assignment
+    kind: realization
     from: cloudhub2
     to: contact-sys-api
   - id: sf-infra-hosts-crm
+    kind: realization
+    from: salesforce-tenant-infrastructure
+    to: salesforce-crm
+  - id: cloudhub-deploys-apis
+    kind: assignment
+    from: cloudhub2
+    to: contact-api-deployables
+  - id: deployables-realize-exp
+    kind: realization
+    from: contact-api-deployables
+    to: contact-exp-api
+  - id: deployables-realize-prc
+    kind: realization
+    from: contact-api-deployables
+    to: contact-prc-api
+  - id: deployables-realize-sys
+    kind: realization
+    from: contact-api-deployables
+    to: contact-sys-api
+  - id: sf-infra-runs-platform
     kind: assignment
     from: salesforce-tenant-infrastructure
+    to: salesforce-platform
+  - id: platform-realizes-crm
+    kind: realization
+    from: salesforce-platform
     to: salesforce-crm

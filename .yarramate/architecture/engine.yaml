@@ -333,7 +333,7 @@ concepts:
     kind: dataObject
     owner: yarramate-product#yarramate-maintainers
     name: Native profile catalogue
-    description: The shipped core vocabulary - concept kinds with their aspects and rigidity, and the relationship policies that constrain endpoints. It is data a compilation resolves, not a component that runs.
+    description: The shipped core vocabulary - concept kinds with their aspects, lineage, and rigidity, and the ArchiMate 3.2 relationship table that decides which kind pairs a relationship kind may join. It is data a compilation resolves, not a component that runs.
     status: current
   - id: question-catalogue
     kind: dataObject
@@ -345,7 +345,13 @@ concepts:
     kind: dataObject
     owner: yarramate-product#yarramate-maintainers
     name: Relationship policy catalogue
-    description: Resolved relationship kinds with endpoint aspect constraints available to a compilation.
+    description: Resolved relationship kinds, each paired with the set of permitted source and target core kinds read from the vendored ArchiMate 3.2 relationship table, plus any aspect narrowing an extension declares.
+    status: current
+  - id: relationship-table
+    kind: artifact
+    owner: yarramate-product#yarramate-maintainers
+    name: ArchiMate 3.2 relationship table
+    description: Appendix B of the ArchiMate 3.2 specification as vendored from Archi's relationships.xml (MIT) and regenerated into a zero-import module by a checked-in script; never hand-edited, and a test fails on a byte of drift (ADR 0097).
     status: current
   - id: semantic-graph
     kind: dataObject
@@ -384,7 +390,7 @@ concepts:
     description: Normative structure for the yarramate/diagnostic-result/v1 contract.
     status: current
   - id: likec4-diagnostic-result-schema
-    kind: dataObject
+    kind: artifact
     owner: yarramate-product#yarramate-maintainers
     name: LikeC4 diagnostic result JSON Schema
     description: Normative structure for LikeC4 adapter failure payloads.
@@ -428,7 +434,7 @@ concepts:
     description: Normative structure for explicit LikeC4 kind compatibility declarations.
     status: current
   - id: likec4-check-result-schema
-    kind: dataObject
+    kind: artifact
     owner: yarramate-product#yarramate-maintainers
     name: LikeC4 check result JSON Schema
     description: Normative structure for the LikeC4 adapter check verdict.
@@ -470,7 +476,7 @@ concepts:
     description: Deterministic bounded context produced by evaluating a projection against the compiled graph.
     status: current
   - id: projection-result-schema
-    kind: dataObject
+    kind: artifact
     owner: yarramate-product#yarramate-maintainers
     name: Projection result JSON Schema
     description: Normative structure for the yarramate/projection-result/v1 contract.
@@ -491,7 +497,7 @@ concepts:
       - yarramate-evolution#state-foundation
       - yarramate-evolution#core-contract-foundation
   - id: state-comparison-schema
-    kind: dataObject
+    kind: artifact
     owner: yarramate-product#yarramate-maintainers
     name: Architecture-state comparison JSON Schema
     description: Normative structure for architecture-state comparison results.
@@ -508,7 +514,7 @@ concepts:
     presentIn:
       - yarramate-evolution#core-contract-foundation
   - id: core-contract-schema
-    kind: dataObject
+    kind: artifact
     owner: yarramate-product#yarramate-maintainers
     name: Core contract JSON Schema
     description: Normative structure for Core release contract manifests.
@@ -687,7 +693,7 @@ concepts:
     owner: yarramate-product#yarramate-maintainers
     status: current
   - id: rtm-schema
-    kind: dataObject
+    kind: artifact
     name: Requirements traceability matrix JSON Schema
     description: Normative structure for the yarramate/rtm/v1 contract.
     owner: yarramate-product#yarramate-maintainers
@@ -847,9 +853,10 @@ relationships:
     to: compare-architecture-states
     status: retired
   - id: comparison-produces-result
-    kind: realization
+    kind: access
     from: compare-architecture-states
     to: state-comparison
+    mode: write
   - id: comparison-schema-describes-result
     kind: realization
     from: state-comparison-schema
@@ -1563,9 +1570,10 @@ relationships:
     to: semantic-graph
     mode: read
   - id: traceability-derivation-produces-matrix
-    kind: realization
+    kind: access
     from: derive-traceability-matrix
     to: requirements-traceability-matrix
+    mode: write
   - id: rtm-schema-describes-matrix
     kind: realization
     from: rtm-schema
@@ -1776,3 +1784,55 @@ relationships:
     kind: assignment
     from: visual-browser
     to: render-archimate-kind-icons
+  # The data each current service reads or writes. A service's footprint is
+  # the consumer-facing claim, distinct from the functions behind it, and it
+  # is what the interrogation asks a service in a hop to declare.
+  - id: init-command-writes-native-document
+    kind: access
+    from: init-command
+    to: native-document
+    mode: write
+  - id: init-command-writes-workspace-manifest
+    kind: access
+    from: init-command
+    to: workspace-manifest
+    mode: write
+  - id: reconcile-command-reads-evidence
+    kind: access
+    from: reconcile-command
+    to: evidence-document
+    mode: read
+  - id: reconcile-command-writes-report
+    kind: access
+    from: reconcile-command
+    to: reconciliation-report
+    mode: write
+  - id: graphify-observe-reads-mapping
+    kind: access
+    from: graphify-observe-command
+    to: adapter-mapping
+    mode: read
+  - id: graphify-observe-writes-evidence
+    kind: access
+    from: graphify-observe-command
+    to: evidence-document
+    mode: write
+  - id: visual-session-writes-handoff
+    kind: access
+    from: visual-session-service
+    to: visual-handoff
+    mode: write
+  - id: dynamic-view-reads-projection-result
+    kind: access
+    from: render-likec4-dynamic-view
+    to: projection-result
+    mode: read
+  - id: deployment-view-reads-projection-result
+    kind: access
+    from: render-likec4-deployment-view
+    to: projection-result
+    mode: read
+  - id: relationship-table-realizes-policies
+    kind: realization
+    from: relationship-table
+    to: relationship-policy-catalogue

@@ -6,8 +6,9 @@ concepts:
     kind: deliverable
     name: Product contract
   - id: architecture-decisions
-    kind: deliverable
+    kind: representation
     name: Architecture decision records
+    description: The decisions as reviewable documents. A representation, not a deliverable - each records why; the merged work realizes it.
   - id: roadmap
     kind: representation
     name: Product roadmap
@@ -38,6 +39,22 @@ concepts:
   - id: compiler-source
     kind: repository-file
     name: src/compiler.ts
+    status: current
+  - id: relationship-table-source
+    kind: repository-file
+    name: vendor/archi/relationships.xml
+    status: current
+  - id: relationship-table-generator
+    kind: repository-file
+    name: scripts/generate-archimate-relationships.mjs
+    status: current
+  - id: relationship-table-module
+    kind: repository-file
+    name: src/archimate-relationships.generated.ts
+    status: current
+  - id: relationship-matrix-source
+    kind: repository-file
+    name: src/relationship-matrix.ts
     status: current
   - id: architecture-state-source
     kind: repository-file
@@ -501,11 +518,13 @@ relationships:
     from: product-contract
     to: yarramate-product#stable-cli
   - id: decisions-realize-contract
-    kind: realization
+    kind: association
+    name: decides
     from: architecture-decisions
     to: product-contract
   - id: roadmap-serves-contract
-    kind: serving
+    kind: association
+    name: stages
     from: roadmap
     to: product-contract
   - id: journey-guide-realizes-discovery
@@ -569,6 +588,22 @@ relationships:
     kind: realization
     from: compiler-source
     to: yarramate-engine#compiler
+  - id: relationship-table-source-realizes-table
+    kind: realization
+    from: relationship-table-source
+    to: yarramate-engine#relationship-table
+  - id: relationship-table-generator-realizes-table
+    kind: realization
+    from: relationship-table-generator
+    to: yarramate-engine#relationship-table
+  - id: relationship-table-module-realizes-table
+    kind: realization
+    from: relationship-table-module
+    to: yarramate-engine#relationship-table
+  - id: relationship-matrix-source-realizes-policies
+    kind: realization
+    from: relationship-matrix-source
+    to: yarramate-engine#relationship-policy-catalogue
   - id: state-source-realizes-engine
     kind: realization
     from: architecture-state-source

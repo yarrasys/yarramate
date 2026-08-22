@@ -162,7 +162,7 @@ _Avoid_: Completeness check, architecture-quality judgment, reachability
 **Starter view pack**:
 Optional native projection templates addressing common architecture concerns
 without asserting conformance to an external viewpoint catalogue.
-_Avoid_: Mandatory views, ArchiMate compatibility profile
+_Avoid_: Mandatory views, ArchiMate viewpoint catalogue
 
 **Architecture state**:
 An identified planning context representing a baseline, transition, or target
@@ -252,7 +252,9 @@ A versioned provider report evaluating existing graph subjects or claims
 without modifying canonical intent.
 _Avoid_: Observed semantic graph, approval record, generic metadata
 
-**Compatibility profile**:
-A separately governed mapping between YarraMate semantics and an external
-language or standard.
-_Avoid_: Certification or conformance claim
+**Custody layer**:
+The fields YarraMate adds beside the ArchiMate vocabulary - evidence,
+attestations, lifecycle status, ownership, and architecture states. Additive
+annotations that never change the meaning of an ArchiMate element or
+relationship.
+_Avoid_: ArchiMate extension, conformance claim

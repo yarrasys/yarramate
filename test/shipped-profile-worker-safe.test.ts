@@ -25,7 +25,26 @@ concepts:
   - id: oauth
     kind: authentication-constraint
     name: OAuth
-relationships: []
+  - id: first
+    kind: businessProcess
+    name: First
+  - id: second
+    kind: businessProcess
+    name: Second
+  - id: both
+    kind: andJunction
+    name: Both
+relationships:
+  # A relationship through a junction exercises the relationship table and
+  # the junction rule, both of which must load with no filesystem either.
+  - id: first-to-junction
+    kind: triggering
+    from: first
+    to: both
+  - id: junction-to-second
+    kind: triggering
+    from: both
+    to: second
 `,
         },
       ])

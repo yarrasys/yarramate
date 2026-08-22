@@ -2,6 +2,12 @@
 
 Status: accepted
 
+> The premise that only four relationship kinds constrain an endpoint no
+> longer holds: ADR 0097 validates every pair against the ArchiMate 3.2
+> relationship table. The lineage-resolution rule and the two rejections
+> (never infer a kind; never make it a check error) remain in force. The
+> kind-untested question is redesigned under catalogue 1.0 (ADR 0098).
+
 From a MuleSoft modelling probe (2026-08-13): model a public API over
 Salesforce, built on Anypoint CloudHub 2.0, and ask what the engine can
 actually adjudicate about the vendor stack. The honest answer at the time
