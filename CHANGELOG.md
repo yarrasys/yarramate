@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.0.0
 
 - **Breaking.** Relationship endpoints are validated against the ArchiMate
   3.2 relationship table (ADR 0097), vendored from Archi's `relationships.xml`
