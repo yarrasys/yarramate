@@ -34,19 +34,20 @@ The version is quoted because YAML otherwise parses values such as `1.0` as
 numbers. A profile identity is `<id>@<version>`.
 
 Every new kind declares a globally qualified semantic parent. A concept kind
-inherits its parent's aspect. A relationship kind inherits its parent's
-endpoint constraints and may narrow them with `sourceAspects` or
-`targetAspects`; it cannot broaden an existing restriction.
+inherits its parent's aspect and its parent's row and column in the
+ArchiMate 3.2 relationship table, which is what decides which kind pairs a
+relationship may join (ADR 0097). A relationship kind inherits its parent's
+permitted pairs and may narrow them by aspect with `sourceAspects` or
+`targetAspects`; it cannot admit an aspect the table never allows its parent
+at that end.
 
-Those endpoint constraints are the only thing that makes a concept kind
-checkable. In the core profile just four relationship kinds pin an aspect —
-`assignment` (source: active-structure), `access` (target: passive-structure),
-`triggering` (both ends: behavior), and `influence` (target: motivation) — so
-a subject touched by none of them could be reclassified to almost any other
-kind and the workspace would still compile. `ask` reports that gap through
-the `unconstrained-kind` trigger condition rather than guessing a kind
-(ADR 0083); narrowing aspects on an extension relationship kind, as `owns`
-does above, extends the set of claims that can falsify a classification.
+The table is what makes a concept kind checkable: a subject whose every
+relationship would still be permitted with the subject reclassified to a kind
+of another aspect carries a classification nothing has tested. `ask` reports
+that through the `unconstrained-kind` trigger condition rather than guessing
+a kind (ADR 0083); narrowing aspects on an extension relationship kind, as
+`owns` does above, extends the set of claims that can falsify a
+classification.
 
 Local kind names may not shadow inherited names. Profiles may extend other
 explicit profiles, and resolution is independent of CLI/source order.
