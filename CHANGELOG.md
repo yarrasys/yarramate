@@ -83,6 +83,21 @@
   `start` published, copied back verbatim: a native path is refused, and the
   argument is no longer resolved against the working directory (#208).
 
+- A `SourceStore` names where a workspace's sources come from and where they go
+  back to, exported as `createFileSystemStore` with `SourceStore`,
+  `StoredSource`, `PendingWrite`, `WriteConflict` and `WriteOutcome`
+  (ADR 0100). It is `list`, `read` and `writeAll`, and a revision is opaque
+  outside the store that minted it: a content hash here, an ETag or a
+  rowversion elsewhere, compared only for equality and only by its issuer.
+  There is no unconditional write, because a caller with nothing to state is
+  the caller that cannot detect a conflict; `expected: null` requires that the
+  document not exist yet. `writeAll` checks every expectation before moving a
+  byte, so a batch whose last document is stale does not leave its first one
+  rewritten, and each file lands whole through a staged write and a rename.
+  The batch as a whole is not atomic on a filesystem, which is stated rather
+  than implied. Nothing in the engine uses it yet: this is the seam, ahead of
+  the callers moving onto it (#230).
+
 - A LikeC4 project generated before 1.0 is regenerated rather than refused.
   Its marker records a comparison's endpoints in the qualified
   `<document>#<local>` form, which `subjectIdentity` no longer admits in either

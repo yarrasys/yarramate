@@ -116,3 +116,11 @@ export type {
   ProjectionLoadResult,
   ProjectionResult,
 } from './projection.js'
+export {
+  createFileSystemStore,
+  type PendingWrite,
+  type SourceStore,
+  type StoredSource,
+  type WriteConflict,
+  type WriteOutcome,
+} from './source-store.js'
