@@ -44,6 +44,7 @@ import {
   type SelectedDiagramSubject,
 } from "./workspace-state.js";
 import { ConnectionPanel } from "./connection-panel.js";
+import { Faults, faultedSubjects } from "./faults.js";
 import { SubjectDraftPanel } from "./subject-draft-panel.js";
 import { ConfirmDialog } from "./confirm-dialog.js";
 import { describeDeletion, draftDeletion } from "../deletion-drafting.js";
@@ -277,29 +278,6 @@ const CommandStrip = ({
   </header>
 );
 
-const Faults = ({
-  diagnostics,
-}: {
-  readonly diagnostics: readonly VisualDiagnostic[];
-}) =>
-  diagnostics.length === 0 ? null : (
-    <div className="faults" role="alert">
-      <p className="faults-title">
-        The last change did not compile. The diagram still shows the model that
-        did.
-      </p>
-      <ul>
-        {diagnostics.map((diagnostic) => (
-          <li key={`${diagnostic.code}-${diagnostic.pointer}`}>
-            <span className="code">{diagnostic.code}</span> {diagnostic.message}
-            <span className="where">
-              {diagnostic.path}:{diagnostic.line}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
 
 const Choices = ({
   choices,
@@ -497,6 +475,7 @@ const DiagramWorkspace = ({
             quickFilterText={state.quickFilterText}
             direction={direction}
             nesting={nesting}
+            faultedIds={faultedSubjects(state.diagnostics)}
             notation={notation}
             showLifecycle={showLifecycle}
             showEvidence={showEvidence}
@@ -763,7 +742,12 @@ const ConversationPanel = ({
           )}
         </ol>
 
-        <Faults diagnostics={state.diagnostics} />
+        {state.model === null ? null : (
+          <Faults
+            diagnostics={state.diagnostics}
+            graph={state.model.graph}
+          />
+        )}
 
         {state.choices === null ? null : (
           <Choices

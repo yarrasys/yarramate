@@ -46,6 +46,18 @@ export interface VisualDiagnostic {
   readonly pointer: string;
   readonly line: number;
   readonly column: number;
+  /**
+   * The subjects this diagnostic is about, most relevant first, when its
+   * pointer names one (ADR 0102, extending the derivation Core added for
+   * exactly this consumer).
+   *
+   * Absence is meaningful and is not "not yet populated": a diagnostic with no
+   * subject belongs to no subject, such as a YAML parse failure, a
+   * whole-document schema violation, a projection's own definition, or a
+   * manifest. That is what lets a canvas route one to an element and the other
+   * to a lane of its own, rather than showing a failure with nothing marked.
+   */
+  readonly subjects?: readonly string[];
 }
 
 export interface VisualDiagnosticResult {

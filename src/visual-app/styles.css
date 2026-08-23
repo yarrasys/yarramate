@@ -593,6 +593,19 @@ body {
   color: var(--quiet);
 }
 
+.faults-summary {
+  margin: 0 0 calc(var(--step) * 1.5);
+  font-weight: 600;
+}
+
+.faults-lane {
+  margin: calc(var(--step) * 1.5) 0 calc(var(--step) * 0.5);
+  color: var(--quiet);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.8em;
+}
+
 .subject-delete {
   margin-top: calc(var(--step) * 0.5);
   margin-right: calc(var(--step) * 0.5);

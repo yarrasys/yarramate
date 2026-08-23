@@ -262,6 +262,25 @@
   made a junction by accident; it now asks for a kind and stays disabled until
   it has one (#240).
 
+- A refusal is visible on the canvas, or it is counted (ADR 0102). Core
+  populates a diagnostic's `subjects` wherever its pointer identifies one,
+  precisely so a drawing consumer can mark the element a rule refused, and it
+  is derived where a result is published so compiler diagnostics stay a pure
+  function of the model. `check` had always called it. **The visual session
+  server never did**, so every diagnostic it sent a browser arrived anchored to
+  a byte offset a browser cannot use, and the one consumer the derivation was
+  written for was the one that never received it. It does now, and
+  `VisualDiagnostic` carries the field.
+  What appears on screen follows a rule: the summary never reads clean while
+  anything is open, and states the total, how many are marked on the diagram
+  and how many are not. A diagnostic that belongs to no drawn subject - a parse
+  failure, a manifest, a projection's own definition, a subject this view
+  filters out - gets a lane that says so rather than being dropped, because
+  marking the two that can be marked and staying silent about the third is how
+  a reviewer learns the report is unreliable. A mark is applied by its own
+  effect rather than with the selection highlight, so inspecting a refused
+  element cannot erase the evidence (#241).
+
 - `apply` accepts an operation's `document:` as the manifest names it. The
   address was resolved only against the working directory, so the
   manifest-relative form an author naturally writes was refused whenever the

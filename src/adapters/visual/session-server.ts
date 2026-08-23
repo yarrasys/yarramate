@@ -67,6 +67,8 @@ import {
 } from "../../projection.js";
 import {
   compileWorkspaceWithProfileContext,
+  withDiagnosticSubjects,
+  type Diagnostic,
   type ResolvedProfileContext,
   type SemanticGraph,
 } from "../../compiler.js";
@@ -359,6 +361,23 @@ const serverError = (code: string, message: string) =>
  * `/`, because these diagnostics are published in `visual-diagnostic-result/v1`
  * documents and read back by the one-shot agent clients.
  */
+/**
+ * Names the subjects a Core diagnostic is about, so the canvas can mark the
+ * element a rule refused rather than reporting a failure with nothing on
+ * screen changed.
+ *
+ * Core derives this at the boundary that publishes a result rather than inside
+ * `compileWorkspace`, which keeps compiler diagnostics a pure function of the
+ * model. `check` has always done it. This adapter is the consumer the
+ * derivation was written for and never did, so every diagnostic it sent to a
+ * browser arrived anchored to a byte offset the browser cannot use.
+ */
+const published = (
+  diagnostics: readonly Diagnostic[],
+  sources: readonly { readonly path: string; readonly source: string }[],
+): readonly VisualDiagnostic[] =>
+  withDiagnosticSubjects(diagnostics, sources) as readonly VisualDiagnostic[];
+
 const serverDiagnostic = (
   code: string,
   message: string,
@@ -692,15 +711,29 @@ export const startVisualServer = async (
    * Returns whether it compiled, so a post-write failure can freeze the
    * session instead of serving a stale graph.
    */
-  const recompileWorkspace = (): boolean => {
+  const workspaceSources = (): readonly {
+    readonly path: string;
+    readonly source: string;
+  }[] => {
     try {
-      const sources = [
+      return [
         ...resolvedWorkspace.profiles,
         ...resolvedWorkspace.documents,
       ].map((path) => ({
         path,
         source: readFileSync(resolve(options.cwd, path), "utf8"),
       }));
+    } catch {
+      // A source that cannot be read is one whose diagnostics belong to no
+      // subject anyway, so an empty list is the right answer rather than a
+      // throw from a path that is only trying to add detail.
+      return [];
+    }
+  };
+
+  const recompileWorkspace = (): boolean => {
+    try {
+      const sources = workspaceSources();
       const compiled = compileWorkspaceWithProfileContext(sources);
       if (!compiled.ok) {
         compiledWorkspace = undefined;
@@ -1458,7 +1491,13 @@ export const startVisualServer = async (
         if (!loadedWorkspace.ok) {
           sendFrame(socket, {
             kind: "apply-result",
-            result: { ok: false, diagnostics: loadedWorkspace.diagnostics },
+            result: {
+              ok: false,
+              diagnostics: published(
+                loadedWorkspace.diagnostics,
+                workspaceSources(),
+              ),
+            },
           });
           return;
         }
@@ -1480,7 +1519,10 @@ export const startVisualServer = async (
           // rather than recompiling or broadcasting anything.
           sendFrame(socket, {
             kind: "apply-result",
-            result: { ok: false, diagnostics: outcome.diagnostics },
+            result: {
+              ok: false,
+              diagnostics: published(outcome.diagnostics, workspaceSources()),
+            },
           });
           return;
         }
