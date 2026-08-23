@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module'
 import type Ajv2020Type from 'ajv/dist/2020.js'
-import { LineCounter, parseDocument } from 'yaml'
+import { LineCounter, parse, parseDocument } from 'yaml'
 import {
   conceptKinds,
   relationshipPolicies,
@@ -57,6 +57,22 @@ export interface Diagnostic {
   readonly pointer: string
   readonly line: number
   readonly column: number
+  /**
+   * The subjects this diagnostic is about, most relevant first, when its
+   * pointer names one. A consumer that draws the model - a canvas badging the
+   * element a rule refused - needs the subject, not the byte offset, and the
+   * rules already knew it: YM404 interpolates both endpoint ids into its own
+   * message.
+   *
+   * Absence is meaningful and is not the same as "not yet populated". These
+   * are derived in one place from the pointer, so every diagnostic that names
+   * a concept or a relationship carries them, and the ones that stay empty are
+   * exactly the ones that belong to no subject: a YAML parse failure, a
+   * whole-document schema violation, a projection's own definition, a
+   * manifest. A consumer can therefore treat an empty list as "this belongs
+   * somewhere other than the canvas" rather than as missing data.
+   */
+  readonly subjects?: readonly string[]
 }
 
 interface NativeConcept {
@@ -569,6 +585,66 @@ const parseSources = (
     return { input, entry, fresh }
   })
   return { parsed, cache: { sources: entries }, reused }
+}
+
+// Resolves each diagnostic's subject from the pointer it already carries, so
+// the rules themselves stay unchanged and no construction site has to remember
+// to name what it refused.
+//
+// A pointer into a document reads `/concepts/<n>/...` or
+// `/relationships/<n>/...`, and `<n>` indexes the authored array, so the id is
+// one lookup away in the same parsed value the diagnostic was located against.
+// Pointers are positional - inserting a concept shifts every index below it -
+// which is exactly why this is done here, against the parse that produced the
+// diagnostic, rather than by a consumer against whatever it holds later.
+//
+// Anything else keeps no subjects: a parse failure, a whole-document schema
+// violation, a manifest, a projection's own definition. That absence is the
+// signal a consumer needs, so it is left empty rather than guessed at.
+const subjectsForPointer = (
+  pointer: string,
+  documentValue: unknown,
+): readonly string[] => {
+  const match = /^\/(concepts|relationships)\/(\d+)(?:\/|$)/.exec(pointer)
+  if (match === null) return []
+  const value = documentValue as
+    | { readonly id?: unknown; readonly [key: string]: unknown }
+    | undefined
+  const documentId = typeof value?.id === 'string' ? value.id : undefined
+  if (documentId === undefined) return []
+  const items = value?.[match[1]!]
+  if (!Array.isArray(items)) return []
+  const item = items[Number(match[2])] as { readonly id?: unknown } | undefined
+  return typeof item?.id === 'string' ? [`${documentId}#${item.id}`] : []
+}
+
+export const withDiagnosticSubjects = (
+  diagnostics: readonly Diagnostic[],
+  sources: readonly WorkspaceSource[],
+): readonly Diagnostic[] => {
+  if (diagnostics.length === 0) return diagnostics
+  // Only the documents something was actually said about are parsed, and each
+  // at most once: a clean workspace pays nothing, and a workspace refused on
+  // one document does not pay for the rest.
+  const wanted = new Set(diagnostics.map((diagnostic) => diagnostic.path))
+  const valueByPath = new Map<string, unknown>()
+  for (const source of sources) {
+    if (!wanted.has(source.path)) continue
+    try {
+      valueByPath.set(source.path, parse(source.source))
+    } catch {
+      // A source that will not parse is exactly one whose diagnostics belong
+      // to no subject, so failing to read it here is the right answer.
+    }
+  }
+  return diagnostics.map((diagnostic) => {
+    if (diagnostic.subjects !== undefined) return diagnostic
+    const subjects = subjectsForPointer(
+      diagnostic.pointer,
+      valueByPath.get(diagnostic.path),
+    )
+    return subjects.length === 0 ? diagnostic : { ...diagnostic, subjects }
+  })
 }
 
 function compileWorkspaceResolved(

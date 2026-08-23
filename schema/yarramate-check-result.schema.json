@@ -112,6 +112,15 @@
         "column": {
           "type": "integer",
           "minimum": 1
+        },
+        "subjects": {
+          "description": "Subjects this diagnostic is about, most relevant first, when its pointer names one. Absent when the diagnostic belongs to no subject: a parse failure, a whole-document schema violation, a manifest, or a projection's own definition.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     }

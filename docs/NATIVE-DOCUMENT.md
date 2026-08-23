@@ -360,6 +360,23 @@ compiled result (ADR 0091).
 Diagnostics have stable codes, severity, message, source path, YAML pointer,
 and one-based line and column.
 
+A published result also names the **subjects** a diagnostic is about, most
+relevant first, wherever its pointer identifies one. A consumer that draws the
+model needs the subject rather than the byte offset, and the rules already knew
+it: YM404 interpolates both endpoint ids into its own message. The list is
+derived once from the pointer, at the boundary that publishes the result, so
+the compiler's own diagnostics stay a pure function of the model and no rule
+has to remember to name what it refused.
+
+Absence is meaningful, and is not the same as "not populated". Every diagnostic
+pointing into `/concepts/<n>` or `/relationships/<n>` carries its subject, so
+the ones that carry none are exactly the ones that belong to no subject: a YAML
+parse failure, a whole-document schema violation, a projection's own
+definition, a workspace manifest. A consumer may treat an empty list as "this
+belongs somewhere other than the canvas" rather than as missing data, and
+should surface those somewhere, or a reviewer sees a refusal with nothing
+marked anywhere.
+
 | Range | Category | Initial codes |
 | --- | --- | --- |
 | `YM1xx` | YAML parsing | `YM101` malformed YAML |
