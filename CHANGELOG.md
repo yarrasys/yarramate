@@ -2,6 +2,47 @@
 
 ## 1.0.0
 
+- **Breaking.** Saving a view is a staged change, not a write. `view.save` is
+  gone, and a commit carries `viewOperations` beside its model operations
+  (`yarramate/visual-protocol/v5`, ADR 0103). Saving used to compose a
+  projection and `writeFileSync` it the moment the reviewer pressed Save:
+  outside the changeset, so it could not be undone; outside ADR 0093's
+  staleness pin, so it overwrote a projection someone else had edited without
+  noticing; and outside the batch, so a view and the subjects it shows could
+  not land together. All three are closed by one mechanism, and the
+  confirm-before-overwrite dialog goes with them — a staged overwrite is a row
+  the reviewer can read and discard before it lands, which is a better answer
+  than a dialog. **Delete a view** from the rail's context menu, behind the
+  same rule every model-destructive item sits behind.
+
+- **Breaking.** A `PendingWrite` with a `null` source removes the document
+  (ADR 0103). `SourceStore` could create and replace but not remove, so nothing
+  in the engine could take a document away and a view rename — a write plus a
+  removal — could not be expressed at all. A removal lands in the same
+  all-or-none batch under the same compare-and-swap, and must name the revision
+  it was staged against: `expected: null` on a removal asks to remove a
+  document on condition it is not there, and is refused rather than treated as
+  a success.
+
+- **Added.** A commit lands the model and the views as **one** `store.writeAll`.
+  `landOperations` splits into `planOperations`, which returns the writes a
+  batch would make, and the visual runtime merges its projection writes into
+  that batch — so a view and the subjects it shows arrive together or not at
+  all, without making a presentation artifact into a semantic operation.
+  `yarramate/operations/v1` is unchanged, and Core keeps its invariant that a
+  projection is never an operation's own target.
+
+- **Added.** A view saved where the manifest's patterns cover no projection is
+  refused rather than written. This repository's own manifest uses
+  `projections/*.yaml`, which reaches no subdirectory, so the first view saved
+  into a folder would otherwise be a file the workspace silently never loads
+  (ADR 0043 names the same trap for `new projection`).
+
+- **Fix.** Pressing Commit on a changeset holding only a staged view did
+  nothing, and said nothing about why: the button's guard asked whether the
+  model's operation list was empty rather than whether the changeset was. Found
+  by staging a view in a browser and pressing the button, not by any test.
+
 - **Added.** Right-click menus on a subject, a relationship, the empty canvas
   and a row in the rail. Every one of them obeys one rule: **operations that
   edit the view are separated from operations that edit the model**, under

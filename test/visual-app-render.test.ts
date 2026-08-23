@@ -35,9 +35,7 @@ const session = vi.hoisted(() => {
     lastSequence: 1,
     frozen: false,
     closedReason: null,
-    pendingViewSave: null,
-    viewSaveNotice: false,
-    pendingChangeset: { operations: [], sourceDigests: {} },
+    pendingChangeset: { operations: [], viewOperations: [], sourceDigests: {} },
     undoStack: [],
     redoStack: [],
     commitStatus: 'idle',
@@ -134,6 +132,7 @@ const renderedModel: VisualRenderedModel = {
   vocabulary: { conceptKinds: [], relationshipKinds: [] },
   layouts: {},
   sourceDigests: {},
+  projectionDigests: {},
 }
 
 

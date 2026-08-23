@@ -1794,3 +1794,22 @@ body {
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+
+/* Which half of the split a staged row edits (ADR 0103). A view row rewrites
+   one projection; a model row changes every view that drew the subject. */
+.changeset-row-scope {
+  flex: none;
+  font-family: var(--utility);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0 calc(var(--step) * 0.5);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  color: var(--quiet);
+}
+
+.changeset-scope-view {
+  color: var(--cobalt);
+  border-color: color-mix(in oklab, var(--cobalt) 40%, transparent);
+}

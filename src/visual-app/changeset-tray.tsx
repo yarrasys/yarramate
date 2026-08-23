@@ -1,4 +1,8 @@
-import type { VisualDiagnostic } from '../adapters/visual/protocol-contract.js'
+import type {
+  VisualChangesetCommitPayload,
+  VisualDiagnostic,
+  VisualViewOperation,
+} from '../adapters/visual/protocol-contract.js'
 import { summarise } from './faults.js'
 import type { CanvasGraph } from '../graph-projection.js'
 import type { YarramateOperation } from '../operations.js'
@@ -37,11 +41,53 @@ export const resolveSubjectName = (
 
 /** One staged operation, reduced to what a row needs to say. */
 export interface ChangesetRowDescription {
-  readonly verb: YarramateOperation['op']
+  readonly verb: YarramateOperation['op'] | VisualViewOperation['op']
   readonly subjectName: string
   readonly fields: readonly string[]
   readonly removedFields: readonly string[]
+  /**
+   * Which half of the split this row edits. The tray states it because the two
+   * have different blast radius: a view row rewrites one projection, a model
+   * row changes every view that drew the subject. A reviewer reading a mixed
+   * changeset has to be able to tell them apart at a glance.
+   */
+  readonly scope: 'model' | 'view'
 }
+
+/**
+ * Every staged row, model rows first, as one list.
+ *
+ * One list because the reviewer sees one tray and discards by one index; the
+ * order is defined here and `changeset.discarded` maps it back, so the two
+ * cannot disagree about which row a click meant.
+ */
+export const changesetRows = (
+  changeset: VisualChangesetCommitPayload,
+  graph: CanvasGraph | null,
+): readonly ChangesetRowDescription[] => [
+  ...changeset.operations.map((operation) =>
+    describeChangesetRow(operation, graph),
+  ),
+  ...changeset.viewOperations.map(describeViewRow),
+]
+
+/**
+ * A staged view, reduced the same way. The document's path is the subject:
+ * a view has no id on the canvas to resolve a name from, and the path is what
+ * the reviewer picked the folder of.
+ */
+export const describeViewRow = (
+  operation: VisualViewOperation,
+): ChangesetRowDescription => ({
+  verb: operation.op,
+  subjectName:
+    operation.op === 'write-view'
+      ? (operation.projection.presentation?.title ?? operation.projection.id)
+      : operation.path,
+  fields: operation.op === 'write-view' ? [operation.path] : [],
+  removedFields: [],
+  scope: 'view',
+})
 
 export const describeChangesetRow = (
   operation: YarramateOperation,
@@ -65,6 +111,7 @@ export const describeChangesetRow = (
       subjectName: key === undefined ? name : `${name} (${key})`,
       fields: Object.keys(fields),
       removedFields,
+      scope: 'model',
     }
   }
   // Every other union member's payload carries `id`; scalars/lists it sets
@@ -75,6 +122,7 @@ export const describeChangesetRow = (
     subjectName: resolveSubjectName(operation.document, payload.id, graph),
     fields: Object.keys(payload).filter((key) => key !== 'id'),
     removedFields,
+    scope: 'model',
   }
 }
 
@@ -135,11 +183,25 @@ export const stagedRowConflict = (
   operation: YarramateOperation,
   pins: Readonly<Record<string, string>>,
   model: VisualRenderedModel | null,
+): string | null => rowConflict(operation.document, pins, model)
+
+/**
+ * The same question asked of any staged document, model or view.
+ *
+ * A view is compared against `projectionDigests` rather than `sourceDigests`,
+ * because that is where a projection's digest is published (ADR 0103); a
+ * document in neither map is one the commit will create and has no prior value
+ * to be stale against.
+ */
+export const rowConflict = (
+  path: string,
+  pins: Readonly<Record<string, string>>,
+  model: VisualRenderedModel | null,
 ): string | null => {
-  const pinned = pins[operation.document]
+  const pinned = pins[path]
   if (pinned === undefined) return null
-  const current = model?.sourceDigests[operation.document]
-  return current === undefined || current === pinned ? null : operation.document
+  const current = model?.sourceDigests[path] ?? model?.projectionDigests[path]
+  return current === undefined || current === pinned ? null : path
 }
 
 const DiagnosticLine = ({
@@ -173,6 +235,12 @@ const ChangesetRow = ({
   <li className={conflict === null ? 'changeset-row' : 'changeset-row conflicted'}>
     <div className="changeset-row-line">
       <span className="changeset-row-label">{changesetRowLabel(row)}</span>
+      {/* Which half of the split this row edits, stated rather than inferred
+          from the verb: the two have different blast radius, and a reviewer
+          reading a mixed changeset has to tell them apart at a glance. */}
+      <span className={`changeset-row-scope changeset-scope-${row.scope}`}>
+        {row.scope}
+      </span>
       <button type="button" className="changeset-row-discard" onClick={onDiscard}>
         Discard
       </button>
@@ -216,12 +284,16 @@ export const ChangesetTray = ({
   readonly onRedoChangeset: () => void
   readonly onCommitChangeset: () => void
 }) => {
-  const operations = state.pendingChangeset.operations
+  const graph = state.model?.graph ?? null
+  // Both lists, as one: a changeset holding only a staged view is not an empty
+  // one, and a tray that hid it would let the reviewer commit a write they
+  // could not see.
+  const rows = changesetRows(state.pendingChangeset, graph)
   // History keeps the tray mounted even with nothing staged: undoing the last
   // row back to an empty set must leave Redo reachable, and discarding all of
   // them must leave Undo reachable.
   if (
-    operations.length === 0 &&
+    rows.length === 0 &&
     state.commitNotice === null &&
     state.commitDiagnostics === null &&
     state.undoStack.length === 0 &&
@@ -230,7 +302,6 @@ export const ChangesetTray = ({
     return null
   }
 
-  const graph = state.model?.graph ?? null
   const { byRow, batch } = partitionDiagnostics(state.commitDiagnostics ?? [])
   const committing = state.commitStatus === 'committing'
 
@@ -255,7 +326,7 @@ export const ChangesetTray = ({
           >
             Redo
           </button>
-          {operations.length === 0 ? null : (
+          {rows.length === 0 ? null : (
             <button
               type="button"
               className="changeset-discard-all"
@@ -294,16 +365,24 @@ export const ChangesetTray = ({
         </ul>
       )}
 
-      {operations.length === 0 ? null : (
+      {rows.length === 0 ? null : (
         <ol className="changeset-rows">
-          {operations.map((operation, index) => (
+          {rows.map((row, index) => (
             <ChangesetRow
               key={index}
               index={index}
-              row={describeChangesetRow(operation, graph)}
+              row={row}
+              // Diagnostics point into `/operations/N`, which is the model
+              // list. A view row's index is past the end of it and never
+              // matches, which is right: a refused projection is reported
+              // against its document rather than against a row.
               diagnostics={byRow.get(index) ?? []}
-              conflict={stagedRowConflict(
-                operation,
+              conflict={rowConflict(
+                index < state.pendingChangeset.operations.length
+                  ? state.pendingChangeset.operations[index]!.document
+                  : state.pendingChangeset.viewOperations[
+                      index - state.pendingChangeset.operations.length
+                    ]!.path,
                 state.pendingChangeset.sourceDigests,
                 state.model,
               )}
@@ -317,7 +396,7 @@ export const ChangesetTray = ({
         <button
           type="button"
           className="changeset-commit"
-          disabled={operations.length === 0 || committing}
+          disabled={rows.length === 0 || committing}
           aria-busy={committing}
           onClick={onCommitChangeset}
         >

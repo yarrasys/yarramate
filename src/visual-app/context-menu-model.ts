@@ -50,7 +50,8 @@ export type ContextMenuIntent =
   | { readonly type: "canvas.draft-subject" }
   | { readonly type: "view.open"; readonly id: string }
   | { readonly type: "view.clear" }
-  | { readonly type: "view.new" };
+  | { readonly type: "view.new" }
+  | { readonly type: "view.delete"; readonly id: string };
 
 /** Which half of the split an operation belongs to. */
 export type ContextMenuScope = "view" | "model";
@@ -229,25 +230,48 @@ const canvasMenu = (
 const viewRowMenu = (
   id: string,
   context: ContextMenuContext,
-): readonly ContextMenuGroup[] => [
-  {
-    key: "view",
-    scope: "view",
-    label: "View",
-    destructive: false,
-    items: [
-      id === ALL_SUBJECTS_VIEW
-        ? SHOW_ALL
-        : {
-            key: "view.open",
-            label: "Open view",
-            intent: { type: "view.open", id },
-            ...(id === context.activeViewId ? { current: true as const } : {}),
-          },
-      NEW_VIEW,
-    ],
-  },
-];
+): readonly ContextMenuGroup[] => {
+  const groups: ContextMenuGroup[] = [
+    {
+      key: "view",
+      scope: "view",
+      label: "View",
+      destructive: false,
+      items: [
+        id === ALL_SUBJECTS_VIEW
+          ? SHOW_ALL
+          : {
+              key: "view.open",
+              label: "Open view",
+              intent: { type: "view.open", id },
+              ...(id === context.activeViewId ? { current: true as const } : {}),
+            },
+        NEW_VIEW,
+      ],
+    },
+  ];
+  // "All subjects" is the absence of a view, not a document, so there is
+  // nothing to delete and no rule to draw.
+  if (id !== ALL_SUBJECTS_VIEW) {
+    // Behind the rule and in `--failure` like every other destructive item,
+    // even though its blast radius is one projection: the reviewer learns one
+    // rule about where the dangerous items sit, not two.
+    groups.push({
+      key: "delete",
+      scope: "view",
+      label: null,
+      destructive: true,
+      items: [
+        {
+          key: "delete",
+          label: "Delete view…",
+          intent: { type: "view.delete", id },
+        },
+      ],
+    });
+  }
+  return groups;
+};
 
 const modelRowMenu = (
   id: string,

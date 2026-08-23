@@ -32,6 +32,26 @@ writes nothing and the browser is shown exactly the diagnostics that refused
 it, pointed at the changeset row that produced them
 ([ADR 0062](adr/0062-an-apply-diff-is-exactly-the-answer-it-landed.md)).
 
+**A saved view is a staged change too**
+([ADR 0103](adr/0103-a-write-can-remove-and-a-view-lands-in-the-same-batch-as-the-model.md)).
+Saving, overwriting and deleting a view all put a row in the same changeset,
+marked `view` where a subject's row is marked `model`, and land in the same
+batch: the runtime plans the model's writes, composes the projections', and
+hands the store **one** `writeAll`, so a view and the subjects it shows arrive
+together or not at all. The rows have different blast radius and the tray says
+which is which — a view row rewrites one projection, a model row changes every
+view that drew the subject.
+
+Core is untouched by this: `yarramate/operations/v1` has no projection
+operation, and a projection is still never an operation's own target. What made
+it possible is `SourceStore` learning to remove a document — a `PendingWrite`
+with a `null` source — which is also what makes a view rename expressible at
+all, since renaming writes one document and removes another.
+
+A view saved where the manifest's patterns cover no projection is refused
+rather than written: a projection nothing loads is worse than a refusal, and
+nothing later would say so.
+
 Before a commit, the tray walks its own staged set: **Undo** and **Redo** step
 through whole snapshots of the staged operations, so staging, discarding one
 row, and discarding all are reversible by the same control, and undoing a

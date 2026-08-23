@@ -4,189 +4,119 @@ import type { ProjectionQuery } from '../src/projection.js'
 
 const query: ProjectionQuery = { kinds: ['yarramate/core@0.1#businessActor'] }
 
+/**
+ * Saving a view stages a `write-view` (ADR 0103), so this composes the whole
+ * projection document and the path it will occupy rather than a payload the
+ * server would finish. The properties are the same ones as before; what moved
+ * is that they now sit inside `projection`, and that the id and the path are
+ * decided here rather than on the far side of a round trip.
+ */
+const build = (
+  overrides: Partial<Parameters<typeof buildPayload>[0]> = {},
+) =>
+  buildPayload({
+    id: 'existing-view',
+    taken: new Set<string>(),
+    path: '.yarramate/projections/existing-view.yaml',
+    title: 'My View',
+    description: 'desc',
+    query,
+    layout: 'layered',
+    carriedDirection: 'top-down',
+    showLifecycle: true,
+    showEvidence: true,
+    showOwnership: false,
+    ...overrides,
+  })
+
+/** Narrowed once so each test reads `projection` without re-checking the op. */
+const projectionOf = (operation: ReturnType<typeof buildPayload>) => {
+  if (operation.op !== 'write-view') throw new Error('expected a write-view')
+  return operation.projection
+}
+
 describe('buildPayload', () => {
-  it('carries the active view id when overwriting an existing view', () => {
-    const payload = buildPayload({
-      id: 'existing-view',
-      title: 'My View',
-      description: 'desc',
-      query,
-      layout: 'layered',
-      carriedDirection: 'top-down',
-      showLifecycle: true,
-      showEvidence: true,
-      showOwnership: false,
-    })
+  it('writes the document the view already occupies when overwriting', () => {
+    const operation = build()
 
-    expect(payload).toEqual({
-      id: 'existing-view',
-      title: 'My View',
-      description: 'desc',
-      query,
-      presentation: {
-        layout: 'layered',
-        direction: 'top-down',
-        showLifecycle: true,
-        showEvidence: true,
-        showOwnership: false,
+    expect(operation).toEqual({
+      op: 'write-view',
+      path: '.yarramate/projections/existing-view.yaml',
+      projection: {
+        format: 'yarramate/projection/v1',
+        id: 'existing-view',
+        version: '1.0',
+        query,
+        presentation: {
+          title: 'My View',
+          description: 'desc',
+          layout: 'layered',
+          direction: 'top-down',
+          showLifecycle: true,
+          showEvidence: true,
+          showOwnership: false,
+        },
       },
     })
   })
 
-  it('round-trips the three presentation flags into the saved presentation object', () => {
-    const payload = buildPayload({
-      id: 'existing-view',
-      title: 'My View',
-      description: 'desc',
-      query,
-      layout: 'layered',
-      carriedDirection: 'top-down',
-      showLifecycle: false,
-      showEvidence: true,
-      showOwnership: true,
-    })
-
-    expect(payload.presentation?.showLifecycle).toBe(false)
-    expect(payload.presentation?.showEvidence).toBe(true)
-    expect(payload.presentation?.showOwnership).toBe(true)
+  it('keeps a view in the folder it was saved into', () => {
+    // Folders are read back off projection paths (#245), so a save that
+    // rebuilt the path from the id would quietly move the view.
+    expect(
+      build({ path: '.yarramate/projections/current/engine.yaml' }).path,
+    ).toBe('.yarramate/projections/current/engine.yaml')
   })
 
-  it('omits id entirely for an ad-hoc/new view', () => {
-    const payload = buildPayload({
-      id: undefined,
-      title: 'New View',
-      description: 'desc',
-      query,
-      layout: 'layered',
-      carriedDirection: 'left-right',
-      showLifecycle: true,
-      showEvidence: true,
-      showOwnership: false,
-    })
+  it('mints an id and a path for a new view, from its title', () => {
+    const operation = build({ id: undefined, path: undefined, title: 'My New View' })
 
-    expect(payload).not.toHaveProperty('id')
-    expect(payload).toEqual({
-      title: 'New View',
-      description: 'desc',
-      query,
-      presentation: {
-        layout: 'layered',
-        direction: 'left-right',
-        showLifecycle: true,
-        showEvidence: true,
-        showOwnership: false,
-      },
-    })
+    expect(operation.path).toBe('.yarramate/projections/my-new-view.yaml')
+    expect(projectionOf(operation).id).toBe('my-new-view')
   })
 
-  it('passes title, description, and direction through unchanged', () => {
-    const payload = buildPayload({
+  it('steps past an id already in use rather than overwriting it', () => {
+    const operation = build({
       id: undefined,
-      title: 'Exact Title',
-      description: 'Exact description',
-      query,
-      layout: 'layered',
-      carriedDirection: 'top-down',
-      showLifecycle: true,
-      showEvidence: true,
-      showOwnership: false,
+      path: undefined,
+      title: 'My New View',
+      taken: new Set(['my-new-view']),
     })
 
-    expect(payload.title).toBe('Exact Title')
-    expect(payload.description).toBe('Exact description')
-    expect(payload.presentation?.direction).toBe('top-down')
-    expect(payload.presentation?.layout).toBe('layered')
+    expect(projectionOf(operation).id).toBe('my-new-view-2')
+    expect(operation.path).toBe('.yarramate/projections/my-new-view-2.yaml')
+  })
+
+  it('round-trips the three presentation flags', () => {
+    const presentation = projectionOf(
+      build({ showLifecycle: false, showEvidence: true, showOwnership: true }),
+    ).presentation
+
+    expect(presentation?.showLifecycle).toBe(false)
+    expect(presentation?.showEvidence).toBe(true)
+    expect(presentation?.showOwnership).toBe(true)
   })
 
   it('substitutes an empty query object when no filter is active', () => {
-    const payload = buildPayload({
-      id: undefined,
-      title: 'Unfiltered',
-      description: 'desc',
-      query: null,
-      layout: 'layered',
-      carriedDirection: 'top-down',
-      showLifecycle: true,
-      showEvidence: false,
-      showOwnership: false,
-    })
-
-    expect(payload.query).toEqual({})
+    // Every field of a `ProjectionQuery` is optional, so `{}` is a valid if
+    // unconstrained query - an unfiltered view is a view over everything.
+    expect(projectionOf(build({ query: null })).query).toEqual({})
   })
 
   it('carries the layout through to presentation', () => {
-    const payload = buildPayload({
-      id: 'view-id',
-      title: 'Layered View',
-      description: 'A layout round-trip test',
-      query,
-      layout: 'layered',
-      carriedDirection: 'top-down',
-      showLifecycle: true,
-      showEvidence: false,
-      showOwnership: false,
-    })
-
-    expect(payload.presentation?.layout).toBe('layered')
-    expect(payload.id).toBe('view-id')
-    expect(payload.title).toBe('Layered View')
-    expect(payload.description).toBe('A layout round-trip test')
-    expect(payload.query).toEqual(query)
-    expect(payload.presentation?.direction).toBe('top-down')
+    expect(projectionOf(build()).presentation?.layout).toBe('layered')
   })
 
-  // ArchiMate is the only notation, so a save writes no `notation` at all
-  // rather than stamping the same value onto every projection it touches. A
-  // view that declares one by hand keeps it; nothing here mints one.
   it('writes no notation, because there is only one', () => {
-    const payload = buildPayload({
-      id: 'view-id',
-      title: 'A View',
-      description: 'A test',
-      query,
-      layout: 'layered',
-      carriedDirection: 'top-down',
-      showLifecycle: true,
-      showEvidence: true,
-      showOwnership: false,
-    })
-
-    expect(payload.presentation?.notation).toBeUndefined()
+    expect(projectionOf(build()).presentation?.notation).toBeUndefined()
   })
 
   // The canvas has no direction control, so a save must carry through what the
   // view already declared. Dropping it would discard a value the LikeC4 export
   // reads and the reviewer never saw.
   it('omits direction entirely when there is none to carry', () => {
-    const payload = buildPayload({
-      id: undefined,
-      title: 'A New View',
-      description: 'A test',
-      query,
-      layout: 'layered',
-      carriedDirection: undefined,
-      showLifecycle: true,
-      showEvidence: true,
-      showOwnership: false,
-    })
-
-    expect(payload.presentation).not.toHaveProperty('direction')
-  })
-
-  // The seed the canvas actually laid this view out with is what a save must
-  // write back - not the placeholder a view with no declared seed falls to.
-  it('carries the live canvas seed through to presentation', () => {
-    const payload = buildPayload({
-      id: 'view-id',
-      title: 'Seeded View',
-      description: 'A reviewer-chosen seed',
-      query,
-      layout: 'layered',
-      carriedDirection: 'top-down',
-      showLifecycle: true,
-      showEvidence: true,
-      showOwnership: false,
-    })
-
+    expect(
+      projectionOf(build({ carriedDirection: undefined })).presentation,
+    ).not.toHaveProperty('direction')
   })
 })

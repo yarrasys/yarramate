@@ -1122,6 +1122,7 @@ relationships: []
       operations: [
         { op: 'update-concept', document, concept: { id: 'checkout', name } },
       ],
+      viewOperations: [],
       sourceDigests,
     },
   })

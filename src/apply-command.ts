@@ -42,7 +42,9 @@ import {
 } from './workspace.js'
 import {
   createFileSystemStore,
+  type PendingWrite,
   type SourceStore,
+  type WriteConflict,
 } from './source-store.js'
 
 /**
@@ -1170,24 +1172,33 @@ export const applyOperations = (
 }
 
 
+export type PlannedOperations =
+  | {
+      readonly ok: true
+      readonly outcome: ApplyOutcome & { readonly ok: true }
+      /** What this batch would write, unwritten. Empty when it changes nothing. */
+      readonly writes: readonly PendingWrite[]
+    }
+  | { readonly ok: false; readonly outcome: ApplyOutcome & { readonly ok: false } }
+
 /**
- * Reads a workspace through a store, applies a batch, and writes what changed
- * back only if every document still holds what was read (ADR 0100).
+ * Reads a workspace through a store and applies a batch, stopping short of
+ * writing (ADR 0100).
  *
- * This is the composition Core deliberately does not perform: `applyOperations`
- * is a pure function, and the comparison that decides whether a batch lands
- * belongs to the store. Both callers - the CLI and the visual session server -
- * go through here so the precondition exists in one place rather than being
- * remembered twice.
+ * Separated from {@link landOperations} because a caller may have writes of
+ * its own to land in the same batch: the visual runtime commits a projection
+ * beside the model it belongs to, and one `writeAll` is what makes the two
+ * arrive together or not at all (ADR 0103). A caller with nothing to add wants
+ * `landOperations` and should not see this.
  */
-export const landOperations = (
+export const planOperations = (
   store: SourceStore,
   input: {
     readonly workspace: ResolvedWorkspace
     readonly operations: WorkspaceSource
     readonly manifestDirectory: string
   },
-): ApplyOutcome => {
+): PlannedOperations => {
   const revisions = new Map<string, string>()
   const sources: WorkspaceSource[] = []
   for (const path of [
@@ -1208,39 +1219,77 @@ export const landOperations = (
     operations: input.operations,
     manifestDirectory: input.manifestDirectory,
   })
-  if (!outcome.ok) return outcome
-  if (outcome.sources.length === 0) return outcome
+  if (!outcome.ok) return { ok: false, outcome }
 
   // A document Core rewrote must still hold what Core was shown. One it
   // created must still not be there. There is no third case: a batch that
   // vouches for nothing would buy back the unconditional write by omission.
-  const written = store.writeAll(
-    outcome.sources.map((source) => ({
+  return {
+    ok: true,
+    outcome,
+    writes: outcome.sources.map((source) => ({
       path: source.path,
       source: source.source,
       expected: revisions.get(source.path) ?? null,
     })),
-  )
-  if (written.ok) return outcome
+  }
+}
+
+/**
+ * The diagnostics a refused `writeAll` becomes, in the workspace range
+ * (ADR 0100). Shared so a caller that merges writes of its own into the batch
+ * reports a conflict the same way the CLI does.
+ */
+export const writeConflictDiagnostics = (
+  conflicts: readonly WriteConflict[],
+  operationsPath: string,
+): readonly Diagnostic[] =>
+  conflicts.map((conflict) => ({
+    severity: 'error' as const,
+    code: conflict.reason === 'exists' ? 'YM705' : 'YM704',
+    message:
+      conflict.reason === 'exists'
+        ? `Document "${conflict.path}" already exists; this batch expected to create it`
+        : conflict.reason === 'missing'
+          ? `Document "${conflict.path}" no longer exists; this batch was staged against it`
+          : `Document "${conflict.path}" changed after this batch was staged`,
+    path: operationsPath,
+    // The conflict is about the batch rather than about any one line of it:
+    // the operation that named the document is not what went wrong.
+    pointer: '/',
+    line: 1,
+    column: 1,
+  }))
+
+/**
+ * Reads a workspace through a store, applies a batch, and writes what changed
+ * back only if every document still holds what was read (ADR 0100).
+ *
+ * This is the composition Core deliberately does not perform: `applyOperations`
+ * is a pure function, and the comparison that decides whether a batch lands
+ * belongs to the store.
+ */
+export const landOperations = (
+  store: SourceStore,
+  input: {
+    readonly workspace: ResolvedWorkspace
+    readonly operations: WorkspaceSource
+    readonly manifestDirectory: string
+  },
+): ApplyOutcome => {
+  const planned = planOperations(store, input)
+  if (!planned.ok) return planned.outcome
+  if (planned.writes.length === 0) return planned.outcome
+
+  const written = store.writeAll(planned.writes)
+  if (written.ok) return planned.outcome
 
   return {
     ok: false,
-    diagnostics: written.conflicts.map((conflict) => ({
-      severity: 'error' as const,
-      code: conflict.reason === 'exists' ? 'YM705' : 'YM704',
-      message:
-        conflict.reason === 'exists'
-          ? `Document "${conflict.path}" already exists; this batch expected to create it`
-          : conflict.reason === 'missing'
-            ? `Document "${conflict.path}" no longer exists; this batch was staged against it`
-            : `Document "${conflict.path}" changed after this batch was staged`,
-      path: input.operations.path,
-      // The conflict is about the batch rather than about any one line of it:
-      // the operation that named the document is not what went wrong.
-      pointer: '/',
-      line: 1,
-      column: 1,
-    })),
+    diagnostics: writeConflictDiagnostics(
+      written.conflicts,
+      input.operations.path,
+    ),
   }
 }
 

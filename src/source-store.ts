@@ -30,7 +30,11 @@ export interface SourceStore {
   list(): readonly string[]
   /** The bytes, and an opaque statement of which bytes they are. */
   read(path: string): StoredSource | undefined
-  /** All of them or none, each only if it still holds what was read. */
+  /**
+   * All of them or none, each only if it still holds what was read. A write
+   * with a `null` source removes the document instead of replacing it
+   * (ADR 0103), under the same condition and in the same batch.
+   */
   writeAll(writes: readonly PendingWrite[]): WriteOutcome
 }
 
@@ -47,11 +51,24 @@ export interface StoredSource {
 
 export interface PendingWrite {
   readonly path: string
-  readonly source: string
+  /**
+   * The bytes to leave behind, or `null` to remove the document (ADR 0103).
+   *
+   * Removal is a write like any other: it lands in the same all-or-none batch,
+   * under the same compare-and-swap, so a view deleted beside a subject edit
+   * either takes both or neither. A store with nothing to remove things from
+   * is a store that cannot express a workspace shrinking, and the alternative -
+   * a second call outside the batch - is exactly the unconditional write the
+   * `expected` field exists to refuse.
+   */
+  readonly source: string | null
   /**
    * The revision this edit was made against, or `null` to require that the
    * document does not exist yet. There is no way to write unconditionally:
    * a caller with nothing to state is a caller that cannot detect a conflict.
+   *
+   * A removal must name a revision. `null` here would ask to remove something
+   * on condition it is not there, which is not a thing to want.
    */
   readonly expected: string | null
 }
@@ -59,7 +76,11 @@ export interface PendingWrite {
 export type WriteConflict =
   /** Someone else wrote it after this edit was made. */
   | { readonly path: string; readonly reason: 'changed' }
-  /** Expected to be new, but something is already there. */
+  /**
+   * Expected to be new, but something is already there - or a removal that
+   * named no revision, which asks to remove a document on condition it does
+   * not exist. Both are a caller stating something the store cannot satisfy.
+   */
   | { readonly path: string; readonly reason: 'exists' }
   /** Expected to be there, and is not. */
   | { readonly path: string; readonly reason: 'missing' }
@@ -185,7 +206,10 @@ export const createFileSystemStore = (root: string): SourceStore => {
         resolved.set(write.path, absolute)
         const held = revisionOf(absolute)
         if (write.expected === null) {
-          if (held !== undefined) {
+          // A removal on condition the document is not there is not a thing to
+          // want, and treating it as a no-op would let a caller delete by
+          // accident and be told it worked.
+          if (write.source === null || held !== undefined) {
             conflicts.push({ path: write.path, reason: 'exists' })
           }
           continue
@@ -205,6 +229,13 @@ export const createFileSystemStore = (root: string): SourceStore => {
       const revisions = new Map<string, string>()
       for (const write of writes) {
         const absolute = resolved.get(write.path)!
+        if (write.source === null) {
+          // Nothing is staged and renamed: there are no bytes to land whole,
+          // and the directory is left behind because an empty one is not
+          // something a workspace can tell from a directory it never had.
+          rmSync(absolute, { force: true })
+          continue
+        }
         mkdirSync(dirname(absolute), { recursive: true })
         // Each file lands whole: a reader sees the old bytes or the new ones,
         // never a half-written document. The batch as a whole is not atomic on
