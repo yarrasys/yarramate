@@ -39,8 +39,10 @@ import {
   presentationActionsFor,
   viewNeedingApplication,
   visualWorkspaceReducer,
+  type ConnectionDraft,
   type SelectedDiagramSubject,
 } from "./workspace-state.js";
+import { ConnectionPanel } from "./connection-panel.js";
 
 /**
  * A drawing board, not a document: the diagram holds the workspace, one compact
@@ -335,6 +337,10 @@ const DiagramWorkspace = ({
   showLifecycle,
   showEvidence,
   showOwnership,
+  connection,
+  onConnectTarget,
+  onConnectCancel,
+  onConnectStage,
   onSelect,
   onClearFilter,
   onSaveLayout,
@@ -349,6 +355,10 @@ const DiagramWorkspace = ({
   readonly showLifecycle: boolean;
   readonly showEvidence: boolean;
   readonly showOwnership: boolean;
+  readonly connection: ConnectionDraft | null;
+  readonly onConnectTarget: (id: string) => void;
+  readonly onConnectCancel: () => void;
+  readonly onConnectStage: (operation: YarramateOperation) => void;
   readonly onSelect: (subject: SelectedDiagramSubject) => void;
   readonly onClearFilter: () => void;
   readonly onSaveLayout: (payload: VisualLayoutSavePayload) => void;
@@ -386,6 +396,14 @@ const DiagramWorkspace = ({
         </div>
       ) : null}
       <div className="canvas">
+        {connection === null || state.model === null ? null : (
+          <ConnectionPanel
+            draft={connection}
+            graph={state.model.graph}
+            onStage={onConnectStage}
+            onCancel={onConnectCancel}
+          />
+        )}
         {state.model === null ? null : (
           <GraphCanvas
             graph={state.model.graph}
@@ -393,6 +411,13 @@ const DiagramWorkspace = ({
             onSelect={(id, type) => {
               const graph = state.model!.graph;
               if (type === "node") {
+                // While a relationship is being drawn, naming a subject means
+                // "connect to that", not "inspect that". Selection resumes as
+                // soon as the draft is resolved or cancelled.
+                if (connection !== null) {
+                  onConnectTarget(id);
+                  return;
+                }
                 const node = graph.nodes.find((n) => n.id === id);
                 if (node !== undefined)
                   onSelect(normalizeSelectedElement(node));
@@ -485,6 +510,7 @@ const SelectedSubjectInspector = ({
   expanded,
   onToggleDescription,
   onClear,
+  onConnect,
   onStageChange,
 }: {
   readonly subject: SelectedDiagramSubject;
@@ -493,6 +519,7 @@ const SelectedSubjectInspector = ({
   readonly expanded: boolean;
   readonly onToggleDescription: () => void;
   readonly onClear: () => void;
+  readonly onConnect: (from: string) => void;
   readonly onStageChange: (operation: YarramateOperation) => void;
 }) => {
   const node =
@@ -519,6 +546,15 @@ const SelectedSubjectInspector = ({
               : `${subject.sourceTitle} → ${subject.targetTitle}`}
           </h2>
         </div>
+        {subject.type === "element" ? (
+          <button
+            type="button"
+            className="subject-connect"
+            onClick={() => onConnect(subject.id)}
+          >
+            Connect
+          </button>
+        ) : null}
         <button type="button" className="subject-clear" onClick={onClear}>
           Clear
         </button>
@@ -560,6 +596,7 @@ const ConversationPanel = ({
   onChoice,
   onToggleDescription,
   onClearSubject,
+  onConnect,
   onDiscardChange,
   onStageChange,
   onClearChangeset,
@@ -576,6 +613,7 @@ const ConversationPanel = ({
   readonly onChoice: (optionId: string) => void;
   readonly onToggleDescription: () => void;
   readonly onClearSubject: () => void;
+  readonly onConnect: (from: string) => void;
   readonly onDiscardChange: (index: number) => void;
   readonly onStageChange: (operation: YarramateOperation) => void;
   readonly onClearChangeset: () => void;
@@ -618,6 +656,7 @@ const ConversationPanel = ({
             expanded={descriptionExpanded}
             onToggleDescription={onToggleDescription}
             onClear={onClearSubject}
+            onConnect={onConnect}
             onStageChange={onStageChange}
           />
         )}
@@ -971,6 +1010,14 @@ export const App = () => {
           direction={workspace.direction}
           nesting={workspace.nesting}
           notation={workspace.notation}
+          connection={workspace.connection}
+          onConnectTarget={(id) =>
+            dispatchWorkspace({ type: "connection.targeted", to: id })
+          }
+          onConnectCancel={() =>
+            dispatchWorkspace({ type: "connection.cancelled" })
+          }
+          onConnectStage={stageChange}
           showLifecycle={workspace.showLifecycle}
           showEvidence={workspace.showEvidence}
           showOwnership={workspace.showOwnership}
@@ -1003,6 +1050,9 @@ export const App = () => {
             dispatchWorkspace({ type: "description.toggled" })
           }
           onClearSubject={() => dispatchWorkspace({ type: "subject.cleared" })}
+          onConnect={(from) =>
+            dispatchWorkspace({ type: "connection.started", from })
+          }
           onDiscardChange={discardChange}
           onStageChange={stageChange}
           onClearChangeset={clearChangeset}

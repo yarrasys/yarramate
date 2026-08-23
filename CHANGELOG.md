@@ -196,6 +196,21 @@
   `applyOperations` and compiled clean, with no filesystem involved anywhere
   now that Core is pure (#236).
 
+- A connection tool. Selecting a subject offers **Connect**; the next subject
+  named on the diagram becomes the target; the panel offers the relationship
+  kinds the ArchiMate 3.2 table permits between the two, and choosing one
+  stages an `add-relationship` into the source subject's document. Until now
+  the browser could only update a subject that already existed.
+  The reviewer cannot draw an edge `check` would refuse with `YM404`: the
+  palette is `permittedRelationshipKinds`, the same lookup the compiler
+  performs, and `draftRelationship` refuses a kind outside it even if a caller
+  offered one. Naming the source again backs out, because a subject related to
+  itself is a mis-click far more often than an intention. An empty palette can
+  only mean an endpoint outside the ArchiMate vocabulary, since a pair the
+  table knows always permits `association`, so the panel says that rather than
+  showing an empty list. Selection rather than dragging, so every step is a
+  state transition a test can make and a keyboard can reach (#237).
+
 - `apply` accepts an operation's `document:` as the manifest names it. The
   address was resolved only against the working directory, so the
   manifest-relative form an author naturally writes was refused whenever the
