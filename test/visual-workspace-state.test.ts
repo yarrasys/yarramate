@@ -690,3 +690,60 @@ describe("the left rail's own state", () => {
     ).toBe(typed);
   });
 });
+
+describe("visualWorkspaceReducer context menu", () => {
+  const workspaceState = createVisualWorkspaceState(1280);
+  const opened = visualWorkspaceReducer(workspaceState, {
+    type: "menu.opened",
+    target: { kind: "subject", id: "system.api" },
+    x: 120,
+    y: 240,
+  });
+
+  it("holds what was right-clicked and where, and nothing about the items", () => {
+    // The contents are derived on every render, so a commit landing under an
+    // open menu cannot leave it pointing at a subject that has gone.
+    expect(opened.contextMenu).toEqual({
+      target: { kind: "subject", id: "system.api" },
+      x: 120,
+      y: 240,
+    });
+  });
+
+  it("is dismissed by everything a menu item can lead to", () => {
+    for (const action of [
+      { type: "menu.dismissed" },
+      { type: "connection.started", from: "system.api" },
+      { type: "subject.draft.opened" },
+      { type: "deletion.asked", id: "system.api" },
+      {
+        type: "subject.selected",
+        subject: normalizeSelectedElement(canvasNode()),
+      },
+    ] as const) {
+      expect(
+        visualWorkspaceReducer(opened, action).contextMenu,
+        `${action.type} closes the menu`,
+      ).toBeNull();
+    }
+  });
+
+  it("is dismissed by the commit that can take its target away", () => {
+    expect(
+      visualWorkspaceReducer(opened, { type: "model.replaced", graph: null })
+        .contextMenu,
+    ).toBeNull();
+  });
+
+  it("survives an agent's reply, which is not something the reviewer did", () => {
+    expect(
+      visualWorkspaceReducer(opened, { type: "attention.received" }).contextMenu,
+    ).toEqual(opened.contextMenu);
+  });
+
+  it("dismissing when nothing is open changes nothing", () => {
+    expect(
+      visualWorkspaceReducer(workspaceState, { type: "menu.dismissed" }),
+    ).toBe(workspaceState);
+  });
+});

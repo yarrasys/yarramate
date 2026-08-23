@@ -867,6 +867,15 @@ interface GraphCanvasProps {
   readonly graph: CanvasGraph
   readonly selectedId: string | null
   readonly onSelect: (id: string, type: 'node' | 'edge') => void
+  /**
+   * A right-click on the canvas, reported in VIEWPORT coordinates because the
+   * menu is positioned against the window rather than against this container.
+   * `id` is null for the background.
+   */
+  readonly onContextMenu: (
+    target: { readonly type: 'node' | 'edge' | 'canvas'; readonly id: string | null },
+    position: { readonly x: number; readonly y: number },
+  ) => void
   readonly matchedIds: readonly string[] | null
   readonly quickFilterText: string
   /** What draws as nesting in this view, in precedence order (ADR 0101). */
@@ -895,6 +904,7 @@ export function GraphCanvas({
   graph,
   selectedId,
   onSelect,
+  onContextMenu,
   matchedIds,
   quickFilterText,
   nesting,
@@ -909,6 +919,7 @@ export function GraphCanvas({
   const containerRef = useRef<HTMLDivElement>(null)
   const cyRef = useRef<Core | null>(null)
   const onSelectRef = useRef(onSelect)
+  const onContextMenuRef = useRef(onContextMenu)
   const isInitialSyncRef = useRef(true)
   const isInitialPresentationSyncRef = useRef(true)
   const activeViewIdRef = useRef(activeViewId)
@@ -932,6 +943,10 @@ export function GraphCanvas({
   useEffect(() => {
     onSelectRef.current = onSelect
   }, [onSelect])
+
+  useEffect(() => {
+    onContextMenuRef.current = onContextMenu
+  }, [onContextMenu])
 
   // Keep onSaveLayoutRef up-to-date for the drag-save handler
   useEffect(() => {
@@ -977,6 +992,48 @@ export function GraphCanvas({
     cy.on('tap', 'edge', (evt) => {
       const edgeId = evt.target.id()
       onSelectRef.current(edgeId, 'edge')
+    })
+
+    // Right-click. Cytoscape reports its own rendered position, which is
+    // relative to this container; the menu is positioned against the window,
+    // so the native event's client coordinates are the ones that place it.
+    // A `cxttap` with no original event (a synthetic emit, as a test or a
+    // console driver produces) falls back to the container's own origin plus
+    // the rendered position, which is the same point by another route.
+    const pointerOf = (evt: cytoscape.EventObject) => {
+      const original = evt.originalEvent as MouseEvent | undefined
+      if (original !== undefined && original !== null) {
+        return { x: original.clientX, y: original.clientY }
+      }
+      const box = cy.container()?.getBoundingClientRect()
+      const rendered = evt.renderedPosition as
+        | { x: number; y: number }
+        | undefined
+      return {
+        x: (box?.left ?? 0) + (rendered?.x ?? 0),
+        y: (box?.top ?? 0) + (rendered?.y ?? 0),
+      }
+    }
+
+    cy.on('cxttap', 'node', (evt) => {
+      onContextMenuRef.current(
+        { type: 'node', id: evt.target.id() },
+        pointerOf(evt),
+      )
+    })
+
+    cy.on('cxttap', 'edge', (evt) => {
+      onContextMenuRef.current(
+        { type: 'edge', id: evt.target.id() },
+        pointerOf(evt),
+      )
+    })
+
+    cy.on('cxttap', (evt) => {
+      // Cytoscape fires the unfiltered handler for elements too, so the
+      // background is the case where the target IS the core instance.
+      if (evt.target !== cy) return
+      onContextMenuRef.current({ type: 'canvas', id: null }, pointerOf(evt))
     })
 
     // Drag-end → debounced layout save with full position snapshot
@@ -1146,5 +1203,14 @@ export function GraphCanvas({
     }
   }, [matchedIds, quickFilterText, graph])
 
-  return <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+  // The browser's own menu is suppressed here rather than on `window`: every
+  // other surface in this application should keep the one the platform gives
+  // it, and only the canvas has a menu of its own to put in its place.
+  return (
+    <div
+      ref={containerRef}
+      style={{ width: '100%', height: '100%' }}
+      onContextMenu={(event) => event.preventDefault()}
+    />
+  )
 }

@@ -39,8 +39,13 @@ const render = () =>
         {
           id: 'yarramate/core@0.1#applicationComponent',
           label: 'applicationComponent',
+          coreLabel: 'applicationComponent',
         },
-        { id: 'yarramate/core@0.1#businessActor', label: 'businessActor' },
+        {
+          id: 'yarramate/core@0.1#businessActor',
+          label: 'businessActor',
+          coreLabel: 'businessActor',
+        },
       ],
       documents: ['architecture/main.yaml', 'architecture/other.yaml'],
       defaultDocument: 'architecture/main.yaml',

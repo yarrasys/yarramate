@@ -1699,3 +1699,98 @@ body {
   padding: 0.25rem 0.6rem;
   cursor: pointer;
 }
+
+/* ---- Context menus (#247) --------------------------------------------- */
+/* The rule the menus have to teach is drawn, not just ordered: a labelled
+   group per scope, a firm rule before anything model-destructive, and
+   `--failure` on the item that removes authored text. */
+
+.context-menu {
+  position: fixed;
+  z-index: 1100;
+  min-width: 184px;
+  max-width: 280px;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: calc(var(--step) * 0.5) 0;
+  background: var(--sheet);
+  border: 1px solid var(--rule-firm);
+  border-radius: 2px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+}
+
+.context-menu:focus {
+  outline: none;
+}
+
+.context-menu ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.context-menu-group + .context-menu-group {
+  margin-top: calc(var(--step) * 0.5);
+  padding-top: calc(var(--step) * 0.5);
+  border-top: 1px solid var(--rule);
+}
+
+/* The one rule that is not decoration: the boundary a slip must not cross. */
+.context-menu-destructive {
+  margin-top: calc(var(--step) * 0.5);
+  padding-top: calc(var(--step) * 0.5);
+  border-top: 1px solid var(--rule-firm);
+}
+
+.context-menu-heading {
+  margin: 0;
+  padding: calc(var(--step) * 0.5) calc(var(--step) * 1.5);
+  font-family: var(--utility);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--quiet);
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--step) * 0.75);
+  width: 100%;
+  padding: 0.3rem calc(var(--step) * 1.5);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.context-menu-item:hover {
+  background: color-mix(in oklab, var(--cobalt) 10%, transparent);
+}
+
+.context-menu-destructive .context-menu-item {
+  color: var(--failure);
+}
+
+.context-menu-destructive .context-menu-item:hover {
+  background: color-mix(in oklab, var(--failure) 12%, transparent);
+}
+
+.context-menu-tick {
+  flex: none;
+  width: 8px;
+  font-family: var(--utility);
+  font-size: 12px;
+  color: var(--cobalt);
+}
+
+.context-menu-label {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
