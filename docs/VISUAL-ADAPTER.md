@@ -73,19 +73,34 @@ reviewable input rather than a reproducible artifact
 An unreadable or invalid sidecar is skipped: presentation must never fail a
 session.
 
-### Layout backends
+### Layout
 
-Three layout algorithms render the canvas automatically, selected via `presentation.layout`:
+One backend: **`layered`** (`elk layered`), selected by `presentation.layout`,
+which now admits only that value. It honours `presentation.direction`
+(`top-down` → `elk.direction: DOWN`, `left-right` → `RIGHT`) and measured
+112 ms on this repository's 258-node graph.
 
-- **`layered`** (`elk layered`) — honours `presentation.direction` (`top-down` → `elk.direction: DOWN`, `left-right` → `RIGHT`). Measured 112 ms on this repository's 258-node graph. Deterministic; seed (`presentation.seed`) is ignored.
-- **`radial`** (cytoscape `concentric`) — degree-ranked rings, hubs in the centre. Ignores `direction` and `seed`. Measured 4 ms with zero node overlaps. Not elk-based; compound parents wrap children instead of being positioned concentrically themselves.
-- **`force`** (elk `stress` + `sporeOverlap`) — a two-pass layout: elk `stress` (`desiredEdgeLength: 320`) first, then (once that settles) `sporeOverlap` to remove overlaps. Takes 5.4 s on the full graph but reaches zero overlapping pairs. Seed deterministically shifts initial random placement — the only backend where seed visibly alters final positions. Shows a `"Laying out..."` busy notice during the run and supersedes a request while another is in flight rather than stacking a second pass.
+`radial` (cytoscape `concentric`) and `force` (elk `stress` then
+`sporeOverlap`) were removed in 1.0. Measured against `layered` on every view
+of the contact-update journey, both lost on all three counts that decide
+whether a diagram can be read: edge crossings, total edge length, and how
+large the graph draws once fitted to the canvas. On the solution view, for
+instance, `layered` produced 79 crossings and 16,349px of edge at a fit zoom of
+0.94, against `radial`'s 86 / 18,634 / 0.75 and `force`'s 73 / 25,783 / 0.71.
+`force` also cost seconds of blocked main thread and the whole apparatus that
+went with it: a busy notice, a two-pass chain, and an in-flight guard so a
+newer request could supersede a running one. None of that has anything left to
+guard now.
 
-The three measurements above are from this repository's own graph (258 concepts, 352 relationships, 220×64 px nodes), not a synthetic fixture. **`radial` is not elk `radial`** — ELK's radial is a tree algorithm that produced 17,578 overlapping pairs on this graph and did not terminate when overlap removal was attempted afterward. `radial` maps instead to cytoscape's built-in `concentric`, and `force` takes no new dependency beyond the already-installed `cytoscape-elk`, avoiding `cytoscape-cola` and `cytoscape-fcose` which either stalled, produced degenerate output, or left too many overlaps to be useful. See [ADR 0086](adr/0086-radial-is-concentric-and-force-is-stress-then-spore.md) for the full measurement table and rejected alternatives.
+`presentation.seed` went with them. Only `force` ever read it, yet the
+projection schema had required a seed of every view that declared a layout at
+all. Removing it also removes that conditional, so declaring a layout no longer
+obliges a view to invent a seed it has no use for.
 
-Seed is a string on the wire and is FNV-1a-hashed to a signed int32 before being handed to `elk.randomSeed` (the browser hashes it with `Math.imul`). It is saved for every view but only reproduces a `force` layout; `layered` is deterministic and ignores it, and `concentric` is deterministic by construction.
-
-`elk.direction` is only honoured by `layered`; the other two backends ignore it entirely.
+[ADR 0086](adr/0086-radial-is-concentric-and-force-is-stress-then-spore.md)
+recorded what those two backends mapped onto and why the obvious ELK choices
+were rejected; it is superseded here. A future layout mechanism is expected,
+and `presentation.layout` stays an enum so it has somewhere to land.
 
 ### Presentation toggles
 

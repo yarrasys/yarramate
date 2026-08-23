@@ -95,7 +95,7 @@ const endTransitionStatus = (state: VisualAppState): string => {
 // combination whatever is stored, and leaves every other one alone. Radial and
 // force never read a direction at all, so ArchiMate pins nothing there.
 const directionPinned = (
-  layout: "layered" | "radial" | "force",
+  layout: "layered",
   notation: "native" | "archimate",
 ): boolean => layout === "layered" && notation === "archimate";
 
@@ -113,7 +113,6 @@ const CommandStrip = ({
   onToggleDirection,
   onSelectLayout,
   notation,
-  seed,
   onSelectNotation,
   showLifecycle,
   showEvidence,
@@ -133,14 +132,13 @@ const CommandStrip = ({
   readonly detailsOpen: boolean;
   readonly conversationOpen: boolean;
   readonly unread: number;
-  readonly layout: "layered" | "radial" | "force";
+  readonly layout: "layered";
   readonly direction: "top-down" | "left-right";
   readonly views: readonly VisualViewSummary[];
   readonly onToggleDetails: () => void;
   readonly onToggleConversation: () => void;
-  readonly onSelectLayout: (layout: "layered" | "radial" | "force") => void;
+  readonly onSelectLayout: (layout: "layered") => void;
   readonly notation: "native" | "archimate";
-  readonly seed: string;
   readonly onSelectNotation: (notation: "native" | "archimate") => void;
   readonly onToggleDirection: () => void;
   readonly showLifecycle: boolean;
@@ -199,7 +197,6 @@ const CommandStrip = ({
         layout={layout}
         direction={direction}
         notation={notation}
-        seed={seed}
         showLifecycle={showLifecycle}
         showEvidence={showEvidence}
         showOwnership={showOwnership}
@@ -208,19 +205,6 @@ const CommandStrip = ({
         onSave={onSaveView}
         onDismissNotice={onDismissSavedNotice}
       />
-      <select
-        aria-label="Layout"
-        value={layout}
-        onChange={(e) =>
-          onSelectLayout(
-            e.currentTarget.value as "layered" | "radial" | "force",
-          )
-        }
-      >
-        <option value="layered">Layered</option>
-        <option value="radial">Radial</option>
-        <option value="force">Force</option>
-      </select>
       <select
         aria-label="Notation"
         value={notation}
@@ -347,29 +331,25 @@ const DiagramWorkspace = ({
   layout,
   direction,
   notation,
-  seed,
   showLifecycle,
   showEvidence,
   showOwnership,
   onSelect,
   onClearFilter,
   onSaveLayout,
-  onWaitingChange,
 }: {
   readonly state: VisualAppState;
   readonly selectedId: string | null;
   readonly waiting: string | null;
-  readonly layout: "layered" | "radial" | "force";
+  readonly layout: "layered";
   readonly direction: "top-down" | "left-right";
   readonly notation: "native" | "archimate";
-  readonly seed: string;
   readonly showLifecycle: boolean;
   readonly showEvidence: boolean;
   readonly showOwnership: boolean;
   readonly onSelect: (subject: SelectedDiagramSubject) => void;
   readonly onClearFilter: () => void;
   readonly onSaveLayout: (payload: VisualLayoutSavePayload) => void;
-  readonly onWaitingChange: (waiting: string | null) => void;
 }) => {
   // An edge names its endpoints by node id; the reviewer reads titles. The
   // rendering model the renderer itself draws answers that, so nothing here
@@ -422,17 +402,14 @@ const DiagramWorkspace = ({
             }}
             matchedIds={state.activeFilter?.matchedIds ?? null}
             quickFilterText={state.quickFilterText}
-            layout={layout}
             direction={direction}
             notation={notation}
-            seed={seed}
             showLifecycle={showLifecycle}
             showEvidence={showEvidence}
             showOwnership={showOwnership}
             activeViewId={state.activeView}
             savedPositions={state.model.layouts[state.activeView]}
             onSaveLayout={onSaveLayout}
-            onWaitingChange={onWaitingChange}
           />
         )}
         {state.layoutNotice === null ? null : (
@@ -945,7 +922,6 @@ export const App = () => {
         layout={workspace.layout}
         direction={workspace.direction}
         notation={workspace.notation}
-        seed={workspace.seed}
         showLifecycle={workspace.showLifecycle}
         showEvidence={workspace.showEvidence}
         showOwnership={workspace.showOwnership}
@@ -991,7 +967,6 @@ export const App = () => {
           layout={workspace.layout}
           direction={workspace.direction}
           notation={workspace.notation}
-          seed={workspace.seed}
           showLifecycle={workspace.showLifecycle}
           showEvidence={workspace.showEvidence}
           showOwnership={workspace.showOwnership}
@@ -1000,7 +975,6 @@ export const App = () => {
           }
           onClearFilter={clearFilter}
           onSaveLayout={saveLayout}
-          onWaitingChange={setLayoutWaiting}
         />
         {conversationOpen ? (
           <ConversationSeparator

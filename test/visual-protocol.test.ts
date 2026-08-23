@@ -125,7 +125,7 @@ const eventPayloads: Readonly<Record<string, unknown>> = {
     title: 'My View',
     description: 'desc',
     query: { kinds: ['yarramate/core@0.1#applicationComponent'] },
-    presentation: { layout: 'layered', seed: 'seed-1' },
+    presentation: { layout: 'layered' },
   },
   'session.end': { reason: 'user-ended' },
   'browser.connected': { connectionId: 'c1' },

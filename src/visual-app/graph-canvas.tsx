@@ -1,7 +1,7 @@
 import type React from 'react'
 import { useEffect, useRef } from 'react'
 import cytoscape from 'cytoscape'
-import type { Core, CollectionReturnValue, ElementDefinition, Layouts, NodeCollection, NodeSingular } from 'cytoscape'
+import type { Core, CollectionReturnValue, ElementDefinition, NodeCollection, NodeSingular } from 'cytoscape'
 import elk from 'cytoscape-elk'
 import type {
   CanvasGraph,
@@ -142,85 +142,27 @@ const ELK_SPACING: Record<string, unknown> = {
   'elk.padding': `[top=${CONTAINER_PADDING + CONTAINER_LABEL_GAP},left=${CONTAINER_PADDING},bottom=${CONTAINER_PADDING},right=${CONTAINER_PADDING}]`,
 }
 
-// FNV-1a hash: deterministically convert a seed string to a signed int32.
-// ELK's `org.eclipse.elk.randomSeed` is INT-typed; handed a non-numeric string
-// (like the `'default'` a view that declares no seed of its own lays out under)
-// it silently ignores the option, so the wire-format string seed has to become
-// an integer before it reaches elk.
-//
-// `Math.imul` is the exact int32 multiply - a plain `hash * 16777619` overflows
-// the 53-bit mantissa once `hash` passes 2^29 and starts rounding, which is
-// still deterministic but is no longer FNV-1a. Same string always hashes to the
-// same int32, across reloads and machines.
-function seedToInt32(seed: string): number {
-  let hash = 2166136261 // FNV offset basis
-  for (let i = 0; i < seed.length; i++) {
-    hash = Math.imul(hash ^ seed.charCodeAt(i), 16777619)
-  }
-  return hash | 0
-}
-
 // Shared by the full-graph layout effect and the visible-subgraph relayout
-// that runs on view switch, so both always agree on algorithm/direction.
+// that runs on view switch, so both always agree on algorithm and direction.
 //
-// Three backends, chosen by headless measurement on this repo's own 258-node
-// graph:
-// - `layered` - elk's `layered` algorithm, today's default directional
-//   (org-chart style) layout. Seed has no measurable effect on crossing
-//   minimization on this repo's graph and is silently ignored.
-// - `radial` - cytoscape's own built-in `concentric`, not elk's `radial`
-//   algorithm (measured unusable on this graph: a tree algorithm, 17.5k
-//   overlapping node pairs). Concentric filters compound parents itself
-//   (`eles.nodes().not(':parent')`), so parents wrap their children instead
-//   of being concentric-positioned themselves - measured 0 parent overlaps.
-//   Not elk-based, so no seed support.
-// - `force` - elk's `stress` algorithm, first pass only. Seed deterministically
-//   changes the initial random placement; measured to be the only backend where
-//   randomSeed visibly alters final positions. The `sporeOverlap` overlap-removal
-//   second pass is Task 3's business: it needs this first pass to have finished
-//   before it can run.
+// One backend. `radial` (cytoscape `concentric`) and `force` (elk `stress`
+// then `sporeOverlap`) were measured against `layered` on every view of the
+// contact-update journey and lost on all three counts that matter: edge
+// crossings, total edge length, and how large the graph draws once fitted to
+// the canvas. They are removed rather than deprecated, and the `seed` only
+// `force` ever read went with them - the projection schema had required a
+// seed of every view that declared a layout at all, for one backend's benefit.
 //
-// `elk.direction` is ignored by every elk algorithm except `layered`
-// (verified: identical container boxes for DOWN and RIGHT on `stress`), so
-// only `layered` reads `direction`. Under ArchiMate notation, `layered`
-// pins `elk.direction: 'DOWN'` regardless of `direction` - ArchiMate's
-// layer bands (motivation/strategy/business/application/technology) only
-// read top-down, so a left-right layered run under ArchiMate would draw
-// bands that don't correspond to anything. The pin is applied here, at
-// config-build time, and nowhere else: stored `direction` in workspace
-// state is never overwritten, so switching back to native notation
-// restores whatever direction the reviewer had declared.
+// `elk.direction` is read only by `layered`. Under ArchiMate notation it is
+// pinned to `DOWN` regardless of `direction`: ArchiMate's layer bands only
+// read top-down, so a left-right run would draw bands corresponding to
+// nothing. The pin is applied here, at config-build time, and nowhere else -
+// stored `direction` is never overwritten, so returning to native notation
+// restores whatever direction the reviewer declared.
 export function buildLayoutConfig(
-  layout: 'layered' | 'radial' | 'force',
   direction: 'top-down' | 'left-right',
-  seed?: string,
   notation: 'native' | 'archimate' = 'native',
 ): cytoscape.LayoutOptions {
-  if (layout === 'radial') {
-    return {
-      name: 'concentric',
-      avoidOverlap: true,
-      spacingFactor: 1.4,
-      animate: false,
-      nodeDimensionsIncludeLabels: false,
-    }
-  }
-  if (layout === 'force') {
-    const config: ElkLayoutOptions = {
-      name: 'elk',
-      elk: {
-        algorithm: 'stress',
-        'org.eclipse.elk.stress.desiredEdgeLength': 320,
-      },
-    }
-    if (seed !== undefined) {
-      config.elk['elk.randomSeed'] = seedToInt32(seed)
-    }
-    return config as unknown as cytoscape.LayoutOptions
-  }
-  // layered: no seed wiring (seed has no measurable effect on crossing
-  // minimization in this repo's graph; measured via headless elk on a
-  // 10-node asymmetric crossing-prone fixture)
   const elk: ElkLayoutOptions['elk'] = {
     algorithm: 'layered',
     'elk.direction':
@@ -760,114 +702,21 @@ export function applyFilter(
     .style('display', 'element')
 }
 
-// Shown while a `force` run is in flight. Measured at 5.4 s on this repo's
-// 258-node graph, so the canvas must say something rather than sit frozen.
-const LAYOUT_BUSY_NOTICE = 'Laying out...'
-
-// elk's overlap-removal algorithm, run as `force`'s second pass over the same
-// collection the first pass just placed. It reads the positions already on the
-// nodes, so it carries no configuration of its own.
-const SPORE_OVERLAP_CONFIG: ElkLayoutOptions = {
-  name: 'elk',
-  elk: { algorithm: 'sporeOverlap' },
-}
-
-// Runs `work` only once the browser has had its chance to paint the notice the
-// caller just announced. Two hops are needed, and neither one covers the other:
-//
-//   1. React does not commit a `setState` made from inside an effect during
-//      that effect - it schedules the re-render as a task. So the notice is
-//      still absent from the DOM when this function is called, and a frame
-//      taken right now would paint the canvas exactly as it already was. The
-//      timer yields to that already-queued render task first.
-//   2. A `requestAnimationFrame` callback runs *before* its own frame renders,
-//      so one frame is not enough either: the second frame's callback is the
-//      first point at which the previous frame - now carrying the committed
-//      notice - is on screen.
-//
-// Without rAF (the headless tests) or with the tab hidden, where rAF never
-// fires at all and there is nothing to paint anyway, the work runs straight
-// away rather than never.
-function paintFirst(work: () => void): void {
-  const hidden = typeof document !== 'undefined' && document.hidden
-  if (typeof requestAnimationFrame !== 'function' || hidden) {
-    work()
-    return
-  }
-  setTimeout(() => {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => work())
-    })
-  }, 0)
-}
-
-// The `force` backend's first pass (elk `stress`) still leaves nodes
-// overlapping; `sporeOverlap` is a second elk pass that spreads them apart
-// once the first has settled, so it can only start after the first pass's
-// own `layoutstop` fires. Every other backend stays the single synchronous
-// pass it always was - built once by `buildLayoutConfig` and run.
-//
-// `inFlightRef` is shared by every caller (the graph-change effect and
-// `relayoutVisible`) so a newer request - of either kind - supersedes a
-// force chain still running: it becomes the new `inFlightRef.current`, and
-// each layoutstop handler below compares itself against `inFlightRef.current`
-// before acting, so a superseded run can neither start its second pass over
-// a collection a newer request has already moved past nor flip `waiting`
-// back to idle after that newer request claimed it. `.stop()` is still
-// called on the way out for any future backend whose `stop()` really does
-// cancel a running layout.
+// One synchronous pass, built by `buildLayoutConfig` and run. The busy notice,
+// the two-pass chain and the in-flight guard that used to live here existed
+// only for the `force` backend, whose elk `stress` pass blocked the main
+// thread for seconds and then needed a second `sporeOverlap` pass to separate
+// the nodes it left overlapping. With `layered` the only backend a layout run
+// cannot still be in flight when the next one is requested, so none of that
+// apparatus has anything left to guard.
 function runLayout(
   eles: Core | CollectionReturnValue,
-  layout: 'layered' | 'radial' | 'force',
   direction: 'top-down' | 'left-right',
-  inFlightRef: { current: Layouts | null },
-  onWaitingChange: (waiting: string | null) => void,
   notation: 'native' | 'archimate' = 'native',
-  seed?: string,
 ): void {
-  // Clear the ref *before* stopping: `stop()` can emit `layoutstop`
-  // synchronously, and the superseded run's handler must already see itself
-  // disowned when it does.
-  const superseded = inFlightRef.current
-  inFlightRef.current = null
-  superseded?.stop()
-
-  const first = eles.layout(buildLayoutConfig(layout, direction, seed, notation))
-  if (layout !== 'force') {
-    // A superseded force chain's handlers all bail on the guards below, so
-    // nobody else will retire its busy notice. This run owns the canvas now,
-    // and it is the single synchronous pass it always was - nothing to wait
-    // for, so switching backends mid-force clears "Laying out..." here.
-    onWaitingChange(null)
-    first.run()
-    return
-  }
-
-  inFlightRef.current = first
-  onWaitingChange(LAYOUT_BUSY_NOTICE)
-  first.one('layoutstop', () => {
-    if (inFlightRef.current !== first) return
-    const second = eles.layout(SPORE_OVERLAP_CONFIG as unknown as cytoscape.LayoutOptions)
-    inFlightRef.current = second
-    second.one('layoutstop', () => {
-      if (inFlightRef.current !== second) return
-      inFlightRef.current = null
-      onWaitingChange(null)
-    })
-    second.run()
-  })
-  // elk's `stress` pass blocks the main thread outright - measured 6.1 s on this
-  // repo's 258-node graph - so React cannot commit the notice above until the
-  // pass is already over: it would only ever paint *after* the freeze it exists
-  // to explain. Yielding until the notice has actually painted (see
-  // `paintFirst`) puts it on screen first, then the pass runs. A newer request
-  // can claim `inFlightRef` while this one waits for its frames, so it
-  // re-checks that it still owns the canvas before handing elk the thread.
-  paintFirst(() => {
-    if (inFlightRef.current !== first) return
-    first.run()
-  })
+  eles.layout(buildLayoutConfig(direction, notation)).run()
 }
+
 
 // Positions come from the last full-graph layout, which packs every node
 // (including ones a view hides) into one shared coordinate space. Reusing
@@ -876,32 +725,15 @@ function runLayout(
 // each view a fresh, compact layout instead. cytoscape-elk's own `fit: true`
 // default re-frames the viewport to the result, so no separate fit call is
 // needed; `layout()` is a no-op on an empty visible collection, so callers
-// never need to guard against "the new view matched nothing". `inFlightRef`
-// and `onWaitingChange` default to a fresh, unshared guard and a no-op
-// callback so every existing caller that only cares about layered/radial's
-// synchronous behaviour keeps working unchanged. `notation` likewise
+// never need to guard against "the new view matched nothing". `notation`
 // defaults to `'native'` so a caller that has never heard of ArchiMate
-// notation gets the direction mapping it always did. `seed` is the active
-// view's `presentation.seed`; only the `force` backend reads it (see
-// `buildLayoutConfig`), and omitting it leaves elk on its own default.
+// notation gets the direction mapping it always did.
 export function relayoutVisible(
   cy: Core,
-  layout: 'layered' | 'radial' | 'force',
   direction: 'top-down' | 'left-right',
-  inFlightRef: { current: Layouts | null } = { current: null },
-  onWaitingChange: (waiting: string | null) => void = () => {},
   notation: 'native' | 'archimate' = 'native',
-  seed?: string,
 ): void {
-  runLayout(
-    cy.elements(':visible'),
-    layout,
-    direction,
-    inFlightRef,
-    onWaitingChange,
-    notation,
-    seed,
-  )
+  runLayout(cy.elements(':visible'), direction, notation)
 }
 
 // `dragfree` fires once per drag (unlike `position`, which fires on every
@@ -987,23 +819,15 @@ interface GraphCanvasProps {
   readonly onSelect: (id: string, type: 'node' | 'edge') => void
   readonly matchedIds: readonly string[] | null
   readonly quickFilterText: string
-  readonly layout: 'layered' | 'radial' | 'force'
   readonly direction: 'top-down' | 'left-right'
   readonly showLifecycle: boolean
   readonly showEvidence: boolean
   readonly showOwnership: boolean
   readonly notation: 'native' | 'archimate'
-  /**
-   * The active view's `presentation.seed`. Only the `force` backend reads it
-   * (elk `stress`'s initial random placement); the other two are deterministic
-   * by construction and ignore it.
-   */
-  readonly seed: string
   readonly activeViewId: string
   /** Saved layout for the active view, or undefined when it has none yet. */
   readonly savedPositions: VisualLayoutPositions | undefined
   readonly onSaveLayout: (payload: VisualLayoutSavePayload) => void
-  readonly onWaitingChange: (waiting: string | null) => void
 }
 
 /**
@@ -1021,17 +845,14 @@ export function GraphCanvas({
   onSelect,
   matchedIds,
   quickFilterText,
-  layout,
   direction,
   activeViewId,
   savedPositions,
   onSaveLayout,
-  onWaitingChange,
   showLifecycle,
   showEvidence,
   showOwnership,
   notation,
-  seed,
 }: GraphCanvasProps): React.ReactElement {
   const containerRef = useRef<HTMLDivElement>(null)
   const cyRef = useRef<Core | null>(null)
@@ -1040,10 +861,9 @@ export function GraphCanvas({
   const isInitialPresentationSyncRef = useRef(true)
   const activeViewIdRef = useRef(activeViewId)
   const directionRef = useRef(direction)
-  const layoutRef = useRef(layout)
   const notationRef = useRef(notation)
-  const seedRef = useRef(seed)
   const pendingViewFitRef = useRef(false)
+  const matchedIdsRef = useRef(matchedIds)
   // Keep latest onSaveLayout and savedPositions for the drag-save handler
   const onSaveLayoutRef = useRef(onSaveLayout)
   const savedPositionsRef = useRef(savedPositions)
@@ -1051,10 +871,6 @@ export function GraphCanvas({
   // The force backend's in-flight layout (see `runLayout`), shared by the
   // graph-change effect and the view-switch relayout so either can supersede
   // the other instead of stacking a second stress+sporeOverlap chain on top.
-  const forceLayoutRef = useRef<Layouts | null>(null)
-  // Keep latest onWaitingChange for effects and the layoutstop handlers
-  // `runLayout` sets up, which must always report through the current prop.
-  const onWaitingChangeRef = useRef(onWaitingChange)
   // The viewport a layout (or a resize refit) last left behind. Anything else
   // on screen is the reviewer's own pan/zoom, which a resize must not discard.
   const autoViewportRef = useRef<{
@@ -1076,12 +892,6 @@ export function GraphCanvas({
   useEffect(() => {
     savedPositionsRef.current = savedPositions
   }, [savedPositions])
-
-  // Keep onWaitingChangeRef up-to-date so runLayout's layoutstop handlers
-  // always report busy state through the latest prop
-  useEffect(() => {
-    onWaitingChangeRef.current = onWaitingChange
-  }, [onWaitingChange])
 
   // Cancel pending drag-save when the active view changes, so a queued save
   // never lands against a different view's sidecar. Also cleared on unmount.
@@ -1173,9 +983,6 @@ export function GraphCanvas({
       cancelAnimationFrame(pendingFrame)
       observer.disconnect()
       dragSaveHandleRef.current?.dispose()
-      forceLayoutRef.current?.stop()
-      forceLayoutRef.current = null
-      onWaitingChangeRef.current(null)
       cy.destroy()
       cyRef.current = null
     }
@@ -1214,18 +1021,7 @@ export function GraphCanvas({
       cyRef.current.add(elements)
     }
 
-    // Read through the ref inside the wrapper, not once at the call site:
-    // an async force chain keeps calling this long after the effect ran, and
-    // it must always reach the current prop (same reason as `registerDragSave`).
-    runLayout(
-      cyRef.current,
-      layout,
-      direction,
-      forceLayoutRef,
-      (waiting) => onWaitingChangeRef.current(waiting),
-      notation,
-      seed,
-    )
+    runLayout(cyRef.current, direction, notation)
   }, [graph])
 
   // Update selection highlight when selectedId or graph changes
@@ -1256,25 +1052,19 @@ export function GraphCanvas({
   // commit.
   useEffect(() => {
     const viewChanged = activeViewId !== activeViewIdRef.current
-    const layoutChanged = layout !== layoutRef.current
     const directionChanged = direction !== directionRef.current
     const notationChanged = notation !== notationRef.current
-    const seedChanged = seed !== seedRef.current
     if (
       !viewChanged &&
-      !layoutChanged &&
       !directionChanged &&
-      !notationChanged &&
-      !seedChanged
+      !notationChanged
     )
       return
     activeViewIdRef.current = activeViewId
-    layoutRef.current = layout
     directionRef.current = direction
     notationRef.current = notation
-    seedRef.current = seed
     pendingViewFitRef.current = true
-  }, [activeViewId, layout, direction, notation, seed])
+  }, [activeViewId, direction, notation])
 
   // Apply structural filter (matchedIds) and quick-filter narrowing, then,
   // only once a pending view-switch relayout is armed and its filter result
@@ -1284,19 +1074,29 @@ export function GraphCanvas({
   useEffect(() => {
     if (!cyRef.current) return
     applyFilter(cyRef.current, matchedIds, quickFilterText)
-    if (pendingViewFitRef.current) {
+    // A structural filter result lands in a later commit than the view id that
+    // asked for it. The arming effect above fires only on a view / direction /
+    // notation change, so on a session's first paint the one layout that runs
+    // is computed over every element - including the ones the filter is about
+    // to hide - and the survivors are left spread across a layout built for a
+    // graph that is no longer on screen, so it sprawls. Measured on the
+    // contact-update solution view, which draws 20 of the workspace's 37
+    // elements: first paint spanned 1910x2958 with 25,235px of edge at a fit
+    // zoom of 0.34, against 922x2584 and 21,335px at 0.39 once any control was
+    // touched - more than twice as wide for the same twenty nodes, purely
+    // because touching a control re-ran the layout over the visible set.
+    // (Crossings go the other way, 31 against 37: a sprawled layout crosses
+    // less precisely because it is not compact.) Relaying out
+    // whenever the matched set itself changes closes that gap, and `matchedIds`
+    // is compared by reference because the server hands back a fresh array per
+    // `filter-result` frame.
+    const matchedChanged = matchedIds !== matchedIdsRef.current
+    matchedIdsRef.current = matchedIds
+    if (pendingViewFitRef.current || matchedChanged) {
       pendingViewFitRef.current = false
-      relayoutVisible(
-        cyRef.current,
-        layout,
-        direction,
-        forceLayoutRef,
-        (waiting) => onWaitingChangeRef.current(waiting),
-        notation,
-        seed,
-      )
+      relayoutVisible(cyRef.current, direction, notation)
     }
-  }, [matchedIds, quickFilterText, graph, layout, direction, notation, seed])
+  }, [matchedIds, quickFilterText, graph, direction, notation])
 
   return <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
 }
