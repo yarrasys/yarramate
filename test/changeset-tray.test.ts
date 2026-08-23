@@ -477,3 +477,54 @@ describe('ChangesetTray', () => {
     expect(html).not.toContain('conflicted')
   })
 })
+
+describe('what a refusal says it could not show', () => {
+  const diagnostic = (
+    code: string,
+    pointer: string,
+    subjects?: readonly string[],
+  ): VisualDiagnostic => ({
+    severity: 'error',
+    code,
+    message: `${code} happened`,
+    path: 'architecture/main.yaml',
+    pointer,
+    line: 1,
+    column: 1,
+    ...(subjects === undefined ? {} : { subjects }),
+  })
+
+  it('says nothing while nothing has been refused', () => {
+    expect(render()).not.toContain('changeset-fault-summary')
+  })
+
+  /**
+   * The rule (ADR 0102): the count on screen is always the whole count. A
+   * reviewer shown two marked elements and told nothing else will believe
+   * those are the problems and commit.
+   */
+  it('counts what is marked and what cannot be, separately', () => {
+    const markup = render({
+      model: { graph } as never,
+      commitDiagnostics: [
+        diagnostic('YM404', '/relationships/0/kind', ['checkout']),
+        diagnostic('YM201', '/'),
+      ],
+    })
+
+    expect(markup).toContain(
+      '2 problems: 1 marked on the diagram, 1 not on it.',
+    )
+  })
+
+  it('does not call a subject this view cannot draw "marked"', () => {
+    // It is real, this view cannot show it, and saying otherwise promises a
+    // mark that never appears.
+    const markup = render({
+      model: { graph } as never,
+      commitDiagnostics: [diagnostic('YM404', '/relationships/0', ['absent'])],
+    })
+
+    expect(markup).toContain('1 problem: 0 marked on the diagram, 1 not on it.')
+  })
+})

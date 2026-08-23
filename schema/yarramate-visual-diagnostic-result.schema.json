@@ -60,6 +60,15 @@
         "column": {
           "type": "integer",
           "minimum": 1
+        },
+        "subjects": {
+         "type": "array",
+         "maxItems": 64,
+         "items": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+         }
         }
       }
     }

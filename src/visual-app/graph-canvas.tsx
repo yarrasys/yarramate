@@ -389,6 +389,19 @@ export function buildStylesheet(
       },
     },
     {
+      // A subject a diagnostic named. Declared after selection so a selected
+      // element that is also refused still reads as refused: the reviewer can
+      // move the selection, and the fault is the thing that has to stay
+      // visible (ADR 0102).
+      selector: 'node.faulted, edge.faulted',
+      style: {
+        'border-color': '#A3403A',
+        'border-width': 4,
+        'line-color': '#A3403A',
+        'target-arrow-color': '#A3403A',
+      },
+    },
+    {
       selector: 'edge',
       style: {
         'line-color': '#999999',
@@ -874,6 +887,8 @@ interface GraphCanvasProps {
   readonly direction: 'top-down' | 'left-right'
   /** What draws as nesting in this view, in precedence order (ADR 0101). */
   readonly nesting: readonly NestingKind[]
+  /** Subjects a diagnostic named, marked so a failure is visible where it is. */
+  readonly faultedIds: ReadonlySet<string>
   readonly showLifecycle: boolean
   readonly showEvidence: boolean
   readonly showOwnership: boolean
@@ -901,6 +916,7 @@ export function GraphCanvas({
   quickFilterText,
   direction,
   nesting,
+  faultedIds,
   activeViewId,
   savedPositions,
   onSaveLayout,
@@ -1078,6 +1094,18 @@ export function GraphCanvas({
 
     runLayout(cyRef.current, direction, notation)
   }, [graph])
+
+  // Mark every subject a diagnostic named. Runs on its own rather than with
+  // selection, because a fault outlives whatever the reviewer happens to have
+  // selected and must not be cleared by moving the selection.
+  useEffect(() => {
+    if (!cyRef.current) return
+    cyRef.current.elements().removeClass('faulted')
+    for (const id of faultedIds) {
+      const element = cyRef.current.getElementById(id)
+      if (element.nonempty()) element.addClass('faulted')
+    }
+  }, [faultedIds, graph])
 
   // Update selection highlight when selectedId or graph changes
   useEffect(() => {

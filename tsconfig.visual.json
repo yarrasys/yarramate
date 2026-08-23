@@ -31,6 +31,7 @@
     "test/graph-canvas-nesting.test.ts",
     "test/connection-panel.test.ts",
     "test/subject-draft-panel.test.ts",
+    "test/faults.test.ts",
     "test/changeset-tray.test.ts",
     "test/subject-form.test.ts",
     "test/archimate-notation.test.ts"

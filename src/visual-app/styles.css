@@ -593,6 +593,12 @@ body {
   color: var(--quiet);
 }
 
+.changeset-fault-summary {
+  margin: calc(var(--step) * 1.5) calc(var(--step) * 2.5) 0;
+  font-weight: 600;
+  color: var(--failure);
+}
+
 .subject-delete {
   margin-top: calc(var(--step) * 0.5);
   margin-right: calc(var(--step) * 0.5);
