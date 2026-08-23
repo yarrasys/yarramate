@@ -103,6 +103,17 @@ Keep changes narrowly scoped and explain:
 - any compatibility or migration effect;
 - whether generated output changed.
 
+A change a user would notice belongs in `CHANGELOG.md`, under the version
+being prepared, in the same pull request that makes it. A change nobody outside
+the repository can see does not. When a `feat`, `fix` or `perf` commit
+genuinely owes no entry, say why in the commit with a `Changelog: none`
+trailer, so the reason lives in the history rather than in someone's memory.
+
+Before tagging a release, `pnpm changelog:check` names every commit since the
+last tag that changed what a user sees and wrote no entry. It is a release
+backstop, not a per-pull-request gate: six changes once reached a release
+undocumented, one of them breaking, because nothing read the file.
+
 Generated files under `.yarramate-out/` and `dist/` are not committed.
 Acceptance, authorship, and review are provided by Git; do not add a parallel
 approval workflow.

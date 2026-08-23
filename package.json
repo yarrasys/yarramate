@@ -126,6 +126,7 @@
     "self:check:likec4:output": "pnpm build && node dist/adapters/likec4-cli.js export-project --check .yarramate/likec4-project.yaml .yarramate-out/likec4 .yarramate/workspace.yaml",
     "validate": "pnpm self:export:likec4 && pnpm self:check:likec4:output && likec4 validate --no-layout .yarramate-out/likec4",
     "verify": "pnpm typecheck && pnpm build && pnpm test && pnpm self:check && pnpm validate",
+    "changelog:check": "node scripts/check-changelog.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.visual.json"
   },
