@@ -863,6 +863,7 @@ export function GraphCanvas({
   const directionRef = useRef(direction)
   const notationRef = useRef(notation)
   const pendingViewFitRef = useRef(false)
+  const matchedIdsRef = useRef(matchedIds)
   // Keep latest onSaveLayout and savedPositions for the drag-save handler
   const onSaveLayoutRef = useRef(onSaveLayout)
   const savedPositionsRef = useRef(savedPositions)
@@ -1073,7 +1074,25 @@ export function GraphCanvas({
   useEffect(() => {
     if (!cyRef.current) return
     applyFilter(cyRef.current, matchedIds, quickFilterText)
-    if (pendingViewFitRef.current) {
+    // A structural filter result lands in a later commit than the view id that
+    // asked for it. The arming effect above fires only on a view / direction /
+    // notation change, so on a session's first paint the one layout that runs
+    // is computed over every element - including the ones the filter is about
+    // to hide - and the survivors are left spread across a layout built for a
+    // graph that is no longer on screen, so it sprawls. Measured on the
+    // contact-update solution view, which draws 20 of the workspace's 37
+    // elements: first paint spanned 1910x2958 with 25,235px of edge at a fit
+    // zoom of 0.34, against 922x2584 and 21,335px at 0.39 once any control was
+    // touched - more than twice as wide for the same twenty nodes, purely
+    // because touching a control re-ran the layout over the visible set.
+    // (Crossings go the other way, 31 against 37: a sprawled layout crosses
+    // less precisely because it is not compact.) Relaying out
+    // whenever the matched set itself changes closes that gap, and `matchedIds`
+    // is compared by reference because the server hands back a fresh array per
+    // `filter-result` frame.
+    const matchedChanged = matchedIds !== matchedIdsRef.current
+    matchedIdsRef.current = matchedIds
+    if (pendingViewFitRef.current || matchedChanged) {
       pendingViewFitRef.current = false
       relayoutVisible(cyRef.current, direction, notation)
     }
