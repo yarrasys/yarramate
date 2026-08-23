@@ -96,16 +96,6 @@ const endTransitionStatus = (state: VisualAppState): string => {
   return "Ending conversation — preparing a handoff for the main agent.";
 };
 
-// ArchiMate notation pins `elk.direction` to `DOWN` when it builds a layered
-// config (`buildLayoutConfig`), and elk's direction is the only thing the
-// stored `direction` ever steers - so the strip reports Top-Down for that one
-// combination whatever is stored, and leaves every other one alone. Radial and
-// force never read a direction at all, so ArchiMate pins nothing there.
-const directionPinned = (
-  layout: "layered",
-  notation: "native" | "archimate",
-): boolean => layout === "layered" && notation === "archimate";
-
 const CommandStrip = ({
   state,
   connection,
@@ -113,14 +103,10 @@ const CommandStrip = ({
   conversationOpen,
   unread,
   layout,
-  direction,
   views,
   onToggleDetails,
   onToggleConversation,
-  onToggleDirection,
   onSelectLayout,
-  notation,
-  onSelectNotation,
   showLifecycle,
   showEvidence,
   showOwnership,
@@ -140,14 +126,10 @@ const CommandStrip = ({
   readonly conversationOpen: boolean;
   readonly unread: number;
   readonly layout: "layered";
-  readonly direction: "top-down" | "left-right";
   readonly views: readonly VisualViewSummary[];
   readonly onToggleDetails: () => void;
   readonly onToggleConversation: () => void;
   readonly onSelectLayout: (layout: "layered") => void;
-  readonly notation: "native" | "archimate";
-  readonly onSelectNotation: (notation: "native" | "archimate") => void;
-  readonly onToggleDirection: () => void;
   readonly showLifecycle: boolean;
   readonly showEvidence: boolean;
   readonly showOwnership: boolean;
@@ -202,8 +184,6 @@ const CommandStrip = ({
         activeViewId={state.activeView}
         query={state.activeFilter?.query ?? null}
         layout={layout}
-        direction={direction}
-        notation={notation}
         showLifecycle={showLifecycle}
         showEvidence={showEvidence}
         showOwnership={showOwnership}
@@ -212,30 +192,6 @@ const CommandStrip = ({
         onSave={onSaveView}
         onDismissNotice={onDismissSavedNotice}
       />
-      <select
-        aria-label="Notation"
-        value={notation}
-        onChange={(e) =>
-          onSelectNotation(e.currentTarget.value as "native" | "archimate")
-        }
-      >
-        <option value="native">Native</option>
-        <option value="archimate">ArchiMate</option>
-      </select>
-      <span className="direction-notice" role="status">
-        {directionPinned(layout, notation)
-          ? "ArchiMate notation fixes direction to Top-Down."
-          : ""}
-      </span>
-      <button
-        type="button"
-        onClick={onToggleDirection}
-        disabled={layout !== "layered" || notation === "archimate"}
-      >
-        {directionPinned(layout, notation) || direction === "top-down"
-          ? "Top-Down"
-          : "Left-Right"}
-      </button>
       <button
         type="button"
         aria-expanded={detailsOpen}
@@ -344,9 +300,7 @@ const DiagramWorkspace = ({
   selectedId,
   waiting,
   layout,
-  direction,
   nesting,
-  notation,
   showLifecycle,
   showEvidence,
   showOwnership,
@@ -367,9 +321,7 @@ const DiagramWorkspace = ({
   readonly selectedId: string | null;
   readonly waiting: string | null;
   readonly layout: "layered";
-  readonly direction: "top-down" | "left-right";
   readonly nesting: readonly NestingKind[];
-  readonly notation: "native" | "archimate";
   readonly showLifecycle: boolean;
   readonly showEvidence: boolean;
   readonly showOwnership: boolean;
@@ -504,10 +456,8 @@ const DiagramWorkspace = ({
             }}
             matchedIds={state.activeFilter?.matchedIds ?? null}
             quickFilterText={state.quickFilterText}
-            direction={direction}
             nesting={nesting}
             faultedIds={faultedSubjects(state.commitDiagnostics ?? [])}
-            notation={notation}
             showLifecycle={showLifecycle}
             showEvidence={showEvidence}
             showOwnership={showOwnership}
@@ -1050,8 +1000,6 @@ export const App = () => {
         conversationOpen={conversationOpen}
         unread={workspace.conversation.unread}
         layout={workspace.layout}
-        direction={workspace.direction}
-        notation={workspace.notation}
         showLifecycle={workspace.showLifecycle}
         showEvidence={workspace.showEvidence}
         showOwnership={workspace.showOwnership}
@@ -1059,16 +1007,6 @@ export const App = () => {
         onToggleDetails={() => dispatchWorkspace({ type: "details.toggled" })}
         onToggleConversation={() =>
           dispatchWorkspace({ type: "conversation.toggled" })
-        }
-        onToggleDirection={() =>
-          dispatchWorkspace({
-            type: "direction.set",
-            direction:
-              workspace.direction === "top-down" ? "left-right" : "top-down",
-          })
-        }
-        onSelectNotation={(notation) =>
-          dispatchWorkspace({ type: "notation.set", notation })
         }
         onSelectLayout={(layout) =>
           dispatchWorkspace({ type: "layout.set", layout })
@@ -1095,9 +1033,7 @@ export const App = () => {
           selectedId={workspace.selectedSubject?.id ?? null}
           waiting={waiting}
           layout={workspace.layout}
-          direction={workspace.direction}
           nesting={workspace.nesting}
-          notation={workspace.notation}
           connection={workspace.connection}
           onConnectTarget={(id) =>
             dispatchWorkspace({ type: "connection.targeted", to: id })

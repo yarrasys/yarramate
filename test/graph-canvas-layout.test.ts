@@ -9,6 +9,7 @@ import {
   registerDragSave,
   relayoutVisible,
 } from '../src/visual-app/graph-canvas.js'
+import { ASPECT_SHAPES, RELATIONSHIP_NOTATION } from '../src/notation/archimate.js'
 import type {
   VisualLayoutPositions,
   VisualLayoutSavePayload,
@@ -224,25 +225,18 @@ const countOverlappingPairs = (cy: cytoscape.Core): number => {
 describe('buildLayoutConfig', () => {
   it('lays out with zero overlapping node bounding boxes', async () => {
     const cy = buildLayoutFixture()
-    await runLayout(cy, buildLayoutConfig('top-down'))
+    await runLayout(cy, buildLayoutConfig())
     expect(countOverlappingPairs(cy)).toBe(0)
   })
 
-  it('archimate notation pins direction to DOWN regardless of the stored direction', () => {
-    const archimate = buildLayoutConfig('left-right', 'archimate') as unknown as {
-      elk: Record<string, unknown>
-    }
-    expect(archimate.elk['elk.direction']).toBe('DOWN')
-
-    const native = buildLayoutConfig('left-right', 'native') as unknown as {
-      elk: Record<string, unknown>
-    }
-    expect(native.elk['elk.direction']).toBe('RIGHT')
-
-    const nativeTopDown = buildLayoutConfig('top-down', 'native') as unknown as {
-      elk: Record<string, unknown>
-    }
-    expect(nativeTopDown.elk['elk.direction']).toBe('DOWN')
+  // ArchiMate's layer bands only read top-down, so the canvas lays out DOWN
+  // and takes no direction to be told otherwise. `presentation.direction`
+  // survives in the projection format for the LikeC4 export, which draws no
+  // bands, and this config is deliberately blind to it.
+  it('lays out DOWN, and takes nothing that could say otherwise', () => {
+    const config = buildLayoutConfig() as unknown as { elk: Record<string, unknown> }
+    expect(config.elk['elk.direction']).toBe('DOWN')
+    expect(buildLayoutConfig.length).toBe(0)
   })
 
   // `layered` is the only backend, so a layout run is one synchronous elk
@@ -251,7 +245,7 @@ describe('buildLayoutConfig', () => {
   // guard that `force` needed.
   it('relayouts the visible subgraph in one synchronous pass', () => {
     const cy = buildHubFixture()
-    relayoutVisible(cy, 'top-down')
+    relayoutVisible(cy)
     expect(buildPositionMap(cy.nodes()).size ?? Object.keys(buildPositionMap(cy.nodes())).length)
       .toBeGreaterThan(0)
   })
@@ -274,7 +268,7 @@ describe('buildStylesheet ArchiMate notation', () => {
   }
 
   it('renders a realization edge as a dotted line with a hollow target triangle', () => {
-    const style = edgeRule(buildStylesheet(false, false, false, 'archimate'), 'realization')
+    const style = edgeRule(buildStylesheet(false, false, false), 'realization')
     expect(style['line-style']).toBe('dotted')
     expect(style['source-arrow-shape']).toBe('none')
     expect(style['target-arrow-shape']).toBe('triangle')
@@ -282,7 +276,7 @@ describe('buildStylesheet ArchiMate notation', () => {
   })
 
   it('resolves a derived development kind to its core lineage style via coreKindLabel, not kindLabel', () => {
-    const sheet = buildStylesheet(false, false, false, 'archimate')
+    const sheet = buildStylesheet(false, false, false)
     const cy = cytoscape({
       headless: true,
       styleEnabled: true,
@@ -343,7 +337,7 @@ describe('buildStylesheet ArchiMate notation', () => {
       return cytoscape({
         headless: true,
         styleEnabled: true,
-        style: buildStylesheet(true, true, true, 'archimate'),
+        style: buildStylesheet(true, true, true),
         elements: [node('container'), node('child', 'container'), node('leaf')],
       })
     }
@@ -379,9 +373,19 @@ describe('buildStylesheet ArchiMate notation', () => {
     })
   })
 
-  it('adds no ArchiMate rules under native notation', () => {
-    const native = buildStylesheet(true, true, true, 'native')
-    expect(native.some((block) => block.selector.startsWith('edge[coreKindLabel'))).toBe(false)
-    expect(native.some((block) => block.selector.startsWith('node[aspect'))).toBe(false)
+  // There is no longer a notation to switch off, so the shape and arrow rules
+  // are not a mode the stylesheet can be built without. A build that dropped
+  // them would draw every kind as an undifferentiated box and every
+  // relationship with the same line, which is what this asserts cannot happen.
+  it('always carries the ArchiMate shape and arrow rules', () => {
+    const sheet = buildStylesheet(true, true, true)
+    expect(sheet.filter((block) => block.selector.startsWith('node[aspect')))
+      .toHaveLength(Object.keys(ASPECT_SHAPES).length)
+    expect(sheet.filter((block) => block.selector.startsWith('edge[coreKindLabel')))
+      .toHaveLength(RELATIONSHIP_NOTATION.length)
+
+    const bare = buildStylesheet(false, false, false)
+    expect(bare.filter((block) => block.selector.startsWith('node[aspect')))
+      .toHaveLength(Object.keys(ASPECT_SHAPES).length)
   })
 })

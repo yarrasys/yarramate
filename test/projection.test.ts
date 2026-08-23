@@ -705,16 +705,6 @@ query:
   })
 
   it('round-trips notation through a saved projection document', () => {
-    const withNative = loadProjection({
-      path: 'native.projection.yaml',
-      source: `format: yarramate/projection/v1
-id: notation-test
-version: "1.0"
-query: {}
-presentation:
-  notation: native
-`,
-    })
     const withArchimate = loadProjection({
       path: 'archimate.projection.yaml',
       source: `format: yarramate/projection/v1
@@ -725,13 +715,30 @@ presentation:
   notation: archimate
 `,
     })
-    expect(withNative.ok).toBe(true)
     expect(withArchimate.ok).toBe(true)
-    if (!withNative.ok || !withArchimate.ok) return
-    expect(withNative.projection.presentation?.notation).toBe('native')
+    if (!withArchimate.ok) return
     expect(withArchimate.projection.presentation?.notation).toBe('archimate')
-    expect(canonicalProjection(withNative.projection).presentation?.notation).toBe('native')
     expect(canonicalProjection(withArchimate.projection).presentation?.notation).toBe('archimate')
+  })
+
+  // `native` was a renderer, and it is gone. The field stays so a second
+  // notation has somewhere to land, which is only worth anything if naming a
+  // notation that does not exist is refused rather than quietly drawn as
+  // ArchiMate.
+  it('refuses a projection that asks for a notation nothing renders', () => {
+    const withNative = loadProjection({
+      path: 'native.projection.yaml',
+      source: `format: yarramate/projection/v1
+id: notation-test
+version: "1.0"
+query: {}
+presentation:
+  notation: native
+`,
+    })
+    expect(withNative.ok).toBe(false)
+    if (withNative.ok) return
+    expect(withNative.diagnostics[0]?.pointer).toBe('/presentation/notation')
   })
 
   it('rejects unknown notation values in schema validation', () => {

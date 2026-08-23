@@ -2,7 +2,6 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { VisualAppState } from '../src/visual-app/state.js'
-import type * as WorkspaceState from '../src/visual-app/workspace-state.js'
 
 const session = vi.hoisted(() => {
   const baseState: VisualAppState = {
@@ -62,39 +61,6 @@ vi.mock('../src/visual-app/session-client.js', () => ({
     end: vi.fn(),
   }),
 }))
-
-// The command strip's layout control lives on local `useReducer` workspace
-// state, not `VisualAppState` - so a render test that wants to see the
-// direction button disabled under a non-`layered` backend has to override
-// the reducer's initial value the same way `session` overrides session state
-// above, rather than driving it through props the App component doesn't have.
-// `notationOverride` follows the same pattern for the ArchiMate direction pin,
-// and `directionOverride` for a stored direction the pin has to override in
-// the label without touching what is stored.
-const workspace = vi.hoisted(() => ({
-  layoutOverride: undefined as 'layered' | 'radial' | 'force' | undefined,
-  notationOverride: undefined as 'native' | 'archimate' | undefined,
-  directionOverride: undefined as 'top-down' | 'left-right' | undefined,
-}))
-
-vi.mock('../src/visual-app/workspace-state.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof WorkspaceState>()
-  return {
-    ...actual,
-    createVisualWorkspaceState: (viewportWidth: number) => ({
-      ...actual.createVisualWorkspaceState(viewportWidth),
-      ...(workspace.layoutOverride === undefined
-        ? {}
-        : { layout: workspace.layoutOverride }),
-      ...(workspace.notationOverride === undefined
-        ? {}
-        : { notation: workspace.notationOverride }),
-      ...(workspace.directionOverride === undefined
-        ? {}
-        : { direction: workspace.directionOverride }),
-    }),
-  }
-})
 
 import { App } from '../src/visual-app/App.js'
 
@@ -262,72 +228,25 @@ describe('visual conversation rendering', () => {
   })
 })
 
-describe('layout control', () => {
-  beforeEach(() => {
-    workspace.layoutOverride = undefined
-    workspace.notationOverride = undefined
-    workspace.directionOverride = undefined
-  })
-
-  afterAll(() => {
-    workspace.layoutOverride = undefined
-    workspace.notationOverride = undefined
-    workspace.directionOverride = undefined
-  })
-
-  it('enables the direction button under the default layered backend', () => {
-    workspace.layoutOverride = undefined
+// ArchiMate is the notation and it lays out top-down, so neither a notation
+// picker nor a direction toggle has anything to offer. Asserted on the rendered
+// markup rather than on state, because a control is gone when it stops being
+// drawn - a reducer with no field behind it would still pass a state assertion
+// while the strip carried a dead button.
+describe('command strip', () => {
+  it('offers no notation picker', () => {
     const markup = renderSession()
 
-    expect(markup).toContain('<button type="button">Top-Down</button>')
+    expect(markup).not.toContain('aria-label="Notation"')
+    expect(markup).not.toContain('>ArchiMate<')
+    expect(markup).not.toContain('>Native<')
   })
 
-  it.each(['radial', 'force'] as const)(
-    'disables the direction button under %s',
-    (layout) => {
-      workspace.layoutOverride = layout
-      const markup = renderSession()
-
-      expect(markup).toContain('<button type="button" disabled="">Top-Down</button>')
-    },
-  )
-
-  it('disables the direction button and shows the reason under archimate notation', () => {
-    workspace.layoutOverride = undefined
-    workspace.notationOverride = 'archimate'
+  it('offers no direction control, and no notice explaining one', () => {
     const markup = renderSession()
 
-    expect(markup).toContain('<button type="button" disabled="">Top-Down</button>')
-    expect(markup).toContain(
-      '<span class="direction-notice" role="status">ArchiMate notation fixes direction to Top-Down.</span>',
-    )
-  })
-
-  it('shows no direction notice under native notation', () => {
-    workspace.layoutOverride = undefined
-    workspace.notationOverride = 'native'
-    const markup = renderSession()
-
-    expect(markup).toContain('<span class="direction-notice" role="status"></span>')
-  })
-
-  it('reports the pinned direction while archimate makes a stored left-right inert', () => {
-    workspace.notationOverride = 'archimate'
-    workspace.directionOverride = 'left-right'
-    const markup = renderSession()
-
-    // The canvas laid out DOWN, so the strip cannot advertise the stored value.
-    expect(markup).toContain('<button type="button" disabled="">Top-Down</button>')
-  })
-
-  it('keeps the stored direction and drops the notice where archimate pins nothing', () => {
-    workspace.layoutOverride = 'radial'
-    workspace.notationOverride = 'archimate'
-    workspace.directionOverride = 'left-right'
-    const markup = renderSession()
-
-    // Radial never reads a direction, so the pin is not what disabled this.
-    expect(markup).toContain('<button type="button" disabled="">Left-Right</button>')
-    expect(markup).toContain('<span class="direction-notice" role="status"></span>')
+    expect(markup).not.toContain('Top-Down')
+    expect(markup).not.toContain('Left-Right')
+    expect(markup).not.toContain('direction-notice')
   })
 })

@@ -297,26 +297,35 @@ describe("visualWorkspaceReducer layout", () => {
     expect(workspaceState.layout).toBe("layered");
   });
 
-  it("carries the layout through layout.set without touching direction", () => {
+  it("carries the layout through layout.set", () => {
     const next = visualWorkspaceReducer(workspaceState, {
       type: "layout.set",
       layout: "layered",
     });
     expect(next.layout).toBe("layered");
-    expect(next.direction).toBe(workspaceState.direction);
   });
 
-  it("adopts a selected view declared layout and direction", () => {
+  it("adopts a selected view declared layout", () => {
+    const actions = presentationActionsFor({ layout: "layered" });
+    const next = actions.reduce(visualWorkspaceReducer, workspaceState);
+    expect(next.layout).toBe("layered");
+  });
+
+  // A view may still declare `direction` - the LikeC4 export reads it - and
+  // the canvas must take no notice: it draws ArchiMate, which is top-down by
+  // construction, and there is no control for a declared direction to move.
+  it("ignores a direction a view declares", () => {
     const actions = presentationActionsFor({
       layout: "layered",
       direction: "left-right",
-    });
-    const next = actions.reduce(visualWorkspaceReducer, workspaceState);
-    expect(next.layout).toBe("layered");
-    expect(next.direction).toBe("left-right");
+    } as Parameters<typeof presentationActionsFor>[0]);
+    expect(actions).toEqual([
+      { type: "layout.set", layout: "layered" },
+      { type: "nesting.set", nesting: ["composition"] },
+    ]);
   });
 
-  it("leaves layout and direction untouched when a view declares neither", () => {
+  it("leaves layout untouched when a view declares none", () => {
     const actions = presentationActionsFor({});
     const next = actions.reduce(visualWorkspaceReducer, workspaceState);
     expect(next).toBe(workspaceState);
@@ -590,42 +599,6 @@ describe("visualWorkspaceReducer nesting", () => {
       nesting: ["composition"],
     });
     expect(next).toBe(workspaceState);
-  });
-});
-
-describe("visualWorkspaceReducer notation", () => {
-  const workspaceState = createVisualWorkspaceState(1280);
-
-  it("starts with native notation", () => {
-    expect(workspaceState.notation).toBe("native");
-  });
-
-  it("sets notation on notation.set", () => {
-    const next = visualWorkspaceReducer(workspaceState, {
-      type: "notation.set",
-      notation: "archimate",
-    });
-    expect(next.notation).toBe("archimate");
-  });
-
-  it("adopts a selected view declared notation", () => {
-    const actions = presentationActionsFor({ notation: "archimate" });
-    const next = actions.reduce(visualWorkspaceReducer, workspaceState);
-    expect(next.notation).toBe("archimate");
-  });
-
-  it("leaves notation untouched when a view declares none", () => {
-    const actions = presentationActionsFor({});
-    const next = actions.reduce(visualWorkspaceReducer, workspaceState);
-    expect(next).toBe(workspaceState);
-  });
-
-  it("adopts only the notation field a view actually declares", () => {
-    const actions = presentationActionsFor({ notation: "archimate" });
-    expect(actions).toEqual([
-      { type: "nesting.set", nesting: ["composition"] },
-      { type: "notation.set", notation: "archimate" },
-    ]);
   });
 });
 

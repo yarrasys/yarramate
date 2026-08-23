@@ -133,7 +133,6 @@ export interface VisualWorkspaceState {
   readonly pendingDeletion: string | null;
   readonly descriptionExpanded: boolean;
   readonly detailsOpen: boolean;
-  readonly direction: "top-down" | "left-right";
   /**
    * What draws as nesting in the active view, in precedence order (ADR 0101).
    * A view that says nothing keeps `DEFAULT_NESTING`, which is composition
@@ -144,13 +143,6 @@ export interface VisualWorkspaceState {
   readonly showLifecycle: boolean;
   readonly showEvidence: boolean;
   readonly showOwnership: boolean;
-  readonly notation: "native" | "archimate";
-  /**
-   * The seed the canvas lays `force` out with, and the one a save writes back
-   * as `presentation.seed`. Only `force` reads it - `layered` is deterministic
-   * and elk ignores the seed outright, `radial` is not elk-based at all (see
-   * `docs/VISUAL-ADAPTER.md`).
-   */
 }
 
 export type VisualWorkspaceAction =
@@ -179,10 +171,6 @@ export type VisualWorkspaceAction =
   | { readonly type: "description.toggled" }
   | { readonly type: "details.toggled" }
   | {
-      readonly type: "direction.set";
-      readonly direction: "top-down" | "left-right";
-    }
-  | {
       readonly type: "nesting.set";
       readonly nesting: readonly NestingKind[];
     }
@@ -190,7 +178,6 @@ export type VisualWorkspaceAction =
       readonly type: "layout.set";
       readonly layout: "layered";
     }
-  | { readonly type: "notation.set"; readonly notation: "native" | "archimate" }
   | {
       readonly type: "presentation.toggled";
       readonly flag: "showLifecycle" | "showEvidence" | "showOwnership";
@@ -206,9 +193,8 @@ export type VisualWorkspaceAction =
 // A view switch adopts the view's own presentation: a field the view
 // declares replaces whatever the workspace currently shows; a field it
 // leaves unset keeps the workspace's current value untouched. Returns the
-// `direction.set`/`layout.set` actions to dispatch, in declaration order,
-// so App.tsx has nothing left to decide - it only has to dispatch what
-// comes back.
+// actions to dispatch, in declaration order, so App.tsx has nothing left to
+// decide - it only has to dispatch what comes back.
 const sameNesting = (
   left: readonly NestingKind[],
   right: readonly NestingKind[],
@@ -220,22 +206,16 @@ export const presentationActionsFor = (
   presentation:
     | {
         readonly layout?: "layered";
-        readonly direction?: "top-down" | "left-right";
         readonly nesting?: readonly NestingKind[];
-        readonly notation?: "native" | "archimate";
         readonly showLifecycle?: boolean;
         readonly showEvidence?: boolean;
         readonly showOwnership?: boolean;
-        readonly seed?: string;
       }
     | undefined,
 ): readonly VisualWorkspaceAction[] => {
   const actions: VisualWorkspaceAction[] = [];
   if (presentation?.layout !== undefined) {
     actions.push({ type: "layout.set", layout: presentation.layout });
-  }
-  if (presentation?.direction !== undefined) {
-    actions.push({ type: "direction.set", direction: presentation.direction });
   }
   // A view that omits `nesting` is restored to the default rather than left
   // holding the previous view's vocabulary: switching views must not carry a
@@ -244,9 +224,6 @@ export const presentationActionsFor = (
     type: "nesting.set",
     nesting: presentation?.nesting ?? DEFAULT_NESTING,
   });
-  if (presentation?.notation !== undefined) {
-    actions.push({ type: "notation.set", notation: presentation.notation });
-  }
   if (presentation?.showLifecycle !== undefined) {
     actions.push({
       type: "presentation.toggled",
@@ -276,7 +253,7 @@ export const presentationActionsFor = (
 // one the server named (`initialView`, also what a reload restores) - and
 // only the first ever ran through the picker's handler, so a session opened
 // on a view rendered the whole graph under workspace defaults and ignored
-// the layout, notation and seed that view declares. Both routes move the
+// the presentation that view declares. Both routes move the
 // same `activeView` field, so the decision belongs here, keyed on what has
 // actually been applied rather than on where the id came from. A view's query
 // travels over the socket, but the opening snapshot arrives over HTTP before
@@ -342,7 +319,6 @@ export const createVisualWorkspaceState = (
   connection: null,
   draftingSubject: false,
   pendingDeletion: null,
-  direction: "top-down",
   nesting: DEFAULT_NESTING,
   layout: "layered",
   showLifecycle: true,
@@ -351,11 +327,6 @@ export const createVisualWorkspaceState = (
   // `yarramate/ownership/owner` claims, so every chip would render
   // identically - uniform noise until real ownership diversity exists.
   showOwnership: false,
-  notation: "native",
-  // A view that declares no seed of its own lays out under this one, and a
-  // save of such a view writes it back - `presentation.seed` is required
-  // wherever `presentation.layout` is (`schema/yarramate-projection.schema.json`),
-  // so there is no "unset" to round-trip.
 });
 
 export const visualWorkspaceReducer = (
@@ -462,8 +433,6 @@ export const visualWorkspaceReducer = (
         : { ...state, descriptionExpanded: !state.descriptionExpanded };
     case "details.toggled":
       return { ...state, detailsOpen: !state.detailsOpen };
-    case "direction.set":
-      return { ...state, direction: action.direction };
     case "nesting.set":
       // Restating the same vocabulary is not a change. Every view states one,
       // so without this a view switch would produce a new state object each
@@ -473,8 +442,6 @@ export const visualWorkspaceReducer = (
         : { ...state, nesting: action.nesting };
     case "layout.set":
       return { ...state, layout: action.layout };
-    case "notation.set":
-      return { ...state, notation: action.notation };
     case "presentation.toggled":
       return { ...state, [action.flag]: action.value };
     case "model.replaced": {

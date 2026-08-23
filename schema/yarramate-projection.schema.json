@@ -149,7 +149,7 @@
           "type": "boolean"
         },
         "notation": {
-          "enum": ["native", "archimate"]
+          "enum": ["archimate"]
         }
       }
     },

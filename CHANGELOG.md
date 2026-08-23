@@ -18,6 +18,27 @@
   at all if it finds a collision. Name any file that references subjects without
   being listed in the manifest, such as an adapter's project definition.
 
+- **Breaking.** One notation. The canvas draws ArchiMate, and `native` is
+  removed rather than demoted: `presentation.notation` admits `archimate`
+  alone, and a projection asking for `native` is refused rather than quietly
+  drawn as something else. The field stays an enum for the same reason
+  `layout` did when `radial` and `force` went, so a second notation has
+  somewhere to land (ADR 0087 is unchanged: notation is a rendering field with
+  no effect on the semantic model). Every node now carries its kind glyph and
+  takes its shape from its aspect, and every edge its line and arrows from its
+  core relationship kind, because none of that is a mode any more.
+  The notation picker and the direction toggle both leave the command strip.
+  The direction toggle goes because it had nothing left to do: ArchiMate's
+  layer bands only read top-down, so the canvas already pinned `elk.direction`
+  to `DOWN` and the control was inert whenever ArchiMate was on.
+  `presentation.direction` itself stays in the format, because the LikeC4
+  export reads it for its own `autoLayout` and draws no bands. A save now
+  carries a view's declared direction through untouched instead of writing the
+  canvas's own, which is what stops removing the control from silently
+  discarding a value the reviewer never saw; and a save writes no `notation` at
+  all rather than stamping the only one onto every projection it touches
+  (#250).
+
 - **Breaking.** One layout backend: `presentation.layout` admits only
   `layered`, and `presentation.seed` is gone (ADR 0086 carries a supersession
   note). `radial` (cytoscape `concentric`) and `force` (elk `stress` then

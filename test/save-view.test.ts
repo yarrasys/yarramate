@@ -12,11 +12,10 @@ describe('buildPayload', () => {
       description: 'desc',
       query,
       layout: 'layered',
-      direction: 'top-down',
+      carriedDirection: 'top-down',
       showLifecycle: true,
       showEvidence: true,
       showOwnership: false,
-      notation: 'native',
     })
 
     expect(payload).toEqual({
@@ -30,7 +29,6 @@ describe('buildPayload', () => {
         showLifecycle: true,
         showEvidence: true,
         showOwnership: false,
-        notation: 'native',
       },
     })
   })
@@ -42,11 +40,10 @@ describe('buildPayload', () => {
       description: 'desc',
       query,
       layout: 'layered',
-      direction: 'top-down',
+      carriedDirection: 'top-down',
       showLifecycle: false,
       showEvidence: true,
       showOwnership: true,
-      notation: 'native',
     })
 
     expect(payload.presentation?.showLifecycle).toBe(false)
@@ -61,11 +58,10 @@ describe('buildPayload', () => {
       description: 'desc',
       query,
       layout: 'layered',
-      direction: 'left-right',
+      carriedDirection: 'left-right',
       showLifecycle: true,
       showEvidence: true,
       showOwnership: false,
-      notation: 'native',
     })
 
     expect(payload).not.toHaveProperty('id')
@@ -79,7 +75,6 @@ describe('buildPayload', () => {
         showLifecycle: true,
         showEvidence: true,
         showOwnership: false,
-        notation: 'native',
       },
     })
   })
@@ -91,11 +86,10 @@ describe('buildPayload', () => {
       description: 'Exact description',
       query,
       layout: 'layered',
-      direction: 'top-down',
+      carriedDirection: 'top-down',
       showLifecycle: true,
       showEvidence: true,
       showOwnership: false,
-      notation: 'native',
     })
 
     expect(payload.title).toBe('Exact Title')
@@ -111,11 +105,10 @@ describe('buildPayload', () => {
       description: 'desc',
       query: null,
       layout: 'layered',
-      direction: 'top-down',
+      carriedDirection: 'top-down',
       showLifecycle: true,
       showEvidence: false,
       showOwnership: false,
-      notation: 'native',
     })
 
     expect(payload.query).toEqual({})
@@ -128,11 +121,10 @@ describe('buildPayload', () => {
       description: 'A layout round-trip test',
       query,
       layout: 'layered',
-      direction: 'top-down',
+      carriedDirection: 'top-down',
       showLifecycle: true,
       showEvidence: false,
       showOwnership: false,
-      notation: 'native',
     })
 
     expect(payload.presentation?.layout).toBe('layered')
@@ -143,21 +135,42 @@ describe('buildPayload', () => {
     expect(payload.presentation?.direction).toBe('top-down')
   })
 
-  it('carries notation through to presentation', () => {
+  // ArchiMate is the only notation, so a save writes no `notation` at all
+  // rather than stamping the same value onto every projection it touches. A
+  // view that declares one by hand keeps it; nothing here mints one.
+  it('writes no notation, because there is only one', () => {
     const payload = buildPayload({
       id: 'view-id',
-      title: 'ArchiMate View',
-      description: 'An archimate test',
+      title: 'A View',
+      description: 'A test',
       query,
       layout: 'layered',
-      direction: 'top-down',
+      carriedDirection: 'top-down',
       showLifecycle: true,
       showEvidence: true,
       showOwnership: false,
-      notation: 'archimate',
     })
 
-    expect(payload.presentation?.notation).toBe('archimate')
+    expect(payload.presentation?.notation).toBeUndefined()
+  })
+
+  // The canvas has no direction control, so a save must carry through what the
+  // view already declared. Dropping it would discard a value the LikeC4 export
+  // reads and the reviewer never saw.
+  it('omits direction entirely when there is none to carry', () => {
+    const payload = buildPayload({
+      id: undefined,
+      title: 'A New View',
+      description: 'A test',
+      query,
+      layout: 'layered',
+      carriedDirection: undefined,
+      showLifecycle: true,
+      showEvidence: true,
+      showOwnership: false,
+    })
+
+    expect(payload.presentation).not.toHaveProperty('direction')
   })
 
   // The seed the canvas actually laid this view out with is what a save must
@@ -169,11 +182,10 @@ describe('buildPayload', () => {
       description: 'A reviewer-chosen seed',
       query,
       layout: 'layered',
-      direction: 'top-down',
+      carriedDirection: 'top-down',
       showLifecycle: true,
       showEvidence: true,
       showOwnership: false,
-      notation: 'native',
     })
 
   })
