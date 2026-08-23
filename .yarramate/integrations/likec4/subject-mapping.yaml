@@ -774,6 +774,48 @@ mappings:
   - native: yarramate-product#repository-stewardship
     external: repositoryStewardship
     type: concept
+  - native: yarramate-engine#relationship-table
+    external: engineRelationshipTable
+    type: concept
+  - native: yarramate-engine#relationship-table-realizes-policies
+    external: engineRelationshipTableRealizesPolicies
+    type: relationship
+  - native: yarramate-repository#relationship-table-source
+    external: relationshipTableSource
+    type: concept
+  - native: yarramate-repository#relationship-table-generator
+    external: relationshipTableGenerator
+    type: concept
+  - native: yarramate-repository#relationship-table-module
+    external: relationshipTableModule
+    type: concept
+  - native: yarramate-repository#relationship-matrix-source
+    external: relationshipMatrixSource
+    type: concept
+  - native: yarramate-repository#relationship-table-source-realizes-table
+    external: relationshipTableSourceRealizesTable
+    type: relationship
+  - native: yarramate-repository#relationship-table-generator-realizes-table
+    external: relationshipTableGeneratorRealizesTable
+    type: relationship
+  - native: yarramate-repository#relationship-table-module-realizes-table
+    external: relationshipTableModuleRealizesTable
+    type: relationship
+  - native: yarramate-repository#relationship-matrix-source-realizes-policies
+    external: relationshipMatrixSourceRealizesPolicies
+    type: relationship
+  - native: yarramate-product#run-discovery-journey
+    external: runDiscoveryJourney
+    type: concept
+  - native: yarramate-product#run-design-journey
+    external: runDesignJourney
+    type: concept
+  - native: yarramate-product#discovery-journey-realizes-discovery
+    external: discoveryJourneyRealizesDiscovery
+    type: relationship
+  - native: yarramate-product#design-journey-realizes-design
+    external: designJourneyRealizesDesign
+    type: relationship
   - native: yarramate-product#trustworthy-agent-context
     external: trustworthyAgentContext
     type: concept

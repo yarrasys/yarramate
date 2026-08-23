@@ -2,6 +2,12 @@
 
 Status: accepted
 
+> The "no conformance claim" position and the position that the word
+> ArchiMate stays out of external-facing documentation are superseded by
+> ADR 0097, which makes the core profile an implementation of the ArchiMate
+> 3.2 vocabulary and relationship table. The decision that notation is a
+> presentation field, and the trademark position, remain in force.
+
 A projection document declares `presentation.layout` and `presentation.direction`
 to control automatic layout, and a reviewer can override them by hand through
 a sidecar file ([ADR 0085](0085-a-dragged-position-is-presentation-the-repository-keeps.md)).

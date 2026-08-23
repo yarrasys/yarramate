@@ -43,8 +43,14 @@ import {
   conceptKinds,
   relationshipPolicies,
   type ConceptKind,
-  type RelationshipPolicy,
 } from './profile.js'
+import {
+  ARCHIMATE_RELATIONSHIPS_VERSION,
+  CORE_CONCEPT_KIND_ORDER,
+  PERMITTED_RELATIONSHIP_LETTERS,
+  RELATIONSHIP_LETTERS,
+} from './archimate-relationships.generated.js'
+import { matrixEndpointAspects } from './relationship-matrix.js'
 import {
   evaluateProjection,
   loadProjection,
@@ -176,7 +182,8 @@ type AskResult = AskResultBase &
     | {
         readonly mode: 'kinds'
         readonly conceptKinds: readonly ConceptKind[]
-        readonly relationshipKinds: readonly RelationshipPolicy[]
+        readonly relationshipKinds: readonly RelationshipKindSummary[]
+        readonly relationshipMatrix: RelationshipMatrixSummary
         readonly extensions: readonly {
           readonly id: string
           readonly type: 'concept' | 'relationship'
@@ -184,6 +191,26 @@ type AskResult = AskResultBase &
         }[]
       }
   )
+
+/**
+ * One relationship kind as `--kinds` reports it. The aspect lists are the
+ * shadow the ArchiMate table casts on the aspect axis - a necessary
+ * condition, never the rule; the rule is `relationshipMatrix`.
+ */
+interface RelationshipKindSummary {
+  readonly id: string
+  readonly intent: string
+  readonly sourceAspects: readonly string[]
+  readonly targetAspects: readonly string[]
+}
+
+/** The vendored table itself, packed exactly as the generated module holds it (ADR 0097). */
+interface RelationshipMatrixSummary {
+  readonly standard: string
+  readonly letters: Readonly<Record<string, string>>
+  readonly kinds: readonly string[]
+  readonly rows: Readonly<Record<string, string>>
+}
 
 const claimValue = (
   claims: readonly GraphClaim[],
@@ -929,7 +956,18 @@ export function runAskCommand(
         workspace: workspace.id,
         mode: 'kinds',
         conceptKinds,
-        relationshipKinds: relationshipPolicies,
+        relationshipKinds: relationshipPolicies.map((policy) => ({
+          id: policy.id,
+          intent: policy.intent,
+          sourceAspects: [...matrixEndpointAspects(policy.id, 'source')],
+          targetAspects: [...matrixEndpointAspects(policy.id, 'target')],
+        })),
+        relationshipMatrix: {
+          standard: `ArchiMate ${ARCHIMATE_RELATIONSHIPS_VERSION}`,
+          letters: RELATIONSHIP_LETTERS,
+          kinds: CORE_CONCEPT_KIND_ORDER,
+          rows: PERMITTED_RELATIONSHIP_LETTERS,
+        },
         extensions,
       }
       const lines: string[] = [
@@ -948,13 +986,14 @@ export function runAskCommand(
       }
       lines.push('', 'Relationship kinds:')
       for (const policy of relationshipPolicies) {
-        const constraint =
-          policy.sourceAspects !== undefined ||
-          policy.targetAspects !== undefined
-            ? ` [${policy.sourceAspects?.join('|') ?? 'any'} -> ${policy.targetAspects?.join('|') ?? 'any'}]`
-            : ''
-        lines.push(`  ${policy.id} — ${policy.intent}${constraint}`)
+        const source = [...matrixEndpointAspects(policy.id, 'source')].join('|')
+        const target = [...matrixEndpointAspects(policy.id, 'target')].join('|')
+        lines.push(`  ${policy.id} — ${policy.intent} [${source} -> ${target}]`)
       }
+      lines.push(
+        '',
+        `Relationship admissibility: ArchiMate ${ARCHIMATE_RELATIONSHIPS_VERSION} kind-to-kind table (${CORE_CONCEPT_KIND_ORDER.length} kinds; see relationshipMatrix in --json)`,
+      )
       if (extensions.length > 0) {
         lines.push('', 'Profile extensions in this workspace:')
         for (const extension of extensions) {

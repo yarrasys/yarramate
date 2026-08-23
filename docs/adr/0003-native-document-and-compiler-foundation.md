@@ -2,8 +2,11 @@
 
 Status: accepted
 
-> Graph v1 kind identity is superseded by ADR 0006. The source-document and
-> compiler-seam decisions remain in force.
+> Graph v1 kind identity is superseded by ADR 0006. The closing statement
+> that no external relationship matrix or derivation rule is incorporated is
+> superseded by ADR 0097: relationship endpoints are validated against the
+> ArchiMate 3.2 relationship table. The source-document and compiler-seam
+> decisions remain in force.
 
 ## Context
 

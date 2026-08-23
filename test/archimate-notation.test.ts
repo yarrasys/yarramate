@@ -63,6 +63,17 @@ describe('archimate notation vocabulary', () => {
     })
   })
 
+  it('draws every composite but grouping with a solid border', () => {
+    // ArchiMate dashes only the grouping box. Product, location, plateau,
+    // and gap are composite elements drawn as ordinary solid rectangles.
+    for (const id of ['product', 'location', 'plateau', 'gap', 'andJunction', 'orJunction']) {
+      const row = conceptNotationOf(id)
+      expect(row?.aspect, id).toBe('composite')
+      expect(row?.shape, id).toBe('rectangle')
+      expect(row?.borderStyle, id).toBeUndefined()
+    }
+  })
+
   it('ships a glyph for every core concept kind', () => {
     for (const kind of conceptKinds) {
       expect(conceptNotationOf(kind.id)?.glyph).toEqual(expect.any(String))

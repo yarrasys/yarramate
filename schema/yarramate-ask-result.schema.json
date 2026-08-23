@@ -590,6 +590,9 @@
               },
               "inspiredBy": {
                 "type": "string"
+              },
+              "rigidity": {
+                "enum": ["rigid", "anti-rigid"]
               }
             },
             "additionalProperties": false
@@ -623,13 +626,31 @@
                 "items": {
                   "type": "string"
                 }
-              },
-              "repair": {
-                "type": "string"
               }
             },
             "additionalProperties": false
           }
+        },
+        "relationshipMatrix": {
+          "description": "The ArchiMate 3.2 relationship table the core profile validates endpoints against (ADR 0097): one row per source kind, a space-separated letter group per target kind in `kinds` order, each letter naming a permitted relationship kind via `letters`.",
+          "type": "object",
+          "required": ["standard", "letters", "kinds", "rows"],
+          "properties": {
+            "standard": { "type": "string" },
+            "letters": {
+              "type": "object",
+              "additionalProperties": { "type": "string" }
+            },
+            "kinds": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "rows": {
+              "type": "object",
+              "additionalProperties": { "type": "string" }
+            }
+          },
+          "additionalProperties": false
         },
         "extensions": {
           "type": "array",

@@ -364,7 +364,7 @@ concepts:
     kind: applicationComponent
     name: Consumer
   - id: store
-    kind: dataObject
+    kind: applicationService
     name: Store
 relationships:
   - id: consumer-implements-store

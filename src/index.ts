@@ -5,6 +5,21 @@ export {
 } from './compiler.js'
 export { serializeSemanticGraph } from './graph.js'
 export {
+  isCoreConceptKindId,
+  matrixEndpointAspects,
+  permittedRelationshipKinds,
+  relationshipPermitted,
+  sourceKindsPermitting,
+  targetKindsPermitting,
+  type CoreConceptKindId,
+} from './relationship-matrix.js'
+export {
+  ARCHIMATE_RELATIONSHIPS_SOURCE_SHA256,
+  ARCHIMATE_RELATIONSHIPS_VERSION,
+  CORE_CONCEPT_KIND_ORDER,
+  RELATIONSHIP_LETTERS,
+} from './archimate-relationships.generated.js'
+export {
   checkCoreContract,
   loadCoreContract,
   type CoreContract,

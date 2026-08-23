@@ -122,14 +122,14 @@ relationships:
     name: enforces
   - id: decision-gate-realizes-capability
     kind: realization
-    from: explicit-decision-gate
-    to: govern-ai-change
-    name: implements strategy
+    from: govern-ai-change
+    to: explicit-decision-gate
+    name: is implemented by
   - id: journey-realizes-capability
-    kind: realization
-    from: safe-change-journey
-    to: govern-ai-change
-    name: delivers
+    kind: serving
+    from: govern-ai-change
+    to: safe-change-journey
+    name: serves
   - id: publication-serves-member
     kind: serving
     from: governed-publication
@@ -199,9 +199,9 @@ relationships:
     to: worker-runtime
     name: contains
   - id: control-plane-assigned-to-edge
-    kind: assignment
-    from: control-plane
-    to: edge-runtime
+    kind: realization
+    from: edge-runtime
+    to: control-plane
     name: deployed on
   - id: runtime-realizes-execution
     kind: realization
@@ -224,7 +224,7 @@ relationships:
     to: conformance-suite
     name: delivers
   - id: suite-realizes-traceability
-    kind: realization
+    kind: association
     from: conformance-suite
     to: structured-traceability
     name: closes

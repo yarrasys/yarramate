@@ -74,25 +74,38 @@ use association when no stronger semantic meaning is justified.
 Every concept kind carries an aspect: `motivation`, `active-structure`
 (actors, roles, components, nodes, interfaces), `behavior` (processes,
 functions, interactions, services, events), `passive-structure` (objects,
-data, artifacts, material), or `composite`. Four relationship kinds constrain
-endpoint aspects, and the compiler rejects violations as `YM404`:
+data, artifacts, material), or `composite`. Which relationship kinds may join
+two concept kinds is the ArchiMate 3.2 relationship table (ADR 0097): every
+(source kind, relationship kind, target kind) triple is either permitted or
+not, and the compiler rejects the rest as `YM404`, naming the kinds the table
+does permit for that pair. `ask --kinds` prints the table. The idioms that
+recur:
 
 ```text
-assignment  source must be active-structure
-access      target must be passive-structure
-influence   target must be motivation
-triggering  source and target must be behavior
+component    composes an interface; realizes a service; is assigned to a process, function, or interaction
+interface    is assigned to the service it exposes; serves an actor or a component
+service      serves its consumer; accesses the data it reads or writes
+process      triggers or flows to another process; accesses its data
+node         realizes or serves a component; is assigned to an artifact or system software
+artifact     realizes a component or a data object
+actor        is assigned to a business process or role; is served by a service
+requirement  realizes a principle; is influenced by a driver
+deliverable  realizes a plateau; is associated with a gap
 ```
 
-The other kinds accept endpoints of any aspect.
+Every relationship on one junction must be the same kind (`YM414`).
 
-## Invocation chains
+## Interactions between components
 
 The **invocation chain** pattern; see `modelling-patterns.md`.
 
-"User invokes command" and "component invokes component" fail `YM404` when
-written as `triggering` between active-structure elements. Name the invoked
-behavior, assign the performers, and trigger between behaviors:
+"Component invokes component" is legal as written: ArchiMate permits
+`triggering` and `serving` between active-structure elements, and the
+compiler accepts them. The interview still asks for the behaviour behind the
+edge (`hop-unrealised`), because protocol, trust, payload, and failure bind
+to a step, not to a line between two boxes. Name the invoked behaviour,
+assign its performer, serve the actor from it, and chain steps between
+behaviours:
 
 ```yaml
 concepts:
@@ -106,49 +119,19 @@ concepts:
     kind: applicationProcess
     name: Run check
 relationships:
-  - id: user-starts-run-check
-    kind: assignment
-    from: user
-    to: run-check
-    name: User invokes the check command
   - id: cli-performs-run-check
     kind: assignment
     from: cli
     to: run-check
+  - id: run-check-serves-user
+    kind: serving
+    from: run-check
+    to: user
+    name: The user invokes the check command
 ```
 
-Chain steps with `triggering` only between behavior concepts, for example
-`run-check` triggering a downstream process owned by another component.
-
-## Degrading a blocked kind
-
-The **degraded edge** pattern; see `modelling-patterns.md`.
-
-When aspect policy blocks the kind you want—`triggering` between two
-components is the common case—keep the edge legal with `kind: flow` and carry
-the invocation semantics on the edge's `name` and `description`:
-
-```yaml
-format: yarramate/operations/v1
-operations:
-  - op: add-relationship
-    document: .yarramate/architecture/main.yaml
-    relationship:
-      id: cli-invokes-engine
-      kind: flow
-      from: cli
-      to: engine
-      name: invokes
-      description: The CLI invokes the engine once per check run
-```
-
-```sh
-yarramate apply operations.yaml .yarramate/workspace.yaml
-```
-
-Both fields compile to claims, so evidence can later confirm or contradict
-the recorded invocation semantics; the degradation loses no reviewable
-information.
+An actor is never assigned to application behaviour; it is served by it, or
+assigned to the business process that uses it.
 
 ## Batched writes
 

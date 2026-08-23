@@ -129,6 +129,45 @@ describe('ask command', () => {
     expect(validateAsk(payload), JSON.stringify(validateAsk.errors)).toBe(true)
   })
 
+  it('reports the relationship table behind --kinds', () => {
+    const text = runCli(['ask', 'workspace.yaml', '--kinds'], workspace)
+    expect(text.exitCode).toBe(0)
+    // Every relationship kind carries an aspect bracket now: the table
+    // constrains all eleven, where the aspect rules it replaced named four.
+    expect(text.stdout).toContain(
+      'triggering — Express temporal or causal precedence [active-structure|behavior|composite -> active-structure|behavior|composite]',
+    )
+    expect(text.stdout).toContain(
+      'Relationship admissibility: ArchiMate 3.2 kind-to-kind table (62 kinds',
+    )
+
+    const json = runCli(['ask', 'workspace.yaml', '--kinds', '--json'], workspace)
+    expect(json.exitCode).toBe(0)
+    const payload = JSON.parse(json.stdout) as {
+      format: string
+      relationshipKinds: readonly {
+        id: string
+        sourceAspects: readonly string[]
+        targetAspects: readonly string[]
+      }[]
+      relationshipMatrix: {
+        standard: string
+        kinds: readonly string[]
+        rows: Readonly<Record<string, string>>
+      }
+    }
+    expect(payload.format).toBe('yarramate/ask-result/v1')
+    expect(payload.relationshipKinds).toHaveLength(11)
+    for (const kind of payload.relationshipKinds) {
+      expect(kind.sourceAspects.length, kind.id).toBeGreaterThan(0)
+      expect(kind.targetAspects.length, kind.id).toBeGreaterThan(0)
+    }
+    expect(payload.relationshipMatrix.standard).toBe('ArchiMate 3.2')
+    expect(payload.relationshipMatrix.kinds).toHaveLength(62)
+    expect(Object.keys(payload.relationshipMatrix.rows)).toHaveLength(62)
+    expect(validateAsk(payload), JSON.stringify(validateAsk.errors)).toBe(true)
+  })
+
   it('lists the filterable roster', () => {
     const all = runCli(['ask', 'workspace.yaml', '--subjects'], workspace)
     expect(all.exitCode).toBe(0)

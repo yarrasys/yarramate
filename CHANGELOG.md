@@ -1,7 +1,33 @@
 # Changelog
 
-## Unreleased
+## 1.0.0
 
+- **Breaking.** Relationship endpoints are validated against the ArchiMate
+  3.2 relationship table (ADR 0097), vendored from Archi's `relationships.xml`
+  (MIT) and regenerated into a zero-import module a test keeps honest. The
+  four aspect rules from ADR 0004 accepted 64% of the kind-pair combinations
+  the table rejects and refused 1,803 it permits, `triggering` between
+  active-structure elements among them; a workspace carrying a forbidden
+  edge now fails `check` with `YM404`, which names the pair and the kinds
+  the table does permit. The repository's own model carried 13 such edges
+  and the shipped fixtures 12, every one a folded field or a direction
+  error. Migrate with `access` where behaviour produces passive structure,
+  `artifact -realization-> dataObject` where a file gives a data object its
+  form, `node -realization-> applicationComponent` for "deployed on", a
+  swapped direction where a capability was realized by what it realizes,
+  and `association` where nothing stronger carries the meaning. New `YM414`:
+  every relationship on one junction must be the same kind. Product,
+  plateau, and gap are composite, and only grouping draws dashed.
+  `ask --kinds` reports the aspect shadow for all eleven kinds and the packed
+  table as `relationshipMatrix`. `inspiredBy` values read `archimate:`.
+  Catalogue `core-enrichment` goes to 1.0 (ADR 0098): seven questions that
+  prescribed forbidden shapes are retargeted, the application service joins
+  the interaction wave and is asked what data it accesses, and
+  `kind-untested` asks whether a subject's relationships would survive
+  reclassification to another aspect. The skill retires the degraded-edge
+  pattern. Positioning: the core profile implements the ArchiMate vocabulary
+  and relationship table; the custody layer is additive; not affiliated with
+  or certified by The Open Group.
 - **Breaking.** Visual session paths are published as canonical local `file:`
   URIs rather than bare path strings (ADR 0096). `sessionRoot`,
   `descriptorPath`, `journalPath`, and `transcriptPath` are encoded with

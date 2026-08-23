@@ -55,15 +55,19 @@ do not imply publication or licensing approval.
 - LikeC4 and other formats are adapters or projections, not the canonical
   semantic representation.
 
-## Semantic independence
+## Language basis
 
-YarraMate Core is an independent language with original definitions and rules.
-It may cover concepts familiar from established enterprise-architecture
-practice without being a renamed implementation of another language.
+YarraMate's core profile implements the ArchiMate® 3.2 element vocabulary
+and relationship table (Appendix B): a relationship between two kinds is
+valid exactly when the table permits it. YarraMate adds a custody layer —
+evidence, attestations, lifecycle status, ownership, and architecture
+states — that ArchiMate does not define. Those fields are additive
+annotations and never change the meaning of an ArchiMate element or
+relationship. YarraMate is not affiliated with or certified by The Open
+Group; ArchiMate is a registered trademark of The Open Group.
 
-Exact mappings, relationship matrices, derivation rules, exchange behavior,
-and conformance claims for an external language belong in separately licensed
-and governed compatibility profiles.
+Derivation rules, exchange-format behaviour, and Archi interoperability are
+not part of Core (ADR 0097).
 
 ## Claims
 
@@ -184,11 +188,10 @@ checks are opt-in profiles or project policies.
 Compiler diagnostics use stable category codes and source locations. A
 compilation with errors produces no partial semantic graph.
 
-The bundled native profile initially expresses endpoint compatibility through
-broad aspect restrictions with original YarraMate wording. Exact external
-kind-to-kind matrices remain compatibility-profile concerns. Controlled
-relationship fields compile into claims and are valid only for the
-relationship kinds that define them.
+The bundled profile validates every relationship's endpoint pair against the
+ArchiMate 3.2 relationship table, resolved through profile lineage to core
+kinds (ADR 0097). Controlled relationship fields compile into claims and are
+valid only for the relationship kinds that define them.
 
 ## Extensibility
 
@@ -197,7 +200,7 @@ explicit, versioned profiles. Extensions declare semantic parents, constraints,
 and versions; unknown kinds are not silently accepted.
 
 This mechanism supports organization vocabularies and optional security,
-regulatory, governance, and external-language compatibility profiles.
+regulatory, governance.
 
 Profile documents declare one versioned parent profile and globally qualified
 semantic parents for every extension kind. Documents use concise local kind
@@ -253,7 +256,7 @@ claims of compatibility with an external viewpoint catalogue.
 - The visual conversation adapter is a loopback browser renderer and
   reviewer-edit surface.
 - Graphify is an evidence and repository-analysis adapter.
-- ArchiMate is an optional compatibility profile.
+- ArchiMate is the language Core implements; Archi and the Open Exchange Format are not dependencies.
 
 YarraMate Core must not depend on any of them.
 
