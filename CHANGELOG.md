@@ -242,6 +242,26 @@
   that can reference a subject, and treating it as authoritative would block
   deletions that would land (#239).
 
+- **Fix.** The visual app did not load at all. `DEFAULT_NESTING` was defined in
+  `projection.ts`, which loads Ajv through `createRequire`, and importing that
+  one constant for its value put `(0, cre.createRequire)(import.meta.url)` in
+  the browser bundle, where it is not a function: the app failed to mount and
+  the page was blank. It had been broken since the constant was introduced,
+  through four subsequent merges, because every test runs in Node and a bundler
+  has no opinion about it. `NestingKind` and `DEFAULT_NESTING` now live in
+  `nesting.ts`, which imports nothing, and `projection.ts` re-exports them.
+  A test now walks every value import out of `src/visual-app` and fails on one
+  that reaches `node:`, naming the chain that got there.
+
+- **Fix.** Adding a subject could never have worked. The form offered each
+  kind's wire identity, `yarramate/core@0.1#applicationComponent`, where a
+  document names a kind the short way, so `apply` refused every commit with
+  `YM401 Unknown concept kind`. The editable inspector had always used the
+  short label; this form did not. The form also defaulted to the first kind
+  alphabetically, `andJunction`, so a reviewer who typed a name and pressed Add
+  made a junction by accident; it now asks for a kind and stays disabled until
+  it has one (#240).
+
 - `apply` accepts an operation's `document:` as the manifest names it. The
   address was resolved only against the working directory, so the
   manifest-relative form an author naturally writes was refused whenever the
