@@ -525,11 +525,16 @@ describe('descriptor confinement', () => {
     expect(refusalCodes(result)).toEqual(['YMVS401'])
   })
 
-  // Opening a FIFO for read blocks until a writer appears, so any finite bound
-  // proves the CLI refused instead of opening it. The bound is deliberately
-  // loose: a cold `visual-cli.js` start costs ~700ms on an idle machine and
-  // over 1s when the suite saturates every core, so a tight bound fails as a
-  // SIGTERM under load rather than reporting the invariant it guards.
+  // Opening a FIFO for read blocks until a writer appears, and no writer ever
+  // appears here, so a CLI that opened it would never exit at all. The bound
+  // separates refused from blocked-forever, which is the invariant; it does
+  // not separate fast from slow, and must never be read as a deadline. It is
+  // therefore set far past any start this can legitimately take: a cold
+  // `visual-cli.js` costs ~550ms idle and ~2.2s with every core three times
+  // oversubscribed, and a smaller runner under a full suite is slower again.
+  // An earlier 4s bound sat at less than twice the loaded cost and failed as a
+  // SIGTERM under load, reporting a timing accident as a breach of descriptor
+  // confinement (#222). Only a genuine hang pays the ceiling.
   it.runIf(process.platform !== 'win32')(
     'refuses a FIFO descriptor without waiting for a writer',
     () => {
@@ -542,7 +547,7 @@ describe('descriptor confinement', () => {
         {
           cwd: repositoryRoot,
           encoding: 'utf8',
-          timeout: 4000,
+          timeout: 30_000,
         },
       )
 
@@ -555,7 +560,7 @@ describe('descriptor confinement', () => {
         value: { diagnostics: [{ code: 'YMVS401' }] },
       })
     },
-    15_000,
+    60_000,
   )
 
   it('refuses a descriptor that is not JSON', async () => {
@@ -1263,9 +1268,18 @@ describe('runVisualStart', () => {
     process.platform !== 'win32' && process.getuid?.() !== 0
 
   /**
-   * A ceiling on the turns of the loop one teardown takes, measured in turns
-   * rather than milliseconds so a slow machine spends no longer here than a
-   * fast one: nothing in this test waits for a duration.
+   * A ceiling on the turns spent proving the teardown is still blocked,
+   * measured in turns rather than milliseconds so a slow machine spends no
+   * longer here than a fast one: nothing in this test waits for a duration.
+   *
+   * It bounds only the loop that proves a negative, where some finite effort
+   * has to stand in for "never". The loop that proves a positive - that a
+   * later signal does return - must not carry a ceiling of its own: exhausting
+   * one reports a machine too loaded to finish in the turns allowed as a
+   * teardown that never ran, which is how this test failed in CI (#222). That
+   * loop runs until the command returns and leans on the test timeout, the
+   * same way `observes the process signals when no source is injected` waits
+   * for its first line of output.
    */
   const teardownTurns = 5000
 
@@ -1323,11 +1337,7 @@ describe('runVisualStart', () => {
         // it, so the command is signalled every turn until it returns.
         await chmod(nativePath(started.sessionRoot), 0o700)
         let closed = await turn()
-        for (
-          let spin = 0;
-          closed === undefined && spin < teardownTurns;
-          spin += 1
-        ) {
+        while (closed === undefined) {
           foreground.signals.emit('SIGTERM')
           closed = await turn()
         }
@@ -1344,6 +1354,7 @@ describe('runVisualStart', () => {
         }
       }
     },
+    30_000,
   )
 
   it('observes the process signals when no source is injected', async () => {
