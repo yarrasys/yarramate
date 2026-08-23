@@ -128,6 +128,24 @@ const splice = (
   text: string,
 ): string => source.slice(0, start) + text + source.slice(end)
 
+// Replaces a *value* range, keeping whatever line break the original occupied.
+//
+// A block scalar's range ends after its terminating newline; a plain scalar's
+// ends at its last character. Splicing the range wholesale therefore swallows
+// the line break behind every `>-` and `|-` value and glues the following
+// field onto its line, producing `description: new    status: current`, which
+// then fails to reparse as YM101 "Nested mappings are not allowed in compact
+// mappings" - a document `check` accepts that `apply` refuses (#215). Putting
+// the original trailing newlines back makes the two scalar styles behave
+// identically.
+const spliceValue = (
+  source: string,
+  start: number,
+  end: number,
+  text: string,
+): string =>
+  splice(source, start, end, text + (/\n*$/.exec(source.slice(start, end))?.[0] ?? ''))
+
 // Insert a newline-terminated block at a line boundary, tolerating a
 // source that does not end in a newline.
 const insertBlock = (
@@ -316,7 +334,7 @@ const setScalarField = (
     )
   }
   const [start, valueEnd] = nodeRange(pair.value)
-  return splice(source, start, valueEnd, rendered)
+  return spliceValue(source, start, valueEnd, rendered)
 }
 
 const appendListField = (
@@ -369,7 +387,7 @@ const appendListField = (
     }).trimEnd()
     return splice(source, start, valueEnd, flow)
   }
-  return splice(
+  return spliceValue(
     source,
     start,
     valueEnd,

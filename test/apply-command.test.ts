@@ -1080,3 +1080,147 @@ operations:
     })
   })
 })
+
+// #215: a block scalar's YAML range ends *after* its terminating newline,
+// unlike a plain scalar's. `apply` spliced that range wholesale, swallowing
+// the line break and gluing the next field onto the value's line, so every
+// `>-` and `|-` field refused with YM101 on a document `check` accepts.
+describe('apply over block scalars (#215)', () => {
+  let workspace: string
+
+  const blockDocument = `format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts:
+  # This comment must survive a programmatic write.
+  - id: folded
+    kind: applicationComponent
+    name: Folded
+    description: >-
+      A folded block scalar that wraps onto
+      a second line.
+    status: current
+  - id: literal
+    kind: applicationComponent
+    name: Literal
+    description: |-
+      A literal block scalar.
+      Its second line.
+    status: current
+relationships:
+  - id: folded-flows
+    kind: flow
+    from: folded
+    to: literal
+    content: >-
+      Flow content that is itself a folded
+      block scalar.
+`
+
+  const blockManifest = `format: yarramate/workspace/v1
+id: block-fixture
+documents:
+  - architecture/main.yaml
+profiles: []
+projections: []
+adapterMappings: []
+evidence: []
+`
+
+  const write = (name: string, body: string): void =>
+    writeFileSync(join(workspace, name), body, 'utf8')
+
+  const documentNow = (): string =>
+    readFileSync(join(workspace, 'architecture/main.yaml'), 'utf8')
+
+  beforeEach(() => {
+    workspace = mkdtempSync(join(tmpdir(), 'yarramate-block-'))
+    mkdirSync(join(workspace, 'architecture'))
+    write('architecture/main.yaml', blockDocument)
+    write('workspace.yaml', blockManifest)
+  })
+
+  afterEach(() => {
+    rmSync(workspace, { recursive: true, force: true })
+  })
+
+  it('replaces a folded description without swallowing the next field', () => {
+    write(
+      'operations.yaml',
+      `format: yarramate/operations/v1
+operations:
+  - op: update-concept
+    document: architecture/main.yaml
+    concept:
+      id: folded
+      description: Replaced.
+`,
+    )
+    const result = runCli(['apply', 'operations.yaml', 'workspace.yaml'], workspace)
+    expect(result.exitCode).toBe(0)
+
+    const now = documentNow()
+    expect(now).toContain('    description: Replaced.\n    status: current\n')
+    expect(runCli(['check', 'workspace.yaml'], workspace).exitCode).toBe(0)
+  })
+
+  it('replaces a literal description without swallowing the next field', () => {
+    write(
+      'operations.yaml',
+      `format: yarramate/operations/v1
+operations:
+  - op: update-concept
+    document: architecture/main.yaml
+    concept:
+      id: literal
+      description: Replaced too.
+`,
+    )
+    const result = runCli(['apply', 'operations.yaml', 'workspace.yaml'], workspace)
+    expect(result.exitCode).toBe(0)
+    expect(documentNow()).toContain(
+      '    description: Replaced too.\n    status: current\n',
+    )
+    expect(runCli(['check', 'workspace.yaml'], workspace).exitCode).toBe(0)
+  })
+
+  it("replaces a relationship's block-scalar content", () => {
+    write(
+      'operations.yaml',
+      `format: yarramate/operations/v1
+operations:
+  - op: update-relationship
+    document: architecture/main.yaml
+    relationship:
+      id: folded-flows
+      content: A single line now.
+`,
+    )
+    const result = runCli(['apply', 'operations.yaml', 'workspace.yaml'], workspace)
+    expect(result.exitCode).toBe(0)
+    expect(documentNow()).toContain('    content: A single line now.\n')
+    expect(runCli(['check', 'workspace.yaml'], workspace).exitCode).toBe(0)
+  })
+
+  it('leaves untouched block scalars and comments exactly as authored', () => {
+    write(
+      'operations.yaml',
+      `format: yarramate/operations/v1
+operations:
+  - op: update-concept
+    document: architecture/main.yaml
+    concept:
+      id: folded
+      description: Only this one changes.
+`,
+    )
+    expect(
+      runCli(['apply', 'operations.yaml', 'workspace.yaml'], workspace).exitCode,
+    ).toBe(0)
+
+    const now = documentNow()
+    expect(now).toContain('  # This comment must survive a programmatic write.')
+    expect(now).toContain('    description: |-\n      A literal block scalar.\n')
+    expect(now).toContain('    content: >-\n      Flow content that is itself a folded\n')
+  })
+})
