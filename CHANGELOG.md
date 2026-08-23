@@ -18,6 +18,29 @@
   at all if it finds a collision. Name any file that references subjects without
   being listed in the manifest, such as an adapter's project definition.
 
+- **Breaking.** One layout backend: `presentation.layout` admits only
+  `layered`, and `presentation.seed` is gone (ADR 0086 carries a supersession
+  note). `radial` (cytoscape `concentric`) and `force` (elk `stress` then
+  `sporeOverlap`) were measured against `layered` on every view of the
+  contact-update journey and lost on all three counts that decide whether a
+  diagram can be read: edge crossings, total edge length, and how large the
+  graph draws once fitted to the canvas. `seed` goes because only `force` ever
+  read it, yet the projection schema required a seed of every view declaring a
+  layout at all, so declaring a layout no longer obliges a view to invent a
+  value it has no use for. `force` was the only asynchronous backend, so its
+  apparatus retires with it: the busy notice, the two-pass chain, the
+  paint-first frame yield, and the in-flight guard that let a newer request
+  supersede a running one, none of which a single synchronous pass can need.
+  The Layout picker goes too, having nothing left to pick. `layout` stays an
+  enum so a replacement mechanism has somewhere to land. First paint also now
+  uses the layout the view settles into: mount laid out every element before
+  the structural filter result landed, then hid the ones the view excludes,
+  leaving the survivors spread across a layout built for a graph no longer on
+  screen. Measured on the solution view, first paint spanned 1910x2958 with
+  25,235px of edge at fit zoom 0.34, against 922x2584 and 21,335px at 0.39
+  once any control was touched: more than twice as wide for the same twenty
+  nodes. Relaying out when the matched set changes closes it (#219).
+
 - **Breaking.** Relationship endpoints are validated against the ArchiMate
   3.2 relationship table (ADR 0097), vendored from Archi's `relationships.xml`
   (MIT) and regenerated into a zero-import module a test keeps honest. The
@@ -73,6 +96,83 @@
   marker written before output digests existed is, and the next write upgrades
   it with nothing for the reader to do. `--check` reports the project stale and
   safe to regenerate, which is the truth it always had (#225).
+
+- `apply` accepts an operation's `document:` as the manifest names it. The
+  address was resolved only against the working directory, so the
+  manifest-relative form an author naturally writes was refused whenever the
+  manifest did not sit in the working directory, which is the standard
+  `.yarramate/` layout that `init` produces and every gallery showcase uses. It
+  also made an operations document non-portable, applying from one directory
+  and failing from another. Both readings are now tried, manifest-relative
+  first, and only a path that actually names a document of this workspace is
+  accepted, so admitting the second form cannot make an address ambiguous. The
+  working-directory form keeps working deliberately, because the visual session
+  server addresses documents that way while running with the workspace root as
+  cwd. A refusal now also names the documents the workspace declares, up to
+  five, instead of only saying the address was wrong (#216, #221).
+
+- A published diagnostic names the subject it is about. Results carry
+  `subjects`, most relevant first, wherever a diagnostic's pointer identifies
+  one, so a consumer that draws the model can badge the element a rule refused
+  instead of resolving a byte offset. It is derived in one place from the
+  pointer the diagnostic already carried, so no rule has to remember to name
+  what it refused and none of the forty-odd construction sites change. The
+  derivation runs where the result document is published rather than inside
+  `compileWorkspace`, which keeps the compiler's diagnostics a pure function of
+  the model, and is not only a layering preference: enriching the compile path
+  broke 23 existing tests that legitimately assert exact compiler output and
+  had nothing to say about subjects. Absence is meaningful rather than "not yet
+  populated" - a diagnostic that carries no subject is one that belongs to no
+  subject, such as a YAML parse failure, a whole-document schema violation, a
+  projection's own definition, or a manifest - which gives a UI a complete
+  rule: subjects present, badge those elements; subjects absent, route to the
+  document lane, the view's properties, or a workspace banner. Only documents
+  something was actually said about are parsed, so a clean workspace pays
+  nothing (#220).
+
+- `apply` no longer refuses a document whose target field is a block scalar.
+  Every `>-` or `|-` field failed with `YM101 Nested mappings are not allowed
+  in compact mappings` and wrote nothing, on documents `check` accepts, and
+  that style is the idiomatic one in every shipped model, so in practice
+  `apply` could not update the description of most real subjects. A block
+  scalar's YAML range ends after its terminating newline where a plain
+  scalar's ends at its last character, so splicing the range wholesale
+  swallowed the line break and glued the following field onto the value's
+  line, which then failed to reparse. The splice now puts back whatever
+  trailing newlines the replaced range occupied, so both scalar styles behave
+  identically, and the value-replacing splice behind `appendListField` uses it
+  too so the same class of bug cannot recur there (#215, #217).
+
+- A compound container keeps its own presentation. `archimateNodeShapes` built
+  one `node[aspect = "..."]` rule per aspect and appended them after
+  `node:parent` in the same array, so for any container whose own kind shares
+  that aspect the later rule's plain `rectangle` won the cascade and silently
+  undid `node:parent`'s `roundrectangle` and dashed border: a compound box
+  rendered as whatever aspect its own kind happened to be rather than as a
+  container. Scoping each aspect selector to `:childless` confines it to leaf
+  nodes. A container does draw its own kind glyph, which an earlier suspicion
+  of a cytoscape limitation on `background-image` for compound nodes had put in
+  doubt; the `background-image-opacity: 1` pin added for that goes as a no-op
+  resting on a mechanism that does not exist, since image alpha comes from that
+  property alone, it already defaults to `1`, and neither `drawImages` nor
+  `drawInscribedImage` carries an `isParent` guard. The glyph is 14px in the
+  corner of a large dashed box, which is the likeliest reason it read as
+  absent. Ships with the `contact-update` journey fixture the bug was found on
+  (#212).
+
+- Every core concept kind draws a glyph. Only 17 of 62 had one in
+  `BASE_KIND_SVG`, and the rest fell back to `glyph: null`; since shape and
+  colour are driven by aspect and layer rather than by kind, that left
+  same-aspect siblings visually identical, an `applicationInterface` next to
+  its owning `applicationComponent` reading as the same blank rectangle in the
+  same colour. The remaining 45 are added, and silhouettes are reused
+  deliberately across layers - two overlapping circles for every
+  `*Collaboration`, a lollipop for every `*Interface`, a forward arrow for
+  every `*Process`, opposing arrows for every `*Interaction`, a pointed
+  pentagon for every `*Event`, the existing pill for every `*Service` - so a
+  kind reads the same regardless of which layer colours it, matching
+  ArchiMate's own convention. The notation coverage test now asserts a glyph
+  for every core concept kind rather than for the original 17 (#210, #211).
 
 ## 0.23.0
 
