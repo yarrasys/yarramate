@@ -155,6 +155,21 @@
   presentation toggles, a view that declares no nesting is restored to the
   default rather than inheriting the previous view's (#233).
 
+- A canvas node carries `coreKindLabel`, the core-vocabulary kind it resolves
+  to, the way an edge already carried its own. The ArchiMate relationship
+  table is keyed on core kinds, so anything deciding what may connect two
+  nodes needs the core ancestor rather than the profile kind the concept was
+  authored as. `yarramate/visual-graph/v1` gains the field on `canvasNode`;
+  nothing is removed or renamed.
+  This is what a connection tool rests on, and the property it rests on is
+  held here rather than in the tool, because it is about the table and the
+  compiler agreeing and neither knows a tool exists: across a spread of kind
+  pairs, every relationship kind `permittedRelationshipKinds` offers compiles
+  without `YM404`, and every kind it withholds is one the compiler actually
+  refuses. An editor offering exactly that set cannot draw an edge the
+  compiler would reject, and cannot hide a legal one either. `association` is
+  always among the offered kinds, so no pair is a dead end (#234).
+
 - `apply` accepts an operation's `document:` as the manifest names it. The
   address was resolved only against the working directory, so the
   manifest-relative form an author naturally writes was refused whenever the
