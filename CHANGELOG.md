@@ -170,6 +170,16 @@
   compiler would reject, and cannot hide a legal one either. `association` is
   always among the offered kinds, so no pair is a dead end (#234).
 
+- `YM302` says what became of a reference written the way ids read before 1.0.
+  Flattening subject ids is the change most likely to produce an unresolved
+  reference, and `<document>#<local>` is too far from `<local>` for an
+  edit-distance suggestion to reach, so the one migration everybody performs
+  got the one message that said nothing beyond the address it could not
+  resolve. It now names the cause and the id that exists. A reference whose
+  local part is also unknown gets no such hint, because a false one is worse
+  than none. The diagnostic also suggests a near miss now, which it never did
+  before: a plain typo was as silent as a migration (#235).
+
 - `apply` accepts an operation's `document:` as the manifest names it. The
   address was resolved only against the working directory, so the
   manifest-relative form an author naturally writes was refused whenever the

@@ -819,6 +819,87 @@ relationships:
     })
   })
 
+  it('tells a reference written the pre-1.0 way what became of it', () => {
+    // The change most likely to produce an unresolved reference is 1.0
+    // flattening ids (ADR 0099), and `<document>#<local>` is too far from
+    // `<local>` for the edit-distance suggestion to reach. Without this the
+    // one migration everybody performs gets the one message that says nothing.
+    const source = `format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts:
+  - id: alpha
+    kind: applicationComponent
+    name: Alpha
+  - id: beta
+    kind: applicationComponent
+    name: Beta
+relationships:
+  - id: edge
+    kind: serving
+    from: alpha
+    to: main#beta
+`
+    const result = compileWorkspace([{ path: 'main.yaml', source }])
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.diagnostics.map((d) => d.message)).toEqual([
+      'Unresolved concept reference "main#beta"; a subject id carries no document prefix since 1.0, and "beta" exists',
+    ])
+  })
+
+  it('does not blame the prefix when the local part is unknown too', () => {
+    // A false hint is worse than none: this reference is wrong in a way
+    // flattening does not explain, so it gets the ordinary treatment.
+    const source = `format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts:
+  - id: alpha
+    kind: applicationComponent
+    name: Alpha
+relationships:
+  - id: edge
+    kind: serving
+    from: alpha
+    to: main#nowhere
+`
+    const result = compileWorkspace([{ path: 'main.yaml', source }])
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.diagnostics.map((d) => d.message)).toEqual([
+      'Unresolved concept reference "main#nowhere"',
+    ])
+  })
+
+  it('suggests a near miss, which this diagnostic never did before', () => {
+    const source = `format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts:
+  - id: alpha
+    kind: applicationComponent
+    name: Alpha
+  - id: beta
+    kind: applicationComponent
+    name: Beta
+relationships:
+  - id: edge
+    kind: serving
+    from: alpha
+    to: bet
+`
+    const result = compileWorkspace([{ path: 'main.yaml', source }])
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.diagnostics.map((d) => d.message)).toEqual([
+      'Unresolved concept reference "bet"; did you mean "beta"?',
+    ])
+  })
+
   it('reports a concept kind absent from the selected profile', () => {
     const result = compileWorkspace([
       {
