@@ -102,6 +102,28 @@ recorded what those two backends mapped onto and why the obvious ELK choices
 were rejected; it is superseded here. A future layout mechanism is expected,
 and `presentation.layout` stays an enum so it has somewhere to land.
 
+### Connecting two subjects
+
+Selecting a subject offers **Connect**. The next subject named on the diagram
+becomes the target, and the panel then offers the relationship kinds the
+ArchiMate 3.2 table permits between the two, read through each endpoint's
+`coreKindLabel` so a model using a profile gets a palette rather than nothing.
+
+Choosing one stages an `add-relationship` into the *source* subject's document,
+with an id of the form `<from>-<kind>-<to>`, taking a numeric suffix if that is
+already taken. Nothing is written until the changeset is committed.
+
+The reviewer cannot draw an edge `check` would refuse with `YM404`: the palette
+is `permittedRelationshipKinds`, the same lookup the compiler performs, and
+`draftRelationship` refuses a kind outside it even if a caller offered one.
+Naming the source again backs out, since a subject related to itself is a
+mis-click far more often than an intention. A pair the table knows always
+permits `association`, so an empty palette means an endpoint outside the
+ArchiMate vocabulary, and the panel says so rather than showing an empty list.
+
+Selection is chosen over dragging deliberately: every step is a state
+transition a test can make and a keyboard can reach.
+
 ### Nesting
 
 `presentation.nesting` names the relationship kinds that draw as containment in

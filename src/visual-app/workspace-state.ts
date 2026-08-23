@@ -29,6 +29,21 @@ export interface SelectedRelationship {
 
 export type SelectedDiagramSubject = SelectedElement | SelectedRelationship;
 
+/**
+ * A relationship being drawn. The source is chosen first and the target
+ * second, rather than dragged, so every step is a state transition a test can
+ * make and a keyboard can reach.
+ *
+ * The kinds on offer are NOT held here: they are a function of the two
+ * endpoints and the ArchiMate table, so they are derived on render by
+ * `connectableKinds`. Storing them would let a stale palette outlive the model
+ * frame it was computed from.
+ */
+export interface ConnectionDraft {
+  readonly from: string;
+  readonly to: string | null;
+}
+
 const optionalText = (value: string | null | undefined): string | null => {
   const text = value?.trim() ?? "";
   return text === "" ? null : text;
@@ -102,6 +117,8 @@ export interface VisualWorkspaceState {
    */
   readonly viewportWidth: number;
   readonly selectedSubject: SelectedDiagramSubject | null;
+  /** The relationship being drawn, or null when the tool is not in use. */
+  readonly connection: ConnectionDraft | null;
   readonly descriptionExpanded: boolean;
   readonly detailsOpen: boolean;
   readonly direction: "top-down" | "left-right";
@@ -129,6 +146,15 @@ export type VisualWorkspaceAction =
   | { readonly type: "conversation.resized"; readonly width: number }
   | { readonly type: "viewport.resized"; readonly viewportWidth: number }
   | { readonly type: "attention.received" }
+  | {
+      readonly type: "connection.started";
+      readonly from: string;
+    }
+  | {
+      readonly type: "connection.targeted";
+      readonly to: string;
+    }
+  | { readonly type: "connection.cancelled" }
   | {
       readonly type: "subject.selected";
       readonly subject: SelectedDiagramSubject;
@@ -297,6 +323,7 @@ export const createVisualWorkspaceState = (
   selectedSubject: null,
   descriptionExpanded: false,
   detailsOpen: false,
+  connection: null,
   direction: "top-down",
   nesting: DEFAULT_NESTING,
   layout: "layered",
@@ -364,6 +391,19 @@ export const visualWorkspaceReducer = (
           unread: state.conversation.unread + 1,
         },
       };
+    case "connection.started":
+      return { ...state, connection: { from: action.from, to: null } };
+    case "connection.targeted":
+      if (state.connection === null) return state;
+      // Naming the source again means "not that after all". A subject related
+      // to itself is a mis-click far more often than an intention, and the
+      // table would offer `association` for it regardless, so the gesture is
+      // better spent on the way out.
+      return action.to === state.connection.from
+        ? { ...state, connection: null }
+        : { ...state, connection: { ...state.connection, to: action.to } };
+    case "connection.cancelled":
+      return state.connection === null ? state : { ...state, connection: null };
     case "subject.selected":
       return {
         ...state,

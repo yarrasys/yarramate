@@ -396,6 +396,78 @@ describe("visualWorkspaceReducer presentation", () => {
   });
 });
 
+describe("visualWorkspaceReducer connection", () => {
+  const workspaceState = createVisualWorkspaceState(1280);
+
+  const start = (from: string) =>
+    visualWorkspaceReducer(workspaceState, {
+      type: "connection.started",
+      from,
+    });
+
+  it("is not in use until it is started", () => {
+    expect(workspaceState.connection).toBeNull();
+  });
+
+  it("holds the source, and no target yet", () => {
+    expect(start("orders").connection).toEqual({ from: "orders", to: null });
+  });
+
+  it("takes a target", () => {
+    const next = visualWorkspaceReducer(start("orders"), {
+      type: "connection.targeted",
+      to: "billing",
+    });
+    expect(next.connection).toEqual({ from: "orders", to: "billing" });
+  });
+
+  it("treats naming the source again as backing out", () => {
+    // A subject related to itself is a mis-click far more often than an
+    // intention, and `association` would be offered for it regardless.
+    const next = visualWorkspaceReducer(start("orders"), {
+      type: "connection.targeted",
+      to: "orders",
+    });
+    expect(next.connection).toBeNull();
+  });
+
+  it("ignores a target when nothing is being drawn", () => {
+    const next = visualWorkspaceReducer(workspaceState, {
+      type: "connection.targeted",
+      to: "billing",
+    });
+    expect(next).toBe(workspaceState);
+  });
+
+  it("starting again replaces the draft rather than stacking one", () => {
+    const next = visualWorkspaceReducer(start("orders"), {
+      type: "connection.started",
+      from: "billing",
+    });
+    expect(next.connection).toEqual({ from: "billing", to: null });
+  });
+
+  it("cancels, and cancelling nothing changes nothing", () => {
+    expect(
+      visualWorkspaceReducer(start("orders"), { type: "connection.cancelled" })
+        .connection,
+    ).toBeNull();
+    expect(
+      visualWorkspaceReducer(workspaceState, { type: "connection.cancelled" }),
+    ).toBe(workspaceState);
+  });
+
+  it("does not hold the kinds on offer, which are a function of the endpoints", () => {
+    // Storing them would let a stale palette outlive the model frame it came
+    // from; `connectableKinds` derives them at render.
+    const next = visualWorkspaceReducer(start("orders"), {
+      type: "connection.targeted",
+      to: "billing",
+    });
+    expect(Object.keys(next.connection ?? {}).sort()).toEqual(["from", "to"]);
+  });
+});
+
 describe("visualWorkspaceReducer nesting", () => {
   const workspaceState = createVisualWorkspaceState(1280);
 
