@@ -281,6 +281,35 @@
   is applied by its own effect rather than with the selection highlight, so
   inspecting a refused element cannot erase the evidence (#241).
 
+- **Fix.** A refused commit marks the subject it is actually about. `subjects`
+  was derived by the visual session server from the documents on disk, but a
+  refused batch never wrote to those, so the bytes the derivation read were not
+  the bytes the diagnostics were located against. A subject the batch added sat
+  past the end of the authored array and resolved to nothing, so the canvas
+  marked nothing and the tray counted the refusal as not on the diagram: the
+  whole of what #241 fixed, undone one layer down, for the commonest refusal a
+  reviewer meets. Worse, a batch that also deleted a subject shifted every index
+  below it, so the refusal named a subject the reviewer never touched while the
+  one at fault showed clean. The derivation moves into `applyOperations`,
+  against the candidate sources its compile gate was actually shown, which is
+  the only place those indices agree. It stays where a result is published
+  rather than inside `compileWorkspace`, so compiler diagnostics remain a pure
+  function of the model, and `check` is unaffected because
+  `withDiagnosticSubjects` leaves a diagnostic that already names its subjects
+  alone (#242).
+  Both faults were found by the test that closes #242, and neither could have
+  been found without it. The commit path is now walked end to end by the
+  browser's own code: the palette is the one the session sent, the operations
+  are the ones the drafting modules build from it, the staged set and its pins
+  are the ones the real reducer holds, the frame is the one
+  `visualBrowserInputFor` mints, and the refusal is read back through the same
+  reducer the canvas marks from. Nothing in it is shaped by hand, which is the
+  point: the three defects of #240 and #241 all had the shape of a test
+  supplying the right-shaped input rather than the one the application produces.
+  A commit of one subject per concept kind the palette publishes, all 62 in one
+  batch, also proves the vocabulary a canvas offers is one a document can
+  actually name.
+
 - `apply` accepts an operation's `document:` as the manifest names it. The
   address was resolved only against the working directory, so the
   manifest-relative form an author naturally writes was refused whenever the

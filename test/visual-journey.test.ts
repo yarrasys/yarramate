@@ -46,6 +46,23 @@ import {
   createVisualSession,
   recoverVisualSession,
 } from '../src/adapters/visual/session-store.js'
+import type { VisualRenderedModel } from '../src/adapters/visual/wire.js'
+import { draftConcept } from '../src/concept-drafting.js'
+import { conceptKinds } from '../src/profile.js'
+import { draftDeletion } from '../src/deletion-drafting.js'
+import type { YarramateOperation } from '../src/operations.js'
+import {
+  connectableKinds,
+  draftRelationship,
+} from '../src/relationship-drafting.js'
+import { faultedSubjects } from '../src/visual-app/faults.js'
+import {
+  initialVisualAppState,
+  visualAppActionsForFrame,
+  visualAppReducer,
+  visualBrowserInputFor,
+  type VisualAppState,
+} from '../src/visual-app/state.js'
 
 /**
  * The complete visual conversation, driven end to end over the real transport:
@@ -1211,5 +1228,369 @@ relationships: []
       },
     })
     await closeSocket(browser)
+  })
+})
+
+describe('the commit path, walked by the browser that walks it', () => {
+  /**
+   * Every other visual test owns one half of this path and hands itself the
+   * other half's output, which is how three defects reached `main` with a green
+   * suite (#240, #241): a test that writes `kind: 'applicationComponent'` for
+   * itself cannot notice that the form emits
+   * `yarramate/core@0.1#applicationComponent`, and the feature could never have
+   * worked. So nothing below is shaped by hand. The palette is the one the
+   * session sent, the operations are the ones the drafting modules build from
+   * it, the staged set is the one the real reducer holds, the frame is the one
+   * `visualBrowserInputFor` mints, and the refusal is read back through the
+   * same reducer the canvas marks from.
+   */
+
+  /**
+   * Two documents. A workspace resolves its documents in path order, and the
+   * *second* declarer of an id is the one YM314 is reported against, so
+   * `catalogue.yaml` sorting before `engine.yaml` is what puts the refusal on
+   * the document the batch edits - which is the only arrangement that reads the
+   * edited bytes rather than bytes nothing changed.
+   */
+  const CATALOGUE = '.yarramate/catalogue.yaml'
+  const ENGINE = '.yarramate/engine.yaml'
+  const plantEditableWorkspace = async () => {
+    await writeFile(
+      join(baseDir, '.yarramate/workspace.yaml'),
+      `format: yarramate/workspace/v1
+id: commit-journey
+documents:
+  - catalogue.yaml
+  - engine.yaml
+profiles: []
+projections: []
+adapterMappings: []
+evidence: []
+contracts: []
+`,
+      'utf8',
+    )
+    await writeFile(
+      join(baseDir, CATALOGUE),
+      `format: yarramate/v1
+id: catalogue
+profile: yarramate/core@0.1
+concepts:
+  - id: ledger
+    kind: applicationComponent
+    name: Ledger
+relationships: []
+`,
+      'utf8',
+    )
+    await writeFile(
+      join(baseDir, ENGINE),
+      `format: yarramate/v1
+id: engine
+profile: yarramate/core@0.1
+concepts:
+  - id: checkout
+    kind: applicationComponent
+    name: Checkout
+  - id: fulfilment
+    kind: capability
+    name: Fulfilment
+relationships: []
+`,
+      'utf8',
+    )
+  }
+
+  /** One server frame as the browser reads it: real translation, real reducer. */
+  const received = (
+    state: VisualAppState,
+    frame: VisualServerFrame,
+  ): VisualAppState =>
+    visualAppActionsForFrame(frame).reduce(visualAppReducer, state)
+
+  /** One drafted operation as the panels stage it. */
+  const staged = (
+    state: VisualAppState,
+    operation: YarramateOperation,
+  ): VisualAppState =>
+    visualAppReducer(state, { type: 'changeset.staged', operation })
+
+  /**
+   * Commit as the reviewer presses it. `visualBrowserInputFor` is what turns
+   * the intent into the frame, so the rows and the digests they were staged
+   * against travel exactly as the application sends them.
+   */
+  const commit = (socket: WebSocket, state: VisualAppState) =>
+    send(socket, visualBrowserInputFor({ kind: 'commit-changeset' }, state))
+
+  /** A connected browser holding the state its first frame put it in. */
+  const openBrowser = async (visual: VisualFixture) => {
+    const socket = await connectFixtureBrowser(visual)
+    const state = received(
+      initialVisualAppState,
+      await nextFrame(socket, 'ready'),
+    )
+    if (state.model === null) throw new Error('the session sent no model')
+    return { socket, state }
+  }
+
+  const modelOf = (state: VisualAppState): VisualRenderedModel => {
+    if (state.model === null) throw new Error('the session sent no model')
+    return state.model
+  }
+
+  /** The kinds a panel offers, taken the way `SubjectDraftPanel` takes them. */
+  const paletteOf = (state: VisualAppState): readonly string[] =>
+    modelOf(state).vocabulary.conceptKinds.map((option) => option.label)
+
+  it('lands a subject drafted from the palette the session sent', async () => {
+    await plantEditableWorkspace()
+    const visual = await startVisualFixture()
+    const { socket, state: ready } = await openBrowser(visual)
+    const model = modelOf(ready)
+
+    // A document names a kind the short way, so the palette must publish it
+    // that way too. Offering the wire identity here is defect #240: `apply`
+    // refuses every commit with YM401 and adding a subject can never work.
+    const palette = paletteOf(ready)
+    expect(palette).toContain('applicationComponent')
+    expect(palette).not.toContain('yarramate/core@0.1#applicationComponent')
+
+    const operation = draftConcept(
+      model.graph,
+      {
+        name: 'Payment Gateway',
+        kind: 'applicationComponent',
+        document: ENGINE,
+      },
+      palette,
+    )
+    expect(operation).not.toBeNull()
+
+    let state = staged(ready, operation!)
+    // The pin the reducer minted is the digest the session published, not a
+    // fresh read: that is what a same-field overwrite is caught by.
+    expect(state.pendingChangeset.sourceDigests[ENGINE]).toBe(
+      model.sourceDigests[ENGINE],
+    )
+
+    commit(socket, state)
+    const result = await nextFrame(socket, 'apply-result')
+    expect(result).toMatchObject({ result: { ok: true } })
+
+    // Values, not shapes: the document says what the reviewer typed, with the
+    // id derived from the name rather than asked for.
+    const written = await readFile(join(baseDir, ENGINE), 'utf8')
+    expect(written).toContain('id: payment-gateway')
+    expect(written).toContain('kind: applicationComponent')
+    expect(written).toContain('name: Payment Gateway')
+
+    // And the browser sees its own edit: the tray empties, and the canvas the
+    // reviewer is looking at holds the new subject.
+    state = received(state, result)
+    expect(state.pendingChangeset.operations).toEqual([])
+    expect(state.commitDiagnostics).toBeNull()
+    state = received(state, await nextFrame(socket, 'model'))
+    expect(modelOf(state).graph.nodes.map((node) => node.id)).toContain(
+      'payment-gateway',
+    )
+    await closeSocket(socket)
+  })
+
+  it('publishes no concept kind a commit would then refuse', async () => {
+    await plantEditableWorkspace()
+    const visual = await startVisualFixture()
+    const { socket, state: ready } = await openBrowser(visual)
+    const model = modelOf(ready)
+    const palette = paletteOf(ready)
+    // The palette is the profile's whole vocabulary, named the way a document
+    // names it - not a subset, and not the identities the wire carries.
+    expect([...palette].sort()).toEqual(
+      conceptKinds.map((kind) => kind.id).sort(),
+    )
+
+    // One subject per kind the palette offers, in one batch: a vocabulary the
+    // canvas can offer but not land is a palette of dead options, and only a
+    // commit can tell the difference.
+    let state = ready
+    let graph = model.graph
+    for (const [index, kind] of palette.entries()) {
+      const operation = draftConcept(
+        graph,
+        { name: `Palette Subject ${index}`, kind, document: ENGINE },
+        palette,
+      )
+      if (operation === null || !('concept' in operation)) {
+        throw new Error(`"${kind}" drafted nothing`)
+      }
+      // Each draft proposes its id against the graph the last one extended, the
+      // way a reviewer adding several subjects before committing would: an id
+      // is only unique if every draft can see the ones before it.
+      graph = {
+        ...graph,
+        nodes: [...graph.nodes, { ...graph.nodes[0]!, id: operation.concept.id }],
+      }
+      state = staged(state, operation)
+    }
+    expect(state.pendingChangeset.operations).toHaveLength(palette.length)
+
+    commit(socket, state)
+    expect(await nextFrame(socket, 'apply-result')).toMatchObject({
+      result: { ok: true },
+    })
+
+    const written = await readFile(join(baseDir, ENGINE), 'utf8')
+    for (const kind of palette) expect(written).toContain(`kind: ${kind}`)
+    await closeSocket(socket)
+  })
+
+  it('lands a relationship drafted between two subjects on the canvas', async () => {
+    await plantEditableWorkspace()
+    const visual = await startVisualFixture()
+    const { socket, state: ready } = await openBrowser(visual)
+    const model = modelOf(ready)
+
+    // The palette the connection tool offers, from the graph it was handed.
+    const kinds = connectableKinds(model.graph, 'checkout', 'fulfilment')
+    expect(kinds.length).toBeGreaterThan(0)
+    const operation = draftRelationship(
+      model.graph,
+      'checkout',
+      kinds[0]!,
+      'fulfilment',
+    )
+    expect(operation).not.toBeNull()
+
+    const state = staged(ready, operation!)
+    commit(socket, state)
+    expect(await nextFrame(socket, 'apply-result')).toMatchObject({
+      result: { ok: true },
+    })
+
+    const written = await readFile(join(baseDir, ENGINE), 'utf8')
+    expect(written).toContain(`kind: ${kinds[0]!}`)
+    expect(written).toContain('from: checkout')
+    expect(written).toContain('to: fulfilment')
+    await closeSocket(socket)
+  })
+
+  it('marks the subject a refusal is about, when the batch added it', async () => {
+    await plantEditableWorkspace()
+    const visual = await startVisualFixture()
+    const { socket, state: ready } = await openBrowser(visual)
+    const model = modelOf(ready)
+
+    // A second reviewer claims the id in a document this batch never touches,
+    // so no pin refuses it and the refusal has to come from Core.
+    await writeFile(
+      join(baseDir, CATALOGUE),
+      `format: yarramate/v1
+id: catalogue
+profile: yarramate/core@0.1
+concepts:
+  - id: ledger
+    kind: applicationComponent
+    name: Ledger
+  - id: payment-gateway
+    kind: applicationComponent
+    name: Payment Gateway
+relationships: []
+`,
+      'utf8',
+    )
+
+    const operation = draftConcept(
+      model.graph,
+      {
+        name: 'Payment Gateway',
+        kind: 'applicationComponent',
+        document: ENGINE,
+      },
+      paletteOf(ready),
+    )
+    let state = staged(ready, operation!)
+    commit(socket, state)
+
+    const result = await nextFrame(socket, 'apply-result')
+    expect(result).toMatchObject({
+      result: {
+        ok: false,
+        diagnostics: [{ code: 'YM314' }],
+      },
+    })
+
+    // The subject is the one the batch added. It sits past the end of the array
+    // the document on disk holds, so a consumer deriving subjects from those
+    // bytes finds nothing and the canvas marks nothing - which is the whole of
+    // what #241 fixed, undone one layer down.
+    const [refusal] = result.result.ok ? [] : result.result.diagnostics
+    expect(refusal?.subjects).toEqual(['payment-gateway'])
+
+    // Nothing landed, and the rows stay staged for the reviewer to decide on.
+    expect(await readFile(join(baseDir, ENGINE), 'utf8')).not.toContain(
+      'payment-gateway',
+    )
+    state = received(state, result)
+    expect(state.pendingChangeset.operations).toHaveLength(1)
+    expect(faultedSubjects(state.commitDiagnostics ?? [])).toEqual(
+      new Set(['payment-gateway']),
+    )
+    await closeSocket(socket)
+  })
+
+  it('marks the subject at fault, not the one a deletion shifted past', async () => {
+    await plantEditableWorkspace()
+    const visual = await startVisualFixture()
+    const { socket, state: ready } = await openBrowser(visual)
+    const model = modelOf(ready)
+
+    await writeFile(
+      join(baseDir, CATALOGUE),
+      `format: yarramate/v1
+id: catalogue
+profile: yarramate/core@0.1
+concepts:
+  - id: ledger
+    kind: applicationComponent
+    name: Ledger
+  - id: payment-gateway
+    kind: applicationComponent
+    name: Payment Gateway
+relationships: []
+`,
+      'utf8',
+    )
+
+    // Delete the first subject and add one that clashes, in one batch. On disk
+    // `engine.yaml` still reads [checkout, fulfilment]; the document Core was
+    // shown reads [fulfilment, payment-gateway], and the refusal points into
+    // the second. Read against the first, index 1 is `fulfilment` - a subject
+    // the reviewer never touched, marked while the one at fault shows clean.
+    let state = ready
+    for (const operation of draftDeletion(model.graph, 'checkout')) {
+      state = staged(state, operation)
+    }
+    state = staged(
+      state,
+      draftConcept(
+        model.graph,
+        {
+          name: 'Payment Gateway',
+          kind: 'applicationComponent',
+          document: ENGINE,
+        },
+        paletteOf(ready),
+      )!,
+    )
+    expect(state.pendingChangeset.operations).toHaveLength(2)
+
+    commit(socket, state)
+    const result = await nextFrame(socket, 'apply-result')
+    expect(result.result.ok).toBe(false)
+    const [refusal] = result.result.ok ? [] : result.result.diagnostics
+    expect(refusal?.code).toBe('YM314')
+    expect(refusal?.subjects).toEqual(['payment-gateway'])
+    expect(refusal?.subjects).not.toContain('fulfilment')
+    await closeSocket(socket)
   })
 })
