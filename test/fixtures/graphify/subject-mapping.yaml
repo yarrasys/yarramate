@@ -3,9 +3,9 @@ id: minimal-graphify
 version: "1.0"
 adapter: graphify
 mappings:
-  - native: checkout#approval-api
+  - native: approval-api
     external: checkout_node
     type: concept
-  - native: checkout#approve-order
+  - native: approve-order
     external: missing_capability
     type: concept

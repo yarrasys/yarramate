@@ -110,11 +110,11 @@ id: build-evidence
 version: "1.0"
 provider: fixture
 observations:
-  - subject: main#todo-store
+  - subject: todo-store
     result: confirmed
     evidence:
       uri: repo:src/todo-store.ts
-  - claim: main#store-realizes-storage
+  - claim: store-realizes-storage
     result: confirmed
     evidence:
       uri: repo:src/todo-store.ts#save
@@ -180,29 +180,29 @@ describe('export rtm', () => {
   it('traces lineage, realizers, evidence verdicts, and attestations', () => {
     const rtm = exportRtm('out')
     const storage = rtm.rows.find(
-      ({ subject }) => subject === 'main#durable-storage',
+      ({ subject }) => subject === 'durable-storage',
     )!
     expect(storage.gap).toBe(false)
     expect(storage.status).toBe('current')
     expect(storage.lineage).toEqual([
       expect.objectContaining({
         role: 'influenced-by',
-        subject: 'main#fast-answers',
+        subject: 'fast-answers',
         kind: 'driver',
         name: 'Fast answers',
       }),
       expect.objectContaining({
         role: 'influences',
-        subject: 'main#reliable-todos',
+        subject: 'reliable-todos',
         kind: 'goal',
         name: 'Reliable todos',
       }),
     ])
     expect(storage.realizers).toHaveLength(1)
     const realizer = storage.realizers[0]!
-    expect(realizer.subject).toBe('main#todo-store')
+    expect(realizer.subject).toBe('todo-store')
     expect(realizer.status).toBe('current')
-    expect(realizer.relationship).toBe('main#store-realizes-storage')
+    expect(realizer.relationship).toBe('store-realizes-storage')
     // Verdicts order by provider, evidence document, then locator, so the
     // subject-level observation precedes the narrower claim-level one.
     expect(realizer.evidence).toEqual([
@@ -224,33 +224,33 @@ describe('export rtm', () => {
     expect(storage.attestations).toEqual([
       expect.objectContaining({
         topic: 'adequacy',
-        by: 'main#reviewer-one',
+        by: 'reviewer-one',
         on: '2026-08-01',
       }),
     ])
     const markdown = readFileSync(join(workspace, 'out/RTM.md'), 'utf8')
     expect(markdown).toContain('influenced by driver "Fast answers"')
-    expect(markdown).toContain('adequacy: main#reviewer-one on 2026-08-01')
+    expect(markdown).toContain('adequacy: reviewer-one on 2026-08-01')
     expect(markdown).toContain('"Todo store": confirmed (fixture)')
   })
 
   it('keeps unrealized requirements as explicit gap rows', () => {
     const rtm = exportRtm('out')
     const unrealized = rtm.rows.find(
-      ({ subject }) => subject === 'main#unrealized-need',
+      ({ subject }) => subject === 'unrealized-need',
     )!
     expect(unrealized.gap).toBe(true)
     expect(unrealized.realizers).toEqual([])
     // A constraint realized only by a retired subject is a gap too:
     // the retired realizer stays listed but never counts as coverage.
     const region = rtm.rows.find(
-      ({ subject }) => subject === 'main#single-region',
+      ({ subject }) => subject === 'single-region',
     )!
     expect(region.coreKind).toBe('constraint')
     expect(region.gap).toBe(true)
     expect(region.realizers).toEqual([
       expect.objectContaining({
-        subject: 'main#region-guard',
+        subject: 'region-guard',
         status: 'retired',
       }),
     ])
@@ -258,30 +258,30 @@ describe('export rtm', () => {
     expect(markdown).toContain('**NONE (gap)**')
     expect(markdown).toContain('**NONE current (gap)**')
     expect(markdown).toContain(
-      '`main#unrealized-need` "Unrealized need"',
+      '`unrealized-need` "Unrealized need"',
     )
   })
 
   it('descopes retired rows, labelling non-goals apart from lifted rules', () => {
     const rtm = exportRtm('out')
     expect(rtm.rows.map(({ subject }) => subject)).not.toContain(
-      'main#retired-need',
+      'retired-need',
     )
     expect(rtm.rows.map(({ subject }) => subject)).not.toContain(
-      'main#lifted-rule',
+      'lifted-rule',
     )
     // A retired requirement is a declared non-goal (ADR 0073); a retired
     // constraint is deliberately outside that set because retiring one
     // lifts a rule. Both leave the coverage arithmetic.
     expect(rtm.descoped).toEqual([
       expect.objectContaining({
-        subject: 'main#lifted-rule',
+        subject: 'lifted-rule',
         name: 'Lifted rule',
         reason: 'lifted-constraint',
         rationale: 'The one-region rule no longer applies after the DR review.',
       }),
       expect.objectContaining({
-        subject: 'main#retired-need',
+        subject: 'retired-need',
         name: 'Retired need',
         reason: 'non-goal',
         rationale: 'Multi-tenant sharing is out of scope for this product.',
@@ -291,9 +291,9 @@ describe('export rtm', () => {
     expect(markdown).toContain('is a declared non-goal.')
     expect(markdown).toContain('is a lifted constraint.')
     expect(rtm.motivationContext.map(({ subject }) => subject)).toEqual([
-      'main#fast-answers',
-      'main#reliable-todos',
-      'main#reviewer-one',
+      'fast-answers',
+      'reliable-todos',
+      'reviewer-one',
     ])
   })
 
@@ -304,7 +304,7 @@ describe('export rtm', () => {
       'utf8',
     ).split('\n')
     const storage = rtm.rows.find(
-      ({ subject }) => subject === 'main#durable-storage',
+      ({ subject }) => subject === 'durable-storage',
     )!
     expect(storage.source.path).toBe('architecture/main.yaml')
     expect(authored[storage.source.line - 1]).toContain('kind: requirement')

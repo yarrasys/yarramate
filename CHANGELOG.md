@@ -2,6 +2,22 @@
 
 ## 1.0.0
 
+- **Breaking.** A subject id is the authored id, unique across the workspace,
+  with no `<document-id>#` prefix and no local-versus-qualified distinction
+  (ADR 0099, superseding ADR 0005). The prefix namespaced ids nobody had
+  collided on - zero collisions across the nineteen workspaces reachable here,
+  including all six gallery showcases - while binding identity to file layout,
+  so moving a subject between documents was a rename to be chased through every
+  projection, mapping, evidence pointer and brief. New `YM314` refuses a
+  workspace where two documents declare one id, and that refusal is what makes
+  the shorter form safe rather than a merge of two subjects; a repeat inside one
+  document stays `YM301`. Migrate with
+  `node scripts/flatten-subject-ids.mjs <workspace.yaml> [extra-file ...]`,
+  which strips only a prefix naming a document of that workspace, leaves kind
+  identities like `yarramate/core@0.1#goal` alone, and refuses to write anything
+  at all if it finds a collision. Name any file that references subjects without
+  being listed in the manifest, such as an adapter's project definition.
+
 - **Breaking.** Relationship endpoints are validated against the ArchiMate
   3.2 relationship table (ADR 0097), vendored from Archi's `relationships.xml`
   (MIT) and regenerated into a zero-import module a test keeps honest. The

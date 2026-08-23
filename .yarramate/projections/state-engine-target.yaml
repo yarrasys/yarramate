@@ -4,20 +4,20 @@ version: "1.0"
 query:
   excludeStatuses: [retired]
   states:
-    - yarramate-evolution#state-foundation
+    - state-foundation
   subjects:
-    - yarramate-engine#compiler
-    - yarramate-engine#likec4-export-adapter
-    - yarramate-engine#architecture-state-engine
-    - yarramate-engine#compare-architecture-states
-    - yarramate-engine#render-likec4-state-comparison
-    - yarramate-engine#compare-command
-    - yarramate-engine#state-comparison
-    - yarramate-engine#state-comparison-schema
-    - yarramate-repository#architecture-state-source
-    - yarramate-repository#architecture-state-tests
-    - yarramate-repository#state-comparison-schema-source
-    - yarramate-repository#evolution-model
+    - compiler
+    - likec4-export-adapter
+    - architecture-state-engine
+    - compare-architecture-states
+    - render-likec4-state-comparison
+    - compare-command
+    - state-comparison
+    - state-comparison-schema
+    - architecture-state-source
+    - architecture-state-tests
+    - state-comparison-schema-source
+    - evolution-model
   relationships: between
 presentation:
   title: YarraMate state foundation

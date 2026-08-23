@@ -215,7 +215,7 @@ relationships:
 
 Each entry compiles to `<subject>~reference-<id>` with predicate
 `yarramate/reference/refers-to`. Targets may be concepts, architecture states,
-or relationships and may use local or `document#subject` identity. Core rejects
+or relationships, named by the authored ID. Core rejects
 dangling targets and duplicate reference IDs within one subject. It does not
 infer ownership, dependency, constraint, ordering, or other meaning from a
 reference. ID-like text inside a description is not a reference and is not
@@ -287,15 +287,19 @@ Both compile into claims about the relationship subject.
 
 Document IDs and local IDs use lowercase kebab case. A local ID is unique
 across states, concepts, and relationships in one document, and a document ID is unique
-within the compiled workspace. A compiled subject ID is
-`<document-id>#<local-id>`, so moving a file or reordering a YAML list does not
-change semantic identity.
+within the compiled workspace. A compiled subject ID is the authored ID
+itself, unique across the workspace, so moving a file, moving a subject between
+documents, or reordering a YAML list does not change semantic identity.
 
-Relationship endpoints refer to concepts by local ID or by a qualified
-`document-id#concept-id`. Local references resolve in the authored document;
-qualified references resolve across all documents supplied to the workspace
-compiler. File paths never participate in identity or resolution.
-Relationship IDs are authored and stable.
+Relationship endpoints refer to concepts by that ID, and a reference resolves
+the same way wherever it is written. File paths never participate in identity
+or resolution. Relationship IDs are authored and stable.
+
+Until 1.0 a subject ID was `<document-id>#<local-id>`, and an ID only had to be
+unique within its own document. Two documents could each declare `contact-record`
+and mean different things. Flattening makes one ID one subject, which is why
+`check` refuses a workspace whose documents declare the same ID twice (YM314):
+that refusal is what makes the shorter form safe.
 
 Kind names are supplied by the selected explicit profile. The schema accepts a
 kind string because profiles are extensible; compilation rejects a kind absent
@@ -312,16 +316,17 @@ small model together when splitting would add navigation without clarifying
 ownership or review.
 
 Cross-document endpoints, owners, constraints, identified references,
-architecture-state ordering, and `presentIn` references use globally qualified
-`document#subject` identities and have the same correctness checks as local
-references. Architecture states are workspace planning contexts and may be
-declared in one document and referenced from any other compiled document.
+architecture-state ordering, and `presentIn` references name a subject by its ID
+and have the same correctness checks wherever it was declared. Architecture
+states are workspace planning contexts and may be declared in one document and
+referenced from any other compiled document.
 
 There is no correctness threshold for concepts or relationships per document.
-The practical costs of decomposition are explicit qualification and reviewing
-more files. Moving an existing subject between documents changes its globally
-qualified identity, so choose durable boundaries and treat later moves as
-semantic renames rather than harmless file organization.
+The practical cost of decomposition is reviewing more files. Moving an existing
+subject between documents no longer changes its identity, so file layout is a
+reviewing and ownership decision rather than a semantic one - which it was not
+before 1.0, when a move was a rename that had to be chased through every
+reference.
 
 ## Compiled graph
 

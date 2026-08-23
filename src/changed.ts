@@ -156,7 +156,7 @@ export function deriveChangedSubjects(
         ([from, to]) => from <= span.endLine && to >= span.startLine,
       )
       if (!touched) continue
-      const qualified = `${document.documentId}#${span.id}`
+      const qualified = span.id
       if (span.collection === 'concepts') concepts.add(qualified)
       else relationships.add(qualified)
       const whollyInserted = ranges.inserted.some(

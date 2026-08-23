@@ -408,7 +408,7 @@ yarramate design .yarramate/workspace.yaml
 yarramate apply operations.yaml .yarramate/workspace.yaml
 yarramate ask .yarramate/workspace.yaml
 yarramate ask .yarramate/workspace.yaml <projection.yaml>
-yarramate ask .yarramate/workspace.yaml <document-id>#<local-id>
+yarramate ask .yarramate/workspace.yaml <subject-id>
 yarramate ask .yarramate/workspace.yaml --next
 yarramate ask .yarramate/workspace.yaml --open
 yarramate ask .yarramate/workspace.yaml --compare <from-state> <to-state>

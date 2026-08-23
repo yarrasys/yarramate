@@ -9,4 +9,4 @@ relationships:
   - id: compiler-realizes-compilation
     kind: realization
     from: compiler
-    to: workspace-product#native-compilation
+    to: native-compilation

@@ -103,7 +103,7 @@ relationships:
       validateVisualGraph({
         nodes: [
           {
-            id: 'main#service',
+            id: 'service',
             kind: 'yarramate/core@0.1#applicationComponent',
             kindLabel: 'applicationComponent',
             layer: null,
@@ -131,14 +131,14 @@ relationships:
         nodes: [],
         edges: [
           {
-            id: 'main#calls',
+            id: 'calls',
             localId: 'calls',
             document: 'main.yaml',
             kind: 'yarramate/core@0.1#flow',
             kindLabel: 'flow',
             // coreKindLabel intentionally omitted
-            from: 'main#service',
-            to: 'main#consumer',
+            from: 'service',
+            to: 'consumer',
             name: null,
             description: null,
             mode: null,
@@ -154,7 +154,7 @@ relationships:
 
   it('accepts every profile layer and aspect enum value and null', () => {
     const baseNode = {
-      id: 'main#service',
+      id: 'service',
       localId: 'service',
       document: 'main.yaml',
       kind: 'yarramate/core@0.1#applicationComponent',
@@ -191,7 +191,7 @@ relationships:
 
   it('rejects free-string layer and aspect values', () => {
     const baseNode = {
-      id: 'main#service',
+      id: 'service',
       localId: 'service',
       document: 'main.yaml',
       kind: 'yarramate/core@0.1#applicationComponent',

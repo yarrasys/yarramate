@@ -41,12 +41,12 @@ describe('adapter mapping documents', () => {
         adapter: 'likec4',
         mappings: [
           {
-            native: 'checkout#api-realizes-approval',
+            native: 'api-realizes-approval',
             external: 'checkout.apiRealizesApproval',
             type: 'relationship',
           },
           {
-            native: 'checkout#approval-api',
+            native: 'approval-api',
             external: 'checkout.approvalApi',
             type: 'concept',
           },
@@ -78,7 +78,7 @@ describe('adapter mapping documents', () => {
         {
           severity: 'error',
           code: 'YM601',
-          message: 'Native subject "checkout#missing" does not exist',
+          message: 'Native subject "missing" does not exist',
           path: 'invalid.mapping.yaml',
           pointer: '/mappings/0/native',
           line: 6,
@@ -106,10 +106,10 @@ describe('adapter mapping documents', () => {
         'version: "1.0"\n' +
         'adapter: likec4\n' +
         'mappings:\n' +
-        '  - native: checkout#approval-api\n' +
+        '  - native: approval-api\n' +
         '    external: checkout.approvalApi\n' +
         '    type: concept\n' +
-        '  - native: checkout#approval-api\n' +
+        '  - native: approval-api\n' +
         '    external: checkout.approvalApiAlias\n' +
         '    type: concept\n',
     })
@@ -126,7 +126,7 @@ describe('adapter mapping documents', () => {
       severity: 'error',
       code: 'YM603',
       message:
-        'Native subject "checkout#approval-api" is mapped more than once',
+        'Native subject "approval-api" is mapped more than once',
       path: 'duplicate.mapping.yaml',
       pointer: '/mappings/1/native',
       line: 9,
@@ -152,7 +152,7 @@ describe('adapter mapping documents', () => {
         'version: "1.0"\n' +
         'adapter: likec4\n' +
         'mappings:\n' +
-        '  - native: checkout#approval-api\n' +
+        '  - native: approval-api\n' +
         '    external: checkout.approvalApi\n' +
         '    type: relationship\n',
     })
@@ -166,7 +166,7 @@ describe('adapter mapping documents', () => {
           severity: 'error',
           code: 'YM602',
           message:
-            'Native subject "checkout#approval-api" is a concept, not a relationship',
+            'Native subject "approval-api" is a concept, not a relationship',
           path: 'type.mapping.yaml',
           pointer: '/mappings/0/type',
           line: 8,
@@ -194,10 +194,10 @@ describe('adapter mapping documents', () => {
         'version: "1.0"\n' +
         'adapter: likec4\n' +
         'mappings:\n' +
-        '  - native: checkout#approval-api\n' +
+        '  - native: approval-api\n' +
         '    external: checkout.shared\n' +
         '    type: concept\n' +
-        '  - native: checkout#approve-order\n' +
+        '  - native: approve-order\n' +
         '    external: checkout.shared\n' +
         '    type: concept\n',
     })
@@ -317,7 +317,7 @@ describe('adapter mapping documents', () => {
       'version: "1.0"\n' +
       'adapter: likec4\n' +
       'mappings:\n' +
-      '  - native: checkout#approval-api\n' +
+      '  - native: approval-api\n' +
       `    external: ${external}\n` +
       '    type: concept\n'
     const first = loadAdapterMapping({
@@ -342,7 +342,7 @@ describe('adapter mapping documents', () => {
       severity: 'error',
       code: 'YM603',
       message:
-        'Native subject "checkout#approval-api" is mapped more than once for adapter "likec4"',
+        'Native subject "approval-api" is mapped more than once for adapter "likec4"',
       path: 'second.mapping.yaml',
       pointer: '/mappings/0/native',
       line: 6,

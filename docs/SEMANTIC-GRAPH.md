@@ -13,7 +13,8 @@ A graph contains:
 - `subjects`: globally qualified concept and relationship identities;
 - `claims`: explicit, sourced assertions sorted by claim identity.
 
-Concept and relationship subjects use `<document-id>#<local-id>`. Concept kind
+Concept and relationship subjects use the authored ID, unique across the
+workspace. Concept kind
 claim values and relationship predicates use
 `<profile-id>@<version>#<kind-id>`. File paths never participate in semantic
 identity.

@@ -46,12 +46,12 @@ const mapping: AdapterMapping = {
   adapter: 'likec4',
   mappings: [
     {
-      native: 'payments#checkout',
+      native: 'checkout',
       external: 'checkout',
       type: 'concept',
     },
     {
-      native: 'payments#ledger',
+      native: 'ledger',
       external: 'ledger',
       type: 'concept',
     },
@@ -78,20 +78,20 @@ model {
   checkout = applicationComponent 'Checkout' {
     description 'Accepts customer orders'
     metadata {
-      yarramateId 'payments#checkout'
+      yarramateId 'checkout'
       yarramateKind 'yarramate/core@0.1#applicationComponent'
     }
   }
   ledger = applicationComponent 'Ledger' {
     metadata {
-      yarramateId 'payments#ledger'
+      yarramateId 'ledger'
       yarramateKind 'yarramate/core@0.1#applicationComponent'
     }
   }
 
   ledger -[serving]-> checkout 'serves' {
     metadata {
-      yarramateId 'payments#checkout-uses-ledger'
+      yarramateId 'checkout-uses-ledger'
       yarramateKind 'yarramate/core@0.1#serving'
     }
   }
@@ -128,8 +128,8 @@ views {
           severity: 'error',
           code: 'YMLC102',
           message:
-            'Projected concept "payments#ledger" has no LikeC4 mapping',
-          subject: 'payments#ledger',
+            'Projected concept "ledger" has no LikeC4 mapping',
+          subject: 'ledger',
           path: 'payments.yaml',
           pointer: '/concepts/1/kind',
           line: 10,
@@ -212,10 +212,10 @@ relationships:
       {
         ...mapping,
         mappings: [
-          ['metadata#record', 'record'],
-          ['metadata#residency', 'residency'],
-          ['metadata#service', 'service'],
-          ['metadata#team', 'team'],
+          ['record', 'record'],
+          ['residency', 'residency'],
+          ['service', 'service'],
+          ['team', 'team'],
         ].map(([native, external]) => ({
           native: native!,
           external: external!,
@@ -228,21 +228,21 @@ relationships:
     if (!result.ok) return
     expect(result.source).toContain(`service = applicationComponent 'Payments service' {
     metadata {
-      yarramateId 'metadata#service'
+      yarramateId 'service'
       yarramateKind 'yarramate/core@0.1#applicationComponent'
       status 'current'
-      owner 'metadata#team'
-      constraints ['metadata#residency']
-      references ['metadata#residency']
+      owner 'team'
+      constraints ['residency']
+      references ['residency']
     }
   }`)
     expect(result.source).toContain(`service -[access]-> record 'reads' {
     description 'Reads the governed record without copying it'
     metadata {
-      yarramateId 'metadata#reads-record'
+      yarramateId 'reads-record'
       yarramateKind 'yarramate/core@0.1#access'
       mode 'read'
-      references ['metadata#residency']
+      references ['residency']
     }
   }`)
   })
@@ -282,7 +282,7 @@ relationships:
     expect(result.source).toContain(`checkout = element 'Checkout' {
     description 'Accepts customer orders'
     metadata {
-      yarramateId 'payments#checkout'
+      yarramateId 'checkout'
       yarramateKind 'yarramate/core@0.1#applicationComponent'
     }
   }`)
@@ -328,8 +328,8 @@ relationships: []
     if (!compilation.ok) return
     const comparison = compareArchitectureStates(
       compilation.graph,
-      'payments#baseline',
-      'payments#target',
+      'baseline',
+      'target',
     )
     expect(comparison.ok).toBe(true)
     if (!comparison.ok) return
@@ -338,7 +338,7 @@ relationships: []
       evaluateProjection(compilation.graph, {
         ...projection,
         query: {
-          states: ['payments#baseline', 'payments#target'],
+          states: ['baseline', 'target'],
         },
       }),
       {
@@ -346,7 +346,7 @@ relationships: []
         mappings: [
           ...mapping.mappings,
           {
-            native: 'payments#platform',
+            native: 'platform',
             external: 'platform',
             type: 'concept',
           },
@@ -417,7 +417,7 @@ relationships: []
         ...evaluated,
         subjects: [
           ...evaluated.subjects,
-          { id: 'payments#ghost', type: 'concept' },
+          { id: 'ghost', type: 'concept' },
         ],
       },
       mapping,
@@ -428,7 +428,7 @@ relationships: []
     expect(result.diagnostics).toEqual([
       expect.objectContaining({
         code: 'YMLC112',
-        subject: 'payments#ghost',
+        subject: 'ghost',
         message:
           'Rendering coverage: 2 of 3 projected concepts reached the LikeC4 model',
       }),

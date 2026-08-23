@@ -94,7 +94,7 @@ relationships: []
     if (!result.ok) return
 
     const projected = projectGraphForCanvas(result.graph, result.profileContext)
-    const node = projected.nodes.find((candidate) => candidate.id === 'main#service')
+    const node = projected.nodes.find((candidate) => candidate.id === 'service')
     expect(node).toBeDefined()
     if (node === undefined) return
     expect(node.kind).toBe('yarramate/core@0.1#applicationComponent')
@@ -107,15 +107,15 @@ relationships: []
     // projection sorts rather than preserving authored order.
     expect(node.aka).toEqual(['Alpha Service', 'Zulu Service'])
     expect(node.status).toBe('current')
-    expect(node.owner).toBe('main#team')
-    expect(node.distinctFrom).toEqual(['main#similar-alpha', 'main#similar-zeta'])
-    expect(node.supersedes).toEqual(['main#legacy-alpha', 'main#legacy-zeta'])
+    expect(node.owner).toBe('team')
+    expect(node.distinctFrom).toEqual(['similar-alpha', 'similar-zeta'])
+    expect(node.supersedes).toEqual(['legacy-alpha', 'legacy-zeta'])
     expect(node.constraints).toHaveLength(2)
     expect(node.constraints).toEqual(
       expect.arrayContaining([
         {
           id: 'residency',
-          ref: 'main#data-residency-rule',
+          ref: 'data-residency-rule',
           expects: {
             provider: 'terraform-scan',
             key: 'region',
@@ -124,22 +124,22 @@ relationships: []
         },
         {
           id: 'naming',
-          ref: 'main#naming-convention-rule',
+          ref: 'naming-convention-rule',
           expects: null,
         },
       ]),
     )
     // References are sorted by ref value, not id
     expect(node.references).toEqual([
-      { id: 'policy-source-alpha', ref: 'main#policy-alpha' },
-      { id: 'policy-source-zeta', ref: 'main#policy-zeta' },
+      { id: 'policy-source-alpha', ref: 'policy-alpha' },
+      { id: 'policy-source-zeta', ref: 'policy-zeta' },
     ])
-    expect(node.presentIn).toEqual(['main#state-alpha', 'main#state-zeta'])
+    expect(node.presentIn).toEqual(['state-alpha', 'state-zeta'])
     // Attestations are unsorted, preserving authored order
     expect(node.attestations).toEqual([
       {
         topic: 'adequacy',
-        by: 'main#review-board',
+        by: 'review-board',
         on: '2026-08-01',
         recordedBy: 'claude-fable-5',
       },
@@ -162,7 +162,7 @@ relationships: []
     const projected = projectGraphForCanvas(result.graph, result.profileContext)
     expect(projected.nodes).toEqual([
       {
-        id: 'main#bare',
+        id: 'bare',
         localId: 'bare',
         document: 'main.yaml',
         kind: 'yarramate/core@0.1#applicationComponent',
@@ -214,14 +214,14 @@ relationships:
     // even without comparing raw ids.
     expect(projected.edges).toEqual([
       {
-        id: 'main#consumer-accesses-store',
+        id: 'consumer-accesses-store',
         localId: 'consumer-accesses-store',
         document: 'main.yaml',
         kind: 'yarramate/core@0.1#access',
         kindLabel: 'access',
         coreKindLabel: 'access',
-        from: 'main#consumer',
-        to: 'main#store',
+        from: 'consumer',
+        to: 'store',
         name: 'Reads store',
         description: 'Consumer reads the store without writing to it',
         mode: 'read',
@@ -330,12 +330,12 @@ relationships:
 
     const projected = projectGraphForCanvas(result.graph, result.profileContext)
     expect(projected.nodes.map((node) => node.id)).toEqual([
-      'main#alpha-concept',
-      'main#zulu-concept',
+      'alpha-concept',
+      'zulu-concept',
     ])
     expect(projected.edges.map((edge) => edge.id)).toEqual([
-      'main#alpha-relationship',
-      'main#zulu-relationship',
+      'alpha-relationship',
+      'zulu-relationship',
     ])
   })
 

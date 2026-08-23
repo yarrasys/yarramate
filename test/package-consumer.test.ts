@@ -253,10 +253,10 @@ id: consumer-target
 version: "1.0"
 query:
   subjects:
-    - consumer#delivery-api
-    - consumer#delivery-data
+    - delivery-api
+    - delivery-data
   states:
-    - consumer#target
+    - target
   relationships: between
 `,
       )
@@ -271,7 +271,7 @@ id: consumer-repository
 version: "1.0"
 provider: repository-inspection
 observations:
-  - subject: consumer#delivery-api
+  - subject: delivery-api
     result: confirmed
     evidence:
       uri: repo:implementation.ts
@@ -315,9 +315,9 @@ evidence:
           ]),
         ).result.subjects,
       ).toEqual([
-        { id: 'consumer#api-accesses-data', type: 'relationship' },
-        { id: 'consumer#delivery-api', type: 'concept' },
-        { id: 'consumer#delivery-data', type: 'concept' },
+        { id: 'api-accesses-data', type: 'relationship' },
+        { id: 'delivery-api', type: 'concept' },
+        { id: 'delivery-data', type: 'concept' },
       ])
       expect(
         JSON.parse(
@@ -340,8 +340,8 @@ evidence:
             'ask',
             '.yarramate/workspace.yaml',
             '--compare',
-            'consumer#baseline',
-            'consumer#target',
+            'baseline',
+            'target',
             '--json',
           ]),
         ).comparison.added,
@@ -357,13 +357,13 @@ id: consumer-likec4
 version: "1.0"
 adapter: likec4
 mappings:
-  - native: consumer#delivery-api
+  - native: delivery-api
     external: deliveryApi
     type: concept
-  - native: consumer#delivery-data
+  - native: delivery-data
     external: deliveryData
     type: concept
-  - native: consumer#api-accesses-data
+  - native: api-accesses-data
     external: deliveryAccess
     type: relationship
 `,

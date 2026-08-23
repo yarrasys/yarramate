@@ -55,11 +55,11 @@ const contradictedEvidence =
   'version: "1.0"\n' +
   'provider: import-audit\n' +
   'observations:\n' +
-  '  - subject: main#approval-api\n' +
+  '  - subject: approval-api\n' +
   '    result: confirmed\n' +
   '    evidence:\n' +
   '      uri: repo:src/approval-api.ts\n' +
-  '  - claim: main#api-realizes-approval\n' +
+  '  - claim: api-realizes-approval\n' +
   '    result: contradicted\n' +
   '    evidence:\n' +
   '      uri: repo:src/approval-api.ts\n' +
@@ -120,10 +120,10 @@ describe('check --strict', () => {
     expect(result.stderr).toBe('')
     expect(result.stdout).toContain('error YM901')
     expect(result.stdout).toContain(
-      'Evidence contradicts claim "main#api-realizes-approval"',
+      'Evidence contradicts claim "api-realizes-approval"',
     )
     expect(result.stdout).toContain(
-      'the model asserts main#approval-api -> main#approve-order',
+      'the model asserts approval-api -> approve-order',
     )
     expect(result.stdout).toContain('provider "import-audit"')
     expect(result.stdout).toContain('no realization marker found in source')
@@ -225,7 +225,7 @@ describe('check --strict', () => {
         'version: "1.0"\n' +
         'provider: import-audit\n' +
         'observations:\n' +
-        '  - subject: main#approval-api\n' +
+        '  - subject: approval-api\n' +
         '    result: contradicted\n' +
         '    evidence:\n' +
         '      uri: repo:src\n',
@@ -236,7 +236,7 @@ describe('check --strict', () => {
 
     expect(result.exitCode).toBe(1)
     expect(result.stdout).toContain(
-      'Evidence contradicts subject "main#approval-api"',
+      'Evidence contradicts subject "approval-api"',
     )
     expect(result.stdout).toMatch(/^architecture\/main\.yaml:\d+:\d+ error YM901/)
   })

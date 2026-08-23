@@ -3,7 +3,7 @@ id: missing-subject
 version: "1.0"
 provider: repository-audit
 observations:
-  - subject: checkout#missing
+  - subject: missing
     result: unknown
     evidence:
       uri: repo:src/missing.ts

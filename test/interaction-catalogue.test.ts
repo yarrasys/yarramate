@@ -81,7 +81,7 @@ describe('core-enrichment 1.0 interaction wave', () => {
 
   it('serves hop-unrealised before owner-missing on a component hop', () => {
     const result = runCli(
-      ['design', 'workspace.yaml', '--subject', 'main#exp', '--json'],
+      ['design', 'workspace.yaml', '--subject', 'exp', '--json'],
       workspace,
     )
     expect(result.exitCode).toBe(0)
@@ -135,7 +135,7 @@ concepts:
     status: planned
     constraints:
       - id: capacity
-        ref: policy#rps
+        ref: rps
   - id: user
     kind: businessActor
     name: User

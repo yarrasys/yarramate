@@ -181,18 +181,18 @@ describe('stale attestations', () => {
 
     expect(stale).toHaveLength(1)
     const finding = stale[0]!
-    expect(finding.target).toEqual({ type: 'subject', id: 'policy#refund-rule' })
+    expect(finding.target).toEqual({ type: 'subject', id: 'refund-rule' })
     expect(finding.provider).toBe('git')
     expect(finding.attestation).toEqual({
       topic: 'signed-off',
-      by: 'policy#dana-okafor',
+      by: 'dana-okafor',
       on: '2026-01-15',
     })
     // The commit date of the later change is named, not guessed.
     expect(finding.changedAt).toMatch(/^2026-06-01T12:00:00/)
     expect(finding.evidence.uri).toMatch(/^git:[0-9a-f]{40}$/)
     expect(finding.evidence.message).toContain(
-      'Attestation "signed-off" by policy#dana-okafor on 2026-01-15 predates the current wording of policy#refund-rule',
+      'Attestation "signed-off" by dana-okafor on 2026-01-15 predates the current wording of refund-rule',
     )
     expect(finding.evidence.message).toContain('the description changed in commit')
     expect(report.summary.staleAttestations).toBe(1)
@@ -345,7 +345,7 @@ describe('stale attestations', () => {
         '    description: Not committed yet.\n' +
         '    attestations:\n' +
         '      - topic: signed-off\n' +
-        '        by: policy#dana-okafor\n' +
+        '        by: dana-okafor\n' +
         '        on: "2026-01-15"\n' +
         'relationships: []\n',
       'utf8',
@@ -368,7 +368,7 @@ describe('stale attestations', () => {
 
     expect(staleFindings(report)).toEqual([])
     expect(report.notes).toEqual([
-      'Attestation "signed-off" on policy#refund-rule predates the earliest committed history of architecture/policy.yaml; staleness was not assessed.',
+      'Attestation "signed-off" on refund-rule predates the earliest committed history of architecture/policy.yaml; staleness was not assessed.',
     ])
   })
 
@@ -436,13 +436,13 @@ describe('unconfirmed attestations', () => {
 
     expect(unconfirmed).toHaveLength(1)
     const finding = unconfirmed[0]!
-    expect(finding.target).toEqual({ type: 'subject', id: 'policy#refund-rule' })
+    expect(finding.target).toEqual({ type: 'subject', id: 'refund-rule' })
     // The model alone answers this: no evidence provider is consulted.
     expect(finding.provider).toBe('model')
     expect(finding.evidence).toBeUndefined()
     expect(finding.attestation).toEqual({
       topic: 'signed-off',
-      by: 'policy#dana-okafor',
+      by: 'dana-okafor',
       recordedBy: 'claude-fable-5',
       on: '2026-01-15',
     })

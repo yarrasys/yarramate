@@ -3,10 +3,10 @@ id: delivery-alternatives
 version: "1.0"
 query:
   subjects:
-    - delivery-design#reliable-delivery
-    - delivery-design#australia-only
-    - delivery-design#modular-monolith
-    - delivery-design#microservices
+    - reliable-delivery
+    - australia-only
+    - modular-monolith
+    - microservices
   relationships: between
 presentation:
   title: Delivery solution alternatives

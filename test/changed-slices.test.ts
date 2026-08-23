@@ -62,7 +62,7 @@ const userProjection = `format: yarramate/projection/v1
 id: user-view
 version: "1.0"
 query:
-  subjects: [main#user]
+  subjects: [user]
   relationships: none
 presentation:
   title: User view
@@ -147,20 +147,20 @@ describe('git-derived review slices', () => {
     expect(payload.mode).toBe('slice')
     expect(payload.addressing).toBe('changed')
     expect(payload.changed.concepts).toEqual([
-      'main#todo-service',
-      'main#todo-store',
+      'todo-service',
+      'todo-store',
     ])
     expect(payload.changed.relationships).toEqual([
-      'main#service-accesses-store',
+      'service-accesses-store',
     ])
-    expect(payload.seeds).toEqual(['main#todo-service', 'main#todo-store'])
-    // The authored projection covers only main#user, so every changed
+    expect(payload.seeds).toEqual(['todo-service', 'todo-store'])
+    // The authored projection covers only user, so every changed
     // subject is review-uncovered — capability 3 of the proposal.
     expect(payload.coverage.projections).toBe(1)
     expect(payload.coverage.uncovered).toEqual([
-      'main#todo-service',
-      'main#todo-store',
-      'main#service-accesses-store',
+      'todo-service',
+      'todo-store',
+      'service-accesses-store',
     ])
     expect(validateAsk(payload), JSON.stringify(validateAsk.errors)).toBe(true)
 
@@ -212,7 +212,7 @@ describe('git-derived review slices', () => {
       readFileSync(join(workspace, 'review/INDEX.md'), 'utf8'),
     ).toContain('Review slice HEAD')
     expect(
-      readFileSync(join(workspace, 'review/main--todo-store.md'), 'utf8'),
+      readFileSync(join(workspace, 'review/todo-store.md'), 'utf8'),
     ).toContain('Todo store')
   })
 
@@ -234,19 +234,19 @@ id: changed-likec4
 version: "1.0"
 adapter: likec4
 mappings:
-  - native: main#user
+  - native: user
     external: user
     type: concept
-  - native: main#todo-service
+  - native: todo-service
     external: todoService
     type: concept
-  - native: main#todo-store
+  - native: todo-store
     external: todoStore
     type: concept
-  - native: main#service-serves-user
+  - native: service-serves-user
     external: serviceServesUser
     type: relationship
-  - native: main#service-accesses-store
+  - native: service-accesses-store
     external: serviceAccessesStore
     type: relationship
 `,
@@ -304,7 +304,7 @@ views:
     expect(model).toContain('view review-changes {')
     expect(model).toContain('Legend: green = new, amber = changed')
     expect(model).toContain(
-      "include * -> * where metadata.yarramateId is 'main#service-accesses-store'",
+      "include * -> * where metadata.yarramateId is 'service-accesses-store'",
     )
   })
 

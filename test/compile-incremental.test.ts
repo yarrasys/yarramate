@@ -33,23 +33,26 @@ ${extraKind ? '  - id: gateway\n    name: Gateway\n    parent: yarramate/core@0.
 // Each document owns two concepts and points one relationship at its successor,
 // so a rename or a deletion breaks references the neighbour holds - the paths
 // where a parse cache is most likely to leak a stale value.
+// Subject ids are unique across the workspace, so each generated document
+// carries its own: before 1.0 every document could declare `service-a` and be
+// told apart by the `doc-N#` prefix on the id.
 const documentSource = (index: number, name: string, target: number): string =>
   `format: yarramate/v1
 id: doc-${index}
 profile: example/incremental@1.0
 concepts:
-  - id: service-a
+  - id: service-a-${index}
     kind: service
     name: ${name}
     description: Owned by document ${index}
-  - id: service-b
+  - id: service-b-${index}
     kind: service
     name: ${name} secondary
 relationships:
-  - id: uses-neighbour
+  - id: uses-neighbour-${index}
     kind: association
-    from: doc-${index}#service-a
-    to: doc-${target}#service-b
+    from: service-a-${index}
+    to: service-b-${target}
     name: Serves doc-${target}
 `
 

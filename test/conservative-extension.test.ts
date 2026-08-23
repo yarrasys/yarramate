@@ -209,7 +209,7 @@ relationships:
       withExtension.profileContext,
     )
 
-    expect(result.subjects.map(({ id }) => id)).toContain('core-only#checkout')
+    expect(result.subjects.map(({ id }) => id)).toContain('checkout')
     expect(JSON.stringify(resultWithExtension)).toBe(JSON.stringify(result))
   })
 
@@ -239,18 +239,38 @@ relationships:
     const arrivals = widened.subjects
       .map(({ id }) => id)
       .filter((id) => !result.subjects.some((subject) => subject.id === id))
-    expect(arrivals).toContain('delivery#orders')
-    expect(arrivals.every((id) => id.startsWith('delivery#'))).toBe(true)
+    expect(arrivals).toContain('orders')
+    // Identity is flat, so "introduced by the extension document" is read from
+    // the claim that declares each concept's kind, not from a prefix.
+    const declaredBy = new Map(
+      widened.claims
+        .filter((claim) => claim.predicate === 'yarramate/concept/kind')
+        .map((claim) => [claim.subject, claim.source.document] as const),
+    )
+    // Relationships arrive because their endpoints did and carry no concept
+    // kind claim of their own, so the roster checked here is the concepts.
+    const arrivingConcepts = arrivals.filter((id) => declaredBy.has(id))
+    expect(arrivingConcepts.length).toBeGreaterThan(0)
+    expect(
+      arrivingConcepts.every((id) => declaredBy.get(id) === 'delivery'),
+    ).toBe(true)
 
     // Nothing that was already in the answer left it, and every claim about a
     // subject that existed before is byte-identical.
     for (const subject of result.subjects) {
       expect(widened.subjects).toContainEqual(subject)
     }
+    const coreOnlySubjects = new Set(
+      result.claims
+        .filter(
+          (claim) =>
+            claim.predicate === 'yarramate/concept/kind' &&
+            claim.source.document === 'core-only',
+        )
+        .map((claim) => claim.subject),
+    )
     const preexisting = (claims: typeof result.claims) =>
-      JSON.stringify(
-        claims.filter(({ subject }) => subject.startsWith('core-only#')),
-      )
+      JSON.stringify(claims.filter(({ subject }) => coreOnlySubjects.has(subject)))
     expect(preexisting(widened.claims)).toBe(preexisting(result.claims))
   })
 })
@@ -275,7 +295,7 @@ relationships:
   - id: orders-implements-fast
     kind: implements
     from: orders
-    to: core-only#fast-settlement
+    to: fast-settlement
     status: current
 `,
 }
@@ -294,7 +314,7 @@ relationships:
   - id: orders-implements-fast
     kind: realization
     from: orders
-    to: core-only#fast-settlement
+    to: fast-settlement
     status: current
 `,
 }
@@ -315,6 +335,13 @@ const openBySubject = (sources: readonly WorkspaceSource[]) => {
   return rows.sort()
 }
 
+const coreOnlyIds = new Set([
+  'checkout',
+  'settle',
+  'fast-settlement',
+  'checkout-realizes-settle',
+])
+
 // Verdict changes about subjects that were already there, in both directions:
 // questions that closed and questions that opened.
 const changesAboutCoreOnly = (
@@ -325,7 +352,10 @@ const changesAboutCoreOnly = (
     ...before.filter((row) => !after.includes(row)).map((row) => `- ${row}`),
     ...after.filter((row) => !before.includes(row)).map((row) => `+ ${row}`),
   ]
-    .filter((row) => row.includes('core-only#'))
+    // Identity is flat, so "about a subject that was already there" is a
+    // membership test against the core-only document's own ids rather than a
+    // prefix match on the row.
+    .filter((row) => coreOnlyIds.has(row.slice(2).split(' :: ')[0] ?? ''))
     .sort()
 
 describe('an extension document is never a worse neighbour than its core twin', () => {
@@ -344,7 +374,7 @@ describe('an extension document is never a worse neighbour than its core twin', 
     // Not vacuous: routing a document through an extension profile does move a
     // verdict about a subject that was already there. The realization resolves
     // the pre-existing goal's `goal-unrealized` question.
-    expect(byExtension).toContain('- core-only#fast-settlement :: goal-unrealized')
+    expect(byExtension).toContain('- fast-settlement :: goal-unrealized')
 
     // Every change the extension route caused, the plain-core route caused too.
     for (const change of byExtension) expect(byCoreTwin).toContain(change)
@@ -399,6 +429,6 @@ relationships: []
     // opens is about the subject that was already there.
     expect(
       nearDuplicates([base, arrival('yarramate/core@0.1', 'applicationComponent')]),
-    ).toContain('nd-core#order-gateway :: subjects-near-duplicate')
+    ).toContain('order-gateway :: subjects-near-duplicate')
   })
 })

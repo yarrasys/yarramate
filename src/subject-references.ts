@@ -173,7 +173,7 @@ export interface SubjectReferenceScan {
 }
 
 const qualify = (documentId: string, value: string): string =>
-  value.includes('#') ? value : `${documentId}#${value}`
+  value
 
 const localOf = (qualified: string): string =>
   qualified.slice(qualified.indexOf('#') + 1)

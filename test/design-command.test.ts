@@ -74,7 +74,7 @@ describe('design command', () => {
 
   it('narrows to one subject and includes its brief slice', () => {
     const result = runCli(
-      ['design', 'workspace.yaml', '--subject', 'main#todo-service'],
+      ['design', 'workspace.yaml', '--subject', 'todo-service'],
       workspace,
     )
     expect(result.exitCode).toBe(0)
@@ -86,11 +86,11 @@ describe('design command', () => {
 
   it('fails loudly on an unknown subject', () => {
     const result = runCli(
-      ['design', 'workspace.yaml', '--subject', 'main#nope'],
+      ['design', 'workspace.yaml', '--subject', 'nope'],
       workspace,
     )
     expect(result.exitCode).toBe(1)
-    expect(result.stderr).toContain('Unknown subject identity: main#nope')
+    expect(result.stderr).toContain('Unknown subject identity: nope')
   })
 
   it('emits a deterministic, schema-valid machine step', () => {
@@ -207,11 +207,11 @@ questions:
     }
     // One policy answer covers both: the roster lets the harness land it
     // as one apply batch instead of interviewing twice.
-    expect(payload.step.subject.id).toBe('main#todo-service')
+    expect(payload.step.subject.id).toBe('todo-service')
     expect(payload.step.remainingSubjects).toBe(1)
     expect(payload.step.openSubjects).toEqual([
-      'main#todo-service',
-      'main#user',
+      'todo-service',
+      'user',
     ])
     // Envelope stability: a catalogue without askPlain yields a step
     // without the key, exactly as before.

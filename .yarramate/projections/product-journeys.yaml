@@ -3,13 +3,13 @@ id: product-journeys
 version: "1.0"
 query:
   subjects:
-    - yarramate-product#shared-architecture-context
-    - yarramate-product#stable-cli
-    - yarramate-product#native-documents-are-canonical
-    - yarramate-product#evidence-intent-separation
-    - yarramate-product#discover-project-architecture
-    - yarramate-product#design-solution-before-build
-    - yarramate-product#reconcile-intent-and-evidence
+    - shared-architecture-context
+    - stable-cli
+    - native-documents-are-canonical
+    - evidence-intent-separation
+    - discover-project-architecture
+    - design-solution-before-build
+    - reconcile-intent-and-evidence
   relationships: between
 presentation:
   title: Product journeys

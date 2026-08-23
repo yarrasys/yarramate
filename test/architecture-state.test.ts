@@ -53,25 +53,25 @@ relationships:
 
     const result = compareArchitectureStates(
       compilation.graph,
-      'roadmap#baseline',
-      'roadmap#target',
+      'baseline',
+      'target',
     )
 
     expect(result).toEqual({
       ok: true,
       comparison: {
         format: 'yarramate/state-comparison/v1',
-        from: 'roadmap#baseline',
-        to: 'roadmap#target',
+        from: 'baseline',
+        to: 'target',
         added: [
-          { id: 'roadmap#modern', type: 'concept' },
-          { id: 'roadmap#modern-uses-shared', type: 'relationship' },
+          { id: 'modern', type: 'concept' },
+          { id: 'modern-uses-shared', type: 'relationship' },
         ],
         removed: [
-          { id: 'roadmap#legacy', type: 'concept' },
-          { id: 'roadmap#legacy-uses-shared', type: 'relationship' },
+          { id: 'legacy', type: 'concept' },
+          { id: 'legacy-uses-shared', type: 'relationship' },
         ],
-        retained: [{ id: 'roadmap#shared', type: 'concept' }],
+        retained: [{ id: 'shared', type: 'concept' }],
       },
     })
   })
@@ -115,8 +115,8 @@ relationships: []
     if (!compilation.ok) return
     const forward = compareArchitectureStates(
       compilation.graph,
-      'roadmap#baseline',
-      'roadmap#target',
+      'baseline',
+      'target',
     )
     const reversed = compareArchitectureStates(
       {
@@ -124,8 +124,8 @@ relationships: []
         subjects: [...compilation.graph.subjects].reverse(),
         claims: [...compilation.graph.claims].reverse(),
       },
-      'roadmap#baseline',
-      'roadmap#target',
+      'baseline',
+      'target',
     )
 
     expect(reversed).toEqual(forward)
@@ -154,8 +154,8 @@ relationships: []
     if (!compilation.ok) return
     const result = compareArchitectureStates(
       compilation.graph,
-      'roadmap#baseline',
-      'roadmap#target',
+      'baseline',
+      'target',
     )
     expect(result.ok).toBe(true)
     if (!result.ok) return
@@ -201,8 +201,8 @@ relationships: []
     expect(
       compareArchitectureStates(
         compilation.graph,
-        'roadmap#baseline',
-        'roadmap#missing',
+        'baseline',
+        'missing',
       ),
     ).toEqual({
       ok: false,
@@ -210,8 +210,8 @@ relationships: []
         {
           code: 'YMS101',
           message:
-            'Architecture state "roadmap#missing" does not exist',
-          state: 'roadmap#missing',
+            'Architecture state "missing" does not exist',
+          state: 'missing',
         },
       ],
     })

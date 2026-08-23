@@ -290,15 +290,12 @@ const runLikeC4MapSync = (
         ({ id }) => !mapped.has(id) && !architectureStates.has(id),
       )
       .map((subject) => {
-        const [documentId, localId] = subject.id.split('#') as [
-          string,
-          string,
-        ]
-        const local = lowerCamel(localId)
-        let external = local
-        if (claimedExternal.has(external)) {
-          external = `${lowerCamel(documentId)}_${local}`
-        }
+        // A subject id is the authored id, unique across the workspace, so it
+        // is the whole name. The document-prefixed fallback that used to break
+        // ties has nothing left to disambiguate; two ids can still collapse
+        // onto one camel-case name (`foo-bar` and `fooBar`), and the numeric
+        // suffix below has always been what separates those.
+        let external = lowerCamel(subject.id)
         let suffix = 2
         const base = external
         while (claimedExternal.has(external)) {

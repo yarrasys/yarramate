@@ -71,7 +71,7 @@ const observationEvidence = (value: string) =>
   'version: "1.0"\n' +
   'provider: terraform-scan\n' +
   'observations:\n' +
-  '  - subject: shop#customer-data\n' +
+  '  - subject: customer-data\n' +
   '    result: confirmed\n' +
   '    key: region\n' +
   `    value: ${value}\n` +
@@ -117,8 +117,8 @@ describe('constraints that declare an expected observation', () => {
       ({ predicate }) => predicate === 'yarramate/constraint/expects',
     )
     expect(expectation).toEqual({
-      id: 'shop#customer-data~expects-residency',
-      subject: 'shop#customer-data',
+      id: 'customer-data~expects-residency',
+      subject: 'customer-data',
       predicate: 'yarramate/constraint/expects',
       object: { value: 'terraform-scan region ap-southeast-2' },
       origin: 'declared',
@@ -133,11 +133,11 @@ describe('constraints that declare an expected observation', () => {
     // The constraint reference itself is untouched by the expectation.
     expect(
       compilation.graph.claims.find(
-        ({ id }) => id === 'shop#customer-data~constraint-residency',
+        ({ id }) => id === 'customer-data~constraint-residency',
       ),
     ).toMatchObject({
       predicate: 'yarramate/constraint/requires',
-      object: { ref: 'shop#australia-only' },
+      object: { ref: 'australia-only' },
     })
   })
 
@@ -224,7 +224,7 @@ describe('value observations in the evidence overlay', () => {
         provider: 'terraform-scan',
         observations: [
           {
-            subject: 'shop#customer-data',
+            subject: 'customer-data',
             result: 'confirmed',
             key: 'region',
             value: 'ap-southeast-2',
@@ -244,7 +244,7 @@ describe('value observations in the evidence overlay', () => {
         provider: 'terraform-scan',
         observations: [
           {
-            claim: 'shop#customer-data~constraint-residency',
+            claim: 'customer-data~constraint-residency',
             result: 'not-observed',
             evidence: { uri: 'repo:infra/main.tf' },
           },
@@ -261,7 +261,7 @@ describe('value observations in the evidence overlay', () => {
       provider: 'terraform-scan',
       observations: [
         {
-          subject: 'shop#customer-data',
+          subject: 'customer-data',
           result: 'confirmed',
           ...extra,
           evidence: { uri: 'repo:infra/main.tf' },
@@ -280,13 +280,13 @@ describe('value observations in the evidence overlay', () => {
         'version: "1.0"\n' +
         'provider: terraform-scan\n' +
         'observations:\n' +
-        '  - subject: shop#customer-data\n' +
+        '  - subject: customer-data\n' +
         '    result: confirmed\n' +
         '    key: region\n' +
         '    value: ap-southeast-2\n' +
         '    evidence:\n' +
         '      uri: repo:infra/main.tf\n' +
-        '  - subject: shop#customer-data\n' +
+        '  - subject: customer-data\n' +
         '    result: confirmed\n' +
         '    key: encryption\n' +
         '    value: aes256\n' +
@@ -308,13 +308,13 @@ describe('value observations in the evidence overlay', () => {
         'version: "1.0"\n' +
         'provider: terraform-scan\n' +
         'observations:\n' +
-        '  - subject: shop#customer-data\n' +
+        '  - subject: customer-data\n' +
         '    result: confirmed\n' +
         '    key: region\n' +
         '    value: ap-southeast-2\n' +
         '    evidence:\n' +
         '      uri: repo:infra/main.tf\n' +
-        '  - subject: shop#customer-data\n' +
+        '  - subject: customer-data\n' +
         '    result: confirmed\n' +
         '    key: region\n' +
         '    value: us-east-1\n' +
@@ -345,7 +345,7 @@ describe('reconciling declared expectations against observed values', () => {
       expect(report.findings[0]).toEqual({
         target: {
           type: 'claim',
-          id: 'shop#customer-data~expects-residency',
+          id: 'customer-data~expects-residency',
         },
         expectation: {
           provider: 'terraform-scan',
@@ -395,7 +395,7 @@ describe('reconciling declared expectations against observed values', () => {
         'version: "1.0"\n' +
         'provider: terraform-scan\n' +
         'observations:\n' +
-        '  - subject: shop#customer-data\n' +
+        '  - subject: customer-data\n' +
         '    result: confirmed\n' +
         '    evidence:\n' +
         '      uri: repo:infra/main.tf\n',
@@ -408,8 +408,8 @@ describe('reconciling declared expectations against observed values', () => {
       expect(report.summary.expectationsWithoutObservation).toBe(1)
       expect(report.unobservedExpectations).toEqual([
         {
-          claim: 'shop#customer-data~expects-residency',
-          subject: 'shop#customer-data',
+          claim: 'customer-data~expects-residency',
+          subject: 'customer-data',
           provider: 'terraform-scan',
           key: 'region',
           expected: 'ap-southeast-2',
@@ -504,7 +504,7 @@ describe('check --strict over a contradicted expectation', () => {
         'version: "1.0"\n' +
         'provider: terraform-scan\n' +
         'observations:\n' +
-        '  - subject: shop#customer-data\n' +
+        '  - subject: customer-data\n' +
         '    result: confirmed\n' +
         '    evidence:\n' +
         '      uri: repo:infra/main.tf\n',
@@ -541,7 +541,7 @@ describe('report growth composes with the stale-attestation additions', () => {
         },
         findings: [
           {
-            target: { type: 'subject', id: 'payments#billing' },
+            target: { type: 'subject', id: 'billing' },
             result: 'contradicted',
             provider: 'repository-inspection',
             evidenceDocument: 'payments-repository@1.0',
@@ -572,7 +572,7 @@ describe('report growth composes with the stale-attestation additions', () => {
         },
         findings: [
           {
-            target: { type: 'subject', id: 'shop#customer-data' },
+            target: { type: 'subject', id: 'customer-data' },
             result: 'stale-attestation',
             attestation: {
               topic: 'signed-off',
@@ -585,8 +585,8 @@ describe('report growth composes with the stale-attestation additions', () => {
         ],
         unobservedExpectations: [
           {
-            claim: 'shop#customer-data~expects-residency',
-            subject: 'shop#customer-data',
+            claim: 'customer-data~expects-residency',
+            subject: 'customer-data',
             provider: 'terraform-scan',
             key: 'region',
             expected: 'ap-southeast-2',

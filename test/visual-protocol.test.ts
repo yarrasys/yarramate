@@ -356,7 +356,7 @@ describe('visual protocol', () => {
           text: 'Filtered to 2 concepts.',
           appliedQuery: {
             query: { kinds: ['yarramate/core@0.1#applicationComponent'] },
-            matchedIds: ['main#a', 'main#b'],
+            matchedIds: ['a', 'b'],
           },
         }),
       ),
@@ -368,7 +368,7 @@ describe('visual protocol', () => {
       parseVisualResponse(
         visualResponse('filter.result', {
           query: { kinds: ['yarramate/core@0.1#applicationComponent'] },
-          matchedIds: ['main#a', 'main#b'],
+          matchedIds: ['a', 'b'],
         }),
       ),
     ).toMatchObject({ ok: true })
@@ -488,7 +488,7 @@ describe('visual protocol', () => {
       const result = commit({
         op: 'update-concept',
         document: 'architecture/engine.yaml',
-        concept: { id: 'engine#check', name: '   ' },
+        concept: { id: 'check', name: '   ' },
       })
       expect(result.ok).toBe(false)
       if (result.ok) return
@@ -547,7 +547,7 @@ describe('visual protocol', () => {
             {
               op: 'update-concept',
               document: 'architecture/engine.yaml',
-              concept: { id: 'engine#check', name: 'Check' },
+              concept: { id: 'check', name: 'Check' },
             },
           ],
         },
@@ -572,7 +572,7 @@ describe('visual protocol', () => {
             {
               op: 'update-concept',
               document: 'architecture/engine.yaml',
-              concept: { id: 'engine#check', name: 'Check' },
+              concept: { id: 'check', name: 'Check' },
             },
           ],
           sourceDigests: { 'architecture/engine.yaml': digest },

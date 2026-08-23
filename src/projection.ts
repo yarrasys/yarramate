@@ -203,11 +203,24 @@ export function evaluateProjection(
         true
     )
   }
+  // A subject id no longer carries the document that declared it, so the
+  // `documents` selector reads provenance from the claim that declares the
+  // concept's kind - the one claim every concept has, recorded in the document
+  // that authored it. Built once: the alternative is a claim scan per subject
+  // per query. Only concepts are filtered this way, exactly as before;
+  // relationships enter a view through `between`/`connected`, never by
+  // document.
+  const documentOfSubject = new Map<string, string>()
+  for (const claim of graph.claims) {
+    if (claim.predicate !== 'yarramate/concept/kind') continue
+    const document = claim.source?.document
+    if (typeof document === 'string') documentOfSubject.set(claim.subject, document)
+  }
   const initiallySelectedConceptIds = new Set(
     graph.subjects
       .filter(({ type }) => type === 'concept')
       .filter(({ id }) => {
-        const documentId = id.slice(0, id.indexOf('#'))
+        const documentId = documentOfSubject.get(id) ?? ''
         const kind = claimValue(
           graph.claims,
           id,

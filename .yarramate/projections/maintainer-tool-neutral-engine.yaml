@@ -3,8 +3,8 @@ id: maintainer-tool-neutral-engine
 version: "1.0"
 query:
   documents: [yarramate-engine]
-  owners: [yarramate-product#yarramate-maintainers]
-  constraints: [yarramate-product#tool-neutral-core]
+  owners: [yarramate-maintainers]
+  constraints: [tool-neutral-core]
   statuses: [current]
   relationships: none
 presentation:

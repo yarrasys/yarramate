@@ -3,19 +3,19 @@ id: core-contract-foundation
 version: "1.0"
 query:
   states:
-    - yarramate-evolution#core-contract-foundation
+    - core-contract-foundation
   subjects:
-    - yarramate-engine#check-command
-    - yarramate-engine#core-contract-checker
-    - yarramate-engine#load-core-contract
-    - yarramate-engine#check-core-contract
-    - yarramate-engine#core-contract-manifest
-    - yarramate-engine#core-contract-schema
-    - yarramate-repository#core-contract-source
-    - yarramate-repository#core-contract-schema-source
-    - yarramate-repository#core-contract-tests
-    - yarramate-repository#core-contract-release-manifest
-    - yarramate-repository#root-workspace-manifest
+    - check-command
+    - core-contract-checker
+    - load-core-contract
+    - check-core-contract
+    - core-contract-manifest
+    - core-contract-schema
+    - core-contract-source
+    - core-contract-schema-source
+    - core-contract-tests
+    - core-contract-release-manifest
+    - root-workspace-manifest
   relationships: between
 presentation:
   title: YarraMate Core contract foundation

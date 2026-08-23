@@ -73,7 +73,7 @@ describe('export command', () => {
       subjects: readonly { id: string }[]
     }
     expect(graph.format).toBe('yarramate/graph/v2')
-    expect(graph.subjects.map(({ id }) => id)).toContain('main#todo-service')
+    expect(graph.subjects.map(({ id }) => id)).toContain('todo-service')
 
     const filed = runCli(
       ['export', 'graph', 'workspace.yaml', '--out', 'out/graph.json'],
@@ -128,10 +128,10 @@ describe('export command', () => {
     expect(result.stdout).toBe('Wrote 2 briefs and INDEX.md to handoff\n')
     const index = readFileSync(join(workspace, 'handoff/INDEX.md'), 'utf8')
     expect(index).toContain('# Briefs — Everything')
-    expect(index).toContain('[Todo service](main--todo-service.md)')
+    expect(index).toContain('[Todo service](todo-service.md)')
     expect(index).toContain('(planned)')
     const brief = readFileSync(
-      join(workspace, 'handoff/main--todo-service.md'),
+      join(workspace, 'handoff/todo-service.md'),
       'utf8',
     )
     expect(brief).toContain('Todo service')
@@ -149,7 +149,7 @@ describe('export command', () => {
     )
     expect(again.stdout).toBe(result.stdout)
     expect(
-      readFileSync(join(workspace, 'handoff/main--todo-service.md'), 'utf8'),
+      readFileSync(join(workspace, 'handoff/todo-service.md'), 'utf8'),
     ).toBe(brief)
   })
 
@@ -292,11 +292,11 @@ describe('non-goals in exports (ADR 0073)', () => {
     const [inventory, nonGoals] = first.stdout.split('## Non-goals')
     expect(nonGoals).toBeDefined()
     expect(nonGoals).toContain(
-      'Offline sync (`main#offline-sync`) — Declined for launch; ' +
+      'Offline sync (`offline-sync`) — Declined for launch; ' +
         'conflict resolution outweighs the value.',
     )
     expect(nonGoals).toContain(
-      'Team boards (`main#team-boards`) — Single-user scope holds; ' +
+      'Team boards (`team-boards`) — Single-user scope holds; ' +
         'collaboration is out.',
     )
     // The Concepts inventory keeps the declared non-goals: relationship
@@ -338,7 +338,7 @@ describe('non-goals in exports (ADR 0073)', () => {
     )
     expect(result.exitCode).toBe(0)
     const declined = readFileSync(
-      join(workspace, 'handoff/main--offline-sync.md'),
+      join(workspace, 'handoff/offline-sync.md'),
       'utf8',
     )
     expect(declined).toContain('## Non-goals')
@@ -350,7 +350,7 @@ describe('non-goals in exports (ADR 0073)', () => {
     // Live motivation still opens the brief; no Non-goals section
     // appears where nothing in the slice is a declared non-goal.
     const building = readFileSync(
-      join(workspace, 'handoff/main--todo-service.md'),
+      join(workspace, 'handoff/todo-service.md'),
       'utf8',
     )
     expect(building).toContain('## Why this exists')
@@ -358,7 +358,7 @@ describe('non-goals in exports (ADR 0073)', () => {
     expect(building).not.toContain('## Non-goals')
     // A retired principle keeps its motivation reading.
     const principle = readFileSync(
-      join(workspace, 'handoff/main--files-portable.md'),
+      join(workspace, 'handoff/files-portable.md'),
       'utf8',
     )
     expect(principle).toContain('## Why this exists')
@@ -376,7 +376,7 @@ describe('non-goals in exports (ADR 0073)', () => {
     )
     expect(again.stdout).toBe(result.stdout)
     expect(
-      readFileSync(join(workspace, 'handoff/main--offline-sync.md'), 'utf8'),
+      readFileSync(join(workspace, 'handoff/offline-sync.md'), 'utf8'),
     ).toBe(declined)
   })
 })

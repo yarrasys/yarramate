@@ -91,18 +91,18 @@ evidence: []
 `
 
 const keptByDefault = [
-  'main#goal-focus',
-  'main#planned-a',
-  'main#planned-b',
-  'main#current-a',
-  'main#current-b',
-  'main#current-c',
-  'main#current-d',
-  'main#current-e',
-  'main#current-f',
-  'main#current-g',
-  'main#current-h',
-  'main#loose-note',
+  'goal-focus',
+  'planned-a',
+  'planned-b',
+  'current-a',
+  'current-b',
+  'current-c',
+  'current-d',
+  'current-e',
+  'current-f',
+  'current-g',
+  'current-h',
+  'loose-note',
 ]
 
 interface SlicePayload {
@@ -147,7 +147,7 @@ describe('ask neighbour cap', () => {
   })
 
   it('caps a hub slice at 12 materiality-ordered neighbours and announces the omission', () => {
-    const result = runCli(['ask', 'workspace.yaml', 'main#hub'], workspace)
+    const result = runCli(['ask', 'workspace.yaml', 'hub'], workspace)
     expect(result.exitCode).toBe(0)
     expect(result.stdout).toContain(
       '[neighbours 12: 2 of 14 neighbours omitted — ' +
@@ -161,11 +161,11 @@ describe('ask neighbour cap', () => {
 
   it('reports the omission additively in the JSON envelope, deterministically', () => {
     const first = runCli(
-      ['ask', 'workspace.yaml', 'main#hub', '--json'],
+      ['ask', 'workspace.yaml', 'hub', '--json'],
       workspace,
     )
     const second = runCli(
-      ['ask', 'workspace.yaml', 'main#hub', '--json'],
+      ['ask', 'workspace.yaml', 'hub', '--json'],
       workspace,
     )
     expect(first.exitCode).toBe(0)
@@ -176,17 +176,17 @@ describe('ask neighbour cap', () => {
       cap: 12,
       kept: 12,
       omitted: 2,
-      omittedBySeed: [{ seed: 'main#hub', omitted: 2 }],
+      omittedBySeed: [{ seed: 'hub', omitted: 2 }],
     })
     expect(conceptIds(payload)).toEqual(
-      ['main#hub', ...keptByDefault].sort(),
+      ['hub', ...keptByDefault].sort(),
     )
     expect(validateAsk(payload), JSON.stringify(validateAsk.errors)).toBe(true)
   })
 
   it('keeps motivation, then planned, then current under a tighter --neighbours', () => {
     const result = runCli(
-      ['ask', 'workspace.yaml', 'main#hub', '--neighbours', '5', '--json'],
+      ['ask', 'workspace.yaml', 'hub', '--neighbours', '5', '--json'],
       workspace,
     )
     expect(result.exitCode).toBe(0)
@@ -195,18 +195,18 @@ describe('ask neighbour cap', () => {
       cap: 5,
       kept: 5,
       omitted: 9,
-      omittedBySeed: [{ seed: 'main#hub', omitted: 9 }],
+      omittedBySeed: [{ seed: 'hub', omitted: 9 }],
     })
     // Rank order: the goal (motivation), both planned, then current in
     // id order — the brief's budget ladder applied to neighbours.
     expect(conceptIds(payload)).toEqual(
       [
-        'main#hub',
-        'main#goal-focus',
-        'main#planned-a',
-        'main#planned-b',
-        'main#current-a',
-        'main#current-b',
+        'hub',
+        'goal-focus',
+        'planned-a',
+        'planned-b',
+        'current-a',
+        'current-b',
       ].sort(),
     )
     expect(validateAsk(payload), JSON.stringify(validateAsk.errors)).toBe(true)
@@ -214,7 +214,7 @@ describe('ask neighbour cap', () => {
 
   it('lifts the cap with --neighbours 0 and stays silent', () => {
     const result = runCli(
-      ['ask', 'workspace.yaml', 'main#hub', '--neighbours', '0', '--json'],
+      ['ask', 'workspace.yaml', 'hub', '--neighbours', '0', '--json'],
       workspace,
     )
     expect(result.exitCode).toBe(0)
@@ -224,7 +224,7 @@ describe('ask neighbour cap', () => {
     expect(validateAsk(payload), JSON.stringify(validateAsk.errors)).toBe(true)
 
     const human = runCli(
-      ['ask', 'workspace.yaml', 'main#hub', '--neighbours', '0'],
+      ['ask', 'workspace.yaml', 'hub', '--neighbours', '0'],
       workspace,
     )
     expect(human.stdout).not.toContain('[neighbours')
@@ -233,19 +233,19 @@ describe('ask neighbour cap', () => {
 
   it('says nothing when the neighbourhood fits under the cap', () => {
     const result = runCli(
-      ['ask', 'workspace.yaml', 'main#goal-focus', '--json'],
+      ['ask', 'workspace.yaml', 'goal-focus', '--json'],
       workspace,
     )
     expect(result.exitCode).toBe(0)
     const payload = JSON.parse(result.stdout) as SlicePayload
     expect(payload.neighbourhood).toBeUndefined()
-    expect(conceptIds(payload)).toEqual(['main#goal-focus', 'main#hub'])
+    expect(conceptIds(payload)).toEqual(['goal-focus', 'hub'])
     expect(validateAsk(payload), JSON.stringify(validateAsk.errors)).toBe(true)
   })
 
   it('caps the --advise slice the same way and says so in the composition', () => {
     const result = runCli(
-      ['ask', 'workspace.yaml', '--advise', 'main#hub'],
+      ['ask', 'workspace.yaml', '--advise', 'hub'],
       workspace,
     )
     expect(result.exitCode).toBe(0)
@@ -253,7 +253,7 @@ describe('ask neighbour cap', () => {
     expect(result.stdout).toContain('[neighbours 12: 2 of 14 neighbours omitted')
 
     const json = runCli(
-      ['ask', 'workspace.yaml', '--advise', 'main#hub', '--json'],
+      ['ask', 'workspace.yaml', '--advise', 'hub', '--json'],
       workspace,
     )
     const payload = JSON.parse(json.stdout) as SlicePayload
@@ -262,7 +262,7 @@ describe('ask neighbour cap', () => {
       cap: 12,
       kept: 12,
       omitted: 2,
-      omittedBySeed: [{ seed: 'main#hub', omitted: 2 }],
+      omittedBySeed: [{ seed: 'hub', omitted: 2 }],
     })
     expect(validateAsk(payload), JSON.stringify(validateAsk.errors)).toBe(true)
   })
@@ -274,7 +274,7 @@ describe('ask neighbour cap', () => {
 id: dense
 version: "1.0"
 query:
-  subjects: [main#hub]
+  subjects: [hub]
   relationships: connected
 presentation:
   title: Dense
@@ -308,7 +308,7 @@ presentation:
     const roster = runCli(['ask', 'workspace.yaml', '--subjects'], workspace)
     expect(roster.exitCode).toBe(0)
     expect(roster.stdout).toContain('15 of 15')
-    expect(roster.stdout).toContain('main#retired-b')
+    expect(roster.stdout).toContain('retired-b')
 
     const orientation = runCli(['ask', 'workspace.yaml'], workspace)
     expect(orientation.exitCode).toBe(0)
@@ -320,11 +320,11 @@ presentation:
       ['ask', 'workspace.yaml', '--neighbours', '5'],
       ['ask', 'workspace.yaml', '--subjects', '--neighbours', '5'],
       ['ask', 'workspace.yaml', '--next', '--neighbours', '5'],
-      ['ask', 'workspace.yaml', '--where', 'main#hub', '--neighbours', '5'],
-      ['ask', 'workspace.yaml', 'main#hub', '--neighbours', 'abc'],
-      ['ask', 'workspace.yaml', 'main#hub', '--neighbours', '-3'],
-      ['ask', 'workspace.yaml', 'main#hub', '--neighbours', '5', '--neighbours', '6'],
-      ['ask', 'workspace.yaml', 'main#hub', '--neighbours'],
+      ['ask', 'workspace.yaml', '--where', 'hub', '--neighbours', '5'],
+      ['ask', 'workspace.yaml', 'hub', '--neighbours', 'abc'],
+      ['ask', 'workspace.yaml', 'hub', '--neighbours', '-3'],
+      ['ask', 'workspace.yaml', 'hub', '--neighbours', '5', '--neighbours', '6'],
+      ['ask', 'workspace.yaml', 'hub', '--neighbours'],
     ]) {
       const result = runCli(args, workspace)
       expect(result.exitCode, args.join(' ')).toBe(2)
@@ -364,12 +364,12 @@ presentation:
     )
     expect(result.exitCode).toBe(0)
     const payload = JSON.parse(result.stdout) as SlicePayload
-    expect(payload.seeds).toEqual(['main#hub'])
+    expect(payload.seeds).toEqual(['hub'])
     expect(payload.neighbourhood).toEqual({
       cap: 12,
       kept: 12,
       omitted: 2,
-      omittedBySeed: [{ seed: 'main#hub', omitted: 2 }],
+      omittedBySeed: [{ seed: 'hub', omitted: 2 }],
     })
     expect(validateAsk(payload), JSON.stringify(validateAsk.errors)).toBe(true)
 

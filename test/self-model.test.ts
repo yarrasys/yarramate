@@ -87,19 +87,19 @@ describe('YarraMate repository model', () => {
       expect(
         result.graph.claims.some(
           ({ id }) =>
-            id === 'yarramate-engine#compiler-delivers-compilation',
+            id === 'compiler-delivers-compilation',
         ),
       ).toBe(true)
       expect(
         result.graph.claims.some(
           ({ id }) =>
             id ===
-            'yarramate-repository#contract-realizes-tool-neutral-core',
+            'contract-realizes-tool-neutral-core',
         ),
       ).toBe(true)
       expect(
         result.graph.claims.find(
-          ({ id }) => id === 'yarramate-engine#compiler~kind',
+          ({ id }) => id === 'compiler~kind',
         ),
       ).toMatchObject({
         object: {
@@ -108,7 +108,7 @@ describe('YarraMate repository model', () => {
       })
       expect(
         result.graph.claims.find(
-          ({ id }) => id === 'yarramate-engine#compiler~status',
+          ({ id }) => id === 'compiler~status',
         ),
       ).toMatchObject({
         object: { value: 'current' },
@@ -116,7 +116,7 @@ describe('YarraMate repository model', () => {
       expect(
         result.graph.claims.find(
           ({ id }) =>
-            id === 'yarramate-repository#compiler-source~kind',
+            id === 'compiler-source~kind',
         ),
       ).toMatchObject({
         object: {
@@ -128,9 +128,24 @@ describe('YarraMate repository model', () => {
       expect(loaded.ok).toBe(true)
       if (loaded.ok) {
         const context = evaluateProjection(result.graph, loaded.projection)
+        // Identity is flat, so "belongs to the engine document" is a claim
+        // about provenance rather than a prefix on the id.
+        // Identity is flat, so "declared by the engine document" is read from
+        // the claim that declares a concept's kind rather than from a prefix
+        // on the id. Relationships reach a view through `between`, never by
+        // document, so the roster below is the concepts.
+        const declaringDocument = new Map(
+          result.graph.claims
+            .filter((claim) => claim.predicate === 'yarramate/concept/kind')
+            .map((claim) => [claim.subject, claim.source.document] as const),
+        )
+        const concepts = context.subjects.filter(
+          ({ id }) => declaringDocument.has(id),
+        )
+        expect(concepts.length).toBeGreaterThan(0)
         expect(
-          context.subjects.every(({ id }) =>
-            id.startsWith('yarramate-engine#'),
+          concepts.every(
+            ({ id }) => declaringDocument.get(id) === 'yarramate-engine',
           ),
         ).toBe(true)
         expect(context.subjects.length).toBeGreaterThan(0)
@@ -144,25 +159,30 @@ describe('YarraMate repository model', () => {
           stateProjection.projection,
         )
         expect(context.subjects).toContainEqual({
-          id: 'yarramate-engine#architecture-state-engine',
+          id: 'architecture-state-engine',
           type: 'concept',
         })
         expect(
           context.subjects.some(({ id }) =>
-            id.startsWith('yarramate-evolution#'),
+            result.graph.claims.some(
+              (claim) =>
+                claim.subject === id &&
+                claim.predicate === 'yarramate/concept/kind' &&
+                claim.source.document === 'yarramate-evolution',
+            ),
           ),
         ).toBe(false)
       }
 
       const comparison = compareArchitectureStates(
         result.graph,
-        'yarramate-evolution#native-foundation',
-        'yarramate-evolution#state-foundation',
+        'native-foundation',
+        'state-foundation',
       )
       expect(comparison.ok).toBe(true)
       if (comparison.ok) {
         expect(comparison.comparison.added).toContainEqual({
-          id: 'yarramate-engine#architecture-state-engine',
+          id: 'architecture-state-engine',
           type: 'concept',
         })
       }
@@ -175,20 +195,20 @@ describe('YarraMate repository model', () => {
           coreContract.projection,
         )
         expect(context.subjects).toContainEqual({
-          id: 'yarramate-engine#core-contract-checker',
+          id: 'core-contract-checker',
           type: 'concept',
         })
       }
 
       const contractComparison = compareArchitectureStates(
         result.graph,
-        'yarramate-evolution#state-foundation',
-        'yarramate-evolution#core-contract-foundation',
+        'state-foundation',
+        'core-contract-foundation',
       )
       expect(contractComparison.ok).toBe(true)
       if (contractComparison.ok) {
         expect(contractComparison.comparison.added).toContainEqual({
-          id: 'yarramate-engine#core-contract-checker',
+          id: 'core-contract-checker',
           type: 'concept',
         })
       }
@@ -203,15 +223,15 @@ describe('YarraMate repository model', () => {
 
     expect(result.graph.subjects).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ id: 'yarramate-engine#visual-runtime' }),
+        expect.objectContaining({ id: 'visual-runtime' }),
         expect.objectContaining({
-          id: 'yarramate-engine#visual-session-service',
+          id: 'visual-session-service',
         }),
-        expect.objectContaining({ id: 'yarramate-engine#visual-browser' }),
+        expect.objectContaining({ id: 'visual-browser' }),
         expect.objectContaining({
-          id: 'yarramate-engine#visual-session-protocol',
+          id: 'visual-session-protocol',
         }),
-        expect.objectContaining({ id: 'yarramate-engine#visual-handoff' }),
+        expect.objectContaining({ id: 'visual-handoff' }),
       ]),
     )
 
@@ -224,12 +244,12 @@ describe('YarraMate repository model', () => {
     const rendered = evaluateProjection(result.graph, projection.projection)
     expect(rendered.subjects.map(({ id }) => id)).toEqual(
       expect.arrayContaining([
-        'yarramate-engine#visual-runtime',
-        'yarramate-engine#visual-browser',
-        'yarramate-engine#visual-session-protocol',
-        'yarramate-engine#visual-handoff',
-        'yarramate-product#agent-harness',
-        'yarramate-repository#agent-skill-source',
+        'visual-runtime',
+        'visual-browser',
+        'visual-session-protocol',
+        'visual-handoff',
+        'agent-harness',
+        'agent-skill-source',
       ]),
     )
   })
@@ -317,8 +337,8 @@ describe('YarraMate repository model', () => {
         '.yarramate/integrations/likec4/kind-mapping.yaml',
       ),
       comparison: {
-        from: 'yarramate-evolution#adapter-foundation',
-        to: 'yarramate-evolution#state-foundation',
+        from: 'adapter-foundation',
+        to: 'state-foundation',
       },
       vocabulary: 'bundled',
     })

@@ -3,14 +3,14 @@ id: document-transfer-slice
 version: "1.0"
 query:
   subjects:
-    - document-transfer#accept-document
-    - document-transfer#orchestrate-store
-    - document-transfer#persist-document
-    - document-transfer-policy#oauth-m2m
-    - document-transfer-policy#experience-rate-limit
-    - document-transfer-policy#ratelimit-not-applicable
-    - document-transfer-policy#at-least-once
-    - document-transfer-policy#https-rest
+    - accept-document
+    - orchestrate-store
+    - persist-document
+    - oauth-m2m
+    - experience-rate-limit
+    - ratelimit-not-applicable
+    - at-least-once
+    - https-rest
   relationships: connected
 presentation:
   title: Document transfer hop

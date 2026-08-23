@@ -3,13 +3,13 @@ id: delivery-target-solution
 version: "1.0"
 query:
   subjects:
-    - delivery-design#reliable-delivery
-    - delivery-design#modular-monolith
-    - delivery-design#delivery-service
-    - delivery-design#delivery-api
-    - delivery-design#delivery-data
+    - reliable-delivery
+    - modular-monolith
+    - delivery-service
+    - delivery-api
+    - delivery-data
   states:
-    - delivery-design#target
+    - target
   relationships: between
 presentation:
   title: Initial delivery target

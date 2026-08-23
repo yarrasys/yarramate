@@ -3,1914 +3,1914 @@ id: yarramate-likec4-export-path
 version: "1.0"
 adapter: likec4
 mappings:
-  - native: yarramate-repository#backlog-disposition
+  - native: backlog-disposition
     external: backlogDisposition
     type: concept
-  - native: yarramate-engine#compiler
+  - native: compiler
     external: compiler
     type: concept
-  - native: yarramate-engine#workspace-loader
+  - native: workspace-loader
     external: workspaceLoader
     type: concept
-  - native: yarramate-engine#evidence-evaluator
+  - native: evidence-evaluator
     external: evidenceEvaluator
     type: concept
-  - native: yarramate-engine#core-contract-checker
+  - native: core-contract-checker
     external: coreContractChecker
     type: concept
-  - native: yarramate-engine#source-document-loader
+  - native: source-document-loader
     external: sourceDocumentLoader
     type: concept
-  - native: yarramate-engine#adapter-mapping
+  - native: adapter-mapping
     external: adapterMapping
     type: concept
-  - native: yarramate-engine#assemble-likec4-project
+  - native: assemble-likec4-project
     external: assembleLikeC4Project
     type: concept
-  - native: yarramate-engine#export-likec4
+  - native: export-likec4
     external: exportLikeC4
     type: concept
-  - native: yarramate-engine#evaluate-projection
+  - native: evaluate-projection
     external: evaluateProjection
     type: concept
-  - native: yarramate-engine#architecture-state-engine
+  - native: architecture-state-engine
     external: architectureStateEngine
     type: concept
-  - native: yarramate-engine#compare-architecture-states
+  - native: compare-architecture-states
     external: compareArchitectureStates
     type: concept
-  - native: yarramate-engine#render-likec4-state-comparison
+  - native: render-likec4-state-comparison
     external: renderLikeC4StateComparison
     type: concept
-  - native: yarramate-engine#compare-command
+  - native: compare-command
     external: compareCommand
     type: concept
-  - native: yarramate-engine#state-comparison
+  - native: state-comparison
     external: stateComparison
     type: concept
-  - native: yarramate-engine#state-comparison-schema
+  - native: state-comparison-schema
     external: stateComparisonSchema
     type: concept
-  - native: yarramate-engine#likec4-export-adapter
+  - native: likec4-export-adapter
     external: likec4ExportAdapter
     type: concept
-  - native: yarramate-engine#likec4-check-command
+  - native: likec4-check-command
     external: likec4CheckCommand
     type: concept
-  - native: yarramate-engine#likec4-export-command
+  - native: likec4-export-command
     external: likec4ExportCommand
     type: concept
-  - native: yarramate-engine#projection-result
+  - native: projection-result
     external: projectionResult
     type: concept
-  - native: yarramate-engine#starter-view-pack
+  - native: starter-view-pack
     external: starterViewPack
     type: concept
-  - native: yarramate-engine#likec4-project-definition
+  - native: likec4-project-definition
     external: likec4ProjectDefinition
     type: concept
-  - native: yarramate-engine#likec4-project-schema
+  - native: likec4-project-schema
     external: likec4ProjectSchema
     type: concept
-  - native: yarramate-engine#likec4-generated-project-v2-schema
+  - native: likec4-generated-project-v2-schema
     external: likec4GeneratedProjectV2Schema
     type: concept
-  - native: yarramate-repository#likec4-export-source
+  - native: likec4-export-source
     external: likec4ExportSource
     type: concept
-  - native: yarramate-repository#likec4-prepare-source
+  - native: likec4-prepare-source
     external: likec4PrepareSource
     type: concept
-  - native: yarramate-repository#likec4-project-source
+  - native: likec4-project-source
     external: likec4ProjectSource
     type: concept
-  - native: yarramate-repository#agent-skill-source
+  - native: agent-skill-source
     external: agentSkillSource
     type: concept
-  - native: yarramate-repository#consumer-guide
+  - native: consumer-guide
     external: consumerGuide
     type: concept
-  - native: yarramate-repository#consumer-package
+  - native: consumer-package
     external: consumerPackage
     type: concept
-  - native: yarramate-repository#journey-tests
+  - native: journey-tests
     external: journeyTests
     type: concept
-  - native: yarramate-repository#package-consumer-tests
+  - native: package-consumer-tests
     external: packageConsumerTests
     type: concept
-  - native: yarramate-repository#reconciliation-source
+  - native: reconciliation-source
     external: reconciliationSource
     type: concept
-  - native: yarramate-repository#reconciliation-report-schema-source
+  - native: reconciliation-report-schema-source
     external: reconciliationReportSchemaSource
     type: concept
-  - native: yarramate-repository#graphify-adapter-source
+  - native: graphify-adapter-source
     external: graphifyAdapterSource
     type: concept
-  - native: yarramate-repository#graphify-cli-source
+  - native: graphify-cli-source
     external: graphifyCliSource
     type: concept
-  - native: yarramate-repository#graphify-tests
+  - native: graphify-tests
     external: graphifyTests
     type: concept
-  - native: yarramate-repository#product-journeys-guide
+  - native: product-journeys-guide
     external: productJourneysGuide
     type: concept
-  - native: yarramate-repository#likec4-project-definition-source
+  - native: likec4-project-definition-source
     external: likec4ProjectDefinitionSource
     type: concept
-  - native: yarramate-repository#likec4-project-schema-source
+  - native: likec4-project-schema-source
     external: likec4ProjectSchemaSource
     type: concept
-  - native: yarramate-repository#likec4-generated-project-v2-schema-source
+  - native: likec4-generated-project-v2-schema-source
     external: likec4GeneratedProjectV2SchemaSource
     type: concept
-  - native: yarramate-repository#architecture-state-source
+  - native: architecture-state-source
     external: architectureStateSource
     type: concept
-  - native: yarramate-repository#architecture-state-tests
+  - native: architecture-state-tests
     external: architectureStateTests
     type: concept
-  - native: yarramate-repository#state-comparison-schema-source
+  - native: state-comparison-schema-source
     external: stateComparisonSchemaSource
     type: concept
-  - native: yarramate-repository#evolution-model
+  - native: evolution-model
     external: evolutionModel
     type: concept
-  - native: yarramate-engine#adapter-mapping-schema
+  - native: adapter-mapping-schema
     external: engineAdapterMappingSchema
     type: concept
-  - native: yarramate-engine#add-command
+  - native: add-command
     external: engineAddCommand
     type: concept
-  - native: yarramate-engine#check-command
+  - native: check-command
     external: engineCheckCommand
     type: concept
-  - native: yarramate-engine#check-core-contract
+  - native: check-core-contract
     external: engineCheckCoreContract
     type: concept
-  - native: yarramate-engine#check-result
+  - native: check-result
     external: engineCheckResult
     type: concept
-  - native: yarramate-engine#check-result-schema
+  - native: check-result-schema
     external: engineCheckResultSchema
     type: concept
-  - native: yarramate-engine#cli
+  - native: cli
     external: engineCli
     type: concept
-  - native: yarramate-engine#compile-command
+  - native: compile-command
     external: engineCompileCommand
     type: concept
-  - native: yarramate-engine#compile-semantic-graph
+  - native: compile-semantic-graph
     external: engineCompileSemanticGraph
     type: concept
-  - native: yarramate-engine#connect-command
+  - native: connect-command
     external: engineConnectCommand
     type: concept
-  - native: yarramate-engine#core-contract-manifest
+  - native: core-contract-manifest
     external: engineCoreContractManifest
     type: concept
-  - native: yarramate-engine#core-contract-schema
+  - native: core-contract-schema
     external: engineCoreContractSchema
     type: concept
-  - native: yarramate-engine#diagnostic-result
+  - native: diagnostic-result
     external: engineDiagnosticResult
     type: concept
-  - native: yarramate-engine#diagnostic-result-schema
+  - native: diagnostic-result-schema
     external: engineDiagnosticResultSchema
     type: concept
-  - native: yarramate-engine#diagnostics
+  - native: diagnostics
     external: engineDiagnostics
     type: concept
-  - native: yarramate-engine#document-schema
+  - native: document-schema
     external: engineDocumentSchema
     type: concept
-  - native: yarramate-engine#evaluate-evidence
+  - native: evaluate-evidence
     external: engineEvaluateEvidence
     type: concept
-  - native: yarramate-engine#graphify-evidence-adapter
+  - native: graphify-evidence-adapter
     external: engineGraphifyEvidenceAdapter
     type: concept
-  - native: yarramate-engine#graphify-observe-command
+  - native: graphify-observe-command
     external: engineGraphifyObserveCommand
     type: concept
-  - native: yarramate-engine#observe-graphify
+  - native: observe-graphify
     external: engineObserveGraphify
     type: concept
-  - native: yarramate-engine#reconcile-evidence
+  - native: reconcile-evidence
     external: engineReconcileEvidence
     type: concept
-  - native: yarramate-engine#evidence-command
+  - native: evidence-command
     external: engineEvidenceCommand
     type: concept
-  - native: yarramate-engine#evidence-document
+  - native: evidence-document
     external: engineEvidenceDocument
     type: concept
-  - native: yarramate-engine#evidence-report
+  - native: evidence-report
     external: engineEvidenceReport
     type: concept
-  - native: yarramate-engine#evidence-report-schema
+  - native: evidence-report-schema
     external: engineEvidenceReportSchema
     type: concept
-  - native: yarramate-engine#evidence-schema
+  - native: evidence-schema
     external: engineEvidenceSchema
     type: concept
-  - native: yarramate-engine#reconcile-command
+  - native: reconcile-command
     external: engineReconcileCommand
     type: concept
-  - native: yarramate-engine#reconciliation-report
+  - native: reconciliation-report
     external: engineReconciliationReport
     type: concept
-  - native: yarramate-engine#reconciliation-report-schema
+  - native: reconciliation-report-schema
     external: engineReconciliationReportSchema
     type: concept
-  - native: yarramate-engine#render-likec4-dynamic-view
+  - native: render-likec4-dynamic-view
     external: engineRenderLikeC4DynamicView
     type: concept
-  - native: yarramate-engine#render-likec4-deployment-view
+  - native: render-likec4-deployment-view
     external: engineRenderLikeC4DeploymentView
     type: concept
-  - native: yarramate-engine#init-command
+  - native: init-command
     external: engineInitCommand
     type: concept
-  - native: yarramate-engine#kind-catalogue
+  - native: kind-catalogue
     external: engineKindCatalogue
     type: concept
-  - native: yarramate-engine#likec4-check-result-schema
+  - native: likec4-check-result-schema
     external: engineLikec4CheckResultSchema
     type: concept
-  - native: yarramate-engine#likec4-diagnostic-result-schema
+  - native: likec4-diagnostic-result-schema
     external: engineLikec4DiagnosticResultSchema
     type: concept
-  - native: yarramate-engine#likec4-generated-project-schema
+  - native: likec4-generated-project-schema
     external: engineLikec4GeneratedProjectSchema
     type: concept
-  - native: yarramate-engine#likec4-kind-mapping
+  - native: likec4-kind-mapping
     external: engineLikec4KindMapping
     type: concept
-  - native: yarramate-engine#likec4-kind-mapping-schema
+  - native: likec4-kind-mapping-schema
     external: engineLikec4KindMappingSchema
     type: concept
-  - native: yarramate-engine#load-core-contract
+  - native: load-core-contract
     external: engineLoadCoreContract
     type: concept
-  - native: yarramate-engine#load-source-document
+  - native: load-source-document
     external: engineLoadSourceDocument
     type: concept
-  - native: yarramate-engine#native-document
+  - native: native-document
     external: engineNativeDocument
     type: concept
-  - native: yarramate-engine#parse-document
+  - native: parse-document
     external: engineParseDocument
     type: concept
-  - native: yarramate-engine#profile-catalogue
+  - native: profile-catalogue
     external: engineProfileCatalogue
     type: concept
-  - native: yarramate-engine#question-catalogue
+  - native: question-catalogue
     external: engineQuestionCatalogue
     type: concept
-  - native: yarramate-engine#projection-definition
+  - native: projection-definition
     external: engineProjectionDefinition
     type: concept
-  - native: yarramate-engine#projection-result-schema
+  - native: projection-result-schema
     external: engineProjectionResultSchema
     type: concept
-  - native: yarramate-engine#projection-schema
+  - native: projection-schema
     external: engineProjectionSchema
     type: concept
-  - native: yarramate-engine#relationship-policy-catalogue
+  - native: relationship-policy-catalogue
     external: engineRelationshipPolicyCatalogue
     type: concept
-  - native: yarramate-engine#resolve-workspace
+  - native: resolve-workspace
     external: engineResolveWorkspace
     type: concept
-  - native: yarramate-engine#semantic-graph
+  - native: semantic-graph
     external: engineSemanticGraph
     type: concept
-  - native: yarramate-engine#semantic-graph-schema
+  - native: semantic-graph-schema
     external: engineSemanticGraphSchema
     type: concept
-  - native: yarramate-engine#serialize-semantic-graph
+  - native: serialize-semantic-graph
     external: engineSerializeSemanticGraph
     type: concept
-  - native: yarramate-engine#validate-adapter-mapping
+  - native: validate-adapter-mapping
     external: engineValidateAdapterMapping
     type: concept
-  - native: yarramate-engine#validate-document-structure
+  - native: validate-document-structure
     external: engineValidateDocumentStructure
     type: concept
-  - native: yarramate-engine#validate-semantic-claims
+  - native: validate-semantic-claims
     external: engineValidateSemanticClaims
     type: concept
-  - native: yarramate-engine#workspace-manifest
+  - native: workspace-manifest
     external: engineWorkspaceManifest
     type: concept
-  - native: yarramate-engine#workspace-schema
+  - native: workspace-schema
     external: engineWorkspaceSchema
     type: concept
-  - native: yarramate-evolution#adapter-foundation
+  - native: adapter-foundation
     external: evolutionAdapterFoundation
     type: concept
-  - native: yarramate-evolution#core-contract-foundation
+  - native: core-contract-foundation
     external: evolutionCoreContractFoundation
     type: concept
-  - native: yarramate-evolution#native-foundation
+  - native: native-foundation
     external: evolutionNativeFoundation
     type: concept
-  - native: yarramate-evolution#state-foundation
+  - native: state-foundation
     external: evolutionStateFoundation
     type: concept
-  - native: yarramate-product#compile-native-architecture
+  - native: compile-native-architecture
     external: productCompileNativeArchitecture
     type: concept
-  - native: yarramate-product#deterministic-correctness
+  - native: deterministic-correctness
     external: productDeterministicCorrectness
     type: concept
-  - native: yarramate-product#design-solution-before-build
+  - native: design-solution-before-build
     external: productDesignSolutionBeforeBuild
     type: concept
-  - native: yarramate-product#discover-project-architecture
+  - native: discover-project-architecture
     external: productDiscoverProjectArchitecture
     type: concept
-  - native: yarramate-product#evidence-intent-separation
+  - native: evidence-intent-separation
     external: productEvidenceIntentSeparation
     type: concept
-  - native: yarramate-product#evaluate-architecture-evidence
+  - native: evaluate-architecture-evidence
     external: productEvaluateArchitectureEvidence
     type: concept
-  - native: yarramate-product#native-documents-are-canonical
+  - native: native-documents-are-canonical
     external: productNativeDocumentsAreCanonical
     type: concept
-  - native: yarramate-product#provide-machine-context
+  - native: provide-machine-context
     external: productProvideMachineContext
     type: concept
-  - native: yarramate-product#reconcile-intent-and-evidence
+  - native: reconcile-intent-and-evidence
     external: productReconcileIntentAndEvidence
     type: concept
-  - native: yarramate-product#repository-native-operation
+  - native: repository-native-operation
     external: productRepositoryNativeOperation
     type: concept
-  - native: yarramate-product#shared-architecture-context
+  - native: shared-architecture-context
     external: productSharedArchitectureContext
     type: concept
-  - native: yarramate-product#stable-cli
+  - native: stable-cli
     external: productStableCli
     type: concept
-  - native: yarramate-product#tool-neutral-core
+  - native: tool-neutral-core
     external: productToolNeutralCore
     type: concept
-  - native: yarramate-product#validate-native-architecture
+  - native: validate-native-architecture
     external: productValidateNativeArchitecture
     type: concept
-  - native: yarramate-product#yarramate-maintainers
+  - native: yarramate-maintainers
     external: productYarramateMaintainers
     type: concept
-  - native: yarramate-repository#architecture-decisions
+  - native: architecture-decisions
     external: repositoryArchitectureDecisions
     type: concept
-  - native: yarramate-repository#likec4-adapter-prototype
+  - native: likec4-adapter-prototype
     external: repositoryLikec4AdapterPrototype
     type: concept
-  - native: yarramate-repository#likec4-kind-mapping-tests
+  - native: likec4-kind-mapping-tests
     external: repositoryLikec4KindMappingTests
     type: concept
-  - native: yarramate-repository#product-contract
+  - native: product-contract
     external: repositoryProductContract
     type: concept
-  - native: yarramate-repository#projection-source
+  - native: projection-source
     external: repositoryProjectionSource
     type: concept
-  - native: yarramate-repository#roadmap
+  - native: roadmap
     external: repositoryRoadmap
     type: concept
-  - native: yarramate-repository#check-command-source
+  - native: check-command-source
     external: repositoryCheckCommandSource
     type: concept
-  - native: yarramate-repository#likec4-cli-source
+  - native: likec4-cli-source
     external: repositoryLikec4CliSource
     type: concept
-  - native: yarramate-engine#adapter-validation-reads-graph
+  - native: adapter-validation-reads-graph
     external: adapterValidationReadsGraph
     type: relationship
-  - native: yarramate-engine#adapter-validation-reads-mapping
+  - native: adapter-validation-reads-mapping
     external: adapterValidationReadsMapping
     type: relationship
-  - native: yarramate-engine#adapter-validation-reads-schema
+  - native: adapter-validation-reads-schema
     external: adapterValidationReadsSchema
     type: relationship
-  - native: yarramate-engine#add-command-serves-agent-harness
+  - native: add-command-serves-agent-harness
     external: addCommandServesAgentHarness
     type: relationship
-  - native: yarramate-engine#check-command-reads-result-schema
+  - native: check-command-reads-result-schema
     external: checkCommandReadsResultSchema
     type: relationship
-  - native: yarramate-engine#check-command-serves-core-contract-check
+  - native: check-command-serves-core-contract-check
     external: checkCommandServesCoreContractCheck
     type: relationship
-  - native: yarramate-engine#check-command-writes-result
+  - native: check-command-writes-result
     external: checkCommandWritesResult
     type: relationship
-  - native: yarramate-engine#cli-provides-add
+  - native: cli-provides-add
     external: cliProvidesAdd
     type: relationship
-  - native: yarramate-engine#cli-provides-check
+  - native: cli-provides-check
     external: cliProvidesCheck
     type: relationship
-  - native: yarramate-engine#cli-provides-compile
+  - native: cli-provides-compile
     external: cliProvidesCompile
     type: relationship
-  - native: yarramate-engine#cli-provides-connect
+  - native: cli-provides-connect
     external: cliProvidesConnect
     type: relationship
-  - native: yarramate-engine#cli-provides-evidence
+  - native: cli-provides-evidence
     external: cliProvidesEvidence
     type: relationship
-  - native: yarramate-engine#cli-provides-init
+  - native: cli-provides-init
     external: cliProvidesInit
     type: relationship
-  - native: yarramate-engine#cli-provides-reconciliation
+  - native: cli-provides-reconciliation
     external: cliProvidesReconciliation
     type: relationship
-  - native: yarramate-engine#cli-reads-diagnostic-result-schema
+  - native: cli-reads-diagnostic-result-schema
     external: cliReadsDiagnosticResultSchema
     type: relationship
-  - native: yarramate-engine#cli-uses-workspace-loader
+  - native: cli-uses-workspace-loader
     external: cliUsesWorkspaceLoader
     type: relationship
-  - native: yarramate-engine#cli-validates-adapter-mapping
+  - native: cli-validates-adapter-mapping
     external: cliValidatesAdapterMapping
     type: relationship
-  - native: yarramate-engine#cli-writes-diagnostic-result
+  - native: cli-writes-diagnostic-result
     external: cliWritesDiagnosticResult
     type: relationship
-  - native: yarramate-engine#compare-command-serves-comparison
+  - native: compare-command-serves-comparison
     external: compareCommandServesComparison
     type: relationship
-  - native: yarramate-engine#comparison-produces-result
+  - native: comparison-produces-result
     external: comparisonProducesResult
     type: relationship
-  - native: yarramate-engine#comparison-schema-describes-result
+  - native: comparison-schema-describes-result
     external: comparisonSchemaDescribesResult
     type: relationship
-  - native: yarramate-engine#compilation-writes-graph
+  - native: compilation-writes-graph
     external: compilationWritesGraph
     type: relationship
-  - native: yarramate-engine#compile-command-serves-agent-harness
+  - native: compile-command-serves-agent-harness
     external: compileCommandServesAgentHarness
     type: relationship
-  - native: yarramate-engine#compiler-builds-graph
+  - native: compiler-builds-graph
     external: compilerBuildsGraph
     type: relationship
-  - native: yarramate-engine#compiler-delivers-compilation
+  - native: compiler-delivers-compilation
     external: compilerDeliversCompilation
     type: relationship
-  - native: yarramate-engine#compiler-delivers-validation
+  - native: compiler-delivers-validation
     external: compilerDeliversValidation
     type: relationship
-  - native: yarramate-engine#compiler-evaluates-projections
+  - native: compiler-evaluates-projections
     external: compilerEvaluatesProjections
     type: relationship
-  - native: yarramate-engine#compiler-parses
+  - native: compiler-parses
     external: compilerParses
     type: relationship
-  - native: yarramate-engine#compiler-serializes-graph
+  - native: compiler-serializes-graph
     external: compilerSerializesGraph
     type: relationship
-  - native: yarramate-engine#compiler-validates-semantics
+  - native: compiler-validates-semantics
     external: compilerValidatesSemantics
     type: relationship
-  - native: yarramate-engine#compiler-validates-structure
+  - native: compiler-validates-structure
     external: compilerValidatesStructure
     type: relationship
-  - native: yarramate-engine#connect-command-serves-agent-harness
+  - native: connect-command-serves-agent-harness
     external: connectCommandServesAgentHarness
     type: relationship
-  - native: yarramate-engine#core-contract-check-reads-manifest
+  - native: core-contract-check-reads-manifest
     external: coreContractCheckReadsManifest
     type: relationship
-  - native: yarramate-engine#core-contract-checker-checks-surface
+  - native: core-contract-checker-checks-surface
     external: coreContractCheckerChecksSurface
     type: relationship
-  - native: yarramate-engine#core-contract-checker-loads-contract
+  - native: core-contract-checker-loads-contract
     external: coreContractCheckerLoadsContract
     type: relationship
-  - native: yarramate-engine#core-contract-load-reads-manifest
+  - native: core-contract-load-reads-manifest
     external: coreContractLoadReadsManifest
     type: relationship
-  - native: yarramate-engine#core-contract-load-reads-schema
+  - native: core-contract-load-reads-schema
     external: coreContractLoadReadsSchema
     type: relationship
-  - native: yarramate-engine#core-contract-schema-describes-manifest
+  - native: core-contract-schema-describes-manifest
     external: coreContractSchemaDescribesManifest
     type: relationship
-  - native: yarramate-engine#evidence-command-serves-agent-harness
+  - native: evidence-command-serves-agent-harness
     external: evidenceCommandServesAgentHarness
     type: relationship
-  - native: yarramate-engine#evidence-evaluation-reads-document
+  - native: evidence-evaluation-reads-document
     external: evidenceEvaluationReadsDocument
     type: relationship
-  - native: yarramate-engine#evidence-evaluation-reads-graph
+  - native: evidence-evaluation-reads-graph
     external: evidenceEvaluationReadsGraph
     type: relationship
-  - native: yarramate-engine#evidence-evaluation-reads-report-schema
+  - native: evidence-evaluation-reads-report-schema
     external: evidenceEvaluationReadsReportSchema
     type: relationship
-  - native: yarramate-engine#evidence-evaluation-reads-schema
+  - native: evidence-evaluation-reads-schema
     external: evidenceEvaluationReadsSchema
     type: relationship
-  - native: yarramate-engine#evidence-evaluation-writes-report
+  - native: evidence-evaluation-writes-report
     external: evidenceEvaluationWritesReport
     type: relationship
-  - native: yarramate-engine#evidence-evaluator-delivers-capability
+  - native: evidence-evaluator-delivers-capability
     external: evidenceEvaluatorDeliversCapability
     type: relationship
-  - native: yarramate-engine#evidence-evaluator-evaluates-overlay
+  - native: evidence-evaluator-evaluates-overlay
     external: evidenceEvaluatorEvaluatesOverlay
     type: relationship
-  - native: yarramate-engine#evidence-evaluator-reconciles-reports
+  - native: evidence-evaluator-reconciles-reports
     external: evidenceEvaluatorReconcilesReports
     type: relationship
-  - native: yarramate-engine#graph-delivers-machine-context
+  - native: graph-delivers-machine-context
     external: graphDeliversMachineContext
     type: relationship
-  - native: yarramate-engine#graphify-adapter-delivers-evidence
+  - native: graphify-adapter-delivers-evidence
     external: graphifyAdapterDeliversEvidence
     type: relationship
-  - native: yarramate-engine#graphify-adapter-observes-nodes
+  - native: graphify-adapter-observes-nodes
     external: graphifyAdapterObservesNodes
     type: relationship
-  - native: yarramate-engine#graphify-adapter-provides-observation
+  - native: graphify-adapter-provides-observation
     external: graphifyAdapterProvidesObservation
     type: relationship
-  - native: yarramate-engine#graphify-observation-reads-mapping
+  - native: graphify-observation-reads-mapping
     external: graphifyObservationReadsMapping
     type: relationship
-  - native: yarramate-engine#graphify-observation-writes-evidence
+  - native: graphify-observation-writes-evidence
     external: graphifyObservationWritesEvidence
     type: relationship
-  - native: yarramate-engine#graphify-observe-command-serves-agent-harness
+  - native: graphify-observe-command-serves-agent-harness
     external: graphifyObserveCommandServesAgentHarness
     type: relationship
-  - native: yarramate-engine#init-command-serves-agent-harness
+  - native: init-command-serves-agent-harness
     external: initCommandServesAgentHarness
     type: relationship
-  - native: yarramate-engine#likec4-adapter-assembles-project
+  - native: likec4-adapter-assembles-project
     external: likec4AdapterAssemblesProject
     type: relationship
-  - native: yarramate-engine#likec4-adapter-performs-export
+  - native: likec4-adapter-performs-export
     external: likec4AdapterPerformsExport
     type: relationship
-  - native: yarramate-engine#likec4-adapter-renders-deployment-view
+  - native: likec4-adapter-renders-deployment-view
     external: likec4AdapterRendersDeploymentView
     type: relationship
-  - native: yarramate-engine#likec4-adapter-renders-dynamic-view
+  - native: likec4-adapter-renders-dynamic-view
     external: likec4AdapterRendersDynamicView
     type: relationship
-  - native: yarramate-engine#likec4-adapter-renders-state-comparison
+  - native: likec4-adapter-renders-state-comparison
     external: likec4AdapterRendersStateComparison
     type: relationship
-  - native: yarramate-engine#likec4-check-serves-export
+  - native: likec4-check-serves-export
     external: likec4CheckServesExport
     type: relationship
-  - native: yarramate-engine#likec4-command-serves-deployment-view
+  - native: likec4-command-serves-deployment-view
     external: likec4CommandServesDeploymentView
     type: relationship
-  - native: yarramate-engine#likec4-command-serves-dynamic-view
+  - native: likec4-command-serves-dynamic-view
     external: likec4CommandServesDynamicView
     type: relationship
-  - native: yarramate-engine#likec4-command-serves-export
+  - native: likec4-command-serves-export
     external: likec4CommandServesExport
     type: relationship
-  - native: yarramate-engine#likec4-command-serves-project-assembly
+  - native: likec4-command-serves-project-assembly
     external: likec4CommandServesProjectAssembly
     type: relationship
-  - native: yarramate-engine#likec4-command-serves-state-comparison
+  - native: likec4-command-serves-state-comparison
     external: likec4CommandServesStateComparison
     type: relationship
-  - native: yarramate-engine#likec4-comparison-reads-state-comparison
+  - native: likec4-comparison-reads-state-comparison
     external: likec4ComparisonReadsStateComparison
     type: relationship
-  - native: yarramate-engine#likec4-export-reads-kind-mapping
+  - native: likec4-export-reads-kind-mapping
     external: likec4ExportReadsKindMapping
     type: relationship
-  - native: yarramate-engine#likec4-export-reads-kind-mapping-schema
+  - native: likec4-export-reads-kind-mapping-schema
     external: likec4ExportReadsKindMappingSchema
     type: relationship
-  - native: yarramate-engine#likec4-export-reads-mapping
+  - native: likec4-export-reads-mapping
     external: likec4ExportReadsMapping
     type: relationship
-  - native: yarramate-engine#likec4-export-reads-projection
+  - native: likec4-export-reads-projection
     external: likec4ExportReadsProjection
     type: relationship
-  - native: yarramate-engine#likec4-project-assembly-reads-definition
+  - native: likec4-project-assembly-reads-definition
     external: likec4ProjectAssemblyReadsDefinition
     type: relationship
-  - native: yarramate-engine#likec4-project-assembly-reads-definition-schema
+  - native: likec4-project-assembly-reads-definition-schema
     external: likec4ProjectAssemblyReadsDefinitionSchema
     type: relationship
-  - native: yarramate-engine#likec4-project-assembly-reads-marker-schema
+  - native: likec4-project-assembly-reads-marker-schema
     external: likec4ProjectAssemblyReadsMarkerSchema
     type: relationship
-  - native: yarramate-engine#likec4-project-assembly-reads-projections
+  - native: likec4-project-assembly-reads-projections
     external: likec4ProjectAssemblyReadsProjections
     type: relationship
-  - native: yarramate-engine#likec4-project-assembly-reads-starter-pack
+  - native: likec4-project-assembly-reads-starter-pack
     external: likec4ProjectAssemblyReadsStarterPack
     type: relationship
-  - native: yarramate-engine#parse-reads-native-document
+  - native: parse-reads-native-document
     external: parseReadsNativeDocument
     type: relationship
-  - native: yarramate-engine#parse-triggers-structure-validation
+  - native: parse-triggers-structure-validation
     external: parseTriggersStructureValidation
     type: relationship
-  - native: yarramate-engine#parser-flows-document
+  - native: parser-flows-document
     external: parserFlowsDocument
     type: relationship
-  - native: yarramate-engine#profile-supplies-kinds
+  - native: profile-supplies-kinds
     external: profileSuppliesKinds
     type: relationship
-  - native: yarramate-engine#profile-supplies-policies
+  - native: profile-supplies-policies
     external: profileSuppliesPolicies
     type: relationship
-  - native: yarramate-engine#projection-evaluation-delivers-context
+  - native: projection-evaluation-delivers-context
     external: projectionEvaluationDeliversContext
     type: relationship
-  - native: yarramate-engine#projection-evaluation-reads-definition
+  - native: projection-evaluation-reads-definition
     external: projectionEvaluationReadsDefinition
     type: relationship
-  - native: yarramate-engine#projection-evaluation-reads-definition-schema
+  - native: projection-evaluation-reads-definition-schema
     external: projectionEvaluationReadsDefinitionSchema
     type: relationship
-  - native: yarramate-engine#projection-evaluation-reads-graph
+  - native: projection-evaluation-reads-graph
     external: projectionEvaluationReadsGraph
     type: relationship
-  - native: yarramate-engine#projection-evaluation-writes-result
+  - native: projection-evaluation-writes-result
     external: projectionEvaluationWritesResult
     type: relationship
-  - native: yarramate-engine#projection-result-schema-describes-result
+  - native: projection-result-schema-describes-result
     external: projectionResultSchemaDescribesResult
     type: relationship
-  - native: yarramate-engine#reconcile-command-serves-agent-harness
+  - native: reconcile-command-serves-agent-harness
     external: reconcileCommandServesAgentHarness
     type: relationship
-  - native: yarramate-engine#reconciliation-delivers-capability
+  - native: reconciliation-delivers-capability
     external: reconciliationDeliversCapability
     type: relationship
-  - native: yarramate-engine#reconciliation-reads-evidence-report
+  - native: reconciliation-reads-evidence-report
     external: reconciliationReadsEvidenceReport
     type: relationship
-  - native: yarramate-engine#reconciliation-reads-report-schema
+  - native: reconciliation-reads-report-schema
     external: reconciliationReadsReportSchema
     type: relationship
-  - native: yarramate-engine#reconciliation-writes-report
+  - native: reconciliation-writes-report
     external: reconciliationWritesReport
     type: relationship
-  - native: yarramate-engine#semantic-validation-flows-diagnostics
+  - native: semantic-validation-flows-diagnostics
     external: semanticValidationFlowsDiagnostics
     type: relationship
-  - native: yarramate-engine#semantic-validation-reads-kinds
+  - native: semantic-validation-reads-kinds
     external: semanticValidationReadsKinds
     type: relationship
-  - native: yarramate-engine#semantic-validation-reads-policies
+  - native: semantic-validation-reads-policies
     external: semanticValidationReadsPolicies
     type: relationship
-  - native: yarramate-engine#semantic-validation-triggers-compilation
+  - native: semantic-validation-triggers-compilation
     external: semanticValidationTriggersCompilation
     type: relationship
-  - native: yarramate-engine#serialization-reads-graph
+  - native: serialization-reads-graph
     external: serializationReadsGraph
     type: relationship
-  - native: yarramate-engine#serialization-reads-graph-schema
+  - native: serialization-reads-graph-schema
     external: serializationReadsGraphSchema
     type: relationship
-  - native: yarramate-engine#source-loader-loads-document
+  - native: source-loader-loads-document
     external: sourceLoaderLoadsDocument
     type: relationship
-  - native: yarramate-engine#state-engine-performs-comparison
+  - native: state-engine-performs-comparison
     external: stateEnginePerformsComparison
     type: relationship
-  - native: yarramate-engine#structure-triggers-semantic-validation
+  - native: structure-triggers-semantic-validation
     external: structureTriggersSemanticValidation
     type: relationship
-  - native: yarramate-engine#validation-reads-schema
+  - native: validation-reads-schema
     external: validationReadsSchema
     type: relationship
-  - native: yarramate-engine#validation-writes-diagnostics
+  - native: validation-writes-diagnostics
     external: validationWritesDiagnostics
     type: relationship
-  - native: yarramate-engine#workspace-loader-resolves-manifest
+  - native: workspace-loader-resolves-manifest
     external: workspaceLoaderResolvesManifest
     type: relationship
-  - native: yarramate-engine#workspace-resolution-reads-manifest
+  - native: workspace-resolution-reads-manifest
     external: workspaceResolutionReadsManifest
     type: relationship
-  - native: yarramate-engine#workspace-resolution-reads-schema
+  - native: workspace-resolution-reads-schema
     external: workspaceResolutionReadsSchema
     type: relationship
-  - native: yarramate-product#adopting-team
+  - native: adopting-team
     external: adoptingTeam
     type: concept
-  - native: yarramate-product#adopting-team-performs-design
+  - native: adopting-team-performs-design
     external: adoptingTeamPerformsDesign
     type: relationship
-  - native: yarramate-product#agent-harness
+  - native: agent-harness
     external: agentHarness
     type: concept
-  - native: yarramate-product#agent-trust-drives-shared-context
+  - native: agent-trust-drives-shared-context
     external: agentTrustDrivesSharedContext
     type: relationship
-  - native: yarramate-product#architecture-drift
+  - native: architecture-drift
     external: architectureDrift
     type: concept
-  - native: yarramate-product#canonical-documents-support-context
+  - native: canonical-documents-support-context
     external: canonicalDocumentsSupportContext
     type: relationship
-  - native: yarramate-product#cli-supports-context
+  - native: cli-supports-context
     external: cliSupportsContext
     type: relationship
-  - native: yarramate-product#cli-supports-design
+  - native: cli-supports-design
     external: cliSupportsDesign
     type: relationship
-  - native: yarramate-product#cli-supports-discovery
+  - native: cli-supports-discovery
     external: cliSupportsDiscovery
     type: relationship
-  - native: yarramate-product#correctness-supports-context
+  - native: correctness-supports-context
     external: correctnessSupportsContext
     type: relationship
-  - native: yarramate-product#design-supports-context
+  - native: design-supports-context
     external: designSupportsContext
     type: relationship
-  - native: yarramate-product#discovery-supports-context
+  - native: discovery-supports-context
     external: discoverySupportsContext
     type: relationship
-  - native: yarramate-product#drift-drives-shared-context
+  - native: drift-drives-shared-context
     external: driftDrivesSharedContext
     type: relationship
-  - native: yarramate-product#evidence-separation-supports-discovery
+  - native: evidence-separation-supports-discovery
     external: evidenceSeparationSupportsDiscovery
     type: relationship
-  - native: yarramate-product#evidence-separation-supports-reconciliation
+  - native: evidence-separation-supports-reconciliation
     external: evidenceSeparationSupportsReconciliation
     type: relationship
-  - native: yarramate-product#harness-performs-design
+  - native: harness-performs-design
     external: harnessPerformsDesign
     type: relationship
-  - native: yarramate-product#harness-performs-discovery
+  - native: harness-performs-discovery
     external: harnessPerformsDiscovery
     type: relationship
-  - native: yarramate-product#machine-context-realizes-shared-context
+  - native: machine-context-realizes-shared-context
     external: machineContextRealizesSharedContext
     type: relationship
-  - native: yarramate-product#maintainers-perform-stewardship
+  - native: maintainers-perform-stewardship
     external: maintainersPerformStewardship
     type: relationship
-  - native: yarramate-product#reconciliation-supports-context
+  - native: reconciliation-supports-context
     external: reconciliationSupportsContext
     type: relationship
-  - native: yarramate-product#repository-operation-supports-context
+  - native: repository-operation-supports-context
     external: repositoryOperationSupportsContext
     type: relationship
-  - native: yarramate-product#repository-stewardship
+  - native: repository-stewardship
     external: repositoryStewardship
     type: concept
-  - native: yarramate-engine#relationship-table
+  - native: relationship-table
     external: engineRelationshipTable
     type: concept
-  - native: yarramate-engine#relationship-table-realizes-policies
+  - native: relationship-table-realizes-policies
     external: engineRelationshipTableRealizesPolicies
     type: relationship
-  - native: yarramate-repository#relationship-table-source
+  - native: relationship-table-source
     external: relationshipTableSource
     type: concept
-  - native: yarramate-repository#relationship-table-generator
+  - native: relationship-table-generator
     external: relationshipTableGenerator
     type: concept
-  - native: yarramate-repository#relationship-table-module
+  - native: relationship-table-module
     external: relationshipTableModule
     type: concept
-  - native: yarramate-repository#relationship-matrix-source
+  - native: relationship-matrix-source
     external: relationshipMatrixSource
     type: concept
-  - native: yarramate-repository#relationship-table-source-realizes-table
+  - native: relationship-table-source-realizes-table
     external: relationshipTableSourceRealizesTable
     type: relationship
-  - native: yarramate-repository#relationship-table-generator-realizes-table
+  - native: relationship-table-generator-realizes-table
     external: relationshipTableGeneratorRealizesTable
     type: relationship
-  - native: yarramate-repository#relationship-table-module-realizes-table
+  - native: relationship-table-module-realizes-table
     external: relationshipTableModuleRealizesTable
     type: relationship
-  - native: yarramate-repository#relationship-matrix-source-realizes-policies
+  - native: relationship-matrix-source-realizes-policies
     external: relationshipMatrixSourceRealizesPolicies
     type: relationship
-  - native: yarramate-product#run-discovery-journey
+  - native: run-discovery-journey
     external: runDiscoveryJourney
     type: concept
-  - native: yarramate-product#run-design-journey
+  - native: run-design-journey
     external: runDesignJourney
     type: concept
-  - native: yarramate-product#discovery-journey-realizes-discovery
+  - native: discovery-journey-realizes-discovery
     external: discoveryJourneyRealizesDiscovery
     type: relationship
-  - native: yarramate-product#design-journey-realizes-design
+  - native: design-journey-realizes-design
     external: designJourneyRealizesDesign
     type: relationship
-  - native: yarramate-product#trustworthy-agent-context
+  - native: trustworthy-agent-context
     external: trustworthyAgentContext
     type: concept
-  - native: yarramate-repository#adapter-mapping-schema-source
+  - native: adapter-mapping-schema-source
     external: adapterMappingSchemaSource
     type: concept
-  - native: yarramate-repository#adapter-mapping-source
+  - native: adapter-mapping-source
     external: adapterMappingSource
     type: concept
-  - native: yarramate-repository#adapter-mapping-tests
+  - native: adapter-mapping-tests
     external: adapterMappingTests
     type: concept
-  - native: yarramate-repository#adapter-schema-realizes-mapping-schema
+  - native: adapter-schema-realizes-mapping-schema
     external: adapterSchemaRealizesMappingSchema
     type: relationship
-  - native: yarramate-repository#adapter-source-realizes-validation
+  - native: adapter-source-realizes-validation
     external: adapterSourceRealizesValidation
     type: relationship
-  - native: yarramate-repository#adapter-specializes-authoring
+  - native: adapter-specializes-authoring
     external: adapterSpecializesAuthoring
     type: relationship
-  - native: yarramate-repository#adapter-tests-validate-mapping
+  - native: adapter-tests-validate-mapping
     external: adapterTestsValidateMapping
     type: relationship
-  - native: yarramate-repository#agent-skill-realizes-design
+  - native: agent-skill-realizes-design
     external: agentSkillRealizesDesign
     type: relationship
-  - native: yarramate-repository#agent-skill-realizes-discovery
+  - native: agent-skill-realizes-discovery
     external: agentSkillRealizesDiscovery
     type: relationship
-  - native: yarramate-repository#agent-skill-realizes-reconciliation
+  - native: agent-skill-realizes-reconciliation
     external: agentSkillRealizesReconciliation
     type: relationship
-  - native: yarramate-repository#backlog-disposition-qualifies-roadmap
+  - native: backlog-disposition-qualifies-roadmap
     external: backlogDispositionQualifiesRoadmap
     type: relationship
-  - native: yarramate-repository#check-command-source-realizes-command
+  - native: check-command-source-realizes-command
     external: checkCommandSourceRealizesCommand
     type: relationship
-  - native: yarramate-repository#check-result-schema-realizes-schema
+  - native: check-result-schema-realizes-schema
     external: checkResultSchemaRealizesSchema
     type: relationship
-  - native: yarramate-repository#check-result-schema-source
+  - native: check-result-schema-source
     external: checkResultSchemaSource
     type: concept
-  - native: yarramate-repository#cli-source
+  - native: cli-source
     external: cliSource
     type: concept
-  - native: yarramate-repository#cli-source-realizes-cli
+  - native: cli-source-realizes-cli
     external: cliSourceRealizesCli
     type: relationship
-  - native: yarramate-repository#cli-support-source
+  - native: cli-support-source
     external: cliSupportSource
     type: concept
-  - native: yarramate-repository#cli-support-source-realizes-cli
+  - native: cli-support-source-realizes-cli
     external: cliSupportSourceRealizesCli
     type: relationship
-  - native: yarramate-repository#cli-tests
+  - native: cli-tests
     external: cliTests
     type: concept
-  - native: yarramate-repository#cli-tests-validate-cli
+  - native: cli-tests-validate-cli
     external: cliTestsValidateCli
     type: relationship
-  - native: yarramate-repository#compiler-source
+  - native: compiler-source
     external: compilerSource
     type: concept
-  - native: yarramate-repository#compiler-source-realizes-compiler
+  - native: compiler-source-realizes-compiler
     external: compilerSourceRealizesCompiler
     type: relationship
-  - native: yarramate-repository#compiler-tests
+  - native: compiler-tests
     external: compilerTests
     type: concept
-  - native: yarramate-repository#consumer-guide-realizes-design
+  - native: consumer-guide-realizes-design
     external: consumerGuideRealizesDesign
     type: relationship
-  - native: yarramate-repository#consumer-guide-realizes-discovery
+  - native: consumer-guide-realizes-discovery
     external: consumerGuideRealizesDiscovery
     type: relationship
-  - native: yarramate-repository#consumer-package-realizes-cli
+  - native: consumer-package-realizes-cli
     external: consumerPackageRealizesCli
     type: relationship
-  - native: yarramate-repository#consumer-package-realizes-design
+  - native: consumer-package-realizes-design
     external: consumerPackageRealizesDesign
     type: relationship
-  - native: yarramate-repository#consumer-package-realizes-discovery
+  - native: consumer-package-realizes-discovery
     external: consumerPackageRealizesDiscovery
     type: relationship
-  - native: yarramate-repository#contract-realizes-canonical-documents
+  - native: contract-realizes-canonical-documents
     external: contractRealizesCanonicalDocuments
     type: relationship
-  - native: yarramate-repository#contract-realizes-stable-cli
+  - native: contract-realizes-stable-cli
     external: contractRealizesStableCli
     type: relationship
-  - native: yarramate-repository#contract-realizes-tool-neutral-core
+  - native: contract-realizes-tool-neutral-core
     external: contractRealizesToolNeutralCore
     type: relationship
-  - native: yarramate-repository#core-contract-release-manifest
+  - native: core-contract-release-manifest
     external: coreContractReleaseManifest
     type: concept
-  - native: yarramate-repository#core-contract-release-realizes-manifest
+  - native: core-contract-release-realizes-manifest
     external: coreContractReleaseRealizesManifest
     type: relationship
-  - native: yarramate-repository#core-contract-schema-source
+  - native: core-contract-schema-source
     external: coreContractSchemaSource
     type: concept
-  - native: yarramate-repository#core-contract-schema-source-realizes-schema
+  - native: core-contract-schema-source-realizes-schema
     external: coreContractSchemaSourceRealizesSchema
     type: relationship
-  - native: yarramate-repository#core-contract-source
+  - native: core-contract-source
     external: coreContractSource
     type: concept
-  - native: yarramate-repository#core-contract-source-realizes-checker
+  - native: core-contract-source-realizes-checker
     external: coreContractSourceRealizesChecker
     type: relationship
-  - native: yarramate-repository#core-contract-tests
+  - native: core-contract-tests
     external: coreContractTests
     type: concept
-  - native: yarramate-repository#core-contract-tests-validate-checker
+  - native: core-contract-tests-validate-checker
     external: coreContractTestsValidateChecker
     type: relationship
-  - native: yarramate-repository#decisions-realize-contract
+  - native: decisions-realize-contract
     external: decisionsRealizeContract
     type: relationship
-  - native: yarramate-repository#diagnostic-result-schema-realizes-schema
+  - native: diagnostic-result-schema-realizes-schema
     external: diagnosticResultSchemaRealizesSchema
     type: relationship
-  - native: yarramate-repository#diagnostic-result-schema-source
+  - native: diagnostic-result-schema-source
     external: diagnosticResultSchemaSource
     type: concept
-  - native: yarramate-repository#document-schema-realizes-schema
+  - native: document-schema-realizes-schema
     external: documentSchemaRealizesSchema
     type: relationship
-  - native: yarramate-repository#document-schema-source
+  - native: document-schema-source
     external: documentSchemaSource
     type: concept
-  - native: yarramate-repository#evidence-report-schema-realizes-report-schema
+  - native: evidence-report-schema-realizes-report-schema
     external: evidenceReportSchemaRealizesReportSchema
     type: relationship
-  - native: yarramate-repository#evidence-report-schema-source
+  - native: evidence-report-schema-source
     external: evidenceReportSchemaSource
     type: concept
-  - native: yarramate-repository#evidence-schema-realizes-evidence-schema
+  - native: evidence-schema-realizes-evidence-schema
     external: evidenceSchemaRealizesEvidenceSchema
     type: relationship
-  - native: yarramate-repository#evidence-schema-source
+  - native: evidence-schema-source
     external: evidenceSchemaSource
     type: concept
-  - native: yarramate-repository#evidence-source
+  - native: evidence-source
     external: evidenceSource
     type: concept
-  - native: yarramate-repository#evidence-source-realizes-evaluator
+  - native: evidence-source-realizes-evaluator
     external: evidenceSourceRealizesEvaluator
     type: relationship
-  - native: yarramate-repository#evidence-tests
+  - native: evidence-tests
     external: evidenceTests
     type: concept
-  - native: yarramate-repository#evidence-tests-validate-evaluation
+  - native: evidence-tests-validate-evaluation
     external: evidenceTestsValidateEvaluation
     type: relationship
-  - native: yarramate-repository#evolution-model-realizes-states
+  - native: evolution-model-realizes-states
     external: evolutionModelRealizesStates
     type: relationship
-  - native: yarramate-repository#graph-schema-realizes-graph-schema
+  - native: graph-schema-realizes-graph-schema
     external: graphSchemaRealizesGraphSchema
     type: relationship
-  - native: yarramate-repository#graph-schema-source
+  - native: graph-schema-source
     external: graphSchemaSource
     type: concept
-  - native: yarramate-repository#graph-schema-tests
+  - native: graph-schema-tests
     external: graphSchemaTests
     type: concept
-  - native: yarramate-repository#graph-source
+  - native: graph-source
     external: graphSource
     type: concept
-  - native: yarramate-repository#graph-source-realizes-serialization
+  - native: graph-source-realizes-serialization
     external: graphSourceRealizesSerialization
     type: relationship
-  - native: yarramate-repository#graph-tests-validate-interchange
+  - native: graph-tests-validate-interchange
     external: graphTestsValidateInterchange
     type: relationship
-  - native: yarramate-repository#graphify-cli-realizes-command
+  - native: graphify-cli-realizes-command
     external: graphifyCliRealizesCommand
     type: relationship
-  - native: yarramate-repository#graphify-source-realizes-adapter
+  - native: graphify-source-realizes-adapter
     external: graphifySourceRealizesAdapter
     type: relationship
-  - native: yarramate-repository#graphify-tests-validate-observation
+  - native: graphify-tests-validate-observation
     external: graphifyTestsValidateObservation
     type: relationship
-  - native: yarramate-repository#journey-guide-realizes-design
+  - native: journey-guide-realizes-design
     external: journeyGuideRealizesDesign
     type: relationship
-  - native: yarramate-repository#journey-guide-realizes-discovery
+  - native: journey-guide-realizes-discovery
     external: journeyGuideRealizesDiscovery
     type: relationship
-  - native: yarramate-repository#journey-tests-verify-design
+  - native: journey-tests-verify-design
     external: journeyTestsVerifyDesign
     type: relationship
-  - native: yarramate-repository#journey-tests-verify-discovery
+  - native: journey-tests-verify-discovery
     external: journeyTestsVerifyDiscovery
     type: relationship
-  - native: yarramate-repository#likec4-check-result-schema-source
+  - native: likec4-check-result-schema-source
     external: likec4CheckResultSchemaSource
     type: concept
-  - native: yarramate-repository#likec4-check-schema-realizes-schema
+  - native: likec4-check-schema-realizes-schema
     external: likec4CheckSchemaRealizesSchema
     type: relationship
-  - native: yarramate-repository#likec4-cli-source-realizes-check
+  - native: likec4-cli-source-realizes-check
     external: likec4CliSourceRealizesCheck
     type: relationship
-  - native: yarramate-repository#likec4-cli-source-realizes-command
+  - native: likec4-cli-source-realizes-command
     external: likec4CliSourceRealizesCommand
     type: relationship
-  - native: yarramate-repository#likec4-cli-tests
+  - native: likec4-cli-tests
     external: likec4CliTests
     type: concept
-  - native: yarramate-repository#likec4-cli-tests-validate-check
+  - native: likec4-cli-tests-validate-check
     external: likec4CliTestsValidateCheck
     type: relationship
-  - native: yarramate-repository#likec4-cli-tests-validate-command
+  - native: likec4-cli-tests-validate-command
     external: likec4CliTestsValidateCommand
     type: relationship
-  - native: yarramate-repository#likec4-diagnostic-result-schema-source
+  - native: likec4-diagnostic-result-schema-source
     external: likec4DiagnosticResultSchemaSource
     type: concept
-  - native: yarramate-repository#likec4-diagnostic-schema-realizes-schema
+  - native: likec4-diagnostic-schema-realizes-schema
     external: likec4DiagnosticSchemaRealizesSchema
     type: relationship
-  - native: yarramate-repository#likec4-export-mapping-source
+  - native: likec4-export-mapping-source
     external: likec4ExportMappingSource
     type: concept
-  - native: yarramate-repository#likec4-export-projection-source
+  - native: likec4-export-projection-source
     external: likec4ExportProjectionSource
     type: concept
-  - native: yarramate-repository#likec4-export-source-realizes-adapter
+  - native: likec4-export-source-realizes-adapter
     external: likec4ExportSourceRealizesAdapter
     type: relationship
-  - native: yarramate-repository#likec4-export-tests
+  - native: likec4-export-tests
     external: likec4ExportTests
     type: concept
-  - native: yarramate-repository#likec4-export-tests-validate-adapter
+  - native: likec4-export-tests-validate-adapter
     external: likec4ExportTestsValidateAdapter
     type: relationship
-  - native: yarramate-repository#likec4-generated-project-schema-source
+  - native: likec4-generated-project-schema-source
     external: likec4GeneratedProjectSchemaSource
     type: concept
-  - native: yarramate-repository#likec4-generated-schema-realizes-schema
+  - native: likec4-generated-schema-realizes-schema
     external: likec4GeneratedSchemaRealizesSchema
     type: relationship
-  - native: yarramate-repository#likec4-generated-v2-schema-realizes-schema
+  - native: likec4-generated-v2-schema-realizes-schema
     external: likec4GeneratedV2SchemaRealizesSchema
     type: relationship
-  - native: yarramate-repository#likec4-kind-mapping-schema-source
+  - native: likec4-kind-mapping-schema-source
     external: likec4KindMappingSchemaSource
     type: concept
-  - native: yarramate-repository#likec4-kind-mapping-source
+  - native: likec4-kind-mapping-source
     external: likec4KindMappingSource
     type: concept
-  - native: yarramate-repository#likec4-kind-profile-realizes-mapping
+  - native: likec4-kind-profile-realizes-mapping
     external: likec4KindProfileRealizesMapping
     type: relationship
-  - native: yarramate-repository#likec4-kind-profile-source
+  - native: likec4-kind-profile-source
     external: likec4KindProfileSource
     type: concept
-  - native: yarramate-repository#likec4-kind-schema-realizes-schema
+  - native: likec4-kind-schema-realizes-schema
     external: likec4KindSchemaRealizesSchema
     type: relationship
-  - native: yarramate-repository#likec4-kind-source-realizes-mapping
+  - native: likec4-kind-source-realizes-mapping
     external: likec4KindSourceRealizesMapping
     type: relationship
-  - native: yarramate-repository#likec4-kind-tests-validate-mapping
+  - native: likec4-kind-tests-validate-mapping
     external: likec4KindTestsValidateMapping
     type: relationship
-  - native: yarramate-repository#likec4-mapping-source-realizes-mapping
+  - native: likec4-mapping-source-realizes-mapping
     external: likec4MappingSourceRealizesMapping
     type: relationship
-  - native: yarramate-repository#likec4-prepare-source-realizes-export
+  - native: likec4-prepare-source-realizes-export
     external: likec4PrepareSourceRealizesExport
     type: relationship
-  - native: yarramate-repository#likec4-prepare-tests
+  - native: likec4-prepare-tests
     external: likec4PrepareTests
     type: concept
-  - native: yarramate-repository#likec4-prepare-tests-validate-export
+  - native: likec4-prepare-tests-validate-export
     external: likec4PrepareTestsValidateExport
     type: relationship
-  - native: yarramate-repository#likec4-project-definition-realizes-definition
+  - native: likec4-project-definition-realizes-definition
     external: likec4ProjectDefinitionRealizesDefinition
     type: relationship
-  - native: yarramate-repository#likec4-project-schema-realizes-schema
+  - native: likec4-project-schema-realizes-schema
     external: likec4ProjectSchemaRealizesSchema
     type: relationship
-  - native: yarramate-repository#likec4-project-source-realizes-assembly
+  - native: likec4-project-source-realizes-assembly
     external: likec4ProjectSourceRealizesAssembly
     type: relationship
-  - native: yarramate-repository#likec4-projection-source-realizes-definition
+  - native: likec4-projection-source-realizes-definition
     external: likec4ProjectionSourceRealizesDefinition
     type: relationship
-  - native: yarramate-repository#package-tests-verify-consumer-package
+  - native: package-tests-verify-consumer-package
     external: packageTestsVerifyConsumerPackage
     type: relationship
-  - native: yarramate-repository#profile-schema-realizes-catalogue
+  - native: profile-schema-realizes-catalogue
     external: profileSchemaRealizesCatalogue
     type: relationship
-  - native: yarramate-repository#profile-schema-source
+  - native: profile-schema-source
     external: profileSchemaSource
     type: concept
-  - native: yarramate-repository#projection-result-schema-realizes-schema
+  - native: projection-result-schema-realizes-schema
     external: projectionResultSchemaRealizesSchema
     type: relationship
-  - native: yarramate-repository#projection-result-schema-source
+  - native: projection-result-schema-source
     external: projectionResultSchemaSource
     type: concept
-  - native: yarramate-repository#projection-schema-realizes-context
+  - native: projection-schema-realizes-context
     external: projectionSchemaRealizesContext
     type: relationship
-  - native: yarramate-repository#projection-schema-source
+  - native: projection-schema-source
     external: projectionSchemaSource
     type: concept
-  - native: yarramate-repository#projection-source-realizes-context
+  - native: projection-source-realizes-context
     external: projectionSourceRealizesContext
     type: relationship
-  - native: yarramate-repository#reconciliation-report-schema-realizes-schema
+  - native: reconciliation-report-schema-realizes-schema
     external: reconciliationReportSchemaRealizesSchema
     type: relationship
-  - native: yarramate-repository#reconciliation-source-realizes-function
+  - native: reconciliation-source-realizes-function
     external: reconciliationSourceRealizesFunction
     type: relationship
-  - native: yarramate-repository#repository-evidence
+  - native: repository-evidence
     external: repositoryEvidence
     type: concept
-  - native: yarramate-repository#repository-evidence-realizes-document
+  - native: repository-evidence-realizes-document
     external: repositoryEvidenceRealizesDocument
     type: relationship
-  - native: yarramate-repository#roadmap-serves-contract
+  - native: roadmap-serves-contract
     external: roadmapServesContract
     type: relationship
-  - native: yarramate-repository#root-manifest-realizes-workspace
+  - native: root-manifest-realizes-workspace
     external: rootManifestRealizesWorkspace
     type: relationship
-  - native: yarramate-repository#root-workspace-manifest
+  - native: root-workspace-manifest
     external: rootWorkspaceManifest
     type: concept
-  - native: yarramate-repository#source-document-source
+  - native: source-document-source
     external: sourceDocumentSource
     type: concept
-  - native: yarramate-repository#source-document-source-realizes-loader
+  - native: source-document-source-realizes-loader
     external: sourceDocumentSourceRealizesLoader
     type: relationship
-  - native: yarramate-repository#state-comparison-schema-realizes-schema
+  - native: state-comparison-schema-realizes-schema
     external: stateComparisonSchemaRealizesSchema
     type: relationship
-  - native: yarramate-repository#state-source-realizes-engine
+  - native: state-source-realizes-engine
     external: stateSourceRealizesEngine
     type: relationship
-  - native: yarramate-repository#state-tests-validate-comparison
+  - native: state-tests-validate-comparison
     external: stateTestsValidateComparison
     type: relationship
-  - native: yarramate-repository#tests-validate-compiler
+  - native: tests-validate-compiler
     external: testsValidateCompiler
     type: relationship
-  - native: yarramate-repository#workspace-schema-realizes-workspace-schema
+  - native: workspace-schema-realizes-workspace-schema
     external: workspaceSchemaRealizesWorkspaceSchema
     type: relationship
-  - native: yarramate-repository#workspace-schema-source
+  - native: workspace-schema-source
     external: workspaceSchemaSource
     type: concept
-  - native: yarramate-repository#workspace-source
+  - native: workspace-source
     external: workspaceSource
     type: concept
-  - native: yarramate-repository#workspace-source-realizes-loader
+  - native: workspace-source-realizes-loader
     external: workspaceSourceRealizesLoader
     type: relationship
-  - native: yarramate-repository#workspace-tests
+  - native: workspace-tests
     external: workspaceTests
     type: concept
-  - native: yarramate-repository#workspace-tests-validate-resolution
+  - native: workspace-tests-validate-resolution
     external: workspaceTestsValidateResolution
     type: relationship
-  - native: yarramate-engine#likec4-check-result
+  - native: likec4-check-result
     external: likec4CheckResult
     type: concept
-  - native: yarramate-engine#likec4-check-result-schema-describes-result
+  - native: likec4-check-result-schema-describes-result
     external: likec4CheckResultSchemaDescribesResult
     type: relationship
-  - native: yarramate-engine#likec4-check-writes-diagnostics
+  - native: likec4-check-writes-diagnostics
     external: likec4CheckWritesDiagnostics
     type: relationship
-  - native: yarramate-engine#likec4-check-writes-result
+  - native: likec4-check-writes-result
     external: likec4CheckWritesResult
     type: relationship
-  - native: yarramate-engine#likec4-diagnostic-result
+  - native: likec4-diagnostic-result
     external: likec4DiagnosticResult
     type: concept
-  - native: yarramate-engine#likec4-diagnostic-result-schema-describes-result
+  - native: likec4-diagnostic-result-schema-describes-result
     external: likec4DiagnosticResultSchemaDescribesResult
     type: relationship
-  - native: yarramate-engine#likec4-export-writes-diagnostics
+  - native: likec4-export-writes-diagnostics
     external: likec4ExportWritesDiagnostics
     type: relationship
-  - native: yarramate-engine#status-command
+  - native: status-command
     external: statusCommand
     type: concept
-  - native: yarramate-engine#status-command-serves-agent-harness
+  - native: status-command-serves-agent-harness
     external: statusCommandServesAgentHarness
     type: relationship
-  - native: yarramate-engine#next-command
+  - native: next-command
     external: nextCommand
     type: concept
-  - native: yarramate-engine#next-command-serves-agent-harness
+  - native: next-command-serves-agent-harness
     external: nextCommandServesAgentHarness
     type: relationship
-  - native: yarramate-engine#context-command
+  - native: context-command
     external: contextCommand
     type: concept
-  - native: yarramate-engine#context-command-serves-agent-harness
+  - native: context-command-serves-agent-harness
     external: contextCommandServesAgentHarness
     type: relationship
-  - native: yarramate-engine#mcp-adapter
+  - native: mcp-adapter
     external: mcpAdapter
     type: concept
-  - native: yarramate-engine#mcp-adapter-serves-agent-harness
+  - native: mcp-adapter-serves-agent-harness
     external: mcpAdapterServesAgentHarness
     type: relationship
-  - native: yarramate-engine#mcp-adapter-uses-cli
+  - native: mcp-adapter-uses-cli
     external: mcpAdapterUsesCli
     type: relationship
-  - native: yarramate-engine#expose-cli-over-mcp
+  - native: expose-cli-over-mcp
     external: exposeCliOverMcp
     type: concept
-  - native: yarramate-engine#mcp-adapter-exposes-cli-surface
+  - native: mcp-adapter-exposes-cli-surface
     external: mcpAdapterExposesCliSurface
     type: relationship
-  - native: yarramate-engine#new-command
+  - native: new-command
     external: newCommand
     type: concept
-  - native: yarramate-engine#new-command-serves-agent-harness
+  - native: new-command-serves-agent-harness
     external: newCommandServesAgentHarness
     type: relationship
-  - native: yarramate-repository#mcp-cli-source
+  - native: mcp-cli-source
     external: mcpCliSource
     type: concept
-  - native: yarramate-repository#mcp-cli-source-realizes-adapter
+  - native: mcp-cli-source-realizes-adapter
     external: mcpCliSourceRealizesAdapter
     type: relationship
-  - native: yarramate-repository#new-command-source
+  - native: new-command-source
     external: newCommandSource
     type: concept
-  - native: yarramate-repository#new-command-source-realizes-command
+  - native: new-command-source-realizes-command
     external: newCommandSourceRealizesCommand
     type: relationship
-  - native: yarramate-repository#next-command-source
+  - native: next-command-source
     external: nextCommandSource
     type: concept
-  - native: yarramate-repository#next-command-source-realizes-command
+  - native: next-command-source-realizes-command
     external: nextCommandSourceRealizesCommand
     type: relationship
-  - native: yarramate-repository#status-command-source
+  - native: status-command-source
     external: statusCommandSource
     type: concept
-  - native: yarramate-repository#status-command-source-realizes-command
+  - native: status-command-source-realizes-command
     external: statusCommandSourceRealizesCommand
     type: relationship
-  - native: yarramate-engine#interrogate-command
+  - native: interrogate-command
     external: interrogateCommand
     type: concept
-  - native: yarramate-engine#interrogate-command-serves-agent-harness
+  - native: interrogate-command-serves-agent-harness
     external: interrogateCommandServesAgentHarness
     type: relationship
-  - native: yarramate-repository#interrogate-command-source
+  - native: interrogate-command-source
     external: interrogateCommandSource
     type: concept
-  - native: yarramate-repository#interrogate-command-source-realizes-command
+  - native: interrogate-command-source-realizes-command
     external: interrogateCommandSourceRealizesCommand
     type: relationship
-  - native: yarramate-engine#cli-provides-compare
+  - native: cli-provides-compare
     external: cliProvidesCompare
     type: relationship
-  - native: yarramate-engine#cli-provides-context
+  - native: cli-provides-context
     external: cliProvidesContext
     type: relationship
-  - native: yarramate-engine#cli-provides-interrogate
+  - native: cli-provides-interrogate
     external: cliProvidesInterrogate
     type: relationship
-  - native: yarramate-engine#cli-provides-new
+  - native: cli-provides-new
     external: cliProvidesNew
     type: relationship
-  - native: yarramate-engine#cli-provides-next
+  - native: cli-provides-next
     external: cliProvidesNext
     type: relationship
-  - native: yarramate-engine#cli-provides-status
+  - native: cli-provides-status
     external: cliProvidesStatus
     type: relationship
-  - native: yarramate-engine#likec4-adapter-provides-check
+  - native: likec4-adapter-provides-check
     external: likec4AdapterProvidesCheck
     type: relationship
-  - native: yarramate-engine#likec4-adapter-provides-export
+  - native: likec4-adapter-provides-export
     external: likec4AdapterProvidesExport
     type: relationship
-  - native: yarramate-engine#mcp-adapter-implements-machine-context
+  - native: mcp-adapter-implements-machine-context
     external: mcpAdapterImplementsMachineContext
     type: relationship
-  - native: yarramate-engine#profile-catalogue-implements-tool-neutrality
+  - native: profile-catalogue-implements-tool-neutrality
     external: profileCatalogueImplementsToolNeutrality
     type: relationship
-  - native: yarramate-product#compilation-realizes-canonical-documents
+  - native: compilation-realizes-canonical-documents
     external: compilationRealizesCanonicalDocuments
     type: relationship
-  - native: yarramate-product#design-realizes-shared-context
+  - native: design-realizes-shared-context
     external: designRealizesSharedContext
     type: relationship
-  - native: yarramate-product#discovery-realizes-shared-context
+  - native: discovery-realizes-shared-context
     external: discoveryRealizesSharedContext
     type: relationship
-  - native: yarramate-product#evidence-evaluation-realizes-separation
+  - native: evidence-evaluation-realizes-separation
     external: evidenceEvaluationRealizesSeparation
     type: relationship
-  - native: yarramate-product#reconciliation-realizes-separation
+  - native: reconciliation-realizes-separation
     external: reconciliationRealizesSeparation
     type: relationship
-  - native: yarramate-product#stewardship-realizes-repository-operation
+  - native: stewardship-realizes-repository-operation
     external: stewardshipRealizesRepositoryOperation
     type: relationship
-  - native: yarramate-product#validation-realizes-correctness
+  - native: validation-realizes-correctness
     external: validationRealizesCorrectness
     type: relationship
-  - native: yarramate-engine#apply-command
+  - native: apply-command
     external: applyCommand
     type: concept
-  - native: yarramate-engine#apply-command-reads-operations
+  - native: apply-command-reads-operations
     external: applyCommandReadsOperations
     type: relationship
-  - native: yarramate-engine#apply-command-reads-operations-schema
+  - native: apply-command-reads-operations-schema
     external: applyCommandReadsOperationsSchema
     type: relationship
-  - native: yarramate-engine#apply-command-reads-result-schema
+  - native: apply-command-reads-result-schema
     external: applyCommandReadsResultSchema
     type: relationship
-  - native: yarramate-engine#apply-command-serves-agent-harness
+  - native: apply-command-serves-agent-harness
     external: applyCommandServesAgentHarness
     type: relationship
-  - native: yarramate-engine#apply-command-writes-result
+  - native: apply-command-writes-result
     external: applyCommandWritesResult
     type: relationship
-  - native: yarramate-engine#apply-operations
+  - native: apply-operations
     external: applyOperations
     type: concept
-  - native: yarramate-engine#apply-operations-schema
+  - native: apply-operations-schema
     external: applyOperationsSchema
     type: concept
-  - native: yarramate-engine#apply-result
+  - native: apply-result
     external: applyResult
     type: concept
-  - native: yarramate-engine#apply-result-schema
+  - native: apply-result-schema
     external: applyResultSchema
     type: concept
-  - native: yarramate-engine#cli-provides-apply
+  - native: cli-provides-apply
     external: cliProvidesApply
     type: relationship
-  - native: yarramate-engine#cli-provides-design
+  - native: cli-provides-design
     external: cliProvidesDesign
     type: relationship
-  - native: yarramate-engine#design-command
+  - native: design-command
     external: designCommand
     type: concept
-  - native: yarramate-engine#design-command-reads-profile-catalogue
+  - native: design-command-reads-profile-catalogue
     external: designCommandReadsProfileCatalogue
     type: relationship
-  - native: yarramate-engine#design-command-reads-question-catalogue
+  - native: design-command-reads-question-catalogue
     external: designCommandReadsQuestionCatalogue
     type: relationship
-  - native: yarramate-engine#design-command-reads-step-schema
+  - native: design-command-reads-step-schema
     external: designCommandReadsStepSchema
     type: relationship
-  - native: yarramate-engine#design-command-serves-agent-harness
+  - native: design-command-serves-agent-harness
     external: designCommandServesAgentHarness
     type: relationship
-  - native: yarramate-engine#design-command-writes-step
+  - native: design-command-writes-step
     external: designCommandWritesStep
     type: relationship
-  - native: yarramate-engine#design-step
+  - native: design-step
     external: designStep
     type: concept
-  - native: yarramate-engine#design-step-schema
+  - native: design-step-schema
     external: designStepSchema
     type: concept
-  - native: yarramate-engine#ask-command
+  - native: ask-command
     external: askCommand
     type: concept
-  - native: yarramate-engine#ask-command-reads-profile-catalogue
+  - native: ask-command-reads-profile-catalogue
     external: askCommandReadsProfileCatalogue
     type: relationship
-  - native: yarramate-engine#ask-command-reads-question-catalogue
+  - native: ask-command-reads-question-catalogue
     external: askCommandReadsQuestionCatalogue
     type: relationship
-  - native: yarramate-engine#ask-command-reads-result-schema
+  - native: ask-command-reads-result-schema
     external: askCommandReadsResultSchema
     type: relationship
-  - native: yarramate-engine#ask-command-serves-agent-harness
+  - native: ask-command-serves-agent-harness
     external: askCommandServesAgentHarness
     type: relationship
-  - native: yarramate-engine#ask-command-writes-result
+  - native: ask-command-writes-result
     external: askCommandWritesResult
     type: relationship
-  - native: yarramate-engine#ask-result
+  - native: ask-result
     external: askResult
     type: concept
-  - native: yarramate-engine#ask-result-schema
+  - native: ask-result-schema
     external: askResultSchema
     type: concept
-  - native: yarramate-engine#cli-provides-ask
+  - native: cli-provides-ask
     external: cliProvidesAsk
     type: relationship
-  - native: yarramate-engine#cli-provides-export
+  - native: cli-provides-export
     external: cliProvidesExport
     type: relationship
-  - native: yarramate-engine#export-command
+  - native: export-command
     external: exportCommand
     type: concept
-  - native: yarramate-engine#export-command-reads-projection-definition
+  - native: export-command-reads-projection-definition
     external: exportCommandReadsProjectionDefinition
     type: relationship
-  - native: yarramate-engine#export-command-serves-agent-harness
+  - native: export-command-serves-agent-harness
     external: exportCommandServesAgentHarness
     type: relationship
-  - native: yarramate-engine#export-command-writes-semantic-graph
+  - native: export-command-writes-semantic-graph
     external: exportCommandWritesSemanticGraph
     type: relationship
-  - native: yarramate-engine#consumer-host
+  - native: consumer-host
     external: consumerHost
     type: concept
-  - native: yarramate-engine#consumer-host-composes-runtime
+  - native: consumer-host-composes-runtime
     external: consumerHostComposesRuntime
     type: relationship
-  - native: yarramate-engine#consumer-host-composes-web-browser
+  - native: consumer-host-composes-web-browser
     external: consumerHostComposesWebBrowser
     type: relationship
-  - native: yarramate-engine#consumer-host-deploys-package
+  - native: consumer-host-deploys-package
     external: consumerHostDeploysPackage
     type: relationship
-  - native: yarramate-engine#nodejs-runtime
+  - native: nodejs-runtime
     external: nodejsRuntime
     type: concept
-  - native: yarramate-engine#local-web-browser
+  - native: local-web-browser
     external: localWebBrowser
     type: concept
-  - native: yarramate-engine#execute-shipped-binaries
+  - native: execute-shipped-binaries
     external: executeShippedBinaries
     type: concept
-  - native: yarramate-engine#render-visual-session-page
+  - native: render-visual-session-page
     external: renderVisualSessionPage
     type: concept
-  - native: yarramate-engine#runtime-executes-binaries
+  - native: runtime-executes-binaries
     external: runtimeExecutesBinaries
     type: relationship
-  - native: yarramate-engine#web-browser-renders-session-page
+  - native: web-browser-renders-session-page
     external: webBrowserRendersSessionPage
     type: relationship
-  - native: yarramate-engine#web-browser-serves-visual-browser
+  - native: web-browser-serves-visual-browser
     external: webBrowserServesVisualBrowser
     type: relationship
-  - native: yarramate-engine#npm-package
+  - native: npm-package
     external: npmPackage
     type: concept
-  - native: yarramate-engine#npm-package-realizes-cli
+  - native: npm-package-realizes-cli
     external: npmPackageRealizesCli
     type: relationship
-  - native: yarramate-engine#runtime-serves-cli
+  - native: runtime-serves-cli
     external: runtimeServesCli
     type: relationship
-  - native: yarramate-engine#runtime-serves-visual-runtime
+  - native: runtime-serves-visual-runtime
     external: runtimeServesVisualRuntime
     type: relationship
-  - native: yarramate-engine#runtime-serves-graphify-adapter
+  - native: runtime-serves-graphify-adapter
     external: runtimeServesGraphifyAdapter
     type: relationship
-  - native: yarramate-engine#runtime-serves-likec4-adapter
+  - native: runtime-serves-likec4-adapter
     external: runtimeServesLikec4Adapter
     type: relationship
-  - native: yarramate-engine#runtime-serves-mcp-adapter
+  - native: runtime-serves-mcp-adapter
     external: runtimeServesMcpAdapter
     type: relationship
-  - native: yarramate-engine#ask-command-seeds-on-alternative-labels
+  - native: ask-command-seeds-on-alternative-labels
     external: askCommandSeedsOnAlternativeLabels
     type: relationship
-  - native: yarramate-engine#ask-command-serves-brief-composition
+  - native: ask-command-serves-brief-composition
     external: askCommandServesBriefComposition
     type: relationship
-  - native: yarramate-engine#ask-command-serves-changed-slice
+  - native: ask-command-serves-changed-slice
     external: askCommandServesChangedSlice
     type: relationship
-  - native: yarramate-engine#ask-command-serves-near-duplicate-question
+  - native: ask-command-serves-near-duplicate-question
     external: askCommandServesNearDuplicateQuestion
     type: relationship
-  - native: yarramate-engine#brief-composition-reads-projection-result
+  - native: brief-composition-reads-projection-result
     external: briefCompositionReadsProjectionResult
     type: relationship
-  - native: yarramate-engine#changed-slice-reads-graph
+  - native: changed-slice-reads-graph
     external: changedSliceReadsGraph
     type: relationship
-  - native: yarramate-engine#compose-subject-brief
+  - native: compose-subject-brief
     external: composeSubjectBrief
     type: concept
-  - native: yarramate-engine#derive-changed-slice
+  - native: derive-changed-slice
     external: deriveChangedSlice
     type: concept
-  - native: yarramate-engine#derive-traceability-matrix
+  - native: derive-traceability-matrix
     external: deriveTraceabilityMatrix
     type: concept
-  - native: yarramate-engine#design-command-serves-brief-composition
+  - native: design-command-serves-brief-composition
     external: designCommandServesBriefComposition
     type: relationship
-  - native: yarramate-engine#design-command-serves-near-duplicate-question
+  - native: design-command-serves-near-duplicate-question
     external: designCommandServesNearDuplicateQuestion
     type: relationship
-  - native: yarramate-engine#detect-near-duplicate-subjects
+  - native: detect-near-duplicate-subjects
     external: detectNearDuplicateSubjects
     type: concept
-  - native: yarramate-engine#detect-stale-attestations
+  - native: detect-stale-attestations
     external: detectStaleAttestations
     type: concept
-  - native: yarramate-engine#evidence-evaluator-detects-stale-attestations
+  - native: evidence-evaluator-detects-stale-attestations
     external: evidenceEvaluatorDetectsStaleAttestations
     type: relationship
-  - native: yarramate-engine#export-command-serves-brief-composition
+  - native: export-command-serves-brief-composition
     external: exportCommandServesBriefComposition
     type: relationship
-  - native: yarramate-engine#export-command-serves-changed-slice
+  - native: export-command-serves-changed-slice
     external: exportCommandServesChangedSlice
     type: relationship
-  - native: yarramate-engine#export-command-serves-traceability-matrix
+  - native: export-command-serves-traceability-matrix
     external: exportCommandServesTraceabilityMatrix
     type: relationship
-  - native: yarramate-engine#likec4-command-serves-changed-slice
+  - native: likec4-command-serves-changed-slice
     external: likec4CommandServesChangedSlice
     type: relationship
-  - native: yarramate-engine#near-duplicate-detection-reads-graph
+  - native: near-duplicate-detection-reads-graph
     external: nearDuplicateDetectionReadsGraph
     type: relationship
-  - native: yarramate-engine#reconcile-command-serves-stale-attestations
+  - native: reconcile-command-serves-stale-attestations
     external: reconcileCommandServesStaleAttestations
     type: relationship
-  - native: yarramate-engine#requirements-traceability-matrix
+  - native: requirements-traceability-matrix
     external: requirementsTraceabilityMatrix
     type: concept
-  - native: yarramate-engine#rtm-schema
+  - native: rtm-schema
     external: rtmSchema
     type: concept
-  - native: yarramate-engine#rtm-schema-describes-matrix
+  - native: rtm-schema-describes-matrix
     external: rtmSchemaDescribesMatrix
     type: relationship
-  - native: yarramate-engine#stale-attestation-detection-reads-graph
+  - native: stale-attestation-detection-reads-graph
     external: staleAttestationDetectionReadsGraph
     type: relationship
-  - native: yarramate-engine#stale-attestation-detection-writes-report
+  - native: stale-attestation-detection-writes-report
     external: staleAttestationDetectionWritesReport
     type: relationship
-  - native: yarramate-engine#subject-identity
+  - native: subject-identity
     external: subjectIdentity
     type: concept
-  - native: yarramate-engine#subject-identity-detects-near-duplicates
+  - native: subject-identity-detects-near-duplicates
     external: subjectIdentityDetectsNearDuplicates
     type: relationship
-  - native: yarramate-engine#traceability-derivation-produces-matrix
+  - native: traceability-derivation-produces-matrix
     external: traceabilityDerivationProducesMatrix
     type: relationship
-  - native: yarramate-engine#traceability-derivation-reads-graph
+  - native: traceability-derivation-reads-graph
     external: traceabilityDerivationReadsGraph
     type: relationship
-  - native: yarramate-engine#traceability-derivation-reads-schema
+  - native: traceability-derivation-reads-schema
     external: traceabilityDerivationReadsSchema
     type: relationship
-  - native: yarramate-engine#compiler-composes-briefs
+  - native: compiler-composes-briefs
     external: compilerComposesBriefs
     type: relationship
-  - native: yarramate-engine#compiler-derives-changed-slices
+  - native: compiler-derives-changed-slices
     external: compilerDerivesChangedSlices
     type: relationship
-  - native: yarramate-engine#compiler-derives-traceability-matrix
+  - native: compiler-derives-traceability-matrix
     external: compilerDerivesTraceabilityMatrix
     type: relationship
-  - native: yarramate-engine#recover-visual-session
+  - native: recover-visual-session
     external: recoverVisualSession
     type: concept
-  - native: yarramate-engine#render-visual-model
+  - native: render-visual-model
     external: renderVisualModel
     type: concept
-  - native: yarramate-engine#visual-browser
+  - native: visual-browser
     external: visualBrowser
     type: concept
-  - native: yarramate-engine#present-visual-conversation
+  - native: present-visual-conversation
     external: presentVisualConversation
     type: concept
-  - native: yarramate-engine#visual-browser-presents-conversation
+  - native: visual-browser-presents-conversation
     external: visualBrowserPresentsConversation
     type: relationship
-  - native: yarramate-engine#visual-browser-exchanges-protocol
+  - native: visual-browser-exchanges-protocol
     external: visualBrowserExchangesProtocol
     type: relationship
-  - native: yarramate-engine#visual-handoff
+  - native: visual-handoff
     external: visualHandoff
     type: concept
-  - native: yarramate-engine#visual-recovery-writes-handoff
+  - native: visual-recovery-writes-handoff
     external: visualRecoveryWritesHandoff
     type: relationship
-  - native: yarramate-engine#visual-rendering-reads-protocol
+  - native: visual-rendering-reads-protocol
     external: visualRenderingReadsProtocol
     type: relationship
-  - native: yarramate-engine#visual-runtime
+  - native: visual-runtime
     external: visualRuntime
     type: concept
-  - native: yarramate-engine#visual-runtime-provides-session-command
+  - native: visual-runtime-provides-session-command
     external: visualRuntimeProvidesSessionCommand
     type: relationship
-  - native: yarramate-engine#visual-runtime-recovers-session
+  - native: visual-runtime-recovers-session
     external: visualRuntimeRecoversSession
     type: relationship
-  - native: yarramate-engine#visual-runtime-renders-model
+  - native: visual-runtime-renders-model
     external: visualRuntimeRendersModel
     type: relationship
-  - native: yarramate-engine#visual-runtime-serves-browser
+  - native: visual-runtime-serves-browser
     external: visualRuntimeServesBrowser
     type: relationship
-  - native: yarramate-engine#visual-session-protocol
+  - native: visual-session-protocol
     external: visualSessionProtocol
     type: concept
-  - native: yarramate-engine#visual-session-serves-agent-harness
+  - native: visual-session-serves-agent-harness
     external: visualSessionServesAgentHarness
     type: relationship
-  - native: yarramate-engine#visual-session-service
+  - native: visual-session-service
     external: visualSessionService
     type: concept
-  - native: yarramate-repository#agent-skill-references-visual-conversations
+  - native: agent-skill-references-visual-conversations
     external: agentSkillReferencesVisualConversations
     type: relationship
-  - native: yarramate-repository#visual-browser-shell
+  - native: visual-browser-shell
     external: visualBrowserShell
     type: concept
-  - native: yarramate-repository#visual-browser-shell-realizes-browser
+  - native: visual-browser-shell-realizes-browser
     external: visualBrowserShellRealizesBrowser
     type: relationship
-  - native: yarramate-repository#visual-browser-source
+  - native: visual-browser-source
     external: visualBrowserSource
     type: concept
-  - native: yarramate-repository#visual-browser-source-realizes-browser
+  - native: visual-browser-source-realizes-browser
     external: visualBrowserSourceRealizesBrowser
     type: relationship
-  - native: yarramate-repository#visual-browser-tests
+  - native: visual-browser-tests
     external: visualBrowserTests
     type: concept
-  - native: yarramate-repository#visual-browser-tests-validate-browser
+  - native: visual-browser-tests-validate-browser
     external: visualBrowserTestsValidateBrowser
     type: relationship
-  - native: yarramate-repository#visual-cli-source
+  - native: visual-cli-source
     external: visualCliSource
     type: concept
-  - native: yarramate-repository#visual-cli-source-realizes-session-command
+  - native: visual-cli-source-realizes-session-command
     external: visualCliSourceRealizesSessionCommand
     type: relationship
-  - native: yarramate-repository#visual-cli-tests
+  - native: visual-cli-tests
     external: visualCliTests
     type: concept
-  - native: yarramate-repository#visual-cli-tests-validate-session-command
+  - native: visual-cli-tests-validate-session-command
     external: visualCliTestsValidateSessionCommand
     type: relationship
-  - native: yarramate-repository#visual-compiler-tests-validate-rendering
+  - native: visual-compiler-tests-validate-rendering
     external: visualCompilerTestsValidateRendering
     type: relationship
-  - native: yarramate-repository#visual-event-schema-realizes-protocol
+  - native: visual-event-schema-realizes-protocol
     external: visualEventSchemaRealizesProtocol
     type: relationship
-  - native: yarramate-repository#visual-event-schema-source
+  - native: visual-event-schema-source
     external: visualEventSchemaSource
     type: concept
-  - native: yarramate-repository#visual-handoff-schema-realizes-handoff
+  - native: visual-handoff-schema-realizes-handoff
     external: visualHandoffSchemaRealizesHandoff
     type: relationship
-  - native: yarramate-repository#visual-handoff-schema-source
+  - native: visual-handoff-schema-source
     external: visualHandoffSchemaSource
     type: concept
-  - native: yarramate-repository#visual-journey-tests
+  - native: visual-journey-tests
     external: visualJourneyTests
     type: concept
-  - native: yarramate-repository#visual-journey-tests-validate-handoff
+  - native: visual-journey-tests-validate-handoff
     external: visualJourneyTestsValidateHandoff
     type: relationship
-  - native: yarramate-repository#visual-likec4-compiler-realizes-rendering
+  - native: visual-likec4-compiler-realizes-rendering
     external: visualLikec4CompilerRealizesRendering
     type: relationship
-  - native: yarramate-repository#visual-likec4-compiler-source
+  - native: visual-likec4-compiler-source
     external: visualLikec4CompilerSource
     type: concept
-  - native: yarramate-repository#visual-likec4-compiler-tests
+  - native: visual-likec4-compiler-tests
     external: visualLikec4CompilerTests
     type: concept
-  - native: yarramate-repository#visual-protocol-source
+  - native: visual-protocol-source
     external: visualProtocolSource
     type: concept
-  - native: yarramate-repository#visual-protocol-source-realizes-protocol
+  - native: visual-protocol-source-realizes-protocol
     external: visualProtocolSourceRealizesProtocol
     type: relationship
-  - native: yarramate-repository#visual-protocol-tests
+  - native: visual-protocol-tests
     external: visualProtocolTests
     type: concept
-  - native: yarramate-repository#visual-protocol-tests-validate-protocol
+  - native: visual-protocol-tests-validate-protocol
     external: visualProtocolTestsValidateProtocol
     type: relationship
-  - native: yarramate-repository#visual-reference-documents-session-command
+  - native: visual-reference-documents-session-command
     external: visualReferenceDocumentsSessionCommand
     type: relationship
-  - native: yarramate-repository#visual-server-tests-validate-runtime
+  - native: visual-server-tests-validate-runtime
     external: visualServerTestsValidateRuntime
     type: relationship
-  - native: yarramate-repository#visual-session-server-realizes-runtime
+  - native: visual-session-server-realizes-runtime
     external: visualSessionServerRealizesRuntime
     type: relationship
-  - native: yarramate-repository#visual-session-server-source
+  - native: visual-session-server-source
     external: visualSessionServerSource
     type: concept
-  - native: yarramate-repository#visual-session-server-tests
+  - native: visual-session-server-tests
     external: visualSessionServerTests
     type: concept
-  - native: yarramate-repository#visual-session-store-realizes-recovery
+  - native: visual-session-store-realizes-recovery
     external: visualSessionStoreRealizesRecovery
     type: relationship
-  - native: yarramate-repository#visual-session-store-source
+  - native: visual-session-store-source
     external: visualSessionStoreSource
     type: concept
-  - native: yarramate-repository#visual-session-store-tests
+  - native: visual-session-store-tests
     external: visualSessionStoreTests
     type: concept
-  - native: yarramate-repository#visual-skill-reference
+  - native: visual-skill-reference
     external: visualSkillReference
     type: concept
-  - native: yarramate-repository#visual-store-tests-validate-recovery
+  - native: visual-store-tests-validate-recovery
     external: visualStoreTestsValidateRecovery
     type: relationship
-  - native: yarramate-repository#graph-projection-source
+  - native: graph-projection-source
     external: graphProjectionSource
     type: concept
-  - native: yarramate-repository#graph-projection-realizes-rendering
+  - native: graph-projection-realizes-rendering
     external: graphProjectionRealizesRendering
     type: relationship
-  - native: yarramate-repository#graph-projection-tests
+  - native: graph-projection-tests
     external: graphProjectionTests
     type: concept
-  - native: yarramate-repository#graph-projection-tests-validate-rendering
+  - native: graph-projection-tests-validate-rendering
     external: graphProjectionTestsValidateRendering
     type: relationship
-  - native: yarramate-engine#commit-visual-changeset
+  - native: commit-visual-changeset
     external: commitVisualChangeset
     type: concept
-  - native: yarramate-engine#save-visual-layout
+  - native: save-visual-layout
     external: saveVisualLayout
     type: concept
-  - native: yarramate-engine#visual-layout-sidecar
+  - native: visual-layout-sidecar
     external: visualLayoutSidecar
     type: concept
-  - native: yarramate-engine#visual-runtime-commits-changeset
+  - native: visual-runtime-commits-changeset
     external: visualRuntimeCommitsChangeset
     type: relationship
-  - native: yarramate-engine#apply-serves-visual-commit
+  - native: apply-serves-visual-commit
     external: applyServesVisualCommit
     type: relationship
-  - native: yarramate-engine#visual-commit-reads-operations
+  - native: visual-commit-reads-operations
     external: visualCommitReadsOperations
     type: relationship
-  - native: yarramate-engine#visual-commit-reads-apply-result
+  - native: visual-commit-reads-apply-result
     external: visualCommitReadsApplyResult
     type: relationship
-  - native: yarramate-engine#visual-runtime-saves-layout
+  - native: visual-runtime-saves-layout
     external: visualRuntimeSavesLayout
     type: relationship
-  - native: yarramate-engine#visual-layout-save-writes-sidecar
+  - native: visual-layout-save-writes-sidecar
     external: visualLayoutSaveWritesSidecar
     type: relationship
-  - native: yarramate-engine#build-visual-session-request
+  - native: build-visual-session-request
     external: buildVisualSessionRequest
     type: concept
-  - native: yarramate-engine#cli-provides-view
+  - native: cli-provides-view
     external: cliProvidesView
     type: relationship
-  - native: yarramate-engine#compiler-serves-request-build
+  - native: compiler-serves-request-build
     external: compilerServesRequestBuild
     type: relationship
-  - native: yarramate-engine#request-build-reads-manifest
+  - native: request-build-reads-manifest
     external: requestBuildReadsManifest
     type: relationship
-  - native: yarramate-engine#request-build-writes-protocol
+  - native: request-build-writes-protocol
     external: requestBuildWritesProtocol
     type: relationship
-  - native: yarramate-engine#view-command
+  - native: view-command
     external: viewCommand
     type: concept
-  - native: yarramate-engine#view-command-serves-agent-harness
+  - native: view-command-serves-agent-harness
     external: viewCommandServesAgentHarness
     type: relationship
-  - native: yarramate-engine#visual-runtime-builds-request
+  - native: visual-runtime-builds-request
     external: visualRuntimeBuildsRequest
     type: relationship
-  - native: yarramate-repository#apply-operations-tests
+  - native: apply-operations-tests
     external: applyOperationsTests
     type: concept
-  - native: yarramate-repository#apply-operations-tests-validate-apply
+  - native: apply-operations-tests-validate-apply
     external: applyOperationsTestsValidateApply
     type: relationship
-  - native: yarramate-repository#visual-canvas-layout-tests
+  - native: visual-canvas-layout-tests
     external: visualCanvasLayoutTests
     type: concept
-  - native: yarramate-repository#visual-canvas-layout-tests-validate-browser
+  - native: visual-canvas-layout-tests-validate-browser
     external: visualCanvasLayoutTestsValidateBrowser
     type: relationship
-  - native: yarramate-repository#visual-canvas-source
+  - native: visual-canvas-source
     external: visualCanvasSource
     type: concept
-  - native: yarramate-repository#visual-canvas-source-realizes-browser
+  - native: visual-canvas-source-realizes-browser
     external: visualCanvasSourceRealizesBrowser
     type: relationship
-  - native: yarramate-repository#visual-changeset-tray-source
+  - native: visual-changeset-tray-source
     external: visualChangesetTraySource
     type: concept
-  - native: yarramate-repository#visual-changeset-tray-source-realizes-commit
+  - native: visual-changeset-tray-source-realizes-commit
     external: visualChangesetTraySourceRealizesCommit
     type: relationship
-  - native: yarramate-repository#visual-changeset-tray-tests
+  - native: visual-changeset-tray-tests
     external: visualChangesetTrayTests
     type: concept
-  - native: yarramate-repository#visual-changeset-tray-tests-validate-commit
+  - native: visual-changeset-tray-tests-validate-commit
     external: visualChangesetTrayTestsValidateCommit
     type: relationship
-  - native: yarramate-repository#visual-inspector-source
+  - native: visual-inspector-source
     external: visualInspectorSource
     type: concept
-  - native: yarramate-repository#visual-inspector-source-realizes-presentation
+  - native: visual-inspector-source-realizes-presentation
     external: visualInspectorSourceRealizesPresentation
     type: relationship
-  - native: yarramate-repository#visual-inspector-tests
+  - native: visual-inspector-tests
     external: visualInspectorTests
     type: concept
-  - native: yarramate-repository#visual-inspector-tests-validate-presentation
+  - native: visual-inspector-tests-validate-presentation
     external: visualInspectorTestsValidatePresentation
     type: relationship
-  - native: yarramate-repository#visual-layout-schema-realizes-sidecar
+  - native: visual-layout-schema-realizes-sidecar
     external: visualLayoutSchemaRealizesSidecar
     type: relationship
-  - native: yarramate-repository#visual-layout-schema-source
+  - native: visual-layout-schema-source
     external: visualLayoutSchemaSource
     type: concept
-  - native: yarramate-repository#visual-request-source
+  - native: visual-request-source
     external: visualRequestSource
     type: concept
-  - native: yarramate-repository#visual-request-source-realizes-request-build
+  - native: visual-request-source-realizes-request-build
     external: visualRequestSourceRealizesRequestBuild
     type: relationship
-  - native: yarramate-repository#visual-request-tests
+  - native: visual-request-tests
     external: visualRequestTests
     type: concept
-  - native: yarramate-repository#visual-request-tests-validate-request-build
+  - native: visual-request-tests-validate-request-build
     external: visualRequestTestsValidateRequestBuild
     type: relationship
-  - native: yarramate-engine#render-visual-presentation-badges
+  - native: render-visual-presentation-badges
     external: renderVisualPresentationBadges
     type: concept
-  - native: yarramate-engine#render-archimate-kind-icons
+  - native: render-archimate-kind-icons
     external: renderArchimateKindIcons
     type: concept
-  - native: yarramate-engine#render-visual-model-reads-kind-catalogue
+  - native: render-visual-model-reads-kind-catalogue
     external: renderVisualModelReadsKindCatalogue
     type: relationship
-  - native: yarramate-engine#visual-browser-renders-presentation-badges
+  - native: visual-browser-renders-presentation-badges
     external: visualBrowserRendersPresentationBadges
     type: relationship
-  - native: yarramate-engine#visual-browser-renders-kind-icons
+  - native: visual-browser-renders-kind-icons
     external: visualBrowserRendersKindIcons
     type: relationship
-  - native: yarramate-repository#visual-badges-source
+  - native: visual-badges-source
     external: visualBadgesSource
     type: concept
-  - native: yarramate-repository#visual-kind-icons-source
+  - native: visual-kind-icons-source
     external: visualKindIconsSource
     type: concept
-  - native: yarramate-repository#visual-badges-tests
+  - native: visual-badges-tests
     external: visualBadgesTests
     type: concept
-  - native: yarramate-repository#visual-kind-icons-tests
+  - native: visual-kind-icons-tests
     external: visualKindIconsTests
     type: concept
-  - native: yarramate-repository#visual-badges-source-realizes-badges
+  - native: visual-badges-source-realizes-badges
     external: visualBadgesSourceRealizesBadges
     type: relationship
-  - native: yarramate-repository#visual-kind-icons-source-realizes-icons
+  - native: visual-kind-icons-source-realizes-icons
     external: visualKindIconsSourceRealizesIcons
     type: relationship
-  - native: yarramate-repository#visual-badges-tests-validate-badges
+  - native: visual-badges-tests-validate-badges
     external: visualBadgesTestsValidateBadges
     type: relationship
-  - native: yarramate-repository#visual-kind-icons-tests-validate-icons
+  - native: visual-kind-icons-tests-validate-icons
     external: visualKindIconsTestsValidateIcons
     type: relationship

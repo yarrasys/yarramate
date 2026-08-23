@@ -149,7 +149,7 @@ describe('brief rendering through ask and export', () => {
 
   it('renders a subject neighbourhood as a brief', () => {
     const result = runCli(
-      ['ask', 'workspace.yaml', 'main#favourites-api'],
+      ['ask', 'workspace.yaml', 'favourites-api'],
       workspace,
     )
     expect(result.exitCode).toBe(0)
@@ -177,7 +177,7 @@ describe('brief rendering through ask and export', () => {
     )
     expect(result.exitCode).toBe(0)
     const brief = readFileSync(
-      join(workspace, 'handoff/main--favourites-api.md'),
+      join(workspace, 'handoff/favourites-api.md'),
       'utf8',
     )
     expect(brief).toMatch(
@@ -198,7 +198,7 @@ describe('brief rendering through ask and export', () => {
       ['ask', 'workspace.yaml', 'projection.yaml', '--budget', '10000'],
       workspace,
     )
-    expect(digest.stdout).toContain('- main#favourites-api [applicationService]')
+    expect(digest.stdout).toContain('- favourites-api [applicationService]')
     expect(digest.stdout).not.toContain('You are building')
   })
 

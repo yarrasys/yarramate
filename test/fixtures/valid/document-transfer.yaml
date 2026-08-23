@@ -23,37 +23,37 @@ concepts:
     status: planned
     constraints:
       - id: authn
-        ref: document-transfer-policy#oauth-m2m
+        ref: oauth-m2m
       - id: capacity
-        ref: document-transfer-policy#experience-rate-limit
+        ref: experience-rate-limit
         expects:
           provider: gateway
           key: rps-per-client
           value: "100"
       - id: mechanism
-        ref: document-transfer-policy#https-rest
+        ref: https-rest
       - id: reliability
-        ref: document-transfer-policy#at-least-once
+        ref: at-least-once
   - id: orchestrate-store
     kind: applicationProcess
     name: Orchestrate document store
     status: planned
     constraints:
       - id: authn
-        ref: document-transfer-policy#oauth-m2m
+        ref: oauth-m2m
       - id: reliability
-        ref: document-transfer-policy#at-least-once
+        ref: at-least-once
   - id: persist-document
     kind: applicationProcess
     name: Persist document
     status: planned
     constraints:
       - id: authn
-        ref: document-transfer-policy#oauth-m2m
+        ref: oauth-m2m
       - id: capacity
-        ref: document-transfer-policy#ratelimit-not-applicable
+        ref: ratelimit-not-applicable
       - id: reliability
-        ref: document-transfer-policy#at-least-once
+        ref: at-least-once
   - id: document-record
     kind: contract
     name: Document record

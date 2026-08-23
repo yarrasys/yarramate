@@ -11,237 +11,237 @@
   ],
   "subjects": [
     {
-      "id": "governed-change#adoption-realizes-suite",
+      "id": "adoption-realizes-suite",
       "type": "relationship"
     },
     {
-      "id": "governed-change#ai-change-risk",
+      "id": "ai-change-risk",
       "type": "concept"
     },
     {
-      "id": "governed-change#approval-artifact",
+      "id": "approval-artifact",
       "type": "concept"
     },
     {
-      "id": "governed-change#approval-decision",
+      "id": "approval-decision",
       "type": "concept"
     },
     {
-      "id": "governed-change#approval-interface",
+      "id": "approval-interface",
       "type": "concept"
     },
     {
-      "id": "governed-change#approval-record",
+      "id": "approval-record",
       "type": "concept"
     },
     {
-      "id": "governed-change#approval-requested",
+      "id": "approval-requested",
       "type": "concept"
     },
     {
-      "id": "governed-change#approval-supports-integrity",
+      "id": "approval-supports-integrity",
       "type": "relationship"
     },
     {
-      "id": "governed-change#artifact-realizes-record",
+      "id": "artifact-realizes-record",
       "type": "relationship"
     },
     {
-      "id": "governed-change#attributable-approval",
+      "id": "attributable-approval",
       "type": "concept"
     },
     {
-      "id": "governed-change#board-member",
+      "id": "board-member",
       "type": "concept"
     },
     {
-      "id": "governed-change#conformance-suite",
+      "id": "conformance-suite",
       "type": "concept"
     },
     {
-      "id": "governed-change#constraint-enforces-approval",
+      "id": "constraint-enforces-approval",
       "type": "relationship"
     },
     {
-      "id": "governed-change#control-plane",
+      "id": "control-plane",
       "type": "concept"
     },
     {
-      "id": "governed-change#control-plane-assigned-to-edge",
+      "id": "control-plane-assigned-to-edge",
       "type": "relationship"
     },
     {
-      "id": "governed-change#control-plane-performs-verification",
+      "id": "control-plane-performs-verification",
       "type": "relationship"
     },
     {
-      "id": "governed-change#control-plane-realizes-intent-match",
+      "id": "control-plane-realizes-intent-match",
       "type": "relationship"
     },
     {
-      "id": "governed-change#decide-proposal",
+      "id": "decide-proposal",
       "type": "concept"
     },
     {
-      "id": "governed-change#decision-gate-realizes-capability",
+      "id": "decision-gate-realizes-capability",
       "type": "relationship"
     },
     {
-      "id": "governed-change#decision-serves-process",
+      "id": "decision-serves-process",
       "type": "relationship"
     },
     {
-      "id": "governed-change#drift-threatens-integrity",
+      "id": "drift-threatens-integrity",
       "type": "relationship"
     },
     {
-      "id": "governed-change#edge-composes-runtime",
+      "id": "edge-composes-runtime",
       "type": "relationship"
     },
     {
-      "id": "governed-change#edge-runtime",
+      "id": "edge-runtime",
       "type": "concept"
     },
     {
-      "id": "governed-change#execute-request",
+      "id": "execute-request",
       "type": "concept"
     },
     {
-      "id": "governed-change#explicit-decision-gate",
+      "id": "explicit-decision-gate",
       "type": "concept"
     },
     {
-      "id": "governed-change#foundation",
+      "id": "foundation",
       "type": "concept"
     },
     {
-      "id": "governed-change#govern-ai-change",
+      "id": "govern-ai-change",
       "type": "concept"
     },
     {
-      "id": "governed-change#governed-publication",
+      "id": "governed-publication",
       "type": "concept"
     },
     {
-      "id": "governed-change#intent-digest",
+      "id": "intent-digest",
       "type": "concept"
     },
     {
-      "id": "governed-change#intent-match-fulfills-integrity",
+      "id": "intent-match-fulfills-integrity",
       "type": "relationship"
     },
     {
-      "id": "governed-change#interface-serves-member",
+      "id": "interface-serves-member",
       "type": "relationship"
     },
     {
-      "id": "governed-change#journey-realizes-capability",
+      "id": "journey-realizes-capability",
       "type": "relationship"
     },
     {
-      "id": "governed-change#member-performs-process",
+      "id": "member-performs-process",
       "type": "relationship"
     },
     {
-      "id": "governed-change#no-anonymous-approval",
+      "id": "no-anonymous-approval",
       "type": "concept"
     },
     {
-      "id": "governed-change#owner-concerned-with-integrity",
+      "id": "owner-concerned-with-integrity",
       "type": "relationship"
     },
     {
-      "id": "governed-change#process-realizes-publication",
+      "id": "process-realizes-publication",
       "type": "relationship"
     },
     {
-      "id": "governed-change#process-writes-record",
+      "id": "process-writes-record",
       "type": "relationship"
     },
     {
-      "id": "governed-change#product-owner",
+      "id": "product-owner",
       "type": "concept"
     },
     {
-      "id": "governed-change#proposal",
+      "id": "proposal",
       "type": "concept"
     },
     {
-      "id": "governed-change#proposal-drift",
+      "id": "proposal-drift",
       "type": "concept"
     },
     {
-      "id": "governed-change#proposal-intent-match",
+      "id": "proposal-intent-match",
       "type": "concept"
     },
     {
-      "id": "governed-change#publication-serves-member",
+      "id": "publication-serves-member",
       "type": "relationship"
     },
     {
-      "id": "governed-change#request-triggers-verification",
+      "id": "request-triggers-verification",
       "type": "relationship"
     },
     {
-      "id": "governed-change#reviewed-change-integrity",
+      "id": "reviewed-change-integrity",
       "type": "concept"
     },
     {
-      "id": "governed-change#risk-causes-drift",
+      "id": "risk-causes-drift",
       "type": "relationship"
     },
     {
-      "id": "governed-change#runtime-realizes-execution",
+      "id": "runtime-realizes-execution",
       "type": "relationship"
     },
     {
-      "id": "governed-change#safe-change-journey",
+      "id": "safe-change-journey",
       "type": "concept"
     },
     {
-      "id": "governed-change#structured-traceability",
+      "id": "structured-traceability",
       "type": "concept"
     },
     {
-      "id": "governed-change#suite-realizes-traceability",
+      "id": "suite-realizes-traceability",
       "type": "relationship"
     },
     {
-      "id": "governed-change#traceability-associated-with-foundation",
+      "id": "traceability-associated-with-foundation",
       "type": "relationship"
     },
     {
-      "id": "governed-change#verification-reads-digest",
+      "id": "verification-reads-digest",
       "type": "relationship"
     },
     {
-      "id": "governed-change#verification-reads-proposal",
+      "id": "verification-reads-proposal",
       "type": "relationship"
     },
     {
-      "id": "governed-change#verification-realizes-decision",
+      "id": "verification-realizes-decision",
       "type": "relationship"
     },
     {
-      "id": "governed-change#verify-intent",
+      "id": "verify-intent",
       "type": "concept"
     },
     {
-      "id": "governed-change#worker-runtime",
+      "id": "worker-runtime",
       "type": "concept"
     },
     {
-      "id": "governed-change#yarramate-adoption",
+      "id": "yarramate-adoption",
       "type": "concept"
     }
   ],
   "claims": [
     {
-      "id": "governed-change#adoption-realizes-suite",
-      "subject": "governed-change#yarramate-adoption",
+      "id": "adoption-realizes-suite",
+      "subject": "yarramate-adoption",
       "predicate": "yarramate/core@0.1#realization",
       "object": {
-        "ref": "governed-change#conformance-suite"
+        "ref": "conformance-suite"
       },
       "origin": "declared",
       "source": {
@@ -253,8 +253,8 @@
       }
     },
     {
-      "id": "governed-change#adoption-realizes-suite~name",
-      "subject": "governed-change#adoption-realizes-suite",
+      "id": "adoption-realizes-suite~name",
+      "subject": "adoption-realizes-suite",
       "predicate": "yarramate/relationship/name",
       "object": {
         "value": "delivers"
@@ -269,8 +269,8 @@
       }
     },
     {
-      "id": "governed-change#ai-change-risk~kind",
-      "subject": "governed-change#ai-change-risk",
+      "id": "ai-change-risk~kind",
+      "subject": "ai-change-risk",
       "predicate": "yarramate/concept/kind",
       "object": {
         "value": "yarramate/core@0.1#driver"
@@ -285,8 +285,8 @@
       }
     },
     {
-      "id": "governed-change#ai-change-risk~name",
-      "subject": "governed-change#ai-change-risk",
+      "id": "ai-change-risk~name",
+      "subject": "ai-change-risk",
       "predicate": "yarramate/concept/name",
       "object": {
         "value": "Risk from AI-authored change"
@@ -301,8 +301,8 @@
       }
     },
     {
-      "id": "governed-change#approval-artifact~kind",
-      "subject": "governed-change#approval-artifact",
+      "id": "approval-artifact~kind",
+      "subject": "approval-artifact",
       "predicate": "yarramate/concept/kind",
       "object": {
         "value": "yarramate/core@0.1#artifact"
@@ -317,8 +317,8 @@
       }
     },
     {
-      "id": "governed-change#approval-artifact~name",
-      "subject": "governed-change#approval-artifact",
+      "id": "approval-artifact~name",
+      "subject": "approval-artifact",
       "predicate": "yarramate/concept/name",
       "object": {
         "value": "Sealed approval artifact"
@@ -333,8 +333,8 @@
       }
     },
     {
-      "id": "governed-change#approval-decision~kind",
-      "subject": "governed-change#approval-decision",
+      "id": "approval-decision~kind",
+      "subject": "approval-decision",
       "predicate": "yarramate/concept/kind",
       "object": {
         "value": "yarramate/core@0.1#applicationService"
@@ -349,8 +349,8 @@
       }
     },
     {
-      "id": "governed-change#approval-decision~name",
-      "subject": "governed-change#approval-decision",
+      "id": "approval-decision~name",
+      "subject": "approval-decision",
       "predicate": "yarramate/concept/name",
       "object": {
         "value": "Approval decision"
@@ -365,8 +365,8 @@
       }
     },
     {
-      "id": "governed-change#approval-interface~kind",
-      "subject": "governed-change#approval-interface",
+      "id": "approval-interface~kind",
+      "subject": "approval-interface",
       "predicate": "yarramate/concept/kind",
       "object": {
         "value": "yarramate/core@0.1#applicationInterface"
@@ -381,8 +381,8 @@
       }
     },
     {
-      "id": "governed-change#approval-interface~name",
-      "subject": "governed-change#approval-interface",
+      "id": "approval-interface~name",
+      "subject": "approval-interface",
       "predicate": "yarramate/concept/name",
       "object": {
         "value": "Approval interface"
@@ -397,8 +397,8 @@
       }
     },
     {
-      "id": "governed-change#approval-record~kind",
-      "subject": "governed-change#approval-record",
+      "id": "approval-record~kind",
+      "subject": "approval-record",
       "predicate": "yarramate/concept/kind",
       "object": {
         "value": "yarramate/core@0.1#businessObject"
@@ -413,8 +413,8 @@
       }
     },
     {
-      "id": "governed-change#approval-record~name",
-      "subject": "governed-change#approval-record",
+      "id": "approval-record~name",
+      "subject": "approval-record",
       "predicate": "yarramate/concept/name",
       "object": {
         "value": "Approval record"
@@ -429,8 +429,8 @@
       }
     },
     {
-      "id": "governed-change#approval-requested~kind",
-      "subject": "governed-change#approval-requested",
+      "id": "approval-requested~kind",
+      "subject": "approval-requested",
       "predicate": "yarramate/concept/kind",
       "object": {
         "value": "yarramate/core@0.1#applicationEvent"
@@ -445,8 +445,8 @@
       }
     },
     {
-      "id": "governed-change#approval-requested~name",
-      "subject": "governed-change#approval-requested",
+      "id": "approval-requested~name",
+      "subject": "approval-requested",
       "predicate": "yarramate/concept/name",
       "object": {
         "value": "Approval requested"
@@ -461,11 +461,11 @@
       }
     },
     {
-      "id": "governed-change#approval-supports-integrity",
-      "subject": "governed-change#attributable-approval",
+      "id": "approval-supports-integrity",
+      "subject": "attributable-approval",
       "predicate": "yarramate/core@0.1#realization",
       "object": {
-        "ref": "governed-change#reviewed-change-integrity"
+        "ref": "reviewed-change-integrity"
       },
       "origin": "declared",
       "source": {
@@ -477,8 +477,8 @@
       }
     },
     {
-      "id": "governed-change#approval-supports-integrity~name",
-      "subject": "governed-change#approval-supports-integrity",
+      "id": "approval-supports-integrity~name",
+      "subject": "approval-supports-integrity",
       "predicate": "yarramate/relationship/name",
       "object": {
         "value": "supports"
@@ -493,11 +493,11 @@
       }
     },
     {
-      "id": "governed-change#artifact-realizes-record",
-      "subject": "governed-change#approval-artifact",
+      "id": "artifact-realizes-record",
+      "subject": "approval-artifact",
       "predicate": "yarramate/core@0.1#realization",
       "object": {
-        "ref": "governed-change#approval-record"
+        "ref": "approval-record"
       },
       "origin": "declared",
       "source": {
@@ -509,8 +509,8 @@
       }
     },
     {
-      "id": "governed-change#artifact-realizes-record~name",
-      "subject": "governed-change#artifact-realizes-record",
+      "id": "artifact-realizes-record~name",
+      "subject": "artifact-realizes-record",
       "predicate": "yarramate/relationship/name",
       "object": {
         "value": "materializes"
@@ -525,8 +525,8 @@
       }
     },
     {
-      "id": "governed-change#attributable-approval~kind",
-      "subject": "governed-change#attributable-approval",
+      "id": "attributable-approval~kind",
+      "subject": "attributable-approval",
       "predicate": "yarramate/concept/kind",
       "object": {
         "value": "yarramate/core@0.1#principle"
@@ -541,8 +541,8 @@
       }
     },
     {
-      "id": "governed-change#attributable-approval~name",
-      "subject": "governed-change#attributable-approval",
+      "id": "attributable-approval~name",
+      "subject": "attributable-approval",
       "predicate": "yarramate/concept/name",
       "object": {
         "value": "Every approval names a decision-maker"
@@ -557,8 +557,8 @@
       }
     },
     {
-      "id": "governed-change#board-member~kind",
-      "subject": "governed-change#board-member",
+      "id": "board-member~kind",
+      "subject": "board-member",
       "predicate": "yarramate/concept/kind",
       "object": {
         "value": "yarramate/core@0.1#businessRole"
@@ -573,8 +573,8 @@
       }
     },
     {
-      "id": "governed-change#board-member~name",
-      "subject": "governed-change#board-member",
+      "id": "board-member~name",
+      "subject": "board-member",
       "predicate": "yarramate/concept/name",
       "object": {
         "value": "Board member"
@@ -589,8 +589,8 @@
       }
     },
     {
-      "id": "governed-change#conformance-suite~kind",
-      "subject": "governed-change#conformance-suite",
+      "id": "conformance-suite~kind",
+      "subject": "conformance-suite",
       "predicate": "yarramate/concept/kind",
       "object": {
         "value": "yarramate/core@0.1#deliverable"
@@ -605,8 +605,8 @@
       }
     },
     {
-      "id": "governed-change#conformance-suite~name",
-      "subject": "governed-change#conformance-suite",
+      "id": "conformance-suite~name",
+      "subject": "conformance-suite",
       "predicate": "yarramate/concept/name",
       "object": {
         "value": "Profile conformance suite"
@@ -621,11 +621,11 @@
       }
     },
     {
-      "id": "governed-change#constraint-enforces-approval",
-      "subject": "governed-change#no-anonymous-approval",
+      "id": "constraint-enforces-approval",
+      "subject": "no-anonymous-approval",
       "predicate": "yarramate/core@0.1#realization",
       "object": {
-        "ref": "governed-change#attributable-approval"
+        "ref": "attributable-approval"
       },
       "origin": "declared",
       "source": {
@@ -637,8 +637,8 @@
       }
     },
     {
-      "id": "governed-change#constraint-enforces-approval~name",
-      "subject": "governed-change#constraint-enforces-approval",
+      "id": "constraint-enforces-approval~name",
+      "subject": "constraint-enforces-approval",
       "predicate": "yarramate/relationship/name",
       "object": {
         "value": "enforces"
@@ -653,11 +653,11 @@
       }
     },
     {
-      "id": "governed-change#control-plane-assigned-to-edge",
-      "subject": "governed-change#edge-runtime",
+      "id": "control-plane-assigned-to-edge",
+      "subject": "edge-runtime",
       "predicate": "yarramate/core@0.1#realization",
       "object": {
-        "ref": "governed-change#control-plane"
+        "ref": "control-plane"
       },
       "origin": "declared",
       "source": {
@@ -669,8 +669,8 @@
       }
     },
     {
-      "id": "governed-change#control-plane-assigned-to-edge~name",
-      "subject": "governed-change#control-plane-assigned-to-edge",
+      "id": "control-plane-assigned-to-edge~name",
+      "subject": "control-plane-assigned-to-edge",
       "predicate": "yarramate/relationship/name",
       "object": {
         "value": "deployed on"
@@ -685,11 +685,11 @@
       }
     },
     {
-      "id": "governed-change#control-plane-performs-verification",
-      "subject": "governed-change#control-plane",
+      "id": "control-plane-performs-verification",
+      "subject": "control-plane",
       "predicate": "yarramate/core@0.1#assignment",
       "object": {
-        "ref": "governed-change#verify-intent"
+        "ref": "verify-intent"
       },
       "origin": "declared",
       "source": {
@@ -701,8 +701,8 @@
       }
     },
     {
-      "id": "governed-change#control-plane-performs-verification~name",
-      "subject": "governed-change#control-plane-performs-verification",
+      "id": "control-plane-performs-verification~name",
+      "subject": "control-plane-performs-verification",
       "predicate": "yarramate/relationship/name",
       "object": {
         "value": "performs"
@@ -717,11 +717,11 @@
       }
     },
     {
-      "id": "governed-change#control-plane-realizes-intent-match",
-      "subject": "governed-change#control-plane",
+      "id": "control-plane-realizes-intent-match",
+      "subject": "control-plane",
       "predicate": "yarramate/core@0.1#realization",
       "object": {
-        "ref": "governed-change#proposal-intent-match"
+        "ref": "proposal-intent-match"
       },
       "origin": "declared",
       "source": {
@@ -733,8 +733,8 @@
       }
     },
     {
-      "id": "governed-change#control-plane-realizes-intent-match~name",
-      "subject": "governed-change#control-plane-realizes-intent-match",
+      "id": "control-plane-realizes-intent-match~name",
+      "subject": "control-plane-realizes-intent-match",
       "predicate": "yarramate/relationship/name",
       "object": {
         "value": "implements"
@@ -749,8 +749,8 @@
       }
     },
     {
-      "id": "governed-change#control-plane~kind",
-      "subject": "governed-change#control-plane",
+      "id": "control-plane~kind",
+      "subject": "control-plane",
       "predicate": "yarramate/concept/kind",
       "object": {
         "value": "yarramate/core@0.1#applicationComponent"
@@ -765,8 +765,8 @@
       }
     },
     {
-      "id": "governed-change#control-plane~name",
-      "subject": "governed-change#control-plane",
+      "id": "control-plane~name",
+      "subject": "control-plane",
       "predicate": "yarramate/concept/name",
       "object": {
         "value": "Control plane"
@@ -781,8 +781,8 @@
       }
     },
     {
-      "id": "governed-change#decide-proposal~kind",
-      "subject": "governed-change#decide-proposal",
+      "id": "decide-proposal~kind",
+      "subject": "decide-proposal",
       "predicate": "yarramate/concept/kind",
       "object": {
         "value": "yarramate/core@0.1#businessProcess"
@@ -797,8 +797,8 @@
       }
     },
     {
-      "id": "governed-change#decide-proposal~name",
-      "subject": "governed-change#decide-proposal",
+      "id": "decide-proposal~name",
+      "subject": "decide-proposal",
       "predicate": "yarramate/concept/name",
       "object": {
         "value": "Decide proposal"
@@ -813,11 +813,11 @@
       }
     },
     {
-      "id": "governed-change#decision-gate-realizes-capability",
-      "subject": "governed-change#govern-ai-change",
+      "id": "decision-gate-realizes-capability",
+      "subject": "govern-ai-change",
       "predicate": "yarramate/core@0.1#realization",
       "object": {
-        "ref": "governed-change#explicit-decision-gate"
+        "ref": "explicit-decision-gate"
       },
       "origin": "declared",
       "source": {
@@ -829,8 +829,8 @@
       }
     },
     {
-      "id": "governed-change#decision-gate-realizes-capability~name",
-      "subject": "governed-change#decision-gate-realizes-capability",
+      "id": "decision-gate-realizes-capability~name",
+      "subject": "decision-gate-realizes-capability",
       "predicate": "yarramate/relationship/name",
       "object": {
         "value": "is implemented by"
@@ -845,11 +845,11 @@
       }
     },
     {
-      "id": "governed-change#decision-serves-process",
-      "subject": "governed-change#approval-decision",
+      "id": "decision-serves-process",
+      "subject": "approval-decision",
       "predicate": "yarramate/core@0.1#serving",
       "object": {
-        "ref": "governed-change#decide-proposal"
+        "ref": "decide-proposal"
       },
       "origin": "declared",
       "source": {
@@ -861,8 +861,8 @@
       }
     },
     {
-      "id": "governed-change#decision-serves-process~name",
-      "subject": "governed-change#decision-serves-process",
+      "id": "decision-serves-process~name",
+      "subject": "decision-serves-process",
       "predicate": "yarramate/relationship/name",
       "object": {
         "value": "supports"
@@ -877,11 +877,11 @@
       }
     },
     {
-      "id": "governed-change#drift-threatens-integrity",
-      "subject": "governed-change#proposal-drift",
+      "id": "drift-threatens-integrity",
+      "subject": "proposal-drift",
       "predicate": "yarramate/core@0.1#influence",
       "object": {
-        "ref": "governed-change#reviewed-change-integrity"
+        "ref": "reviewed-change-integrity"
       },
       "origin": "declared",
       "source": {
@@ -893,8 +893,8 @@
       }
     },
     {
-      "id": "governed-change#drift-threatens-integrity~name",
-      "subject": "governed-change#drift-threatens-integrity",
+      "id": "drift-threatens-integrity~name",
+      "subject": "drift-threatens-integrity",
       "predicate": "yarramate/relationship/name",
       "object": {
         "value": "threatens"
@@ -909,11 +909,11 @@
       }
     },
     {
-      "id": "governed-change#edge-composes-runtime",
-      "subject": "governed-change#edge-runtime",
+      "id": "edge-composes-runtime",
+      "subject": "edge-runtime",
       "predicate": "yarramate/core@0.1#composition",
       "object": {
-        "ref": "governed-change#worker-runtime"
+        "ref": "worker-runtime"
       },
       "origin": "declared",
       "source": {
@@ -925,8 +925,8 @@
       }
     },
     {
-      "id": "governed-change#edge-composes-runtime~name",
-      "subject": "governed-change#edge-composes-runtime",
+      "id": "edge-composes-runtime~name",
+      "subject": "edge-composes-runtime",
       "predicate": "yarramate/relationship/name",
       "object": {
         "value": "contains"
@@ -941,8 +941,8 @@
       }
     },
     {
-      "id": "governed-change#edge-runtime~kind",
-      "subject": "governed-change#edge-runtime",
+      "id": "edge-runtime~kind",
+      "subject": "edge-runtime",
       "predicate": "yarramate/concept/kind",
       "object": {
         "value": "yarramate/core@0.1#node"
@@ -957,8 +957,8 @@
       }
     },
     {
-      "id": "governed-change#edge-runtime~name",
-      "subject": "governed-change#edge-runtime",
+      "id": "edge-runtime~name",
+      "subject": "edge-runtime",
       "predicate": "yarramate/concept/name",
       "object": {
         "value": "Edge runtime"
@@ -973,8 +973,8 @@
       }
     },
     {
-      "id": "governed-change#execute-request~kind",
-      "subject": "governed-change#execute-request",
+      "id": "execute-request~kind",
+      "subject": "execute-request",
       "predicate": "yarramate/concept/kind",
       "object": {
         "value": "yarramate/core@0.1#technologyService"
@@ -989,8 +989,8 @@
       }
     },
     {
-      "id": "governed-change#execute-request~name",
-      "subject": "governed-change#execute-request",
+      "id": "execute-request~name",
+      "subject": "execute-request",
       "predicate": "yarramate/concept/name",
       "object": {
         "value": "Execute request"
@@ -1005,8 +1005,8 @@
       }
     },
     {
-      "id": "governed-change#explicit-decision-gate~kind",
-      "subject": "governed-change#explicit-decision-gate",
+      "id": "explicit-decision-gate~kind",
+      "subject": "explicit-decision-gate",
       "predicate": "yarramate/concept/kind",
       "object": {
         "value": "yarramate/core@0.1#courseOfAction"
@@ -1021,8 +1021,8 @@
       }
     },
     {
-      "id": "governed-change#explicit-decision-gate~name",
-      "subject": "governed-change#explicit-decision-gate",
+      "id": "explicit-decision-gate~name",
+      "subject": "explicit-decision-gate",
       "predicate": "yarramate/concept/name",
       "object": {
         "value": "Use an explicit decision gate"
@@ -1037,8 +1037,8 @@
       }
     },
     {
-      "id": "governed-change#foundation~kind",
-      "subject": "governed-change#foundation",
+      "id": "foundation~kind",
+      "subject": "foundation",
       "predicate": "yarramate/concept/kind",
       "object": {
         "value": "yarramate/core@0.1#plateau"
@@ -1053,8 +1053,8 @@
       }
     },
     {
-      "id": "governed-change#foundation~name",
-      "subject": "governed-change#foundation",
+      "id": "foundation~name",
+      "subject": "foundation",
       "predicate": "yarramate/concept/name",
       "object": {
         "value": "Governance foundation"
@@ -1069,8 +1069,8 @@
       }
     },
     {
-      "id": "governed-change#govern-ai-change~kind",
-      "subject": "governed-change#govern-ai-change",
+      "id": "govern-ai-change~kind",
+      "subject": "govern-ai-change",
       "predicate": "yarramate/concept/kind",
       "object": {
         "value": "yarramate/core@0.1#capability"
@@ -1085,8 +1085,8 @@
       }
     },
     {
-      "id": "governed-change#govern-ai-change~name",
-      "subject": "governed-change#govern-ai-change",
+      "id": "govern-ai-change~name",
+      "subject": "govern-ai-change",
       "predicate": "yarramate/concept/name",
       "object": {
         "value": "Govern AI-authored change"
@@ -1101,8 +1101,8 @@
       }
     },
     {
-      "id": "governed-change#governed-publication~kind",
-      "subject": "governed-change#governed-publication",
+      "id": "governed-publication~kind",
+      "subject": "governed-publication",
       "predicate": "yarramate/concept/kind",
       "object": {
         "value": "yarramate/core@0.1#businessService"
@@ -1117,8 +1117,8 @@
       }
     },
     {
-      "id": "governed-change#governed-publication~name",
-      "subject": "governed-change#governed-publication",
+      "id": "governed-publication~name",
+      "subject": "governed-publication",
       "predicate": "yarramate/concept/name",
       "object": {
         "value": "Governed publication"
@@ -1133,8 +1133,8 @@
       }
     },
     {
-      "id": "governed-change#intent-digest~kind",
-      "subject": "governed-change#intent-digest",
+      "id": "intent-digest~kind",
+      "subject": "intent-digest",
       "predicate": "yarramate/concept/kind",
       "object": {
         "value": "yarramate/core@0.1#dataObject"
@@ -1149,8 +1149,8 @@
       }
     },
     {
-      "id": "governed-change#intent-digest~name",
-      "subject": "governed-change#intent-digest",
+      "id": "intent-digest~name",
+      "subject": "intent-digest",
       "predicate": "yarramate/concept/name",
       "object": {
         "value": "Intent digest"
@@ -1165,11 +1165,11 @@
       }
     },
     {
-      "id": "governed-change#intent-match-fulfills-integrity",
-      "subject": "governed-change#proposal-intent-match",
+      "id": "intent-match-fulfills-integrity",
+      "subject": "proposal-intent-match",
       "predicate": "yarramate/core@0.1#realization",
       "object": {
-        "ref": "governed-change#reviewed-change-integrity"
+        "ref": "reviewed-change-integrity"
       },
       "origin": "declared",
       "source": {
@@ -1181,8 +1181,8 @@
       }
     },
     {
-      "id": "governed-change#intent-match-fulfills-integrity~name",
-      "subject": "governed-change#intent-match-fulfills-integrity",
+      "id": "intent-match-fulfills-integrity~name",
+      "subject": "intent-match-fulfills-integrity",
       "predicate": "yarramate/relationship/name",
       "object": {
         "value": "fulfills"
@@ -1197,11 +1197,11 @@
       }
     },
     {
-      "id": "governed-change#interface-serves-member",
-      "subject": "governed-change#approval-interface",
+      "id": "interface-serves-member",
+      "subject": "approval-interface",
       "predicate": "yarramate/core@0.1#serving",
       "object": {
-        "ref": "governed-change#board-member"
+        "ref": "board-member"
       },
       "origin": "declared",
       "source": {
@@ -1213,8 +1213,8 @@
       }
     },
     {
-      "id": "governed-change#interface-serves-member~name",
-      "subject": "governed-change#interface-serves-member",
+      "id": "interface-serves-member~name",
+      "subject": "interface-serves-member",
       "predicate": "yarramate/relationship/name",
       "object": {
         "value": "serves"
@@ -1229,11 +1229,11 @@
       }
     },
     {
-      "id": "governed-change#journey-realizes-capability",
-      "subject": "governed-change#govern-ai-change",
+      "id": "journey-realizes-capability",
+      "subject": "govern-ai-change",
       "predicate": "yarramate/core@0.1#serving",
       "object": {
-        "ref": "governed-change#safe-change-journey"
+        "ref": "safe-change-journey"
       },
       "origin": "declared",
       "source": {
@@ -1245,8 +1245,8 @@
       }
     },
     {
-      "id": "governed-change#journey-realizes-capability~name",
-      "subject": "governed-change#journey-realizes-capability",
+      "id": "journey-realizes-capability~name",
+      "subject": "journey-realizes-capability",
       "predicate": "yarramate/relationship/name",
       "object": {
         "value": "serves"
@@ -1261,11 +1261,11 @@
       }
     },
     {
-      "id": "governed-change#member-performs-process",
-      "subject": "governed-change#board-member",
+      "id": "member-performs-process",
+      "subject": "board-member",
       "predicate": "yarramate/core@0.1#assignment",
       "object": {
-        "ref": "governed-change#decide-proposal"
+        "ref": "decide-proposal"
       },
       "origin": "declared",
       "source": {
@@ -1277,8 +1277,8 @@
       }
     },
     {
-      "id": "governed-change#member-performs-process~name",
-      "subject": "governed-change#member-performs-process",
+      "id": "member-performs-process~name",
+      "subject": "member-performs-process",
       "predicate": "yarramate/relationship/name",
       "object": {
         "value": "performs"
@@ -1293,8 +1293,8 @@
       }
     },
     {
-      "id": "governed-change#no-anonymous-approval~kind",
-      "subject": "governed-change#no-anonymous-approval",
+      "id": "no-anonymous-approval~kind",
+      "subject": "no-anonymous-approval",
       "predicate": "yarramate/concept/kind",
       "object": {
         "value": "yarramate/core@0.1#constraint"
@@ -1309,8 +1309,8 @@
       }
     },
     {
-      "id": "governed-change#no-anonymous-approval~name",
-      "subject": "governed-change#no-anonymous-approval",
+      "id": "no-anonymous-approval~name",
+      "subject": "no-anonymous-approval",
       "predicate": "yarramate/concept/name",
       "object": {
         "value": "The system cannot approve without an identity"
@@ -1325,11 +1325,11 @@
       }
     },
     {
-      "id": "governed-change#owner-concerned-with-integrity",
-      "subject": "governed-change#product-owner",
+      "id": "owner-concerned-with-integrity",
+      "subject": "product-owner",
       "predicate": "yarramate/core@0.1#association",
       "object": {
-        "ref": "governed-change#reviewed-change-integrity"
+        "ref": "reviewed-change-integrity"
       },
       "origin": "declared",
       "source": {
@@ -1341,8 +1341,8 @@
       }
     },
     {
-      "id": "governed-change#owner-concerned-with-integrity~name",
-      "subject": "governed-change#owner-concerned-with-integrity",
+      "id": "owner-concerned-with-integrity~name",
+      "subject": "owner-concerned-with-integrity",
       "predicate": "yarramate/relationship/name",
       "object": {
         "value": "has concern"
@@ -1357,11 +1357,11 @@
       }
     },
     {
-      "id": "governed-change#process-realizes-publication",
-      "subject": "governed-change#decide-proposal",
+      "id": "process-realizes-publication",
+      "subject": "decide-proposal",
       "predicate": "yarramate/core@0.1#realization",
       "object": {
-        "ref": "governed-change#governed-publication"
+        "ref": "governed-publication"
       },
       "origin": "declared",
       "source": {
@@ -1373,8 +1373,8 @@
       }
     },
     {
-      "id": "governed-change#process-realizes-publication~name",
-      "subject": "governed-change#process-realizes-publication",
+      "id": "process-realizes-publication~name",
+      "subject": "process-realizes-publication",
       "predicate": "yarramate/relationship/name",
       "object": {
         "value": "realizes"
@@ -1389,11 +1389,11 @@
       }
     },
     {
-      "id": "governed-change#process-writes-record",
-      "subject": "governed-change#decide-proposal",
+      "id": "process-writes-record",
+      "subject": "decide-proposal",
       "predicate": "yarramate/core@0.1#access",
       "object": {
-        "ref": "governed-change#approval-record"
+        "ref": "approval-record"
       },
       "origin": "declared",
       "source": {
@@ -1405,8 +1405,8 @@
       }
     },
     {
-      "id": "governed-change#process-writes-record~mode",
-      "subject": "governed-change#process-writes-record",
+      "id": "process-writes-record~mode",
+      "subject": "process-writes-record",
       "predicate": "yarramate/access/mode",
       "object": {
         "value": "write"
@@ -1421,8 +1421,8 @@
       }
     },
     {
-      "id": "governed-change#process-writes-record~name",
-      "subject": "governed-change#process-writes-record",
+      "id": "process-writes-record~name",
+      "subject": "process-writes-record",
       "predicate": "yarramate/relationship/name",
       "object": {
         "value": "creates"
@@ -1437,8 +1437,8 @@
       }
     },
     {
-      "id": "governed-change#product-owner~kind",
-      "subject": "governed-change#product-owner",
+      "id": "product-owner~kind",
+      "subject": "product-owner",
       "predicate": "yarramate/concept/kind",
       "object": {
         "value": "yarramate/core@0.1#stakeholder"
@@ -1453,8 +1453,8 @@
       }
     },
     {
-      "id": "governed-change#product-owner~name",
-      "subject": "governed-change#product-owner",
+      "id": "product-owner~name",
+      "subject": "product-owner",
       "predicate": "yarramate/concept/name",
       "object": {
         "value": "Product owner"
@@ -1469,8 +1469,8 @@
       }
     },
     {
-      "id": "governed-change#proposal-drift~kind",
-      "subject": "governed-change#proposal-drift",
+      "id": "proposal-drift~kind",
+      "subject": "proposal-drift",
       "predicate": "yarramate/concept/kind",
       "object": {
         "value": "yarramate/core@0.1#assessment"
@@ -1485,8 +1485,8 @@
       }
     },
     {
-      "id": "governed-change#proposal-drift~name",
-      "subject": "governed-change#proposal-drift",
+      "id": "proposal-drift~name",
+      "subject": "proposal-drift",
       "predicate": "yarramate/concept/name",
       "object": {
         "value": "Intent can change after execution"
@@ -1501,8 +1501,8 @@
       }
     },
     {
-      "id": "governed-change#proposal-intent-match~kind",
-      "subject": "governed-change#proposal-intent-match",
+      "id": "proposal-intent-match~kind",
+      "subject": "proposal-intent-match",
       "predicate": "yarramate/concept/kind",
       "object": {
         "value": "yarramate/core@0.1#requirement"
@@ -1517,8 +1517,8 @@
       }
     },
     {
-      "id": "governed-change#proposal-intent-match~name",
-      "subject": "governed-change#proposal-intent-match",
+      "id": "proposal-intent-match~name",
+      "subject": "proposal-intent-match",
       "predicate": "yarramate/concept/name",
       "object": {
         "value": "Proposal matches current intent"
@@ -1533,8 +1533,8 @@
       }
     },
     {
-      "id": "governed-change#proposal~kind",
-      "subject": "governed-change#proposal",
+      "id": "proposal~kind",
+      "subject": "proposal",
       "predicate": "yarramate/concept/kind",
       "object": {
         "value": "yarramate/core@0.1#dataObject"
@@ -1549,8 +1549,8 @@
       }
     },
     {
-      "id": "governed-change#proposal~name",
-      "subject": "governed-change#proposal",
+      "id": "proposal~name",
+      "subject": "proposal",
       "predicate": "yarramate/concept/name",
       "object": {
         "value": "Proposal"
@@ -1565,11 +1565,11 @@
       }
     },
     {
-      "id": "governed-change#publication-serves-member",
-      "subject": "governed-change#governed-publication",
+      "id": "publication-serves-member",
+      "subject": "governed-publication",
       "predicate": "yarramate/core@0.1#serving",
       "object": {
-        "ref": "governed-change#board-member"
+        "ref": "board-member"
       },
       "origin": "declared",
       "source": {
@@ -1581,8 +1581,8 @@
       }
     },
     {
-      "id": "governed-change#publication-serves-member~name",
-      "subject": "governed-change#publication-serves-member",
+      "id": "publication-serves-member~name",
+      "subject": "publication-serves-member",
       "predicate": "yarramate/relationship/name",
       "object": {
         "value": "serves"
@@ -1597,11 +1597,11 @@
       }
     },
     {
-      "id": "governed-change#request-triggers-verification",
-      "subject": "governed-change#approval-requested",
+      "id": "request-triggers-verification",
+      "subject": "approval-requested",
       "predicate": "yarramate/core@0.1#triggering",
       "object": {
-        "ref": "governed-change#verify-intent"
+        "ref": "verify-intent"
       },
       "origin": "declared",
       "source": {
@@ -1613,8 +1613,8 @@
       }
     },
     {
-      "id": "governed-change#request-triggers-verification~name",
-      "subject": "governed-change#request-triggers-verification",
+      "id": "request-triggers-verification~name",
+      "subject": "request-triggers-verification",
       "predicate": "yarramate/relationship/name",
       "object": {
         "value": "starts"
@@ -1629,8 +1629,8 @@
       }
     },
     {
-      "id": "governed-change#reviewed-change-integrity~kind",
-      "subject": "governed-change#reviewed-change-integrity",
+      "id": "reviewed-change-integrity~kind",
+      "subject": "reviewed-change-integrity",
       "predicate": "yarramate/concept/kind",
       "object": {
         "value": "yarramate/core@0.1#goal"
@@ -1645,8 +1645,8 @@
       }
     },
     {
-      "id": "governed-change#reviewed-change-integrity~name",
-      "subject": "governed-change#reviewed-change-integrity",
+      "id": "reviewed-change-integrity~name",
+      "subject": "reviewed-change-integrity",
       "predicate": "yarramate/concept/name",
       "object": {
         "value": "Published change matches reviewed change"
@@ -1661,11 +1661,11 @@
       }
     },
     {
-      "id": "governed-change#risk-causes-drift",
-      "subject": "governed-change#ai-change-risk",
+      "id": "risk-causes-drift",
+      "subject": "ai-change-risk",
       "predicate": "yarramate/core@0.1#influence",
       "object": {
-        "ref": "governed-change#proposal-drift"
+        "ref": "proposal-drift"
       },
       "origin": "declared",
       "source": {
@@ -1677,8 +1677,8 @@
       }
     },
     {
-      "id": "governed-change#risk-causes-drift~name",
-      "subject": "governed-change#risk-causes-drift",
+      "id": "risk-causes-drift~name",
+      "subject": "risk-causes-drift",
       "predicate": "yarramate/relationship/name",
       "object": {
         "value": "causes"
@@ -1693,11 +1693,11 @@
       }
     },
     {
-      "id": "governed-change#runtime-realizes-execution",
-      "subject": "governed-change#worker-runtime",
+      "id": "runtime-realizes-execution",
+      "subject": "worker-runtime",
       "predicate": "yarramate/core@0.1#realization",
       "object": {
-        "ref": "governed-change#execute-request"
+        "ref": "execute-request"
       },
       "origin": "declared",
       "source": {
@@ -1709,8 +1709,8 @@
       }
     },
     {
-      "id": "governed-change#runtime-realizes-execution~name",
-      "subject": "governed-change#runtime-realizes-execution",
+      "id": "runtime-realizes-execution~name",
+      "subject": "runtime-realizes-execution",
       "predicate": "yarramate/relationship/name",
       "object": {
         "value": "provides"
@@ -1725,8 +1725,8 @@
       }
     },
     {
-      "id": "governed-change#safe-change-journey~kind",
-      "subject": "governed-change#safe-change-journey",
+      "id": "safe-change-journey~kind",
+      "subject": "safe-change-journey",
       "predicate": "yarramate/concept/kind",
       "object": {
         "value": "yarramate/core@0.1#valueStream"
@@ -1741,8 +1741,8 @@
       }
     },
     {
-      "id": "governed-change#safe-change-journey~name",
-      "subject": "governed-change#safe-change-journey",
+      "id": "safe-change-journey~name",
+      "subject": "safe-change-journey",
       "predicate": "yarramate/concept/name",
       "object": {
         "value": "Intent to governed publication"
@@ -1757,8 +1757,8 @@
       }
     },
     {
-      "id": "governed-change#structured-traceability~kind",
-      "subject": "governed-change#structured-traceability",
+      "id": "structured-traceability~kind",
+      "subject": "structured-traceability",
       "predicate": "yarramate/concept/kind",
       "object": {
         "value": "yarramate/core@0.1#gap"
@@ -1773,8 +1773,8 @@
       }
     },
     {
-      "id": "governed-change#structured-traceability~name",
-      "subject": "governed-change#structured-traceability",
+      "id": "structured-traceability~name",
+      "subject": "structured-traceability",
       "predicate": "yarramate/concept/name",
       "object": {
         "value": "Structured traceability"
@@ -1789,11 +1789,11 @@
       }
     },
     {
-      "id": "governed-change#suite-realizes-traceability",
-      "subject": "governed-change#conformance-suite",
+      "id": "suite-realizes-traceability",
+      "subject": "conformance-suite",
       "predicate": "yarramate/core@0.1#association",
       "object": {
-        "ref": "governed-change#structured-traceability"
+        "ref": "structured-traceability"
       },
       "origin": "declared",
       "source": {
@@ -1805,8 +1805,8 @@
       }
     },
     {
-      "id": "governed-change#suite-realizes-traceability~name",
-      "subject": "governed-change#suite-realizes-traceability",
+      "id": "suite-realizes-traceability~name",
+      "subject": "suite-realizes-traceability",
       "predicate": "yarramate/relationship/name",
       "object": {
         "value": "closes"
@@ -1821,11 +1821,11 @@
       }
     },
     {
-      "id": "governed-change#traceability-associated-with-foundation",
-      "subject": "governed-change#structured-traceability",
+      "id": "traceability-associated-with-foundation",
+      "subject": "structured-traceability",
       "predicate": "yarramate/core@0.1#association",
       "object": {
-        "ref": "governed-change#foundation"
+        "ref": "foundation"
       },
       "origin": "declared",
       "source": {
@@ -1837,8 +1837,8 @@
       }
     },
     {
-      "id": "governed-change#traceability-associated-with-foundation~name",
-      "subject": "governed-change#traceability-associated-with-foundation",
+      "id": "traceability-associated-with-foundation~name",
+      "subject": "traceability-associated-with-foundation",
       "predicate": "yarramate/relationship/name",
       "object": {
         "value": "identified in"
@@ -1853,11 +1853,11 @@
       }
     },
     {
-      "id": "governed-change#verification-reads-digest",
-      "subject": "governed-change#verify-intent",
+      "id": "verification-reads-digest",
+      "subject": "verify-intent",
       "predicate": "yarramate/core@0.1#access",
       "object": {
-        "ref": "governed-change#intent-digest"
+        "ref": "intent-digest"
       },
       "origin": "declared",
       "source": {
@@ -1869,8 +1869,8 @@
       }
     },
     {
-      "id": "governed-change#verification-reads-digest~mode",
-      "subject": "governed-change#verification-reads-digest",
+      "id": "verification-reads-digest~mode",
+      "subject": "verification-reads-digest",
       "predicate": "yarramate/access/mode",
       "object": {
         "value": "read"
@@ -1885,8 +1885,8 @@
       }
     },
     {
-      "id": "governed-change#verification-reads-digest~name",
-      "subject": "governed-change#verification-reads-digest",
+      "id": "verification-reads-digest~name",
+      "subject": "verification-reads-digest",
       "predicate": "yarramate/relationship/name",
       "object": {
         "value": "reads"
@@ -1901,11 +1901,11 @@
       }
     },
     {
-      "id": "governed-change#verification-reads-proposal",
-      "subject": "governed-change#verify-intent",
+      "id": "verification-reads-proposal",
+      "subject": "verify-intent",
       "predicate": "yarramate/core@0.1#access",
       "object": {
-        "ref": "governed-change#proposal"
+        "ref": "proposal"
       },
       "origin": "declared",
       "source": {
@@ -1917,8 +1917,8 @@
       }
     },
     {
-      "id": "governed-change#verification-reads-proposal~mode",
-      "subject": "governed-change#verification-reads-proposal",
+      "id": "verification-reads-proposal~mode",
+      "subject": "verification-reads-proposal",
       "predicate": "yarramate/access/mode",
       "object": {
         "value": "read"
@@ -1933,8 +1933,8 @@
       }
     },
     {
-      "id": "governed-change#verification-reads-proposal~name",
-      "subject": "governed-change#verification-reads-proposal",
+      "id": "verification-reads-proposal~name",
+      "subject": "verification-reads-proposal",
       "predicate": "yarramate/relationship/name",
       "object": {
         "value": "reads"
@@ -1949,11 +1949,11 @@
       }
     },
     {
-      "id": "governed-change#verification-realizes-decision",
-      "subject": "governed-change#verify-intent",
+      "id": "verification-realizes-decision",
+      "subject": "verify-intent",
       "predicate": "yarramate/core@0.1#realization",
       "object": {
-        "ref": "governed-change#approval-decision"
+        "ref": "approval-decision"
       },
       "origin": "declared",
       "source": {
@@ -1965,8 +1965,8 @@
       }
     },
     {
-      "id": "governed-change#verification-realizes-decision~name",
-      "subject": "governed-change#verification-realizes-decision",
+      "id": "verification-realizes-decision~name",
+      "subject": "verification-realizes-decision",
       "predicate": "yarramate/relationship/name",
       "object": {
         "value": "realizes"
@@ -1981,8 +1981,8 @@
       }
     },
     {
-      "id": "governed-change#verify-intent~kind",
-      "subject": "governed-change#verify-intent",
+      "id": "verify-intent~kind",
+      "subject": "verify-intent",
       "predicate": "yarramate/concept/kind",
       "object": {
         "value": "yarramate/core@0.1#applicationFunction"
@@ -1997,8 +1997,8 @@
       }
     },
     {
-      "id": "governed-change#verify-intent~name",
-      "subject": "governed-change#verify-intent",
+      "id": "verify-intent~name",
+      "subject": "verify-intent",
       "predicate": "yarramate/concept/name",
       "object": {
         "value": "Verify proposal intent"
@@ -2013,8 +2013,8 @@
       }
     },
     {
-      "id": "governed-change#worker-runtime~kind",
-      "subject": "governed-change#worker-runtime",
+      "id": "worker-runtime~kind",
+      "subject": "worker-runtime",
       "predicate": "yarramate/concept/kind",
       "object": {
         "value": "yarramate/core@0.1#systemSoftware"
@@ -2029,8 +2029,8 @@
       }
     },
     {
-      "id": "governed-change#worker-runtime~name",
-      "subject": "governed-change#worker-runtime",
+      "id": "worker-runtime~name",
+      "subject": "worker-runtime",
       "predicate": "yarramate/concept/name",
       "object": {
         "value": "Workers runtime"
@@ -2045,8 +2045,8 @@
       }
     },
     {
-      "id": "governed-change#yarramate-adoption~kind",
-      "subject": "governed-change#yarramate-adoption",
+      "id": "yarramate-adoption~kind",
+      "subject": "yarramate-adoption",
       "predicate": "yarramate/concept/kind",
       "object": {
         "value": "yarramate/core@0.1#workPackage"
@@ -2061,8 +2061,8 @@
       }
     },
     {
-      "id": "governed-change#yarramate-adoption~name",
-      "subject": "governed-change#yarramate-adoption",
+      "id": "yarramate-adoption~name",
+      "subject": "yarramate-adoption",
       "predicate": "yarramate/concept/name",
       "object": {
         "value": "Adopt YarraMate profile"

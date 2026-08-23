@@ -51,14 +51,14 @@ describe('YarraMate Graphify adapter CLI', () => {
       provider: 'graphify',
       observations: [
         {
-          subject: 'checkout#approval-api',
+          subject: 'approval-api',
           result: 'confirmed',
           evidence: {
             uri: 'graphify:checkout_node',
           },
         },
         {
-          subject: 'checkout#approve-order',
+          subject: 'approve-order',
           result: 'not-observed',
           evidence: {
             uri: 'graphify:missing_capability',
