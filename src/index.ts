@@ -136,3 +136,4 @@ export {
   draftRelationship,
   proposeRelationshipId,
 } from './relationship-drafting.js'
+export { draftConcept, proposeConceptId } from './concept-drafting.js'

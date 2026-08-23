@@ -593,6 +593,47 @@ body {
   color: var(--quiet);
 }
 
+.subject-draft-open {
+  position: absolute;
+  z-index: 2;
+  top: calc(var(--step) * 1.5);
+  right: calc(var(--step) * 1.5);
+  min-height: 28px;
+}
+
+.subject-draft-panel {
+  position: absolute;
+  z-index: 3;
+  top: calc(var(--step) * 1.5);
+  right: calc(var(--step) * 1.5);
+  width: min(340px, calc(100% - var(--step) * 4));
+  padding: calc(var(--step) * 1.5) calc(var(--step) * 2);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--sheet);
+  box-shadow: 0 2px 12px rgb(0 0 0 / 12%);
+}
+
+.subject-draft-field {
+  display: block;
+  margin-bottom: calc(var(--step) * 1.5);
+}
+
+.subject-draft-field > span {
+  display: block;
+  margin-bottom: calc(var(--step) * 0.5);
+}
+
+.subject-draft-field > input,
+.subject-draft-field > select {
+  width: 100%;
+}
+
+.subject-draft-id {
+  margin: 0 0 calc(var(--step) * 1.5);
+  color: var(--quiet);
+}
+
 .connection-kinds {
   display: flex;
   flex-wrap: wrap;
