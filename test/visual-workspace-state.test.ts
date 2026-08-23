@@ -608,7 +608,7 @@ describe("viewNeedingApplication", () => {
     { id: "product-context" },
   ] as const;
 
-  it("claims the view the session opened on, which no picker click applied", () => {
+  it("claims the view the session opened on, which no tree click applied", () => {
     const view = viewNeedingApplication("engine-components", views, null, true);
     expect(view).toBe(views[0]);
   });
@@ -649,5 +649,44 @@ describe("viewNeedingApplication", () => {
     expect(viewNeedingApplication("engine-components", views, null, true)).toBe(
       views[0],
     );
+  });
+});
+
+describe("the left rail's own state", () => {
+  const base = createVisualWorkspaceState(1440);
+
+  it("starts with every branch open and nothing typed", () => {
+    expect(base.tree).toEqual({ filterText: "", collapsed: [] });
+  });
+
+  it("records only the branches the reviewer shut", () => {
+    const shut = visualWorkspaceReducer(base, {
+      type: "tree.toggled",
+      key: "model-layer:application",
+    });
+    expect(shut.tree.collapsed).toEqual(["model-layer:application"]);
+
+    const reopened = visualWorkspaceReducer(shut, {
+      type: "tree.toggled",
+      key: "model-layer:application",
+    });
+    // Back to empty rather than to a list of explicit opens: a folder that
+    // appears later must arrive open, not hidden behind a default nobody set.
+    expect(reopened.tree.collapsed).toEqual([]);
+  });
+
+  it("holds the rail's filter apart from the one that narrows the canvas", () => {
+    const typed = visualWorkspaceReducer(base, {
+      type: "tree.filtered",
+      filterText: "ledger",
+    });
+    expect(typed.tree.filterText).toBe("ledger");
+    // Restating the same text is not a change, so nothing downstream re-renders.
+    expect(
+      visualWorkspaceReducer(typed, {
+        type: "tree.filtered",
+        filterText: "ledger",
+      }),
+    ).toBe(typed);
   });
 });

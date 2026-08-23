@@ -1,7 +1,7 @@
 import { GraphCanvas } from "./graph-canvas.js";
 import { FilterPanel, type PresentationFlag } from "./filter-panel.js";
 import { QuickFilterBox } from "./quick-filter.js";
-import { ViewPicker } from "./view-picker.js";
+import { ViewTree } from "./view-tree.js";
 import { SaveViewControl } from "./save-view.js";
 import { describeQuery } from "./describe-query.js";
 import { ChangesetTray } from "./changeset-tray.js";
@@ -111,11 +111,11 @@ const CommandStrip = ({
   showEvidence,
   showOwnership,
   onTogglePresentation,
-  onSelectView,
-  onClearFilter,
   onApplyFilter,
   quickFilterText,
   onQuickFilterChange,
+  saveViewOpen,
+  onToggleSaveView,
   onSaveView,
   onDismissSavedNotice,
   onEnd,
@@ -137,11 +137,11 @@ const CommandStrip = ({
     flag: PresentationFlag,
     value: boolean,
   ) => void;
-  readonly onSelectView: (view: VisualViewSummary) => void;
-  readonly onClearFilter: () => void;
   readonly onApplyFilter: (query: ProjectionQuery) => void;
   readonly quickFilterText: string;
   readonly onQuickFilterChange: (text: string) => void;
+  readonly saveViewOpen: boolean;
+  readonly onToggleSaveView: () => void;
   readonly onSaveView: (payload: VisualViewSavePayload) => void;
   readonly onDismissSavedNotice: () => void;
   readonly onEnd: () => void;
@@ -164,12 +164,6 @@ const CommandStrip = ({
       >
         {endTransitionStatus(state)}
       </span>
-      <ViewPicker
-        views={views}
-        activeViewId={state.activeView}
-        onSelect={onSelectView}
-        onClear={onClearFilter}
-      />
       <QuickFilterBox value={quickFilterText} onChange={onQuickFilterChange} />
       <FilterPanel
         query={state.activeFilter?.query ?? null}
@@ -189,6 +183,8 @@ const CommandStrip = ({
         showOwnership={showOwnership}
         pendingSave={state.pendingViewSave !== null}
         notice={state.viewSaveNotice}
+        open={saveViewOpen}
+        onToggle={onToggleSaveView}
         onSave={onSaveView}
         onDismissNotice={onDismissSavedNotice}
       />
@@ -354,7 +350,7 @@ const DiagramWorkspace = ({
   return (
     <section className="diagram-workspace" aria-label="Architecture diagram">
       {/*
-       * A view's own query is named by the picker, so a pill would repeat it.
+       * A view's own query is named by the tree, so a pill would repeat it.
        * Every other standing filter has nothing else naming it - the panel can
        * be collapsed and chat can be scrolled away - so the canvas would show a
        * subset while every control claimed the whole model.
@@ -891,6 +887,9 @@ export const App = () => {
   );
 
   const [layoutWaiting, setLayoutWaiting] = useState<string | null>(null);
+  // The save-view form has two openers now — its own toggle in the strip and
+  // the tree's new-view button — so the shell owns whether it is open.
+  const [saveViewOpen, setSaveViewOpen] = useState(false);
 
   useEffect(() => {
     const resized = () =>
@@ -902,8 +901,8 @@ export const App = () => {
     return () => window.removeEventListener("resize", resized);
   }, []);
 
-  // Applying a view is one job with two triggers - the picker, and the view
-  // the session opens on - so it runs here rather than in the picker's
+  // Applying a view is one job with two triggers - the tree, and the view
+  // the session opens on - so it runs here rather than in the tree's
   // handler, which the server-chosen opening never passes through. The ref
   // records what has already landed, so a reviewer-driven navigate (which
   // moves `activeView` synchronously) is applied exactly once, and clearing
@@ -987,6 +986,10 @@ export const App = () => {
         : "No model to draw";
 
   const conversationOpen = workspace.conversation.mode === "open";
+  const treeCollapsed = useMemo(
+    () => new Set(workspace.tree.collapsed),
+    [workspace.tree.collapsed],
+  );
   const shellStyle = {
     "--conversation-width": `${workspace.conversation.width}px`,
   } as CSSProperties;
@@ -1014,11 +1017,11 @@ export const App = () => {
         onTogglePresentation={(flag, value) =>
           dispatchWorkspace({ type: "presentation.toggled", flag, value })
         }
-        onSelectView={(view) => navigate(view.id)}
-        onClearFilter={clearFilter}
         onApplyFilter={filter}
         quickFilterText={state.quickFilterText}
         onQuickFilterChange={setQuickFilterText}
+        saveViewOpen={saveViewOpen}
+        onToggleSaveView={() => setSaveViewOpen((open) => !open)}
         onSaveView={saveView}
         onDismissSavedNotice={dismissSavedNotice}
         onEnd={end}
@@ -1028,6 +1031,44 @@ export const App = () => {
           conversationOpen ? "open" : "closed"
         }`}
       >
+        <ViewTree
+          views={state.views}
+          activeViewId={state.activeView}
+          nodes={state.model?.graph.nodes ?? []}
+          // What the canvas is drawing, which is the graph narrowed by the
+          // standing filter's match set — never `state.model.graph`, which
+          // holds every subject the workspace declares whatever is on screen.
+          inViewIds={
+            state.activeFilter === null
+              ? null
+              : new Set(state.activeFilter.matchedIds)
+          }
+          filterText={workspace.tree.filterText}
+          collapsed={treeCollapsed}
+          onFilterChange={(filterText) =>
+            dispatchWorkspace({ type: "tree.filtered", filterText })
+          }
+          onToggle={(key) => dispatchWorkspace({ type: "tree.toggled", key })}
+          onSelectView={(id) => navigate(id)}
+          onClearView={clearFilter}
+          onNewView={() => {
+            // A new view starts from the whole model rather than from whatever
+            // the last one narrowed to, and the form seeds itself from the
+            // active view — so clearing first is what makes its fields blank.
+            clearFilter();
+            setSaveViewOpen(true);
+          }}
+          onSelectSubject={(id) => {
+            const node = state.model?.graph.nodes.find(
+              (candidate) => candidate.id === id,
+            );
+            if (node === undefined) return;
+            dispatchWorkspace({
+              type: "subject.selected",
+              subject: normalizeSelectedElement(node),
+            });
+          }}
+        />
         <DiagramWorkspace
           state={state}
           selectedId={workspace.selectedSubject?.id ?? null}

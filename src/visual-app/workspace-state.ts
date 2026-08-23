@@ -134,6 +134,16 @@ export interface VisualWorkspaceState {
   readonly descriptionExpanded: boolean;
   readonly detailsOpen: boolean;
   /**
+   * The left rail's own state. The text narrows the rail and nothing else —
+   * `quickFilterText` still narrows the canvas — and `collapsed` holds only
+   * the branches the reviewer shut, so a folder or layer that appears later
+   * arrives open rather than hidden behind a default nobody chose.
+   */
+  readonly tree: {
+    readonly filterText: string;
+    readonly collapsed: readonly string[];
+  };
+  /**
    * What draws as nesting in the active view, in precedence order (ADR 0101).
    * A view that says nothing keeps `DEFAULT_NESTING`, which is composition
    * alone - the behaviour that shipped before a view could say.
@@ -170,6 +180,8 @@ export type VisualWorkspaceAction =
   | { readonly type: "subject.cleared" }
   | { readonly type: "description.toggled" }
   | { readonly type: "details.toggled" }
+  | { readonly type: "tree.filtered"; readonly filterText: string }
+  | { readonly type: "tree.toggled"; readonly key: string }
   | {
       readonly type: "nesting.set";
       readonly nesting: readonly NestingKind[];
@@ -251,7 +263,7 @@ export const presentationActionsFor = (
 // Which view still needs its query and presentation applied. A view reaches
 // the canvas two ways - the reviewer picks one, or the session opens on the
 // one the server named (`initialView`, also what a reload restores) - and
-// only the first ever ran through the picker's handler, so a session opened
+// only the first ever ran through the tree's handler, so a session opened
 // on a view rendered the whole graph under workspace defaults and ignored
 // the presentation that view declares. Both routes move the
 // same `activeView` field, so the decision belongs here, keyed on what has
@@ -316,6 +328,7 @@ export const createVisualWorkspaceState = (
   selectedSubject: null,
   descriptionExpanded: false,
   detailsOpen: false,
+  tree: { filterText: "", collapsed: [] },
   connection: null,
   draftingSubject: false,
   pendingDeletion: null,
@@ -433,6 +446,22 @@ export const visualWorkspaceReducer = (
         : { ...state, descriptionExpanded: !state.descriptionExpanded };
     case "details.toggled":
       return { ...state, detailsOpen: !state.detailsOpen };
+    case "tree.filtered":
+      return state.tree.filterText === action.filterText
+        ? state
+        : { ...state, tree: { ...state.tree, filterText: action.filterText } };
+    case "tree.toggled": {
+      const shut = state.tree.collapsed.includes(action.key);
+      return {
+        ...state,
+        tree: {
+          ...state.tree,
+          collapsed: shut
+            ? state.tree.collapsed.filter((key) => key !== action.key)
+            : [...state.tree.collapsed, action.key],
+        },
+      };
+    }
     case "nesting.set":
       // Restating the same vocabulary is not a change. Every view states one,
       // so without this a view switch would produce a new state object each

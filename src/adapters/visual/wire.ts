@@ -124,7 +124,17 @@ export type VisualServerFrame =
       readonly frozen?: VisualFreezeReason
     }
   | { readonly kind: 'response'; readonly response: VisualResponse }
-  | { readonly kind: 'model'; readonly model: VisualRenderedModel }
+  | {
+      readonly kind: 'model'
+      readonly model: VisualRenderedModel
+      /**
+       * The saved views again, because a recompile moves what their queries
+       * match and the tree states those counts. Required rather than optional:
+       * a recompile that shipped a graph without them would leave every count
+       * beside it describing the model before the commit.
+       */
+      readonly views: readonly VisualViewSummary[]
+    }
   | { readonly kind: 'filter-result'; readonly result: VisualFilterResultPayload }
   | { readonly kind: 'view-save-result'; readonly result: VisualViewSaveResultPayload }
   | { readonly kind: 'apply-result'; readonly result: VisualApplyResultPayload }

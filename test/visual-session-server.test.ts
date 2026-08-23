@@ -2361,8 +2361,74 @@ evidence: []
         description: "",
         query: { kinds: ["yarramate/core@0.1#businessActor"] },
         presentation: { title: "Valid View" },
+        // The path the tree derives its folders from, and what this view's
+        // query matches in this workspace: one businessActor.
+        path: ".yarramate/projections/valid-view.yaml",
+        subjectCount: 1,
       },
     ]);
+    socket.close();
+  });
+
+  it("counts the concepts a view matches, not the relationships alongside them", async () => {
+    await mkdir(join(baseDir, ".yarramate/architecture"), { recursive: true });
+    await mkdir(join(baseDir, ".yarramate/projections"), { recursive: true });
+    // Two concepts and the relationship between them. A count taken from the
+    // match set would read three; the canvas draws two boxes.
+    await writeFile(
+      join(baseDir, ".yarramate/architecture/main.yaml"),
+      `format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts:
+  - id: checkout
+    kind: applicationComponent
+    name: Checkout
+  - id: ledger
+    kind: applicationComponent
+    name: Ledger
+relationships:
+  - id: ledger-serves-checkout
+    kind: serving
+    from: ledger
+    to: checkout
+`,
+      "utf8",
+    );
+    await writeFile(
+      join(baseDir, ".yarramate/projections/apps.yaml"),
+      `format: yarramate/projection/v1
+id: apps
+version: "1.0"
+query:
+  kinds: [yarramate/core@0.1#applicationComponent]
+  relationships: between
+presentation:
+  title: Apps
+`,
+      "utf8",
+    );
+    await writeFile(
+      join(baseDir, ".yarramate/workspace.yaml"),
+      `format: yarramate/workspace/v1
+id: counting-fixture
+documents:
+  - architecture/main.yaml
+profiles: []
+projections:
+  - projections/apps.yaml
+adapterMappings: []
+evidence: []
+`,
+      "utf8",
+    );
+
+    const server = await start();
+    const { cookie } = await bootstrap(server);
+    const socket = await openBrowserSocket(server, cookie);
+    const ready = await nextFrame(socket, "ready");
+
+    expect(ready.snapshot.views[0]?.subjectCount).toBe(2);
     socket.close();
   });
 });
@@ -2714,6 +2780,9 @@ evidence: []
       ok: true,
       id: "my-view",
       path: ".yarramate/projections/my-view.yaml",
+      // This fixture's manifest declares no documents, so the query it just
+      // saved matches nothing — the count is measured, not assumed.
+      subjectCount: 0,
     });
 
     const fileContent = await readFile(
@@ -2768,6 +2837,8 @@ evidence: []
           title: "Reload View",
           description: "first",
         },
+        path: ".yarramate/projections/reload-view.yaml",
+        subjectCount: 0,
       },
     ]);
 
@@ -2807,6 +2878,7 @@ evidence: []
       ok: true,
       id: "shared-view",
       path: ".yarramate/projections/shared-view.yaml",
+      subjectCount: 0,
     });
 
     const overwritten = await sendViewSave(socket, {
@@ -2820,6 +2892,7 @@ evidence: []
       ok: true,
       id: "shared-view",
       path: ".yarramate/projections/shared-view.yaml",
+      subjectCount: 0,
     });
 
     const fileContent = await readFile(

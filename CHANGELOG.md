@@ -2,6 +2,34 @@
 
 ## 1.0.0
 
+- **Added.** The saved views and the whole model are a tree in a left rail,
+  replacing the flat `<select>` that sat in the command strip. That control
+  held every view at one level and could do nothing to a view but open it; a
+  workspace with twenty projections was a twenty-item dropdown. The rail has
+  two roots, the way Archi does: **Views**, foldered and collapsible, each row
+  stating how many subjects its query matches, and **Model**, every subject the
+  workspace declares grouped by layer with its layer swatch. A subject the
+  active view leaves out is still listed, quietened and marked `not in view`,
+  because the model is what there is to draw rather than what is drawn, and
+  selecting one opens its properties whether or not the canvas holds it. A
+  filter box narrows both roots at once and is separate from the quick filter,
+  which goes on narrowing the canvas. **View folders are derived from
+  projection paths, and the projection format gains nothing**: a workspace
+  whose projections all sit in one directory shows no folders, and one that
+  sorts them into `current/` and `target/` gets those two, which needs only a
+  manifest pattern that reaches into subdirectories. `VisualViewSummary` now
+  carries the `path` those folders come from and a `subjectCount`, and every
+  `model` frame carries the view list again, recounted: a count is not a
+  property of a projection document but of what its query matches here, so
+  landing a changeset moves it.
+
+- **Fix.** A view's subject count states its concepts, not its concepts and
+  relationships together. A `SemanticGraph`'s subjects are both, so the number
+  taken from a query's match set read five for a view over three application
+  components with two relationships between them, and a reviewer counting
+  boxes on the canvas found three. This was caught by looking at the rail in a
+  browser, not by any test.
+
 - **Breaking.** A subject id is the authored id, unique across the workspace,
   with no `<document-id>#` prefix and no local-versus-qualified distinction
   (ADR 0099, superseding ADR 0005). The prefix namespaced ids nobody had

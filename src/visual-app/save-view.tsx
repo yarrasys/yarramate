@@ -16,6 +16,13 @@ export interface SaveViewControlProps {
   readonly showOwnership: boolean;
   readonly pendingSave: boolean;
   readonly notice: boolean;
+  /**
+   * Openness is the caller's, not the panel's: the tree's new-view button
+   * opens this form from the other side of the shell, and two components
+   * cannot both own one boolean.
+   */
+  readonly open: boolean;
+  readonly onToggle: () => void;
   readonly onSave: (payload: VisualViewSavePayload) => void;
   readonly onDismissNotice: () => void;
 }
@@ -67,6 +74,106 @@ export const buildPayload = ({
   },
 });
 
+interface SaveViewFormProps {
+  readonly activeView: VisualViewSummary | null;
+  readonly pendingSave: boolean;
+  readonly notice: boolean;
+  readonly onDismissNotice: () => void;
+  readonly onSubmit: (
+    id: string | undefined,
+    title: string,
+    description: string,
+  ) => void;
+}
+
+/**
+ * The fields, mounted only while the panel is open.
+ *
+ * Seeding lives in `useState` initialisers rather than in an effect keyed on
+ * openness, because the seed is caused by the panel opening and not by a
+ * render. Mounting it fresh each time is what makes "open it and press Save"
+ * an overwrite of the active view with nothing retyped, and closing it
+ * discard a half-typed name that was never workspace state.
+ */
+function SaveViewForm({
+  activeView,
+  pendingSave,
+  notice,
+  onDismissNotice,
+  onSubmit,
+}: SaveViewFormProps) {
+  const [title, setTitle] = useState(activeView?.title ?? "");
+  const [description, setDescription] = useState(activeView?.description ?? "");
+
+  // `title` and `description` are both required `nonEmptyText` in
+  // `viewSavePayload`, so the form refuses exactly what the server would
+  // reject rather than sending a save that can only come back as a fault.
+  const incomplete = title.trim() === "" || description.trim() === "";
+
+  return (
+    <div className="save-view-panel">
+      <div id="save-view-panel-body" className="save-view-panel-body">
+        {notice ? (
+          <p className="save-view-notice" role="status">
+            View saved
+            <button type="button" onClick={onDismissNotice}>
+              Dismiss
+            </button>
+          </p>
+        ) : null}
+        <form
+          className="save-view-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (incomplete) return;
+            onSubmit(activeView?.id, title, description);
+          }}
+        >
+          <div>
+            <label htmlFor="save-view-title">Title</label>
+            <input
+              id="save-view-title"
+              type="text"
+              value={title}
+              onChange={(event) => setTitle(event.currentTarget.value)}
+              disabled={pendingSave}
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor="save-view-description">Description</label>
+            <textarea
+              id="save-view-description"
+              value={description}
+              onChange={(event) => setDescription(event.currentTarget.value)}
+              disabled={pendingSave}
+              required
+            />
+          </div>
+          <div className="save-view-actions">
+            <button
+              type="submit"
+              disabled={pendingSave || activeView === null || incomplete}
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              disabled={pendingSave || incomplete}
+              onClick={() => {
+                if (incomplete) return;
+                onSubmit(undefined, title, description);
+              }}
+            >
+              Save As New
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 /**
  * Saves the reviewer's current filter and presentation as a named
  * projection document. "Save" overwrites whatever view is active — behind a
@@ -84,35 +191,25 @@ export function SaveViewControl({
   showOwnership,
   pendingSave,
   notice,
+  open,
+  onToggle,
   onSave,
   onDismissNotice,
 }: SaveViewControlProps) {
-  const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [confirmId, setConfirmId] = useState<string | null>(null);
+  // What an overwrite would send, held while the reviewer is asked to confirm
+  // it — the payload rather than the id, because the fields it was built from
+  // belong to the form and the dialog has to outlive them.
+  const [confirming, setConfirming] = useState<VisualViewSavePayload | null>(
+    null,
+  );
   const activeView = views.find((view) => view.id === activeViewId) ?? null;
 
-  const toggle = () => {
-    setOpen((wasOpen) => {
-      const nowOpen = !wasOpen;
-      // Opening starts from whatever the reviewer is already looking at, so
-      // a plain overwrite Save needs no retyping.
-      if (nowOpen) {
-        setTitle(activeView?.title ?? "");
-        setDescription(activeView?.description ?? "");
-      }
-      return nowOpen;
-    });
-  };
-
-  // `title` and `description` are both required `nonEmptyText` in
-  // `viewSavePayload`, so the form refuses exactly what the server would
-  // reject rather than sending a save that can only come back as a fault.
-  const incomplete = title.trim() === "" || description.trim() === "";
-
-  const submitPayload = (id: string | undefined) =>
-    buildPayload({
+  const submit = (
+    id: string | undefined,
+    title: string,
+    description: string,
+  ) => {
+    const payload = buildPayload({
       id,
       title,
       description,
@@ -126,20 +223,11 @@ export function SaveViewControl({
       carriedDirection:
         id === undefined ? undefined : activeView?.presentation?.direction,
     });
-
-  const submit = (id: string | undefined) => {
-    if (incomplete) return;
     if (id === undefined) {
-      onSave(submitPayload(undefined));
+      onSave(payload);
       return;
     }
-    setConfirmId(id);
-  };
-
-  const confirmOverwrite = () => {
-    if (confirmId === null) return;
-    onSave(submitPayload(confirmId));
-    setConfirmId(null);
+    setConfirming(payload);
   };
 
   return (
@@ -149,79 +237,34 @@ export function SaveViewControl({
         className="save-view-toggle"
         aria-expanded={open}
         aria-controls="save-view-panel-body"
-        onClick={toggle}
+        onClick={onToggle}
         disabled={pendingSave}
       >
         Save view
       </button>
       {open ? (
-        <div className="save-view-panel">
-          <div id="save-view-panel-body" className="save-view-panel-body">
-            {notice ? (
-              <p className="save-view-notice" role="status">
-                View saved
-                <button type="button" onClick={onDismissNotice}>
-                  Dismiss
-                </button>
-              </p>
-            ) : null}
-            <form
-              className="save-view-form"
-              onSubmit={(event) => {
-                event.preventDefault();
-                submit(activeView === null ? undefined : activeView.id);
-              }}
-            >
-              <div>
-                <label htmlFor="save-view-title">Title</label>
-                <input
-                  id="save-view-title"
-                  type="text"
-                  value={title}
-                  onChange={(event) => setTitle(event.currentTarget.value)}
-                  disabled={pendingSave}
-                  required
-                />
-              </div>
-              <div>
-                <label htmlFor="save-view-description">Description</label>
-                <textarea
-                  id="save-view-description"
-                  value={description}
-                  onChange={(event) =>
-                    setDescription(event.currentTarget.value)
-                  }
-                  disabled={pendingSave}
-                  required
-                />
-              </div>
-              <div className="save-view-actions">
-                <button
-                  type="submit"
-                  disabled={pendingSave || activeView === null || incomplete}
-                >
-                  Save
-                </button>
-                <button
-                  type="button"
-                  disabled={pendingSave || incomplete}
-                  onClick={() => submit(undefined)}
-                >
-                  Save As New
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <SaveViewForm
+          // Remount when the reviewer switches view with the panel open, so
+          // the fields describe the view the Save button would overwrite.
+          key={activeViewId}
+          activeView={activeView}
+          pendingSave={pendingSave}
+          notice={notice}
+          onDismissNotice={onDismissNotice}
+          onSubmit={submit}
+        />
       ) : null}
-      {confirmId === null ? null : (
+      {confirming === null ? null : (
         <ConfirmDialog
           title="Overwrite this view?"
-          message={`Saving will replace "${activeView?.title ?? confirmId}" with the current filter and layout.`}
+          message={`Saving will replace "${activeView?.title ?? confirming.id ?? ""}" with the current filter and layout.`}
           confirmLabel="Overwrite"
           cancelLabel="Cancel"
-          onConfirm={confirmOverwrite}
-          onCancel={() => setConfirmId(null)}
+          onConfirm={() => {
+            onSave(confirming);
+            setConfirming(null);
+          }}
+          onCancel={() => setConfirming(null)}
         />
       )}
     </div>
