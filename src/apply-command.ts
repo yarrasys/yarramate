@@ -18,7 +18,12 @@ import {
   usage,
   type CliResult,
 } from './cli-support.js'
-import { compileWorkspace, type Diagnostic, type WorkspaceSource } from './compiler.js'
+import {
+  compileWorkspace,
+  withDiagnosticSubjects,
+  type Diagnostic,
+  type WorkspaceSource,
+} from './compiler.js'
 import { evaluateEvidence, loadEvidence } from './evidence.js'
 import { loadProjection } from './projection.js'
 import {
@@ -1071,17 +1076,25 @@ export const applyOperations = (
 
   // The atomic gate: the whole candidate workspace must compile before a
   // single byte is written; any diagnostic rejects the entire batch.
-  const compilation = compileWorkspace(
-    [...resolvedWorkspace.profiles, ...resolvedWorkspace.documents].map(
-      (path) => {
-        return {
-          path,
-          source: candidates.get(path) ?? sourceOf(path),
-        }
-      },
-    ),
-  )
-  if (!compilation.ok) return failed(compilation.diagnostics)
+  const compiled = [
+    ...resolvedWorkspace.profiles,
+    ...resolvedWorkspace.documents,
+  ].map((path) => ({
+    path,
+    source: candidates.get(path) ?? sourceOf(path),
+  }))
+  const compilation = compileWorkspace(compiled)
+  // Subjects are derived here, against the sources this compile was shown,
+  // because these are the only bytes whose array indices the pointers agree
+  // with. A caller that derives them later reads the documents on disk, and a
+  // refused batch never wrote to those: a subject the batch added sits past the
+  // end of the authored array and resolves to nothing, so a canvas marks
+  // nothing; and a batch that also deleted one shifts every index below it, so
+  // the refusal names a subject the reviewer never touched while the one at
+  // fault shows clean. Neither is a refusal a reviewer can act on (ADR 0102).
+  if (!compilation.ok) {
+    return failed(withDiagnosticSubjects(compilation.diagnostics, compiled))
+  }
 
   // The overlay gate: an observation the batch authored must load and must
   // evaluate against the graph the batch just proved compiles, so an entry
