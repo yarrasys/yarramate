@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { dirname, resolve } from 'node:path'
 import {
   isMap,
   isScalar,
@@ -578,20 +578,43 @@ export const applyOperations = (
       `/operations/${index}/document`,
     ),
   })
+  // An operation names its document either the way the manifest names it
+  // (relative to the manifest directory) or the way diagnostics print it
+  // (relative to the working directory). Resolving only against `cwd` refused
+  // the manifest-relative form outright whenever the manifest did not sit in
+  // the working directory - the standard `.yarramate/` layout - and made the
+  // same operations document apply from one directory and fail from another
+  // (#216). Both readings are tried, and only a path that actually names a
+  // document of this workspace is accepted, so admitting the second form
+  // cannot make an address ambiguous.
+  const manifestDirectory = dirname(resolve(cwd, workspace.path))
   for (const [index, operation] of operationList.entries()) {
-    const absolute = resolve(cwd, operation.document)
     const overlay = operation.op.endsWith('-observation')
-    const manifestPath = overlay
-      ? workspaceEvidence.get(absolute)
-      : workspaceDocuments.get(absolute)
+    const known = overlay ? workspaceEvidence : workspaceDocuments
+    const readings = [
+      resolve(manifestDirectory, operation.document),
+      resolve(cwd, operation.document),
+    ]
+    const absolute = readings.find((reading) => known.has(reading)) ?? readings[1]!
+    const manifestPath = known.get(absolute)
     const locate = (message: string): Diagnostic =>
       locateOperation(index, message)
     if (manifestPath === undefined) {
+      const accepted = [...known.values()].sort()
+      const shown = accepted.slice(0, 5)
+      const remainder =
+        accepted.length > shown.length
+          ? ` and ${accepted.length - shown.length} more`
+          : ''
       return failed([
         locate(
           `Operation ${index} targets "${operation.document}", which is not ${
             overlay ? 'an evidence document' : 'a document'
-          } of workspace "${resolvedWorkspace.id}"`,
+          } of workspace "${resolvedWorkspace.id}". This workspace declares ${
+            accepted.length === 0
+              ? 'none'
+              : `${shown.map((path) => `"${path}"`).join(', ')}${remainder}`
+          }`,
         ),
       ])
     }
