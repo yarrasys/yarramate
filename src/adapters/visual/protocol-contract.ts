@@ -143,6 +143,24 @@ export interface VisualViewSummary {
   readonly description: string;
   readonly query: ProjectionQuery;
   readonly presentation: ProjectionDefinition["presentation"];
+  /**
+   * Manifest-relative path of the projection document this view was read from,
+   * as `VisualRenderedModel.documents` names a document — not the `file:` URI
+   * ADR 0096 mints for the descriptor and session root, which name things
+   * outside the workspace.
+   *
+   * The tree derives its folders from these paths, so a workspace that keeps
+   * `current/` and `target/` projections in directories gets a foldered view
+   * list without the projection format gaining a folder concept of its own.
+   */
+  readonly path: string;
+  /**
+   * How many subjects this view's query matches, resolved by the runtime the
+   * way `filter.query` is: a `ProjectionQuery` needs the semantic graph, which
+   * the browser does not have. Recomputed and re-sent whenever the workspace
+   * recompiles, since landing a changeset moves these counts.
+   */
+  readonly subjectCount: number;
 }
 
 export interface VisualKindOption {
@@ -341,7 +359,18 @@ export interface VisualDiagnosticPayload {
 }
 
 export type VisualViewSaveResultPayload =
-  | { readonly ok: true; readonly id: string; readonly path: string }
+  | {
+      readonly ok: true;
+      readonly id: string;
+      readonly path: string;
+      /**
+       * What the saved query matches, stated by the side that can count it.
+       * The browser builds the new view's summary from what it sent plus this
+       * result, and a `ProjectionQuery` needs the semantic graph to resolve —
+       * without this the row would join the tree claiming zero subjects.
+       */
+      readonly subjectCount: number;
+    }
   | { readonly ok: false; readonly diagnostics: readonly VisualDiagnostic[] };
 
 export type VisualApplyResultPayload =

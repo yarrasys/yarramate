@@ -626,6 +626,10 @@ export const startVisualServer = async (
             description: projection.presentation?.description ?? "",
             query: projection.query,
             presentation: projection.presentation,
+            path: projectionPath,
+            // Filled in by `recountViews`: counting needs the compiled graph,
+            // which is not built until after this list is.
+            subjectCount: 0,
           },
         ];
       } catch {
@@ -778,6 +782,45 @@ export const startVisualServer = async (
       compiledWorkspace.profileContext,
     );
     return result.subjects.map(({ id }) => id);
+  };
+
+  /**
+   * How many CONCEPTS a query matches, which is not the size of its match set.
+   *
+   * A `SemanticGraph`'s `subjects` are concepts and relationships together, so
+   * `filterMatchedIds` returns both — right for narrowing a canvas that draws
+   * edges as well as nodes, and wrong for a number sitting beside a view
+   * called its subject count. A view over three application components with
+   * two relationships between them would read as five, and the reviewer
+   * counting boxes on the canvas would find three.
+   */
+  const conceptCount = (query: ProjectionQuery): number => {
+    if (compiledWorkspace === undefined) return 0;
+    const result = evaluateProjection(
+      compiledWorkspace.graph,
+      { format: "yarramate/projection/v1", id: "ad-hoc", version: "0", query },
+      compiledWorkspace.profileContext,
+    );
+    return result.subjects.filter(({ type }) => type === "concept").length;
+  };
+
+  /**
+   * Every view's `subjectCount`, against the graph as it stands now.
+   *
+   * A count is not a property of a projection document — it is what that
+   * document's query matches in this workspace — so landing a changeset moves
+   * it. Callers refresh the whole list rather than reading a number recorded
+   * when the session opened: the snapshot a connection is handed, and every
+   * `model` frame a recompile broadcasts. A view saved mid-session is counted
+   * here too, since it joins `views` rather than the manifest's already
+   * expanded projection list.
+   */
+  const recountViews = (): readonly VisualViewSummary[] => {
+    for (let index = 0; index < views.length; index += 1) {
+      const view = views[index]!;
+      views[index] = { ...view, subjectCount: conceptCount(view.query) };
+    }
+    return views;
   };
 
   let listening = false;
@@ -982,7 +1025,7 @@ export const startVisualServer = async (
     webSocketUrl,
     model: rendered,
     transcript: [...transcript],
-    views,
+    views: recountViews(),
     agentTurnOpen: openTurn(),
     pendingChoice,
     styleNonce,
@@ -1393,13 +1436,15 @@ export const startVisualServer = async (
           description: event.payload.description,
           query: event.payload.query,
           presentation,
+          path,
+          subjectCount: conceptCount(event.payload.query),
         };
         const saved = views.findIndex((view) => view.id === id);
         if (saved === -1) views.push(summary);
         else views[saved] = summary;
         sendFrame(socket, {
           kind: "view-save-result",
-          result: { ok: true, id, path },
+          result: { ok: true, id, path, subjectCount: summary.subjectCount },
         });
         return;
       }
@@ -1470,7 +1515,8 @@ export const startVisualServer = async (
             kind: "apply-result",
             result: { ok: false, diagnostics: refused },
           });
-          if (recompileWorkspace()) broadcast({ kind: "model", model: rendered });
+          if (recompileWorkspace())
+            broadcast({ kind: "model", model: rendered, views: recountViews() });
           return;
         }
         const operationsSource = stringify({
@@ -1531,7 +1577,7 @@ export const startVisualServer = async (
           result: { ok: true, result: outcome.result },
         });
         if (recompileWorkspace()) {
-          broadcast({ kind: "model", model: rendered });
+          broadcast({ kind: "model", model: rendered, views: recountViews() });
           return;
         }
         // A post-write compile failure is a bug, not a user error: the batch

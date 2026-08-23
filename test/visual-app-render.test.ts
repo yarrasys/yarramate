@@ -2,6 +2,8 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { VisualAppState } from '../src/visual-app/state.js'
+import type { CanvasNode } from '../src/graph-projection.js'
+import type { VisualRenderedModel } from '../src/adapters/visual/wire.js'
 
 const session = vi.hoisted(() => {
   const baseState: VisualAppState = {
@@ -90,6 +92,50 @@ const renderSession = (overrides: Partial<VisualAppState> = {}): string => {
   return renderToStaticMarkup(createElement(App))
 }
 
+const subject = (
+  id: string,
+  name: string,
+  overrides: Partial<CanvasNode> = {},
+): CanvasNode => ({
+  id,
+  localId: id.split('.').at(-1) ?? id,
+  document: 'architecture/main.yaml',
+  kind: 'yarramate/core@0.1#applicationComponent',
+  kindLabel: 'applicationComponent',
+  coreKindLabel: 'applicationComponent',
+  layer: 'application',
+  aspect: 'active-structure',
+  name,
+  description: null,
+  aka: [],
+  status: null,
+  owner: null,
+  distinctFrom: [],
+  supersedes: [],
+  constraints: [],
+  references: [],
+  presentIn: [],
+  attestations: [],
+  ...overrides,
+})
+
+/** Two subjects, so a view that draws one leaves the other to be marked. */
+const renderedModel: VisualRenderedModel = {
+  authority: 'canonical',
+  initialView: '',
+  graph: {
+    nodes: [
+      subject('app.checkout', 'Checkout'),
+      subject('app.ledger', 'Ledger'),
+    ],
+    edges: [],
+  },
+  documents: ['architecture/main.yaml'],
+  vocabulary: { conceptKinds: [], relationshipKinds: [] },
+  layouts: {},
+  sourceDigests: {},
+}
+
 
 describe('visual conversation rendering', () => {
   it('shows an active waiting indicator immediately after a question is submitted', () => {
@@ -169,7 +215,7 @@ describe('visual conversation rendering', () => {
   )
 
   it.each(['chat', 'panel'] as const)(
-    'shows a filter pill naming a %s-issued query the picker cannot name',
+    'shows a filter pill naming a %s-issued query the tree cannot name',
     (source) => {
       const markup = renderSession({
         activeFilter: { query: { layers: ['application'] }, matchedIds: ['a'], source },
@@ -182,7 +228,7 @@ describe('visual conversation rendering', () => {
     },
   )
 
-  it('hides the filter pill for a view-sourced filter the picker already names', () => {
+  it('hides the filter pill for a view-sourced filter the tree already names', () => {
     const markup = renderSession({
       activeFilter: { query: { layers: ['application'] }, matchedIds: ['a'], source: 'view' },
     })
@@ -196,7 +242,7 @@ describe('visual conversation rendering', () => {
     expect(markup).not.toContain('class="filter-pill"')
   })
 
-  it('renders view options in the picker when state.views is populated', () => {
+  it('renders a saved view as a row in the tree when state.views is populated', () => {
     const markup = renderSession({
       views: [
         {
@@ -205,12 +251,63 @@ describe('visual conversation rendering', () => {
           description: '',
           query: {},
           presentation: {},
+          path: '.yarramate/projections/v1.yaml',
+          subjectCount: 4,
         },
       ],
     })
 
-    expect(markup).toContain('<select')
-    expect(markup).toContain('<option value="v1">View One</option>')
+    expect(markup).toContain('aria-label="Views and model"')
+    expect(markup).toContain('View One')
+    // The count the server measured, beside the title the reviewer authored.
+    expect(markup).toContain('>4</span>')
+    // The rail replaced the strip's dropdown outright.
+    expect(markup).not.toContain('<option value="v1">')
+  })
+
+  it('lists every declared subject under Model, marking the ones the view leaves out', () => {
+    const markup = renderSession({
+      model: renderedModel,
+      activeView: 'v1',
+      views: [
+        {
+          id: 'v1',
+          title: 'View One',
+          description: '',
+          query: {},
+          presentation: {},
+          path: '.yarramate/projections/v1.yaml',
+          // Deliberately wrong for the graph below: the summary was measured
+          // before whatever last changed the model.
+          subjectCount: 9,
+        },
+      ],
+      // The canvas is drawing one of the two subjects the model declares —
+      // and the match set also names the relationship the view matched, which
+      // is not a subject and must not be counted as one.
+      activeFilter: {
+        query: {},
+        matchedIds: ['app.checkout', 'checkout-serves-ledger'],
+        source: 'view',
+      },
+    })
+
+    // The model root holds everything there is to draw, not what is drawn.
+    expect(markup).toContain('Checkout')
+    expect(markup).toContain('Ledger')
+    expect(markup).toContain('not in view')
+    expect(markup).toContain('tree-row-quiet')
+    // The count beside the active view is what the canvas is drawing now —
+    // one subject: not the nine its summary claimed, and not the two entries
+    // the match set holds, one of which is a relationship.
+    expect(markup).toContain(
+      '<span class="tree-label">View One</span><span class="tree-count">1</span>',
+    )
+    expect(markup).not.toContain('>9</span>')
+    // "All subjects" states the whole model, which is both of them.
+    expect(markup).toContain(
+      '<span class="tree-label">All subjects</span><span class="tree-count">2</span>',
+    )
   })
 
   it('renders the quick-filter box with the current quickFilterText as its value', () => {

@@ -27,6 +27,9 @@
   --utility: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
 
   --step: 0.5rem;
+  /* Wide enough for an ArchiMate subject name at 13px without eliding most
+     of them, and fixed so the diagram takes every pixel beyond it. */
+  --rail-width: 264px;
   color-scheme: light;
 }
 
@@ -341,11 +344,167 @@ body {
 }
 
 .workspace-conversation-open {
-  grid-template-columns: minmax(0, 1fr) auto var(--conversation-width);
+  grid-template-columns: var(--rail-width) minmax(0, 1fr) auto var(
+      --conversation-width
+    );
 }
 
 .workspace-conversation-closed {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: var(--rail-width) minmax(0, 1fr);
+}
+
+/* ------------------------------------------------------------- view tree */
+
+/* The rail is a fixed column, not a fraction: it holds names at one size, so
+   a wider window belongs to the diagram rather than to more whitespace beside
+   the titles. */
+.view-tree {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid var(--rule);
+  background: var(--sheet);
+}
+
+.view-tree-head {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--step) * 1);
+  padding: var(--step) calc(var(--step) * 1.5);
+  border-bottom: 1px solid var(--rule);
+}
+
+.view-tree-filter {
+  flex: 1;
+  min-width: 0;
+  min-height: 1.75rem;
+  padding: 0 0.5rem;
+  font-family: var(--utility);
+  font-size: 12px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule-firm);
+  border-radius: 0;
+}
+
+.view-tree-new {
+  flex: none;
+  width: 1.75rem;
+  height: 1.75rem;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule-firm);
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.view-tree-new:hover {
+  border-color: var(--cobalt);
+  color: var(--cobalt);
+}
+
+.view-tree-body {
+  overflow: auto;
+  padding: var(--step) 0 calc(var(--step) * 2);
+}
+
+.tree-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tree-row {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--step) * 0.75);
+  width: 100%;
+  padding: 0.3rem calc(var(--step) * 1.5);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.tree-row:hover {
+  background: color-mix(in oklab, var(--cobalt) 10%, transparent);
+}
+
+.tree-branch {
+  font-family: var(--utility);
+  font-size: 12px;
+  color: var(--quiet);
+}
+
+/* The roots are the only two rows that never scroll out of meaning, so they
+   carry the strip's own label treatment rather than the folder's. */
+.tree-depth-0 {
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--quiet);
+}
+
+.tree-depth-1 {
+  padding-left: calc(var(--step) * 3);
+}
+
+.tree-depth-2 {
+  padding-left: calc(var(--step) * 5.5);
+}
+
+.tree-row-active,
+.tree-row-active:hover {
+  background: var(--cobalt);
+  color: var(--paper);
+}
+
+/* A subject the active view leaves out is still listed — the model is what
+   there is to draw, not what is drawn — so it is quietened and named rather
+   than dropped. */
+.tree-row-quiet {
+  color: var(--quiet);
+}
+
+.tree-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-count {
+  flex: none;
+  font-family: var(--utility);
+  font-size: 10px;
+  color: var(--quiet);
+}
+
+.tree-row-active .tree-count {
+  color: inherit;
+  opacity: 0.75;
+}
+
+.tree-swatch {
+  flex: none;
+  width: 0.625rem;
+  height: 0.625rem;
+  background: var(--paper);
+  border: 1px solid var(--rule-firm);
+}
+
+.tree-empty {
+  padding: 0.3rem calc(var(--step) * 3);
+  font-size: 12px;
+  color: var(--quiet);
 }
 
 .diagram-workspace {
@@ -377,7 +536,7 @@ body {
   overflow: auto;
 }
 
-/* A filter the picker cannot name — issued by chat, or composed in a panel
+/* A filter the tree cannot name — issued by chat, or composed in a panel
    that is now collapsed — narrows the diagram with nothing else on screen
    saying so, and so earns a badge that names it and a one-click way back to
    the full model. Long queries (a seeded subject list) are clipped rather
@@ -1063,8 +1222,17 @@ body {
 
   .workspace {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr) auto;
     min-height: 0;
+  }
+
+  /* The rail lies down rather than disappearing: it is the only way to reach
+     a saved view now that the strip has no picker, so a narrow window gets a
+     shorter tree, not none. */
+  .view-tree {
+    max-height: 34dvh;
+    border-right: 0;
+    border-bottom: 1px solid var(--rule);
   }
 
   .conversation-separator {

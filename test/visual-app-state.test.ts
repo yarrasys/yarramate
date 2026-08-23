@@ -347,6 +347,7 @@ describe("visualAppReducer model rendering", () => {
     const replacement = model("choices");
     const next = visualAppReducer(failed, {
       type: "model.received",
+      views: [],
       model: replacement,
     });
     expect(next.model).toBe(replacement);
@@ -384,6 +385,7 @@ describe("visualAppReducer model rendering", () => {
     });
     const next = visualAppReducer(drilled, {
       type: "model.received",
+      views: [],
       model: model("option-b"),
     });
     expect(next.activeView).toBe("option-b");
@@ -396,6 +398,7 @@ describe("visualAppReducer model rendering", () => {
     });
     const next = visualAppReducer(drilled, {
       type: "model.received",
+      views: [],
       model: model("choices"),
     });
     // A mid-session recompile must not yank the reviewer back to a default view.
@@ -415,6 +418,7 @@ describe("visualAppReducer model rendering", () => {
     });
     const next = visualAppReducer(searched, {
       type: "model.received",
+      views: [],
       model: model("choices"),
     });
     expect(next.activeFilter).toEqual({
@@ -723,6 +727,7 @@ describe("visualAppReducer staged digests", () => {
     });
     const refreshed = visualAppReducer(staged, {
       type: "model.received",
+      views: [],
       model: model("choices", { "model.yaml": replaced, "other.yaml": other }),
     });
     const again = visualAppReducer(refreshed, {
@@ -769,6 +774,7 @@ describe("visualAppReducer staged digests", () => {
     const undone = visualAppReducer(
       visualAppReducer(cleared, {
         type: "model.received",
+        views: [],
         model: model("choices", { "model.yaml": replaced }),
       }),
       { type: "changeset.undone" },
@@ -1236,8 +1242,8 @@ describe("visualAppActionsForFrame", () => {
 
   it("replaces the rendered model from a model frame", () => {
     const rendered = model("choices");
-    expect(actionsFor({ kind: "model", model: rendered })).toEqual([
-      { type: "model.received", model: rendered },
+    expect(actionsFor({ kind: "model", model: rendered, views: [] })).toEqual([
+      { type: "model.received", model: rendered, views: [] },
     ]);
   });
 
@@ -1492,7 +1498,12 @@ describe("visualAppReducer view save", () => {
     });
     const saved = visualAppReducer(sent, {
       type: "view.saved",
-      result: { ok: true, id: "view-1", path: "/views/view-1" },
+      result: {
+        ok: true,
+        id: "view-1",
+        path: "/views/view-1",
+        subjectCount: 3,
+      },
     });
     expect(saved.views).toHaveLength(1);
     expect(saved.views[0]).toEqual({
@@ -1501,6 +1512,11 @@ describe("visualAppReducer view save", () => {
       description: "A test view",
       query: { subjects: ["Q1"] },
       presentation: { layout: "layered", direction: "top-down" },
+      // Taken from the result, not from the payload: only the runtime can
+      // resolve what a query matches, so the row joins the tree with the
+      // count the server just measured rather than a placeholder.
+      path: "/views/view-1",
+      subjectCount: 3,
     });
     expect(saved.viewSaveNotice).toBe(true);
     expect(saved.pendingViewSave).toBe(null);
@@ -1516,6 +1532,8 @@ describe("visualAppReducer view save", () => {
         layout: "layered",
         direction: "top-down",
       } as const,
+      path: "/views/view-1",
+      subjectCount: 3,
     };
     const state = { ...initialVisualAppState, views: [view1] };
     const payload = {
@@ -1534,7 +1552,12 @@ describe("visualAppReducer view save", () => {
     });
     const saved = visualAppReducer(sent, {
       type: "view.saved",
-      result: { ok: true, id: "view-1", path: "/views/view-1" },
+      result: {
+        ok: true,
+        id: "view-1",
+        path: "/views/view-1",
+        subjectCount: 3,
+      },
     });
     expect(saved.views).toHaveLength(1);
     expect(saved.views[0]?.title).toBe("New title");
@@ -1631,7 +1654,11 @@ describe("filterToReresolve", () => {
     },
   });
 
-  const modelFrame: VisualServerFrame = { kind: "model", model: model("all") };
+  const modelFrame: VisualServerFrame = {
+    kind: "model",
+    model: model("all"),
+    views: [],
+  };
 
   it("asks the standing view query again when a model replaces the old one", () => {
     expect(filterToReresolve(modelFrame, standing("view"))).toEqual({

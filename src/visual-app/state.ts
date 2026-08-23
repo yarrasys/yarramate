@@ -141,7 +141,12 @@ export interface VisualAppState {
 
 export type VisualAppAction =
   | { readonly type: "session.loaded"; readonly snapshot: VisualAppSnapshot }
-  | { readonly type: "model.received"; readonly model: VisualRenderedModel }
+  | {
+      readonly type: "model.received";
+      readonly model: VisualRenderedModel;
+      /** Recounted against the graph that came with them. */
+      readonly views: readonly VisualViewSummary[];
+    }
   | {
       readonly type: "diagnostic.received";
       readonly diagnostics: readonly VisualDiagnostic[];
@@ -404,10 +409,13 @@ const transition = (
       };
     case "model.received":
       // Mid-session model frames replace the compilation; preserve the
-      // reviewer's current view, filter, and search state across edits.
+      // reviewer's current view, filter, and search state across edits. The
+      // view list is replaced rather than preserved: it is the same list,
+      // recounted against the graph arriving with it.
       return {
         ...state,
         model: action.model,
+        views: action.views,
         diagnostics: [],
       };
     case "diagnostic.received":
@@ -532,7 +540,7 @@ const transition = (
         },
         // Only a view's own query leaves its name standing. A filter from the
         // panel or from chat draws something the named view does not describe,
-        // so the picker stops claiming it rather than naming what is not shown.
+        // so the tree stops claiming it rather than naming what is not shown.
         activeView: action.source === "view" ? state.activeView : "",
       };
     case "filter.cleared":
@@ -569,6 +577,8 @@ const transition = (
         description: pending.description,
         query: pending.query,
         presentation: pending.presentation,
+        path: action.result.path,
+        subjectCount: action.result.subjectCount,
       };
       const existingIndex = state.views.findIndex(
         (view) => view.id === saved.id,
@@ -885,7 +895,7 @@ export const visualAppActionsForFrame = (
         },
       ];
     case "model":
-      return [{ type: "model.received", model: frame.model }];
+      return [{ type: "model.received", model: frame.model, views: frame.views }];
     case "closing":
       return [{ type: "session.closed", reason: frame.reason }];
     case "filter-result":
