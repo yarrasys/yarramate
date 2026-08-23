@@ -103,6 +103,17 @@ ajv.addSchema([
  * mints them for the initial model, the session server re-mints them on every
  * recompile and checks a commit's pins against the files on disk, and all three
  * are the same hash by construction rather than by three matching literals.
+ *
+ * There is a fourth, and it is not by construction. A commit's pins become the
+ * `expected` revisions a `SourceStore` compares before it writes (ADR 0100),
+ * and a store's revision is opaque: what `createFileSystemStore` mints happens
+ * to be this same sha256, which is the only reason a pin can be handed to it
+ * directly. The visual runtime only ever addresses a local filesystem, so that
+ * coincidence is safe today and a protocol version spent on carrying opaque
+ * revisions instead would buy nothing. It is held by a test rather than by a
+ * comment: `visual-protocol.test.ts` asserts the two agree, so a change to
+ * either side fails rather than silently making every commit's precondition
+ * unsatisfiable. That failure is when the protocol bump earns its cost.
  */
 export const digestOf = (source: string): string =>
   createHash('sha256').update(source).digest('hex')

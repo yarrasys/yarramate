@@ -106,6 +106,24 @@ rule about the shape of a pattern. Containment against symlinks becomes the
 store's responsibility, because `realpathSync` is a filesystem concept that a
 D1 store has no analogue for and must not be asked to fake.
 
+> **Deferred, deliberately.** Resolution still globs the filesystem, and the
+> reason this is not a blocker only became clear once the rest had landed:
+> `applyOperations` takes an already-resolved `ResolvedWorkspace`, and that
+> type is exported, so an embedder over D1 builds its own and never asks Core
+> to match a pattern against anything. The split's remaining value is
+> uniformity, not capability.
+>
+> What it would cost is a pattern dialect decided and documented, and one has
+> never been named. `docs/WORKSPACES.md` describes what resolution *does* -
+> rejects `..`, expands to regular files, reports what matched nothing - but
+> never says what a pattern may contain; the schema constrains a pattern only
+> to a non-empty string; and every manifest reachable from this repository uses
+> nothing but `*`, with no `**`, `?`, `[` or `{` anywhere. So the dialect in
+> force is whatever `node:fs` `globSync` happens to support, undocumented and
+> untested past one wildcard. Naming it is a compatibility decision that
+> deserves its own change rather than a paragraph in this one, and it buys
+> uniformity rather than reach.
+
 **Two diagnostics, in the workspace range.** `YM704`: a document changed after
 this edit was staged, naming the document. `YM705`: a document expected not to
 exist already does. `YMVS312` and `YMVS313` remain the visual runtime's wire
