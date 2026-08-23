@@ -1,4 +1,5 @@
 import type { VisualDiagnostic } from '../adapters/visual/protocol-contract.js'
+import { summarise } from './faults.js'
 import type { CanvasGraph } from '../graph-projection.js'
 import type { YarramateOperation } from '../operations.js'
 import type { VisualRenderedModel } from '../adapters/visual/wire.js'
@@ -265,6 +266,25 @@ export const ChangesetTray = ({
           )}
         </div>
       </div>
+
+      {state.commitDiagnostics === null ||
+      state.commitDiagnostics.length === 0 ||
+      graph === null ? null : (
+        // Whether a refusal can be SEEN, which is a different question from
+        // which staged row is to blame. A reviewer who is shown two marked
+        // elements and told nothing else will believe those are the problems,
+        // so the count on screen is always the whole count (ADR 0102).
+        <p className="changeset-fault-summary" role="status">
+          {(() => {
+            const summary = summarise(state.commitDiagnostics, graph)
+            return `${summary.total} problem${
+              summary.total === 1 ? '' : 's'
+            }: ${summary.onCanvas} marked on the diagram, ${
+              summary.elsewhere
+            } not on it.`
+          })()}
+        </p>
+      )}
 
       {batch.length === 0 ? null : (
         <ul className="changeset-batch-diagnostics" role="alert">

@@ -1,7 +1,5 @@
-import { createElement } from 'react'
-import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import { Faults, faultedSubjects, summarise } from '../src/visual-app/faults.js'
+import { faultedSubjects, summarise } from '../src/visual-app/faults.js'
 import type { CanvasGraph } from '../src/graph-projection.js'
 import type { VisualDiagnostic } from '../src/adapters/visual/protocol-contract.js'
 
@@ -57,48 +55,6 @@ describe('summarise', () => {
       onCanvas: 0,
       elsewhere: 0,
     })
-  })
-})
-
-describe('Faults', () => {
-  const render = (diagnostics: readonly VisualDiagnostic[]) =>
-    renderToStaticMarkup(createElement(Faults, { diagnostics, graph }))
-
-  it('shows nothing when nothing is wrong', () => {
-    expect(render([])).toBe('')
-  })
-
-  /**
-   * The rule: the summary never reads clean while anything is open, and a
-   * diagnostic that cannot be marked is named anyway. Reporting a failure with
-   * nothing on screen changed is how a reviewer stops believing the tool.
-   */
-  it('names what it cannot mark, rather than reporting a failure silently', () => {
-    const markup = render([diagnostic('YM201')])
-
-    expect(markup).toContain('1 problem')
-    expect(markup).toContain('0 marked on the diagram, 1 not on it')
-    expect(markup).toContain('Not on the diagram')
-    expect(markup).toContain('YM201')
-  })
-
-  it('separates the two lanes when there is one of each', () => {
-    const markup = render([
-      diagnostic('YM404', ['orders']),
-      diagnostic('YM201'),
-    ])
-
-    expect(markup).toContain('2 problems')
-    expect(markup).toContain('1 marked on the diagram, 1 not on it')
-    expect(markup).toContain('On the diagram')
-    expect(markup).toContain('Not on the diagram')
-  })
-
-  it('does not offer an empty lane', () => {
-    const markup = render([diagnostic('YM404', ['orders'])])
-
-    expect(markup).toContain('On the diagram')
-    expect(markup).not.toContain('Not on the diagram')
   })
 })
 

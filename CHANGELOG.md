@@ -271,15 +271,15 @@
   a byte offset a browser cannot use, and the one consumer the derivation was
   written for was the one that never received it. It does now, and
   `VisualDiagnostic` carries the field.
-  What appears on screen follows a rule: the summary never reads clean while
-  anything is open, and states the total, how many are marked on the diagram
-  and how many are not. A diagnostic that belongs to no drawn subject - a parse
-  failure, a manifest, a projection's own definition, a subject this view
-  filters out - gets a lane that says so rather than being dropped, because
-  marking the two that can be marked and staying silent about the third is how
-  a reviewer learns the report is unreliable. A mark is applied by its own
-  effect rather than with the selection highlight, so inspecting a refused
-  element cannot erase the evidence (#241).
+  A refused commit now marks every subject it named on the diagram, and the
+  changeset tray states how many of its problems could be marked and how many
+  could not: `2 problems: 1 marked on the diagram, 1 not on it.` Marking the
+  ones that can be marked and staying silent about the rest is how a reviewer
+  learns the report is unreliable, so the count on screen is always the whole
+  count. A subject the active view does not draw counts as not on the diagram,
+  because calling it marked would promise a mark that never appears. The mark
+  is applied by its own effect rather than with the selection highlight, so
+  inspecting a refused element cannot erase the evidence (#241).
 
 - `apply` accepts an operation's `document:` as the manifest names it. The
   address was resolved only against the working directory, so the

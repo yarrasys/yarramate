@@ -44,7 +44,7 @@ import {
   type SelectedDiagramSubject,
 } from "./workspace-state.js";
 import { ConnectionPanel } from "./connection-panel.js";
-import { Faults, faultedSubjects } from "./faults.js";
+import { faultedSubjects } from "./faults.js";
 import { SubjectDraftPanel } from "./subject-draft-panel.js";
 import { ConfirmDialog } from "./confirm-dialog.js";
 import { describeDeletion, draftDeletion } from "../deletion-drafting.js";
@@ -308,6 +308,37 @@ const Choices = ({
     </ul>
   </div>
 );
+/**
+ * The server's own refusals of a browser frame (`YMVS...`). These are about the
+ * frame rather than about a subject, so they carry no `subjects` and there is
+ * nothing on the diagram to mark. A refused COMMIT is a different thing and
+ * lands in the changeset tray, where what it names is counted and marked
+ * (ADR 0102).
+ */
+const Faults = ({
+  diagnostics,
+}: {
+  readonly diagnostics: readonly VisualDiagnostic[];
+}) =>
+  diagnostics.length === 0 ? null : (
+    <div className="faults" role="alert">
+      <p className="faults-title">
+        The last change did not compile. The diagram still shows the model that
+        did.
+      </p>
+      <ul>
+        {diagnostics.map((diagnostic) => (
+          <li key={`${diagnostic.code}-${diagnostic.pointer}`}>
+            <span className="code">{diagnostic.code}</span> {diagnostic.message}
+            <span className="where">
+              {diagnostic.path}:{diagnostic.line}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+
 const DiagramWorkspace = ({
   state,
   selectedId,
@@ -475,7 +506,7 @@ const DiagramWorkspace = ({
             quickFilterText={state.quickFilterText}
             direction={direction}
             nesting={nesting}
-            faultedIds={faultedSubjects(state.diagnostics)}
+            faultedIds={faultedSubjects(state.commitDiagnostics ?? [])}
             notation={notation}
             showLifecycle={showLifecycle}
             showEvidence={showEvidence}
@@ -742,12 +773,7 @@ const ConversationPanel = ({
           )}
         </ol>
 
-        {state.model === null ? null : (
-          <Faults
-            diagnostics={state.diagnostics}
-            graph={state.model.graph}
-          />
-        )}
+        <Faults diagnostics={state.diagnostics} />
 
         {state.choices === null ? null : (
           <Choices
