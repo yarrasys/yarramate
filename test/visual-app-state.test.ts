@@ -12,6 +12,7 @@ import {
   RECONNECT_WINDOW_MS,
   VISUAL_END_NOTICE,
   canReconnect,
+  filterToReresolve,
   initialVisualAppState,
   visualAppActionsForFrame,
   visualAppReducer,
@@ -1607,5 +1608,76 @@ describe("visualAppReducer view save", () => {
     });
     expect(reloaded.pendingViewSave).toBe(null);
     expect(reloaded.viewSaveNotice).toBe(false);
+  });
+});
+
+describe("filterToReresolve", () => {
+  /**
+   * The defect this exists to close: a filter is resolved against the model
+   * the server held when it was asked, and a landed commit replaces that
+   * model. Nothing re-asked, so the matched set went on describing the graph
+   * as it was, and the canvas hid the subject the reviewer had just created.
+   * The commit reported success and the diagram did not change.
+   */
+  const standing = (
+    source: "view" | "panel" | "chat",
+    matchedIds: readonly string[] = ["checkout"],
+  ): VisualAppState => ({
+    ...initialVisualAppState,
+    activeFilter: {
+      query: { kinds: ["yarramate/core@0.1#applicationComponent"] },
+      matchedIds,
+      source,
+    },
+  });
+
+  const modelFrame: VisualServerFrame = { kind: "model", model: model("all") };
+
+  it("asks the standing view query again when a model replaces the old one", () => {
+    expect(filterToReresolve(modelFrame, standing("view"))).toEqual({
+      query: { kinds: ["yarramate/core@0.1#applicationComponent"] },
+      source: "view",
+    });
+  });
+
+  it.each(["panel", "chat"] as const)(
+    "re-asks a %s filter under the source that asked for it",
+    (source) => {
+      // A reviewer holding their own filter must not have the active view's
+      // query put back underneath them, and a chat-issued narrowing must not
+      // start reporting itself as the reviewer's own.
+      expect(filterToReresolve(modelFrame, standing(source))?.source).toBe(source);
+    },
+  );
+
+  it("has nothing to re-ask when no filter is standing", () => {
+    // Unfiltered draws everything, which a new subject joins by existing.
+    expect(filterToReresolve(modelFrame, initialVisualAppState)).toBeNull();
+  });
+
+  it("never re-asks off a filter result, which is the answer to the question", () => {
+    // The guard against asking forever: this frame is what a re-ask produces.
+    expect(
+      filterToReresolve(
+        {
+          kind: "filter-result",
+          result: {
+            query: { kinds: ["yarramate/core@0.1#applicationComponent"] },
+            matchedIds: ["checkout", "payment-gateway"],
+          },
+        },
+        standing("view"),
+      ),
+    ).toBeNull();
+  });
+
+  it("re-asks off nothing but a model", () => {
+    for (const frame of [
+      { kind: "accepted", sequence: 1 },
+      { kind: "rejected", reason: "nope" },
+      { kind: "closing", reason: "user-ended" },
+    ] as unknown as VisualServerFrame[]) {
+      expect(filterToReresolve(frame, standing("view"))).toBeNull();
+    }
   });
 });

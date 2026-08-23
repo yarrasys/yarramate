@@ -810,6 +810,47 @@ export const visualBrowserInputFor = (
 };
 
 /**
+ * The filter to ask again once a frame has been applied, or `null`.
+ *
+ * A filter is resolved against the model the server held when it was asked,
+ * and a landed commit replaces that model. Nothing re-asks on its own, so
+ * `matchedIds` goes on describing the graph as it was: a subject the reviewer
+ * just created is not in it, and the canvas hides every element the matched
+ * set does not name. The commit reports success and the diagram does not
+ * change. That needs no unusual view and no stale projection - only a filter
+ * that was resolved once, which is every view a session opens on.
+ *
+ * This is a consequence of a frame arriving rather than of a render, which is
+ * why it lives here beside `visualAppActionsForFrame` and not in an effect:
+ * the same `model` frame that invalidates the matched set is the thing that
+ * has to ask for a new one.
+ *
+ * Only a `model` frame qualifies. A `filter-result` is the answer to this
+ * question and must never re-ask it, or a session would ask forever.
+ *
+ * The query re-asked is whichever one is standing, under the source that asked
+ * for it: a reviewer holding a panel filter must not have the active view's
+ * query put back underneath them, and a chat-issued filter must not start
+ * reporting itself as the reviewer's own.
+ */
+export const filterToReresolve = (
+  frame: VisualServerFrame,
+  state: VisualAppState,
+): {
+  readonly query: ProjectionQuery;
+  readonly source: "view" | "panel" | "chat";
+} | null => {
+  if (frame.kind !== "model") return null;
+  // No filter standing is "everything is drawn", which a new subject joins by
+  // existing. There is nothing to re-ask.
+  if (state.activeFilter === null) return null;
+  return {
+    query: state.activeFilter.query,
+    source: state.activeFilter.source,
+  };
+};
+
+/**
  * One server frame as the actions it means. Translation is pure so the socket
  * owns nothing but the socket.
  *
@@ -820,7 +861,7 @@ export const visualBrowserInputFor = (
  */
 export const visualAppActionsForFrame = (
   frame: VisualServerFrame,
-  filterOrigin: "view" | "panel" = "panel",
+  filterOrigin: "view" | "panel" | "chat" = "panel",
 ): readonly VisualAppAction[] => {
   switch (frame.kind) {
     case "ready":

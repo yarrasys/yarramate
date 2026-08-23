@@ -12,6 +12,7 @@ import type { YarramateOperation } from '../operations.js'
 import {
   canReconnect,
   initialVisualAppState,
+  filterToReresolve,
   visualAppActionsForFrame,
   visualAppReducer,
   visualAppSnapshotFrom,
@@ -41,7 +42,7 @@ export interface VisualSession {
   readonly ask: (text: string) => void
   readonly choose: (optionId: string) => void
   readonly navigate: (viewId: string) => void
-  readonly filter: (query: ProjectionQuery, origin?: 'view' | 'panel') => void
+  readonly filter: (query: ProjectionQuery, origin?: 'view' | 'panel' | 'chat') => void
   readonly clearFilter: () => void
   readonly setQuickFilterText: (text: string) => void
   readonly saveView: (payload: VisualViewSavePayload) => void
@@ -68,7 +69,7 @@ export const useVisualSession = (): VisualSession => {
   // the reason the browser last asked, so a result can be told apart from a
   // named view being applied. Panel is the honest default: an unsolicited
   // result is not a view this browser can claim to be showing.
-  const filterOriginRef = useRef<'view' | 'panel'>('panel')
+  const filterOriginRef = useRef<'view' | 'panel' | 'chat'>('panel')
 
   useEffect(() => {
     let stopped = false
@@ -117,6 +118,25 @@ export const useVisualSession = (): VisualSession => {
           filterOriginRef.current,
         ))
           dispatch(action)
+        // A landed commit replaces the model, which invalidates the matched
+        // set every filter result described. Asking again here, off the frame
+        // that invalidated it, is what keeps a subject the reviewer just
+        // created from being hidden by a matched set resolved before it
+        // existed. `stateRef` holds the state before this frame's actions
+        // commit, which is exactly right: the standing filter is the one that
+        // needs re-asking, not one this frame produced.
+        const stale = filterToReresolve(frame, stateRef.current)
+        if (stale !== null) {
+          filterOriginRef.current = stale.source
+          socket.send(
+            JSON.stringify(
+              visualBrowserInputFor(
+                { kind: 'filter', query: stale.query },
+                stateRef.current,
+              ),
+            ),
+          )
+        }
       })
       socket.addEventListener('close', () => {
         setConnected(false)
@@ -192,7 +212,7 @@ export const useVisualSession = (): VisualSession => {
   )
 
   const filter = useCallback(
-    (query: ProjectionQuery, origin: 'view' | 'panel' = 'panel') => {
+    (query: ProjectionQuery, origin: 'view' | 'panel' | 'chat' = 'panel') => {
       filterOriginRef.current = origin
       send({ kind: 'filter', query })
     },
