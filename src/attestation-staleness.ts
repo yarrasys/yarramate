@@ -89,7 +89,7 @@ const attestedConcepts = (
         // staleness finding, a reconcile finding, and the RTM.
         attestations.push({
           topic,
-          by: by.includes('#') ? by : `${documentId}#${by}`,
+          by,
           on,
         })
       }
@@ -122,7 +122,7 @@ const attestedConcepts = (
     }
     if (spans.length === 0) continue
     concepts.push({
-      qualifiedId: `${documentId}#${id}`,
+      qualifiedId: id,
       spans,
       attestations,
     })

@@ -615,7 +615,7 @@ const subjectsForPointer = (
   const items = value?.[match[1]!]
   if (!Array.isArray(items)) return []
   const item = items[Number(match[2])] as { readonly id?: unknown } | undefined
-  return typeof item?.id === 'string' ? [`${documentId}#${item.id}`] : []
+  return typeof item?.id === 'string' ? [item.id] : []
 }
 
 export const withDiagnosticSubjects = (
@@ -1054,7 +1054,7 @@ function compileWorkspaceResolved(
       value.concepts.map(
         (concept) =>
           [
-            `${value.id}#${concept.id}`,
+            concept.id,
             {
               concept,
               profile: value.profile,
@@ -1064,19 +1064,22 @@ function compileWorkspaceResolved(
       ),
     ),
   )
-  const qualifyReference = (documentId: string, reference: string) =>
-    reference.includes('#') ? reference : `${documentId}#${reference}`
+  // Subject identity is the authored id, unique across the workspace, so a
+  // reference resolves as written. Kept as a named step rather than inlined
+  // because every reference in the model passes through here, and that is
+  // where a future scheme would hook.
+  const qualifyReference = (_documentId: string, reference: string) => reference
   const architectureStateIds = new Set(
     documents.flatMap(({ value }) =>
-      (value.states ?? []).map((state) => `${value.id}#${state.id}`),
+      (value.states ?? []).map((state) => state.id),
     ),
   )
   const subjectIds = new Set(
     documents.flatMap(({ value }) => [
-      ...(value.states ?? []).map((state) => `${value.id}#${state.id}`),
-      ...value.concepts.map((concept) => `${value.id}#${concept.id}`),
+      ...(value.states ?? []).map((state) => state.id),
+      ...value.concepts.map((concept) => concept.id),
       ...value.relationships.map(
-        (relationship) => `${value.id}#${relationship.id}`,
+        (relationship) => relationship.id,
       ),
     ]),
   )
@@ -1087,7 +1090,7 @@ function compileWorkspaceResolved(
           ? []
           : [
               [
-                `${value.id}#${state.id}`,
+                state.id,
                 qualifyReference(value.id, state.after),
               ] as const,
             ],
@@ -1115,7 +1118,7 @@ function compileWorkspaceResolved(
           ? []
           : [
               [
-                `${value.id}#${concept.id}`,
+                concept.id,
                 concept.supersedes.map((predecessor) =>
                   qualifyReference(value.id, predecessor),
                 ),
@@ -1148,6 +1151,14 @@ function compileWorkspaceResolved(
     return false
   }
 
+  // Subject identity is the authored id and carries no document prefix, so an
+  // id declared twice anywhere in the workspace names one subject twice. The
+  // walk below therefore remembers across documents, not just within one.
+  const declaringDocument = new Map<string, string>()
+  // A document whose own id is a duplicate (YM303) would collide on every
+  // subject it declares, burying the one fault worth acting on under a
+  // diagnostic per concept. It is walked for nothing else here.
+  const documentIdsSeen = new Set<string>()
   for (const { input, value, location } of documents) {
     const selectedProfile = profiles.get(value.profile)
     if (selectedProfile === undefined) {
@@ -1164,7 +1175,6 @@ function compileWorkspaceResolved(
       continue
     }
 
-    const seenIds = new Set<string>()
     const declarations = [
       ...(value.states ?? []).map((state, index) => ({
         id: state.id,
@@ -1182,24 +1192,35 @@ function compileWorkspaceResolved(
         pointer: `/relationships/${index}/id`,
       })),
     ]
+    const duplicateDocumentId = documentIdsSeen.has(value.id)
+    documentIdsSeen.add(value.id)
     for (const declaration of declarations) {
-      if (seenIds.has(declaration.id)) {
+      if (duplicateDocumentId) break
+      const firstDeclarer = declaringDocument.get(declaration.id)
+      if (firstDeclarer !== undefined) {
         const source = location(declaration.yamlPath, declaration.pointer)
+        // Two documents claiming one id is a different fault from one document
+        // repeating itself, and it reads differently to whoever has to fix it:
+        // the second names a file they may not have open.
+        const sameDocument = firstDeclarer === input.path
         diagnostics.push({
           severity: 'error',
-          code: 'YM301',
-          message: `Duplicate local ID "${declaration.id}"`,
+          code: sameDocument ? 'YM301' : 'YM314',
+          message: sameDocument
+            ? `Duplicate ID "${declaration.id}"`
+            : `ID "${declaration.id}" is already declared by "${firstDeclarer}"; a subject id is unique across the workspace`,
           path: input.path,
           pointer: declaration.pointer,
           line: source.line,
           column: source.column,
         })
+      } else {
+        declaringDocument.set(declaration.id, input.path)
       }
-      seenIds.add(declaration.id)
     }
 
     for (const [index, state] of (value.states ?? []).entries()) {
-      const stateIdentity = `${value.id}#${state.id}`
+      const stateIdentity = state.id
       if (
         state.after !== undefined &&
         !architectureStateIds.has(
@@ -1237,7 +1258,7 @@ function compileWorkspaceResolved(
     }
 
     for (const [index, state] of (value.states ?? []).entries()) {
-      const subject = `${value.id}#${state.id}`
+      const subject = state.id
       subjects.push({ id: subject, type: 'concept' })
       claims.push(
         {
@@ -1363,7 +1384,7 @@ function compileWorkspaceResolved(
             line: source.line,
             column: source.column,
           })
-        } else if (otherIdentity === `${value.id}#${concept.id}`) {
+        } else if (otherIdentity === concept.id) {
           const source = location(
             ['concepts', index, 'distinctFrom', distinctIndex],
             pointer,
@@ -1384,7 +1405,7 @@ function compileWorkspaceResolved(
       ).entries()) {
         const pointer = `/concepts/${index}/supersedes/${supersedesIndex}`
         const predecessorIdentity = qualifyReference(value.id, predecessor)
-        const subjectIdentity = `${value.id}#${concept.id}`
+        const subjectIdentity = concept.id
         if (!conceptByQualifiedId.has(predecessorIdentity)) {
           const source = location(
             ['concepts', index, 'supersedes', supersedesIndex],
@@ -1807,7 +1828,7 @@ function compileWorkspaceResolved(
     }
 
     for (const [index, concept] of value.concepts.entries()) {
-      const subject = `${value.id}#${concept.id}`
+      const subject = concept.id
       subjects.push({ id: subject, type: 'concept' })
       claims.push(
         {
@@ -2060,7 +2081,7 @@ function compileWorkspaceResolved(
     }
 
     for (const [index, relationship] of value.relationships.entries()) {
-      const id = `${value.id}#${relationship.id}`
+      const id = relationship.id
       subjects.push({ id, type: 'relationship' })
       claims.push({
         id,
@@ -2193,7 +2214,7 @@ function compileWorkspaceResolved(
         relationship.kind === 'aggregation'
           ? [
               {
-                id: `${value.id}#${relationship.id}`,
+                id: relationship.id,
                 localId: relationship.id,
                 document: value.id,
                 kind: relationship.kind as 'composition' | 'aggregation',
@@ -2286,7 +2307,7 @@ function compileWorkspaceResolved(
           }
           return [
             {
-              id: `${value.id}#${relationship.id}`,
+              id: relationship.id,
               localId: relationship.id,
               junction,
               kind: relationship.kind,

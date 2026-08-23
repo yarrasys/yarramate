@@ -3,15 +3,15 @@ id: seven-verb-surface
 version: "1.0"
 query:
   subjects:
-    - yarramate-engine#cli
-    - yarramate-engine#init-command
-    - yarramate-engine#design-command
-    - yarramate-engine#apply-command
-    - yarramate-engine#ask-command
-    - yarramate-engine#check-command
-    - yarramate-engine#reconcile-command
-    - yarramate-engine#export-command
-    - yarramate-product#agent-harness
+    - cli
+    - init-command
+    - design-command
+    - apply-command
+    - ask-command
+    - check-command
+    - reconcile-command
+    - export-command
+    - agent-harness
   relationships: between
 presentation:
   title: The seven-verb surface

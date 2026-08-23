@@ -3,22 +3,22 @@ id: likec4-export-path
 version: "1.0"
 query:
   subjects:
-    - yarramate-engine#adapter-mapping
-    - yarramate-engine#assemble-likec4-project
-    - yarramate-engine#export-likec4
-    - yarramate-engine#likec4-export-adapter
-    - yarramate-engine#likec4-check-command
-    - yarramate-engine#likec4-export-command
-    - yarramate-engine#projection-result
-    - yarramate-engine#likec4-project-definition
-    - yarramate-engine#likec4-project-schema
-    - yarramate-engine#likec4-generated-project-v2-schema
-    - yarramate-repository#likec4-export-source
-    - yarramate-repository#likec4-prepare-source
-    - yarramate-repository#likec4-project-source
-    - yarramate-repository#likec4-project-definition-source
-    - yarramate-repository#likec4-project-schema-source
-    - yarramate-repository#likec4-generated-project-v2-schema-source
+    - adapter-mapping
+    - assemble-likec4-project
+    - export-likec4
+    - likec4-export-adapter
+    - likec4-check-command
+    - likec4-export-command
+    - projection-result
+    - likec4-project-definition
+    - likec4-project-schema
+    - likec4-generated-project-v2-schema
+    - likec4-export-source
+    - likec4-prepare-source
+    - likec4-project-source
+    - likec4-project-definition-source
+    - likec4-project-schema-source
+    - likec4-generated-project-v2-schema-source
   relationships: between
 presentation:
   title: YarraMate LikeC4 export path

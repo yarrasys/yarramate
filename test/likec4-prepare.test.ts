@@ -36,7 +36,7 @@ relationships: []
 id: system-change
 version: "1.0"
 query:
-  states: [system#baseline, system#target]
+  states: [baseline, target]
 `,
       },
       subjectMapping: {
@@ -46,17 +46,17 @@ id: system-likec4
 version: "1.0"
 adapter: likec4
 mappings:
-  - native: system#legacy
+  - native: legacy
     external: legacy
     type: concept
-  - native: system#modern
+  - native: modern
     external: modern
     type: concept
 `,
       },
       comparison: {
-        from: 'system#baseline',
-        to: 'system#target',
+        from: 'baseline',
+        to: 'target',
       },
       vocabulary: 'bundled',
     })
@@ -93,7 +93,7 @@ relationships: []
 id: system-change
 version: "1.0"
 query:
-  states: [system#target]
+  states: [target]
 `,
       },
       subjectMapping: {
@@ -106,8 +106,8 @@ mappings: []
 `,
       },
       comparison: {
-        from: 'system#baseline',
-        to: 'system#target',
+        from: 'baseline',
+        to: 'target',
       },
       vocabulary: 'bundled',
     })
@@ -119,8 +119,8 @@ mappings: []
           severity: 'error',
           code: 'YMLC106',
           message:
-            'Comparison state "system#baseline" is not selected by projection "system-change@1.0"',
-          subject: 'system#baseline',
+            'Comparison state "baseline" is not selected by projection "system-change@1.0"',
+          subject: 'baseline',
           path: 'system.projection.yaml',
           pointer: '/query/states',
           line: 5,
@@ -154,8 +154,8 @@ id: system-change
 version: "1.0"
 query:
   states:
-    - system#baseline
-    - system#missing
+    - baseline
+    - missing
 `,
       },
       subjectMapping: {
@@ -168,8 +168,8 @@ mappings: []
 `,
       },
       comparison: {
-        from: 'system#baseline',
-        to: 'system#missing',
+        from: 'baseline',
+        to: 'missing',
       },
       vocabulary: 'bundled',
     })
@@ -181,8 +181,8 @@ mappings: []
           severity: 'error',
           code: 'YMLC105',
           message:
-            'Architecture state "system#missing" does not exist',
-          subject: 'system#missing',
+            'Architecture state "missing" does not exist',
+          subject: 'missing',
           path: 'system.projection.yaml',
           pointer: '/query/states/1',
           line: 7,
@@ -223,7 +223,7 @@ id: system-likec4
 version: "1.0"
 adapter: likec4
 mappings:
-  - native: system#service
+  - native: service
     external: service
     type: concept
 `,
@@ -284,7 +284,7 @@ id: system-likec4
 version: "1.0"
 adapter: likec4
 mappings:
-  - native: system#service
+  - native: service
     external: service
     type: concept
 `,
@@ -300,7 +300,7 @@ mappings:
           code: 'YMLC104',
           message:
             'Semantic concept kind "example/profile@1.0#custom-service" resolves to unsupported bundled LikeC4 kind "custom-service"',
-          subject: 'system#service',
+          subject: 'service',
           path: 'system.yaml',
           pointer: '/concepts/0/kind',
           line: 6,
@@ -341,7 +341,7 @@ id: system-likec4
 version: "1.0"
 adapter: likec4
 mappings:
-  - native: system#service
+  - native: service
     external: bad.identity
     type: concept
 `,
@@ -357,7 +357,7 @@ mappings:
           code: 'YMLC103',
           message:
             'LikeC4 identity "bad.identity" is not a valid identifier',
-          subject: 'system#service',
+          subject: 'service',
           path: 'system.mapping.yaml',
           pointer: '/mappings/0/external',
           line: 7,
@@ -448,7 +448,7 @@ id: system-likec4
 version: "1.0"
 adapter: likec4
 mappings:
-  - native: system#service
+  - native: service
     external: service
     type: concept
 `,
@@ -475,7 +475,7 @@ relationshipKinds: []
           code: 'YMLC104',
           message:
             'Semantic concept kind "yarramate/core@0.1#applicationComponent" resolves to unsupported bundled LikeC4 kind "unavailable-kind"',
-          subject: 'system#service',
+          subject: 'service',
           path: 'system.kinds.yaml',
           pointer: '/conceptKinds/0/external',
           line: 6,
@@ -532,10 +532,10 @@ id: system-likec4
 version: "1.0"
 adapter: likec4
 mappings:
-  - native: system#alpha
+  - native: alpha
     external: alpha
     type: concept
-  - native: system#zeta
+  - native: zeta
     external: zeta
     type: concept
 `,
@@ -549,7 +549,7 @@ mappings:
       result.diagnostics.map((diagnostic) =>
         'subject' in diagnostic ? diagnostic.subject : undefined,
       ),
-    ).toEqual(['system#zeta', 'system#alpha'])
+    ).toEqual(['zeta', 'alpha'])
   })
   const relationshipSources = [
     {
@@ -587,10 +587,10 @@ id: system-likec4
 version: "1.0"
 adapter: likec4
 mappings:
-  - native: system#service
+  - native: service
     external: service
     type: concept
-  - native: system#gateway
+  - native: gateway
     external: gateway
     type: concept
 `,
@@ -625,8 +625,8 @@ mappings:
         severity: 'error',
         code: 'YMLC111',
         message:
-          'Projected relationship "system#gateway-serves-service" has no LikeC4 mapping',
-        subject: 'system#gateway-serves-service',
+          'Projected relationship "gateway-serves-service" has no LikeC4 mapping',
+        subject: 'gateway-serves-service',
         path: 'system.yaml',
         pointer: '/relationships/0',
         line: 12,
@@ -641,7 +641,7 @@ mappings:
       projection: relationshipProjection,
       subjectMapping: {
         path: conceptOnlyMapping.path,
-        source: `${conceptOnlyMapping.source}  - native: system#gateway-serves-service
+        source: `${conceptOnlyMapping.source}  - native: gateway-serves-service
     external: gatewayServesService
     type: relationship
 `,
@@ -664,7 +664,7 @@ id: system-likec4
 version: "1.0"
 adapter: likec4
 mappings:
-  - native: system#service
+  - native: service
     external: service
     type: concept
 `,

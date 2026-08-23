@@ -39,8 +39,8 @@ concepts:
 relationships: []
 `)
     expect(claims).toHaveLength(1)
-    expect(claims[0]?.subject).toBe('main#order-api')
-    expect(claims[0]?.object).toEqual({ ref: 'main#order-gateway' })
+    expect(claims[0]?.subject).toBe('order-api')
+    expect(claims[0]?.object).toEqual({ ref: 'order-gateway' })
     expect(claims[0]?.origin).toBe('declared')
     expect(claims[0]?.source.pointer).toBe('/concepts/0/supersedes/0')
   })
@@ -68,13 +68,13 @@ relationships: []
 `)
     // Many-to-one: one successor names two predecessors.
     expect(new Set(claims.map(({ subject }) => subject))).toEqual(
-      new Set(['main#identity-service']),
+      new Set(['identity-service']),
     )
     expect(
       claims.flatMap((claim) =>
         'ref' in claim.object ? [claim.object.ref] : [],
       ).sort(),
-    ).toEqual(['main#auth-service', 'main#session-service'])
+    ).toEqual(['auth-service', 'session-service'])
   })
 
   it('reads a split as one predecessor named by several successors', () => {
@@ -105,10 +105,10 @@ relationships: []
       claims.flatMap((claim) =>
         'ref' in claim.object ? [claim.object.ref] : [],
       ),
-    ).toEqual(['main#billing', 'main#billing'])
+    ).toEqual(['billing', 'billing'])
     expect(claims.map(({ subject }) => subject).sort()).toEqual([
-      'main#invoicing',
-      'main#payments',
+      'invoicing',
+      'payments',
     ])
   })
 
@@ -166,7 +166,7 @@ concepts:
     kind: applicationComponent
     name: Order API
     supersedes:
-      - legacy#order-gateway
+      - order-gateway
 relationships: []
 `,
       },
@@ -189,7 +189,7 @@ relationships: []
     const claim = result.graph.claims.find(
       ({ predicate }) => predicate === 'yarramate/lineage/supersedes',
     )
-    expect(claim?.object).toEqual({ ref: 'legacy#order-gateway' })
+    expect(claim?.object).toEqual({ ref: 'order-gateway' })
   })
 
   it('does not require a superseded subject to be retired', () => {
@@ -370,7 +370,7 @@ describe('briefs render lineage from either end', () => {
     // successor by the id a reader can seed a second slice on, without the
     // slice growing to contain it (ADR 0070, ADR 0080).
     const result = runCli(
-      ['ask', 'workspace.yaml', 'main#order-gateway'],
+      ['ask', 'workspace.yaml', 'order-gateway'],
       workspace,
     )
     expect(result.exitCode).toBe(0)

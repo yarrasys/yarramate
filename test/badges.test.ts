@@ -52,7 +52,7 @@ describe('evidence badge URI', () => {
 
 describe('ownerInitialsOf', () => {
   it('derives initials from the ref local id, not the document prefix', () => {
-    expect(ownerInitialsOf('yarramate-product#yarramate-maintainers')).toBe('YM')
+    expect(ownerInitialsOf('yarramate-maintainers')).toBe('YM')
   })
 
   it('returns null for no owner', () => {
@@ -195,11 +195,11 @@ describe('buildStylesheet badge layers', () => {
     })
 
     const bare = eleOf({ status: 'planned' })
-    const owned = eleOf({ status: 'planned', owner: 'doc#dana', ownerInitials: 'D' })
+    const owned = eleOf({ status: 'planned', owner: 'dana', ownerInitials: 'D' })
     const evidenced = eleOf({ status: 'planned', hasAttestations: true })
 
     expect(images(bare)).toEqual([LIFECYCLE_BADGE_URI.planned])
-    expect(images(owned)).toEqual([LIFECYCLE_BADGE_URI.planned, ownerBadgeUri('doc#dana', 'D')])
+    expect(images(owned)).toEqual([LIFECYCLE_BADGE_URI.planned, ownerBadgeUri('dana', 'D')])
     expect(images(evidenced)).toEqual([LIFECYCLE_BADGE_URI.planned, EVIDENCE_BADGE_URI])
     // A repeat lookup is served from the cache and must not have drifted.
     expect(images(bare)).toEqual([LIFECYCLE_BADGE_URI.planned])
@@ -216,7 +216,7 @@ describe('buildStylesheet badge layers', () => {
     const data: Record<string, unknown> = {
       status: 'current',
       hasAttestations: true,
-      owner: 'doc#dana',
+      owner: 'dana',
       ownerInitials: 'D',
     }
     const ele = { data: (key: string) => data[key] ?? null }
@@ -240,7 +240,7 @@ describe('buildStylesheet badge layers', () => {
 
 describe('ownerColorOf hash function', () => {
   it('same ref always maps to the same colour', () => {
-    const ref = 'test-doc#test-owner'
+    const ref = 'test-owner'
     const color1 = ownerColorOf(ref)
     const color2 = ownerColorOf(ref)
     expect(color1).toBe(color2)
@@ -265,10 +265,10 @@ describe('ownerColorOf hash function', () => {
     const palette = ['#416f65', '#8c4d18', '#2457a6', '#182228']
     const testRefs = [
       'simple-owner',
-      'yarramate-product#yarramate-maintainers',
-      'repo#team-member-1',
-      'repo#team-member-2',
-      'repo#another-team',
+      'yarramate-maintainers',
+      'team-member-1',
+      'team-member-2',
+      'another-team',
     ]
     for (const ref of testRefs) {
       const color = ownerColorOf(ref)

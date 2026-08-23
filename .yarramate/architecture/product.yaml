@@ -105,7 +105,7 @@ concepts:
         on: "2026-08-13"
     references:
       - id: governing-decisions
-        ref: yarramate-repository#architecture-decisions
+        ref: architecture-decisions
   - id: compile-native-architecture
     kind: capability
     name: Compile native architecture
@@ -192,7 +192,7 @@ relationships:
     description: Reconciliation reports where evidence challenges declared architecture without rewriting the accepted intent.
     references:
       - id: governing-decisions
-        ref: yarramate-repository#architecture-decisions
+        ref: architecture-decisions
   - id: cli-supports-discovery
     kind: association
     from: stable-cli
@@ -200,7 +200,7 @@ relationships:
     description: Agent harnesses use the stable CLI to produce reviewable discovery proposals without a privileged agent API.
     references:
       - id: implementation-interface
-        ref: yarramate-engine#cli
+        ref: cli
   - id: cli-supports-design
     kind: association
     from: stable-cli
@@ -208,7 +208,7 @@ relationships:
     description: Agent harnesses use the same stable CLI to capture design intent before implementation begins.
     references:
       - id: implementation-interface
-        ref: yarramate-engine#cli
+        ref: cli
   - id: maintainers-perform-stewardship
     kind: assignment
     from: yarramate-maintainers

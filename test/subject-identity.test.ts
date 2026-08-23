@@ -70,21 +70,21 @@ describe('label normalization', () => {
 describe('near-duplicate detection', () => {
   it('finds the motivating pair: order-gateway and orders-service', () => {
     const pairs = findNearDuplicates([
-      subject('doc#order-gateway', ['order-gateway', 'Order Gateway']),
-      subject('doc#orders-service', ['orders-service', 'Orders Service']),
+      subject('order-gateway', ['order-gateway', 'Order Gateway']),
+      subject('orders-service', ['orders-service', 'Orders Service']),
     ])
     expect(pairs).toHaveLength(1)
-    expect(pairs[0]!.left).toBe('doc#order-gateway')
-    expect(pairs[0]!.right).toBe('doc#orders-service')
+    expect(pairs[0]!.left).toBe('order-gateway')
+    expect(pairs[0]!.right).toBe('orders-service')
     expect(pairs[0]!.corroboration).toBe('lexical')
   })
 
   it('leaves genuinely different subjects alone', () => {
     expect(
       findNearDuplicates([
-        subject('doc#order-gateway', ['order-gateway']),
-        subject('doc#payment-gateway', ['payment-gateway']),
-        subject('doc#audit-log', ['audit-log']),
+        subject('order-gateway', ['order-gateway']),
+        subject('payment-gateway', ['payment-gateway']),
+        subject('audit-log', ['audit-log']),
       ]),
     ).toEqual([])
   })
@@ -92,8 +92,8 @@ describe('near-duplicate detection', () => {
   it('never compares subjects of different kinds', () => {
     expect(
       findNearDuplicates([
-        subject('doc#orders', ['orders']),
-        subject('doc#order', ['order'], {
+        subject('orders', ['orders']),
+        subject('order', ['order'], {
           kind: 'yarramate/core@0.1#dataObject',
         }),
       ]),
@@ -102,19 +102,19 @@ describe('near-duplicate detection', () => {
 
   it('requires structural corroboration in the moderate band', () => {
     const left = [
-      'doc#payment-batch-processor',
+      'payment-batch-processor',
       ['payment-batch-processor'],
     ] as const
     const right = [
-      'doc#payment-batch-processor-v2',
+      'payment-batch-processor-v2',
       ['payment-batch-processor-v2'],
     ] as const
     expect(
       findNearDuplicates([subject(...left), subject(...right)]),
     ).toEqual([])
     const corroborated = findNearDuplicates([
-      subject(...left, { owner: 'doc#team' }),
-      subject(...right, { owner: 'doc#team' }),
+      subject(...left, { owner: 'team' }),
+      subject(...right, { owner: 'team' }),
     ])
     expect(corroborated).toHaveLength(1)
     expect(corroborated[0]!.corroboration).toBe('owner')
@@ -122,11 +122,11 @@ describe('near-duplicate detection', () => {
 
   it('accepts a shared one-hop neighbour as corroboration', () => {
     const pairs = findNearDuplicates([
-      subject('doc#payment-batch-processor', ['payment-batch-processor'], {
-        neighbours: new Set(['doc#ledger']),
+      subject('payment-batch-processor', ['payment-batch-processor'], {
+        neighbours: new Set(['ledger']),
       }),
-      subject('doc#payment-batch-processor-v2', ['payment-batch-processor-v2'], {
-        neighbours: new Set(['doc#ledger']),
+      subject('payment-batch-processor-v2', ['payment-batch-processor-v2'], {
+        neighbours: new Set(['ledger']),
       }),
     ])
     expect(pairs).toHaveLength(1)
@@ -136,14 +136,14 @@ describe('near-duplicate detection', () => {
   it('matches through an alias the preferred names never share', () => {
     expect(
       findNearDuplicates([
-        subject('doc#auth', ['auth', 'Authentication']),
-        subject('doc#identity-provider', ['identity-provider', 'Identity Provider']),
+        subject('auth', ['auth', 'Authentication']),
+        subject('identity-provider', ['identity-provider', 'Identity Provider']),
       ]),
     ).toEqual([])
     expect(
       findNearDuplicates([
-        subject('doc#auth', ['auth', 'Authentication']),
-        subject('doc#identity-provider', [
+        subject('auth', ['auth', 'Authentication']),
+        subject('identity-provider', [
           'identity-provider',
           'Identity Provider',
           'auth',
@@ -154,16 +154,16 @@ describe('near-duplicate detection', () => {
 
   it('is dismissed symmetrically by one recorded judgment', () => {
     const declared = findNearDuplicates([
-      subject('doc#order-gateway', ['order-gateway'], {
-        distinctFrom: new Set(['doc#orders-service']),
+      subject('order-gateway', ['order-gateway'], {
+        distinctFrom: new Set(['orders-service']),
       }),
-      subject('doc#orders-service', ['orders-service']),
+      subject('orders-service', ['orders-service']),
     ])
     expect(declared).toEqual([])
     const reversed = findNearDuplicates([
-      subject('doc#order-gateway', ['order-gateway']),
-      subject('doc#orders-service', ['orders-service'], {
-        distinctFrom: new Set(['doc#order-gateway']),
+      subject('order-gateway', ['order-gateway']),
+      subject('orders-service', ['orders-service'], {
+        distinctFrom: new Set(['order-gateway']),
       }),
     ])
     expect(reversed).toEqual([])
@@ -196,7 +196,7 @@ relationships: []
       'OG',
       'the gateway',
     ])
-    expect(aliases.every(({ subject }) => subject === 'main#order-gateway')).toBe(true)
+    expect(aliases.every(({ subject }) => subject === 'order-gateway')).toBe(true)
 
     const reordered = compile(`format: yarramate/v1
 id: main
@@ -242,8 +242,8 @@ relationships: []
     const claim = result.graph.claims.find(
       ({ predicate }) => predicate === 'yarramate/identity/distinct-from',
     )
-    expect(claim?.subject).toBe('main#order-gateway')
-    expect(claim?.object).toEqual({ ref: 'main#orders-service' })
+    expect(claim?.subject).toBe('order-gateway')
+    expect(claim?.object).toEqual({ ref: 'orders-service' })
     expect(claim?.origin).toBe('declared')
   })
 
@@ -432,8 +432,8 @@ describe('the near-duplicate question end to end', () => {
       .find((entry: { id: string }) => entry.id === 'subjects-near-duplicate')
     expect(question.open).toBe(true)
     expect(question.subjects).toHaveLength(2)
-    expect(question.subjects[0].question).toContain('main#orders-service')
-    expect(question.subjects[1].question).toContain('main#order-gateway')
+    expect(question.subjects[0].question).toContain('orders-service')
+    expect(question.subjects[1].question).toContain('order-gateway')
   })
 
   it('closes permanently once one side records the distinctness judgment', () => {
@@ -452,7 +452,7 @@ describe('the near-duplicate question end to end', () => {
     const bare = runCli(['ask', 'workspace.yaml', 'OG', '--json'], workspace)
     const seeded = JSON.parse(bare.stdout)
     expect(seeded.mode).toBe('slice')
-    expect(seeded.seeds).toContain('main#order-gateway')
+    expect(seeded.seeds).toContain('order-gateway')
   })
 
   it('carries aliases through the roster within the ask-result contract', () => {
@@ -460,7 +460,7 @@ describe('the near-duplicate question end to end', () => {
     const result = runCli(['ask', 'workspace.yaml', '--subjects', '--json'], workspace)
     const parsed = JSON.parse(result.stdout)
     expect(
-      parsed.subjects.find((entry: { id: string }) => entry.id === 'main#order-gateway')
+      parsed.subjects.find((entry: { id: string }) => entry.id === 'order-gateway')
         .aka,
     ).toEqual(['OG'])
     const validate = new Ajv2020({ allErrors: true }).compile(askResultSchema)

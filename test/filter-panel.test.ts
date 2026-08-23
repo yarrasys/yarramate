@@ -13,7 +13,7 @@ import type { ProjectionQuery } from '../src/projection.js'
 // each field's own round trip (composeQuery <-> queryToFields) is exercised
 // independently of the others.
 const filledFieldFor: { readonly [K in keyof QueryFields]: QueryFields[K] } = {
-  subjects: ['main#user'],
+  subjects: ['user'],
   documents: ['architecture/main.yaml'],
   kinds: ['yarramate/core@0.1#businessActor'],
   layers: ['application'],
@@ -33,7 +33,7 @@ const fieldKeys = Object.keys(filledFieldFor) as (keyof QueryFields)[]
 const allFilledFields: QueryFields = filledFieldFor
 
 const allFilledQuery: ProjectionQuery = {
-  subjects: ['main#user'],
+  subjects: ['user'],
   documents: ['architecture/main.yaml'],
   kinds: ['yarramate/core@0.1#businessActor'],
   layers: ['application'],

@@ -148,33 +148,33 @@ relationships: []
     expect(result.ok).toBe(true)
     if (!result.ok) return
     expect(result.graph.subjects).toContainEqual({
-      id: 'roadmap#target',
+      id: 'target',
       type: 'concept',
     })
     expect(result.graph.claims).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          id: 'roadmap#target~kind',
-          subject: 'roadmap#target',
+          id: 'target~kind',
+          subject: 'target',
           predicate: 'yarramate/concept/kind',
           object: { value: 'yarramate/core@0.1#plateau' },
         }),
         expect.objectContaining({
-          id: 'roadmap#target~state-type',
-          subject: 'roadmap#target',
+          id: 'target~state-type',
+          subject: 'target',
           predicate: 'yarramate/state/type',
           object: { value: 'target' },
         }),
         expect.objectContaining({
-          id: 'roadmap#target~after',
-          subject: 'roadmap#target',
+          id: 'target~after',
+          subject: 'target',
           predicate: 'yarramate/state/after',
-          object: { ref: 'roadmap#baseline' },
+          object: { ref: 'baseline' },
         }),
         expect.objectContaining({
-          subject: 'roadmap#payments',
+          subject: 'payments',
           predicate: 'yarramate/state/present-in',
-          object: { ref: 'roadmap#target' },
+          object: { ref: 'target' },
           source: expect.objectContaining({
             path: 'roadmap.yaml',
             pointer: '/concepts/0/presentIn/0',
@@ -250,7 +250,7 @@ relationships: []
           severity: 'error',
           code: 'YM502',
           message:
-            'Architecture state "roadmap#baseline" participates in an ordering cycle',
+            'Architecture state "baseline" participates in an ordering cycle',
           path: 'roadmap.yaml',
           pointer: '/states/0/after',
           line: 8,
@@ -260,7 +260,7 @@ relationships: []
           severity: 'error',
           code: 'YM502',
           message:
-            'Architecture state "roadmap#target" participates in an ordering cycle',
+            'Architecture state "target" participates in an ordering cycle',
           path: 'roadmap.yaml',
           pointer: '/states/1/after',
           line: 12,
@@ -310,7 +310,7 @@ relationships:
           severity: 'error',
           code: 'YM503',
           message:
-            'Relationship "legacy-serves-modern" is present in "roadmap#target" but endpoint "roadmap#legacy" is absent',
+            'Relationship "legacy-serves-modern" is present in "target" but endpoint "legacy" is absent',
           path: 'roadmap.yaml',
           pointer: '/relationships/0/presentIn/0',
           line: 25,
@@ -343,10 +343,10 @@ relationships:
     expect(result.ok).toBe(true)
     if (!result.ok) return
     expect(result.graph.claims).toContainEqual({
-      id: 'ownership#payments-api~owner',
-      subject: 'ownership#payments-api',
+      id: 'payments-api~owner',
+      subject: 'payments-api',
       predicate: 'yarramate/ownership/owner',
-      object: { ref: 'ownership#payments-team' },
+      object: { ref: 'payments-team' },
       origin: 'declared',
       source: {
         document: 'ownership',
@@ -454,11 +454,11 @@ relationships:
     expect(result.ok).toBe(true)
     if (!result.ok) return
     expect(result.graph.claims).toContainEqual({
-      id: 'adequacy#payments-api~attestation-adequacy',
-      subject: 'adequacy#payments-api',
+      id: 'payments-api~attestation-adequacy',
+      subject: 'payments-api',
       predicate: 'yarramate/attestation/adequacy',
       object: {
-        value: 'adequacy#review-board 2026-08-01 claude-fable-5',
+        value: 'review-board 2026-08-01 claude-fable-5',
       },
       origin: 'declared',
       source: {
@@ -496,10 +496,10 @@ relationships:
     expect(result.ok).toBe(true)
     if (!result.ok) return
     expect(result.graph.claims).toContainEqual({
-      id: 'constraints#customer-data~constraint-residency',
-      subject: 'constraints#customer-data',
+      id: 'customer-data~constraint-residency',
+      subject: 'customer-data',
       predicate: 'yarramate/constraint/requires',
-      object: { ref: 'constraints#australia-only' },
+      object: { ref: 'australia-only' },
       origin: 'declared',
       source: {
         document: 'constraints',
@@ -603,10 +603,10 @@ relationships:
     expect(result.graph.claims).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          id: 'references#worker~reference-lifecycle-rule',
-          subject: 'references#worker',
+          id: 'worker~reference-lifecycle-rule',
+          subject: 'worker',
           predicate: 'yarramate/reference/refers-to',
-          object: { ref: 'references#worker-triggers-lifecycle' },
+          object: { ref: 'worker-triggers-lifecycle' },
           source: expect.objectContaining({
             pointer: '/concepts/1/references/0/ref',
             line: 13,
@@ -614,10 +614,10 @@ relationships:
           }),
         }),
         expect.objectContaining({
-          id: 'references#worker-triggers-lifecycle~reference-governing-subject',
-          subject: 'references#worker-triggers-lifecycle',
+          id: 'worker-triggers-lifecycle~reference-governing-subject',
+          subject: 'worker-triggers-lifecycle',
           predicate: 'yarramate/reference/refers-to',
-          object: { ref: 'references#lifecycle' },
+          object: { ref: 'lifecycle' },
           source: expect.objectContaining({
             pointer: '/relationships/0/references/0/ref',
             line: 21,
@@ -691,16 +691,16 @@ relationships:
         profiles: ['yarramate/core@0.1'],
         documents: [{ id: 'checkout', source: 'architecture/checkout.yaml' }],
         subjects: [
-          { id: 'checkout#api-realizes-approval', type: 'relationship' },
-          { id: 'checkout#approval-api', type: 'concept' },
-          { id: 'checkout#approve-order', type: 'concept' },
+          { id: 'api-realizes-approval', type: 'relationship' },
+          { id: 'approval-api', type: 'concept' },
+          { id: 'approve-order', type: 'concept' },
         ],
         claims: [
           {
-            id: 'checkout#api-realizes-approval',
-            subject: 'checkout#approval-api',
+            id: 'api-realizes-approval',
+            subject: 'approval-api',
             predicate: 'yarramate/core@0.1#realization',
-            object: { ref: 'checkout#approve-order' },
+            object: { ref: 'approve-order' },
             origin: 'declared',
             source: {
               document: 'checkout',
@@ -711,8 +711,8 @@ relationships:
             },
           },
           {
-            id: 'checkout#approval-api~kind',
-            subject: 'checkout#approval-api',
+            id: 'approval-api~kind',
+            subject: 'approval-api',
             predicate: 'yarramate/concept/kind',
             object: { value: 'yarramate/core@0.1#applicationService' },
             origin: 'declared',
@@ -725,8 +725,8 @@ relationships:
             },
           },
           {
-            id: 'checkout#approval-api~name',
-            subject: 'checkout#approval-api',
+            id: 'approval-api~name',
+            subject: 'approval-api',
             predicate: 'yarramate/concept/name',
             object: { value: 'Approval API' },
             origin: 'declared',
@@ -739,8 +739,8 @@ relationships:
             },
           },
           {
-            id: 'checkout#approve-order~kind',
-            subject: 'checkout#approve-order',
+            id: 'approve-order~kind',
+            subject: 'approve-order',
             predicate: 'yarramate/concept/kind',
             object: { value: 'yarramate/core@0.1#capability' },
             origin: 'declared',
@@ -753,8 +753,8 @@ relationships:
             },
           },
           {
-            id: 'checkout#approve-order~name',
-            subject: 'checkout#approve-order',
+            id: 'approve-order~name',
+            subject: 'approve-order',
             predicate: 'yarramate/concept/name',
             object: { value: 'Approve order' },
             origin: 'declared',
@@ -785,7 +785,7 @@ relationships:
         {
           severity: 'error',
           code: 'YM301',
-          message: 'Duplicate local ID "shared"',
+          message: 'Duplicate ID "shared"',
           path: 'duplicate.yaml',
           pointer: '/concepts/1/id',
           line: 8,
@@ -947,15 +947,15 @@ relationships:
       expect(
         result.graph.claims.filter(({ id }) =>
           [
-            'described#goal~description',
-            'described#realizes~description',
-            'described#realizes~name',
+            'goal~description',
+            'realizes~description',
+            'realizes~name',
           ].includes(id),
         ),
       ).toEqual([
         {
-          id: 'described#goal~description',
-          subject: 'described#goal',
+          id: 'goal~description',
+          subject: 'goal',
           predicate: 'yarramate/concept/description',
           object: { value: 'A concise explanation' },
           origin: 'declared',
@@ -968,8 +968,8 @@ relationships:
           },
         },
         {
-          id: 'described#realizes~description',
-          subject: 'described#realizes',
+          id: 'realizes~description',
+          subject: 'realizes',
           predicate: 'yarramate/relationship/description',
           object: {
             value: 'This dependency records the chosen delivery rationale',
@@ -984,8 +984,8 @@ relationships:
           },
         },
         {
-          id: 'described#realizes~name',
-          subject: 'described#realizes',
+          id: 'realizes~name',
+          subject: 'realizes',
           predicate: 'yarramate/relationship/name',
           object: { value: 'Delivers' },
           origin: 'declared',
@@ -1111,14 +1111,14 @@ relationships:
       expect(
         result.graph.claims.filter(({ id }) =>
           [
-            'controlled#reads-orders~mode',
-            'controlled#sends-orders~content',
+            'reads-orders~mode',
+            'sends-orders~content',
           ].includes(id),
         ),
       ).toEqual([
         {
-          id: 'controlled#reads-orders~mode',
-          subject: 'controlled#reads-orders',
+          id: 'reads-orders~mode',
+          subject: 'reads-orders',
           predicate: 'yarramate/access/mode',
           object: { value: 'read' },
           origin: 'declared',
@@ -1131,8 +1131,8 @@ relationships:
           },
         },
         {
-          id: 'controlled#sends-orders~content',
-          subject: 'controlled#sends-orders',
+          id: 'sends-orders~content',
+          subject: 'sends-orders',
           predicate: 'yarramate/flow/content',
           object: { value: 'Orders' },
           origin: 'declared',
@@ -1215,20 +1215,20 @@ id: strong-model
 profile: yarramate/core@0.1
 concepts: []
 relationships:
-  - id: contains
+  - id: contains-strongly
     kind: composition
-    from: structure#whole
-    to: structure#part
+    from: whole
+    to: part
 `
     const weak = `format: yarramate/v1
 id: weak-model
 profile: yarramate/core@0.1
 concepts: []
 relationships:
-  - id: contains
+  - id: contains-weakly
     kind: aggregation
-    from: structure#whole
-    to: structure#part
+    from: whole
+    to: part
 `
 
     const sources = [
@@ -1245,7 +1245,7 @@ relationships:
           severity: 'error',
           code: 'YM501',
           message:
-            'Relationship "weak-model#contains" contradicts "strong-model#contains": the same endpoints cannot be both aggregation and composition',
+            'Relationship "contains-weakly" contradicts "contains-strongly": the same endpoints cannot be both aggregation and composition',
           path: 'weak.yaml',
           pointer: '/relationships/0/kind',
           line: 7,
@@ -1342,13 +1342,13 @@ relationships:
         result.graph.claims.find(
           ({ id }) =>
             id ===
-            'workspace-engine#compiler-realizes-compilation',
+            'compiler-realizes-compilation',
         ),
       ).toEqual({
-        id: 'workspace-engine#compiler-realizes-compilation',
-        subject: 'workspace-engine#compiler',
+        id: 'compiler-realizes-compilation',
+        subject: 'compiler',
         predicate: 'yarramate/core@0.1#realization',
-        object: { ref: 'workspace-product#native-compilation' },
+        object: { ref: 'native-compilation' },
         origin: 'declared',
         source: {
           document: 'workspace-engine',
@@ -1376,7 +1376,7 @@ relationships:
           severity: 'error',
           code: 'YM302',
           message:
-            'Unresolved concept reference "absent-document#absent"',
+            'Unresolved concept reference "absent"',
           path: 'qualified.yaml',
           pointer: '/relationships/0/to',
           line: 12,
@@ -1407,7 +1407,7 @@ relationships:
       ])
       expect(
         result.graph.claims.find(
-          ({ id }) => id === 'platform#team~kind',
+          ({ id }) => id === 'team~kind',
         ),
       ).toMatchObject({
         predicate: 'yarramate/concept/kind',
@@ -1415,12 +1415,12 @@ relationships:
       })
       expect(
         result.graph.claims.find(
-          ({ id }) => id === 'platform#team-owns-delivery',
+          ({ id }) => id === 'team-owns-delivery',
         ),
       ).toMatchObject({
         predicate: 'example/platform@1.0#owns',
-        subject: 'platform#team',
-        object: { ref: 'platform#delivery' },
+        subject: 'team',
+        object: { ref: 'delivery' },
       })
     }
   })
@@ -1593,7 +1593,7 @@ relationships:
           severity: 'error',
           code: 'YM414',
           message:
-            'Relationship "junction-flows-second" (flow) joins junction "main#both" whose relationships are "triggering"; every relationship on one junction must be the same kind',
+            'Relationship "junction-flows-second" (flow) joins junction "both" whose relationships are "triggering"; every relationship on one junction must be the same kind',
           path: 'main.yaml',
           pointer: '/relationships/1/kind',
           line: 20,
@@ -1699,7 +1699,7 @@ relationships:
     if (childFirst.ok) {
       expect(
         childFirst.graph.claims.find(
-          ({ id }) => id === 'reliability#team~kind',
+          ({ id }) => id === 'team~kind',
         ),
       ).toMatchObject({
         object: {
@@ -1747,14 +1747,14 @@ relationships:
       expect(
         result.graph.claims.filter(({ id }) =>
           [
-            'lifecycle#current-capability~status',
-            'lifecycle#capability-supports-goal~status',
+            'current-capability~status',
+            'capability-supports-goal~status',
           ].includes(id),
         ),
       ).toEqual([
         {
-          id: 'lifecycle#capability-supports-goal~status',
-          subject: 'lifecycle#capability-supports-goal',
+          id: 'capability-supports-goal~status',
+          subject: 'capability-supports-goal',
           predicate: 'yarramate/lifecycle/status',
           object: { value: 'planned' },
           origin: 'declared',
@@ -1767,8 +1767,8 @@ relationships:
           },
         },
         {
-          id: 'lifecycle#current-capability~status',
-          subject: 'lifecycle#current-capability',
+          id: 'current-capability~status',
+          subject: 'current-capability',
           predicate: 'yarramate/lifecycle/status',
           object: { value: 'current' },
           origin: 'declared',
@@ -1981,7 +1981,7 @@ relationships:
     )
     const refusal = diagnostics.find((diagnostic) => diagnostic.code === 'YM404')
     expect(refusal?.pointer).toBe('/relationships/0/kind')
-    expect(refusal?.subjects).toEqual(['main#bad-edge'])
+    expect(refusal?.subjects).toEqual(['bad-edge'])
   })
 
   it('names the concept an unknown kind was refused on', () => {
@@ -2000,7 +2000,7 @@ relationships: []
     )
     const refusal = diagnostics.find((diagnostic) => diagnostic.code === 'YM401')
     expect(refusal?.pointer).toBe('/concepts/1/kind')
-    expect(refusal?.subjects).toEqual(['main#mystery'])
+    expect(refusal?.subjects).toEqual(['mystery'])
   })
 
   it('leaves a whole-document refusal without subjects', () => {
@@ -2046,6 +2046,80 @@ relationships: []
     ])
     const refusal = diagnostics.find((diagnostic) => diagnostic.code === 'YM401')
     expect(refusal?.path).toBe('architecture/beta.yaml')
-    expect(refusal?.subjects).toEqual(['beta#beta-one'])
+    expect(refusal?.subjects).toEqual(['beta-one'])
+  })
+})
+
+// Flattened identity (ADR 0099) is only safe because a collision is refused:
+// without this, two documents declaring one id would silently merge two
+// distinct subjects into one.
+describe('workspace-wide subject id uniqueness', () => {
+  const documentNamed = (id: string, subject: string) => ({
+    path: `${id}.yaml`,
+    source: `format: yarramate/v1
+id: ${id}
+profile: yarramate/core@0.1
+concepts:
+  - id: ${subject}
+    kind: applicationComponent
+    name: ${subject}
+    status: current
+relationships: []
+`,
+  })
+
+  it('refuses one id declared by two documents, naming the first', () => {
+    const result = compileWorkspace([
+      documentNamed('alpha', 'shared-name'),
+      documentNamed('beta', 'shared-name'),
+    ])
+    if (result.ok) throw new Error('expected the workspace to be refused')
+    const refusal = result.diagnostics.find(({ code }) => code === 'YM314')
+    expect(refusal?.path).toBe('beta.yaml')
+    expect(refusal?.pointer).toBe('/concepts/0/id')
+    expect(refusal?.message).toContain('already declared by "alpha.yaml"')
+  })
+
+  it('keeps a repeat inside one document as YM301', () => {
+    const result = compileWorkspace([
+      {
+        path: 'solo.yaml',
+        source: `format: yarramate/v1
+id: solo
+profile: yarramate/core@0.1
+concepts:
+  - id: twice
+    kind: applicationComponent
+    name: First
+    status: current
+  - id: twice
+    kind: applicationComponent
+    name: Second
+    status: current
+relationships: []
+`,
+      },
+    ])
+    if (result.ok) throw new Error('expected the workspace to be refused')
+    expect(result.diagnostics.map(({ code }) => code)).toContain('YM301')
+    expect(result.diagnostics.map(({ code }) => code)).not.toContain('YM314')
+  })
+
+  it('accepts the same id in two workspaces compiled separately', () => {
+    expect(compileWorkspace([documentNamed('alpha', 'shared-name')]).ok).toBe(true)
+    expect(compileWorkspace([documentNamed('beta', 'shared-name')]).ok).toBe(true)
+  })
+
+  // A document whose own id repeats would collide on every subject it
+  // declares, so the one fault worth acting on is reported alone.
+  it('does not pile subject collisions onto a duplicate document id', () => {
+    const source = documentNamed('same', 'thing').source
+    const result = compileWorkspace([
+      { path: 'first.yaml', source },
+      { path: 'second.yaml', source },
+    ])
+    if (result.ok) throw new Error('expected the workspace to be refused')
+    expect(result.diagnostics.map(({ code }) => code)).toContain('YM303')
+    expect(result.diagnostics.map(({ code }) => code)).not.toContain('YM314')
   })
 })

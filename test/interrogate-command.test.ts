@@ -256,8 +256,8 @@ describe('ask --open interrogation', () => {
       .find(({ id }) => id === 'hygiene')!
       .questions.find(({ id }) => id === 'actor-owner-missing')!
     expect(owners.subjects!.map(({ id }) => id)).toEqual([
-      'main#customer',
-      'main#platform',
+      'customer',
+      'platform',
     ])
     // The delta annotation (ADR 0063) rides the report so consumers can
     // tell 'the catalogue deepened' from 'the model regressed'.
@@ -526,7 +526,7 @@ describe('ask --open interrogation', () => {
       opened.waves[0].questions[0].subjects.map(
         (subject: { readonly id: string }) => subject.id,
       ),
-    ).toEqual(['main#customer', 'main#platform'])
+    ).toEqual(['customer', 'platform'])
 
     writeFileSync(
       join(workspace, 'architecture/main.yaml'),
@@ -555,7 +555,7 @@ describe('ask --open interrogation', () => {
       remaining.waves[0].questions[0].subjects.map(
         (subject: { readonly id: string }) => subject.id,
       ),
-    ).toEqual(['main#customer'])
+    ).toEqual(['customer'])
   })
 
   it('opens has-linkage including a flow sink via direction either', () => {
@@ -628,7 +628,7 @@ describe('ask --open interrogation', () => {
         (subject: { readonly id: string }) => subject.id,
       )
       .sort()
-    expect(openIds).toEqual(['main#sink', 'main#source'])
+    expect(openIds).toEqual(['sink', 'source'])
 
     writeFileSync(
       join(workspace, 'architecture/main.yaml'),
@@ -864,7 +864,7 @@ describe('ask --open interrogation', () => {
         '    name: Accept\n' +
         '    constraints:\n' +
         '      - id: capacity\n' +
-        '        ref: policy#rps\n' +
+        '        ref: rps\n' +
         'relationships: []\n',
       'utf8',
     )
@@ -900,9 +900,9 @@ describe('ask --open interrogation', () => {
         '    name: Accept\n' +
         '    constraints:\n' +
         '      - id: capacity\n' +
-        '        ref: policy#rps\n' +
+        '        ref: rps\n' +
         '      - id: authn\n' +
-        '        ref: policy#oauth\n' +
+        '        ref: oauth\n' +
         'relationships: []\n',
       'utf8',
     )

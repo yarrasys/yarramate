@@ -80,7 +80,7 @@ id: delivery-likec4
 version: "1.0"
 adapter: likec4
 mappings:
-  - native: delivery#delivery-api
+  - native: delivery-api
     external: customApi
     type: concept
 `,
@@ -99,13 +99,13 @@ mappings:
         'external: customApi',
       )
       expect(readFileSync(mapping, 'utf8')).toContain(
-        'native: delivery#delivery-store\n    external: deliveryStore\n    type: concept',
+        'native: delivery-store\n    external: deliveryStore\n    type: concept',
       )
       expect(readFileSync(mapping, 'utf8')).toContain(
-        'native: delivery#api-reads-store\n    external: apiReadsStore\n    type: relationship',
+        'native: api-reads-store\n    external: apiReadsStore\n    type: relationship',
       )
       expect(readFileSync(mapping, 'utf8')).not.toContain(
-        'native: delivery#target',
+        'native: target',
       )
 
       const before = readFileSync(mapping, 'utf8')
@@ -160,7 +160,7 @@ version: "1.0"
 adapter: likec4
 mappings:
   # Retained until pruning is explicit.
-  - native: delivery#renamed-api
+  - native: renamed-api
     external: renamedApi
     type: concept
 `,
@@ -181,8 +181,8 @@ mappings:
       expect(synchronized).toContain(
         '# Retained until pruning is explicit.',
       )
-      expect(synchronized).toContain('native: delivery#renamed-api')
-      expect(synchronized).toContain('native: delivery#current-api')
+      expect(synchronized).toContain('native: renamed-api')
+      expect(synchronized).toContain('native: current-api')
     } finally {
       rmSync(parent, { recursive: true, force: true })
     }
@@ -223,7 +223,7 @@ version: "1.0"
 adapter: likec4
 mappings:
   # Removed together with the stale mapping.
-  - native: delivery#renamed-api
+  - native: renamed-api
     external: renamedApi
     type: concept
 `,
@@ -241,11 +241,11 @@ mappings:
         stderr: '',
       })
       const synchronized = readFileSync(mapping, 'utf8')
-      expect(synchronized).not.toContain('delivery#renamed-api')
+      expect(synchronized).not.toContain('renamed-api')
       expect(synchronized).not.toContain(
         '# Removed together with the stale mapping.',
       )
-      expect(synchronized).toContain('native: delivery#current-api')
+      expect(synchronized).toContain('native: current-api')
       expect(synchronized).toContain('external: currentApi')
     } finally {
       rmSync(parent, { recursive: true, force: true })
@@ -518,7 +518,7 @@ mappings:
       diagnostics: expect.arrayContaining([
         expect.objectContaining({
           code: 'YMLC104',
-          subject: 'yarramate-repository#likec4-export-source',
+          subject: 'likec4-export-source',
         }),
       ]),
     })
@@ -573,7 +573,7 @@ query: {}
 `,
       )
       writeMapping(
-        `  - native: system#gateway
+        `  - native: gateway
     external: gateway
     type: concept
 `,
@@ -596,9 +596,9 @@ query: {}
             code: 'YMLC102',
             message:
               '4 projected concepts have no LikeC4 mapping (first: ' +
-              '"system#api", "system#worker", "system#store"); run ' +
+              '"api", "worker", "store"); run ' +
               '"yarramate-likec4 map --sync" to add the missing mappings',
-            subject: 'system#api',
+            subject: 'api',
             path: 'architecture.yaml',
             pointer: '/concepts/0/kind',
             line: 6,
@@ -649,17 +649,17 @@ query: {}
           .filter(({ code }) => code === 'YMLC102')
           .map(({ subject }) => subject),
       ).toEqual([
-        'system#api',
-        'system#worker',
-        'system#store',
-        'system#queue',
+        'api',
+        'worker',
+        'store',
+        'queue',
       ])
 
       writeMapping(
-        `  - native: system#gateway
+        `  - native: gateway
     external: gateway
     type: concept
-  - native: system#worker
+  - native: worker
     external: worker
     type: concept
 `,
@@ -672,7 +672,7 @@ query: {}
             readonly subject?: string
           }[]
         }).diagnostics.map(({ subject }) => subject),
-      ).toEqual(['system#api', 'system#store', 'system#queue'])
+      ).toEqual(['api', 'store', 'queue'])
     } finally {
       rmSync(parent, { recursive: true, force: true })
     }
@@ -735,7 +735,7 @@ relationships: []
 id: system-change
 version: "1.0"
 query:
-  states: [system#baseline, system#target]
+  states: [baseline, target]
 `,
       )
       writeFileSync(
@@ -745,10 +745,10 @@ id: system-likec4
 version: "1.0"
 adapter: likec4
 mappings:
-  - native: system#legacy
+  - native: legacy
     external: legacy
     type: concept
-  - native: system#modern
+  - native: modern
     external: modern
     type: concept
 `,
@@ -760,8 +760,8 @@ mappings:
           'comparison.projection.yaml',
           'likec4.mapping.yaml',
           '--compare',
-          'system#baseline',
-          'system#target',
+          'baseline',
+          'target',
           'architecture.yaml',
         ],
         parent,
@@ -812,8 +812,8 @@ mappings:
           'likec4.mapping.yaml',
           project,
           '--compare',
-          'system#baseline',
-          'system#target',
+          'baseline',
+          'target',
           'architecture.yaml',
         ],
         parent,
@@ -828,8 +828,8 @@ mappings:
         ),
       ).toMatchObject({
         comparison: {
-          from: 'system#baseline',
-          to: 'system#target',
+          from: 'baseline',
+          to: 'target',
         },
       })
       const reversed = runLikeC4Cli(
@@ -839,8 +839,8 @@ mappings:
           'likec4.mapping.yaml',
           project,
           '--compare',
-          'system#target',
-          'system#baseline',
+          'target',
+          'baseline',
           'architecture.yaml',
         ],
         parent,
@@ -859,8 +859,8 @@ mappings:
         ),
       ).toMatchObject({
         comparison: {
-          from: 'system#target',
-          to: 'system#baseline',
+          from: 'target',
+          to: 'baseline',
         },
       })
     } finally {
@@ -1099,7 +1099,7 @@ relationships:
 id: baseline
 version: "1.0"
 query:
-  states: [system#baseline]
+  states: [baseline]
 `,
       )
       writeFileSync(
@@ -1108,7 +1108,7 @@ query:
 id: target
 version: "1.0"
 query:
-  states: [system#target]
+  states: [target]
 `,
       )
       writeFileSync(
@@ -1128,19 +1128,19 @@ id: system-likec4
 version: "1.0"
 adapter: likec4
 mappings:
-  - native: system#legacy
+  - native: legacy
     external: legacy
     type: concept
-  - native: system#modern
+  - native: modern
     external: modern
     type: concept
-  - native: system#shared
+  - native: shared
     external: shared
     type: concept
-  - native: system#legacy-uses-shared
+  - native: legacy-uses-shared
     external: legacyUsesShared
     type: relationship
-  - native: system#modern-uses-shared
+  - native: modern-uses-shared
     external: modernUsesShared
     type: relationship
 `,
@@ -1231,17 +1231,17 @@ views:
       )
       expect(baselineView).toContain('    exclude * -> *')
       expect(baselineView).toContain(
-        "metadata.yarramateId is 'system#legacy-uses-shared'",
+        "metadata.yarramateId is 'legacy-uses-shared'",
       )
       expect(baselineView).not.toContain(
-        "metadata.yarramateId is 'system#modern-uses-shared'",
+        "metadata.yarramateId is 'modern-uses-shared'",
       )
       expect(targetView).toContain('    exclude * -> *')
       expect(targetView).toContain(
-        "metadata.yarramateId is 'system#modern-uses-shared'",
+        "metadata.yarramateId is 'modern-uses-shared'",
       )
       expect(targetView).not.toContain(
-        "metadata.yarramateId is 'system#legacy-uses-shared'",
+        "metadata.yarramateId is 'legacy-uses-shared'",
       )
       expect(
         JSON.parse(
@@ -1376,13 +1376,13 @@ id: system-likec4
 version: "1.0"
 adapter: likec4
 mappings:
-  - native: system#service
+  - native: service
     external: service
     type: concept
-  - native: system#store
+  - native: store
     external: store
     type: concept
-  - native: system#service-uses-store
+  - native: service-uses-store
     external: serviceUsesStore
     type: relationship
 `,
@@ -1411,7 +1411,7 @@ views:
           name: Production
       instances:
         - id: prod-service
-          subject: system#service
+          subject: service
           node: prod
 `,
       )
@@ -1536,7 +1536,7 @@ id: system-likec4
 version: "1.0"
 adapter: likec4
 mappings:
-  - native: system#service
+  - native: service
     external: service
     type: concept
 `,
@@ -1723,9 +1723,9 @@ views:
     projection: .yarramate/projections/product-journeys.yaml
     dynamic:
       steps:
-        - relationship: yarramate-product#evidence-separation-supports-discovery
+        - relationship: evidence-separation-supports-discovery
           title: constrains discovery
-        - relationship: yarramate-product#discovery-supports-context
+        - relationship: discovery-supports-context
           title: produces shared context
   - id: engine-deployment
     projection: .yarramate/projections/current-engine.yaml
@@ -1744,10 +1744,10 @@ views:
           parent: application-zone
       instances:
         - id: compiler-instance
-          subject: yarramate-engine#compiler
+          subject: compiler
           node: compiler-host
         - id: cli-instance
-          subject: yarramate-engine#cli
+          subject: cli
           node: compiler-host
 `,
       )
@@ -1967,7 +1967,7 @@ views:
           name: Production
       instances:
         - id: governed-change
-          subject: governed-change#product-owner
+          subject: product-owner
           node: production
   - id: second
     projection: governed-change.projection.yaml
@@ -1978,7 +1978,7 @@ views:
           name: Production copy
       instances:
         - id: governed-change-copy
-          subject: governed-change#product-owner
+          subject: product-owner
           node: production
 `,
       )
@@ -2081,7 +2081,7 @@ id: system-likec4
 version: "1.0"
 adapter: likec4
 mappings:
-  - native: system#service
+  - native: service
     external: service
     type: concept
 `,
@@ -2191,7 +2191,7 @@ id: system-likec4
 version: "1.0"
 adapter: likec4
 mappings:
-  - native: system#service
+  - native: service
     external: service
     type: concept
 `,
@@ -2393,7 +2393,7 @@ id: system-likec4
 version: "1.0"
 adapter: likec4
 mappings:
-  - native: system#service
+  - native: service
     external: service
     type: concept
 `,
@@ -2629,7 +2629,7 @@ mappings:
             code: 'YMLC104',
             message:
               'Semantic relationship kind "yarramate/development@1.0#implements" resolves to unsupported bundled LikeC4 kind "implements"',
-            subject: 'yarramate-engine#likec4-adapter-provides-export',
+            subject: 'likec4-adapter-provides-export',
             path: '.yarramate/architecture/engine.yaml',
             pointer: '/relationships/125',
             line: 1386,
@@ -2640,7 +2640,7 @@ mappings:
             code: 'YMLC104',
             message:
               'Semantic relationship kind "yarramate/development@1.0#implements" resolves to unsupported bundled LikeC4 kind "implements"',
-            subject: 'yarramate-engine#likec4-adapter-provides-check',
+            subject: 'likec4-adapter-provides-check',
             path: '.yarramate/architecture/engine.yaml',
             pointer: '/relationships/126',
             line: 1390,
@@ -2651,7 +2651,7 @@ mappings:
             code: 'YMLC104',
             message:
               'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
-            subject: 'yarramate-repository#likec4-export-source',
+            subject: 'likec4-export-source',
             path: '.yarramate/architecture/repository.yaml',
             pointer: '/concepts/25/kind',
             line: 113,
@@ -2662,7 +2662,7 @@ mappings:
             code: 'YMLC104',
             message:
               'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
-            subject: 'yarramate-repository#likec4-prepare-source',
+            subject: 'likec4-prepare-source',
             path: '.yarramate/architecture/repository.yaml',
             pointer: '/concepts/28/kind',
             line: 125,
@@ -2673,7 +2673,7 @@ mappings:
             code: 'YMLC104',
             message:
               'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
-            subject: 'yarramate-repository#likec4-project-source',
+            subject: 'likec4-project-source',
             path: '.yarramate/architecture/repository.yaml',
             pointer: '/concepts/29/kind',
             line: 129,
@@ -2684,7 +2684,7 @@ mappings:
             code: 'YMLC104',
             message:
               'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
-            subject: 'yarramate-repository#likec4-project-definition-source',
+            subject: 'likec4-project-definition-source',
             path: '.yarramate/architecture/repository.yaml',
             pointer: '/concepts/30/kind',
             line: 133,
@@ -2695,7 +2695,7 @@ mappings:
             code: 'YMLC104',
             message:
               'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
-            subject: 'yarramate-repository#likec4-project-schema-source',
+            subject: 'likec4-project-schema-source',
             path: '.yarramate/architecture/repository.yaml',
             pointer: '/concepts/57/kind',
             line: 246,
@@ -2706,7 +2706,7 @@ mappings:
             code: 'YMLC104',
             message:
               'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
-            subject: 'yarramate-repository#likec4-generated-project-v2-schema-source',
+            subject: 'likec4-generated-project-v2-schema-source',
             path: '.yarramate/architecture/repository.yaml',
             pointer: '/concepts/58/kind',
             line: 250,

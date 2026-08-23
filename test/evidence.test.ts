@@ -36,7 +36,7 @@ describe('evidence overlays', () => {
         'version: "1.0"\n' +
         'provider: repository-audit\n' +
         'observations:\n' +
-        '  - subject: checkout#approval-api\n' +
+        '  - subject: approval-api\n' +
         '    result: confirmed\n' +
         '    evidence:\n' +
         '      uri: repo:src/approval-api.ts\n' +
@@ -53,7 +53,7 @@ describe('evidence overlays', () => {
         '      message: Found implementation\n' +
         '      uri: repo:src/approval-api.ts\n' +
         '    result: confirmed\n' +
-        '    subject: checkout#approval-api\n' +
+        '    subject: approval-api\n' +
         'format: yarramate/evidence/v1\n',
     })
     expect(first.ok).toBe(true)
@@ -153,7 +153,7 @@ describe('evidence overlays', () => {
         },
         observations: [
           {
-            claim: 'checkout#api-realizes-approval',
+            claim: 'api-realizes-approval',
             result: 'contradicted',
             evidence: {
               uri: 'repo:src/approval-api.ts',
@@ -161,7 +161,7 @@ describe('evidence overlays', () => {
             },
           },
           {
-            subject: 'checkout#approval-api',
+            subject: 'approval-api',
             result: 'confirmed',
             evidence: { uri: 'repo:src/approval-api.ts' },
           },
@@ -193,7 +193,7 @@ describe('evidence overlays', () => {
         {
           severity: 'error',
           code: 'YM801',
-          message: 'Evidence subject "checkout#missing" does not exist',
+          message: 'Evidence subject "missing" does not exist',
           path: 'invalid.evidence.yaml',
           pointer: '/observations/0/subject',
           line: 6,
@@ -229,7 +229,7 @@ describe('evidence overlays', () => {
       severity: 'error',
       code: 'YM802',
       message:
-        'Evidence claim "checkout#missing-claim" does not exist',
+        'Evidence claim "missing-claim" does not exist',
       path: 'invalid-claim.evidence.yaml',
       pointer: '/observations/0/claim',
       line: 6,
@@ -254,11 +254,11 @@ describe('evidence overlays', () => {
         'version: "1.0"\n' +
         'provider: repository-audit\n' +
         'observations:\n' +
-        '  - subject: checkout#approval-api\n' +
+        '  - subject: approval-api\n' +
         '    result: confirmed\n' +
         '    evidence:\n' +
         '      uri: repo:first\n' +
-        '  - subject: checkout#approval-api\n' +
+        '  - subject: approval-api\n' +
         '    result: contradicted\n' +
         '    evidence:\n' +
         '      uri: repo:second\n',
@@ -276,7 +276,7 @@ describe('evidence overlays', () => {
       severity: 'error',
       code: 'YM803',
       message:
-        'Evidence target "checkout#approval-api" is evaluated more than once',
+        'Evidence target "approval-api" is evaluated more than once',
       path: 'duplicate.evidence.yaml',
       pointer: '/observations/1/subject',
       line: 10,

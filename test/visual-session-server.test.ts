@@ -2439,7 +2439,7 @@ evidence: []
 
     expect(frame.result).toEqual({
       query: { kinds: ["yarramate/core@0.1#businessActor"] },
-      matchedIds: ["main#user"],
+      matchedIds: ["user"],
     });
     socket.close();
   });
@@ -2572,14 +2572,14 @@ evidence: []
       payload: {
         appliedQuery: {
           query: { kinds: ["yarramate/core@0.1#businessActor"] },
-          matchedIds: ["main#user"],
+          matchedIds: ["user"],
         },
       },
     });
     // Journaled resolved, so a replay highlights what the reviewer saw.
     expect((await journalOf(server)).at(-1)).toMatchObject({
       type: "chat.response",
-      payload: { appliedQuery: { matchedIds: ["main#user"] } },
+      payload: { appliedQuery: { matchedIds: ["user"] } },
     });
     socket.close();
   });
@@ -2622,7 +2622,7 @@ evidence: []
       capability,
       chatFilter(server, accepted.eventId, {
         query: { kinds: ["yarramate/core@0.1#businessActor"] },
-        matchedIds: ["main#user"],
+        matchedIds: ["user"],
       }),
     );
 

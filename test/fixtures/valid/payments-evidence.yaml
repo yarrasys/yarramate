@@ -3,17 +3,17 @@ id: payments-repository
 version: "1.0"
 provider: repository-inspection
 observations:
-  - claim: payments#payment-api-writes-ledger
+  - claim: payment-api-writes-ledger
     result: contradicted
     evidence:
       uri: repo:src/payments.ts
       message: Payment API writes to the billing store, not the ledger
-  - subject: payments#billing
+  - subject: billing
     result: contradicted
     evidence:
       uri: repo:src/billing.ts
       message: No billing service was observed in the repository
-  - subject: payments#payment-api
+  - subject: payment-api
     result: confirmed
     evidence:
       uri: repo:src/payments.ts

@@ -3,11 +3,11 @@ id: checkout-repository
 version: "1.0"
 provider: repository-audit
 observations:
-  - subject: checkout#approval-api
+  - subject: approval-api
     result: confirmed
     evidence:
       uri: repo:src/approval-api.ts
-  - claim: checkout#api-realizes-approval
+  - claim: api-realizes-approval
     result: contradicted
     evidence:
       uri: repo:src/approval-api.ts

@@ -60,7 +60,7 @@
     },
     "qualifiedIdentity": {
       "type": "string",
-      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*#[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:~[a-z][a-z0-9-]*)?$"
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:~[a-z][a-z0-9-]*)?$"
     },
     "evidenceIdentity": {
       "type": "string",
@@ -86,7 +86,7 @@
     },
     "subjectIdentity": {
       "type": "string",
-      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*#[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
     },
     "assertedRelationship": {
       "type": "object",

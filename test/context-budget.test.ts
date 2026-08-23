@@ -126,7 +126,7 @@ describe('budgeted slice rendering', () => {
       [
         'ask',
         'minimal-workspace.yaml',
-        'checkout#approval-api',
+        'approval-api',
         '--budget',
         '300',
       ],

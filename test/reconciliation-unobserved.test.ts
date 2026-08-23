@@ -91,7 +91,7 @@ const writeFixture = () => {
       'version: "1.0"\n' +
       'provider: repository-inspection\n' +
       'observations:\n' +
-      '  - claim: shop#checkout-accesses-basket\n' +
+      '  - claim: checkout-accesses-basket\n' +
       '    result: confirmed\n' +
       '    evidence:\n' +
       '      uri: repo:src/checkout.ts\n',
@@ -110,9 +110,9 @@ describe('reconciliation of current subjects without evidence', () => {
       const report = JSON.parse(result.stdout)
       expect(report.summary.subjectsWithoutEvidence).toBe(3)
       expect(report.unobservedSubjects).toEqual([
-        'shop#alpha-service',
-        'shop#catalog',
-        'shop#zeta-service',
+        'alpha-service',
+        'catalog',
+        'zeta-service',
       ])
     } finally {
       rmSync(parent, { recursive: true, force: true })
@@ -125,10 +125,10 @@ describe('reconciliation of current subjects without evidence', () => {
       const report = JSON.parse(
         runCli(['reconcile', 'workspace.yaml'], parent).stdout,
       )
-      expect(report.unobservedSubjects).not.toContain('shop#search')
-      expect(report.unobservedSubjects).not.toContain('shop#legacy-cart')
+      expect(report.unobservedSubjects).not.toContain('search')
+      expect(report.unobservedSubjects).not.toContain('legacy-cart')
       expect(report.unobservedSubjects).not.toContain(
-        'shop#catalog-accesses-basket',
+        'catalog-accesses-basket',
       )
     } finally {
       rmSync(parent, { recursive: true, force: true })
@@ -141,8 +141,8 @@ describe('reconciliation of current subjects without evidence', () => {
       const report = JSON.parse(
         runCli(['reconcile', 'workspace.yaml'], parent).stdout,
       )
-      expect(report.unobservedSubjects).not.toContain('shop#checkout')
-      expect(report.unobservedSubjects).not.toContain('shop#basket')
+      expect(report.unobservedSubjects).not.toContain('checkout')
+      expect(report.unobservedSubjects).not.toContain('basket')
     } finally {
       rmSync(parent, { recursive: true, force: true })
     }

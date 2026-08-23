@@ -34,7 +34,7 @@ concepts:
     kind: applicationComponent
     name: LikeC4 adapter prototype
     description: Optional validated vocabulary and visualization prototype, superseded by the shipped LikeC4 adapter.
-    owner: yarramate-product#yarramate-maintainers
+    owner: yarramate-maintainers
     status: retired
   - id: compiler-source
     kind: repository-file
@@ -61,14 +61,14 @@ concepts:
     name: src/architecture-state.ts
     status: current
     presentIn:
-      - yarramate-evolution#state-foundation
-      - yarramate-evolution#core-contract-foundation
+      - state-foundation
+      - core-contract-foundation
   - id: core-contract-source
     kind: repository-file
     name: src/core-contract.ts
     status: current
     presentIn:
-      - yarramate-evolution#core-contract-foundation
+      - core-contract-foundation
   - id: cli-source
     kind: repository-file
     name: src/cli.ts
@@ -194,14 +194,14 @@ concepts:
     name: schema/yarramate-state-comparison.schema.json
     status: current
     presentIn:
-      - yarramate-evolution#state-foundation
-      - yarramate-evolution#core-contract-foundation
+      - state-foundation
+      - core-contract-foundation
   - id: core-contract-schema-source
     kind: repository-file
     name: schema/yarramate-core-contract.schema.json
     status: current
     presentIn:
-      - yarramate-evolution#core-contract-foundation
+      - core-contract-foundation
   - id: adapter-mapping-schema-source
     kind: repository-file
     name: schema/yarramate-adapter-mapping.schema.json
@@ -267,14 +267,14 @@ concepts:
     name: test/architecture-state.test.ts
     status: current
     presentIn:
-      - yarramate-evolution#state-foundation
-      - yarramate-evolution#core-contract-foundation
+      - state-foundation
+      - core-contract-foundation
   - id: core-contract-tests
     kind: repository-file
     name: test/core-contract.test.ts
     status: current
     presentIn:
-      - yarramate-evolution#core-contract-foundation
+      - core-contract-foundation
   - id: cli-tests
     kind: repository-file
     name: test/cli.test.ts
@@ -328,14 +328,14 @@ concepts:
     name: .yarramate/contracts/yarramate-core-0.1.yaml
     status: current
     presentIn:
-      - yarramate-evolution#core-contract-foundation
+      - core-contract-foundation
   - id: evolution-model
     kind: repository-file
     name: .yarramate/architecture/evolution.yaml
     status: current
     presentIn:
-      - yarramate-evolution#state-foundation
-      - yarramate-evolution#core-contract-foundation
+      - state-foundation
+      - core-contract-foundation
   - id: evidence-tests
     kind: repository-file
     name: test/evidence.test.ts
@@ -492,31 +492,31 @@ relationships:
   - id: core-contract-source-realizes-checker
     kind: realization
     from: core-contract-source
-    to: yarramate-engine#core-contract-checker
+    to: core-contract-checker
   - id: core-contract-schema-source-realizes-schema
     kind: realization
     from: core-contract-schema-source
-    to: yarramate-engine#core-contract-schema
+    to: core-contract-schema
   - id: core-contract-release-realizes-manifest
     kind: realization
     from: core-contract-release-manifest
-    to: yarramate-engine#core-contract-manifest
+    to: core-contract-manifest
   - id: core-contract-tests-validate-checker
     kind: association
     from: core-contract-tests
-    to: yarramate-engine#core-contract-checker
+    to: core-contract-checker
   - id: contract-realizes-tool-neutral-core
     kind: realization
     from: product-contract
-    to: yarramate-product#tool-neutral-core
+    to: tool-neutral-core
   - id: contract-realizes-canonical-documents
     kind: realization
     from: product-contract
-    to: yarramate-product#native-documents-are-canonical
+    to: native-documents-are-canonical
   - id: contract-realizes-stable-cli
     kind: realization
     from: product-contract
-    to: yarramate-product#stable-cli
+    to: stable-cli
   - id: decisions-realize-contract
     kind: association
     name: decides
@@ -530,51 +530,51 @@ relationships:
   - id: journey-guide-realizes-discovery
     kind: realization
     from: product-journeys-guide
-    to: yarramate-product#discover-project-architecture
+    to: discover-project-architecture
   - id: journey-guide-realizes-design
     kind: realization
     from: product-journeys-guide
-    to: yarramate-product#design-solution-before-build
+    to: design-solution-before-build
   - id: consumer-guide-realizes-discovery
     kind: realization
     from: consumer-guide
-    to: yarramate-product#discover-project-architecture
+    to: discover-project-architecture
   - id: consumer-guide-realizes-design
     kind: realization
     from: consumer-guide
-    to: yarramate-product#design-solution-before-build
+    to: design-solution-before-build
   - id: consumer-package-realizes-cli
     kind: realization
     from: consumer-package
-    to: yarramate-product#stable-cli
+    to: stable-cli
   - id: consumer-package-realizes-discovery
     kind: realization
     from: consumer-package
-    to: yarramate-product#discover-project-architecture
+    to: discover-project-architecture
   - id: consumer-package-realizes-design
     kind: realization
     from: consumer-package
-    to: yarramate-product#design-solution-before-build
+    to: design-solution-before-build
   - id: agent-skill-realizes-discovery
     kind: realization
     from: agent-skill-source
-    to: yarramate-product#discover-project-architecture
+    to: discover-project-architecture
   - id: agent-skill-realizes-design
     kind: realization
     from: agent-skill-source
-    to: yarramate-product#design-solution-before-build
+    to: design-solution-before-build
   - id: agent-skill-realizes-reconciliation
     kind: realization
     from: agent-skill-source
-    to: yarramate-product#reconcile-intent-and-evidence
+    to: reconcile-intent-and-evidence
   - id: journey-tests-verify-discovery
     kind: association
     from: journey-tests
-    to: yarramate-product#discover-project-architecture
+    to: discover-project-architecture
   - id: journey-tests-verify-design
     kind: association
     from: journey-tests
-    to: yarramate-product#design-solution-before-build
+    to: design-solution-before-build
   - id: package-tests-verify-consumer-package
     kind: association
     from: package-consumer-tests
@@ -582,400 +582,400 @@ relationships:
   - id: adapter-specializes-authoring
     kind: association
     from: likec4-adapter-prototype
-    to: yarramate-engine#native-document
+    to: native-document
     name: Optional authoring path
   - id: compiler-source-realizes-compiler
     kind: realization
     from: compiler-source
-    to: yarramate-engine#compiler
+    to: compiler
   - id: relationship-table-source-realizes-table
     kind: realization
     from: relationship-table-source
-    to: yarramate-engine#relationship-table
+    to: relationship-table
   - id: relationship-table-generator-realizes-table
     kind: realization
     from: relationship-table-generator
-    to: yarramate-engine#relationship-table
+    to: relationship-table
   - id: relationship-table-module-realizes-table
     kind: realization
     from: relationship-table-module
-    to: yarramate-engine#relationship-table
+    to: relationship-table
   - id: relationship-matrix-source-realizes-policies
     kind: realization
     from: relationship-matrix-source
-    to: yarramate-engine#relationship-policy-catalogue
+    to: relationship-policy-catalogue
   - id: state-source-realizes-engine
     kind: realization
     from: architecture-state-source
-    to: yarramate-engine#architecture-state-engine
+    to: architecture-state-engine
   - id: cli-source-realizes-cli
     kind: realization
     from: cli-source
-    to: yarramate-engine#cli
+    to: cli
   - id: check-command-source-realizes-command
     kind: realization
     from: check-command-source
-    to: yarramate-engine#check-command
+    to: check-command
   - id: cli-support-source-realizes-cli
     kind: realization
     from: cli-support-source
-    to: yarramate-engine#cli
+    to: cli
   - id: status-command-source-realizes-command
     kind: realization
     from: status-command-source
-    to: yarramate-engine#status-command
+    to: status-command
     status: retired
   - id: next-command-source-realizes-command
     kind: realization
     from: next-command-source
-    to: yarramate-engine#next-command
+    to: next-command
   - id: interrogate-command-source-realizes-command
     kind: realization
     from: interrogate-command-source
-    to: yarramate-engine#interrogate-command
+    to: interrogate-command
   - id: new-command-source-realizes-command
     kind: realization
     from: new-command-source
-    to: yarramate-engine#new-command
+    to: new-command
     status: retired
   - id: mcp-cli-source-realizes-adapter
     kind: realization
     from: mcp-cli-source
-    to: yarramate-engine#mcp-adapter
+    to: mcp-adapter
   - id: projection-source-realizes-context
     kind: realization
     from: projection-source
-    to: yarramate-product#provide-machine-context
+    to: provide-machine-context
   - id: adapter-source-realizes-validation
     kind: realization
     from: adapter-mapping-source
-    to: yarramate-engine#validate-adapter-mapping
+    to: validate-adapter-mapping
   - id: likec4-export-source-realizes-adapter
     kind: realization
     from: likec4-export-source
-    to: yarramate-engine#likec4-export-adapter
+    to: likec4-export-adapter
   - id: likec4-cli-source-realizes-command
     kind: realization
     from: likec4-cli-source
-    to: yarramate-engine#likec4-export-command
+    to: likec4-export-command
   - id: likec4-cli-source-realizes-check
     kind: realization
     from: likec4-cli-source
-    to: yarramate-engine#likec4-check-command
+    to: likec4-check-command
   - id: likec4-kind-source-realizes-mapping
     kind: realization
     from: likec4-kind-mapping-source
-    to: yarramate-engine#likec4-kind-mapping
+    to: likec4-kind-mapping
   - id: likec4-prepare-source-realizes-export
     kind: realization
     from: likec4-prepare-source
-    to: yarramate-engine#export-likec4
+    to: export-likec4
   - id: likec4-project-source-realizes-assembly
     kind: realization
     from: likec4-project-source
-    to: yarramate-engine#assemble-likec4-project
+    to: assemble-likec4-project
   - id: likec4-project-definition-realizes-definition
     kind: realization
     from: likec4-project-definition-source
-    to: yarramate-engine#likec4-project-definition
+    to: likec4-project-definition
   - id: likec4-projection-source-realizes-definition
     kind: realization
     from: likec4-export-projection-source
-    to: yarramate-engine#projection-definition
+    to: projection-definition
   - id: likec4-mapping-source-realizes-mapping
     kind: realization
     from: likec4-export-mapping-source
-    to: yarramate-engine#adapter-mapping
+    to: adapter-mapping
   - id: likec4-kind-profile-realizes-mapping
     kind: realization
     from: likec4-kind-profile-source
-    to: yarramate-engine#likec4-kind-mapping
+    to: likec4-kind-mapping
   - id: graph-source-realizes-serialization
     kind: realization
     from: graph-source
-    to: yarramate-engine#serialize-semantic-graph
+    to: serialize-semantic-graph
   - id: workspace-source-realizes-loader
     kind: realization
     from: workspace-source
-    to: yarramate-engine#workspace-loader
+    to: workspace-loader
   - id: evidence-source-realizes-evaluator
     kind: realization
     from: evidence-source
-    to: yarramate-engine#evidence-evaluator
+    to: evidence-evaluator
   - id: reconciliation-source-realizes-function
     kind: realization
     from: reconciliation-source
-    to: yarramate-engine#reconcile-evidence
+    to: reconcile-evidence
   - id: graphify-source-realizes-adapter
     kind: realization
     from: graphify-adapter-source
-    to: yarramate-engine#graphify-evidence-adapter
+    to: graphify-evidence-adapter
   - id: graphify-cli-realizes-command
     kind: realization
     from: graphify-cli-source
-    to: yarramate-engine#graphify-observe-command
+    to: graphify-observe-command
   - id: source-document-source-realizes-loader
     kind: realization
     from: source-document-source
-    to: yarramate-engine#source-document-loader
+    to: source-document-loader
   - id: document-schema-realizes-schema
     kind: realization
     from: document-schema-source
-    to: yarramate-engine#document-schema
+    to: document-schema
   - id: profile-schema-realizes-catalogue
     kind: realization
     from: profile-schema-source
-    to: yarramate-engine#profile-catalogue
+    to: profile-catalogue
   - id: projection-schema-realizes-context
     kind: realization
     from: projection-schema-source
-    to: yarramate-engine#projection-schema
+    to: projection-schema
   - id: projection-result-schema-realizes-schema
     kind: realization
     from: projection-result-schema-source
-    to: yarramate-engine#projection-result-schema
+    to: projection-result-schema
   - id: state-comparison-schema-realizes-schema
     kind: realization
     from: state-comparison-schema-source
-    to: yarramate-engine#state-comparison-schema
+    to: state-comparison-schema
   - id: adapter-schema-realizes-mapping-schema
     kind: realization
     from: adapter-mapping-schema-source
-    to: yarramate-engine#adapter-mapping-schema
+    to: adapter-mapping-schema
   - id: graph-schema-realizes-graph-schema
     kind: realization
     from: graph-schema-source
-    to: yarramate-engine#semantic-graph-schema
+    to: semantic-graph-schema
   - id: workspace-schema-realizes-workspace-schema
     kind: realization
     from: workspace-schema-source
-    to: yarramate-engine#workspace-schema
+    to: workspace-schema
   - id: evidence-schema-realizes-evidence-schema
     kind: realization
     from: evidence-schema-source
-    to: yarramate-engine#evidence-schema
+    to: evidence-schema
   - id: evidence-report-schema-realizes-report-schema
     kind: realization
     from: evidence-report-schema-source
-    to: yarramate-engine#evidence-report-schema
+    to: evidence-report-schema
   - id: reconciliation-report-schema-realizes-schema
     kind: realization
     from: reconciliation-report-schema-source
-    to: yarramate-engine#reconciliation-report-schema
+    to: reconciliation-report-schema
   - id: check-result-schema-realizes-schema
     kind: realization
     from: check-result-schema-source
-    to: yarramate-engine#check-result-schema
+    to: check-result-schema
   - id: diagnostic-result-schema-realizes-schema
     kind: realization
     from: diagnostic-result-schema-source
-    to: yarramate-engine#diagnostic-result-schema
+    to: diagnostic-result-schema
   - id: likec4-diagnostic-schema-realizes-schema
     kind: realization
     from: likec4-diagnostic-result-schema-source
-    to: yarramate-engine#likec4-diagnostic-result-schema
+    to: likec4-diagnostic-result-schema
   - id: likec4-generated-schema-realizes-schema
     kind: realization
     from: likec4-generated-project-schema-source
-    to: yarramate-engine#likec4-generated-project-schema
+    to: likec4-generated-project-schema
   - id: likec4-project-schema-realizes-schema
     kind: realization
     from: likec4-project-schema-source
-    to: yarramate-engine#likec4-project-schema
+    to: likec4-project-schema
   - id: likec4-generated-v2-schema-realizes-schema
     kind: realization
     from: likec4-generated-project-v2-schema-source
-    to: yarramate-engine#likec4-generated-project-v2-schema
+    to: likec4-generated-project-v2-schema
   - id: likec4-kind-schema-realizes-schema
     kind: realization
     from: likec4-kind-mapping-schema-source
-    to: yarramate-engine#likec4-kind-mapping-schema
+    to: likec4-kind-mapping-schema
   - id: likec4-check-schema-realizes-schema
     kind: realization
     from: likec4-check-result-schema-source
-    to: yarramate-engine#likec4-check-result-schema
+    to: likec4-check-result-schema
   - id: tests-validate-compiler
     kind: association
     from: compiler-tests
-    to: yarramate-engine#compiler
+    to: compiler
   - id: state-tests-validate-comparison
     kind: association
     from: architecture-state-tests
-    to: yarramate-engine#compare-architecture-states
+    to: compare-architecture-states
   - id: cli-tests-validate-cli
     kind: association
     from: cli-tests
-    to: yarramate-engine#cli
+    to: cli
   - id: adapter-tests-validate-mapping
     kind: association
     from: adapter-mapping-tests
-    to: yarramate-engine#validate-adapter-mapping
+    to: validate-adapter-mapping
   - id: likec4-export-tests-validate-adapter
     kind: association
     from: likec4-export-tests
-    to: yarramate-engine#export-likec4
+    to: export-likec4
   - id: likec4-cli-tests-validate-command
     kind: association
     from: likec4-cli-tests
-    to: yarramate-engine#likec4-export-command
+    to: likec4-export-command
   - id: likec4-cli-tests-validate-check
     kind: association
     from: likec4-cli-tests
-    to: yarramate-engine#likec4-check-command
+    to: likec4-check-command
   - id: likec4-kind-tests-validate-mapping
     kind: association
     from: likec4-kind-mapping-tests
-    to: yarramate-engine#likec4-kind-mapping
+    to: likec4-kind-mapping
   - id: likec4-prepare-tests-validate-export
     kind: association
     from: likec4-prepare-tests
-    to: yarramate-engine#export-likec4
+    to: export-likec4
   - id: graph-tests-validate-interchange
     kind: association
     from: graph-schema-tests
-    to: yarramate-engine#serialize-semantic-graph
+    to: serialize-semantic-graph
   - id: workspace-tests-validate-resolution
     kind: association
     from: workspace-tests
-    to: yarramate-engine#resolve-workspace
+    to: resolve-workspace
   - id: root-manifest-realizes-workspace
     kind: realization
     from: root-workspace-manifest
-    to: yarramate-engine#workspace-manifest
+    to: workspace-manifest
   - id: evolution-model-realizes-states
     kind: realization
     from: evolution-model
-    to: yarramate-engine#architecture-state-engine
+    to: architecture-state-engine
   - id: evidence-tests-validate-evaluation
     kind: association
     from: evidence-tests
-    to: yarramate-engine#evaluate-evidence
+    to: evaluate-evidence
   - id: graphify-tests-validate-observation
     kind: association
     from: graphify-tests
-    to: yarramate-engine#observe-graphify
+    to: observe-graphify
   - id: repository-evidence-realizes-document
     kind: realization
     from: repository-evidence
-    to: yarramate-engine#evidence-document
+    to: evidence-document
   - id: visual-session-server-realizes-runtime
     kind: realization
     from: visual-session-server-source
-    to: yarramate-engine#visual-runtime
+    to: visual-runtime
   - id: visual-session-store-realizes-recovery
     kind: realization
     from: visual-session-store-source
-    to: yarramate-engine#recover-visual-session
+    to: recover-visual-session
   - id: visual-likec4-compiler-realizes-rendering
     kind: realization
     from: visual-likec4-compiler-source
-    to: yarramate-engine#render-visual-model
+    to: render-visual-model
     status: retired
   - id: graph-projection-realizes-rendering
     kind: realization
     from: graph-projection-source
-    to: yarramate-engine#render-visual-model
+    to: render-visual-model
   - id: visual-protocol-source-realizes-protocol
     kind: realization
     from: visual-protocol-source
-    to: yarramate-engine#visual-session-protocol
+    to: visual-session-protocol
   - id: visual-cli-source-realizes-session-command
     kind: realization
     from: visual-cli-source
-    to: yarramate-engine#visual-session-service
+    to: visual-session-service
   - id: visual-browser-source-realizes-browser
     kind: realization
     from: visual-browser-source
-    to: yarramate-engine#visual-browser
+    to: visual-browser
   - id: visual-browser-shell-realizes-browser
     kind: realization
     from: visual-browser-shell
-    to: yarramate-engine#visual-browser
+    to: visual-browser
   - id: visual-event-schema-realizes-protocol
     kind: realization
     from: visual-event-schema-source
-    to: yarramate-engine#visual-session-protocol
+    to: visual-session-protocol
   - id: visual-handoff-schema-realizes-handoff
     kind: realization
     from: visual-handoff-schema-source
-    to: yarramate-engine#visual-handoff
+    to: visual-handoff
   - id: visual-server-tests-validate-runtime
     kind: association
     from: visual-session-server-tests
-    to: yarramate-engine#visual-runtime
+    to: visual-runtime
   - id: visual-store-tests-validate-recovery
     kind: association
     from: visual-session-store-tests
-    to: yarramate-engine#recover-visual-session
+    to: recover-visual-session
   - id: visual-compiler-tests-validate-rendering
     kind: association
     from: visual-likec4-compiler-tests
-    to: yarramate-engine#render-visual-model
+    to: render-visual-model
     status: retired
   - id: graph-projection-tests-validate-rendering
     kind: association
     from: graph-projection-tests
-    to: yarramate-engine#render-visual-model
+    to: render-visual-model
   - id: visual-protocol-tests-validate-protocol
     kind: association
     from: visual-protocol-tests
-    to: yarramate-engine#visual-session-protocol
+    to: visual-session-protocol
   - id: visual-cli-tests-validate-session-command
     kind: association
     from: visual-cli-tests
-    to: yarramate-engine#visual-session-service
+    to: visual-session-service
   - id: visual-browser-tests-validate-browser
     kind: association
     from: visual-browser-tests
-    to: yarramate-engine#visual-browser
+    to: visual-browser
   - id: visual-journey-tests-validate-handoff
     kind: association
     from: visual-journey-tests
-    to: yarramate-engine#visual-handoff
+    to: visual-handoff
   - id: visual-request-source-realizes-request-build
     kind: realization
     from: visual-request-source
-    to: yarramate-engine#build-visual-session-request
+    to: build-visual-session-request
   - id: visual-canvas-source-realizes-browser
     kind: realization
     from: visual-canvas-source
-    to: yarramate-engine#visual-browser
+    to: visual-browser
   - id: visual-inspector-source-realizes-presentation
     kind: realization
     from: visual-inspector-source
-    to: yarramate-engine#present-visual-conversation
+    to: present-visual-conversation
   - id: visual-changeset-tray-source-realizes-commit
     kind: realization
     from: visual-changeset-tray-source
-    to: yarramate-engine#commit-visual-changeset
+    to: commit-visual-changeset
   - id: visual-layout-schema-realizes-sidecar
     kind: realization
     from: visual-layout-schema-source
-    to: yarramate-engine#visual-layout-sidecar
+    to: visual-layout-sidecar
   - id: visual-request-tests-validate-request-build
     kind: association
     from: visual-request-tests
-    to: yarramate-engine#build-visual-session-request
+    to: build-visual-session-request
   - id: visual-canvas-layout-tests-validate-browser
     kind: association
     from: visual-canvas-layout-tests
-    to: yarramate-engine#visual-browser
+    to: visual-browser
   - id: visual-inspector-tests-validate-presentation
     kind: association
     from: visual-inspector-tests
-    to: yarramate-engine#present-visual-conversation
+    to: present-visual-conversation
   - id: visual-changeset-tray-tests-validate-commit
     kind: association
     from: visual-changeset-tray-tests
-    to: yarramate-engine#commit-visual-changeset
+    to: commit-visual-changeset
   - id: apply-operations-tests-validate-apply
     kind: association
     from: apply-operations-tests
-    to: yarramate-engine#apply-command
+    to: apply-command
   - id: visual-reference-documents-session-command
     kind: association
     from: visual-skill-reference
-    to: yarramate-engine#visual-session-service
+    to: visual-session-service
   - id: agent-skill-references-visual-conversations
     kind: association
     from: agent-skill-source
@@ -984,16 +984,16 @@ relationships:
   - id: visual-badges-source-realizes-badges
     kind: realization
     from: visual-badges-source
-    to: yarramate-engine#render-visual-presentation-badges
+    to: render-visual-presentation-badges
   - id: visual-kind-icons-source-realizes-icons
     kind: realization
     from: visual-kind-icons-source
-    to: yarramate-engine#render-archimate-kind-icons
+    to: render-archimate-kind-icons
   - id: visual-badges-tests-validate-badges
     kind: association
     from: visual-badges-tests
-    to: yarramate-engine#render-visual-presentation-badges
+    to: render-visual-presentation-badges
   - id: visual-kind-icons-tests-validate-icons
     kind: association
     from: visual-kind-icons-tests
-    to: yarramate-engine#render-archimate-kind-icons
+    to: render-archimate-kind-icons

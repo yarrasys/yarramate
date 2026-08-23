@@ -39,11 +39,11 @@ relationships: []
         format: 'yarramate/graph/v2',
         profiles: ['yarramate/core@0.1'],
         documents: [{ id: 'schema', source: 'schema.yaml' }],
-        subjects: [{ id: 'schema#stable-context', type: 'concept' }],
+        subjects: [{ id: 'stable-context', type: 'concept' }],
         claims: [
           {
-            id: 'schema#stable-context~kind',
-            subject: 'schema#stable-context',
+            id: 'stable-context~kind',
+            subject: 'stable-context',
             predicate: 'yarramate/concept/kind',
             object: { value: 'yarramate/core@0.1#capability' },
             origin: 'declared',

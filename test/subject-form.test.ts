@@ -14,7 +14,7 @@ import {
 // directly against the authoring rules `src/apply-command.ts` enforces.
 
 const node: CanvasNode = {
-  id: 'yarramate/core#checkout-service',
+  id: 'yarramate/checkout-service',
   localId: 'checkout-service',
   document: 'main.yaml',
   kind: 'yarramate/concept/application',
@@ -35,14 +35,14 @@ const node: CanvasNode = {
 }
 
 const edge: CanvasEdge = {
-  id: 'yarramate/core#checkout-service.dependency->api',
+  id: 'yarramate/checkout-service.dependency->api',
   localId: 'checkout-service.dependency->api',
   document: 'main.yaml',
   kind: 'yarramate/relationship/dependency',
   kindLabel: 'Dependency',
   coreKindLabel: 'Dependency',
-  from: 'yarramate/core#checkout-service',
-  to: 'yarramate/core#api',
+  from: 'yarramate/checkout-service',
+  to: 'yarramate/api',
   name: null,
   description: null,
   mode: 'read',
@@ -107,12 +107,12 @@ describe('stageConceptListChange (aka)', () => {
 
 describe('stageRelationshipScalarChange', () => {
   it("changing an edge's to produces update-relationship with to", () => {
-    const ops = stageRelationshipScalarChange(edge.document, edge.localId, 'to', edge.to, 'yarramate/core#gateway')
+    const ops = stageRelationshipScalarChange(edge.document, edge.localId, 'to', edge.to, 'yarramate/gateway')
     expect(ops).toEqual([
       {
         op: 'update-relationship',
         document: edge.document,
-        relationship: { id: edge.localId, to: 'yarramate/core#gateway' },
+        relationship: { id: edge.localId, to: 'yarramate/gateway' },
       },
     ])
   })
@@ -165,7 +165,7 @@ describe('overlayConceptFields', () => {
 
 describe('overlayRelationshipFields', () => {
   it("reflects a staged 'to' change", () => {
-    const ops = stageRelationshipScalarChange(edge.document, edge.localId, 'to', edge.to, 'yarramate/core#gateway')
-    expect(overlayRelationshipFields(edge, ops).to).toBe('yarramate/core#gateway')
+    const ops = stageRelationshipScalarChange(edge.document, edge.localId, 'to', edge.to, 'yarramate/gateway')
+    expect(overlayRelationshipFields(edge, ops).to).toBe('yarramate/gateway')
   })
 })

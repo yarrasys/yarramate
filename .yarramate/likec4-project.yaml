@@ -34,11 +34,11 @@ views:
     folder: "3 · Engine internals"
     dynamic:
       steps:
-        - relationship: yarramate-engine#parse-triggers-structure-validation
+        - relationship: parse-triggers-structure-validation
           title: validates structure
-        - relationship: yarramate-engine#structure-triggers-semantic-validation
+        - relationship: structure-triggers-semantic-validation
           title: validates semantic claims
-        - relationship: yarramate-engine#semantic-validation-triggers-compilation
+        - relationship: semantic-validation-triggers-compilation
           title: compiles graph
   - projection: projections/likec4-export-path.yaml
     folder: "3 · Engine internals"
@@ -73,5 +73,5 @@ views:
   - projection: projections/state-engine-change.yaml
     folder: "5 · Evolution"
     compare:
-      from: yarramate-evolution#adapter-foundation
-      to: yarramate-evolution#state-foundation
+      from: adapter-foundation
+      to: state-foundation

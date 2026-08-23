@@ -2,6 +2,15 @@
 
 Status: accepted
 
+> Superseded in 1.0 by
+> [ADR 0099](0099-a-subject-id-is-flat-and-unique-across-the-workspace.md): a
+> subject id is the authored id, unique across the workspace, with no
+> `<document-id>#` prefix and no local/qualified distinction. What this ADR
+> decided held for as long as an id only had to be unique within its document.
+> Measured across nineteen workspaces, no id ever collided, while binding
+> identity to file layout made every move of a subject between documents a
+> rename.
+
 ## Context
 
 Native documents use document IDs as stable namespaces. The first compiler

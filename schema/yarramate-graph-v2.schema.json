@@ -4,7 +4,13 @@
   "title": "YarraMate semantic graph v2",
   "type": "object",
   "additionalProperties": false,
-  "required": ["format", "profiles", "documents", "subjects", "claims"],
+  "required": [
+    "format",
+    "profiles",
+    "documents",
+    "subjects",
+    "claims"
+  ],
   "properties": {
     "format": {
       "const": "yarramate/graph/v2"
@@ -49,16 +55,19 @@
     },
     "subjectIdentity": {
       "type": "string",
-      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*#[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
     },
     "claimIdentity": {
       "type": "string",
-      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*#[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:~[a-z][a-z0-9-]*)?$"
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:~[a-z][a-z0-9-]*)?$"
     },
     "document": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "source"],
+      "required": [
+        "id",
+        "source"
+      ],
       "properties": {
         "id": {
           "$ref": "#/$defs/localId"
@@ -72,13 +81,19 @@
     "subject": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "type"],
+      "required": [
+        "id",
+        "type"
+      ],
       "properties": {
         "id": {
           "$ref": "#/$defs/subjectIdentity"
         },
         "type": {
-          "enum": ["concept", "relationship"]
+          "enum": [
+            "concept",
+            "relationship"
+          ]
         }
       }
     },
@@ -87,7 +102,9 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["ref"],
+          "required": [
+            "ref"
+          ],
           "properties": {
             "ref": {
               "$ref": "#/$defs/subjectIdentity"
@@ -97,7 +114,9 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["value"],
+          "required": [
+            "value"
+          ],
           "properties": {
             "value": {
               "type": "string",
@@ -110,7 +129,13 @@
     "source": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["document", "path", "pointer", "line", "column"],
+      "required": [
+        "document",
+        "path",
+        "pointer",
+        "line",
+        "column"
+      ],
       "properties": {
         "document": {
           "$ref": "#/$defs/localId"

@@ -16,7 +16,7 @@ mappings:
 ```
 
 `native` is always a globally qualified compiled subject identity:
-`<document-id>#<local-id>`. File paths and local-only references are not
+the authored ID, unique across the workspace. File paths are not
 accepted. `external` is an opaque, non-empty identity interpreted by the named
 adapter. `type` is `concept` or `relationship`.
 

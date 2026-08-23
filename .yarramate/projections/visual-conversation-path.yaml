@@ -3,32 +3,32 @@ id: visual-conversation-path
 version: "1.0"
 query:
   subjects:
-    - yarramate-engine#visual-runtime
-    - yarramate-engine#visual-browser
-    - yarramate-engine#visual-session-service
-    - yarramate-engine#visual-session-protocol
-    - yarramate-engine#visual-handoff
-    - yarramate-engine#render-visual-model
-    - yarramate-engine#recover-visual-session
-    - yarramate-product#agent-harness
-    - yarramate-repository#agent-skill-source
-    - yarramate-repository#visual-skill-reference
-    - yarramate-repository#visual-session-server-source
-    - yarramate-repository#visual-session-store-source
-    - yarramate-repository#graph-projection-source
-    - yarramate-repository#visual-protocol-source
-    - yarramate-repository#visual-cli-source
-    - yarramate-repository#visual-browser-source
-    - yarramate-repository#visual-browser-shell
-    - yarramate-repository#visual-event-schema-source
-    - yarramate-repository#visual-handoff-schema-source
-    - yarramate-repository#visual-session-server-tests
-    - yarramate-repository#visual-session-store-tests
-    - yarramate-repository#graph-projection-tests
-    - yarramate-repository#visual-protocol-tests
-    - yarramate-repository#visual-cli-tests
-    - yarramate-repository#visual-browser-tests
-    - yarramate-repository#visual-journey-tests
+    - visual-runtime
+    - visual-browser
+    - visual-session-service
+    - visual-session-protocol
+    - visual-handoff
+    - render-visual-model
+    - recover-visual-session
+    - agent-harness
+    - agent-skill-source
+    - visual-skill-reference
+    - visual-session-server-source
+    - visual-session-store-source
+    - graph-projection-source
+    - visual-protocol-source
+    - visual-cli-source
+    - visual-browser-source
+    - visual-browser-shell
+    - visual-event-schema-source
+    - visual-handoff-schema-source
+    - visual-session-server-tests
+    - visual-session-store-tests
+    - graph-projection-tests
+    - visual-protocol-tests
+    - visual-cli-tests
+    - visual-browser-tests
+    - visual-journey-tests
   relationships: between
 presentation:
   title: Visual architecture conversation

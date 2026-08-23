@@ -45,19 +45,19 @@ describe('agent journeys through the stable CLI', () => {
       notObserved: 0,
     })
     expect(JSON.parse(context.stdout).result.subjects).toEqual([
-      { id: 'orders-project#customer', type: 'concept' },
-      { id: 'orders-project#order-api', type: 'concept' },
-      { id: 'orders-project#order-api-accesses-order-record', type: 'relationship' },
-      { id: 'orders-project#order-api-realizes-order-service', type: 'relationship' },
-      { id: 'orders-project#order-record', type: 'concept' },
-      { id: 'orders-project#order-service', type: 'concept' },
-      { id: 'orders-project#order-service-serves-customer', type: 'relationship' },
+      { id: 'customer', type: 'concept' },
+      { id: 'order-api', type: 'concept' },
+      { id: 'order-api-accesses-order-record', type: 'relationship' },
+      { id: 'order-api-realizes-order-service', type: 'relationship' },
+      { id: 'order-record', type: 'concept' },
+      { id: 'order-service', type: 'concept' },
+      { id: 'order-service-serves-customer', type: 'relationship' },
     ])
     expect(JSON.parse(reconciliation.stdout).findings).toEqual([
       expect.objectContaining({
         target: {
           type: 'subject',
-          id: 'orders-project#customer',
+          id: 'customer',
         },
         result: 'contradicted',
       }),
@@ -90,8 +90,8 @@ describe('agent journeys through the stable CLI', () => {
         'ask',
         workspace,
         '--compare',
-        'delivery-design#empty-baseline',
-        'delivery-design#target',
+        'empty-baseline',
+        'target',
         '--json',
       ],
       repositoryRoot,
@@ -100,20 +100,20 @@ describe('agent journeys through the stable CLI', () => {
     expect(JSON.parse(check.stdout).ok).toBe(true)
     expect(JSON.parse(alternatives.stdout).result.subjects).toEqual(
       expect.arrayContaining([
-        { id: 'delivery-design#modular-monolith', type: 'concept' },
-        { id: 'delivery-design#microservices', type: 'concept' },
+        { id: 'modular-monolith', type: 'concept' },
+        { id: 'microservices', type: 'concept' },
       ]),
     )
     expect(JSON.parse(target.stdout).result.subjects).toEqual([
-      { id: 'delivery-design#api-realizes-service', type: 'relationship' },
-      { id: 'delivery-design#delivery-api', type: 'concept' },
-      { id: 'delivery-design#delivery-data', type: 'concept' },
-      { id: 'delivery-design#delivery-service', type: 'concept' },
-      { id: 'delivery-design#modular-monolith', type: 'concept' },
-      { id: 'delivery-design#modular-monolith-realizes-delivery', type: 'relationship' },
-      { id: 'delivery-design#monolith-accesses-data', type: 'relationship' },
-      { id: 'delivery-design#monolith-contains-api', type: 'relationship' },
-      { id: 'delivery-design#reliable-delivery', type: 'concept' },
+      { id: 'api-realizes-service', type: 'relationship' },
+      { id: 'delivery-api', type: 'concept' },
+      { id: 'delivery-data', type: 'concept' },
+      { id: 'delivery-service', type: 'concept' },
+      { id: 'modular-monolith', type: 'concept' },
+      { id: 'modular-monolith-realizes-delivery', type: 'relationship' },
+      { id: 'monolith-accesses-data', type: 'relationship' },
+      { id: 'monolith-contains-api', type: 'relationship' },
+      { id: 'reliable-delivery', type: 'concept' },
     ])
     expect(JSON.parse(comparison.stdout).comparison.added).toHaveLength(6)
   })

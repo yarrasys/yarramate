@@ -133,10 +133,10 @@ relationships:
     )
 
     expect(result.subjects).toEqual([
-      { id: 'platform#operate', type: 'concept' },
-      { id: 'platform#team', type: 'concept' },
+      { id: 'operate', type: 'concept' },
+      { id: 'team', type: 'concept' },
       {
-        id: 'platform#team-owns-operation',
+        id: 'team-owns-operation',
         type: 'relationship',
       },
     ])
@@ -163,7 +163,7 @@ relationships:
       result.subjects.filter(({ type }) => type === 'relationship'),
     ).toEqual([
       {
-        id: 'projection-model#first-influences-future',
+        id: 'first-influences-future',
         type: 'relationship',
       },
     ])
@@ -188,15 +188,15 @@ relationships:
     } as ProjectionDefinition)
 
     expect(result.subjects).toEqual([
-      { id: 'projection-model#first', type: 'concept' },
+      { id: 'first', type: 'concept' },
       {
-        id: 'projection-model#first-supports-second',
+        id: 'first-supports-second',
         type: 'relationship',
       },
-      { id: 'projection-model#future', type: 'concept' },
-      { id: 'projection-model#second', type: 'concept' },
+      { id: 'future', type: 'concept' },
+      { id: 'second', type: 'concept' },
       {
-        id: 'projection-model#second-supports-future',
+        id: 'second-supports-future',
         type: 'relationship',
       },
     ])
@@ -221,8 +221,8 @@ relationships:
     })
 
     expect(result.subjects).toEqual([
-      { id: 'projection-model#first', type: 'concept' },
-      { id: 'projection-model#second', type: 'concept' },
+      { id: 'first', type: 'concept' },
+      { id: 'second', type: 'concept' },
     ])
   })
 
@@ -243,19 +243,19 @@ relationships:
     } as ProjectionDefinition)
 
     expect(result.subjects).toEqual([
-      { id: 'projection-model#first', type: 'concept' },
+      { id: 'first', type: 'concept' },
       {
-        id: 'projection-model#first-influences-future',
+        id: 'first-influences-future',
         type: 'relationship',
       },
       {
-        id: 'projection-model#first-supports-second',
+        id: 'first-supports-second',
         type: 'relationship',
       },
-      { id: 'projection-model#future', type: 'concept' },
-      { id: 'projection-model#second', type: 'concept' },
+      { id: 'future', type: 'concept' },
+      { id: 'second', type: 'concept' },
       {
-        id: 'projection-model#second-supports-future',
+        id: 'second-supports-future',
         type: 'relationship',
       },
     ])
@@ -429,15 +429,15 @@ relationships:
       id: 'target',
       version: '1.0',
       query: {
-        states: ['roadmap#target'],
+        states: ['target'],
         relationships: 'between',
       },
     })
 
     expect(result.subjects).toEqual([
-      { id: 'roadmap#modern', type: 'concept' },
-      { id: 'roadmap#modern-uses-shared', type: 'relationship' },
-      { id: 'roadmap#shared', type: 'concept' },
+      { id: 'modern', type: 'concept' },
+      { id: 'modern-uses-shared', type: 'relationship' },
+      { id: 'shared', type: 'concept' },
     ])
   })
 
@@ -481,14 +481,14 @@ relationships:
       id: 'target-connected',
       version: '1.0',
       query: {
-        subjects: ['roadmap#modern'],
-        states: ['roadmap#target'],
+        subjects: ['modern'],
+        states: ['target'],
         relationships: 'connected',
       },
     })
 
     expect(result.subjects).toEqual([
-      { id: 'roadmap#modern', type: 'concept' },
+      { id: 'modern', type: 'concept' },
     ])
   })
 
@@ -515,7 +515,7 @@ relationships: []
       id: 'future-state',
       version: '1.0',
       query: {
-        states: ['other-roadmap#target'],
+        states: ['target'],
       },
     })
 
@@ -534,7 +534,7 @@ id: target
 version: "1.0"
 query:
   states:
-    - roadmap#target
+    - target
 `,
     })
 
@@ -545,7 +545,7 @@ query:
         id: 'target',
         version: '1.0',
         query: {
-          states: ['roadmap#target'],
+          states: ['target'],
         },
       },
     })
@@ -564,17 +564,17 @@ query:
       version: '1.0',
       query: {
         subjects: [
-          'projection-model#first',
-          'projection-model#second',
+          'first',
+          'second',
         ],
         relationships: 'between',
       },
     } as ProjectionDefinition)
 
     expect(result.subjects).toEqual([
-      { id: 'projection-model#first', type: 'concept' },
-      { id: 'projection-model#first-supports-second', type: 'relationship' },
-      { id: 'projection-model#second', type: 'concept' },
+      { id: 'first', type: 'concept' },
+      { id: 'first-supports-second', type: 'relationship' },
+      { id: 'second', type: 'concept' },
     ])
   })
 
@@ -592,14 +592,14 @@ query:
         id: 'platform-owned',
         version: '1.0',
         query: {
-          owners: ['projection-model#platform-team'],
+          owners: ['platform-team'],
           relationships: 'none',
         },
       } as ProjectionDefinition,
     )
 
     expect(result.subjects).toEqual([
-      { id: 'projection-model#first', type: 'concept' },
+      { id: 'first', type: 'concept' },
     ])
   })
 
@@ -617,14 +617,14 @@ query:
         id: 'residency-constrained',
         version: '1.0',
         query: {
-          constraints: ['projection-model#australia-only'],
+          constraints: ['australia-only'],
           relationships: 'none',
         },
       } as ProjectionDefinition,
     )
 
     expect(result.subjects).toEqual([
-      { id: 'projection-model#second', type: 'concept' },
+      { id: 'second', type: 'concept' },
     ])
   })
 
@@ -640,7 +640,7 @@ query:
       id: 'other-workspace-team',
       version: '1.0',
       query: {
-        owners: ['other-workspace#payments-team'],
+        owners: ['payments-team'],
       },
     })
 
@@ -842,17 +842,17 @@ presentation:
         title: 'Current capabilities',
       },
       subjects: [
-        { id: 'projection-model#first', type: 'concept' },
+        { id: 'first', type: 'concept' },
         {
-          id: 'projection-model#first-supports-second',
+          id: 'first-supports-second',
           type: 'relationship',
         },
-        { id: 'projection-model#second', type: 'concept' },
+        { id: 'second', type: 'concept' },
       ],
     })
     expect(
       result.claims.some(
-        ({ id }) => id === 'projection-model#second-supports-future',
+        ({ id }) => id === 'second-supports-future',
       ),
     ).toBe(false)
     expect(renderProjectionMarkdown(result)).toBe(
@@ -860,12 +860,12 @@ presentation:
         '\n' +
         '## Concepts\n' +
         '\n' +
-        '- First (`projection-model#first`) — `yarramate/core@0.1#capability` — current\n' +
-        '- Second (`projection-model#second`) — `yarramate/core@0.1#capability` — current\n' +
+        '- First (`first`) — `yarramate/core@0.1#capability` — current\n' +
+        '- Second (`second`) — `yarramate/core@0.1#capability` — current\n' +
         '\n' +
         '## Relationships\n' +
         '\n' +
-        '- `projection-model#first` — `yarramate/core@0.1#association` → `projection-model#second` (`projection-model#first-supports-second`)\n',
+        '- `first` — `yarramate/core@0.1#association` → `second` (`first-supports-second`)\n',
     )
   })
 
@@ -976,8 +976,8 @@ relationships:
       query: { excludeStatuses: ['retired'], relationships: 'between' },
     })
     expect(result.subjects.map(({ id }) => id)).toEqual([
-      'main#actor',
-      'main#live-service',
+      'actor',
+      'live-service',
     ])
   })
 
@@ -1005,7 +1005,7 @@ relationships:
       id: 'living',
       version: '1.0',
       query: {
-        subjects: ['main#live-service'],
+        subjects: ['live-service'],
         excludeStatuses: ['retired'],
         relationships: 'connected',
       },
@@ -1013,7 +1013,7 @@ relationships:
     // The retired neighbour is not pulled in, and the edge to it is
     // dropped rather than left dangling.
     expect(result.subjects.map(({ id }) => id)).toEqual([
-      'main#live-service',
+      'live-service',
     ])
   })
 })

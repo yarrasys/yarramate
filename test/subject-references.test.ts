@@ -150,7 +150,7 @@ concepts:
     owner: platform
     references:
       - id: r1
-        ref: "main#platform"
+        ref: "platform"
 relationships:
   - id: platform-serves-checkout
     kind: serving
@@ -168,7 +168,7 @@ describe('scanSubjectReferences', () => {
     expect(scan.documentId).toBe('main')
     expect(
       scan.hits
-        .filter((hit) => hit.address === 'main#platform')
+        .filter((hit) => hit.address === 'platform')
         .map((hit) => hit.pointer)
         .sort(),
     ).toEqual([
@@ -184,13 +184,13 @@ describe('scanSubjectReferences', () => {
 id: checked
 provider: ci
 observations:
-  - subject: "main#checkout~name"
+  - subject: "checkout~name"
     key: build.status
     value: green
 `
     const [hit] = scanSubjectReferences(evidence, 'evidence').hits
-    expect(hit?.address).toBe('main#checkout')
-    expect(hit?.raw).toBe('"main#checkout~name"')
+    expect(hit?.address).toBe('checkout')
+    expect(hit?.raw).toBe('"checkout~name"')
   })
 
   it('reports an alias at a reference position rather than walking it', () => {
@@ -214,7 +214,7 @@ relationships: []
 })
 
 describe('rewriteSubjectReferences', () => {
-  const rename = { from: 'main#platform', to: 'main#platform-team' }
+  const rename = { from: 'platform', to: 'platform-team' }
 
   it('moves the declaration and every reference, leaving all other bytes', () => {
     const result = rewriteSubjectReferences(document, 'document', rename)
@@ -229,7 +229,7 @@ describe('rewriteSubjectReferences', () => {
       document
         .replace('  - id: platform\n', '  - id: platform-team\n')
         .replace('owner: platform', 'owner: platform-team')
-        .replace('ref: "main#platform"', 'ref: "main#platform-team"')
+        .replace('ref: "platform"', 'ref: "platform-team"')
         .replace('from: platform', 'from: platform-team'),
     )
   })
@@ -238,7 +238,7 @@ describe('rewriteSubjectReferences', () => {
     const result = rewriteSubjectReferences(document, 'document', rename)
     if (!result.ok) throw new Error(result.aliases.join(', '))
     expect(result.source).toContain('owner: platform-team')
-    expect(result.source).toContain('ref: "main#platform-team"')
+    expect(result.source).toContain('ref: "platform-team"')
   })
 
   it('carries an aspect suffix through the move', () => {
@@ -246,16 +246,21 @@ describe('rewriteSubjectReferences', () => {
 id: checked
 provider: ci
 observations:
-  - subject: 'main#platform~name'
+  - subject: 'platform~name'
     key: build.status
     value: green
 `
     const result = rewriteSubjectReferences(evidence, 'evidence', rename)
     if (!result.ok) throw new Error(result.aliases.join(', '))
-    expect(result.source).toContain("subject: 'main#platform-team~name'")
+    expect(result.source).toContain("subject: 'platform-team~name'")
   })
 
-  it('leaves a same-local subject in another document alone', () => {
+  // Under flattened identity there is no such thing as "the same local id in
+  // another document": one id names one subject anywhere in the workspace, so
+  // a rename has to reach it wherever it was declared. The inverse of what
+  // this test asserted before 1.0, and the reason the workspace-wide
+  // uniqueness check has to exist.
+  it('renames the subject in whichever document declares it', () => {
     const other = `format: yarramate/v1
 id: other
 profile: yarramate/core@0.1
@@ -267,8 +272,8 @@ relationships: []
 `
     const result = rewriteSubjectReferences(other, 'document', rename)
     if (!result.ok) throw new Error(result.aliases.join(', '))
-    expect(result.source).toBe(other)
-    expect(result.moved).toEqual([])
+    expect(result.moved).toEqual(['/concepts/0/id'])
+    expect(result.source).toContain('- id: platform-team')
   })
 
   it('refuses a file that holds an alias at a reference position', () => {

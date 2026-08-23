@@ -58,7 +58,7 @@ id: ledger
 version: "1.0"
 query:
   subjects:
-    - main#ledger
+    - ledger
   relationships: none
 `
 
@@ -110,7 +110,7 @@ describe('buildVisualSessionRequest', () => {
       request.initialModel.graph.nodes.map((node) => node.localId).sort(),
     ).toEqual(['checkout', 'ledger'])
     expect(request.initialModel.graph.nodes.map((node) => node.id)).toContain(
-      'main#checkout',
+      'checkout',
     )
     expect(request.initialModel.graph.edges).toHaveLength(1)
     expect(request.initialModel.graph.nodes[0]?.document).toBe(

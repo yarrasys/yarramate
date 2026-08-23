@@ -9,4 +9,4 @@ relationships:
   - id: missing-target
     kind: realization
     from: source
-    to: absent-document#absent
+    to: absent

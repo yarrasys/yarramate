@@ -99,8 +99,8 @@ describe('ask command', () => {
     expect(result.stdout).toContain('Workspace ask-fixture: check ok')
     expect(result.stdout).toContain('Design interview:')
     expect(result.stdout).toContain('Backlog — planned, dependency order:')
-    const ui = result.stdout.indexOf('main#todo-ui')
-    const service = result.stdout.indexOf('main#todo-service')
+    const ui = result.stdout.indexOf('todo-ui')
+    const service = result.stdout.indexOf('todo-service')
     expect(ui).toBeGreaterThan(-1)
     expect(service).toBeGreaterThan(ui)
     expect(result.stdout).toContain('--subjects')
@@ -123,8 +123,8 @@ describe('ask command', () => {
     expect(payload.ok).toBe(true)
     expect(payload.design.open).toBeGreaterThan(0)
     expect(payload.backlog.planned.map(({ id }) => id)).toEqual([
-      'main#todo-ui',
-      'main#todo-service',
+      'todo-ui',
+      'todo-service',
     ])
     expect(validateAsk(payload), JSON.stringify(validateAsk.errors)).toBe(true)
   })
@@ -172,7 +172,7 @@ describe('ask command', () => {
     const all = runCli(['ask', 'workspace.yaml', '--subjects'], workspace)
     expect(all.exitCode).toBe(0)
     expect(all.stdout).toContain('3 of 3')
-    expect(all.stdout).toContain('main#user')
+    expect(all.stdout).toContain('user')
     expect(all.stdout).toContain('The person capturing todos.')
 
     const planned = runCli(
@@ -185,8 +185,8 @@ describe('ask command', () => {
     }
     expect(plannedPayload.total).toBe(3)
     expect(plannedPayload.subjects.map(({ id }) => id)).toEqual([
-      'main#todo-service',
-      'main#todo-ui',
+      'todo-service',
+      'todo-ui',
     ])
     expect(validateAsk(plannedPayload)).toBe(true)
 
@@ -198,7 +198,7 @@ describe('ask command', () => {
       (JSON.parse(actors.stdout) as { subjects: readonly { id: string }[] })
         .subjects,
     ).toEqual([
-      expect.objectContaining({ id: 'main#user' }),
+      expect.objectContaining({ id: 'user' }),
     ])
   })
 
@@ -220,14 +220,14 @@ describe('ask command', () => {
     }
     expect(payload.mode).toBe('slice')
     expect(payload.addressing).toBe('free-text')
-    expect(payload.seeds).toEqual(['main#user'])
+    expect(payload.seeds).toEqual(['user'])
     expect(payload.matched).toBe(1)
     expect(validateAsk(payload), JSON.stringify(validateAsk.errors)).toBe(true)
   })
 
   it('treats exact subject ids as precise addressing', () => {
     const result = runCli(
-      ['ask', 'workspace.yaml', 'main#user', '--json'],
+      ['ask', 'workspace.yaml', 'user', '--json'],
       workspace,
     )
     const payload = JSON.parse(result.stdout) as {
@@ -235,7 +235,7 @@ describe('ask command', () => {
       seeds: readonly string[]
     }
     expect(payload.addressing).toBe('subjects')
-    expect(payload.seeds).toEqual(['main#user'])
+    expect(payload.seeds).toEqual(['user'])
   })
 
   it('evaluates a projection file as precise addressing', () => {
@@ -245,7 +245,7 @@ describe('ask command', () => {
 id: services
 version: "1.0"
 query:
-  subjects: [main#todo-service]
+  subjects: [todo-service]
   relationships: connected
 presentation:
   title: Services
@@ -289,16 +289,16 @@ id: fixture-evidence
 version: "1.0"
 provider: repository-audit
 observations:
-  - subject: main#todo-service
+  - subject: todo-service
     result: confirmed
     evidence:
       uri: repo:src/todo-service.ts
-  - subject: main#todo-service
+  - subject: todo-service
     result: contradicted
     evidence:
       uri: repo:src/legacy/todo.ts
       message: Old implementation still wired
-  - claim: main#todo-service~description
+  - claim: todo-service~description
     result: confirmed
     evidence:
       uri: repo:docs/todo-service.md
@@ -321,7 +321,7 @@ observations:
       workspace,
     )
     expect(result.exitCode).toBe(0)
-    expect(result.stdout).toContain('main#todo-service')
+    expect(result.stdout).toContain('todo-service')
     expect(result.stdout).toContain(
       'confirmed  repo:src/todo-service.ts  (repository-audit)',
     )
@@ -335,7 +335,7 @@ observations:
       'confirmed  repo:docs/todo-service.md  (repository-audit)',
     )
     expect(result.stdout).toContain('unobserved — modeled, no evidence:')
-    expect(result.stdout).toContain('main#todo-ui')
+    expect(result.stdout).toContain('todo-ui')
     expect(result.stdout).toContain(
       'use your search tools or a code index',
     )
@@ -362,9 +362,9 @@ observations:
     expect(payload.mode).toBe('where')
     expect(payload.addressing).toBe('free-text')
     expect(payload.located).toHaveLength(1)
-    expect(payload.located[0]!.subject).toBe('main#todo-service')
+    expect(payload.located[0]!.subject).toBe('todo-service')
     expect(payload.located[0]!.observations).toHaveLength(3)
-    expect(payload.coverage.unobserved).toContain('main#todo-ui')
+    expect(payload.coverage.unobserved).toContain('todo-ui')
     expect(validateAsk(payload), JSON.stringify(validateAsk.errors)).toBe(true)
   })
 
@@ -385,7 +385,7 @@ observations:
         'ask',
         'workspace-evidence.yaml',
         '--where',
-        'main#todo-ui',
+        'todo-ui',
         '--json',
       ],
       workspace,
@@ -398,7 +398,7 @@ observations:
     }
     expect(payload.addressing).toBe('subjects')
     expect(payload.located).toEqual([])
-    expect(payload.coverage.unobserved).toEqual(['main#todo-ui'])
+    expect(payload.coverage.unobserved).toEqual(['todo-ui'])
     expect(validateAsk(payload), JSON.stringify(validateAsk.errors)).toBe(true)
   })
 
@@ -438,8 +438,8 @@ observations:
     expect(result.stdout).toContain(
       'Planned subjects in workspace ask-fixture (dependency order):',
     )
-    const ui = result.stdout.indexOf('main#todo-ui')
-    const service = result.stdout.indexOf('main#todo-service')
+    const ui = result.stdout.indexOf('todo-ui')
+    const service = result.stdout.indexOf('todo-service')
     expect(service).toBeGreaterThan(ui)
     expect(result.stdout).toContain('no evidence')
   })
@@ -463,17 +463,17 @@ observations:
 
   it('compares architecture states with --compare', () => {
     const result = runCli(
-      ['ask', 'workspace.yaml', '--compare', 'main#baseline', 'main#target'],
+      ['ask', 'workspace.yaml', '--compare', 'baseline', 'target'],
       workspace,
     )
     expect(result.exitCode).toBe(0)
     expect(result.stdout).toContain(
-      'States main#baseline -> main#target: 2 added, 0 removed, 3 retained',
+      'States baseline -> target: 2 added, 0 removed, 3 retained',
     )
-    expect(result.stdout).toContain('main#todo-ui')
+    expect(result.stdout).toContain('todo-ui')
 
     const missing = runCli(
-      ['ask', 'workspace.yaml', '--compare', 'main#baseline', 'main#nope'],
+      ['ask', 'workspace.yaml', '--compare', 'baseline', 'nope'],
       workspace,
     )
     expect(missing.exitCode).toBe(2)

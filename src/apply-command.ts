@@ -706,8 +706,8 @@ export const applyOperations = (
       }
       const { documentId } = scanSubjectReferences(source, 'document')
       const rename = {
-        from: `${documentId}#${id}`,
-        to: `${documentId}#${operation.to}`,
+        from: id,
+        to: operation.to,
       }
       // Total within the workspace: the declaration and every declarative
       // reference to it move in this one batch, so nothing is left addressing an
@@ -938,13 +938,13 @@ export const applyOperations = (
       }
     })
     const qualify = (documentId: string, reference: string): string =>
-      reference.includes('#') ? reference : `${documentId}#${reference}`
+      reference
     const referrers: ReferringSite[] = staged.flatMap(({ value }) => {
       const documentId = value?.id
       if (documentId === undefined) return []
       const sites: ReferringSite[] = []
       for (const concept of value?.concepts ?? []) {
-        const subject = `${documentId}#${concept.id}`
+        const subject = concept.id
         if (concept.owner !== undefined) {
           sites.push({
             ref: qualify(documentId, concept.owner),
@@ -968,7 +968,7 @@ export const applyOperations = (
         }
       }
       for (const relationship of value?.relationships ?? []) {
-        const subject = `${documentId}#${relationship.id}`
+        const subject = relationship.id
         for (const endpoint of ['from', 'to'] as const) {
           const reference = relationship[endpoint]
           if (reference !== undefined) {
@@ -995,7 +995,7 @@ export const applyOperations = (
     const violations = deletions.flatMap((deletion) => {
       const documentId = documentIds.get(deletion.absolute)
       if (documentId === undefined) return []
-      const target = `${documentId}#${deletion.id}`
+      const target = deletion.id
       const referring = referrers.filter((site) => site.ref === target)
       if (referring.length === 0) return []
       return [

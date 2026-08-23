@@ -89,7 +89,7 @@ describe('yarramate-mcp stdio adapter', () => {
           name: 'yarramate_ask',
           arguments: {
             workspace: '.yarramate/workspace.yaml',
-            query: 'yarramate-engine#cli',
+            query: 'cli',
             budget: 300,
           },
         },

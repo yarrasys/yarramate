@@ -158,7 +158,7 @@ describe('YarraMate CLI', () => {
         '      "line": 6,\n' +
         '      "column": 11,\n' +
         '      "subjects": [\n' +
-        '        "unknown-concept#mystery"\n' +
+        '        "mystery"\n' +
         '      ]\n' +
         '    }\n' +
         '  ]\n' +
@@ -342,7 +342,7 @@ describe('YarraMate CLI', () => {
           projection: 'current-capabilities@1.0',
           subjects: [
             {
-              id: 'lifecycle#current-capability',
+              id: 'current-capability',
               type: 'concept',
             },
           ],
@@ -377,10 +377,10 @@ describe('YarraMate CLI', () => {
 
       expect(result.exitCode).toBe(0)
       expect(JSON.parse(result.stdout).result.subjects).toEqual([
-        { id: 'platform#delivery', type: 'concept' },
-        { id: 'platform#team', type: 'concept' },
+        { id: 'delivery', type: 'concept' },
+        { id: 'team', type: 'concept' },
         {
-          id: 'platform#team-owns-delivery',
+          id: 'team-owns-delivery',
           type: 'relationship',
         },
       ])
@@ -399,8 +399,8 @@ describe('YarraMate CLI', () => {
           'ask',
           'workspace.yaml',
           '--compare',
-          'roadmap#baseline',
-          'roadmap#target',
+          'baseline',
+          'target',
           '--json',
         ],
         directory,
@@ -412,23 +412,23 @@ describe('YarraMate CLI', () => {
         mode: 'compare',
         comparison: {
           format: 'yarramate/state-comparison/v1',
-          from: 'roadmap#baseline',
-          to: 'roadmap#target',
+          from: 'baseline',
+          to: 'target',
           added: [
-            { id: 'roadmap#modern', type: 'concept' },
+            { id: 'modern', type: 'concept' },
             {
-              id: 'roadmap#shared-serves-modern',
+              id: 'shared-serves-modern',
               type: 'relationship',
             },
           ],
           removed: [
-            { id: 'roadmap#legacy', type: 'concept' },
+            { id: 'legacy', type: 'concept' },
             {
-              id: 'roadmap#shared-serves-legacy',
+              id: 'shared-serves-legacy',
               type: 'relationship',
             },
           ],
-          retained: [{ id: 'roadmap#shared', type: 'concept' }],
+          retained: [{ id: 'shared', type: 'concept' }],
         },
       })
     } finally {
@@ -499,7 +499,7 @@ describe('YarraMate CLI', () => {
       expect(result.stderr).toBe('')
       expect(result.stdout).toContain('# Current capabilities\n')
       expect(result.stdout).toContain(
-        '- Current capability (`lifecycle#current-capability`)',
+        '- Current capability (`current-capability`)',
       )
       expect(result.stdout).not.toContain('Planned goal')
     } finally {
@@ -550,12 +550,12 @@ describe('YarraMate CLI', () => {
         expectationsCompared: 0,
         expectationsWithoutObservation: 0,
       },
-      unobservedSubjects: ['orders-project#order-service'],
+      unobservedSubjects: ['order-service'],
       findings: [
         {
           target: {
             type: 'subject',
-            id: 'orders-project#customer',
+            id: 'customer',
           },
           result: 'contradicted',
           provider: 'repository-inspection',
@@ -613,7 +613,7 @@ describe('YarraMate CLI', () => {
         {
           target: {
             type: 'subject',
-            id: 'payments#billing',
+            id: 'billing',
           },
           result: 'contradicted',
           provider: 'repository-inspection',
@@ -626,11 +626,11 @@ describe('YarraMate CLI', () => {
         {
           target: {
             type: 'claim',
-            id: 'payments#payment-api-writes-ledger',
+            id: 'payment-api-writes-ledger',
           },
           asserted: {
-            from: 'payments#payment-api',
-            to: 'payments#ledger',
+            from: 'payment-api',
+            to: 'ledger',
             kind: 'yarramate/core@0.1#access',
             name: 'Records payments',
           },
@@ -867,7 +867,7 @@ describe('YarraMate CLI', () => {
       )
       expect(result.exitCode).toBe(0)
       expect(JSON.parse(result.stdout).result.subjects).toEqual([
-        expect.objectContaining({ id: 'lifecycle#current-capability' }),
+        expect.objectContaining({ id: 'current-capability' }),
       ])
     } finally {
       rmSync(directory, { recursive: true })
@@ -1200,7 +1200,7 @@ exclusions: [architectural-quality]
           'version: "1.0"\n' +
           'provider: repository-audit\n' +
           'observations:\n' +
-          '  - subject: main#missing\n' +
+          '  - subject: missing\n' +
           '    result: unknown\n' +
           '    evidence:\n' +
           '      uri: repo:missing\n',

@@ -72,11 +72,11 @@ const evidence =
   'version: "1.0"\n' +
   'provider: import-audit\n' +
   'observations:\n' +
-  '  - subject: main#session-adapter\n' +
+  '  - subject: session-adapter\n' +
   '    result: confirmed\n' +
   '    evidence:\n' +
   '      uri: repo:src/session-adapter.ts\n' +
-  '  - claim: main#adapter-serves-query\n' +
+  '  - claim: adapter-serves-query\n' +
   '    result: contradicted\n' +
   '    evidence:\n' +
   '      uri: repo:src/query-service.ts\n' +
@@ -116,16 +116,16 @@ describe('ask --next build ordering', () => {
       .map((line) => line.trim().split(/\s{2,}/)[0])
       .filter((id) => id !== undefined && id !== '')
     expect(order).toEqual([
-      'main#git-adapter',
-      'main#session-adapter',
-      'main#query-service',
-      'main#panel',
+      'git-adapter',
+      'session-adapter',
+      'query-service',
+      'panel',
     ])
     expect(result.stdout).toContain(
-      '<- required by main#panel, main#query-service; 2 observations (1 confirmed, 1 contradicted)',
+      '<- required by panel, query-service; 2 observations (1 confirmed, 1 contradicted)',
     )
-    expect(result.stdout).toMatch(/main#git-adapter\s+no evidence/)
-    expect(result.stdout).not.toContain('main#platform')
+    expect(result.stdout).toMatch(/git-adapter\s+no evidence/)
+    expect(result.stdout).not.toContain('platform')
   })
 
   it('emits a schema-valid machine report', () => {
@@ -158,28 +158,28 @@ describe('ask --next build ordering', () => {
     expect(payload.workspace).toBe('next-fixture')
     expect(payload.mode).toBe('next')
     expect(payload.subjects.map(({ id }) => id)).toEqual([
-      'main#git-adapter',
-      'main#session-adapter',
-      'main#query-service',
-      'main#panel',
+      'git-adapter',
+      'session-adapter',
+      'query-service',
+      'panel',
     ])
-    const panel = payload.subjects.find(({ id }) => id === 'main#panel')!
+    const panel = payload.subjects.find(({ id }) => id === 'panel')!
     expect(panel.dependsOn).toEqual([
-      'main#query-service',
-      'main#session-adapter',
+      'query-service',
+      'session-adapter',
     ])
     expect(panel.requiredBy).toEqual([])
     const adapter = payload.subjects.find(
-      ({ id }) => id === 'main#session-adapter',
+      ({ id }) => id === 'session-adapter',
     )!
-    expect(adapter.requiredBy).toEqual(['main#panel', 'main#query-service'])
+    expect(adapter.requiredBy).toEqual(['panel', 'query-service'])
     expect(adapter.evidence).toMatchObject({
       observations: 2,
       confirmed: 1,
       contradicted: 1,
     })
     const queryService = payload.subjects.find(
-      ({ id }) => id === 'main#query-service',
+      ({ id }) => id === 'query-service',
     )!
     expect(queryService.evidence).toMatchObject({
       observations: 1,
@@ -241,8 +241,8 @@ describe('ask --next build ordering', () => {
       subjects: readonly { id: string; cycle?: true }[]
     }
     expect(payload.subjects.map(({ id }) => id)).toEqual([
-      'main#alpha',
-      'main#beta',
+      'alpha',
+      'beta',
     ])
     expect(payload.subjects.every(({ cycle }) => cycle === true)).toBe(true)
 

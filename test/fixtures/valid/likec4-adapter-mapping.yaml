@@ -3,9 +3,9 @@ id: likec4-checkout
 version: "1.0"
 adapter: likec4
 mappings:
-  - native: checkout#approval-api
+  - native: approval-api
     external: checkout.approvalApi
     type: concept
-  - native: checkout#api-realizes-approval
+  - native: api-realizes-approval
     external: checkout.apiRealizesApproval
     type: relationship

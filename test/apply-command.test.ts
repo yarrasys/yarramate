@@ -629,7 +629,7 @@ operations:
     expect(result.exitCode).toBe(1)
     expect(result.stdout).toContain('error YM912')
     expect(result.stdout).toContain(
-      'deletes "user", which is still referenced by "main#portal-serves-user" (to)',
+      'deletes "user", which is still referenced by "portal-serves-user" (to)',
     )
     expect(result.stdout).toMatch(/^operations\.yaml:\d+:\d+ /)
     expect(
@@ -693,13 +693,13 @@ operations:
     )
     expect(result.exitCode).toBe(1)
     expect(result.stdout).toContain(
-      'deletes "platform-team", which is still referenced by "main#checkout" (owner)',
+      'deletes "platform-team", which is still referenced by "checkout" (owner)',
     )
     expect(result.stdout).toContain(
-      'deletes "australia-only", which is still referenced by "main#checkout" (constraints)',
+      'deletes "australia-only", which is still referenced by "checkout" (constraints)',
     )
     expect(result.stdout).toContain(
-      'deletes "checkout-serves-user", which is still referenced by "main#checkout" (references)',
+      'deletes "checkout-serves-user", which is still referenced by "checkout" (references)',
     )
     expect(
       readFileSync(join(workspace, 'architecture/main.yaml'), 'utf8'),
@@ -791,9 +791,9 @@ operations:
     // batch is not — integrity looks at the post-batch state even when
     // it rejects.
     expect(result.stdout).toContain(
-      'deletes "user", which is still referenced by "main#portal-notifies-user" (to)',
+      'deletes "user", which is still referenced by "portal-notifies-user" (to)',
     )
-    expect(result.stdout).not.toContain('by "main#portal-serves-user"')
+    expect(result.stdout).not.toContain('by "portal-serves-user"')
     // Atomicity: the valid relationship delete must not have landed.
     expect(
       readFileSync(join(workspace, 'architecture/main.yaml'), 'utf8'),
@@ -859,11 +859,11 @@ id: repository-audit
 version: "1.0"
 provider: repository-audit
 observations:
-  - subject: main#user
+  - subject: user
     result: confirmed
     evidence:
       uri: repo:src/user.ts
-  - subject: main#user
+  - subject: user
     key: role
     value: operator
     result: confirmed
@@ -907,7 +907,7 @@ operations:
   - op: add-observation
     document: evidence/repository.yaml
     observation:
-      subject: main#reviewer
+      subject: reviewer
       result: not-observed
       evidence:
         uri: repo:src/reviewer.ts
@@ -915,7 +915,7 @@ operations:
   - op: update-observation
     document: evidence/repository.yaml
     observation:
-      subject: main#user
+      subject: user
       key: role
       value: administrator
       evidence:
@@ -923,7 +923,7 @@ operations:
   - op: delete-observation
     document: evidence/repository.yaml
     observation:
-      subject: main#user
+      subject: user
 `)
       expect(result.exitCode).toBe(0)
       const payload = JSON.parse(result.stdout) as {
@@ -940,7 +940,7 @@ operations:
       })
       expect(payload.documents).toEqual(['evidence/repository.yaml'])
       const after = overlayNow()
-      expect(after).toContain('subject: main#reviewer')
+      expect(after).toContain('subject: reviewer')
       expect(after).toContain('message: no reviewer wiring found')
       expect(after).toContain('value: administrator')
       expect(after).toContain('uri: repo:src/roles.ts')
@@ -957,7 +957,7 @@ operations:
   - op: add-observation
     document: evidence/repository.yaml
     observation:
-      subject: main#nobody
+      subject: nobody
       result: confirmed
       evidence:
         uri: repo:src/nobody.ts
@@ -973,7 +973,7 @@ operations:
   - op: add-observation
     document: architecture/main.yaml
     observation:
-      subject: main#user
+      subject: user
       result: confirmed
       evidence:
         uri: repo:src/user.ts
@@ -1000,7 +1000,7 @@ operations:
   - op: update-observation
     document: evidence/repository.yaml
     observation:
-      subject: main#user
+      subject: user
       result: contradicted
 `)
       expect(result.exitCode).toBe(0)
@@ -1017,7 +1017,7 @@ operations:
   - op: update-observation
     document: evidence/repository.yaml
     observation:
-      subject: main#user
+      subject: user
       key: absent
       value: nothing
 `)
@@ -1028,7 +1028,7 @@ operations:
   - op: delete-observation
     document: evidence/repository.yaml
     observation:
-      claim: main#never-claimed
+      claim: never-claimed
 `)
       expect(gone.exitCode).toBe(1)
       expect(gone.stdout).toContain('does not exist')
@@ -1041,7 +1041,7 @@ operations:
   - op: update-observation
     document: evidence/repository.yaml
     observation:
-      subject: main#user
+      subject: user
       key: role
     remove: [message]
 `)
@@ -1066,7 +1066,7 @@ operations:
   - op: add-observation
     document: evidence/repository.yaml
     observation:
-      subject: main#user
+      subject: user
       result: confirmed
       evidence:
         uri: repo:src/user.ts

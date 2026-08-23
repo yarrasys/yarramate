@@ -214,7 +214,7 @@ concepts:
     owner: platform
     references:
       - id: charter
-        ref: "main#platform"
+        ref: "platform"
 relationships:
   - id: platform-serves-checkout
     kind: serving
@@ -240,9 +240,9 @@ id: actors
 version: "1.0"
 query:
   subjects:
-    - main#platform
+    - platform
   owners:
-    - main#platform
+    - platform
 `
 
 const renameEvidence = `format: yarramate/evidence/v1
@@ -250,11 +250,11 @@ id: audit
 version: "1.0"
 provider: repository-audit
 observations:
-  - subject: main#platform
+  - subject: platform
     result: confirmed
     evidence:
       uri: repo:src/platform.ts
-  - claim: 'main#platform~name'
+  - claim: 'platform~name'
     result: confirmed
     evidence:
       uri: repo:src/platform.ts
@@ -265,7 +265,7 @@ id: likec4-main
 version: "1.0"
 adapter: likec4
 mappings:
-  - native: main#platform
+  - native: platform
     external: main.platform
     type: concept
 `
@@ -335,28 +335,28 @@ describe('applyOperations rename', () => {
       renameDocument
         .replace('  - id: platform\n', '  - id: platform-team\n')
         .replace('owner: platform', 'owner: platform-team')
-        .replace('ref: "main#platform"', 'ref: "main#platform-team"')
+        .replace('ref: "platform"', 'ref: "platform-team"')
         .replace('from: platform', 'from: platform-team'),
     )
     // Projection selectors, always qualified.
     expect(read('projections/actors.projection.yaml')).toBe(
-      renameProjection.replaceAll('main#platform', 'main#platform-team'),
+      renameProjection.replaceAll('platform', 'platform-team'),
     )
     // Evidence: a bare subject and a claim whose `~aspect` suffix survives.
     expect(read('evidence/audit.yaml')).toBe(
       renameEvidence
-        .replace('subject: main#platform', 'subject: main#platform-team')
-        .replace("'main#platform~name'", "'main#platform-team~name'"),
+        .replace('subject: platform', 'subject: platform-team')
+        .replace("'platform~name'", "'platform-team~name'"),
     )
     // Adapter mapping: the native address moves, the external name does not.
     expect(read('adapters/likec4.yaml')).toBe(
-      renameMapping.replace('native: main#platform', 'native: main#platform-team'),
+      renameMapping.replace('native: platform', 'native: platform-team'),
     )
   })
 
   it('moves a relationship id and the references that name it', () => {
     const withReference = renameDocument.replace(
-      '        ref: "main#platform"',
+      '        ref: "platform"',
       '        ref: platform-serves-checkout',
     )
     writeFileSync(join(cwd, 'architecture/main.yaml'), withReference, 'utf8')
@@ -396,7 +396,7 @@ operations:
     expect(outcome.result.applied.renamedConcepts).toBe(2)
     expect(read('architecture/main.yaml')).toContain('owner: platform-group')
     expect(read('projections/actors.projection.yaml')).toContain(
-      'main#platform-group',
+      'platform-group',
     )
   })
 
@@ -437,7 +437,7 @@ operations:
     // The compile gate owns id uniqueness, and it runs before a byte is
     // written, so the duplicate is reported against the document.
     expect(outcome.diagnostics[0]?.code).toBe('YM301')
-    expect(outcome.diagnostics[0]?.message).toContain('Duplicate local ID')
+    expect(outcome.diagnostics[0]?.message).toContain('Duplicate ID')
     expect(read('architecture/main.yaml')).toBe(before)
   })
 
@@ -497,14 +497,18 @@ operations:
     )
   })
 
-  it('leaves a same-local id in another document alone', () => {
+  // Before 1.0 this asserted that `other#platform` survived a rename of
+  // `main#platform`. Flattened identity has no such pair - one id is one
+  // subject anywhere - so the meaningful version is that a rename touches only
+  // the documents that actually mention the subject.
+  it('leaves a document that never mentions the subject alone', () => {
     const other = `format: yarramate/v1
 id: other
 profile: yarramate/core@0.1
 concepts:
-  - id: platform
+  - id: billing
     kind: businessActor
-    name: Platform
+    name: Billing
 relationships: []
 `
     writeFileSync(join(cwd, 'architecture/other.yaml'), other, 'utf8')

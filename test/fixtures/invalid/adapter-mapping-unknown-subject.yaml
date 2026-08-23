@@ -3,6 +3,6 @@ id: likec4-checkout
 version: "1.0"
 adapter: likec4
 mappings:
-  - native: checkout#missing
+  - native: missing
     external: checkout.missing
     type: concept
