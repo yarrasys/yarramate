@@ -17,7 +17,6 @@ describe('buildPayload', () => {
       showEvidence: true,
       showOwnership: false,
       notation: 'native',
-      seed: 'default',
     })
 
     expect(payload).toEqual({
@@ -28,7 +27,6 @@ describe('buildPayload', () => {
       presentation: {
         layout: 'layered',
         direction: 'top-down',
-        seed: 'default',
         showLifecycle: true,
         showEvidence: true,
         showOwnership: false,
@@ -49,7 +47,6 @@ describe('buildPayload', () => {
       showEvidence: true,
       showOwnership: true,
       notation: 'native',
-      seed: 'default',
     })
 
     expect(payload.presentation?.showLifecycle).toBe(false)
@@ -69,7 +66,6 @@ describe('buildPayload', () => {
       showEvidence: true,
       showOwnership: false,
       notation: 'native',
-      seed: 'default',
     })
 
     expect(payload).not.toHaveProperty('id')
@@ -80,7 +76,6 @@ describe('buildPayload', () => {
       presentation: {
         layout: 'layered',
         direction: 'left-right',
-        seed: 'default',
         showLifecycle: true,
         showEvidence: true,
         showOwnership: false,
@@ -101,7 +96,6 @@ describe('buildPayload', () => {
       showEvidence: true,
       showOwnership: false,
       notation: 'native',
-      seed: 'default',
     })
 
     expect(payload.title).toBe('Exact Title')
@@ -122,34 +116,31 @@ describe('buildPayload', () => {
       showEvidence: false,
       showOwnership: false,
       notation: 'native',
-      seed: 'default',
     })
 
     expect(payload.query).toEqual({})
   })
 
-  it('carries layout through to presentation when radial is selected', () => {
+  it('carries the layout through to presentation', () => {
     const payload = buildPayload({
       id: 'view-id',
-      title: 'Radial View',
-      description: 'A radial layout test',
+      title: 'Layered View',
+      description: 'A layout round-trip test',
       query,
-      layout: 'radial',
+      layout: 'layered',
       direction: 'top-down',
       showLifecycle: true,
       showEvidence: false,
       showOwnership: false,
       notation: 'native',
-      seed: 'default',
     })
 
-    expect(payload.presentation?.layout).toBe('radial')
+    expect(payload.presentation?.layout).toBe('layered')
     expect(payload.id).toBe('view-id')
-    expect(payload.title).toBe('Radial View')
-    expect(payload.description).toBe('A radial layout test')
+    expect(payload.title).toBe('Layered View')
+    expect(payload.description).toBe('A layout round-trip test')
     expect(payload.query).toEqual(query)
     expect(payload.presentation?.direction).toBe('top-down')
-    expect(payload.presentation?.seed).toBe('default')
   })
 
   it('carries notation through to presentation', () => {
@@ -164,7 +155,6 @@ describe('buildPayload', () => {
       showEvidence: true,
       showOwnership: false,
       notation: 'archimate',
-      seed: 'default',
     })
 
     expect(payload.presentation?.notation).toBe('archimate')
@@ -178,15 +168,13 @@ describe('buildPayload', () => {
       title: 'Seeded View',
       description: 'A reviewer-chosen seed',
       query,
-      layout: 'force',
+      layout: 'layered',
       direction: 'top-down',
       showLifecycle: true,
       showEvidence: true,
       showOwnership: false,
       notation: 'native',
-      seed: 'reviewer-seed-7',
     })
 
-    expect(payload.presentation?.seed).toBe('reviewer-seed-7')
   })
 })

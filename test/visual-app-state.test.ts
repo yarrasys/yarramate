@@ -1049,7 +1049,6 @@ describe("visualAppReducer acknowledgement and refusal", () => {
         presentation: {
           layout: "layered",
           direction: "top-down",
-          seed: "default",
         },
       },
     });
@@ -1098,7 +1097,6 @@ describe("visualAppReducer acknowledgement and refusal", () => {
         presentation: {
           layout: "layered",
           direction: "top-down",
-          seed: "default",
         },
       },
     });
@@ -1467,7 +1465,6 @@ describe("visualAppReducer view save", () => {
       presentation: {
         layout: "layered",
         direction: "top-down",
-        seed: "test",
       } as const,
     };
     const sent = visualAppReducer(initialVisualAppState, {
@@ -1486,7 +1483,6 @@ describe("visualAppReducer view save", () => {
       presentation: {
         layout: "layered",
         direction: "top-down",
-        seed: "test",
       } as const,
     };
     const sent = visualAppReducer(initialVisualAppState, {
@@ -1503,7 +1499,7 @@ describe("visualAppReducer view save", () => {
       title: "My view",
       description: "A test view",
       query: { subjects: ["Q1"] },
-      presentation: { layout: "layered", direction: "top-down", seed: "test" },
+      presentation: { layout: "layered", direction: "top-down" },
     });
     expect(saved.viewSaveNotice).toBe(true);
     expect(saved.pendingViewSave).toBe(null);
@@ -1518,7 +1514,6 @@ describe("visualAppReducer view save", () => {
       presentation: {
         layout: "layered",
         direction: "top-down",
-        seed: "test",
       } as const,
     };
     const state = { ...initialVisualAppState, views: [view1] };
@@ -1530,7 +1525,6 @@ describe("visualAppReducer view save", () => {
       presentation: {
         layout: "layered",
         direction: "left-right",
-        seed: "test",
       } as const,
     };
     const sent = visualAppReducer(state, {
@@ -1553,7 +1547,6 @@ describe("visualAppReducer view save", () => {
       presentation: {
         layout: "layered",
         direction: "top-down",
-        seed: "test",
       } as const,
     };
     const sent = visualAppReducer(initialVisualAppState, {
@@ -1593,7 +1586,6 @@ describe("visualAppReducer view save", () => {
       presentation: {
         layout: "layered",
         direction: "top-down",
-        seed: "test",
       } as const,
     };
     const state = {

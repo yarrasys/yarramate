@@ -127,13 +127,10 @@
           "$ref": "#/$defs/nonEmptyText"
         },
         "layout": {
-          "enum": ["layered", "radial", "force"]
+          "enum": ["layered"]
         },
         "direction": {
           "enum": ["top-down", "left-right"]
-        },
-        "seed": {
-          "$ref": "#/$defs/nonEmptyText"
         },
         "showLifecycle": {
           "type": "boolean"
@@ -147,17 +144,7 @@
         "notation": {
           "enum": ["native", "archimate"]
         }
-      },
-      "allOf": [
-        {
-          "if": {
-            "required": ["layout"]
-          },
-          "then": {
-            "required": ["seed"]
-          }
-        }
-      ]
+      }
     },
     "id": {
       "type": "string",

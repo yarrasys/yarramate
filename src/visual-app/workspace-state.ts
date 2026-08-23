@@ -104,7 +104,7 @@ export interface VisualWorkspaceState {
   readonly descriptionExpanded: boolean;
   readonly detailsOpen: boolean;
   readonly direction: "top-down" | "left-right";
-  readonly layout: "layered" | "radial" | "force";
+  readonly layout: "layered";
   readonly showLifecycle: boolean;
   readonly showEvidence: boolean;
   readonly showOwnership: boolean;
@@ -115,7 +115,6 @@ export interface VisualWorkspaceState {
    * and elk ignores the seed outright, `radial` is not elk-based at all (see
    * `docs/VISUAL-ADAPTER.md`).
    */
-  readonly seed: string;
 }
 
 export type VisualWorkspaceAction =
@@ -136,10 +135,9 @@ export type VisualWorkspaceAction =
     }
   | {
       readonly type: "layout.set";
-      readonly layout: "layered" | "radial" | "force";
+      readonly layout: "layered";
     }
   | { readonly type: "notation.set"; readonly notation: "native" | "archimate" }
-  | { readonly type: "seed.set"; readonly seed: string }
   | {
       readonly type: "presentation.toggled";
       readonly flag: "showLifecycle" | "showEvidence" | "showOwnership";
@@ -161,7 +159,7 @@ export type VisualWorkspaceAction =
 export const presentationActionsFor = (
   presentation:
     | {
-        readonly layout?: "layered" | "radial" | "force";
+        readonly layout?: "layered";
         readonly direction?: "top-down" | "left-right";
         readonly notation?: "native" | "archimate";
         readonly showLifecycle?: boolean;
@@ -174,9 +172,6 @@ export const presentationActionsFor = (
   const actions: VisualWorkspaceAction[] = [];
   if (presentation?.layout !== undefined) {
     actions.push({ type: "layout.set", layout: presentation.layout });
-  }
-  if (presentation?.seed !== undefined) {
-    actions.push({ type: "seed.set", seed: presentation.seed });
   }
   if (presentation?.direction !== undefined) {
     actions.push({ type: "direction.set", direction: presentation.direction });
@@ -289,7 +284,6 @@ export const createVisualWorkspaceState = (
   // save of such a view writes it back - `presentation.seed` is required
   // wherever `presentation.layout` is (`schema/yarramate-projection.schema.json`),
   // so there is no "unset" to round-trip.
-  seed: "default",
 });
 
 export const visualWorkspaceReducer = (
@@ -366,10 +360,6 @@ export const visualWorkspaceReducer = (
       return { ...state, layout: action.layout };
     case "notation.set":
       return { ...state, notation: action.notation };
-    case "seed.set":
-      return state.seed === action.seed
-        ? state
-        : { ...state, seed: action.seed };
     case "presentation.toggled":
       return { ...state, [action.flag]: action.value };
     case "model.replaced": {

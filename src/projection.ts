@@ -50,9 +50,8 @@ export interface ProjectionDefinition {
   readonly presentation?: {
     readonly title?: string
     readonly description?: string
-    readonly layout?: 'layered' | 'radial' | 'force'
+    readonly layout?: 'layered'
     readonly direction?: 'top-down' | 'left-right'
-    readonly seed?: string
     readonly showLifecycle?: boolean
     readonly showEvidence?: boolean
     readonly showOwnership?: boolean
@@ -118,7 +117,6 @@ export function canonicalProjection(
             ...(presentation.description === undefined ? {} : { description: presentation.description }),
             ...(presentation.layout === undefined ? {} : { layout: presentation.layout }),
             ...(presentation.direction === undefined ? {} : { direction: presentation.direction }),
-            ...(presentation.seed === undefined ? {} : { seed: presentation.seed }),
             ...(presentation.showLifecycle === undefined ? {} : { showLifecycle: presentation.showLifecycle }),
             ...(presentation.showEvidence === undefined ? {} : { showEvidence: presentation.showEvidence }),
             ...(presentation.showOwnership === undefined ? {} : { showOwnership: presentation.showOwnership }),
@@ -395,9 +393,6 @@ export function evaluateProjection(
             ...(projection.presentation.direction === undefined
               ? {}
               : { direction: projection.presentation.direction }),
-            ...(projection.presentation.seed === undefined
-              ? {}
-              : { seed: projection.presentation.seed }),
             ...(projection.presentation.showLifecycle === undefined
               ? {}
               : { showLifecycle: projection.presentation.showLifecycle }),
