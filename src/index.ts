@@ -131,3 +131,8 @@ export {
   type ApplyInput,
   type ApplyOutcome,
 } from './apply-command.js'
+export {
+  connectableKinds,
+  draftRelationship,
+  proposeRelationshipId,
+} from './relationship-drafting.js'
