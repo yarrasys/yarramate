@@ -18,6 +18,32 @@
   at all if it finds a collision. Name any file that references subjects without
   being listed in the manifest, such as an adapter's project definition.
 
+- **Fix.** A subject you create appears on the canvas that created it. A filter
+  is resolved against the model the server held when it was asked, and a landed
+  commit replaces that model. Nothing re-asked, so the matched set went on
+  describing the graph as it was: the subject the reviewer had just made was
+  not in it, and the canvas hides every element the matched set does not name.
+  The commit reported `Committed - 1 file`, the bytes landed, and the diagram
+  did not change. It needed no unusual view and no stale projection, only a
+  filter resolved once, which is every view a session opens on; the one case it
+  never reached was an unfiltered canvas. Confirmed against a view whose query
+  genuinely matches the new subject, where navigating away and back revealed
+  it: same view, same query, same model, only the re-asking differed.
+  The browser now re-asks its standing filter off the `model` frame that
+  invalidated it. That is a consequence of a frame arriving rather than of a
+  render, so it lives beside the rest of the frame handling as a pure function
+  (`filterToReresolve`) instead of in an effect: the same frame that
+  invalidates a matched set is the thing that asks for a new one. Only a
+  `model` frame qualifies, since a `filter-result` is the answer and re-asking
+  off it would never stop. Whichever query is standing is the one re-asked,
+  under the source that asked for it, so a reviewer holding their own filter
+  does not have the view's query put back underneath them and a chat-issued
+  narrowing does not start reporting itself as the reviewer's own (#251).
+  The test that missed this asserted on `state.model.graph`, which was correct
+  the whole time. What was wrong is what the canvas *draws*, which is that
+  graph narrowed by the matched set, so the canvas is what the new tests
+  assert on.
+
 - **Breaking.** One notation. The canvas draws ArchiMate, and `native` is
   removed rather than demoted: `presentation.notation` admits `archimate`
   alone, and a projection asking for `native` is refused rather than quietly

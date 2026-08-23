@@ -183,3 +183,49 @@ describe('relayoutVisible', () => {
     expect(() => relayoutVisible(cy)).not.toThrow()
   })
 })
+
+// What the canvas DRAWS, which is the model graph narrowed by the matched set,
+// not the model graph. Every test that asserted on the model graph passed while
+// this was broken: the graph was right, and the reviewer saw nothing.
+describe('a subject the model has just gained', () => {
+  /** The graph after a commit landed a new subject, as a `model` frame carries it. */
+  const cyAfterCommit = () => {
+    const cy = buildCy()
+    cy.add({
+      data: {
+        id: 'payment-gateway',
+        label: 'Payment Gateway',
+        kindLabel: 'applicationComponent',
+      },
+      group: 'nodes',
+    })
+    return cy
+  }
+
+  it('is hidden by a matched set resolved before it existed', () => {
+    // The defect, stated as the canvas states it. `matchedIds` was resolved
+    // against the graph as it was; nothing re-asked; the new subject is not in
+    // it, so it is drawn nowhere despite the commit having landed.
+    const cy = cyAfterCommit()
+    applyFilter(cy, ['node1', 'node2'], '')
+
+    expect(cy.getElementById('payment-gateway').visible()).toBe(false)
+    expect(visibleIds(cy)).not.toContain('payment-gateway')
+  })
+
+  it('is drawn once the matched set is asked for again', () => {
+    const cy = cyAfterCommit()
+    applyFilter(cy, ['node1', 'node2', 'payment-gateway'], '')
+
+    expect(cy.getElementById('payment-gateway').visible()).toBe(true)
+  })
+
+  it('is drawn with no structural filter standing at all', () => {
+    // Unfiltered is the one case the defect never reached: `null` means draw
+    // everything, and a new subject joins by existing.
+    const cy = cyAfterCommit()
+    applyFilter(cy, null, '')
+
+    expect(cy.getElementById('payment-gateway').visible()).toBe(true)
+  })
+})

@@ -1538,6 +1538,55 @@ relationships: []
     await closeSocket(socket)
   })
 
+  it('answers the same query differently once a commit has landed', async () => {
+    // The other half of "a subject you create appears on the canvas that
+    // created it". The browser re-asks its standing filter off the `model`
+    // frame a commit produces (`filterToReresolve`); this is the server side
+    // of that exchange, and the reason re-asking is not merely tidy: the
+    // answer to an identical query changes, so a matched set resolved once is
+    // wrong from the moment a commit lands.
+    await plantEditableWorkspace()
+    const visual = await startVisualFixture()
+    const { socket, state: ready } = await openBrowser(visual)
+    const model = modelOf(ready)
+
+    const query = { kinds: ['yarramate/core@0.1#applicationComponent'] } as const
+    const asked = (): VisualBrowserInput => ({
+      type: 'filter.query',
+      lastAcknowledgedSequence: 0,
+      payload: { query },
+    })
+
+    send(socket, asked())
+    const before = await nextFrame(socket, 'filter-result')
+    expect([...before.result.matchedIds].sort()).toEqual(['checkout', 'ledger'])
+
+    const operation = draftConcept(
+      model.graph,
+      {
+        name: 'Payment Gateway',
+        kind: 'applicationComponent',
+        document: ENGINE,
+      },
+      paletteOf(ready),
+    )
+    commit(socket, staged(ready, operation!))
+    expect(await nextFrame(socket, 'apply-result')).toMatchObject({
+      result: { ok: true },
+    })
+    await nextFrame(socket, 'model')
+
+    // The identical query, asked again.
+    send(socket, asked())
+    const after = await nextFrame(socket, 'filter-result')
+    expect([...after.result.matchedIds].sort()).toEqual([
+      'checkout',
+      'ledger',
+      'payment-gateway',
+    ])
+    await closeSocket(socket)
+  })
+
   it('marks the subject at fault, not the one a deletion shifted past', async () => {
     await plantEditableWorkspace()
     const visual = await startVisualFixture()
