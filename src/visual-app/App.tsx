@@ -44,6 +44,8 @@ import {
 } from "./workspace-state.js";
 import { ConnectionPanel } from "./connection-panel.js";
 import { SubjectDraftPanel } from "./subject-draft-panel.js";
+import { ConfirmDialog } from "./confirm-dialog.js";
+import { describeDeletion, draftDeletion } from "../deletion-drafting.js";
 
 /**
  * A drawing board, not a document: the diagram holds the workspace, one compact
@@ -345,6 +347,8 @@ const DiagramWorkspace = ({
   draftingSubject,
   onDraftSubject,
   onDraftSubjectClose,
+  pendingDeletion,
+  onDeletionDismiss,
   onSelect,
   onClearFilter,
   onSaveLayout,
@@ -366,6 +370,8 @@ const DiagramWorkspace = ({
   readonly draftingSubject: boolean;
   readonly onDraftSubject: () => void;
   readonly onDraftSubjectClose: () => void;
+  readonly pendingDeletion: string | null;
+  readonly onDeletionDismiss: () => void;
   readonly onSelect: (subject: SelectedDiagramSubject) => void;
   readonly onClearFilter: () => void;
   readonly onSaveLayout: (payload: VisualLayoutSavePayload) => void;
@@ -430,6 +436,29 @@ const DiagramWorkspace = ({
             }
             onStage={onConnectStage}
             onCancel={onDraftSubjectClose}
+          />
+        )}
+        {pendingDeletion === null || state.model === null ? null : (
+          <ConfirmDialog
+            title="Delete"
+            message={
+              describeDeletion(state.model.graph, pendingDeletion) ??
+              "That subject is no longer on the diagram."
+            }
+            confirmLabel="Delete"
+            cancelLabel="Keep"
+            onConfirm={() => {
+              // One batch: a subject and the relationships naming it have to
+              // go together or `apply` refuses the lot (ADR 0069).
+              for (const operation of draftDeletion(
+                state.model!.graph,
+                pendingDeletion,
+              )) {
+                onConnectStage(operation);
+              }
+              onDeletionDismiss();
+            }}
+            onCancel={onDeletionDismiss}
           />
         )}
         {connection === null || state.model === null ? null : (
@@ -547,6 +576,7 @@ const SelectedSubjectInspector = ({
   onToggleDescription,
   onClear,
   onConnect,
+  onDelete,
   onStageChange,
 }: {
   readonly subject: SelectedDiagramSubject;
@@ -556,6 +586,7 @@ const SelectedSubjectInspector = ({
   readonly onToggleDescription: () => void;
   readonly onClear: () => void;
   readonly onConnect: (from: string) => void;
+  readonly onDelete: (id: string) => void;
   readonly onStageChange: (operation: YarramateOperation) => void;
 }) => {
   const node =
@@ -591,6 +622,13 @@ const SelectedSubjectInspector = ({
             Connect
           </button>
         ) : null}
+        <button
+          type="button"
+          className="subject-delete"
+          onClick={() => onDelete(subject.id)}
+        >
+          Delete
+        </button>
         <button type="button" className="subject-clear" onClick={onClear}>
           Clear
         </button>
@@ -633,6 +671,7 @@ const ConversationPanel = ({
   onToggleDescription,
   onClearSubject,
   onConnect,
+  onDelete,
   onDiscardChange,
   onStageChange,
   onClearChangeset,
@@ -650,6 +689,7 @@ const ConversationPanel = ({
   readonly onToggleDescription: () => void;
   readonly onClearSubject: () => void;
   readonly onConnect: (from: string) => void;
+  readonly onDelete: (id: string) => void;
   readonly onDiscardChange: (index: number) => void;
   readonly onStageChange: (operation: YarramateOperation) => void;
   readonly onClearChangeset: () => void;
@@ -693,6 +733,7 @@ const ConversationPanel = ({
             onToggleDescription={onToggleDescription}
             onClear={onClearSubject}
             onConnect={onConnect}
+            onDelete={onDelete}
             onStageChange={onStageChange}
           />
         )}
@@ -1061,6 +1102,10 @@ export const App = () => {
           onDraftSubjectClose={() =>
             dispatchWorkspace({ type: "subject.draft.closed" })
           }
+          pendingDeletion={workspace.pendingDeletion}
+          onDeletionDismiss={() =>
+            dispatchWorkspace({ type: "deletion.dismissed" })
+          }
           showLifecycle={workspace.showLifecycle}
           showEvidence={workspace.showEvidence}
           showOwnership={workspace.showOwnership}
@@ -1096,6 +1141,7 @@ export const App = () => {
           onConnect={(from) =>
             dispatchWorkspace({ type: "connection.started", from })
           }
+          onDelete={(id) => dispatchWorkspace({ type: "deletion.asked", id })}
           onDiscardChange={discardChange}
           onStageChange={stageChange}
           onClearChangeset={clearChangeset}

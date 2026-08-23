@@ -227,6 +227,21 @@
   thing. Adding and connecting are alternatives rather than layers, so a click
   on the diagram always belongs to exactly one of them (#238).
 
+- Deleting from the canvas, which completes the four motions the write surface
+  has had since ADR 0069 and the canvas had none of. **Delete** on a selected
+  subject or relationship asks first, because this is the one motion that
+  removes authored text.
+  Deleting a subject stages every relationship naming it in the same batch.
+  `apply` will not remove a subject something still references and evaluates
+  that against the post-batch state, so the two go together or neither does;
+  composing that batch is the point, since a reviewer would otherwise have to
+  find every relationship touching the subject by hand and the canvas already
+  knows them. The confirmation names what else still holds the subject, an
+  `owner` or a `supersedes` or a constraint, and warns rather than refuses: the
+  list is derived from what a canvas holds, a canvas does not hold everything
+  that can reference a subject, and treating it as authoritative would block
+  deletions that would land (#239).
+
 - `apply` accepts an operation's `document:` as the manifest names it. The
   address was resolved only against the working directory, so the
   manifest-relative form an author naturally writes was refused whenever the

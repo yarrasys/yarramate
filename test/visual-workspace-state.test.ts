@@ -507,6 +507,46 @@ describe("visualWorkspaceReducer subject draft", () => {
   });
 });
 
+describe("visualWorkspaceReducer deletion", () => {
+  const workspaceState = createVisualWorkspaceState(1280);
+
+  it("holds what was asked for until it is answered", () => {
+    const asked = visualWorkspaceReducer(workspaceState, {
+      type: "deletion.asked",
+      id: "orders",
+    });
+    expect(asked.pendingDeletion).toBe("orders");
+    expect(
+      visualWorkspaceReducer(asked, { type: "deletion.dismissed" })
+        .pendingDeletion,
+    ).toBeNull();
+  });
+
+  it("dismissing when nothing was asked changes nothing", () => {
+    expect(
+      visualWorkspaceReducer(workspaceState, { type: "deletion.dismissed" }),
+    ).toBe(workspaceState);
+  });
+
+  it("puts the other tools away, so only the confirmation takes the next click", () => {
+    const connecting = visualWorkspaceReducer(workspaceState, {
+      type: "connection.started",
+      from: "orders",
+    });
+    const drafting = visualWorkspaceReducer(connecting, {
+      type: "subject.draft.opened",
+    });
+    const asked = visualWorkspaceReducer(drafting, {
+      type: "deletion.asked",
+      id: "orders",
+    });
+
+    expect(asked.connection).toBeNull();
+    expect(asked.draftingSubject).toBe(false);
+    expect(asked.pendingDeletion).toBe("orders");
+  });
+});
+
 describe("visualWorkspaceReducer nesting", () => {
   const workspaceState = createVisualWorkspaceState(1280);
 
