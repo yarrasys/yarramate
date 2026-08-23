@@ -34,8 +34,13 @@ const render = () =>
     createElement(SubjectDraftPanel, {
       graph,
       kinds: [
-        { id: 'applicationComponent', label: 'applicationComponent' },
-        { id: 'businessActor', label: 'businessActor' },
+        // id is the full identity the wire carries; label is the short name a
+        // document names. The two differ, which is the whole point.
+        {
+          id: 'yarramate/core@0.1#applicationComponent',
+          label: 'applicationComponent',
+        },
+        { id: 'yarramate/core@0.1#businessActor', label: 'businessActor' },
       ],
       documents: ['architecture/main.yaml', 'architecture/other.yaml'],
       defaultDocument: 'architecture/main.yaml',
@@ -59,9 +64,41 @@ describe('SubjectDraftPanel', () => {
     expect(markup).toContain('architecture/other.yaml')
   })
 
-  it('asks for a name before proposing anything', () => {
-    // The id is derived, so there is nothing to show until there is a name.
-    expect(render()).toContain('Give it a name')
+  /**
+   * The bug this exists for: the form offered `option.id`, the full kind
+   * identity, where a document names a kind the short way. Every Add was
+   * refused on commit with `YM401 Unknown concept kind`.
+   *
+   * This half asserts what the form puts in the DOM. The other half - that a
+   * short name is what `apply` accepts and an identity is not - is in
+   * `concept-drafting.test.ts`, because the engine cannot be imported here:
+   * `tsconfig.visual.json` lists what the browser program may see, and
+   * reaching past it is the same mistake in a different direction.
+   */
+  it('offers kind values a document accepts, never the full identity', () => {
+    const markup = render()
+    const values = [...markup.matchAll(/<option value="([^"]*)"/g)]
+      .map((match) => match[1]!)
+      .filter((value) => value !== '')
+
+    expect(values).toContain('applicationComponent')
+    expect(values.some((value) => value.includes('#'))).toBe(false)
+  })
+
+  it('picks no kind for the reviewer', () => {
+    // The first kind alphabetically is `andJunction`. A form that defaults to
+    // it makes junctions by accident.
+    const markup = render()
+    expect(markup).toContain('Choose a kind')
+    expect(markup).toContain('disabled')
+  })
+
+  it('shows guidance rather than an id until it has what it needs', () => {
+    // The id is derived, so there is nothing to show yet. An untouched form
+    // asks for the kind first, because that is what it now has no default for.
+    const markup = render()
+    expect(markup).toContain('Choose a kind')
+    expect(markup).not.toContain('Id:')
   })
 
   it('cannot be submitted while there is nothing to submit', () => {

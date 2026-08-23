@@ -8,7 +8,7 @@ import type {
   CanvasNode,
   CanvasEdge,
 } from '../graph-projection.js'
-import { DEFAULT_NESTING, type NestingKind } from '../projection.js'
+import { DEFAULT_NESTING, type NestingKind } from '../nesting.js'
 import type {
   VisualLayoutPositions,
   VisualLayoutSavePayload,

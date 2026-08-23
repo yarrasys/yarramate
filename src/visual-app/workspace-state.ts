@@ -3,7 +3,7 @@ import type {
   CanvasGraph,
   CanvasNode,
 } from "../graph-projection.js";
-import { DEFAULT_NESTING, type NestingKind } from "../projection.js";
+import { DEFAULT_NESTING, type NestingKind } from "../nesting.js";
 
 export type ConversationMode = "auto" | "open" | "closed";
 

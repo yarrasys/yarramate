@@ -18,7 +18,8 @@ import {
   type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import type { NestingKind, ProjectionQuery } from "../projection.js";
+import type { NestingKind } from "../nesting.js";
+import type { ProjectionQuery } from "../projection.js";
 import type { VisualRenderedModel } from "../adapters/visual/wire.js";
 import type { YarramateOperation } from "../operations.js";
 import type {

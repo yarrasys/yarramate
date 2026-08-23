@@ -31,7 +31,10 @@ export const SubjectDraftPanel = ({
   readonly onCancel: () => void
 }): React.ReactElement => {
   const [name, setName] = useState('')
-  const [kind, setKind] = useState(kinds[0]?.id ?? '')
+  // No default. The first kind alphabetically is `andJunction`, a plumbing
+  // construct nobody means to create, and a form that quietly picks one is a
+  // form that makes that subject by accident.
+  const [kind, setKind] = useState('')
   const [document, setDocument] = useState(defaultDocument)
 
   const proposed = name.trim() === '' ? null : proposeConceptId(graph, name)
@@ -41,7 +44,7 @@ export const SubjectDraftPanel = ({
       : draftConcept(
           graph,
           { name, kind, document },
-          kinds.map((option) => option.id),
+          kinds.map((option) => option.label),
         )
 
   return (
@@ -58,8 +61,12 @@ export const SubjectDraftPanel = ({
       <label className="subject-draft-field">
         <span>Kind</span>
         <select value={kind} onChange={(event) => setKind(event.target.value)}>
+          <option value="">Choose a kind</option>
           {kinds.map((option) => (
-            <option key={option.id} value={option.id}>
+            // The label, not the id: a document names a kind the short way and
+            // `apply` refuses the full identity as an unknown kind (`YM401`).
+            // `subject-form.tsx` has always done this; this form did not.
+            <option key={option.id} value={option.label}>
               {option.label}
             </option>
           ))}
@@ -81,7 +88,9 @@ export const SubjectDraftPanel = ({
       </label>
 
       <p className="subject-draft-id">
-        {name.trim() === '' ? (
+        {kind === '' ? (
+          'Choose a kind.'
+        ) : name.trim() === '' ? (
           'Give it a name.'
         ) : proposed === null ? (
           // The two names this cannot serve: nothing an id may be made of, and

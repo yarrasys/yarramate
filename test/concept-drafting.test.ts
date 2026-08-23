@@ -28,6 +28,28 @@ const graphOf = (source: string): CanvasGraph => {
 
 const graph = graphOf(DOCUMENT)
 
+const apply = (operations: readonly unknown[]) =>
+  applyOperations({
+    workspace: {
+      id: 'drafting',
+      documents: ['architecture/main.yaml'],
+      profiles: [],
+      projections: [],
+      adapterMappings: [],
+      evidence: [],
+      contracts: [],
+    },
+    sources: [{ path: 'architecture/main.yaml', source: DOCUMENT }],
+    operations: {
+      path: 'changeset.yaml',
+      source: stringify({
+        format: 'yarramate/operations/v1',
+        operations,
+      }),
+    },
+    manifestDirectory: '.yarramate',
+  })
+
 describe('proposeConceptId', () => {
   it('transliterates a name into an id a human can read in a diff', () => {
     expect(proposeConceptId(graph, 'Order Intake')).toBe('order-intake')
@@ -77,6 +99,44 @@ describe('proposeConceptId', () => {
 })
 
 describe('draftConcept', () => {
+  it('takes the short name a document uses, not the wire identity', () => {
+    // The other half of the bug in `subject-draft-panel.test.ts`. A model
+    // frame carries `{ id: 'yarramate/core@0.1#applicationComponent', label:
+    // 'applicationComponent' }`. A document names the kind the short way, and
+    // `apply` refuses the identity as `YM401 Unknown concept kind`, so the
+    // form must offer labels. This pins which of the two is the valid one.
+    const identity = 'yarramate/core@0.1#applicationComponent'
+
+    expect(
+      draftConcept(
+        graph,
+        { name: 'Thing', kind: identity, document: 'architecture/main.yaml' },
+        [identity],
+      ),
+    ).toMatchObject({ concept: { kind: identity } })
+
+    const viaIdentity = apply([
+      {
+        op: 'add-concept',
+        document: 'architecture/main.yaml',
+        concept: { id: 'thing', kind: identity, name: 'Thing' },
+      },
+    ])
+    expect(viaIdentity.ok).toBe(false)
+    if (!viaIdentity.ok) {
+      expect(viaIdentity.diagnostics.map((d) => d.code)).toContain('YM401')
+    }
+
+    const viaLabel = apply([
+      {
+        op: 'add-concept',
+        document: 'architecture/main.yaml',
+        concept: { id: 'thing', kind: 'applicationComponent', name: 'Thing' },
+      },
+    ])
+    expect(viaLabel.ok).toBe(true)
+  })
+
   it('refuses a kind outside the workspace vocabulary', () => {
     expect(
       draftConcept(graph, { name: 'Thing', kind: 'invented', document: 'architecture/main.yaml' }, KINDS),

@@ -66,14 +66,14 @@ export interface ProjectionDefinition {
 }
 
 /**
- * A relationship kind a view may draw as nesting. Closed here and in
- * `yarramate-projection.schema.json`; widening it is additive, because a view
- * opts in by naming a kind (ADR 0101).
+ * A relationship kind a view may draw as nesting, and the default. Defined in
+ * `./nesting.js`, which imports nothing, and re-exported here so a consumer
+ * that already reads projection types keeps finding them. The browser must
+ * import them from there rather than from here: this module reaches for
+ * `node:module` to load Ajv (ADR 0101).
  */
-export type NestingKind = 'composition' | 'assignment'
-
-/** What a view nests when it does not say: the behaviour that shipped. */
-export const DEFAULT_NESTING: readonly NestingKind[] = ['composition']
+export { DEFAULT_NESTING, type NestingKind } from './nesting.js'
+import type { NestingKind } from './nesting.js'
 
 export type ProjectionQuery = ProjectionDefinition['query']
 
