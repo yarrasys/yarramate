@@ -2348,6 +2348,131 @@ views:
     }
   })
 
+  it('accepts a v1 marker whose comparison predates flattened subject ids', () => {
+    const parent = mkdtempSync(
+      join(tmpdir(), 'yarramate-likec4-preflatten-v1-'),
+    )
+    const project = join(parent, 'governed-change')
+    const exportArgs = [
+      'export-project',
+      'test/fixtures/valid/governed-change.projection.yaml',
+      'test/fixtures/valid/governed-change.likec4-mapping.yaml',
+      project,
+      'test/fixtures/valid/governed-change.workspace.yaml',
+    ]
+    const checkArgs = ['export-project', '--check', ...exportArgs.slice(1)]
+    try {
+      expect(runLikeC4Cli(exportArgs, repositoryRoot).exitCode).toBe(0)
+      const markerPath = join(project, 'yarramate.generated.json')
+      const marker = JSON.parse(
+        readFileSync(markerPath, 'utf8'),
+      ) as Record<string, unknown>
+      expect(marker['format']).toBe('yarramate/likec4-generated-project/v1')
+      writeFileSync(
+        markerPath,
+        `${JSON.stringify(
+          {
+            ...marker,
+            comparison: {
+              from: 'evolution#adapter-foundation',
+              to: 'evolution#state-foundation',
+            },
+          },
+          null,
+          2,
+        )}\n`,
+      )
+
+      expect(runLikeC4Cli(checkArgs, repositoryRoot)).toEqual({
+        exitCode: 0,
+        stdout: 'Generated LikeC4 output: fresh\n',
+        stderr: '',
+      })
+      expect(runLikeC4Cli(exportArgs, repositoryRoot)).toEqual({
+        exitCode: 0,
+        stdout: `Updated LikeC4 project at ${project}\n`,
+        stderr: '',
+      })
+      expect(
+        JSON.parse(readFileSync(markerPath, 'utf8')) as Record<
+          string,
+          unknown
+        >,
+      ).not.toHaveProperty('comparison')
+    } finally {
+      rmSync(parent, { recursive: true, force: true })
+    }
+  })
+
+  it('accepts a v2 marker whose comparison predates flattened subject ids', () => {
+    const parent = mkdtempSync(
+      join(tmpdir(), 'yarramate-likec4-preflatten-v2-'),
+    )
+    const project = join(parent, 'governed-change')
+    const exportArgs = [
+      'export-project',
+      'test/fixtures/valid/governed-change.projection.yaml',
+      'test/fixtures/valid/governed-change.likec4-mapping.yaml',
+      project,
+      'test/fixtures/valid/governed-change.workspace.yaml',
+    ]
+    const checkArgs = ['export-project', '--check', ...exportArgs.slice(1)]
+    try {
+      expect(runLikeC4Cli(exportArgs, repositoryRoot).exitCode).toBe(0)
+      const markerPath = join(project, 'yarramate.generated.json')
+      const marker = JSON.parse(
+        readFileSync(markerPath, 'utf8'),
+      ) as Record<string, unknown>
+      // The bytes a pre-flatten multi-view export left behind: the same owned
+      // files and digests, addressed by the qualified ids of the time.
+      writeFileSync(
+        markerPath,
+        `${JSON.stringify(
+          {
+            format: 'yarramate/likec4-generated-project/v2',
+            project: 'governed-change@1.0',
+            mapping: 'governed-change-likec4@1.0',
+            views: [
+              { id: 'index', projection: 'governed-change@1.0' },
+              {
+                projection: 'state-engine-change@1.0',
+                comparison: {
+                  from: 'evolution#adapter-foundation',
+                  to: 'evolution#state-foundation',
+                },
+              },
+            ],
+            files: marker['files'],
+            digests: marker['digests'],
+            inputDigests: marker['inputDigests'],
+          },
+          null,
+          2,
+        )}\n`,
+      )
+
+      expect(runLikeC4Cli(checkArgs, repositoryRoot)).toEqual({
+        exitCode: 0,
+        stdout: 'Generated LikeC4 output: fresh\n',
+        stderr: '',
+      })
+      expect(runLikeC4Cli(exportArgs, repositoryRoot)).toEqual({
+        exitCode: 0,
+        stdout: `Updated LikeC4 project at ${project}\n`,
+        stderr: '',
+      })
+      const rewritten = JSON.parse(
+        readFileSync(markerPath, 'utf8'),
+      ) as Record<string, unknown>
+      expect(rewritten['format']).toBe(
+        'yarramate/likec4-generated-project/v1',
+      )
+      expect(rewritten).not.toHaveProperty('views')
+    } finally {
+      rmSync(parent, { recursive: true, force: true })
+    }
+  })
+
   it('atomically replaces each owned file during regeneration', () => {
     const parent = mkdtempSync(
       join(tmpdir(), 'yarramate-likec4-atomic-update-'),
