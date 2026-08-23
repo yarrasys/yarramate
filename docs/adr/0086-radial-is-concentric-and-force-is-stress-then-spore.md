@@ -2,6 +2,15 @@
 
 Status: accepted
 
+> Superseded in 1.0: `radial` and `force` are removed, leaving `layered` as
+> the only backend, and `presentation.seed` is removed with them because only
+> `force` read it. Measured on every view of the contact-update journey,
+> both lost to `layered` on edge crossings, total edge length, and how large
+> the graph draws once fitted to the canvas. What this ADR decided remains
+> true of the code it described: `radial` was cytoscape `concentric`, not ELK
+> radial, and `force` was `stress` followed by `sporeOverlap`. A future layout
+> mechanism will be recorded in its own ADR.
+
 [ADR 0085](0085-a-dragged-position-is-presentation-the-repository-keeps.md)
 settled where a layout's *output* lives once a reviewer touches it by hand.
 This ADR settles what an *automatic* layout actually runs, because the

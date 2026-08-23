@@ -2707,7 +2707,7 @@ evidence: []
       title: "My View",
       description: "desc",
       query: { kinds: ["yarramate/core@0.1#businessActor"] },
-      presentation: { layout: "layered", seed: "seed-1" },
+      presentation: { layout: "layered" },
     });
 
     expect(frame.result).toEqual({
@@ -2729,7 +2729,6 @@ evidence: []
         title: "My View",
         description: "desc",
         layout: "layered",
-        seed: "seed-1",
       },
     });
     socket.close();
@@ -2755,7 +2754,7 @@ evidence: []
       title: "Reload View",
       description: "first",
       query: { kinds: ["yarramate/core@0.1#businessActor"] },
-      presentation: { layout: "force", seed: "seed-1" },
+      presentation: { layout: "layered" },
     });
 
     expect(await reloadedViews()).toEqual([
@@ -2765,8 +2764,7 @@ evidence: []
         description: "first",
         query: { kinds: ["yarramate/core@0.1#businessActor"] },
         presentation: {
-          layout: "force",
-          seed: "seed-1",
+          layout: "layered",
           title: "Reload View",
           description: "first",
         },
@@ -2780,7 +2778,7 @@ evidence: []
       title: "Reload View",
       description: "second",
       query: { kinds: ["yarramate/core@0.1#businessActor"] },
-      presentation: { layout: "radial", seed: "seed-2" },
+      presentation: { layout: "layered" },
     });
 
     const after = await reloadedViews();
@@ -2788,7 +2786,7 @@ evidence: []
     expect(after[0]).toMatchObject({
       id: "reload-view",
       description: "second",
-      presentation: { layout: "radial" },
+      presentation: { layout: "layered" },
     });
     socket.close();
   });
@@ -2803,7 +2801,7 @@ evidence: []
       title: "Original Title",
       description: "original desc",
       query: { kinds: ["yarramate/core@0.1#businessActor"] },
-      presentation: { layout: "layered", seed: "seed-1" },
+      presentation: { layout: "layered" },
     });
     expect(created.result).toEqual({
       ok: true,
@@ -2816,7 +2814,7 @@ evidence: []
       title: "Updated Title",
       description: "updated desc",
       query: { kinds: ["yarramate/core@0.1#businessActor"] },
-      presentation: { layout: "radial", seed: "seed-2" },
+      presentation: { layout: "layered" },
     });
     expect(overwritten.result).toEqual({
       ok: true,
@@ -2833,8 +2831,7 @@ evidence: []
       presentation: {
         title: "Updated Title",
         description: "updated desc",
-        layout: "radial",
-        seed: "seed-2",
+        layout: "layered",
       },
     });
     socket.close();
@@ -2882,7 +2879,7 @@ evidence: []
       title: "Audit Test",
       description: "test",
       query: { kinds: ["yarramate/core@0.1#businessActor"] },
-      presentation: { layout: "layered", seed: "seed-1" },
+      presentation: { layout: "layered" },
     });
 
     const journal = await journalOf(server);

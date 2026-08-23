@@ -669,7 +669,6 @@ query:
         '  description: Stable output\n' +
         '  layout: layered\n' +
         '  direction: top-down\n' +
-        '  seed: stable-layout\n' +
         '  showLifecycle: true\n' +
         '  showEvidence: false\n' +
         '  showOwnership: true\n',
@@ -679,7 +678,6 @@ query:
       source:
         'presentation:\n' +
         '  showOwnership: true\n' +
-        '  seed: stable-layout\n' +
         '  description: Stable output\n' +
         '  showEvidence: false\n' +
         '  direction: top-down\n' +
@@ -772,9 +770,8 @@ presentation:
       presentation: {
         title: 'Capabilities',
         description: 'Current capability context',
-        layout: 'radial',
+        layout: 'layered',
         direction: 'top-down',
-        seed: 'capabilities',
         showLifecycle: true,
         showEvidence: true,
         showOwnership: true,

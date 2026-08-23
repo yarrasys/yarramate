@@ -10,13 +10,12 @@ export interface SaveViewControlProps {
   readonly views: readonly VisualViewSummary[];
   readonly activeViewId: string;
   readonly query: ProjectionQuery | null;
-  readonly layout: "layered" | "radial" | "force";
+  readonly layout: "layered";
   readonly direction: "top-down" | "left-right";
   readonly showLifecycle: boolean;
   readonly showEvidence: boolean;
   readonly showOwnership: boolean;
   readonly notation: "native" | "archimate";
-  readonly seed: string;
   readonly pendingSave: boolean;
   readonly notice: boolean;
   readonly onSave: (payload: VisualViewSavePayload) => void;
@@ -31,13 +30,12 @@ export interface BuildPayloadParams {
   readonly title: string;
   readonly description: string;
   readonly query: ProjectionQuery | null;
-  readonly layout: "layered" | "radial" | "force";
+  readonly layout: "layered";
   readonly direction: "top-down" | "left-right";
   readonly showLifecycle: boolean;
   readonly showEvidence: boolean;
   readonly showOwnership: boolean;
   readonly notation: "native" | "archimate";
-  readonly seed: string;
 }
 
 /** Pure translation from the form's local state to the wire payload — no
@@ -55,7 +53,6 @@ export const buildPayload = ({
   showEvidence,
   showOwnership,
   notation,
-  seed,
 }: BuildPayloadParams): VisualViewSavePayload => ({
   ...(id === undefined ? {} : { id }),
   title,
@@ -64,7 +61,6 @@ export const buildPayload = ({
   presentation: {
     layout,
     direction,
-    seed,
     showLifecycle,
     showEvidence,
     showOwnership,
@@ -89,7 +85,6 @@ export function SaveViewControl({
   showEvidence,
   showOwnership,
   notation,
-  seed,
   pendingSave,
   notice,
   onSave,
@@ -131,7 +126,6 @@ export function SaveViewControl({
       showEvidence,
       showOwnership,
       notation,
-      seed,
     });
 
   const submit = (id: string | undefined) => {
