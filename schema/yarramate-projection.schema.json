@@ -132,6 +132,13 @@
         "direction": {
           "enum": ["top-down", "left-right"]
         },
+        "nesting": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": ["composition", "assignment"]
+          }
+        },
         "showLifecycle": {
           "type": "boolean"
         },

@@ -321,9 +321,18 @@ describe("visualWorkspaceReducer layout", () => {
     expect(next).toBe(workspaceState);
   });
 
+  // `nesting` is the one field a view always states, declared or not. The
+  // others are things a reviewer can toggle on screen, so leaving one unset
+  // rightly keeps their choice across a view switch. Nesting has no control:
+  // it is a property of the view, and carrying one view's containment meaning
+  // into a view that never asked for it is exactly the ambiguity ADR 0101
+  // exists to prevent, so an undeclaring view is restored to the default.
   it("adopts only the field a view actually declares", () => {
     const actions = presentationActionsFor({ layout: "layered" });
-    expect(actions).toEqual([{ type: "layout.set", layout: "layered" }]);
+    expect(actions).toEqual([
+      { type: "layout.set", layout: "layered" },
+      { type: "nesting.set", nesting: ["composition"] },
+    ]);
   });
 });
 
@@ -380,8 +389,55 @@ describe("visualWorkspaceReducer presentation", () => {
   it("adopts only the presentation flag a view actually declares", () => {
     const actions = presentationActionsFor({ showOwnership: true });
     expect(actions).toEqual([
+      { type: "nesting.set", nesting: ["composition"] },
       { type: "presentation.toggled", flag: "showOwnership", value: true },
     ]);
+  });
+});
+
+describe("visualWorkspaceReducer nesting", () => {
+  const workspaceState = createVisualWorkspaceState(1280);
+
+  it("starts at composition alone, the behaviour that shipped", () => {
+    expect(workspaceState.nesting).toEqual(["composition"]);
+  });
+
+  it("adopts the vocabulary a view declares", () => {
+    const actions = presentationActionsFor({
+      nesting: ["composition", "assignment"],
+    });
+    const next = actions.reduce(visualWorkspaceReducer, workspaceState);
+    expect(next.nesting).toEqual(["composition", "assignment"]);
+  });
+
+  it("restores the default when the next view declares none", () => {
+    // The point of ADR 0101: a view that never asked for assignment nesting
+    // must not inherit it from the view before, or its nested boxes mean
+    // something nothing on screen explains.
+    const nested = presentationActionsFor({
+      nesting: ["composition", "assignment"],
+    }).reduce(visualWorkspaceReducer, workspaceState);
+    expect(nested.nesting).toEqual(["composition", "assignment"]);
+
+    const plain = presentationActionsFor({}).reduce(
+      visualWorkspaceReducer,
+      nested,
+    );
+    expect(plain.nesting).toEqual(["composition"]);
+  });
+
+  it("honours a view that turns nesting off entirely", () => {
+    const actions = presentationActionsFor({ nesting: [] });
+    const next = actions.reduce(visualWorkspaceReducer, workspaceState);
+    expect(next.nesting).toEqual([]);
+  });
+
+  it("treats restating the same vocabulary as no change at all", () => {
+    const next = visualWorkspaceReducer(workspaceState, {
+      type: "nesting.set",
+      nesting: ["composition"],
+    });
+    expect(next).toBe(workspaceState);
   });
 });
 
@@ -414,7 +470,10 @@ describe("visualWorkspaceReducer notation", () => {
 
   it("adopts only the notation field a view actually declares", () => {
     const actions = presentationActionsFor({ notation: "archimate" });
-    expect(actions).toEqual([{ type: "notation.set", notation: "archimate" }]);
+    expect(actions).toEqual([
+      { type: "nesting.set", nesting: ["composition"] },
+      { type: "notation.set", notation: "archimate" },
+    ]);
   });
 });
 

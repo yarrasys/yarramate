@@ -8,6 +8,7 @@ import type {
   CanvasNode,
   CanvasEdge,
 } from '../graph-projection.js'
+import { DEFAULT_NESTING, type NestingKind } from '../projection.js'
 import type {
   VisualLayoutPositions,
   VisualLayoutSavePayload,
@@ -487,6 +488,27 @@ export function buildStylesheet(
 // rendered edge like every other relationship kind. Composition edges that
 // are consumed into nesting are never also drawn as a line.
 const COMPOSITION_RELATIONSHIP_KIND = 'yarramate/core@0.1#composition'
+const ASSIGNMENT_RELATIONSHIP_KIND = 'yarramate/core@0.1#assignment'
+
+// A view names which relationships nest, in precedence order (ADR 0101). The
+// short names a projection is authored in resolve to the kind identities the
+// graph carries here, in one place, so the schema's vocabulary and the
+// canvas's cannot drift.
+const NESTING_KIND_IDS: Readonly<Record<NestingKind, string>> = {
+  composition: COMPOSITION_RELATIONSHIP_KIND,
+  assignment: ASSIGNMENT_RELATIONSHIP_KIND,
+}
+
+/**
+ * Assignment nests internal behaviour, never a service. A service is the
+ * promise the layer above consumes, so burying it inside the thing that
+ * exposes it inverts what it is for. This declines to *draw* a nesting, not to
+ * accept the model: `applicationComponent -assignment-> applicationService` is
+ * permitted by the ArchiMate 3.2 table (ADR 0097) and stays drawn as a line.
+ * Composition is unaffected, because a composed service is a part.
+ */
+const nestsAsAssignment = (edge: CanvasEdge, kindOf: (id: string) => string) =>
+  !kindOf(edge.to).endsWith('Service')
 
 // The compiler's YM501 rule only rejects the same (from, to) pair declaring
 // both composition and aggregation - it does not reject two different
@@ -499,14 +521,28 @@ const COMPOSITION_RELATIONSHIP_KIND = 'yarramate/core@0.1#composition'
 // composition edge naming them stays drawn as a regular edge, so the
 // conflicting claims stay visible on the canvas instead of one silently
 // winning.
-function resolveCompositionParents(edges: readonly CanvasEdge[]): {
+export function resolveNestingParents(
+  edges: readonly CanvasEdge[],
+  nesting: readonly NestingKind[],
+  kindOf: (id: string) => string
+): {
   readonly parentOf: ReadonlyMap<string, string>
   readonly consumedEdgeIds: ReadonlySet<string>
 } {
-  const compositionEdges = edges.filter((edge) => edge.kind === COMPOSITION_RELATIONSHIP_KIND)
+  // Precedence is the order the view listed: a child claimed by a composition
+  // and by an assignment nests under the composition.
+  const rankOf = new Map(
+    nesting.map((kind, rank) => [NESTING_KIND_IDS[kind], rank])
+  )
+  const nestingEdges = edges.filter(
+    (edge) =>
+      rankOf.has(edge.kind) &&
+      (edge.kind !== ASSIGNMENT_RELATIONSHIP_KIND ||
+        nestsAsAssignment(edge, kindOf))
+  )
 
   const claimsByChild = new Map<string, CanvasEdge[]>()
-  for (const edge of compositionEdges) {
+  for (const edge of nestingEdges) {
     const claims = claimsByChild.get(edge.to)
     if (claims === undefined) {
       claimsByChild.set(edge.to, [edge])
@@ -517,11 +553,17 @@ function resolveCompositionParents(edges: readonly CanvasEdge[]): {
 
   const parentOf = new Map<string, string>()
   for (const [child, claims] of claimsByChild) {
-    if (claims.length === 1) {
-      parentOf.set(child, claims[0]!.from)
+    // Only claims at the best rank compete. Two of them naming different
+    // parents stays undecidable and falls through to unnest-and-warn, which is
+    // the behaviour composition alone already had.
+    const best = Math.min(...claims.map((claim) => rankOf.get(claim.kind)!))
+    const winners = claims.filter((claim) => rankOf.get(claim.kind) === best)
+    const parents = new Set(winners.map((claim) => claim.from))
+    if (parents.size === 1) {
+      parentOf.set(child, winners[0]!.from)
     } else {
       console.warn(
-        `Composition conflict: "${child}" is claimed as a part by ${claims.length} different wholes (${claims.map((claim) => claim.from).join(', ')}) - rendering it unnested; every claim stays drawn as a regular edge.`
+        `Nesting conflict: "${child}" is claimed by ${parents.size} different parents at the same precedence (${winners.map((claim) => `${claim.kindLabel} from ${claim.from}`).join(', ')}) - rendering it unnested; every claim stays drawn as a regular edge.`
       )
     }
   }
@@ -547,12 +589,12 @@ function resolveCompositionParents(edges: readonly CanvasEdge[]): {
     }
   }
   if (cycleMembers.size > 0) {
-    console.warn(`Composition cycle detected among: ${[...cycleMembers].join(', ')} - rendering them unnested.`)
+    console.warn(`Nesting cycle detected among: ${[...cycleMembers].join(', ')} - rendering them unnested.`)
     for (const id of cycleMembers) parentOf.delete(id)
   }
 
   const consumedEdgeIds = new Set<string>()
-  for (const edge of compositionEdges) {
+  for (const edge of nestingEdges) {
     if (parentOf.get(edge.to) === edge.from) consumedEdgeIds.add(edge.id)
   }
 
@@ -560,8 +602,18 @@ function resolveCompositionParents(edges: readonly CanvasEdge[]): {
 }
 
 // Convert CanvasGraph nodes and edges to cytoscape ElementDefinition format
-function graphToElements(graph: CanvasGraph): ElementDefinition[] {
-  const { parentOf, consumedEdgeIds } = resolveCompositionParents(graph.edges)
+function graphToElements(
+  graph: CanvasGraph,
+  nesting: readonly NestingKind[]
+): ElementDefinition[] {
+  // A node's own kind decides whether an assignment may nest it, so the lookup
+  // is built once here rather than searched per edge.
+  const kindById = new Map(graph.nodes.map((node) => [node.id, node.kind]))
+  const { parentOf, consumedEdgeIds } = resolveNestingParents(
+    graph.edges,
+    nesting,
+    (id) => kindById.get(id) ?? ''
+  )
 
   const nodeElements = graph.nodes.map((node): ElementDefinition => {
     const parent = parentOf.get(node.id)
@@ -820,6 +872,8 @@ interface GraphCanvasProps {
   readonly matchedIds: readonly string[] | null
   readonly quickFilterText: string
   readonly direction: 'top-down' | 'left-right'
+  /** What draws as nesting in this view, in precedence order (ADR 0101). */
+  readonly nesting: readonly NestingKind[]
   readonly showLifecycle: boolean
   readonly showEvidence: boolean
   readonly showOwnership: boolean
@@ -846,6 +900,7 @@ export function GraphCanvas({
   matchedIds,
   quickFilterText,
   direction,
+  nesting,
   activeViewId,
   savedPositions,
   onSaveLayout,
@@ -906,7 +961,7 @@ export function GraphCanvas({
 
     const cy = cytoscape({
       container: containerRef.current,
-      elements: graphToElements(graph),
+      elements: graphToElements(graph, nesting),
       // `showLifecycle`/`showEvidence`/`showOwnership` seed the stylesheet the
       // mount builds; the effect below re-applies it to the live instance on
       // every later toggle, without remounting or re-laying-out.
@@ -1016,7 +1071,7 @@ export function GraphCanvas({
     if (isInitialSyncRef.current) {
       isInitialSyncRef.current = false
     } else {
-      const elements = graphToElements(graph)
+      const elements = graphToElements(graph, nesting)
       cyRef.current.elements().remove()
       cyRef.current.add(elements)
     }

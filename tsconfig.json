@@ -23,6 +23,7 @@
     "test/filter-panel.test.ts",
     "test/save-view.test.ts",
     "test/graph-canvas-layout.test.ts",
+    "test/graph-canvas-nesting.test.ts",
     "test/changeset-tray.test.ts",
     "test/subject-form.test.ts",
     "test/badges.test.ts",

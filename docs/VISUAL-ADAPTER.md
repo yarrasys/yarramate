@@ -102,6 +102,45 @@ recorded what those two backends mapped onto and why the obvious ELK choices
 were rejected; it is superseded here. A future layout mechanism is expected,
 and `presentation.layout` stays an enum so it has somewhere to land.
 
+### Nesting
+
+`presentation.nesting` names the relationship kinds that draw as containment in
+this view, in precedence order
+([ADR 0101](adr/0101-a-view-says-what-nesting-means-in-it.md)):
+
+```yaml
+presentation:
+  nesting: [composition, assignment]
+```
+
+It defaults to `[composition]`, which is the behaviour that shipped before a
+view could say. `[]` draws every relationship as a line.
+
+A nested box carries no label saying how it got there, so a view that nests two
+kinds has accepted that an inner box means either "is a part of" or "is
+behaviour performed by". Declaring the vocabulary is what makes that a choice
+rather than an accident: a view listing one kind has no ambiguity to resolve.
+
+A child claimed by two kinds nests under the earlier-listed one. Two claims at
+the same precedence naming different parents stay undecidable: the child draws
+at top level and every claim stays drawn as a line, so the conflict stays
+visible rather than being silently resolved. The same is true of a nesting
+cycle, which a mixed vocabulary can form where composition alone could not.
+
+Assignment never nests a service, whatever the view says. A service is the
+promise the layer above consumes, so burying it inside the thing that exposes
+it inverts what it is for. This declines to *draw* a containment, not to accept
+the model: `applicationComponent -assignment-> applicationService` is permitted
+by the ArchiMate 3.2 table and stays drawn as a line. Composition is
+unaffected, because a composed service is a part.
+
+Unlike the toggles below, `nesting` is restored to the default by a view that
+does not declare it, rather than carried across. The toggles are things a
+reviewer changes on screen, so their choice should survive a view switch;
+nesting has no control and is a property of the view, and inheriting one view's
+containment meaning into a view that never asked for it is the ambiguity this
+is meant to prevent.
+
 ### Presentation toggles
 
 Four presentation state fields ride alongside layout in `presentation`, saved via `view.save` and persisted in the projection document:
