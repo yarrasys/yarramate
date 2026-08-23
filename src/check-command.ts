@@ -14,7 +14,7 @@ import {
   usage,
   type CliResult,
 } from './cli-support.js'
-import { compileWorkspace } from './compiler.js'
+import { compileWorkspace, withDiagnosticSubjects } from './compiler.js'
 import {
   checkCoreContract,
   loadCoreContract,
@@ -280,9 +280,15 @@ export function runCheckCommand(
       ...evidenceDiagnostics,
     ])
     const ok = result.ok && optionalDiagnostics.length === 0
-    const diagnostics = result.ok
-      ? optionalDiagnostics
-      : result.diagnostics
+    // Published results name the subject a diagnostic is about wherever its
+    // pointer identifies one, so a consumer that draws the model can put the
+    // refusal on the element rather than on a byte offset. Derived here, at
+    // the boundary that publishes the document, so the compiler's own
+    // diagnostics stay a pure function of the model.
+    const diagnostics = withDiagnosticSubjects(
+      result.ok ? optionalDiagnostics : result.diagnostics,
+      sources,
+    )
 
     // Strict only tightens a passing check: base diagnostics already fail
     // the gate, so contradictions are folded in only once everything else

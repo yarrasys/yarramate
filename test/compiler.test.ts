@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import {
   compileWorkspace,
   compileWorkspaceWithProfileContext,
+  withDiagnosticSubjects,
 } from '../src/compiler.js'
 
 const fixture = (path: string): string =>
@@ -1936,5 +1937,115 @@ relationships: []
         'yarramate/policy@0.1#authentication-constraint',
       ),
     ).toBe(false)
+  })
+})
+
+// A diagnostic anchored at a subject now says which subject, derived once from
+// the pointer it already carried rather than by asking every rule to remember.
+// Absence is the signal that the diagnostic belongs somewhere other than the
+// canvas, so it must stay absent for the document- and workspace-level ones.
+describe('withDiagnosticSubjects', () => {
+  const workspaceWith = (documentBody: string) => [
+    {
+      path: 'architecture/main.yaml',
+      source: `format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+${documentBody}`,
+    },
+  ]
+
+  const diagnosticsOf = (sources: readonly { path: string; source: string }[]) => {
+    const result = compileWorkspace(sources)
+    if (result.ok) throw new Error('expected the workspace to be refused')
+    return withDiagnosticSubjects(result.diagnostics, sources)
+  }
+
+  it('names the relationship a forbidden endpoint pairing was refused on', () => {
+    const diagnostics = diagnosticsOf(
+      workspaceWith(`concepts:
+  - id: comp
+    kind: applicationComponent
+    name: A component
+    status: current
+  - id: aim
+    kind: goal
+    name: A goal
+    status: current
+relationships:
+  - id: bad-edge
+    kind: assignment
+    from: comp
+    to: aim
+`),
+    )
+    const refusal = diagnostics.find((diagnostic) => diagnostic.code === 'YM404')
+    expect(refusal?.pointer).toBe('/relationships/0/kind')
+    expect(refusal?.subjects).toEqual(['main#bad-edge'])
+  })
+
+  it('names the concept an unknown kind was refused on', () => {
+    const diagnostics = diagnosticsOf(
+      workspaceWith(`concepts:
+  - id: fine
+    kind: applicationComponent
+    name: Fine
+    status: current
+  - id: mystery
+    kind: notAKindAtAll
+    name: Unknown kind
+    status: current
+relationships: []
+`),
+    )
+    const refusal = diagnostics.find((diagnostic) => diagnostic.code === 'YM401')
+    expect(refusal?.pointer).toBe('/concepts/1/kind')
+    expect(refusal?.subjects).toEqual(['main#mystery'])
+  })
+
+  it('leaves a whole-document refusal without subjects', () => {
+    const diagnostics = diagnosticsOf([
+      { path: 'architecture/main.yaml', source: 'format: yarramate/v1\nid: main\n' },
+    ])
+    expect(diagnostics.length).toBeGreaterThan(0)
+    for (const diagnostic of diagnostics) {
+      expect(diagnostic.subjects).toBeUndefined()
+    }
+  })
+
+  it('resolves the index against the document the diagnostic points into', () => {
+    // Two documents, each with its own `/concepts/0`: the subject must come
+    // from the one the diagnostic names, not from whichever parsed first.
+    const diagnostics = diagnosticsOf([
+      {
+        path: 'architecture/alpha.yaml',
+        source: `format: yarramate/v1
+id: alpha
+profile: yarramate/core@0.1
+concepts:
+  - id: alpha-one
+    kind: applicationComponent
+    name: Alpha one
+    status: current
+relationships: []
+`,
+      },
+      {
+        path: 'architecture/beta.yaml',
+        source: `format: yarramate/v1
+id: beta
+profile: yarramate/core@0.1
+concepts:
+  - id: beta-one
+    kind: notAKindAtAll
+    name: Beta one
+    status: current
+relationships: []
+`,
+      },
+    ])
+    const refusal = diagnostics.find((diagnostic) => diagnostic.code === 'YM401')
+    expect(refusal?.path).toBe('architecture/beta.yaml')
+    expect(refusal?.subjects).toEqual(['beta#beta-one'])
   })
 })
