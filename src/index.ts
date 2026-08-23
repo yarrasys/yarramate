@@ -137,3 +137,9 @@ export {
   proposeRelationshipId,
 } from './relationship-drafting.js'
 export { draftConcept, proposeConceptId } from './concept-drafting.js'
+export {
+  deletionBlockers,
+  describeDeletion,
+  draftDeletion,
+  type DeletionBlocker,
+} from './deletion-drafting.js'

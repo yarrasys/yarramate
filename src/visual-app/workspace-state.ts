@@ -125,6 +125,12 @@ export interface VisualWorkspaceState {
    * not workspace state anyone else needs.
    */
   readonly draftingSubject: boolean;
+  /**
+   * The subject or relationship a deletion has been asked for, held until the
+   * reviewer confirms. Deleting is the one motion that removes authored text,
+   * so it is the one that asks first.
+   */
+  readonly pendingDeletion: string | null;
   readonly descriptionExpanded: boolean;
   readonly detailsOpen: boolean;
   readonly direction: "top-down" | "left-right";
@@ -163,6 +169,8 @@ export type VisualWorkspaceAction =
   | { readonly type: "connection.cancelled" }
   | { readonly type: "subject.draft.opened" }
   | { readonly type: "subject.draft.closed" }
+  | { readonly type: "deletion.asked"; readonly id: string }
+  | { readonly type: "deletion.dismissed" }
   | {
       readonly type: "subject.selected";
       readonly subject: SelectedDiagramSubject;
@@ -333,6 +341,7 @@ export const createVisualWorkspaceState = (
   detailsOpen: false,
   connection: null,
   draftingSubject: false,
+  pendingDeletion: null,
   direction: "top-down",
   nesting: DEFAULT_NESTING,
   layout: "layered",
@@ -423,6 +432,19 @@ export const visualWorkspaceReducer = (
       return { ...state, draftingSubject: true, connection: null };
     case "subject.draft.closed":
       return state.draftingSubject ? { ...state, draftingSubject: false } : state;
+    case "deletion.asked":
+      // Asking puts the other tools away: a confirmation is the only thing
+      // that should be able to take the next click.
+      return {
+        ...state,
+        pendingDeletion: action.id,
+        connection: null,
+        draftingSubject: false,
+      };
+    case "deletion.dismissed":
+      return state.pendingDeletion === null
+        ? state
+        : { ...state, pendingDeletion: null };
     case "subject.selected":
       return {
         ...state,

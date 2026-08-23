@@ -593,6 +593,12 @@ body {
   color: var(--quiet);
 }
 
+.subject-delete {
+  margin-top: calc(var(--step) * 0.5);
+  margin-right: calc(var(--step) * 0.5);
+  min-height: 28px;
+}
+
 .subject-draft-open {
   position: absolute;
   z-index: 2;

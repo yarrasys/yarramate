@@ -102,6 +102,25 @@ recorded what those two backends mapped onto and why the obvious ELK choices
 were rejected; it is superseded here. A future layout mechanism is expected,
 and `presentation.layout` stays an enum so it has somewhere to land.
 
+### Deleting
+
+**Delete** on a selected subject or relationship asks first, because this is the
+one motion that removes authored text.
+
+Deleting a subject takes every relationship naming it in the same batch.
+`apply` will not remove a subject something still references, and it evaluates
+that against the post-batch state (ADR 0069), so the two go together or neither
+does. Composing that batch is the point: a reviewer would otherwise have to find
+every relationship touching the subject by hand, and the canvas already knows
+them.
+
+The confirmation states what else still names the subject: an `owner`, a
+`distinctFrom`, a `supersedes`, a constraint or a reference. It **warns rather
+than refuses**. That list is derived from what a canvas holds, and a canvas does
+not hold everything that can reference a subject, so treating it as
+authoritative would block deletions that would actually land. `apply` is the
+gate.
+
 ### Adding a subject
 
 **Add subject** opens a form over the canvas: a name, a kind, and the document
