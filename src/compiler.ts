@@ -1727,7 +1727,29 @@ function compileWorkspaceResolved(
           diagnostics.push({
             severity: 'error',
             code: 'YM302',
-            message: `Unresolved concept reference "${reference}"`,
+            message: `Unresolved concept reference "${reference}"${(() => {
+              // A reference written the way ids read before 1.0 flattened them
+              // (ADR 0099) is not a typo, and the edit distance from
+              // `<document>#<local>` to `<local>` is usually past the
+              // suggestion threshold, so it would otherwise get no hint at all
+              // on the one change most likely to produce it.
+              const hash = reference.lastIndexOf('#')
+              if (hash !== -1) {
+                const local = reference.slice(hash + 1)
+                if (
+                  conceptByQualifiedId.has(qualifyReference(value.id, local))
+                ) {
+                  return `; a subject id carries no document prefix since 1.0, and "${local}" exists`
+                }
+              }
+              const suggestion = closestCandidate(
+                reference,
+                [...conceptByQualifiedId.keys()],
+              )
+              return suggestion === undefined
+                ? ''
+                : `; did you mean "${suggestion}"?`
+            })()}`,
             path: input.path,
             pointer,
             line: source.line,
