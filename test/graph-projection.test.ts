@@ -167,6 +167,7 @@ relationships: []
         document: 'main.yaml',
         kind: 'yarramate/core@0.1#applicationComponent',
         kindLabel: 'applicationComponent',
+        coreKindLabel: 'applicationComponent',
         layer: 'application',
         aspect: 'active-structure',
         name: 'Bare component',
@@ -388,5 +389,51 @@ relationships:
     expect(derived?.coreKindLabel).toBe('realization')
     expect(core?.kindLabel).toBe('realization')
     expect(core?.coreKindLabel).toBe('realization')
+  })
+
+  it('projects a concept coreKindLabel the same way, so the relationship table can be keyed on it', () => {
+    // The ArchiMate table is keyed on core kinds. A consumer deciding what may
+    // connect two nodes - a connection tool offering only permitted kinds -
+    // needs the core ancestor, not the profile kind it was authored as.
+    const result = compileWorkspaceWithProfileContext([
+      {
+        path: 'development-profile.yaml',
+        source: `format: yarramate/profile/v1
+id: yarramate/development
+version: "1.0"
+extends: yarramate/core@0.1
+conceptKinds:
+  - id: microservice
+    name: Microservice
+    parent: yarramate/core@0.1#applicationComponent
+relationshipKinds: []
+`,
+      },
+      {
+        path: 'main.yaml',
+        source: `format: yarramate/v1
+id: main
+profile: yarramate/development@1.0
+concepts:
+  - id: orders
+    kind: microservice
+    name: Orders
+  - id: plain
+    kind: applicationComponent
+    name: Plain
+relationships: []
+`,
+      },
+    ])
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+
+    const projected = projectGraphForCanvas(result.graph, result.profileContext)
+    const derived = projected.nodes.find((node) => node.localId === 'orders')
+    const core = projected.nodes.find((node) => node.localId === 'plain')
+    expect(derived?.kindLabel).toBe('microservice')
+    expect(derived?.coreKindLabel).toBe('applicationComponent')
+    expect(core?.kindLabel).toBe('applicationComponent')
+    expect(core?.coreKindLabel).toBe('applicationComponent')
   })
 })

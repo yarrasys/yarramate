@@ -17,6 +17,7 @@ const canvasNode = (overrides: Partial<CanvasNode> = {}): CanvasNode => ({
   localId: "api",
   kind: "yarramate/core@0.1#applicationComponent",
   kindLabel: "applicationComponent",
+  coreKindLabel: "applicationComponent",
   document: "main.yaml",
   layer: "application",
   aspect: null,

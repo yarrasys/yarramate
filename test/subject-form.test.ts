@@ -19,6 +19,7 @@ const node: CanvasNode = {
   document: 'main.yaml',
   kind: 'yarramate/concept/application',
   kindLabel: 'Application',
+  coreKindLabel: 'Application',
   layer: null,
   aspect: null,
   name: 'Checkout Service',

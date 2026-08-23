@@ -16,6 +16,14 @@ export interface CanvasNode {
   readonly document: string // manifest-relative path, from the subject's kind claim source
   readonly kind: string // resolved kind identity, e.g. "yarramate/core@0.1#applicationComponent"
   readonly kindLabel: string // local id stripped of profile prefix, e.g. "applicationComponent"
+  /**
+   * The core-vocabulary kind this one resolves to, from
+   * `profileContext.conceptKindLineages[0]`, the way an edge already carries
+   * its own. The ArchiMate relationship table is keyed on core kinds, so a
+   * consumer deciding what may connect two nodes needs this rather than the
+   * profile kind it was authored as.
+   */
+  readonly coreKindLabel: string
   readonly layer: Layer | null // from profileContext.conceptKindLayers, null if unresolved
   readonly aspect: Aspect | null // from profileContext.conceptKindAspects, null if unresolved
   readonly name: string
@@ -219,6 +227,9 @@ const projectConcept = (
     document: kindClaim.source.path,
     kind,
     kindLabel: kindLabelOf(kind),
+    coreKindLabel: kindLabelOf(
+      profileContext.conceptKindLineages.get(kind)?.[0] ?? kind,
+    ),
     layer: (profileContext.conceptKindLayers.get(kind) as Layer | undefined) ?? null,
     aspect: (profileContext.conceptKindAspects.get(kind) as Aspect | undefined) ?? null,
     name: claimValue(nameClaim),

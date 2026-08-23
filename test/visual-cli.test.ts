@@ -75,6 +75,7 @@ const modelWith = (): VisualModel => ({
         localId: 'system',
         kind: 'yarramate/core@0.1#applicationComponent',
         kindLabel: 'applicationComponent',
+        coreKindLabel: 'applicationComponent',
         document: 'main.yaml',
         layer: null,
         aspect: null,

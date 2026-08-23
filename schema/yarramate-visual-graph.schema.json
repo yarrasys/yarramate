@@ -30,6 +30,7 @@
         "document",
         "kind",
         "kindLabel",
+        "coreKindLabel",
         "layer",
         "aspect",
         "name",
@@ -60,6 +61,9 @@
           "type": "string"
         },
         "kindLabel": {
+          "type": "string"
+        },
+        "coreKindLabel": {
           "type": "string"
         },
         "layer": {
