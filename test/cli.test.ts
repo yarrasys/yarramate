@@ -156,7 +156,10 @@ describe('YarraMate CLI', () => {
         '      "path": "test/fixtures/invalid/unknown-concept-kind.yaml",\n' +
         '      "pointer": "/concepts/0/kind",\n' +
         '      "line": 6,\n' +
-        '      "column": 11\n' +
+        '      "column": 11,\n' +
+        '      "subjects": [\n' +
+        '        "unknown-concept#mystery"\n' +
+        '      ]\n' +
         '    }\n' +
         '  ]\n' +
         '}\n',
