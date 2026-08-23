@@ -1224,3 +1224,85 @@ operations:
     expect(now).toContain('    content: >-\n      Flow content that is itself a folded\n')
   })
 })
+
+// #216: an operation's `document:` was resolved only against the working
+// directory, so the manifest-relative form every author writes was refused
+// whenever the manifest did not sit in the working directory - which is the
+// standard `.yarramate/` layout - and the same operations document applied
+// from one directory and failed from another.
+describe('apply document addressing (#216)', () => {
+  let root: string
+
+  const nested = `format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts:
+  - id: user
+    kind: businessActor
+    name: User
+relationships: []
+`
+
+  const nestedManifest = `format: yarramate/workspace/v1
+id: nested-fixture
+documents:
+  - architecture/main.yaml
+profiles: []
+projections: []
+adapterMappings: []
+evidence: []
+`
+
+  const operationsNaming = (path: string): string =>
+    `format: yarramate/operations/v1
+operations:
+  - op: update-concept
+    document: ${path}
+    concept:
+      id: user
+      description: Addressed from the repository root.
+`
+
+  beforeEach(() => {
+    // The manifest lives under `.yarramate/`, as `init` produces and every
+    // showcase uses, and commands run from the repository root above it.
+    root = mkdtempSync(join(tmpdir(), 'yarramate-nested-'))
+    mkdirSync(join(root, '.yarramate/architecture'), { recursive: true })
+    writeFileSync(join(root, '.yarramate/architecture/main.yaml'), nested, 'utf8')
+    writeFileSync(join(root, '.yarramate/workspace.yaml'), nestedManifest, 'utf8')
+  })
+
+  afterEach(() => {
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  const applyNaming = (path: string) => {
+    writeFileSync(join(root, 'operations.yaml'), operationsNaming(path), 'utf8')
+    return runCli(
+      ['apply', 'operations.yaml', '.yarramate/workspace.yaml'],
+      root,
+    )
+  }
+
+  const documentNow = (): string =>
+    readFileSync(join(root, '.yarramate/architecture/main.yaml'), 'utf8')
+
+  it('accepts the manifest-relative form from the repository root', () => {
+    const result = applyNaming('architecture/main.yaml')
+    expect(result.exitCode).toBe(0)
+    expect(documentNow()).toContain('Addressed from the repository root.')
+  })
+
+  it('still accepts the working-directory-relative form', () => {
+    const result = applyNaming('.yarramate/architecture/main.yaml')
+    expect(result.exitCode).toBe(0)
+    expect(documentNow()).toContain('Addressed from the repository root.')
+  })
+
+  it('names the documents it does accept when the address matches none', () => {
+    const result = applyNaming('architecture/nowhere.yaml')
+    expect(result.exitCode).toBe(1)
+    expect(result.stdout).toContain('is not a document of workspace')
+    expect(result.stdout).toContain('.yarramate/architecture/main.yaml')
+  })
+})
