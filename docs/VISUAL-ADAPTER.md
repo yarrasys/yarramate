@@ -102,6 +102,28 @@ recorded what those two backends mapped onto and why the obvious ELK choices
 were rejected; it is superseded here. A future layout mechanism is expected,
 and `presentation.layout` stays an enum so it has somewhere to land.
 
+### Adding a subject
+
+**Add subject** opens a form over the canvas: a name, a kind, and the document
+to write it into. The kinds are the workspace's own vocabulary, sent with every
+model frame, so nothing in the browser decides what a workspace may contain.
+The document defaults to the selected subject's, or the first the workspace
+declares, and any declared document may be chosen.
+
+The id is *derived* from the name rather than asked for, and shown before the
+subject lands. An id is a stable address a human reads in a diff, and a
+reviewer thinking about a name writes worse ids than a transliteration of the
+name does; showing it first keeps a derived address from being one nobody
+agreed to. `Order Intake (v2)` becomes `order-intake-v2`, and a name already
+taken steps to a numeric suffix.
+
+Two kinds of name are refused rather than mangled: one an id cannot be made of
+at all, and one that would start with a digit. `2FA Gateway` would otherwise
+become `fa-gateway`, an id that no longer names the thing.
+
+Adding and connecting are alternatives rather than layers: starting one puts
+the other away, so a click on the diagram always belongs to exactly one of them.
+
 ### Connecting two subjects
 
 Selecting a subject offers **Connect**. The next subject named on the diagram

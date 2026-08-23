@@ -119,6 +119,12 @@ export interface VisualWorkspaceState {
   readonly selectedSubject: SelectedDiagramSubject | null;
   /** The relationship being drawn, or null when the tool is not in use. */
   readonly connection: ConnectionDraft | null;
+  /**
+   * Whether the add-a-subject form is open. Only the openness lives here: the
+   * fields belong to the form while it is on screen, and a half-typed name is
+   * not workspace state anyone else needs.
+   */
+  readonly draftingSubject: boolean;
   readonly descriptionExpanded: boolean;
   readonly detailsOpen: boolean;
   readonly direction: "top-down" | "left-right";
@@ -155,6 +161,8 @@ export type VisualWorkspaceAction =
       readonly to: string;
     }
   | { readonly type: "connection.cancelled" }
+  | { readonly type: "subject.draft.opened" }
+  | { readonly type: "subject.draft.closed" }
   | {
       readonly type: "subject.selected";
       readonly subject: SelectedDiagramSubject;
@@ -324,6 +332,7 @@ export const createVisualWorkspaceState = (
   descriptionExpanded: false,
   detailsOpen: false,
   connection: null,
+  draftingSubject: false,
   direction: "top-down",
   nesting: DEFAULT_NESTING,
   layout: "layered",
@@ -392,7 +401,11 @@ export const visualWorkspaceReducer = (
         },
       };
     case "connection.started":
-      return { ...state, connection: { from: action.from, to: null } };
+      return {
+        ...state,
+        connection: { from: action.from, to: null },
+        draftingSubject: false,
+      };
     case "connection.targeted":
       if (state.connection === null) return state;
       // Naming the source again means "not that after all". A subject related
@@ -404,6 +417,12 @@ export const visualWorkspaceReducer = (
         : { ...state, connection: { ...state.connection, to: action.to } };
     case "connection.cancelled":
       return state.connection === null ? state : { ...state, connection: null };
+    case "subject.draft.opened":
+      // The two tools are alternatives, not layers: opening one puts the other
+      // away rather than leaving two half-finished drafts on screen.
+      return { ...state, draftingSubject: true, connection: null };
+    case "subject.draft.closed":
+      return state.draftingSubject ? { ...state, draftingSubject: false } : state;
     case "subject.selected":
       return {
         ...state,

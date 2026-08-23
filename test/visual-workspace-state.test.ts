@@ -468,6 +468,45 @@ describe("visualWorkspaceReducer connection", () => {
   });
 });
 
+describe("visualWorkspaceReducer subject draft", () => {
+  const workspaceState = createVisualWorkspaceState(1280);
+
+  it("is closed until it is opened", () => {
+    expect(workspaceState.draftingSubject).toBe(false);
+    expect(
+      visualWorkspaceReducer(workspaceState, { type: "subject.draft.opened" })
+        .draftingSubject,
+    ).toBe(true);
+  });
+
+  it("closing a form that is not open changes nothing", () => {
+    expect(
+      visualWorkspaceReducer(workspaceState, { type: "subject.draft.closed" }),
+    ).toBe(workspaceState);
+  });
+
+  it("the two tools are alternatives, not layers", () => {
+    // Opening one puts the other away, rather than leaving two half-finished
+    // drafts on screen with no way to tell which a click belongs to.
+    const connecting = visualWorkspaceReducer(workspaceState, {
+      type: "connection.started",
+      from: "orders",
+    });
+    const drafting = visualWorkspaceReducer(connecting, {
+      type: "subject.draft.opened",
+    });
+    expect(drafting.connection).toBeNull();
+    expect(drafting.draftingSubject).toBe(true);
+
+    const backToConnecting = visualWorkspaceReducer(drafting, {
+      type: "connection.started",
+      from: "orders",
+    });
+    expect(backToConnecting.draftingSubject).toBe(false);
+    expect(backToConnecting.connection).toEqual({ from: "orders", to: null });
+  });
+});
+
 describe("visualWorkspaceReducer nesting", () => {
   const workspaceState = createVisualWorkspaceState(1280);
 

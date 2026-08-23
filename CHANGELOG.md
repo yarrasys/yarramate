@@ -211,6 +211,22 @@
   showing an empty list. Selection rather than dragging, so every step is a
   state transition a test can make and a keyboard can reach (#237).
 
+- Adding a subject. **Add subject** opens a form over the canvas taking a name,
+  a kind and a document, and stages an `add-concept`. The kinds are the
+  workspace's own vocabulary, already sent with every model frame, so nothing
+  in the browser decides what a workspace may contain; the document defaults to
+  the selected subject's and any declared document may be chosen. Until now the
+  canvas could connect two subjects but not bring one into existence.
+  The id is derived from the name rather than asked for, and shown before the
+  subject lands: an id is a stable address a human reads in a diff, a reviewer
+  thinking about a name writes worse ids than a transliteration does, and a
+  derived address the author never saw is one nobody agreed to. `Order Intake
+  (v2)` becomes `order-intake-v2`. Two kinds of name are refused rather than
+  mangled: one no id can be made of, and one that would start with a digit,
+  since `2FA Gateway` would otherwise become `fa-gateway` and stop naming the
+  thing. Adding and connecting are alternatives rather than layers, so a click
+  on the diagram always belongs to exactly one of them (#238).
+
 - `apply` accepts an operation's `document:` as the manifest names it. The
   address was resolved only against the working directory, so the
   manifest-relative form an author naturally writes was refused whenever the

@@ -43,6 +43,7 @@ import {
   type SelectedDiagramSubject,
 } from "./workspace-state.js";
 import { ConnectionPanel } from "./connection-panel.js";
+import { SubjectDraftPanel } from "./subject-draft-panel.js";
 
 /**
  * A drawing board, not a document: the diagram holds the workspace, one compact
@@ -341,6 +342,9 @@ const DiagramWorkspace = ({
   onConnectTarget,
   onConnectCancel,
   onConnectStage,
+  draftingSubject,
+  onDraftSubject,
+  onDraftSubjectClose,
   onSelect,
   onClearFilter,
   onSaveLayout,
@@ -359,6 +363,9 @@ const DiagramWorkspace = ({
   readonly onConnectTarget: (id: string) => void;
   readonly onConnectCancel: () => void;
   readonly onConnectStage: (operation: YarramateOperation) => void;
+  readonly draftingSubject: boolean;
+  readonly onDraftSubject: () => void;
+  readonly onDraftSubjectClose: () => void;
   readonly onSelect: (subject: SelectedDiagramSubject) => void;
   readonly onClearFilter: () => void;
   readonly onSaveLayout: (payload: VisualLayoutSavePayload) => void;
@@ -396,6 +403,35 @@ const DiagramWorkspace = ({
         </div>
       ) : null}
       <div className="canvas">
+        {state.model === null ? null : (
+          <button
+            type="button"
+            className="subject-draft-open"
+            onClick={onDraftSubject}
+          >
+            Add subject
+          </button>
+        )}
+        {!draftingSubject || state.model === null ? null : (
+          <SubjectDraftPanel
+            graph={state.model.graph}
+            kinds={state.model.vocabulary.conceptKinds}
+            documents={state.model.documents}
+            defaultDocument={
+              // Near what the reviewer is looking at: the selected subject's
+              // document, or the first the workspace declares.
+              (selectedId === null
+                ? undefined
+                : state.model.graph.nodes.find(
+                    (node) => node.id === selectedId,
+                  )?.document) ??
+              state.model.documents[0] ??
+              ""
+            }
+            onStage={onConnectStage}
+            onCancel={onDraftSubjectClose}
+          />
+        )}
         {connection === null || state.model === null ? null : (
           <ConnectionPanel
             draft={connection}
@@ -1018,6 +1054,13 @@ export const App = () => {
             dispatchWorkspace({ type: "connection.cancelled" })
           }
           onConnectStage={stageChange}
+          draftingSubject={workspace.draftingSubject}
+          onDraftSubject={() =>
+            dispatchWorkspace({ type: "subject.draft.opened" })
+          }
+          onDraftSubjectClose={() =>
+            dispatchWorkspace({ type: "subject.draft.closed" })
+          }
           showLifecycle={workspace.showLifecycle}
           showEvidence={workspace.showEvidence}
           showOwnership={workspace.showOwnership}
