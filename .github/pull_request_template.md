@@ -18,5 +18,6 @@ stable CLI behaviour, or adapter boundaries. Write `None` when not applicable.
 ## Checklist
 
 - [ ] Tests or documentation cover the change where appropriate.
+- [ ] `CHANGELOG.md` records the change under the unreleased version when it is user-visible.
 - [ ] Generated output and build artifacts are not committed.
 - [ ] Semantic or stable-interface changes have prior discussion and an ADR where required.
