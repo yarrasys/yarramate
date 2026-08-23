@@ -2,6 +2,14 @@
 
 Status: accepted
 
+> Extended in 1.0 by
+> [ADR 0100](0100-sources-come-from-a-store-and-a-batch-lands-by-compare-and-swap.md):
+> the batch is still staged in memory, compiled whole and rejected whole, but
+> it no longer ends in a loop of `writeFileSync`. `applyOperations` returns the
+> documents it changed and a store writes them, checking every expectation
+> before it moves a byte. What this ADR called atomic was true up to that last
+> loop, which could leave the first document rewritten when the third failed.
+
 The validated-write surface was one operation per invocation: safe — it
 structurally cannot emit aspect violations — but expensive in an agent
 loop, where eight `add`/`connect` calls meant eight turns of re-fed

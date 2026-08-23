@@ -2,12 +2,35 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync }
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { applyOperations } from '../src/apply-command.js'
+import {
+  applyOperations,
+  landOperations,
+  posixDirectoryOf,
+} from '../src/apply-command.js'
+import { createFileSystemStore } from '../src/source-store.js'
+import { loadWorkspaceManifest } from '../src/workspace.js'
+import type { WorkspaceSource } from '../src/compiler.js'
+import type { SourceStore } from '../src/source-store.js'
 
-// Coverage for the programmatic core: every test here calls `applyOperations`
-// directly with in-memory sources, the way the visual session server calls it.
-// The CLI-shaped behaviour — argv parsing, `--json` formatting, the manifest
-// precheck — stays covered by `apply-command.test.ts`, unchanged.
+// Coverage for the programmatic core. `applyOperations` itself is pure and
+// reads nothing (ADR 0100), so these drive it through `landOperations`, which
+// is the composition both real callers use: read the workspace through a
+// store, apply, and write back only what still holds what was read.
+// The CLI-shaped behaviour - argv parsing, `--json` formatting, the manifest
+// precheck - stays covered by `apply-command.test.ts`, unchanged.
+const landBatch = (
+  operations: WorkspaceSource,
+  workspace: WorkspaceSource,
+  cwd: string,
+) => {
+  const loaded = loadWorkspaceManifest(workspace, cwd)
+  if (!loaded.ok) return { ok: false as const, diagnostics: loaded.diagnostics }
+  return landOperations(createFileSystemStore(cwd), {
+    workspace: loaded.workspace,
+    operations,
+    manifestDirectory: posixDirectoryOf(workspace.path),
+  })
+}
 
 const document = `format: yarramate/v1
 id: main
@@ -40,6 +63,111 @@ operations:
       status: planned
 `
 
+describe('applyOperations is pure, and a batch lands by compare-and-swap', () => {
+  let cwd: string
+
+  beforeEach(() => {
+    cwd = mkdtempSync(join(tmpdir(), 'yarramate-apply-cas-'))
+    mkdirSync(join(cwd, 'architecture'))
+    writeFileSync(join(cwd, 'architecture/main.yaml'), document, 'utf8')
+  })
+
+  afterEach(() => {
+    rmSync(cwd, { recursive: true, force: true })
+  })
+
+  const resolved = () => {
+    const loaded = loadWorkspaceManifest(
+      { path: 'workspace.yaml', source: manifest },
+      cwd,
+    )
+    if (!loaded.ok) throw new Error(JSON.stringify(loaded.diagnostics))
+    return loaded.workspace
+  }
+
+  it('returns the documents it changed and writes none of them', () => {
+    const workspace = resolved()
+    const before = readFileSync(join(cwd, 'architecture/main.yaml'), 'utf8')
+
+    const outcome = applyOperations({
+      workspace,
+      sources: workspace.documents.map((path) => ({
+        path,
+        source: readFileSync(join(cwd, path), 'utf8'),
+      })),
+      operations: { path: 'operations.yaml', source: batch },
+      manifestDirectory: '',
+    })
+
+    if (!outcome.ok) throw new Error(JSON.stringify(outcome.diagnostics))
+    expect(outcome.sources.map((source) => source.path)).toEqual([
+      'architecture/main.yaml',
+    ])
+    expect(outcome.sources[0]!.source).not.toBe(before)
+    // The whole point: Core produced new bytes and touched no disk.
+    expect(readFileSync(join(cwd, 'architecture/main.yaml'), 'utf8')).toBe(
+      before,
+    )
+  })
+
+  it('refuses the batch as YM704 when a document moved between read and write', () => {
+    // A store that lets another writer land the instant Core has been shown
+    // the sources. The revision handed out is the one read before the race,
+    // which is exactly the situation a real concurrent writer creates - and
+    // the window that used to hold a whole workspace compile.
+    const inner = createFileSystemStore(cwd)
+    let raced = false
+    const racing: SourceStore = {
+      list: () => inner.list(),
+      read: (path) => {
+        const held = inner.read(path)
+        if (!raced && held !== undefined) {
+          raced = true
+          writeFileSync(
+            join(cwd, 'architecture/main.yaml'),
+            `${document}# landed elsewhere\n`,
+            'utf8',
+          )
+        }
+        return held
+      },
+      writeAll: (writes) => inner.writeAll(writes),
+    }
+
+    const outcome = landOperations(racing, {
+      workspace: resolved(),
+      operations: { path: 'operations.yaml', source: batch },
+      manifestDirectory: '',
+    })
+
+    expect(outcome.ok).toBe(false)
+    if (outcome.ok) return
+    expect(outcome.diagnostics.map((diagnostic) => diagnostic.code)).toEqual([
+      'YM704',
+    ])
+    expect(outcome.diagnostics[0]!.message).toContain(
+      'architecture/main.yaml',
+    )
+    // Refused means refused: the other writer's bytes are still there.
+    expect(readFileSync(join(cwd, 'architecture/main.yaml'), 'utf8')).toContain(
+      '# landed elsewhere',
+    )
+  })
+
+  it('lands when nothing moved underneath it', () => {
+    const outcome = landOperations(createFileSystemStore(cwd), {
+      workspace: resolved(),
+      operations: { path: 'operations.yaml', source: batch },
+      manifestDirectory: '',
+    })
+
+    expect(outcome.ok).toBe(true)
+    expect(readFileSync(join(cwd, 'architecture/main.yaml'), 'utf8')).not.toBe(
+      document,
+    )
+  })
+})
+
 describe('applyOperations', () => {
   let cwd: string
 
@@ -54,7 +182,7 @@ describe('applyOperations', () => {
   })
 
   it('applies a batch atomically and returns the apply-result payload', () => {
-    const outcome = applyOperations(
+    const outcome = landBatch(
       { path: 'operations.yaml', source: batch },
       { path: 'workspace.yaml', source: manifest },
       cwd,
@@ -91,7 +219,7 @@ operations:
     concept:
       id: user
 `
-    const outcome = applyOperations(
+    const outcome = landBatch(
       { path: 'operations.yaml', source: invalidBatch },
       { path: 'workspace.yaml', source: manifest },
       cwd,
@@ -109,7 +237,7 @@ operations:
       'architecture/main.yaml',
       'architecture/other.yaml',
     )
-    const outcome = applyOperations(
+    const outcome = landBatch(
       { path: 'operations.yaml', source: outOfScope },
       { path: 'workspace.yaml', source: manifest },
       cwd,
@@ -134,7 +262,7 @@ operations:
       from: user
       to: missing-target
 `
-    const outcome = applyOperations(
+    const outcome = landBatch(
       { path: 'operations.yaml', source: brokenBatch },
       { path: 'workspace.yaml', source: manifest },
       cwd,
@@ -154,7 +282,7 @@ operations:
       'architecture/main.yaml',
       'architecture/other.yaml',
     )
-    const outcome = applyOperations(
+    const outcome = landBatch(
       { path: 'operations.yaml', source: outOfScope },
       { path: 'workspace.yaml', source: manifest },
       cwd,
@@ -170,12 +298,12 @@ operations:
       mkdirSync(join(other, 'architecture'))
       writeFileSync(join(other, 'architecture/main.yaml'), document, 'utf8')
 
-      const first = applyOperations(
+      const first = landBatch(
         { path: 'operations.yaml', source: batch },
         { path: 'workspace.yaml', source: manifest },
         cwd,
       )
-      const second = applyOperations(
+      const second = landBatch(
         { path: 'operations.yaml', source: batch },
         { path: 'workspace.yaml', source: manifest },
         other,
@@ -313,7 +441,7 @@ describe('applyOperations rename', () => {
   })
 
   const apply = (source: string) =>
-    applyOperations(
+    landBatch(
       { path: 'operations.yaml', source },
       { path: 'workspace.yaml', source: renameManifest },
       cwd,
@@ -512,7 +640,7 @@ concepts:
 relationships: []
 `
     writeFileSync(join(cwd, 'architecture/other.yaml'), other, 'utf8')
-    const outcome = applyOperations(
+    const outcome = landBatch(
       { path: 'operations.yaml', source: renameBatch('platform', 'platform-team') },
       {
         path: 'workspace.yaml',

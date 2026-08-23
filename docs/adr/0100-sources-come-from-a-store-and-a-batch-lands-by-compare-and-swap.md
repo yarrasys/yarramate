@@ -1,6 +1,6 @@
 # Sources come from a store, and a batch lands by compare-and-swap
 
-Status: proposed
+Status: accepted
 
 Core reads and writes the filesystem directly. `applyOperations` calls
 `readFileSync` in four places and ends in a loop of `writeFileSync`;
