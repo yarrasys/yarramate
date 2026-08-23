@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { resolve, sep } from 'node:path'
 import {
   isMap,
   isScalar,
@@ -31,7 +31,24 @@ import {
   scanSubjectReferences,
   type SubjectReferenceGroup,
 } from './subject-references.js'
-import { loadWorkspaceManifest } from './workspace.js'
+import {
+  loadWorkspaceManifest,
+  type ResolvedWorkspace,
+} from './workspace.js'
+import {
+  createFileSystemStore,
+  type SourceStore,
+} from './source-store.js'
+
+/**
+ * The directory part of a workspace path, in the `/`-separated terms a
+ * manifest is written in rather than the platform's.
+ */
+export const posixDirectoryOf = (path: string): string => {
+  const normalised = path.split(sep).join('/')
+  const cut = normalised.lastIndexOf('/')
+  return cut === -1 ? '' : normalised.slice(0, cut)
+}
 import operationsSchema from '../schema/yarramate-operations.schema.json' with {
   type: 'json',
 }
@@ -471,7 +488,16 @@ const removeCollectionItem = (
 // ---------------------------------------------------------------------------
 
 export type ApplyOutcome =
-  | { readonly ok: true; readonly result: YarramateApplyResult }
+  | {
+      readonly ok: true
+      /**
+       * The documents this batch changed, for the caller to write. Core
+       * returns them rather than writing them, so the store's comparison is
+       * the last thing that happens before bytes land (ADR 0100).
+       */
+      readonly sources: readonly WorkspaceSource[]
+      readonly result: YarramateApplyResult
+    }
   | { readonly ok: false; readonly diagnostics: readonly Diagnostic[] }
 
 // The programmatic core, split out of the CLI wrapper below so a long-lived
@@ -482,19 +508,42 @@ export type ApplyOutcome =
 // back onto whatever authored the operation. No shell-out, no temp files,
 // no process access, no module-level mutable state: safe to call
 // repeatedly and concurrently against different workspaces.
+/**
+ * Everything `applyOperations` is allowed to know. The workspace is already
+ * resolved and the sources are already read, because Core does not reach for
+ * either (ADR 0100).
+ */
+export interface ApplyInput {
+  /** The workspace this batch is addressed to, already resolved. */
+  readonly workspace: ResolvedWorkspace
+  /** Every source that workspace resolves to, keyed by its manifest path. */
+  readonly sources: readonly WorkspaceSource[]
+  /** The operations document itself. */
+  readonly operations: WorkspaceSource
+  /**
+   * Where the manifest sits relative to the paths in `workspace`, so an
+   * operation may address a document the way the manifest names it as well as
+   * the way the workspace lists it (#216). String arithmetic, not a lookup.
+   */
+  readonly manifestDirectory: string
+}
+
 export const applyOperations = (
-  operations: WorkspaceSource,
-  workspace: WorkspaceSource,
-  cwd: string,
+  input: ApplyInput,
 ): ApplyOutcome => {
+  const { workspace: resolvedWorkspace, operations } = input
+  // Every source the workspace resolves to, by its manifest path. Core reads
+  // nothing: what is not here does not exist as far as this function is
+  // concerned, which is what lets the same code serve a filesystem, an object
+  // store and a database row (ADR 0100).
+  const held = new Map(
+    input.sources.map((source) => [source.path, source.source]),
+  )
+  const sourceOf = (path: string): string => held.get(path) ?? ''
   const failed = (diagnostics: readonly Diagnostic[]): ApplyOutcome => ({
     ok: false,
     diagnostics,
   })
-  const loadedWorkspace = loadWorkspaceManifest(workspace, cwd)
-  if (!loadedWorkspace.ok) return failed(loadedWorkspace.diagnostics)
-  const resolvedWorkspace = loadedWorkspace.workspace
-
   const loadedOperations = loadSourceDocument<OperationsDocument>(
     operations,
     validateOperations,
@@ -509,14 +558,14 @@ export const applyOperations = (
   // Documents are addressed by their manifest paths; an operation aimed
   // anywhere else is rejected before anything is touched.
   const workspaceDocuments = new Map(
-    resolvedWorkspace.documents.map((path) => [resolve(cwd, path), path]),
+    resolvedWorkspace.documents.map((path): [string, string] => [path, path]),
   )
   // Overlay entries live in the workspace's evidence documents, addressed the
   // same way. The two sets stay apart: a concept operation aimed at an
   // overlay — or an observation aimed at a compiler document — is rejected
   // before anything is touched.
   const workspaceEvidence = new Map(
-    resolvedWorkspace.evidence.map((path) => [resolve(cwd, path), path]),
+    resolvedWorkspace.evidence.map((path): [string, string] => [path, path]),
   )
   // A rename re-points references, and references live in four kinds of file,
   // so the write set is wider than the two above. Projections and adapter
@@ -524,7 +573,6 @@ export const applyOperations = (
   // along by a rename — but they are written, so they carry their manifest
   // path for the touched-document list and their group for the walker.
   const referenceFiles: ReadonlyArray<{
-    readonly absolute: string
     readonly path: string
     readonly group: SubjectReferenceGroup
   }> = (
@@ -535,10 +583,10 @@ export const applyOperations = (
       ['adapter-mapping', resolvedWorkspace.adapterMappings],
     ] as ReadonlyArray<readonly [SubjectReferenceGroup, readonly string[]]>
   ).flatMap(([group, paths]) =>
-    paths.map((path) => ({ absolute: resolve(cwd, path), path, group })),
+    paths.map((path) => ({ path, group })),
   )
   const referenceFileOf = new Map(
-    referenceFiles.map((file) => [file.absolute, file]),
+    referenceFiles.map((file) => [file.path, file]),
   )
   const candidates = new Map<string, string>()
   const counts = {
@@ -587,13 +635,25 @@ export const applyOperations = (
   // (#216). Both readings are tried, and only a path that actually names a
   // document of this workspace is accepted, so admitting the second form
   // cannot make an address ambiguous.
-  const manifestDirectory = dirname(resolve(cwd, workspace.path))
+  // Both readings an author may write, as workspace paths. #216 accepted the
+  // manifest-relative form; expressing it as arithmetic rather than as a
+  // second resolution against the working directory is what ADR 0100 said this
+  // seam was the place to collapse.
+  const joinPosix = (base: string, path: string): string => {
+    const segments = base === '' || base === '.' ? [] : base.split('/')
+    for (const segment of path.split('/')) {
+      if (segment === '' || segment === '.') continue
+      if (segment === '..') segments.pop()
+      else segments.push(segment)
+    }
+    return segments.join('/')
+  }
   for (const [index, operation] of operationList.entries()) {
     const overlay = operation.op.endsWith('-observation')
     const known = overlay ? workspaceEvidence : workspaceDocuments
     const readings = [
-      resolve(manifestDirectory, operation.document),
-      resolve(cwd, operation.document),
+      joinPosix(input.manifestDirectory, operation.document),
+      joinPosix('', operation.document),
     ]
     const absolute = readings.find((reading) => known.has(reading)) ?? readings[1]!
     const manifestPath = known.get(absolute)
@@ -620,7 +680,7 @@ export const applyOperations = (
     }
     let source = candidates.get(absolute)
     if (source === undefined) {
-      source = readFileSync(absolute, 'utf8')
+      source = sourceOf(absolute)
     }
     if (operation.op === 'add-concept') {
       source = appendCollectionItem(
@@ -715,7 +775,7 @@ export const applyOperations = (
       // in the same batch reads the first one's result.
       for (const file of referenceFiles) {
         const before =
-          candidates.get(file.absolute) ?? readFileSync(file.absolute, 'utf8')
+          candidates.get(file.path) ?? sourceOf(file.path)
         const rewrite = rewriteSubjectReferences(before, file.group, rename)
         if (!rewrite.ok) {
           return failed([
@@ -729,7 +789,7 @@ export const applyOperations = (
           ])
         }
         if (rewrite.source !== before) {
-          candidates.set(file.absolute, rewrite.source)
+          candidates.set(file.path, rewrite.source)
         }
       }
       // The target document's own declaration moved in that same walk, so the
@@ -925,11 +985,10 @@ export const applyOperations = (
       readonly field: string
     }
     const staged = resolvedWorkspace.documents.map((path) => {
-      const absolute = resolve(cwd, path)
       return {
-        absolute,
+        absolute: path,
         value: parseDocument(
-          candidates.get(absolute) ?? readFileSync(absolute, 'utf8'),
+          candidates.get(path) ?? sourceOf(path),
         ).toJSON() as {
           readonly id?: string
           readonly concepts?: readonly ConceptFields[]
@@ -1015,10 +1074,9 @@ export const applyOperations = (
   const compilation = compileWorkspace(
     [...resolvedWorkspace.profiles, ...resolvedWorkspace.documents].map(
       (path) => {
-        const absolute = resolve(cwd, path)
         return {
           path,
-          source: candidates.get(absolute) ?? readFileSync(absolute, 'utf8'),
+          source: candidates.get(path) ?? sourceOf(path),
         }
       },
     ),
@@ -1048,7 +1106,7 @@ export const applyOperations = (
   if (renames.length > 0) {
     const movedFrom = new Map(renames.map(({ from, index }) => [from, index]))
     const residue = referenceFiles.flatMap((file) => {
-      const source = candidates.get(file.absolute)
+      const source = candidates.get(file.path)
       if (source === undefined) return []
       return scanSubjectReferences(source, file.group)
         .hits.filter((hit) => movedFrom.has(hit.address))
@@ -1068,7 +1126,7 @@ export const applyOperations = (
   // rewrite that produced an unreadable address is caught here rather than by
   // the next command to read the file.
   for (const file of referenceFiles) {
-    const source = candidates.get(file.absolute)
+    const source = candidates.get(file.path)
     if (source === undefined) continue
     if (file.group === 'projection') {
       const loaded = loadProjection({ path: file.path, source })
@@ -1079,20 +1137,97 @@ export const applyOperations = (
     }
   }
 
-  for (const [absolute, source] of candidates) {
-    writeFileSync(absolute, source, 'utf8')
-  }
-  const touched = [...candidates.keys()]
-    .map((absolute) => referenceFileOf.get(absolute)!.path)
-    .sort()
+  // Nothing is written. The caller pairs each of these with the revision it
+  // read and hands the batch to a store, which is where the comparison that
+  // decides whether it lands belongs (ADR 0100).
+  const written = [...candidates]
+    .map(([path, source]) => ({ path, source }))
+    .sort((left, right) => (left.path < right.path ? -1 : 1))
+  const touched = written.map((source) => source.path)
   return {
     ok: true,
+    sources: written,
     result: {
       format: 'yarramate/apply-result/v1',
       workspace: resolvedWorkspace.id,
       applied: counts,
       documents: touched,
     },
+  }
+}
+
+
+/**
+ * Reads a workspace through a store, applies a batch, and writes what changed
+ * back only if every document still holds what was read (ADR 0100).
+ *
+ * This is the composition Core deliberately does not perform: `applyOperations`
+ * is a pure function, and the comparison that decides whether a batch lands
+ * belongs to the store. Both callers - the CLI and the visual session server -
+ * go through here so the precondition exists in one place rather than being
+ * remembered twice.
+ */
+export const landOperations = (
+  store: SourceStore,
+  input: {
+    readonly workspace: ResolvedWorkspace
+    readonly operations: WorkspaceSource
+    readonly manifestDirectory: string
+  },
+): ApplyOutcome => {
+  const revisions = new Map<string, string>()
+  const sources: WorkspaceSource[] = []
+  for (const path of [
+    ...input.workspace.documents,
+    ...input.workspace.projections,
+    ...input.workspace.evidence,
+    ...input.workspace.adapterMappings,
+  ]) {
+    const stored = store.read(path)
+    if (stored === undefined) continue
+    revisions.set(path, stored.revision)
+    sources.push({ path, source: stored.source })
+  }
+
+  const outcome = applyOperations({
+    workspace: input.workspace,
+    sources,
+    operations: input.operations,
+    manifestDirectory: input.manifestDirectory,
+  })
+  if (!outcome.ok) return outcome
+  if (outcome.sources.length === 0) return outcome
+
+  // A document Core rewrote must still hold what Core was shown. One it
+  // created must still not be there. There is no third case: a batch that
+  // vouches for nothing would buy back the unconditional write by omission.
+  const written = store.writeAll(
+    outcome.sources.map((source) => ({
+      path: source.path,
+      source: source.source,
+      expected: revisions.get(source.path) ?? null,
+    })),
+  )
+  if (written.ok) return outcome
+
+  return {
+    ok: false,
+    diagnostics: written.conflicts.map((conflict) => ({
+      severity: 'error' as const,
+      code: conflict.reason === 'exists' ? 'YM705' : 'YM704',
+      message:
+        conflict.reason === 'exists'
+          ? `Document "${conflict.path}" already exists; this batch expected to create it`
+          : conflict.reason === 'missing'
+            ? `Document "${conflict.path}" no longer exists; this batch was staged against it`
+            : `Document "${conflict.path}" changed after this batch was staged`,
+      path: input.operations.path,
+      // The conflict is about the batch rather than about any one line of it:
+      // the operation that named the document is not what went wrong.
+      pointer: '/',
+      line: 1,
+      column: 1,
+    })),
   }
 }
 
@@ -1128,11 +1263,24 @@ export function runApplyCommand(
       resolve(cwd, operationsPath),
       'utf8',
     )
-    const outcome = applyOperations(
-      { path: operationsPath, source: operationsSource },
+    const loadedWorkspace = loadWorkspaceManifest(
       { path: workspacePath, source: manifestSource },
       cwd,
     )
+    if (!loadedWorkspace.ok) {
+      return {
+        exitCode: 1,
+        stdout: json
+          ? diagnosticJson(loadedWorkspace.diagnostics)
+          : humanDiagnostics(loadedWorkspace.diagnostics),
+        stderr: '',
+      }
+    }
+    const outcome = landOperations(createFileSystemStore(cwd), {
+      workspace: loadedWorkspace.workspace,
+      operations: { path: operationsPath, source: operationsSource },
+      manifestDirectory: posixDirectoryOf(workspacePath),
+    })
     if (!outcome.ok) {
       return {
         exitCode: 1,

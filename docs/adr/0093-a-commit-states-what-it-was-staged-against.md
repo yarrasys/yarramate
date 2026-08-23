@@ -2,6 +2,17 @@
 
 Status: accepted
 
+> Joined in 1.0 by
+> [ADR 0100](0100-sources-come-from-a-store-and-a-batch-lands-by-compare-and-swap.md).
+> The pin described here is about the reviewer's view: whether the value on
+> screen is still the value on disk. It stays, unchanged, along with `YMVS312`
+> and `YMVS313`. What it could not do is close the gap between the digest that
+> satisfied it and the write that acted on it, which spanned a whole workspace
+> compile: a write landing in that window was overwritten by a batch that had
+> already proved it was current. The store's own comparison now runs
+> immediately before the bytes land, so both checks apply and the window is no
+> longer open.
+
 The visual runtime stages mechanical edits in the browser and lands them as one
 batch through `yarramate apply` (ADR 0084). Until now the commit handler read
 the workspace from disk at commit time and applied the batch to whatever it

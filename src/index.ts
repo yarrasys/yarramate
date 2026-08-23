@@ -124,3 +124,10 @@ export {
   type WriteConflict,
   type WriteOutcome,
 } from './source-store.js'
+export {
+  applyOperations,
+  landOperations,
+  posixDirectoryOf,
+  type ApplyInput,
+  type ApplyOutcome,
+} from './apply-command.js'

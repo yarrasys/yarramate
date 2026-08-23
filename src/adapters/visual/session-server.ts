@@ -12,7 +12,7 @@ import {
   type ServerResponse,
 } from "node:http";
 import type { AddressInfo, Socket } from "node:net";
-import { basename, extname, join, resolve, sep } from "node:path";
+import { basename, extname, join, relative, resolve, sep } from "node:path";
 import type { Duplex } from "node:stream";
 import { fileURLToPath } from "node:url";
 import Ajv2020Module from "ajv/dist/2020.js";
@@ -70,7 +70,11 @@ import {
   type ResolvedProfileContext,
   type SemanticGraph,
 } from "../../compiler.js";
-import { applyOperations } from "../../apply-command.js";
+import {
+  landOperations,
+  posixDirectoryOf,
+} from "../../apply-command.js";
+import { createFileSystemStore } from "../../source-store.js";
 import { projectGraphForCanvas } from "../../graph-projection.js";
 import { kindLabelOf } from "../../kind-label.js";
 import {
@@ -1440,10 +1444,36 @@ export const startVisualServer = async (
           format: "yarramate/operations/v1",
           operations: event.payload.operations,
         });
-        const outcome = applyOperations(
-          { path: "changeset.yaml", source: operationsSource },
+        // The pin check above is about the reviewer's view: whether the value
+        // on screen is still the value on disk. What follows is about the
+        // bytes: Core is handed the sources, returns the ones it changed, and
+        // the store writes them only if each still holds what Core was shown
+        // (ADR 0100). That second check is what closes the window the pin
+        // check alone left open, which used to span a whole workspace compile
+        // between the digest that satisfied it and the write that acted on it.
+        const loadedWorkspace = loadWorkspaceManifest(
           { path: manifestPath, source: readFileSync(manifestPath, "utf8") },
           options.cwd,
+        );
+        if (!loadedWorkspace.ok) {
+          sendFrame(socket, {
+            kind: "apply-result",
+            result: { ok: false, diagnostics: loadedWorkspace.diagnostics },
+          });
+          return;
+        }
+        const outcome = landOperations(
+          createFileSystemStore(options.cwd),
+          {
+            workspace: loadedWorkspace.workspace,
+            operations: {
+              path: "changeset.yaml",
+              source: operationsSource,
+            },
+            manifestDirectory: posixDirectoryOf(
+              relative(options.cwd, manifestPath),
+            ),
+          },
         );
         if (!outcome.ok) {
           // Nothing landed: forward Core's diagnostics verbatim (ADR 0062)

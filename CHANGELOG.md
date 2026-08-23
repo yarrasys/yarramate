@@ -41,6 +41,26 @@
   once any control was touched: more than twice as wide for the same twenty
   nodes. Relaying out when the matched set changes closes it (#219).
 
+- **Breaking.** `applyOperations` is a pure function from sources to sources
+  (ADR 0100). It takes an `ApplyInput` - the resolved workspace, every source
+  that workspace resolves to, the operations document, and where the manifest
+  sits - and returns the documents it changed rather than writing them. It
+  reads no file and writes none. `landOperations(store, input)` is the
+  composition both callers use: read the workspace through a `SourceStore`,
+  apply, and write back only what still holds what was read. Both are exported,
+  with `ApplyInput` and `ApplyOutcome`, so an engine embedded over D1 or an
+  object store can be handed its own sources.
+  This closes a gap ADR 0093 left open. The visual runtime pinned a digest per
+  document and refused a batch whose pin no longer matched, but the check sat
+  in the adapter and the write sat in Core with a whole workspace compile
+  between them, so a write landing in that window was overwritten by a batch
+  that had already proved it was current. The pin stays, unchanged, along with
+  `YMVS312` and `YMVS313`; the store's comparison now runs immediately before
+  the bytes land, so nothing can move in between. New `YM704` refuses a batch
+  whose document changed or was removed after it was staged, and `YM705` one
+  that expected to create a document already there. `apply` from a terminal,
+  which had no precondition at all, now has this one (#231).
+
 - **Breaking.** Relationship endpoints are validated against the ArchiMate
   3.2 relationship table (ADR 0097), vendored from Archi's `relationships.xml`
   (MIT) and regenerated into a zero-import module a test keeps honest. The
