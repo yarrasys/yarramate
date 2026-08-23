@@ -11,19 +11,14 @@ export interface SaveViewControlProps {
   readonly activeViewId: string;
   readonly query: ProjectionQuery | null;
   readonly layout: "layered";
-  readonly direction: "top-down" | "left-right";
   readonly showLifecycle: boolean;
   readonly showEvidence: boolean;
   readonly showOwnership: boolean;
-  readonly notation: "native" | "archimate";
   readonly pendingSave: boolean;
   readonly notice: boolean;
   readonly onSave: (payload: VisualViewSavePayload) => void;
   readonly onDismissNotice: () => void;
 }
-
-// (no module-level seed constant: the seed a save writes is the one the canvas
-// laid the view out with, held in workspace state - see `workspace-state.ts`.)
 
 export interface BuildPayloadParams {
   readonly id: string | undefined;
@@ -31,11 +26,17 @@ export interface BuildPayloadParams {
   readonly description: string;
   readonly query: ProjectionQuery | null;
   readonly layout: "layered";
-  readonly direction: "top-down" | "left-right";
   readonly showLifecycle: boolean;
   readonly showEvidence: boolean;
   readonly showOwnership: boolean;
-  readonly notation: "native" | "archimate";
+  /**
+   * Whatever the view being overwritten already declared, carried through
+   * rather than restated. The canvas has no direction control - it draws
+   * ArchiMate, which is top-down by construction - but the LikeC4 export reads
+   * `presentation.direction`, so a save that simply omitted it would quietly
+   * drop a value the reviewer never saw and cannot have meant to discard.
+   */
+  readonly carriedDirection: "top-down" | "left-right" | undefined;
 }
 
 /** Pure translation from the form's local state to the wire payload — no
@@ -48,11 +49,10 @@ export const buildPayload = ({
   description,
   query,
   layout,
-  direction,
   showLifecycle,
   showEvidence,
   showOwnership,
-  notation,
+  carriedDirection,
 }: BuildPayloadParams): VisualViewSavePayload => ({
   ...(id === undefined ? {} : { id }),
   title,
@@ -60,16 +60,15 @@ export const buildPayload = ({
   query: query ?? {},
   presentation: {
     layout,
-    direction,
+    ...(carriedDirection === undefined ? {} : { direction: carriedDirection }),
     showLifecycle,
     showEvidence,
     showOwnership,
-    notation,
   },
 });
 
 /**
- * Saves the reviewer's current filter and layout direction as a named
+ * Saves the reviewer's current filter and presentation as a named
  * projection document. "Save" overwrites whatever view is active — behind a
  * confirm dialog, since that is destructive — and "Save As New" always
  * creates a fresh one, which the server can never collide with a
@@ -80,11 +79,9 @@ export function SaveViewControl({
   activeViewId,
   query,
   layout,
-  direction,
   showLifecycle,
   showEvidence,
   showOwnership,
-  notation,
   pendingSave,
   notice,
   onSave,
@@ -121,11 +118,13 @@ export function SaveViewControl({
       description,
       query,
       layout,
-      direction,
       showLifecycle,
       showEvidence,
       showOwnership,
-      notation,
+      // Overwriting carries the view's own direction; a brand new view has
+      // none to carry, and the export's own default applies.
+      carriedDirection:
+        id === undefined ? undefined : activeView?.presentation?.direction,
     });
 
   const submit = (id: string | undefined) => {

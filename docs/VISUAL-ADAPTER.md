@@ -206,18 +206,33 @@ is meant to prevent.
 
 ### Presentation toggles
 
-Four presentation state fields ride alongside layout in `presentation`, saved via `view.save` and persisted in the projection document:
+Three presentation state fields ride alongside layout in `presentation`, saved via `view.save` and persisted in the projection document:
 
 - `showLifecycle` — renders a status badge (lifecycle: `planned` / `current` / `retired`) on each node's top-left, using the existing CSS tokens from `src/visual-app/styles.css`.
 - `showEvidence` — renders a checkmark badge on each node's bottom-left, only when the node has attestations (`hasAttestations: boolean`). Binary presence, never a graded state.
 - `showOwnership` — renders the owner's initials in a coloured circle on each node's bottom-right, hashing the owner ref onto a four-colour palette from `styles.css` (eucalyptus, ochre, cobalt, ink) deterministically and stably across reloads and machines. Colour is only informative here; initials identify the owner at a glance.
-- `notation` — toggles between `native` (the default) and `archimate` rendering mode (see below).
 
-None of these toggle a projection query or compose a `filter.query` event; toggling a checkbox dispatches `onTogglePresentation` and updates local state only. They are presentation, not semantic queries, so they save without consulting the model, reload without validating against the model, and appear in no changeset. View switching, layout changes, and direction changes all trigger a relayout; toggling a badge or notation does not (notation is applied at stylesheet render time, badges are derived from existing node data).
+None of these toggle a projection query or compose a `filter.query` event; toggling a checkbox dispatches `onTogglePresentation` and updates local state only. They are presentation, not semantic queries, so they save without consulting the model, reload without validating against the model, and appear in no changeset. Switching views triggers a relayout; toggling a badge does not, since badges are derived from existing node data.
 
-### ArchiMate notation mode
+### ArchiMate notation
 
-Under `notation === 'archimate'`, the stylesheet swaps node shapes by aspect (resolved from each concept kind's inheritance), applies line-notation conventions by core relationship kind (derived kinds resolve through lineage), and forces `layered` direction to `DOWN` with the direction toggle disabled and a reason shown (`"ArchiMate notation fixes direction to Top-Down."`). The direction pin is applied only at layout-config build time; nothing is overwritten in state, so switching back to `native` restores the projection's declared direction on the next layout.
+The canvas draws ArchiMate. The stylesheet shapes nodes by aspect (resolved
+from each concept kind's inheritance), applies line-notation conventions by
+core relationship kind (derived kinds resolve through lineage), draws each
+kind's glyph, and lays out `DOWN` because ArchiMate's layer bands only read
+top-down.
+
+This is not a mode: there is no picker and no second renderer to pick.
+`presentation.notation` stays in the projection format, admitting `archimate`
+alone, so a second notation has somewhere to land — the same reason
+`presentation.layout` stayed an enum when `radial` and `force` were removed. A
+projection asking for `native` is refused rather than quietly drawn as
+ArchiMate.
+
+`presentation.direction` also stays, and the canvas ignores it: the LikeC4
+export reads it for its own `autoLayout`, and that export draws no layer bands.
+A save carries a view's declared direction through untouched rather than
+dropping a value the canvas never offered to set.
 
 The kind colours, aspect shapes, glyphs, and relationship line styles are
 defined once in the published `yarramate/notation/archimate` module; this app

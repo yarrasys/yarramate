@@ -51,6 +51,12 @@ export interface ProjectionDefinition {
     readonly title?: string
     readonly description?: string
     readonly layout?: 'layered'
+    /**
+     * Read by the LikeC4 export for its `autoLayout`, and by nothing else. The
+     * canvas draws ArchiMate, whose layer bands only read top-down, so it
+     * ignores this rather than offering a control that would tilt the bands
+     * away from what they mean.
+     */
     readonly direction?: 'top-down' | 'left-right'
     /**
      * The relationship kinds that draw as nesting in this view, in precedence
@@ -61,7 +67,13 @@ export interface ProjectionDefinition {
     readonly showLifecycle?: boolean
     readonly showEvidence?: boolean
     readonly showOwnership?: boolean
-    readonly notation?: 'native' | 'archimate'
+    /**
+     * The notation this view draws in. `archimate` is the only one, and the
+     * field is kept rather than dropped so a second notation has somewhere to
+     * land - the same reason `layout` stayed an enum when `radial` and `force`
+     * went (ADR 0086, ADR 0087).
+     */
+    readonly notation?: 'archimate'
   }
 }
 

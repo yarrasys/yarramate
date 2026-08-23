@@ -65,9 +65,8 @@ describe('buildStylesheet badge layers', () => {
     showLifecycle: boolean,
     showEvidence: boolean,
     showOwnership: boolean,
-    notation: 'native' | 'archimate' = 'native',
   ): cytoscape.StylesheetStyle =>
-    buildStylesheet(showLifecycle, showEvidence, showOwnership, notation).find(
+    buildStylesheet(showLifecycle, showEvidence, showOwnership).find(
       (block): block is cytoscape.StylesheetStyle =>
         'style' in block && block.selector === 'node' && 'background-image' in block.style,
     )!
@@ -81,9 +80,8 @@ describe('buildStylesheet badge layers', () => {
     showEvidence: boolean,
     showOwnership: boolean,
     data: Record<string, unknown>,
-    notation: 'native' | 'archimate',
   ): T => {
-    const rule = nodeRule(showLifecycle, showEvidence, showOwnership, notation)
+    const rule = nodeRule(showLifecycle, showEvidence, showOwnership)
     const style = rule.style as cytoscape.Css.Node
     const mapper = style[property] as (ele: { data: (key: string) => unknown }) => T
     return mapper({ data: (key) => data[key] })
@@ -94,21 +92,19 @@ describe('buildStylesheet badge layers', () => {
     showEvidence: boolean,
     showOwnership: boolean,
     data: Record<string, unknown>,
-    notation: 'native' | 'archimate' = 'native',
   ): string[] =>
-    mapperFor<string[]>('background-image', showLifecycle, showEvidence, showOwnership, data, notation)
+    mapperFor<string[]>('background-image', showLifecycle, showEvidence, showOwnership, data)
 
   const sizesFor = (
     showLifecycle: boolean,
     showEvidence: boolean,
     showOwnership: boolean,
     data: Record<string, unknown>,
-    notation: 'native' | 'archimate' = 'native',
   ): number[] =>
-    mapperFor<number[]>('background-width', showLifecycle, showEvidence, showOwnership, data, notation)
+    mapperFor<number[]>('background-width', showLifecycle, showEvidence, showOwnership, data)
 
   it('draws a background-color rule for every LAYER_COLORS key', () => {
-    const sheet = buildStylesheet(false, false, false, 'native')
+    const sheet = buildStylesheet(false, false, false)
     for (const layer of Object.keys(LAYER_COLORS)) {
       const rule = sheet.find(
         (block): block is cytoscape.StylesheetStyle =>
@@ -153,19 +149,21 @@ describe('buildStylesheet badge layers', () => {
         false,
         false,
         { status: 'current', kindLabel: 'applicationComponent' },
-        'archimate',
       ),
     ).toEqual([kindIconUriOf('applicationComponent'), LIFECYCLE_BADGE_URI.current])
   })
 
-  it('draws no kind icon under native notation', () => {
+  it('draws the kind icon with every badge off, because it is not a badge', () => {
+    // The three presentation flags gate the three badges. The kind icon is the
+    // notation itself, so it draws whatever they say - there is no longer a
+    // notation for it to be absent from.
     expect(
-      layersFor(false, false, false, { kindLabel: 'applicationComponent' }, 'native'),
-    ).toEqual([])
+      layersFor(false, false, false, { kindLabel: 'applicationComponent' }),
+    ).toEqual([kindIconUriOf('applicationComponent')])
   })
 
   it('leaves the icon slot empty for a kind the catalogue does not map', () => {
-    expect(layersFor(false, false, false, { kindLabel: 'notAKind' }, 'archimate')).toEqual([])
+    expect(layersFor(false, false, false, { kindLabel: 'notAKind' })).toEqual([])
   })
 
   it('sizes the kind icon and the badges independently', () => {
@@ -177,7 +175,6 @@ describe('buildStylesheet badge layers', () => {
         true,
         false,
         { status: 'current', hasAttestations: true, kindLabel: 'applicationComponent' },
-        'archimate',
       ),
     ).toEqual([ICON_SIZE, 12, 12])
   })

@@ -76,9 +76,9 @@ function withWrapPoints(text: string): string {
 // ELK layout options: extends base layout with elk-specific config not in
 // cytoscape's types. `nodeLayoutOptions` is cytoscape-elk's only per-node hook
 // (`makeNode` calls it for every node and assigns the result to that node's
-// ELK `layoutOptions`). `elk.direction` is optional because the `force`
-// backend (elk's `stress` algorithm) ignores direction entirely - only
-// `layered` sets it.
+// ELK `layoutOptions`). `elk.direction` stays optional on the type because it
+// describes elk's option bag rather than this canvas's use of it: `layered`
+// reads it, other algorithms ignore it entirely.
 interface ElkLayoutOptions extends Record<string, unknown> {
   name: 'elk'
   elk: {
@@ -146,6 +146,7 @@ const ELK_SPACING: Record<string, unknown> = {
 // Shared by the full-graph layout effect and the visible-subgraph relayout
 // that runs on view switch, so both always agree on algorithm and direction.
 //
+//
 // One backend. `radial` (cytoscape `concentric`) and `force` (elk `stress`
 // then `sporeOverlap`) were measured against `layered` on every view of the
 // contact-update journey and lost on all three counts that matter: edge
@@ -154,20 +155,18 @@ const ELK_SPACING: Record<string, unknown> = {
 // `force` ever read went with them - the projection schema had required a
 // seed of every view that declared a layout at all, for one backend's benefit.
 //
-// `elk.direction` is read only by `layered`. Under ArchiMate notation it is
-// pinned to `DOWN` regardless of `direction`: ArchiMate's layer bands only
-// read top-down, so a left-right run would draw bands corresponding to
-// nothing. The pin is applied here, at config-build time, and nowhere else -
-// stored `direction` is never overwritten, so returning to native notation
-// restores whatever direction the reviewer declared.
-export function buildLayoutConfig(
-  direction: 'top-down' | 'left-right',
-  notation: 'native' | 'archimate' = 'native',
-): cytoscape.LayoutOptions {
+// `elk.direction` is read only by `layered`, and it is `DOWN`: ArchiMate's
+// layer bands only read top-down, so a left-right run would draw bands
+// corresponding to nothing. This used to be a pin applied over a reviewer's
+// stored `direction`, kept so that returning to native notation restored what
+// they declared. There is no native notation to return to, so the pin is now
+// simply the value. `presentation.direction` stays in the projection format:
+// the LikeC4 export reads it for its own `autoLayout`, which is not drawing
+// ArchiMate bands and has no reason to be held top-down.
+export function buildLayoutConfig(): cytoscape.LayoutOptions {
   const elk: ElkLayoutOptions['elk'] = {
     algorithm: 'layered',
-    'elk.direction':
-      notation === 'archimate' ? 'DOWN' : direction === 'top-down' ? 'DOWN' : 'RIGHT',
+    'elk.direction': 'DOWN',
     ...ELK_SPACING,
   }
   const config: ElkLayoutOptions = {
@@ -203,7 +202,7 @@ interface BadgeStyleArrays {
 }
 
 const BADGE_SIZE = 12
-// Kind icon top-left (ArchiMate notation only), lifecycle top-right, evidence
+// Kind icon top-left, lifecycle top-right, evidence
 // bottom-left, ownership bottom-right - each corner gets at most one image, so
 // none ever overlap on a single node. Plan Task 10 named the top-right slot for
 // the icon, but Task 5 had already spent that corner on the lifecycle chip
@@ -214,21 +213,18 @@ const BADGE_SIZE = 12
 // dimmed "maybe" state. Ownership requires both owner (non-null) and derived
 // ownerInitials (non-null), since ownerInitialsOf filters out malformed local
 // ids that leave no words (e.g., "###" or a bare document prefix). The kind
-// icon is an ArchiMate element glyph, so it draws only under that notation, and
-// only for a kind the catalogue maps - an unmapped kind leaves the slot empty.
+// icon draws for any kind the catalogue maps - an unmapped kind leaves the
+// slot empty.
 function badgeLayersFor(
   ele: NodeSingular,
   showLifecycle: boolean,
   showEvidence: boolean,
   showOwnership: boolean,
-  notation: 'native' | 'archimate',
 ): BadgeLayer[] {
   const layers: BadgeLayer[] = []
-  if (notation === 'archimate') {
-    const icon = kindIconUriOf(String(ele.data('kindLabel')))
-    if (icon !== null) {
-      layers.push({ image: icon, positionX: '0%', positionY: '0%', size: ICON_SIZE })
-    }
+  const icon = kindIconUriOf(String(ele.data('kindLabel')))
+  if (icon !== null) {
+    layers.push({ image: icon, positionX: '0%', positionY: '0%', size: ICON_SIZE })
   }
   const status: unknown = ele.data('status')
   if (showLifecycle && isLifecycleStatus(status)) {
@@ -265,20 +261,19 @@ function badgeLayersFor(
 // Stylesheet entries match StylesheetStyle shape (selector + style properties)
 // `showLifecycle`/`showEvidence`/`showOwnership` are parameters, not module
 // state, so the mount effect that builds a fresh cytoscape instance and a
-// future toggle effect (Task 7 wires the checkboxes to `GraphCanvasProps`;
-// Task 11 passes notation mode the same way) both call this with whatever is
-// current instead of racing a shared mutable stylesheet.
+// future toggle effect (Task 7 wires the checkboxes to `GraphCanvasProps`)
+// both call this with whatever is current instead of racing a shared mutable
+// stylesheet.
 export function buildStylesheet(
   showLifecycle: boolean,
   showEvidence: boolean,
   showOwnership: boolean,
-  notation: 'native' | 'archimate',
 ): cytoscape.StylesheetJsonBlock[] {
   // Cytoscape re-evaluates every mapper on each style recalculation - a single
   // selection change re-runs all seven over every node - and rebuilding the
   // percent-encoded SVG payloads that often is pure waste. Which images a node
-  // gets is a pure function of five data fields (the three toggles and the
-  // notation mode are fixed for this stylesheet's lifetime), so keying on those
+  // gets is a pure function of five data fields (the three toggles are fixed
+  // for this stylesheet's lifetime), so keying on those
   // per recalculation into one per distinct badge combination on the graph.
   // Cytoscape only reads these arrays, so nodes sharing a combination share
   // one set.
@@ -290,7 +285,7 @@ export function buildStylesheet(
       `\u0000${String(ele.data('kindLabel'))}`
     const cached = badgeStyleCache.get(key)
     if (cached !== undefined) return cached
-    const layers = badgeLayersFor(ele, showLifecycle, showEvidence, showOwnership, notation)
+    const layers = badgeLayersFor(ele, showLifecycle, showEvidence, showOwnership)
     const built: BadgeStyleArrays = {
       images: layers.map((layer) => layer.image),
       positionsX: layers.map((layer) => layer.positionX),
@@ -435,15 +430,15 @@ export function buildStylesheet(
     },
   ]
 
-  if (notation !== 'archimate') return baseStylesheet
-
-  // ArchiMate notation mode (Task 11): node shape by `aspect` (Task 8) and
-  // relationship line/arrow treatment by `coreKindLabel` - the edge's
-  // resolved core-vocabulary kind (Task 11), not its raw `kindLabel`, so a
-  // derived kind (e.g. `implements` -> `realization`) renders through its
-  // lineage identically to the core kind it inherits from. Appended after
-  // `baseStylesheet` rather than folded in, so `notation === 'native'`
-  // returns the exact same array untouched.
+  // ArchiMate is the notation this canvas draws in, so what follows is not a
+  // mode: node shape by `aspect` and relationship line/arrow treatment by
+  // `coreKindLabel` - the edge's resolved core-vocabulary kind, not its raw
+  // `kindLabel`, so a derived kind (e.g. `implements` -> `realization`)
+  // renders through its lineage identically to the core kind it inherits
+  // from. Kept appended to `baseStylesheet` rather than folded into it: the
+  // base carries what any notation would need (labels, selection, compound
+  // containers) and these rules carry what ArchiMate specifically says, which
+  // is the seam a second notation would attach at.
   // Node shapes: one rule per `ASPECT_SHAPES` entry, translating the
   // notation module's ShapeMeta into cytoscape node style. Passive
   // structure's top accent band and composite's dashed border are decoded
@@ -774,12 +769,8 @@ export function applyFilter(
 // the nodes it left overlapping. With `layered` the only backend a layout run
 // cannot still be in flight when the next one is requested, so none of that
 // apparatus has anything left to guard.
-function runLayout(
-  eles: Core | CollectionReturnValue,
-  direction: 'top-down' | 'left-right',
-  notation: 'native' | 'archimate' = 'native',
-): void {
-  eles.layout(buildLayoutConfig(direction, notation)).run()
+function runLayout(eles: Core | CollectionReturnValue): void {
+  eles.layout(buildLayoutConfig()).run()
 }
 
 
@@ -790,15 +781,9 @@ function runLayout(
 // each view a fresh, compact layout instead. cytoscape-elk's own `fit: true`
 // default re-frames the viewport to the result, so no separate fit call is
 // needed; `layout()` is a no-op on an empty visible collection, so callers
-// never need to guard against "the new view matched nothing". `notation`
-// defaults to `'native'` so a caller that has never heard of ArchiMate
-// notation gets the direction mapping it always did.
-export function relayoutVisible(
-  cy: Core,
-  direction: 'top-down' | 'left-right',
-  notation: 'native' | 'archimate' = 'native',
-): void {
-  runLayout(cy.elements(':visible'), direction, notation)
+// never need to guard against "the new view matched nothing".
+export function relayoutVisible(cy: Core): void {
+  runLayout(cy.elements(':visible'))
 }
 
 // `dragfree` fires once per drag (unlike `position`, which fires on every
@@ -884,7 +869,6 @@ interface GraphCanvasProps {
   readonly onSelect: (id: string, type: 'node' | 'edge') => void
   readonly matchedIds: readonly string[] | null
   readonly quickFilterText: string
-  readonly direction: 'top-down' | 'left-right'
   /** What draws as nesting in this view, in precedence order (ADR 0101). */
   readonly nesting: readonly NestingKind[]
   /** Subjects a diagnostic named, marked so a failure is visible where it is. */
@@ -892,7 +876,6 @@ interface GraphCanvasProps {
   readonly showLifecycle: boolean
   readonly showEvidence: boolean
   readonly showOwnership: boolean
-  readonly notation: 'native' | 'archimate'
   readonly activeViewId: string
   /** Saved layout for the active view, or undefined when it has none yet. */
   readonly savedPositions: VisualLayoutPositions | undefined
@@ -914,7 +897,6 @@ export function GraphCanvas({
   onSelect,
   matchedIds,
   quickFilterText,
-  direction,
   nesting,
   faultedIds,
   activeViewId,
@@ -923,7 +905,6 @@ export function GraphCanvas({
   showLifecycle,
   showEvidence,
   showOwnership,
-  notation,
 }: GraphCanvasProps): React.ReactElement {
   const containerRef = useRef<HTMLDivElement>(null)
   const cyRef = useRef<Core | null>(null)
@@ -931,8 +912,6 @@ export function GraphCanvas({
   const isInitialSyncRef = useRef(true)
   const isInitialPresentationSyncRef = useRef(true)
   const activeViewIdRef = useRef(activeViewId)
-  const directionRef = useRef(direction)
-  const notationRef = useRef(notation)
   const pendingViewFitRef = useRef(false)
   const matchedIdsRef = useRef(matchedIds)
   // Keep latest onSaveLayout and savedPositions for the drag-save handler
@@ -981,7 +960,7 @@ export function GraphCanvas({
       // `showLifecycle`/`showEvidence`/`showOwnership` seed the stylesheet the
       // mount builds; the effect below re-applies it to the live instance on
       // every later toggle, without remounting or re-laying-out.
-      style: buildStylesheet(showLifecycle, showEvidence, showOwnership, notation),
+      style: buildStylesheet(showLifecycle, showEvidence, showOwnership),
       wheelSensitivity: 0.1,
       layout: { name: 'null' },
     })
@@ -1070,17 +1049,15 @@ export function GraphCanvas({
       isInitialPresentationSyncRef.current = false
       return
     }
-    cyRef.current.style(buildStylesheet(showLifecycle, showEvidence, showOwnership, notation))
-  }, [showLifecycle, showEvidence, showOwnership, notation])
+    cyRef.current.style(buildStylesheet(showLifecycle, showEvidence, showOwnership))
+  }, [showLifecycle, showEvidence, showOwnership])
 
-  // Update elements whenever the graph itself changes, laying out with the
-  // current layout and direction. Deliberately NOT keyed on `layout`/
-  // `direction` - a full remove/re-add + unscoped layout over every element
-  // (not just what's currently visible) on every toggle would blow away the
-  // filtered/view-scoped canvas and reintroduce the sprawl a view switch
-  // once had. Layout/direction-only changes are handled by the pending-fit
-  // effect below, which reruns `relayoutVisible` scoped to what's actually
-  // shown.
+  // Update elements whenever the graph itself changes. Keyed on the graph and
+  // nothing else: a full remove/re-add plus an unscoped layout over every
+  // element (not just what is currently visible) would blow away the
+  // filtered, view-scoped canvas and reintroduce the sprawl a view switch once
+  // had. A view switch is handled by the pending-fit effect below, which
+  // reruns `relayoutVisible` scoped to what is actually shown.
   useEffect(() => {
     if (!cyRef.current) return
 
@@ -1092,7 +1069,7 @@ export function GraphCanvas({
       cyRef.current.add(elements)
     }
 
-    runLayout(cyRef.current, direction, notation)
+    runLayout(cyRef.current)
   }, [graph])
 
   // Mark every subject a diagnostic named. Runs on its own rather than with
@@ -1121,33 +1098,21 @@ export function GraphCanvas({
     }
   }, [selectedId, graph])
 
-  // Arms a pending fit whenever the active view, layout backend, layout
-  // direction, notation mode, or seed changes. Notation belongs here because
-  // `buildLayoutConfig` pins `elk.direction: 'DOWN'` under `archimate` - the
-  // stylesheet effect above swaps node shapes on the live instance
-  // immediately, so without a matching relayout an archimate toggle would
-  // leave ArchiMate shapes sitting in the native direction's geometry. Seed
-  // belongs here for the same reason: under `force` it is layout input, so a
-  // reviewer who declares a new seed has to see the placement it produces.
+  // Arms a pending fit when the active view changes. It used to arm on layout
+  // direction and notation too, because both fed `buildLayoutConfig` and a
+  // notation swap would otherwise leave ArchiMate shapes sitting in the native
+  // direction's geometry. Neither is a variable any more: there is one
+  // notation and one direction, so the view is the only thing left that can
+  // change what the layout should be.
   // Declared before the filter-apply effect below - same-phase effects commit
   // in source order, so a view switch whose filter result lands in the very
   // same render (e.g. clearing back to "All") is still armed in time for that
   // commit.
   useEffect(() => {
-    const viewChanged = activeViewId !== activeViewIdRef.current
-    const directionChanged = direction !== directionRef.current
-    const notationChanged = notation !== notationRef.current
-    if (
-      !viewChanged &&
-      !directionChanged &&
-      !notationChanged
-    )
-      return
+    if (activeViewId === activeViewIdRef.current) return
     activeViewIdRef.current = activeViewId
-    directionRef.current = direction
-    notationRef.current = notation
     pendingViewFitRef.current = true
-  }, [activeViewId, direction, notation])
+  }, [activeViewId])
 
   // Apply structural filter (matchedIds) and quick-filter narrowing, then,
   // only once a pending view-switch relayout is armed and its filter result
@@ -1158,8 +1123,8 @@ export function GraphCanvas({
     if (!cyRef.current) return
     applyFilter(cyRef.current, matchedIds, quickFilterText)
     // A structural filter result lands in a later commit than the view id that
-    // asked for it. The arming effect above fires only on a view / direction /
-    // notation change, so on a session's first paint the one layout that runs
+    // asked for it. The arming effect above fires only on a view change, so on
+    // a session's first paint the one layout that runs
     // is computed over every element - including the ones the filter is about
     // to hide - and the survivors are left spread across a layout built for a
     // graph that is no longer on screen, so it sprawls. Measured on the
@@ -1177,9 +1142,9 @@ export function GraphCanvas({
     matchedIdsRef.current = matchedIds
     if (pendingViewFitRef.current || matchedChanged) {
       pendingViewFitRef.current = false
-      relayoutVisible(cyRef.current, direction, notation)
+      relayoutVisible(cyRef.current)
     }
-  }, [matchedIds, quickFilterText, graph, direction, notation])
+  }, [matchedIds, quickFilterText, graph])
 
   return <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
 }
