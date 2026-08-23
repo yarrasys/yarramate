@@ -52,6 +52,39 @@ const validateGeneratedProjectMarker = new Ajv2020({
 const validateGeneratedProjectV2Marker = new Ajv2020({
   allErrors: true,
 }).compile(generatedProjectV2Schema)
+// A marker written before 1.0 flattened subject ids records a comparison's
+// endpoints in the qualified `<document>#<local>` form, which `subjectIdentity`
+// no longer admits in either marker version. Such a marker is still one of
+// ours: those ids are recorded metadata, not addresses anything resolves, and
+// regeneration rewrites them flat. So it is accepted where an existing project
+// is read, exactly as a marker written before output digests existed is, and
+// the upgrade happens on the next write with nothing for the reader to do.
+// Each variant is derived from its own schema rather than copied, so a change
+// to either cannot leave its variant behind: only the one pattern is relaxed.
+const preFlattenSubjectIdentity =
+  '^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:#[a-z][a-z0-9]*(?:-[a-z0-9]+)*)?$'
+const preFlattenVariant = (schema: {
+  readonly $id: string
+  readonly $defs: {
+    readonly subjectIdentity: { readonly pattern: string }
+  }
+}): Readonly<Record<string, unknown>> => ({
+  ...schema,
+  $id: `${schema.$id}/pre-flatten-subject-ids`,
+  $defs: {
+    ...schema.$defs,
+    subjectIdentity: {
+      ...schema.$defs.subjectIdentity,
+      pattern: preFlattenSubjectIdentity,
+    },
+  },
+})
+const validateGeneratedProjectPreFlattenMarker = new Ajv2020({
+  allErrors: true,
+}).compile(preFlattenVariant(generatedProjectSchema))
+const validateGeneratedProjectV2PreFlattenMarker = new Ajv2020({
+  allErrors: true,
+}).compile(preFlattenVariant(generatedProjectV2Schema))
 const generatedFileNames = [
   'likec4.config.json',
   'model.likec4',
@@ -402,7 +435,9 @@ const readGeneratedProjectMarker = (
     return undefined
   }
   return validateGeneratedProjectMarker(marker) ||
-    validateGeneratedProjectV2Marker(marker)
+    validateGeneratedProjectV2Marker(marker) ||
+    validateGeneratedProjectPreFlattenMarker(marker) ||
+    validateGeneratedProjectV2PreFlattenMarker(marker)
     ? (marker as Readonly<Record<string, unknown>>)
     : undefined
 }

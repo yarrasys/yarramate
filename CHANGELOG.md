@@ -60,6 +60,20 @@
   `start` published, copied back verbatim: a native path is refused, and the
   argument is no longer resolved against the working directory (#208).
 
+- A LikeC4 project generated before 1.0 is regenerated rather than refused.
+  Its marker records a comparison's endpoints in the qualified
+  `<document>#<local>` form, which `subjectIdentity` no longer admits in either
+  marker version, so `export-project` and `export-project --check` rejected it
+  as "not a YarraMate-generated project" - a message about the wrong thing,
+  since the directory is one we wrote and the ids in it are recorded metadata
+  rather than addresses anything resolves. Continuous integration never saw
+  this, checking out clean with no prior output directory, so it fired only for
+  people who already used the tool, on their first command after upgrading.
+  Such a marker is now accepted where an existing project is read, exactly as a
+  marker written before output digests existed is, and the next write upgrades
+  it with nothing for the reader to do. `--check` reports the project stale and
+  safe to regenerate, which is the truth it always had (#225).
+
 ## 0.23.0
 
 - Interrogation: `has-linkage`, `exists-linkage` (`direction` includes
