@@ -18,7 +18,7 @@ import {
   type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import type { ProjectionQuery } from "../projection.js";
+import type { NestingKind, ProjectionQuery } from "../projection.js";
 import type { VisualRenderedModel } from "../adapters/visual/wire.js";
 import type { YarramateOperation } from "../operations.js";
 import type {
@@ -330,6 +330,7 @@ const DiagramWorkspace = ({
   waiting,
   layout,
   direction,
+  nesting,
   notation,
   showLifecycle,
   showEvidence,
@@ -343,6 +344,7 @@ const DiagramWorkspace = ({
   readonly waiting: string | null;
   readonly layout: "layered";
   readonly direction: "top-down" | "left-right";
+  readonly nesting: readonly NestingKind[];
   readonly notation: "native" | "archimate";
   readonly showLifecycle: boolean;
   readonly showEvidence: boolean;
@@ -403,6 +405,7 @@ const DiagramWorkspace = ({
             matchedIds={state.activeFilter?.matchedIds ?? null}
             quickFilterText={state.quickFilterText}
             direction={direction}
+            nesting={nesting}
             notation={notation}
             showLifecycle={showLifecycle}
             showEvidence={showEvidence}
@@ -966,6 +969,7 @@ export const App = () => {
           waiting={waiting}
           layout={workspace.layout}
           direction={workspace.direction}
+          nesting={workspace.nesting}
           notation={workspace.notation}
           showLifecycle={workspace.showLifecycle}
           showEvidence={workspace.showEvidence}

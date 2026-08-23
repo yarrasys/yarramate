@@ -3,6 +3,7 @@ import type {
   CanvasGraph,
   CanvasNode,
 } from "../graph-projection.js";
+import { DEFAULT_NESTING, type NestingKind } from "../projection.js";
 
 export type ConversationMode = "auto" | "open" | "closed";
 
@@ -104,6 +105,12 @@ export interface VisualWorkspaceState {
   readonly descriptionExpanded: boolean;
   readonly detailsOpen: boolean;
   readonly direction: "top-down" | "left-right";
+  /**
+   * What draws as nesting in the active view, in precedence order (ADR 0101).
+   * A view that says nothing keeps `DEFAULT_NESTING`, which is composition
+   * alone - the behaviour that shipped before a view could say.
+   */
+  readonly nesting: readonly NestingKind[];
   readonly layout: "layered";
   readonly showLifecycle: boolean;
   readonly showEvidence: boolean;
@@ -134,6 +141,10 @@ export type VisualWorkspaceAction =
       readonly direction: "top-down" | "left-right";
     }
   | {
+      readonly type: "nesting.set";
+      readonly nesting: readonly NestingKind[];
+    }
+  | {
       readonly type: "layout.set";
       readonly layout: "layered";
     }
@@ -156,11 +167,19 @@ export type VisualWorkspaceAction =
 // `direction.set`/`layout.set` actions to dispatch, in declaration order,
 // so App.tsx has nothing left to decide - it only has to dispatch what
 // comes back.
+const sameNesting = (
+  left: readonly NestingKind[],
+  right: readonly NestingKind[],
+): boolean =>
+  left.length === right.length &&
+  left.every((kind, index) => kind === right[index]);
+
 export const presentationActionsFor = (
   presentation:
     | {
         readonly layout?: "layered";
         readonly direction?: "top-down" | "left-right";
+        readonly nesting?: readonly NestingKind[];
         readonly notation?: "native" | "archimate";
         readonly showLifecycle?: boolean;
         readonly showEvidence?: boolean;
@@ -176,6 +195,13 @@ export const presentationActionsFor = (
   if (presentation?.direction !== undefined) {
     actions.push({ type: "direction.set", direction: presentation.direction });
   }
+  // A view that omits `nesting` is restored to the default rather than left
+  // holding the previous view's vocabulary: switching views must not carry a
+  // containment meaning across into one that never asked for it.
+  actions.push({
+    type: "nesting.set",
+    nesting: presentation?.nesting ?? DEFAULT_NESTING,
+  });
   if (presentation?.notation !== undefined) {
     actions.push({ type: "notation.set", notation: presentation.notation });
   }
@@ -272,6 +298,7 @@ export const createVisualWorkspaceState = (
   descriptionExpanded: false,
   detailsOpen: false,
   direction: "top-down",
+  nesting: DEFAULT_NESTING,
   layout: "layered",
   showLifecycle: true,
   showEvidence: true,
@@ -356,6 +383,13 @@ export const visualWorkspaceReducer = (
       return { ...state, detailsOpen: !state.detailsOpen };
     case "direction.set":
       return { ...state, direction: action.direction };
+    case "nesting.set":
+      // Restating the same vocabulary is not a change. Every view states one,
+      // so without this a view switch would produce a new state object each
+      // time and every identity-based memo downstream would miss.
+      return sameNesting(state.nesting, action.nesting)
+        ? state
+        : { ...state, nesting: action.nesting };
     case "layout.set":
       return { ...state, layout: action.layout };
     case "notation.set":

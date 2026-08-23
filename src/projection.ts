@@ -52,12 +52,28 @@ export interface ProjectionDefinition {
     readonly description?: string
     readonly layout?: 'layered'
     readonly direction?: 'top-down' | 'left-right'
+    /**
+     * The relationship kinds that draw as nesting in this view, in precedence
+     * order (ADR 0101). Absent means `['composition']`, which is the behaviour
+     * that shipped before a view could say; `[]` draws everything as a line.
+     */
+    readonly nesting?: readonly NestingKind[]
     readonly showLifecycle?: boolean
     readonly showEvidence?: boolean
     readonly showOwnership?: boolean
     readonly notation?: 'native' | 'archimate'
   }
 }
+
+/**
+ * A relationship kind a view may draw as nesting. Closed here and in
+ * `yarramate-projection.schema.json`; widening it is additive, because a view
+ * opts in by naming a kind (ADR 0101).
+ */
+export type NestingKind = 'composition' | 'assignment'
+
+/** What a view nests when it does not say: the behaviour that shipped. */
+export const DEFAULT_NESTING: readonly NestingKind[] = ['composition']
 
 export type ProjectionQuery = ProjectionDefinition['query']
 
@@ -117,6 +133,7 @@ export function canonicalProjection(
             ...(presentation.description === undefined ? {} : { description: presentation.description }),
             ...(presentation.layout === undefined ? {} : { layout: presentation.layout }),
             ...(presentation.direction === undefined ? {} : { direction: presentation.direction }),
+            ...(presentation.nesting === undefined ? {} : { nesting: presentation.nesting }),
             ...(presentation.showLifecycle === undefined ? {} : { showLifecycle: presentation.showLifecycle }),
             ...(presentation.showEvidence === undefined ? {} : { showEvidence: presentation.showEvidence }),
             ...(presentation.showOwnership === undefined ? {} : { showOwnership: presentation.showOwnership }),
@@ -406,6 +423,9 @@ export function evaluateProjection(
             ...(projection.presentation.direction === undefined
               ? {}
               : { direction: projection.presentation.direction }),
+            ...(projection.presentation.nesting === undefined
+              ? {}
+              : { nesting: projection.presentation.nesting }),
             ...(projection.presentation.showLifecycle === undefined
               ? {}
               : { showLifecycle: projection.presentation.showLifecycle }),

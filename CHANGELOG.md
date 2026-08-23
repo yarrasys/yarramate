@@ -132,6 +132,29 @@
   it with nothing for the reader to do. `--check` reports the project stale and
   safe to regenerate, which is the truth it always had (#225).
 
+- A view says what nesting means in it. `presentation.nesting` names the
+  relationship kinds that draw as containment, in precedence order (ADR 0101),
+  defaulting to `[composition]` - the behaviour that shipped, now stated rather
+  than assumed - with `[]` drawing everything as a line. `assignment` may now
+  nest, so a component's functions and processes draw inside it the way
+  ArchiMate renders them, instead of scattering as lines the reader
+  reconstructs edge by edge.
+  Nesting was widened this way rather than outright because a nested box
+  carries no label saying how it got there: with two kinds nesting, an inner
+  box means either "is a part of" or "is behaviour performed by" and nothing on
+  screen separates them. Declaring the vocabulary makes that a choice rather
+  than an accident, and a view naming one kind has no ambiguity to resolve. A
+  child claimed by two kinds nests under the earlier-listed one; two claims at
+  the same precedence naming different parents stay undecidable and draw
+  unnested with every claim still a line, as does a nesting cycle, which a
+  mixed vocabulary can form where composition alone could not. Assignment never
+  nests a service whatever the view says, because a service is the promise the
+  layer above consumes and burying it inside its provider inverts what it is
+  for; that declines to draw a containment rather than to accept the model,
+  since the ArchiMate 3.2 table permits the relationship. Unlike the
+  presentation toggles, a view that declares no nesting is restored to the
+  default rather than inheriting the previous view's (#233).
+
 - `apply` accepts an operation's `document:` as the manifest names it. The
   address was resolved only against the working directory, so the
   manifest-relative form an author naturally writes was refused whenever the
