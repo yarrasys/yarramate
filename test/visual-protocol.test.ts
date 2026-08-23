@@ -1,5 +1,10 @@
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
 import { describe, expect, it } from 'vitest'
+import { createFileSystemStore } from '../src/source-store.js'
 import {
+  digestOf,
   parseVisualBrowserInput,
   parseVisualDiagnosticResult,
   parseVisualEvent,
@@ -947,5 +952,32 @@ describe('fromWireFileUri', () => {
     // is refused rather than normalized: normalizing is what made two
     // distinct paths indistinguishable in the first place.
     expect(fromWireFileUri(uri)).toEqual({ ok: false, reason: 'noncanonical' })
+  })
+
+})
+
+describe('digestOf', () => {
+
+  /**
+   * A commit's pins become the `expected` revisions a store compares before it
+   * writes (ADR 0100). A store's revision is opaque, and this one is only
+   * usable as a pin because `createFileSystemStore` happens to mint the same
+   * sha256 `digestOf` does. That is a coincidence the runtime depends on, so
+   * it is asserted rather than assumed: if either side changes, this fails
+   * here instead of making every commit's precondition unsatisfiable in a way
+   * nothing would explain.
+   */
+  it('mints the revision the filesystem store does, which pins depend on', () => {
+    const parent = mkdtempSync(join(tmpdir(), 'yarramate-digest-pin-'))
+    try {
+      const source = 'format: yarramate/v1\nid: main\nconcepts: []\n'
+      writeFileSync(join(parent, 'main.yaml'), source, 'utf8')
+
+      expect(createFileSystemStore(parent).read('main.yaml')?.revision).toBe(
+        digestOf(source),
+      )
+    } finally {
+      rmSync(parent, { recursive: true, force: true })
+    }
   })
 })
