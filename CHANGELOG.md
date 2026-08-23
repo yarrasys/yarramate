@@ -180,6 +180,22 @@
   than none. The diagnostic also suggests a near miss now, which it never did
   before: a plain typo was as silent as a migration (#235).
 
+- Drafting a relationship between two subjects on a canvas, as pure functions:
+  `connectableKinds`, `proposeRelationshipId` and `draftRelationship`. The
+  first returns what the ArchiMate table permits between two rendered nodes,
+  read through each one's core kind so a model using a profile gets a palette
+  rather than nothing. The second proposes `<from>-<kind>-<to>`, which reads as
+  the sentence the relationship makes and is already a valid id, stepping to a
+  numeric suffix on collision because the id is authored text a human reads in
+  a diff. The third returns the `add-relationship` operation, into the source
+  subject's document, and returns `null` for a kind the table does not permit
+  rather than trusting the caller to have filtered first - the guarantee has to
+  hold for any caller, not only a careful one.
+  These hold no React, so what an editor would produce is compiled rather than
+  asserted about: every kind the palette offers is drafted, applied through
+  `applyOperations` and compiled clean, with no filesystem involved anywhere
+  now that Core is pure (#236).
+
 - `apply` accepts an operation's `document:` as the manifest names it. The
   address was resolved only against the working directory, so the
   manifest-relative form an author naturally writes was refused whenever the
