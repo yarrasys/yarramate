@@ -5,6 +5,7 @@ import {
   compileWorkspace,
   compileWorkspaceWithProfileContext,
   evaluateProjection,
+  explainProjection,
   loadProjection,
   renderProjectionMarkdown,
   type ProjectionDefinition,
@@ -1022,5 +1023,81 @@ relationships:
     expect(result.subjects.map(({ id }) => id)).toEqual([
       'live-service',
     ])
+  })
+})
+
+/**
+ * The editor has to tell a reviewer WHY a subject is not on the canvas (#248).
+ * A query that selects nothing, or that quietly drops the one subject they
+ * were looking for, is otherwise indistinguishable from a model that does not
+ * hold it.
+ */
+describe('explainProjection', () => {
+  const compiled = compileWorkspace([{ path: 'model.yaml', source }])
+  if (!compiled.ok) throw new Error('fixture must compile')
+  const graph = compiled.graph
+
+  const explain = (query: ProjectionDefinition['query']) =>
+    explainProjection(graph, {
+      format: 'yarramate/projection/v1',
+      id: 'explaining',
+      version: '1.0',
+      query,
+    })
+
+  it('names nothing when a query keeps everything', () => {
+    expect(explain({})).toEqual([])
+  })
+
+  it('names the facet that dropped each subject', () => {
+    const excluded = explain({ kinds: ['yarramate/core@0.1#capability'] })
+
+    expect(excluded).toEqual(
+      expect.arrayContaining([
+        { id: 'platform-team', facet: 'kinds' },
+        { id: 'australia-only', facet: 'kinds' },
+        { id: 'future', facet: 'kinds' },
+      ]),
+    )
+    expect(excluded.map(({ id }) => id)).not.toContain('first')
+    expect(excluded.map(({ id }) => id)).not.toContain('second')
+  })
+
+  it('reports the first facet a query declares, not every one that would drop it', () => {
+    // `subjects` is declared before `statuses`, and `future` fails both. A
+    // reader scanning the query reaches `subjects` first, so that is the
+    // answer - a list of every reason is a list nobody reads.
+    expect(
+      explain({ subjects: ['first'], statuses: ['current'] }).find(
+        ({ id }) => id === 'future',
+      ),
+    ).toEqual({ id: 'future', facet: 'subjects' })
+  })
+
+  it('agrees with what the projection actually selected', () => {
+    // The property that matters: one definition decides both, so the reason
+    // shown and the set drawn can never come from two readings of a query.
+    const kept = new Set(
+      evaluateProjection(graph, {
+        format: 'yarramate/projection/v1',
+        id: 'agreeing',
+        version: '1.0',
+        query: { statuses: ['current'], relationships: 'none' },
+      }).subjects.map(({ id }) => id),
+    )
+    const dropped = new Set(
+      explain({ statuses: ['current'] }).map(({ id }) => id),
+    )
+
+    for (const subject of graph.subjects) {
+      if (subject.type !== 'concept') continue
+      expect(kept.has(subject.id)).toBe(!dropped.has(subject.id))
+    }
+  })
+
+  it('says nothing about relationships, which enter through their endpoints', () => {
+    expect(
+      explain({ kinds: ['yarramate/core@0.1#capability'] }).map(({ id }) => id),
+    ).not.toContain('first-supports-second')
   })
 })
