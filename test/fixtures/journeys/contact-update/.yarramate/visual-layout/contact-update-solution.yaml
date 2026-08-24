@@ -1,0 +1,114 @@
+format: yarramate/visual-layout/v1
+projectionId: contact-update-solution
+positions:
+  accept-contact-update:
+    x: 1123.5026081996357
+    y: 2330.04457712641
+  at-least-once-upsert:
+    x: 124
+    y: 86
+  cloudhub2:
+    x: 192.33333333333334
+    y: 820
+  contact-api-contract:
+    x: -97.70213038129492
+    y: 2213.3832731156494
+  contact-api-deployables:
+    x: 433.33333333333314
+    y: 738
+  contact-exp-api:
+    x: 945.2932218499573
+    y: 2433.7951369486664
+  contact-exp-api-interface:
+    x: 767.0838355002788
+    y: 2328.6258797189034
+  contact-orchestration-service:
+    x: 1344.0011828417992
+    y: 1599.9322926114685
+  contact-prc-api:
+    x: 1478.3249164641948
+    y: 1689.8406252847353
+  contact-prc-api-interface:
+    x: 1612.6486500865901
+    y: 1595.9511297712859
+  contact-record:
+    x: 1001.1364979114757
+    y: 1177.5747676068916
+  contact-sys-api:
+    x: -18.223739934197198
+    y: 1039.4370851378094
+  contact-sys-api-interface:
+    x: 104.86405135230675
+    y: 932.9245810062291
+  contact-update-service:
+    x: 771.8862041674124
+    y: 2538.9643941784298
+  crm-product-owner:
+    x: 1015.3333333333334
+    y: 820
+  duplicate-contacts-erode-trust:
+    x: 984
+    y: 1042.6666666666665
+  experience-rate-limit:
+    x: 392
+    y: 86
+  gateway-oauth:
+    x: 660
+    y: 86
+  https-rest:
+    x: 928
+    y: 86
+  one-sanctioned-write-path:
+    x: 754.8
+    y: 1238
+  orchestrate-contact-update:
+    x: 1471.0070141698866
+    y: 1783.7301207981848
+  reps-update-contacts-without-crm-logins:
+    x: 984
+    y: 2746
+  sales-rep:
+    x: 124
+    y: 2914
+  sales-systems-team:
+    x: 736
+    y: 1070
+  salesforce-allocation-is-shared:
+    x: 1232
+    y: 1029
+  salesforce-api-limit:
+    x: 1196
+    y: 86
+  salesforce-contact-interface:
+    x: 570.3816197813926
+    y: 607.0828664593168
+  salesforce-contact-service:
+    x: 276.71006941747555
+    y: 606.3795579080784
+  salesforce-crm:
+    x: 423.5458445994341
+    y: 493.71352137236556
+  salesforce-jwt-bearer:
+    x: 1464
+    y: 86
+  salesforce-platform:
+    x: 423.3333333333333
+    y: 254
+  salesforce-rest-api:
+    x: 1732
+    y: 86
+  salesforce-tenant-infrastructure:
+    x: 499.33333333333337
+    y: 234
+  salesforce-write-service:
+    x: -40.07734304773046
+    y: 1145.9495892693894
+  serve-contact-sobject:
+    x: 428.4665967121375
+    y: 380.34417628541433
+  update-salesforce-contact:
+    x: -141.31153122070114
+    y: 940.7320786350097
+  work-an-account:
+    x: 124
+    y: 2914

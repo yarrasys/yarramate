@@ -1,0 +1,108 @@
+format: yarramate/visual-layout/v1
+projectionId: contact-update-slice
+positions:
+  at-least-once-upsert:
+    x: 124
+    y: 86
+  experience-rate-limit:
+    x: 392
+    y: 86
+  gateway-oauth:
+    x: 660
+    y: 86
+  https-rest:
+    x: 928
+    y: 86
+  salesforce-api-limit:
+    x: 1196
+    y: 86
+  salesforce-jwt-bearer:
+    x: 1464
+    y: 86
+  salesforce-rest-api:
+    x: 1732
+    y: 86
+  accept-contact-update:
+    x: 568.6666666666666
+    y: 2410
+  cloudhub2:
+    x: 563
+    y: 820
+  contact-api-contract:
+    x: 2000
+    y: 86
+  contact-exp-api:
+    x: 568.6666666666666
+    y: 2212
+  contact-exp-api-interface:
+    x: 568.6666666666666
+    y: 2212
+  contact-orchestration-service:
+    x: 486
+    y: 1992
+  contact-prc-api:
+    x: 454.66666666666663
+    y: 1626
+  contact-prc-api-interface:
+    x: 454.66666666666663
+    y: 1626
+  contact-record:
+    x: 351.99999999999994
+    y: 2578
+  contact-sys-api:
+    x: 956.6226085315861
+    y: 998.4939608440823
+  contact-sys-api-interface:
+    x: 956.622608531586
+    y: 998.4939608440823
+  contact-update-service:
+    x: 600
+    y: 2578
+  crm-product-owner:
+    x: 1015.3333333333334
+    y: 820
+  duplicate-contacts-erode-trust:
+    x: 984
+    y: 1042.6666666666665
+  one-sanctioned-write-path:
+    x: 1303.5848295879618
+    y: 987.1518752805288
+  orchestrate-contact-update:
+    x: 454.66666666666663
+    y: 1824
+  reps-update-contacts-without-crm-logins:
+    x: 383.33333333333326
+    y: 2746
+  sales-rep:
+    x: 631.3333333333333
+    y: 2746
+  sales-systems-team:
+    x: 736
+    y: 1070
+  salesforce-allocation-is-shared:
+    x: 1232
+    y: 1029
+  salesforce-contact-interface:
+    x: 289.3333333333333
+    y: 454
+  salesforce-contact-service:
+    x: 289.3333333333333
+    y: 820
+  salesforce-crm:
+    x: 289.3333333333333
+    y: 454
+  salesforce-tenant-infrastructure:
+    x: 289.3333333333333
+    y: 234
+  salesforce-write-service:
+    x: 675.0337660641587
+    y: 1091.0491179546302
+  serve-contact-sobject:
+    x: 289.3333333333333
+    y: 652
+  update-salesforce-contact:
+    x: 1090.9076510236605
+    y: 1315.5475718601062
+  work-an-account:
+    x: 631.3333333333333
+    y: 2914

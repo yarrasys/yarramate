@@ -1,0 +1,12 @@
+format: yarramate/projection/v1
+id: contact-update-apis
+version: "1.0"
+query:
+  kinds:
+    - yarrasys/api-led@1.0#api
+  relationships: between
+presentation:
+  title: Contact update — APIs
+  description: >-
+    The API-grain picture: one box per API, each an authored Grouping that
+    aggregates its component, interface and service (yarrasys/api-led@1.0#api).

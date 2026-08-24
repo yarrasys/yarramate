@@ -1,6 +1,6 @@
 format: yarramate/projection/v1
 id: contact-update-slice
-version: "1.0"
+version: "1.1"
 query:
   subjects:
     - sales-rep
@@ -13,6 +13,8 @@ query:
     - contact-sys-api-interface
     - salesforce-contact-interface
     - cloudhub2
+    - contact-api-deployables
+    - salesforce-platform
     - accept-contact-update
     - orchestrate-contact-update
     - update-salesforce-contact
@@ -32,5 +34,7 @@ query:
     - salesforce-rest-api
   relationships: connected
 presentation:
+  layout: layered
+  direction: top-down
   title: Contact update hop
   description: Experience to process to Salesforce contact update, on CloudHub 2.0.
