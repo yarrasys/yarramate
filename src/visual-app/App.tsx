@@ -47,6 +47,13 @@ import { ConnectionPanel } from "./connection-panel.js";
 import { faultedSubjects } from "./faults.js";
 import { SubjectDraftPanel } from "./subject-draft-panel.js";
 import { ConfirmDialog } from "./confirm-dialog.js";
+import { ContextMenu } from "./context-menu.js";
+import {
+  contextMenuFor,
+  type ContextMenuIntent,
+  type ContextMenuTarget,
+} from "./context-menu-model.js";
+import { stageRelationshipScalarChange } from "./subject-form.js";
 import { describeDeletion, draftDeletion } from "../deletion-drafting.js";
 
 /**
@@ -310,6 +317,7 @@ const DiagramWorkspace = ({
   pendingDeletion,
   onDeletionDismiss,
   onSelect,
+  onCanvasMenu,
   onClearFilter,
   onSaveLayout,
 }: {
@@ -331,6 +339,13 @@ const DiagramWorkspace = ({
   readonly pendingDeletion: string | null;
   readonly onDeletionDismiss: () => void;
   readonly onSelect: (subject: SelectedDiagramSubject) => void;
+  readonly onCanvasMenu: (
+    target: {
+      readonly type: "node" | "edge" | "canvas";
+      readonly id: string | null;
+    },
+    position: { readonly x: number; readonly y: number },
+  ) => void;
   readonly onClearFilter: () => void;
   readonly onSaveLayout: (payload: VisualLayoutSavePayload) => void;
 }) => {
@@ -450,6 +465,7 @@ const DiagramWorkspace = ({
                   onSelect(normalizeSelectedRelationship(edge, nodeTitles));
               }
             }}
+            onContextMenu={onCanvasMenu}
             matchedIds={state.activeFilter?.matchedIds ?? null}
             quickFilterText={state.quickFilterText}
             nesting={nesting}
@@ -994,6 +1010,111 @@ export const App = () => {
     "--conversation-width": `${workspace.conversation.width}px`,
   } as CSSProperties;
 
+  const openMenu = (
+    target: ContextMenuTarget,
+    position: { readonly x: number; readonly y: number },
+  ) =>
+    dispatchWorkspace({
+      type: "menu.opened",
+      target,
+      x: position.x,
+      y: position.y,
+    });
+
+  // The menu is rebuilt from the live model on every render rather than
+  // captured when it opened, so a commit landing underneath it cannot leave
+  // items pointing at a subject that has gone.
+  const menuGroups =
+    workspace.contextMenu === null
+      ? []
+      : contextMenuFor(workspace.contextMenu.target, {
+          graph: state.model?.graph ?? null,
+          relationshipKinds: state.model?.vocabulary.relationshipKinds ?? [],
+          activeViewId: state.activeView,
+          filtered: state.activeFilter !== null,
+        });
+
+  /**
+   * Every menu item ends here. The menu itself decides nothing about what an
+   * item does; it names an intent, and this is the single place that turns one
+   * into the dispatch, filter or staged operation it already had a name for.
+   */
+  const runIntent = (intent: ContextMenuIntent) => {
+    const graph = state.model?.graph ?? null;
+    switch (intent.type) {
+      case "subject.inspect": {
+        const node = graph?.nodes.find(
+          (candidate) => candidate.id === intent.id,
+        );
+        if (node === undefined) return;
+        dispatchWorkspace({
+          type: "subject.selected",
+          subject: normalizeSelectedElement(node),
+        });
+        return;
+      }
+      case "relationship.inspect": {
+        const edge = graph?.edges.find(
+          (candidate) => candidate.id === intent.id,
+        );
+        if (edge === undefined || graph === null) return;
+        dispatchWorkspace({
+          type: "subject.selected",
+          subject: normalizeSelectedRelationship(
+            edge,
+            new Map(graph.nodes.map((node) => [node.id, node.name] as const)),
+          ),
+        });
+        return;
+      }
+      case "subject.connect":
+        dispatchWorkspace({ type: "connection.started", from: intent.from });
+        return;
+      case "subject.delete":
+      case "relationship.delete":
+        // Both go through the same confirmation the side panel already uses:
+        // `draftDeletion` composes the batch and knows an edge from a node.
+        dispatchWorkspace({ type: "deletion.asked", id: intent.id });
+        return;
+      case "relationship.retype": {
+        const edge = graph?.edges.find(
+          (candidate) => candidate.id === intent.id,
+        );
+        if (edge === undefined) return;
+        for (const operation of stageRelationshipScalarChange(
+          edge.document,
+          edge.localId,
+          "kind",
+          edge.kindLabel,
+          intent.kind,
+        )) {
+          stageChange(operation);
+        }
+        dispatchWorkspace({ type: "menu.dismissed" });
+        return;
+      }
+      case "canvas.draft-subject":
+        dispatchWorkspace({ type: "subject.draft.opened" });
+        return;
+      case "view.open":
+        navigate(intent.id);
+        dispatchWorkspace({ type: "menu.dismissed" });
+        return;
+      case "view.clear":
+        clearFilter();
+        dispatchWorkspace({ type: "menu.dismissed" });
+        return;
+      case "view.new":
+        // Same two motions the rail's own new-view button makes: a new view
+        // starts from the whole model, and the form seeds itself from what is
+        // active, so clearing first is what makes its fields blank.
+        clearFilter();
+        setSaveViewOpen(true);
+        dispatchWorkspace({ type: "menu.dismissed" });
+        return;
+    }
+  };
+
   return (
     <main className="visual-shell" style={shellStyle}>
       <CommandStrip
@@ -1068,6 +1189,14 @@ export const App = () => {
               subject: normalizeSelectedElement(node),
             });
           }}
+          onRowMenu={(row, position) =>
+            openMenu(
+              row.kind === "view"
+                ? { kind: "view-row", id: row.id }
+                : { kind: "model-row", id: row.id },
+              position,
+            )
+          }
         />
         <DiagramWorkspace
           state={state}
@@ -1099,6 +1228,16 @@ export const App = () => {
           showOwnership={workspace.showOwnership}
           onSelect={(subject) =>
             dispatchWorkspace({ type: "subject.selected", subject })
+          }
+          onCanvasMenu={(target, position) =>
+            openMenu(
+              target.type === "node"
+                ? { kind: "subject", id: target.id ?? "" }
+                : target.type === "edge"
+                  ? { kind: "relationship", id: target.id ?? "" }
+                  : { kind: "canvas" },
+              position,
+            )
           }
           onClearFilter={clearFilter}
           onSaveLayout={saveLayout}
@@ -1138,6 +1277,17 @@ export const App = () => {
           onCommitChangeset={commitChangeset}
         />
       </div>
+      {/* At the shell, not inside the canvas or the rail: a menu opened on the
+          last row of the rail has to be able to hang past the rail's edge. */}
+      {workspace.contextMenu === null ? null : (
+        <ContextMenu
+          groups={menuGroups}
+          x={workspace.contextMenu.x}
+          y={workspace.contextMenu.y}
+          onChoose={runIntent}
+          onDismiss={() => dispatchWorkspace({ type: "menu.dismissed" })}
+        />
+      )}
     </main>
   );
 };

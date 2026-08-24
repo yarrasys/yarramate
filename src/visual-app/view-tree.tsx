@@ -74,13 +74,31 @@ function LayerSwatch({ layer }: { readonly layer: string | null }) {
   );
 }
 
+/**
+ * A right-click on a row, in viewport coordinates. The rail reports which row
+ * was hit and nothing about what the menu should say — `contextMenuFor` owns
+ * that, and a rail that also decided it would be a second place to change.
+ */
+export type TreeRowMenu = (
+  row: { readonly kind: "view" | "subject"; readonly id: string },
+  position: { readonly x: number; readonly y: number },
+) => void;
+
+const menuHandler =
+  (row: { readonly kind: "view" | "subject"; readonly id: string }, onMenu: TreeRowMenu) =>
+  (event: { preventDefault: () => void; clientX: number; clientY: number }) => {
+    event.preventDefault();
+    onMenu(row, { x: event.clientX, y: event.clientY });
+  };
+
 interface ViewRowProps {
   readonly row: ViewTreeRow;
   readonly depth: 1 | 2;
   readonly onSelect: (id: string) => void;
+  readonly onMenu: TreeRowMenu;
 }
 
-function ViewRow({ row, depth, onSelect }: ViewRowProps) {
+function ViewRow({ row, depth, onSelect, onMenu }: ViewRowProps) {
   return (
     <li>
       <button
@@ -93,6 +111,7 @@ function ViewRow({ row, depth, onSelect }: ViewRowProps) {
         title={row.title}
         aria-current={row.active ? "true" : undefined}
         onClick={() => onSelect(row.id)}
+        onContextMenu={menuHandler({ kind: "view", id: row.id }, onMenu)}
       >
         <ViewGlyph />
         <span className="tree-label">{row.title}</span>
@@ -140,6 +159,7 @@ export interface ViewTreeProps {
   readonly onClearView: () => void;
   readonly onNewView: () => void;
   readonly onSelectSubject: (id: string) => void;
+  readonly onRowMenu: TreeRowMenu;
 }
 
 export function ViewTree({
@@ -155,6 +175,7 @@ export function ViewTree({
   onClearView,
   onNewView,
   onSelectSubject,
+  onRowMenu,
 }: ViewTreeProps) {
   const tree = buildViewTree({
     views,
@@ -233,6 +254,7 @@ export function ViewTree({
                   }`}
                   aria-current={showingAll ? "true" : undefined}
                   onClick={onClearView}
+                  onContextMenu={menuHandler({ kind: "view", id: "" }, onRowMenu)}
                 >
                   <ViewGlyph />
                   <span className="tree-label">{ALL_SUBJECTS_LABEL}</span>
@@ -246,6 +268,7 @@ export function ViewTree({
                 row={row}
                 depth={1}
                 onSelect={onSelectView}
+                onMenu={onRowMenu}
               />
             ))}
             {tree.folders.map((folder) => {
@@ -269,6 +292,7 @@ export function ViewTree({
                           row={row}
                           depth={2}
                           onSelect={onSelectView}
+                          onMenu={onRowMenu}
                         />
                       ))}
                     </ul>
@@ -314,6 +338,10 @@ export function ViewTree({
                             }`}
                             title={`${subject.name} — ${subject.kindLabel}`}
                             onClick={() => onSelectSubject(subject.id)}
+                            onContextMenu={menuHandler(
+                              { kind: "subject", id: subject.id },
+                              onRowMenu,
+                            )}
                           >
                             <LayerSwatch layer={subject.layer} />
                             <span className="tree-label">{subject.name}</span>

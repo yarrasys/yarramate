@@ -166,6 +166,17 @@ export interface VisualViewSummary {
 export interface VisualKindOption {
   readonly id: string;
   readonly label: string;
+  /**
+   * The nearest core-profile kind this one descends from, as a label — the
+   * same resolution `CanvasNode.coreKindLabel` and `CanvasEdge.coreKindLabel`
+   * carry, for a kind nothing has been authored with yet.
+   *
+   * Without it a browser can read a palette but cannot judge it: the ArchiMate
+   * table is keyed on core kinds, so an editor offering an extension kind has
+   * no way to ask whether the pairing permits what that kind descends from,
+   * and can put a `YM404` one click away. Equal to `label` for a core kind.
+   */
+  readonly coreLabel: string;
 }
 
 export interface VisualFilterQueryPayload {

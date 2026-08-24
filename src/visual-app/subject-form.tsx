@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { kindLabelOf } from '../kind-label.js'
+import { relationshipKindOffer } from './relationship-kind-options.js'
 import type { CanvasEdge, CanvasNode } from '../graph-projection.js'
 import type { VisualRenderedModel } from '../adapters/visual/wire.js'
 import type { VisualKindOption } from '../adapters/visual/protocol-contract.js'
@@ -784,11 +785,22 @@ export const RelationshipForm = ({ edge, model, operations, onStageChange }: Rel
   const document = edge.document
   const id = edge.localId
   const stage = (ops: readonly YarramateOperation[]) => ops.forEach(onStageChange)
-  const kindOptions = model.vocabulary.relationshipKinds.map((option) => ({
+  const currentKind = kindLabelFor(effective.kind, model.vocabulary.relationshipKinds)
+  // The same guarantee `connectableKinds` gives the connection tool, given to
+  // the edge that already exists: this select offered the whole vocabulary, so
+  // re-typing `applicationComponent --composition--> businessActor` was one
+  // click away and `YM404` only arrived at commit. Endpoints come from
+  // `effective`, not from the edge, so a staged `from` change moves the row of
+  // the table this is asked against.
+  const kindOptions = relationshipKindOffer(
+    model.graph,
+    { from: effective.from, to: effective.to },
+    model.vocabulary.relationshipKinds,
+    currentKind,
+  ).options.map((option) => ({
     value: option.label,
     label: option.label,
   }))
-  const currentKind = kindLabelFor(effective.kind, model.vocabulary.relationshipKinds)
   // Endpoints are refs, not addresses: `qualifyReference` leaves an already
   // qualified ref alone, so writing the canvas id keeps a cross-document
   // endpoint unambiguous instead of guessing which document to read it in.

@@ -2,6 +2,38 @@
 
 ## 1.0.0
 
+- **Added.** Right-click menus on a subject, a relationship, the empty canvas
+  and a row in the rail. Every one of them obeys one rule: **operations that
+  edit the view are separated from operations that edit the model**, under
+  named headings, with anything model-destructive last, behind a firm rule, in
+  `--failure`. Removing a subject from a view rewrites one projection and
+  leaves every other view alone; deleting it from the model takes every
+  relationship naming it and changes every view that drew it, and rendered as
+  neighbours in a flat list the second is one slip away from someone who meant
+  the first. Deleting still goes through the confirmation the side panel
+  already used, so the menu adds a way to ask and no way to skip being asked.
+  What a menu offers is a pure function of the model (`contextMenuFor`)
+  returning intents rather than callbacks, so what a right-click puts on screen
+  is something a test can read.
+
+- **Fix.** Re-typing a relationship offers only the kinds the endpoint pairing
+  permits. The properties form offered the profile's whole relationship
+  vocabulary, so turning `applicationComponent --serving--> businessActor`
+  into a `composition` was one click away and the `YM404` only arrived at
+  commit - while the connection tool two files over had always narrowed to
+  `connectableKinds`. The same narrowing now covers the form and the new menu,
+  and the kind an edge already carries is always offered, because a model
+  authored outside this editor is not the editor's to silently rewrite.
+
+- **Added.** `VisualKindOption` carries `coreLabel`, the core-profile kind an
+  option descends from, resolved through the profile's declared lineage exactly
+  as a canvas subject gets its own `coreKindLabel`. Without it a browser could
+  read a palette but not judge it: the ArchiMate table is keyed on core kinds,
+  so an extension kind had to be offered unchecked, and this repo's own
+  `implements` was offered on every edge including the pairings where the
+  `realization` it descends from is refused. It is now offered exactly where
+  that ancestor is permitted.
+
 - **Added.** The saved views and the whole model are a tree in a left rail,
   replacing the flat `<select>` that sat in the command strip. That control
   held every view at one level and could do nothing to a view but open it; a

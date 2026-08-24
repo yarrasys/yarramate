@@ -165,6 +165,35 @@ ArchiMate vocabulary, and the panel says so rather than showing an empty list.
 Selection is chosen over dragging deliberately: every step is a state
 transition a test can make and a keyboard can reach.
 
+### Right-click menus
+
+Four things carry a menu — a subject, a relationship, the empty canvas, and a
+row in the rail — and one rule runs through all four: **operations that edit
+the view are separated from operations that edit the model.** The groups are
+named, view before model, and anything model-destructive sits last, behind a
+firm rule, drawn in `--failure`.
+
+The rule is not decoration. Removing a subject from a view rewrites one
+projection and leaves every other view alone; deleting it from the model takes
+every relationship naming it and changes every view that drew it. Rendered as
+neighbours in a flat list, the second is one slip away from someone who meant
+the first. Delete still asks through the same confirmation the side panel uses,
+so a menu adds a way to ask and no way to skip being asked.
+
+`Change kind` on a relationship offers only what the endpoint pairing permits,
+which is the guarantee the connection tool already gave a new edge, given to
+one that exists. An extension kind is judged by the core kind it descends from,
+read off `VisualKindOption.coreLabel`; a kind whose lineage never reaches the
+ArchiMate table has no row to judge it against and is offered rather than
+refused on a guess. The kind an edge already carries is always offered, because
+a model authored outside this editor is not the editor's to silently rewrite.
+
+What a menu contains is a pure function of the model (`contextMenuFor`), and
+its items name intents rather than carrying callbacks, so what a right-click
+puts on screen is something a test can read. It is rebuilt on every render
+rather than captured when it opened: a commit landing underneath an open menu
+redraws it instead of leaving items pointing at a subject that has gone.
+
 ### Nesting
 
 `presentation.nesting` names the relationship kinds that draw as containment in

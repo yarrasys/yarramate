@@ -4,6 +4,7 @@ import type {
   CanvasNode,
 } from "../graph-projection.js";
 import { DEFAULT_NESTING, type NestingKind } from "../nesting.js";
+import type { ContextMenuTarget } from "./context-menu-model.js";
 
 export type ConversationMode = "auto" | "open" | "closed";
 
@@ -148,6 +149,18 @@ export interface VisualWorkspaceState {
    * A view that says nothing keeps `DEFAULT_NESTING`, which is composition
    * alone - the behaviour that shipped before a view could say.
    */
+  /**
+   * The open context menu: what was right-clicked and where the pointer was,
+   * or null. The menu's CONTENTS are not held here — `contextMenuFor` derives
+   * them from the model on every render, so a commit that lands while a menu
+   * is open redraws it instead of leaving stale items over a subject that is
+   * no longer there.
+   */
+  readonly contextMenu: {
+    readonly target: ContextMenuTarget;
+    readonly x: number;
+    readonly y: number;
+  } | null;
   readonly nesting: readonly NestingKind[];
   readonly layout: "layered";
   readonly showLifecycle: boolean;
@@ -180,6 +193,13 @@ export type VisualWorkspaceAction =
   | { readonly type: "subject.cleared" }
   | { readonly type: "description.toggled" }
   | { readonly type: "details.toggled" }
+  | {
+      readonly type: "menu.opened";
+      readonly target: ContextMenuTarget;
+      readonly x: number;
+      readonly y: number;
+    }
+  | { readonly type: "menu.dismissed" }
   | { readonly type: "tree.filtered"; readonly filterText: string }
   | { readonly type: "tree.toggled"; readonly key: string }
   | {
@@ -332,6 +352,7 @@ export const createVisualWorkspaceState = (
   connection: null,
   draftingSubject: false,
   pendingDeletion: null,
+  contextMenu: null,
   nesting: DEFAULT_NESTING,
   layout: "layered",
   showLifecycle: true,
@@ -393,11 +414,25 @@ export const visualWorkspaceReducer = (
           unread: state.conversation.unread + 1,
         },
       };
+    // A menu is dismissed by everything it can lead to, and by the commit that
+    // can take its target away, rather than by a blanket rule over every
+    // action: a reviewer who right-clicks and then reads an agent's reply
+    // should still find the menu where they left it.
+    case "menu.opened":
+      return {
+        ...state,
+        contextMenu: { target: action.target, x: action.x, y: action.y },
+      };
+    case "menu.dismissed":
+      return state.contextMenu === null
+        ? state
+        : { ...state, contextMenu: null };
     case "connection.started":
       return {
         ...state,
         connection: { from: action.from, to: null },
         draftingSubject: false,
+        contextMenu: null,
       };
     case "connection.targeted":
       if (state.connection === null) return state;
@@ -413,7 +448,12 @@ export const visualWorkspaceReducer = (
     case "subject.draft.opened":
       // The two tools are alternatives, not layers: opening one puts the other
       // away rather than leaving two half-finished drafts on screen.
-      return { ...state, draftingSubject: true, connection: null };
+      return {
+        ...state,
+        draftingSubject: true,
+        connection: null,
+        contextMenu: null,
+      };
     case "subject.draft.closed":
       return state.draftingSubject ? { ...state, draftingSubject: false } : state;
     case "deletion.asked":
@@ -424,6 +464,7 @@ export const visualWorkspaceReducer = (
         pendingDeletion: action.id,
         connection: null,
         draftingSubject: false,
+        contextMenu: null,
       };
     case "deletion.dismissed":
       return state.pendingDeletion === null
@@ -435,6 +476,7 @@ export const visualWorkspaceReducer = (
         conversation: { ...state.conversation, mode: "open", unread: 0 },
         selectedSubject: action.subject,
         descriptionExpanded: false,
+        contextMenu: null,
       };
     case "subject.cleared":
       return state.selectedSubject === null
@@ -474,8 +516,14 @@ export const visualWorkspaceReducer = (
     case "presentation.toggled":
       return { ...state, [action.flag]: action.value };
     case "model.replaced": {
-      const held = state.selectedSubject;
-      if (held === null) return state;
+      // A menu is anchored to a pointer position over a subject that may not
+      // have survived the commit. `contextMenuFor` would return an empty menu
+      // for a target that is gone, so nothing stale is ever drawn — but a menu
+      // floating over a canvas that just redrew under it is its own confusion.
+      const base =
+        state.contextMenu === null ? state : { ...state, contextMenu: null };
+      const held = base.selectedSubject;
+      if (held === null) return base;
       const graph = action.graph;
       const survivor =
         graph === null
@@ -487,8 +535,8 @@ export const visualWorkspaceReducer = (
       // survives it - re-read the same id rather than closing the inspector
       // under them. Only a subject the commit actually removed is dropped.
       return survivor === null
-        ? { ...state, selectedSubject: null, descriptionExpanded: false }
-        : { ...state, selectedSubject: survivor };
+        ? { ...base, selectedSubject: null, descriptionExpanded: false }
+        : { ...base, selectedSubject: survivor };
     }
   }
 };

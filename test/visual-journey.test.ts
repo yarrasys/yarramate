@@ -1409,6 +1409,17 @@ relationships: []
       conceptKinds.map((kind) => kind.id).sort(),
     )
 
+    // Every option also says what it descends from, which is what lets the
+    // browser judge a kind against the ArchiMate table (#247). This workspace
+    // declares no profile of its own, so every kind IS a core kind and stands
+    // for itself - the resolution is the same one either way.
+    for (const option of [
+      ...model.vocabulary.conceptKinds,
+      ...model.vocabulary.relationshipKinds,
+    ]) {
+      expect(option.coreLabel).toBe(option.label)
+    }
+
     // One subject per kind the palette offers, in one batch: a vocabulary the
     // canvas can offer but not land is a palette of dead options, and only a
     // commit can tell the difference.

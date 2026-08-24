@@ -83,6 +83,7 @@ import {
   loadWorkspaceManifest,
   type ResolvedWorkspace,
 } from "../../workspace.js";
+import type { VisualKindOption } from "./protocol-contract.js";
 import type {
   VisualRenderedModel,
   VisualServerFrame,
@@ -747,12 +748,23 @@ export const startVisualServer = async (
         graph: compiled.graph,
         profileContext: compiled.profileContext,
       };
-      const conceptKinds = [
-        ...compiled.profileContext.conceptKindLineages.keys(),
-      ].map((id) => ({ id, label: kindLabelOf(id) }));
-      const relationshipKinds = [
-        ...compiled.profileContext.relationshipKindLineages.keys(),
-      ].map((id) => ({ id, label: kindLabelOf(id) }));
+      // `[0]` is the nearest declared ancestor, the same reading
+      // `projectGraphForCanvas` gives an authored subject its `coreKindLabel`.
+      // A kind with no lineage IS a core kind and stands for itself.
+      const optionsFrom = (
+        lineages: ReadonlyMap<string, readonly string[]>,
+      ): readonly VisualKindOption[] =>
+        [...lineages.keys()].map((id) => ({
+          id,
+          label: kindLabelOf(id),
+          coreLabel: kindLabelOf(lineages.get(id)?.[0] ?? id),
+        }));
+      const conceptKinds = optionsFrom(
+        compiled.profileContext.conceptKindLineages,
+      );
+      const relationshipKinds = optionsFrom(
+        compiled.profileContext.relationshipKindLineages,
+      );
       rendered = {
         authority: rendered.authority,
         initialView: rendered.initialView,
