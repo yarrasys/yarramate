@@ -998,13 +998,19 @@ export const filterToReresolve = (
   // disk names the new subject, and the canvas does not change. So the view's
   // query is re-read off the frame that replaced the model.
   //
-  // Only for a filter the view itself issued. A reviewer holding their own
-  // panel filter must not have the view's query put back underneath them,
-  // which is the same rule `source` exists for.
+  // Only for a filter that view issued - which includes the query tab editing
+  // it (`editor`), because a committed query edit is exactly the case: the
+  // reviewer changed the view's query, the commit landed it, and the query the
+  // browser holds is the one from before. A reviewer holding their own panel
+  // filter must not have the view's query put back underneath them, which is
+  // the same rule `source` exists for.
+  const fromTheView =
+    state.activeFilter.source === "view" ||
+    state.activeFilter.source === "editor";
   const landed = frame.views.find(({ id }) => id === state.activeView);
   return {
     query:
-      state.activeFilter.source === "view" && landed !== undefined
+      fromTheView && landed !== undefined
         ? landed.query
         : state.activeFilter.query,
     source: state.activeFilter.source,

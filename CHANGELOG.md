@@ -2,6 +2,10 @@
 
 ## 1.0.0
 
+- **Fixed.** A committed query edit re-asked the query the browser was holding,
+  which is that query as it was — the same defect the `view` source had, and
+  the query tab's `editor` source needed the same answer.
+
 - **Added.** A collapsible tabbed panel along the foot of the canvas column,
   with the view's query as its first tab (#248). The facets that used to sit in
   a dropdown *over* the diagram they were narrowing now sit under it, beside a

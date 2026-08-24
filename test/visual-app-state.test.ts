@@ -1716,6 +1716,7 @@ describe("filterToReresolve", () => {
           activeFilter: {
             query: { subjects: ["checkout"] },
             matchedIds: ["checkout"],
+            excluded: [],
             source: "view",
           },
         },
@@ -1723,6 +1724,45 @@ describe("filterToReresolve", () => {
     ).toEqual({
       query: { subjects: ["checkout", "fraud-screening"] },
       source: "view",
+    });
+  });
+
+  it("re-asks an EDITED view with the query the commit landed", () => {
+    // The query tab edits the active view under its own source, and staging
+    // that edit commits it like any other change. Re-asking the held query
+    // there is the same defect as for a view: the projection on disk names the
+    // edited query and the canvas goes on drawing the old one.
+    expect(
+      filterToReresolve(
+        {
+          kind: "model",
+          model: model("all"),
+          views: [
+            {
+              id: "payment-flow",
+              title: "Payment flow",
+              description: "",
+              query: { subjects: ["checkout", "fraud-screening"] },
+              presentation: {},
+              path: ".yarramate/projections/payment-flow.yaml",
+              subjectCount: 2,
+            },
+          ],
+        },
+        {
+          ...standing("editor"),
+          activeView: "payment-flow",
+          activeFilter: {
+            query: { subjects: ["checkout"] },
+            matchedIds: ["checkout"],
+            excluded: [],
+            source: "editor",
+          },
+        },
+      ),
+    ).toEqual({
+      query: { subjects: ["checkout", "fraud-screening"] },
+      source: "editor",
     });
   });
 
