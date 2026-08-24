@@ -4,6 +4,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import type { VisualAppState } from '../src/visual-app/state.js'
 import type { CanvasNode } from '../src/graph-projection.js'
 import type { VisualRenderedModel } from '../src/adapters/visual/wire.js'
+import type { EditorHost } from '../src/visual-app/editor-host.js'
+import type { RightSectionId } from '../src/visual-app/workspace-state.js'
 
 const session = vi.hoisted(() => {
   const baseState: VisualAppState = {
@@ -85,9 +87,20 @@ afterAll(() => {
     Object.defineProperty(globalThis, 'window', previousWindow)
   }
 })
-const renderSession = (overrides: Partial<VisualAppState> = {}): string => {
+// A host that answers nothing: `useVisualSession` is mocked above, so what
+// this exercises is that `App` takes one at all - the prop is the seam an
+// embedder supplies instead of a socket (#252).
+const idleHost: EditorHost = {
+  open: () => () => {},
+  send: () => {},
+}
+
+const renderSession = (
+  overrides: Partial<VisualAppState> = {},
+  props: { readonly sections?: readonly RightSectionId[] } = {},
+): string => {
   session.state = { ...session.baseState, ...overrides }
-  return renderToStaticMarkup(createElement(App))
+  return renderToStaticMarkup(createElement(App, { host: idleHost, ...props }))
 }
 
 const subject = (
@@ -442,5 +455,44 @@ describe('the right column, as a stack of sections', () => {
 
     expect(markup).toContain('class="session-description"')
     expect(markup).not.toContain('id="session-details"')
+  })
+})
+
+/**
+ * The sections a host declares (#252). A product with no agent behind it takes
+ * properties and changes and leaves chat out; the section and the session
+ * button go with it.
+ */
+describe('a host that asks for some of the sections', () => {
+  it('draws only what was asked for', () => {
+    const markup = renderSession({}, { sections: ['properties', 'changes'] })
+
+    expect(markup).toContain('stack-section-properties')
+    expect(markup).toContain('stack-section-changes')
+    expect(markup).not.toContain('stack-section-chat')
+  })
+
+  it('takes the session button out with the chat section', () => {
+    // There is nobody to hand control back to in a product that declined chat,
+    // so a button offering to would be lying about what it does.
+    const markup = renderSession({}, { sections: ['properties', 'changes'] })
+
+    expect(markup).not.toContain('>Return to agent</button>')
+    expect(markup).not.toContain('class="composer"')
+  })
+
+  it('gives a single section no handle to resize it against', () => {
+    const markup = renderSession({}, { sections: ['changes'] })
+
+    expect(markup).toContain('stack-section-changes')
+    expect(markup).not.toContain('class="section-splitter"')
+  })
+
+  it('draws all three when the host says nothing', () => {
+    const markup = renderSession()
+
+    for (const id of ['properties', 'changes', 'chat']) {
+      expect(markup).toContain(`stack-section-${id}`)
+    }
   })
 })

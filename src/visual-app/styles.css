@@ -654,13 +654,14 @@ body {
 
 /* Properties takes what is left; changes and chat hold the heights their
    splitters were dragged to, and chat is last because it is pinned at the foot
-   (#249). A shut section contributes only its header, which is what `auto`
-   means once its body is hidden. */
+   (#249). A shut section contributes only its header.
+
+   A COLUMN rather than a fixed row template: a host declares which sections it
+   wants (#252), so the stack has to hold any subset of them without a template
+   that counts five rows and gets three. */
 .section-stack {
-  display: grid;
-  grid-template-rows:
-    minmax(0, 1fr) auto var(--changes-height, 200px) auto
-    var(--chat-height, 246px);
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -673,6 +674,27 @@ body {
   grid-template-rows: auto minmax(0, 1fr);
   min-height: 0;
   overflow: hidden;
+}
+
+/* Properties takes the slack; the other two keep what they were dragged to.
+   A shut section is its header, whatever height it holds when open. */
+.stack-section-properties {
+  flex: 1 1 auto;
+}
+
+.stack-section-changes {
+  flex: 0 0 var(--changes-height, 200px);
+}
+
+.stack-section-chat {
+  flex: 0 0 var(--chat-height, 300px);
+}
+
+/* With properties absent there is no slack-taker, so the section above the
+   foot takes it instead - otherwise a two-section stack leaves a gap under
+   the last one. */
+.section-stack > .stack-section:first-child {
+  flex: 1 1 auto;
 }
 
 .section-head {
@@ -739,6 +761,7 @@ body {
    separator, turned through ninety degrees. */
 .section-splitter {
   position: relative;
+  flex: 0 0 7px;
   height: 7px;
   border: none;
   background: transparent;
