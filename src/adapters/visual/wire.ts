@@ -14,7 +14,6 @@ import type {
   VisualLayoutSaveResultPayload,
   VisualResponse,
   VisualTerminationReason,
-  VisualViewSaveResultPayload,
   VisualViewSummary,
 } from './protocol-contract.js'
 
@@ -49,6 +48,17 @@ export interface VisualRenderedModel {
    * can state what it rendered when it asks for a commit.
    */
   readonly sourceDigests: Readonly<Record<string, string>>
+  /**
+   * The sha256 of every projection this session knows about, keyed by
+   * manifest-relative path.
+   *
+   * Kept apart from `sourceDigests` rather than folded into it: that map means
+   * what the GRAPH was compiled from, which `YMVS112` requires a canonical
+   * model to state, and a projection is not part of it. A staged view
+   * operation pins against this one instead (ADR 0103), and a path absent from
+   * it is a projection the commit will create.
+   */
+  readonly projectionDigests: Readonly<Record<string, string>>
 }
 
 /**
@@ -136,7 +146,6 @@ export type VisualServerFrame =
       readonly views: readonly VisualViewSummary[]
     }
   | { readonly kind: 'filter-result'; readonly result: VisualFilterResultPayload }
-  | { readonly kind: 'view-save-result'; readonly result: VisualViewSaveResultPayload }
   | { readonly kind: 'apply-result'; readonly result: VisualApplyResultPayload }
   | {
       readonly kind: 'layout-save-result'

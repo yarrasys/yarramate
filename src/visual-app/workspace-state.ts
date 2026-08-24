@@ -132,6 +132,13 @@ export interface VisualWorkspaceState {
    * so it is the one that asks first.
    */
   readonly pendingDeletion: string | null;
+  /**
+   * The view a deletion has been asked for, held until the reviewer confirms.
+   * Separate from `pendingDeletion` because the two ask different questions: a
+   * subject's deletion is described against the graph and takes relationships
+   * with it, a view's removes one projection document and touches no subject.
+   */
+  readonly pendingViewDeletion: string | null;
   readonly descriptionExpanded: boolean;
   readonly detailsOpen: boolean;
   /**
@@ -145,11 +152,6 @@ export interface VisualWorkspaceState {
     readonly collapsed: readonly string[];
   };
   /**
-   * What draws as nesting in the active view, in precedence order (ADR 0101).
-   * A view that says nothing keeps `DEFAULT_NESTING`, which is composition
-   * alone - the behaviour that shipped before a view could say.
-   */
-  /**
    * The open context menu: what was right-clicked and where the pointer was,
    * or null. The menu's CONTENTS are not held here — `contextMenuFor` derives
    * them from the model on every render, so a commit that lands while a menu
@@ -161,6 +163,11 @@ export interface VisualWorkspaceState {
     readonly x: number;
     readonly y: number;
   } | null;
+  /**
+   * What draws as nesting in the active view, in precedence order (ADR 0101).
+   * A view that says nothing keeps `DEFAULT_NESTING`, which is composition
+   * alone - the behaviour that shipped before a view could say.
+   */
   readonly nesting: readonly NestingKind[];
   readonly layout: "layered";
   readonly showLifecycle: boolean;
@@ -186,6 +193,8 @@ export type VisualWorkspaceAction =
   | { readonly type: "subject.draft.closed" }
   | { readonly type: "deletion.asked"; readonly id: string }
   | { readonly type: "deletion.dismissed" }
+  | { readonly type: "viewDeletion.asked"; readonly id: string }
+  | { readonly type: "viewDeletion.dismissed" }
   | {
       readonly type: "subject.selected";
       readonly subject: SelectedDiagramSubject;
@@ -352,6 +361,7 @@ export const createVisualWorkspaceState = (
   connection: null,
   draftingSubject: false,
   pendingDeletion: null,
+  pendingViewDeletion: null,
   contextMenu: null,
   nesting: DEFAULT_NESTING,
   layout: "layered",
@@ -470,6 +480,12 @@ export const visualWorkspaceReducer = (
       return state.pendingDeletion === null
         ? state
         : { ...state, pendingDeletion: null };
+    case "viewDeletion.asked":
+      return { ...state, pendingViewDeletion: action.id, contextMenu: null };
+    case "viewDeletion.dismissed":
+      return state.pendingViewDeletion === null
+        ? state
+        : { ...state, pendingViewDeletion: null };
     case "subject.selected":
       return {
         ...state,

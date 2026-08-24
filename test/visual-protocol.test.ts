@@ -127,12 +127,6 @@ const eventPayloads: Readonly<Record<string, unknown>> = {
   'choice.selected': { choiceId: 'delivery', optionId: 'option-b' },
   'view.navigate': { viewId: 'option-b', requiresAttention: false },
   'filter.query': { query: { kinds: ['yarramate/core@0.1#applicationComponent'] } },
-  'view.save': {
-    title: 'My View',
-    description: 'desc',
-    query: { kinds: ['yarramate/core@0.1#applicationComponent'] },
-    presentation: { layout: 'layered' },
-  },
   'session.end': { reason: 'user-ended' },
   'browser.connected': { connectionId: 'c1' },
   'browser.disconnected': { connectionId: 'c1', code: 1001 },
@@ -216,8 +210,6 @@ describe('visual protocol', () => {
       }),
     ).toMatchObject({ ok: true })
   })
-
-
 
   it('rejects messages over the exact limit', () => {
     expect(VISUAL_LIMITS.messageBytes).toBe(64 * 1024)
@@ -337,7 +329,7 @@ describe('visual protocol', () => {
     ).toMatchObject({ ok: true })
   })
 
-  it.each(['filter.query', 'view.save'] as const)(
+  it.each(['filter.query'] as const)(
     'accepts the %s browser input',
     (type) => {
       expect(
@@ -487,7 +479,11 @@ describe('visual protocol', () => {
       parseVisualBrowserInput({
         type: 'changeset.commit',
         lastAcknowledgedSequence: 0,
-        payload: { operations: [operation], sourceDigests: {} },
+        payload: {
+          operations: [operation],
+          viewOperations: [],
+          sourceDigests: {},
+        },
       })
 
     it('reports a blank field once, on the field', () => {
@@ -556,6 +552,7 @@ describe('visual protocol', () => {
               concept: { id: 'check', name: 'Check' },
             },
           ],
+          viewOperations: [],
         },
       })
       expect(result.ok).toBe(false)
@@ -581,6 +578,7 @@ describe('visual protocol', () => {
               concept: { id: 'check', name: 'Check' },
             },
           ],
+          viewOperations: [],
           sourceDigests: { 'architecture/engine.yaml': digest },
         },
       })

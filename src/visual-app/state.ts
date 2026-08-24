@@ -4,13 +4,12 @@ import {
   type VisualAuthority,
   type VisualBrowserInput,
   type VisualChangesetCommitPayload,
+  type VisualViewOperation,
   type VisualChoicePresentPayload,
   type VisualDiagnostic,
   type VisualHandoffSummary,
   type VisualLayoutSavePayload,
   type VisualLayoutSaveResultPayload,
-  type VisualViewSavePayload,
-  type VisualViewSaveResultPayload,
   type VisualViewSummary,
 } from "../adapters/visual/protocol-contract.js";
 
@@ -102,12 +101,6 @@ export interface VisualAppState {
   /** Client-side substring narrowing layered on top of `activeFilter`. */
   readonly quickFilterText: string;
   readonly closedReason: string | null;
-  /** The save in flight, so the panel can disable itself and the result can
-   * be matched back to what it named — the result carries only an id. */
-  readonly pendingViewSave: VisualViewSavePayload | null;
-  /** Shown once a save lands ok, until the reviewer dismisses it or a fresh
-   * save starts. */
-  readonly viewSaveNotice: boolean;
   /**
    * Operations staged for commit; replaces on same-field re-edit. Typed as the
    * commit payload itself, so the tray holds exactly what the wire takes and
@@ -175,15 +168,13 @@ export type VisualAppAction =
     }
   | { readonly type: "filter.cleared" }
   | { readonly type: "quickFilter.changed"; readonly text: string }
-  | { readonly type: "view.save.sent"; readonly payload: VisualViewSavePayload }
-  | {
-      readonly type: "view.saved";
-      readonly result: VisualViewSaveResultPayload;
-    }
-  | { readonly type: "view.saveNotice.dismissed" }
   | {
       readonly type: "changeset.staged";
       readonly operation: YarramateOperation;
+    }
+  | {
+      readonly type: "changeset.viewStaged";
+      readonly operation: VisualViewOperation;
     }
   | { readonly type: "changeset.discarded"; readonly index: number }
   | { readonly type: "changeset.cleared" }
@@ -220,6 +211,26 @@ export type VisualAppAction =
   | { readonly type: "connection.lost" }
   | { readonly type: "session.closed"; readonly reason: string };
 
+/**
+ * A changeset with nothing in it. Named rather than repeated, because the day
+ * the payload grows a third list is the day three literals silently disagree.
+ */
+export const EMPTY_CHANGESET: VisualChangesetCommitPayload = {
+  operations: [],
+  viewOperations: [],
+  sourceDigests: {},
+};
+
+/**
+ * Whether a changeset would land anything. Both lists count: a changeset
+ * holding only a staged view is not an empty one, and every control that reads
+ * "is there anything to commit" has to agree about that.
+ */
+export const changesetIsEmpty = (
+  changeset: VisualChangesetCommitPayload,
+): boolean =>
+  changeset.operations.length === 0 && changeset.viewOperations.length === 0;
+
 export const initialVisualAppState: VisualAppState = {
   lifecycle: "connecting",
   authority: "canonical",
@@ -243,9 +254,7 @@ export const initialVisualAppState: VisualAppState = {
   activeFilter: null,
   quickFilterText: "",
   closedReason: null,
-  pendingViewSave: null,
-  viewSaveNotice: false,
-  pendingChangeset: { operations: [], sourceDigests: {} },
+  pendingChangeset: EMPTY_CHANGESET,
   undoStack: [],
   redoStack: [],
   commitStatus: "idle",
@@ -357,20 +366,59 @@ const changesetTargetKey = (op: YarramateOperation): string => {
  */
 const pinnedDigests = (
   operations: readonly YarramateOperation[],
+  viewOperations: readonly VisualViewOperation[],
   previous: Readonly<Record<string, string>>,
   model: VisualRenderedModel | null,
 ): Readonly<Record<string, string>> => {
   const pins: Record<string, string> = {};
-  for (const operation of operations) {
-    if (pins[operation.document] !== undefined) continue;
-    const pinned =
-      previous[operation.document] ?? model?.sourceDigests[operation.document];
-    // A document the model does not name is one `apply` will create: there is no
-    // prior value to be stale against, so it is left unpinned rather than
+  const pin = (path: string, held: string | undefined): void => {
+    if (pins[path] !== undefined) return;
+    const pinned = previous[path] ?? held;
+    // A document the model does not name is one the commit will create: there is
+    // no prior value to be stale against, so it is left unpinned rather than
     // pinned to a digest nobody minted.
-    if (pinned !== undefined) pins[operation.document] = pinned;
+    if (pinned !== undefined) pins[path] = pinned;
+  };
+  for (const operation of operations) {
+    pin(operation.document, model?.sourceDigests[operation.document]);
+  }
+  // A view pins against the projection digests, which are published as their
+  // own map: `sourceDigests` means what the graph was compiled from, and a
+  // projection is not part of that (ADR 0103).
+  for (const operation of viewOperations) {
+    pin(operation.path, model?.projectionDigests[operation.path]);
   }
   return pins;
+};
+
+/**
+ * A changeset with one of its lists replaced and its pins recomputed.
+ *
+ * Every path that stages, discards or clears goes through here, so `sourceDigests`
+ * cannot drift from the rows it vouches for - which is the invariant the whole
+ * pin mechanism rests on, and one that three separate object literals would
+ * lose the first time a fourth was added.
+ */
+const restage = (
+  changeset: VisualChangesetCommitPayload,
+  model: VisualRenderedModel | null,
+  next: {
+    readonly operations?: readonly YarramateOperation[];
+    readonly viewOperations?: readonly VisualViewOperation[];
+  },
+): VisualChangesetCommitPayload => {
+  const operations = next.operations ?? changeset.operations;
+  const viewOperations = next.viewOperations ?? changeset.viewOperations;
+  return {
+    operations,
+    viewOperations,
+    sourceDigests: pinnedDigests(
+      operations,
+      viewOperations,
+      changeset.sourceDigests,
+      model,
+    ),
+  };
 };
 
 const transition = (
@@ -402,10 +450,6 @@ const transition = (
           state.lastSequence,
           action.snapshot.lastSequence,
         ),
-        // A reconnect must not resurrect an in-flight save from before the
-        // socket dropped, nor replay a notice for one that already landed.
-        pendingViewSave: null,
-        viewSaveNotice: false,
       };
     case "model.received":
       // Mid-session model frames replace the compilation; preserve the
@@ -501,7 +545,6 @@ const transition = (
         ...state,
         diagnostics: action.diagnostics,
         frozen: state.frozen || action.frozen,
-        ...(died("view.save") ? { pendingViewSave: null } : {}),
         // The refusal is the commit's answer, and it points at the rows it
         // refused, so the tray shows it where the reviewer is already looking.
         ...(died("changeset.commit")
@@ -551,52 +594,6 @@ const transition = (
       return state.quickFilterText === action.text
         ? state
         : { ...state, quickFilterText: action.text };
-    case "view.save.sent":
-      return {
-        ...state,
-        pendingViewSave: action.payload,
-        viewSaveNotice: false,
-      };
-    case "view.saved": {
-      if (!action.result.ok) {
-        // The failed candidate names nothing new; what was saved before, if
-        // anything, is unchanged. Every reason it failed is shown, verbatim.
-        return {
-          ...state,
-          diagnostics: action.result.diagnostics,
-          pendingViewSave: null,
-        };
-      }
-      const pending = state.pendingViewSave;
-      // A result with nothing pending names a save this browser never sent —
-      // stale or duplicated, either way nothing here to build a summary from.
-      if (pending === null) return state;
-      const saved: VisualViewSummary = {
-        id: action.result.id,
-        title: pending.title,
-        description: pending.description,
-        query: pending.query,
-        presentation: pending.presentation,
-        path: action.result.path,
-        subjectCount: action.result.subjectCount,
-      };
-      const existingIndex = state.views.findIndex(
-        (view) => view.id === saved.id,
-      );
-      return {
-        ...state,
-        views:
-          existingIndex === -1
-            ? [...state.views, saved]
-            : state.views.map((view, index) =>
-                index === existingIndex ? saved : view,
-              ),
-        viewSaveNotice: true,
-        pendingViewSave: null,
-      };
-    }
-    case "view.saveNotice.dismissed":
-      return { ...state, viewSaveNotice: false };
     case "changeset.staged": {
       // Replacing: if an operation targets the same subject and field, remove the old one.
       const key = changesetTargetKey(action.operation);
@@ -606,14 +603,9 @@ const transition = (
       const operations = [...filtered, action.operation];
       return {
         ...state,
-        pendingChangeset: {
+        pendingChangeset: restage(state.pendingChangeset, state.model, {
           operations,
-          sourceDigests: pinnedDigests(
-            operations,
-            state.pendingChangeset.sourceDigests,
-            state.model,
-          ),
-        },
+        }),
         undoStack: [...state.undoStack, state.pendingChangeset],
         redoStack: [],
         commitDiagnostics: null,
@@ -621,44 +613,69 @@ const transition = (
         commitNotice: null,
       };
     }
-    case "changeset.discarded": {
-      const { index } = action;
-      if (index < 0 || index >= state.pendingChangeset.operations.length) {
-        return state;
-      }
-      const operations = state.pendingChangeset.operations.filter(
-        (_, i) => i !== index,
+    case "changeset.viewStaged": {
+      // One row per document, the same rule the model's rows follow: saving
+      // over a view already staged replaces that row rather than queueing a
+      // second write of the same file. A delete replaces a pending write too -
+      // the last thing said about a document is what the reviewer meant.
+      const filtered = state.pendingChangeset.viewOperations.filter(
+        (operation) => operation.path !== action.operation.path,
       );
       return {
         ...state,
-        pendingChangeset: {
-          operations,
-          sourceDigests: pinnedDigests(
-            operations,
-            state.pendingChangeset.sourceDigests,
-            state.model,
-          ),
-        },
+        pendingChangeset: restage(state.pendingChangeset, state.model, {
+          viewOperations: [...filtered, action.operation],
+        }),
+        undoStack: [...state.undoStack, state.pendingChangeset],
+        redoStack: [],
+        commitDiagnostics: null,
+        commitNotice: null,
+      };
+    }
+    case "changeset.discarded": {
+      // The tray shows one list, so the reviewer discards by one index. Which
+      // of the two underlying lists that row came from is arithmetic, done
+      // where the ordering is defined rather than guessed at by the caller.
+      const { index } = action;
+      const rows = state.pendingChangeset.operations.length;
+      const total = rows + state.pendingChangeset.viewOperations.length;
+      if (index < 0 || index >= total) return state;
+      const next =
+        index < rows
+          ? {
+              operations: state.pendingChangeset.operations.filter(
+                (_, i) => i !== index,
+              ),
+            }
+          : {
+              viewOperations: state.pendingChangeset.viewOperations.filter(
+                (_, i) => i !== index - rows,
+              ),
+            };
+      return {
+        ...state,
+        pendingChangeset: restage(state.pendingChangeset, state.model, next),
         undoStack: [...state.undoStack, state.pendingChangeset],
         redoStack: [],
         // Diagnostics point at rows by index, so a shorter list mis-attributes them.
         commitDiagnostics: null,
       };
     }
-    case "changeset.cleared":
+    case "changeset.cleared": {
       // Clearing an already-empty changeset must not stack an undo step that
-      // would restore the same empty list.
+      // would restore the same empty list - and "empty" means both lists, or
+      // clearing a changeset holding only a staged view would be unundoable.
+      const empty = changesetIsEmpty(state.pendingChangeset);
       return {
         ...state,
-        pendingChangeset: { operations: [], sourceDigests: {} },
-        undoStack:
-          state.pendingChangeset.operations.length === 0
-            ? state.undoStack
-            : [...state.undoStack, state.pendingChangeset],
-        redoStack:
-          state.pendingChangeset.operations.length === 0 ? state.redoStack : [],
+        pendingChangeset: EMPTY_CHANGESET,
+        undoStack: empty
+          ? state.undoStack
+          : [...state.undoStack, state.pendingChangeset],
+        redoStack: empty ? state.redoStack : [],
         commitDiagnostics: null,
       };
+    }
     case "changeset.undone": {
       const restored = state.undoStack.at(-1);
       if (restored === undefined) {
@@ -693,7 +710,7 @@ const transition = (
       // A landed batch is reverted with `git revert`, never resurrected here.
       return {
         ...state,
-        pendingChangeset: { operations: [], sourceDigests: {} },
+        pendingChangeset: EMPTY_CHANGESET,
         undoStack: [],
         redoStack: [],
         commitStatus: "idle",
@@ -749,7 +766,6 @@ export type VisualAppIntent =
   | { readonly kind: "navigate"; readonly viewId: string }
   | { readonly kind: "end" }
   | { readonly kind: "filter"; readonly query: ProjectionQuery }
-  | { readonly kind: "save-view"; readonly payload: VisualViewSavePayload }
   | { readonly kind: "commit-changeset" }
   | { readonly kind: "save-layout"; readonly payload: VisualLayoutSavePayload };
 
@@ -795,12 +811,6 @@ export const visualBrowserInputFor = (
         type: "filter.query",
         lastAcknowledgedSequence,
         payload: { query: intent.query },
-      };
-    case "save-view":
-      return {
-        type: "view.save",
-        lastAcknowledgedSequence,
-        payload: intent.payload,
       };
     case "commit-changeset":
       return {
@@ -907,8 +917,6 @@ export const visualAppActionsForFrame = (
           source: filterOrigin,
         },
       ];
-    case "view-save-result":
-      return [{ type: "view.saved", result: frame.result }];
     case "response":
       switch (frame.response.type) {
         case "chat.response": {

@@ -241,4 +241,112 @@ describe('filesystem source store', () => {
       expect(readdirSync(root)).toEqual(['a.yaml'])
     })
   })
+
+  // A write with no bytes removes the document (ADR 0103), under the same
+  // compare-and-swap and in the same all-or-none batch as every other write.
+  describe('removal', () => {
+    it('removes a document that still holds what was read', () => {
+      write('a.yaml', 'one\n')
+      const store = createFileSystemStore(root)
+
+      const outcome = store.writeAll([
+        { path: 'a.yaml', source: null, expected: store.read('a.yaml')!.revision },
+      ])
+
+      expect(outcome.ok).toBe(true)
+      expect(store.read('a.yaml')).toBeUndefined()
+      expect(readdirSync(root)).toEqual([])
+    })
+
+    it('reports no revision for what it removed', () => {
+      write('a.yaml', 'one\n')
+      write('b.yaml', 'two\n')
+      const store = createFileSystemStore(root)
+
+      const outcome = store.writeAll([
+        { path: 'a.yaml', source: null, expected: store.read('a.yaml')!.revision },
+        { path: 'b.yaml', source: 'three\n', expected: store.read('b.yaml')!.revision },
+      ])
+
+      expect(outcome.ok).toBe(true)
+      if (!outcome.ok) return
+      expect([...outcome.revisions.keys()]).toEqual(['b.yaml'])
+    })
+
+    it('refuses to remove a document that changed after the edit was staged', () => {
+      write('a.yaml', 'one\n')
+      const store = createFileSystemStore(root)
+      const stale = store.read('a.yaml')!.revision
+      write('a.yaml', 'somebody else\n')
+
+      const outcome = store.writeAll([
+        { path: 'a.yaml', source: null, expected: stale },
+      ])
+
+      expect(outcome).toEqual({
+        ok: false,
+        conflicts: [{ path: 'a.yaml', reason: 'changed' }],
+      })
+      expect(readFileSync(join(root, 'a.yaml'), 'utf8')).toBe('somebody else\n')
+    })
+
+    it('refuses to remove a document that is already gone', () => {
+      const store = createFileSystemStore(root)
+
+      expect(
+        store.writeAll([
+          { path: 'a.yaml', source: null, expected: 'a'.repeat(64) },
+        ]),
+      ).toEqual({ ok: false, conflicts: [{ path: 'a.yaml', reason: 'missing' }] })
+    })
+
+    it('refuses a removal that names no revision', () => {
+      // `expected: null` asks to remove a document on condition it is not
+      // there, which is not a thing to want - and a caller told its accidental
+      // delete worked is worse served than one told it made no sense.
+      write('a.yaml', 'one\n')
+      const store = createFileSystemStore(root)
+
+      expect(
+        store.writeAll([{ path: 'a.yaml', source: null, expected: null }]),
+      ).toEqual({ ok: false, conflicts: [{ path: 'a.yaml', reason: 'exists' }] })
+      expect(readFileSync(join(root, 'a.yaml'), 'utf8')).toBe('one\n')
+    })
+
+    it('writes nothing at all when one removal in the batch is stale', () => {
+      // The property the visual runtime leans on: a view removed beside a
+      // subject edit takes both or neither.
+      write('a.yaml', 'one\n')
+      write('b.yaml', 'two\n')
+      const store = createFileSystemStore(root)
+      const staleForB = store.read('b.yaml')!.revision
+      write('b.yaml', 'somebody else\n')
+
+      const outcome = store.writeAll([
+        { path: 'a.yaml', source: 'edited\n', expected: store.read('a.yaml')!.revision },
+        { path: 'b.yaml', source: null, expected: staleForB },
+      ])
+
+      expect(outcome.ok).toBe(false)
+      expect(readFileSync(join(root, 'a.yaml'), 'utf8')).toBe('one\n')
+      expect(readFileSync(join(root, 'b.yaml'), 'utf8')).toBe('somebody else\n')
+    })
+
+    it('leaves the emptied directory behind', () => {
+      // A workspace cannot tell a directory it emptied from one it never had.
+      write('projections/one.yaml', 'a\n')
+      const store = createFileSystemStore(root)
+
+      store.writeAll([
+        {
+          path: 'projections/one.yaml',
+          source: null,
+          expected: store.read('projections/one.yaml')!.revision,
+        },
+      ])
+
+      expect(readdirSync(root)).toEqual(['projections'])
+      expect(readdirSync(join(root, 'projections'))).toEqual([])
+    })
+  })
 })

@@ -6,11 +6,12 @@ import type {
 import type { ProjectionQuery } from '../projection.js'
 import type {
   VisualLayoutSavePayload,
-  VisualViewSavePayload,
+  VisualViewOperation,
 } from '../adapters/visual/protocol-contract.js'
 import type { YarramateOperation } from '../operations.js'
 import {
   canReconnect,
+  changesetIsEmpty,
   initialVisualAppState,
   filterToReresolve,
   visualAppActionsForFrame,
@@ -45,7 +46,7 @@ export interface VisualSession {
   readonly filter: (query: ProjectionQuery, origin?: 'view' | 'panel' | 'chat') => void
   readonly clearFilter: () => void
   readonly setQuickFilterText: (text: string) => void
-  readonly saveView: (payload: VisualViewSavePayload) => void
+  readonly stageViewChange: (operation: VisualViewOperation) => void
   readonly stageChange: (operation: YarramateOperation) => void
   readonly discardChange: (index: number) => void
   readonly clearChangeset: () => void
@@ -53,7 +54,6 @@ export interface VisualSession {
   readonly redoChangeset: () => void
   readonly commitChangeset: () => void
   readonly saveLayout: (payload: VisualLayoutSavePayload) => void
-  readonly dismissSavedNotice: () => void
   readonly end: () => void
 }
 
@@ -227,17 +227,15 @@ export const useVisualSession = (): VisualSession => {
     dispatch({ type: 'quickFilter.changed', text })
   }, [])
 
-  const saveView = useCallback(
-    (payload: VisualViewSavePayload) => {
-      dispatch({ type: 'view.save.sent', payload })
-      send({ kind: 'save-view', payload })
-    },
-    [send],
-  )
-
   // Staging is local: nothing leaves the browser until the reviewer commits.
+  // That is now true of views as well as subjects (ADR 0103), which is why
+  // there is no `saveView` here any more - a view is staged, not sent.
   const stageChange = useCallback((operation: YarramateOperation) => {
     dispatch({ type: 'changeset.staged', operation })
+  }, [])
+
+  const stageViewChange = useCallback((operation: VisualViewOperation) => {
+    dispatch({ type: 'changeset.viewStaged', operation })
   }, [])
 
   const discardChange = useCallback((index: number) => {
@@ -260,8 +258,10 @@ export const useVisualSession = (): VisualSession => {
 
   const commitChangeset = useCallback(() => {
     // An empty changeset has nothing to validate: the runtime would refuse it,
-    // so the button never spends a round trip proving that.
-    if (stateRef.current.pendingChangeset.operations.length === 0) return
+    // so the button never spends a round trip proving that. Empty means BOTH
+    // lists - guarding on the model's alone made a changeset holding only a
+    // staged view silently do nothing when the reviewer pressed Commit.
+    if (changesetIsEmpty(stateRef.current.pendingChangeset)) return
     dispatch({ type: 'changeset.commit.sent' })
     send({ kind: 'commit-changeset' })
   }, [send])
@@ -272,10 +272,6 @@ export const useVisualSession = (): VisualSession => {
     },
     [send],
   )
-
-  const dismissSavedNotice = useCallback(() => {
-    dispatch({ type: 'view.saveNotice.dismissed' })
-  }, [])
 
   const end = useCallback(() => {
     dispatch({ type: 'end.requested' })
@@ -291,7 +287,7 @@ export const useVisualSession = (): VisualSession => {
     filter,
     clearFilter,
     setQuickFilterText,
-    saveView,
+    stageViewChange,
     stageChange,
     discardChange,
     clearChangeset,
@@ -299,7 +295,6 @@ export const useVisualSession = (): VisualSession => {
     redoChangeset,
     commitChangeset,
     saveLayout,
-    dismissSavedNotice,
     end,
   }
 }

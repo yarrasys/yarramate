@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import type {
   VisualChangesetCommitPayload,
   VisualDiagnostic,
+  VisualViewOperation,
 } from '../src/adapters/visual/protocol-contract.js'
 import type { CanvasGraph } from '../src/graph-projection.js'
 import type { YarramateOperation } from '../src/operations.js'
@@ -167,6 +168,7 @@ describe('describeChangesetRow / changesetRowLabel', () => {
       subjectName: 'Checkout Service',
       fields: ['name'],
       removedFields: [],
+      scope: 'model',
     })
     expect(changesetRowLabel(row)).toBe('update-concept · Checkout Service · name')
   })
@@ -200,6 +202,7 @@ describe('describeChangesetRow / changesetRowLabel', () => {
       subjectName: 'checkout (exists)',
       fields: ['value', 'result', 'evidence'],
       removedFields: [],
+      scope: 'model',
     })
     expect(changesetRowLabel(row)).toBe(
       'add-observation · checkout (exists) · value, result, evidence',
@@ -278,7 +281,8 @@ describe('partitionDiagnostics', () => {
 const staged = (
   operations: readonly YarramateOperation[],
   sourceDigests: Readonly<Record<string, string>> = {},
-): VisualChangesetCommitPayload => ({ operations, sourceDigests })
+  viewOperations: readonly VisualViewOperation[] = [],
+): VisualChangesetCommitPayload => ({ operations, viewOperations, sourceDigests })
 
 const baseState: VisualAppState = {
   lifecycle: 'active',
@@ -294,6 +298,7 @@ const baseState: VisualAppState = {
     vocabulary: { conceptKinds: [], relationshipKinds: [] },
     layouts: {},
     sourceDigests: {},
+    projectionDigests: {},
   },
   styleNonce: '',
   activeView: '',
@@ -311,9 +316,7 @@ const baseState: VisualAppState = {
   lastSequence: 0,
   frozen: false,
   closedReason: null,
-  pendingViewSave: null,
-  viewSaveNotice: false,
-  pendingChangeset: { operations: [], sourceDigests: {} },
+  pendingChangeset: { operations: [], viewOperations: [], sourceDigests: {} },
   undoStack: [],
   redoStack: [],
   commitStatus: 'idle',

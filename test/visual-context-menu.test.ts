@@ -137,10 +137,15 @@ describe("the view/model split every menu has to teach", () => {
   });
 
   it("gives a view row nothing that edits the model", () => {
+    // Including its delete: removing a view rewrites one projection and leaves
+    // every subject alone, which is exactly the distinction the rule teaches.
     const groups = contextMenuFor({ kind: "view-row", id: "current" }, context());
     expect(groups.every((group) => group.scope === "view")).toBe(true);
-    expect(groups.some((group) => group.destructive)).toBe(false);
-    expect(labels(groups)).toEqual(["Open view", "New view…"]);
+    expect(labels(groups)).toEqual([
+      "Open view",
+      "New view…",
+      "Delete view…",
+    ]);
   });
 });
 
@@ -369,12 +374,27 @@ describe("what the menu draws", () => {
   });
 
   it("draws no destructive group where there is nothing to destroy", () => {
-    expect(render({ kind: "view-row", id: "current" })).not.toContain(
-      "context-menu-destructive",
-    );
+    // The empty canvas destroys nothing; "All subjects" is the absence of a
+    // view rather than a document, so it has no delete either.
     expect(render({ kind: "canvas" })).not.toContain(
       "context-menu-destructive",
     );
+    expect(render({ kind: "view-row", id: "" })).not.toContain(
+      "context-menu-destructive",
+    );
+  });
+
+  it("puts a view's own delete behind the same rule, in the same red", () => {
+    const markup = render({ kind: "view-row", id: "current" });
+    const behindTheRule = markup.slice(
+      markup.indexOf("context-menu-destructive"),
+    );
+
+    expect(behindTheRule).toContain("Delete view…");
+    expect(behindTheRule).not.toContain("Open view");
+    // Still a view-scope group: what it destroys is a projection, not a
+    // subject, and the reviewer learns one rule about where danger sits.
+    expect(markup).toContain("context-menu-view context-menu-destructive");
   });
 
   it("draws nothing at all for a target that has gone", () => {

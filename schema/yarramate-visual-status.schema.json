@@ -24,7 +24,7 @@
       "const": "yarramate/visual-status/v1"
     },
     "protocolVersion": {
-      "const": "yarramate/visual-protocol/v4"
+      "const": "yarramate/visual-protocol/v5"
     },
     "sessionId": {
       "$ref": "https://yarramate.org/schema/visual-event/v1#/$defs/identifier"

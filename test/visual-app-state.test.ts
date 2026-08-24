@@ -11,7 +11,9 @@ import type {
 import {
   RECONNECT_WINDOW_MS,
   VISUAL_END_NOTICE,
+  EMPTY_CHANGESET,
   canReconnect,
+  changesetIsEmpty,
   filterToReresolve,
   initialVisualAppState,
   visualAppActionsForFrame,
@@ -22,15 +24,18 @@ import {
   type VisualAppState,
 } from "../src/visual-app/state.js";
 import type { ProjectionQuery } from "../src/projection.js";
+import type { VisualViewOperation } from "../src/adapters/visual/protocol-contract.js";
 
 /** A rendered model with an empty canvas graph — only initialView matters here. */
 const model = (
   initialView: string,
   sourceDigests: Readonly<Record<string, string>> = {},
+  projectionDigests: Readonly<Record<string, string>> = {},
 ): VisualRenderedModel => ({
   authority: "canonical",
   initialView,
   graph: { nodes: [], edges: [] },
+  projectionDigests,
   documents: [],
   vocabulary: {
     conceptKinds: [],
@@ -44,7 +49,7 @@ const model = (
 const digest = (seed: string): string => seed.repeat(64).slice(0, 64);
 
 const serverSnapshot: VisualSessionSnapshot = {
-  protocolVersion: "yarramate/visual-protocol/v4",
+  protocolVersion: "yarramate/visual-protocol/v5",
   sessionId: "0".repeat(32),
   authority: "canonical",
   title: "Choose a delivery design",
@@ -1046,30 +1051,6 @@ describe("visualAppReducer acknowledgement and refusal", () => {
     expect(next.composerEnabled).toBe(false);
   });
 
-  it("retires a save that was refused, so the control is usable again", () => {
-    const sent = visualAppReducer(activeState, {
-      type: "view.save.sent",
-      payload: {
-        title: "Refused view",
-        description: "",
-        query: {},
-        presentation: {
-          layout: "layered",
-          direction: "top-down",
-        },
-      },
-    });
-    expect(sent.pendingViewSave).not.toBeNull();
-    // No `view-save-result` ever follows a refusal, so nothing else would
-    // clear it and every later Save would stay disabled.
-    const refused = visualAppReducer(sent, {
-      type: "input.refused",
-      diagnostics: [compileDiagnostic],
-      frozen: false,
-    });
-    expect(refused.pendingViewSave).toBeNull();
-  });
-
   it("retires a commit the server refused, on the rows it refused", () => {
     const staged = visualAppReducer(activeState, {
       type: "changeset.staged",
@@ -1095,27 +1076,27 @@ describe("visualAppReducer acknowledgement and refusal", () => {
   });
 
   it("leaves controls the refusal did not name alone", () => {
-    const sent = visualAppReducer(activeState, {
-      type: "view.save.sent",
-      payload: {
-        title: "Still saving",
-        description: "",
-        query: {},
-        presentation: {
-          layout: "layered",
-          direction: "top-down",
-        },
-      },
+    const staged = visualAppReducer(activeState, {
+      type: "changeset.staged",
+      operation: {
+        op: "update-concept",
+        document: "model.yaml",
+        concept: { id: "Q1", name: "Renamed" },
+      } as const,
     });
+    const sent = visualAppReducer(staged, { type: "changeset.commit.sent" });
     const refused = visualAppReducer(sent, {
       type: "input.refused",
-      refused: "changeset.commit",
+      refused: "chat.message",
       diagnostics: [compileDiagnostic],
       frozen: false,
     });
-    // A refused commit says nothing about a save the server never answered.
-    expect(refused.pendingViewSave).not.toBeNull();
-    expect(refused.commitStatus).toBe("idle");
+
+    // A refused chat message says nothing about a commit the server has not
+    // answered yet: retiring it here would put the button back while the
+    // batch is still in flight.
+    expect(refused.commitStatus).toBe("committing");
+    expect(refused.commitDiagnostics).toBeNull();
   });
 });
 
@@ -1463,174 +1444,169 @@ describe("canReconnect", () => {
   });
 });
 
-describe("visualAppReducer view save", () => {
-  it("stores pending save on view.save.sent", () => {
-    const payload = {
-      title: "My view",
-      description: "A test view",
-      query: { subjects: ["Q1"] },
-      presentation: {
-        layout: "layered",
-        direction: "top-down",
-      } as const,
-    };
-    const sent = visualAppReducer(initialVisualAppState, {
-      type: "view.save.sent",
-      payload,
-    });
-    expect(sent.pendingViewSave).toEqual(payload);
-    expect(sent.viewSaveNotice).toBe(false);
+/**
+ * Saving a view is staged, not sent (ADR 0103). These replace the tests of the
+ * `view.save` round trip: there is no pending save to hold, no result to match
+ * back, and no notice to dismiss, because nothing has left the browser.
+ */
+describe("visualAppReducer view staging", () => {
+  const write = (path: string, id = "current-engine"): VisualViewOperation => ({
+    op: "write-view",
+    path,
+    projection: {
+      format: "yarramate/projection/v1",
+      id,
+      version: "1.0",
+      query: {},
+      presentation: { title: "Current engine", description: "A view" },
+    },
   });
 
-  it("saves view and shows notice on view.saved ok:true", () => {
-    const payload = {
-      title: "My view",
-      description: "A test view",
-      query: { subjects: ["Q1"] },
-      presentation: {
-        layout: "layered",
-        direction: "top-down",
-      } as const,
-    };
-    const sent = visualAppReducer(initialVisualAppState, {
-      type: "view.save.sent",
-      payload,
+  const staged = (
+    operation: VisualViewOperation,
+    from = initialVisualAppState,
+  ) => visualAppReducer(from, { type: "changeset.viewStaged", operation });
+
+  it("stages a view into the same changeset the model's rows go into", () => {
+    const state = staged(write(".yarramate/projections/current-engine.yaml"));
+
+    expect(state.pendingChangeset.viewOperations).toEqual([
+      write(".yarramate/projections/current-engine.yaml"),
+    ]);
+    expect(state.pendingChangeset.operations).toEqual([]);
+  });
+
+  it("pins a view against the projection digests, not the source digests", () => {
+    // `sourceDigests` means what the graph was compiled from, and a projection
+    // is not part of that - pinning from the wrong map would silently vouch
+    // for nothing at all.
+    const path = ".yarramate/projections/current-engine.yaml";
+    const loaded = visualAppReducer(initialVisualAppState, {
+      type: "model.received",
+      model: model("", { "main.yaml": "a".repeat(64) }, { [path]: "b".repeat(64) }),
+      views: [],
     });
-    const saved = visualAppReducer(sent, {
-      type: "view.saved",
-      result: {
-        ok: true,
-        id: "view-1",
-        path: "/views/view-1",
-        subjectCount: 3,
+
+    expect(staged(write(path), loaded).pendingChangeset.sourceDigests).toEqual({
+      [path]: "b".repeat(64),
+    });
+  });
+
+  it("leaves a view the model has never seen unpinned, because the commit creates it", () => {
+    const state = staged(write(".yarramate/projections/brand-new.yaml"));
+
+    expect(state.pendingChangeset.sourceDigests).toEqual({});
+  });
+
+  it("replaces a row targeting the same document rather than queueing a second", () => {
+    const path = ".yarramate/projections/current-engine.yaml";
+    const once = staged(write(path));
+    const twice = staged({ op: "delete-view", path }, once);
+
+    expect(twice.pendingChangeset.viewOperations).toEqual([
+      { op: "delete-view", path },
+    ]);
+  });
+
+  it("discards a view row by its index in the tray, past the model's rows", () => {
+    const path = ".yarramate/projections/current-engine.yaml";
+    const withModelRow = visualAppReducer(initialVisualAppState, {
+      type: "changeset.staged",
+      operation: {
+        op: "update-concept",
+        document: "main.yaml",
+        concept: { id: "api", name: "API" },
       },
     });
-    expect(saved.views).toHaveLength(1);
-    expect(saved.views[0]).toEqual({
-      id: "view-1",
-      title: "My view",
-      description: "A test view",
-      query: { subjects: ["Q1"] },
-      presentation: { layout: "layered", direction: "top-down" },
-      // Taken from the result, not from the payload: only the runtime can
-      // resolve what a query matches, so the row joins the tree with the
-      // count the server just measured rather than a placeholder.
-      path: "/views/view-1",
-      subjectCount: 3,
+    const both = staged(write(path), withModelRow);
+    expect(both.pendingChangeset.operations).toHaveLength(1);
+    expect(both.pendingChangeset.viewOperations).toHaveLength(1);
+
+    // Index 1 is the view row: model rows come first in the tray.
+    const discarded = visualAppReducer(both, {
+      type: "changeset.discarded",
+      index: 1,
     });
-    expect(saved.viewSaveNotice).toBe(true);
-    expect(saved.pendingViewSave).toBe(null);
+    expect(discarded.pendingChangeset.operations).toHaveLength(1);
+    expect(discarded.pendingChangeset.viewOperations).toEqual([]);
+
+    // Index 0 is the model row, and discarding it leaves the view alone.
+    const other = visualAppReducer(both, {
+      type: "changeset.discarded",
+      index: 0,
+    });
+    expect(other.pendingChangeset.operations).toEqual([]);
+    expect(other.pendingChangeset.viewOperations).toHaveLength(1);
   });
 
-  it("replaces existing view on overwrite", () => {
-    const view1 = {
-      id: "view-1",
-      title: "Old title",
-      description: "Old desc",
-      query: {} as ProjectionQuery,
-      presentation: {
-        layout: "layered",
-        direction: "top-down",
-      } as const,
-      path: "/views/view-1",
-      subjectCount: 3,
-    };
-    const state = { ...initialVisualAppState, views: [view1] };
-    const payload = {
-      id: "view-1",
-      title: "New title",
-      description: "New desc",
-      query: {},
-      presentation: {
-        layout: "layered",
-        direction: "left-right",
-      } as const,
-    };
-    const sent = visualAppReducer(state, {
-      type: "view.save.sent",
-      payload,
-    });
-    const saved = visualAppReducer(sent, {
-      type: "view.saved",
-      result: {
-        ok: true,
-        id: "view-1",
-        path: "/views/view-1",
-        subjectCount: 3,
+  it("undoes across a mixed changeset", () => {
+    const path = ".yarramate/projections/current-engine.yaml";
+    const withModelRow = visualAppReducer(initialVisualAppState, {
+      type: "changeset.staged",
+      operation: {
+        op: "update-concept",
+        document: "main.yaml",
+        concept: { id: "api", name: "API" },
       },
     });
-    expect(saved.views).toHaveLength(1);
-    expect(saved.views[0]?.title).toBe("New title");
+    const both = staged(write(path), withModelRow);
+    const undone = visualAppReducer(both, { type: "changeset.undone" });
+
+    expect(undone.pendingChangeset.viewOperations).toEqual([]);
+    expect(undone.pendingChangeset.operations).toHaveLength(1);
+    expect(
+      visualAppReducer(undone, { type: "changeset.redone" }).pendingChangeset
+        .viewOperations,
+    ).toHaveLength(1);
   });
 
-  it("sets diagnostics and clears pending on view.saved ok:false", () => {
-    const payload = {
-      title: "Bad view",
-      description: "Will fail",
-      query: {},
-      presentation: {
-        layout: "layered",
-        direction: "top-down",
-      } as const,
-    };
-    const sent = visualAppReducer(initialVisualAppState, {
-      type: "view.save.sent",
-      payload,
-    });
-    const diag = {
-      severity: "error" as const,
-      code: "E001",
-      message: "Invalid",
-      path: "test.yaml",
-      line: 1,
-      column: 1,
-      pointer: "/x",
-    };
-    const saved = visualAppReducer(sent, {
-      type: "view.saved",
-      result: { ok: false, diagnostics: [diag] },
-    });
-    expect(saved.diagnostics).toEqual([diag]);
-    expect(saved.pendingViewSave).toBe(null);
+  it("treats a changeset holding only a view as something to clear", () => {
+    // A clear that stacked no undo step here would make a staged view the one
+    // thing the reviewer could not get back.
+    const both = staged(write(".yarramate/projections/current-engine.yaml"));
+    const cleared = visualAppReducer(both, { type: "changeset.cleared" });
+
+    expect(cleared.pendingChangeset.viewOperations).toEqual([]);
+    expect(cleared.undoStack).toHaveLength(2);
+    expect(
+      visualAppReducer(cleared, { type: "changeset.undone" }).pendingChangeset
+        .viewOperations,
+    ).toHaveLength(1);
   });
 
-  it("clears notice on view.saveNotice.dismissed", () => {
-    const state = { ...initialVisualAppState, viewSaveNotice: true };
-    const dismissed = visualAppReducer(state, {
-      type: "view.saveNotice.dismissed",
-    });
-    expect(dismissed.viewSaveNotice).toBe(false);
+  it("sends both lists in one commit", () => {
+    const path = ".yarramate/projections/current-engine.yaml";
+    const both = staged(write(path));
+    const input = visualBrowserInputFor({ kind: "commit-changeset" }, both);
+
+    expect(input.type).toBe("changeset.commit");
+    expect(input.payload).toEqual(both.pendingChangeset);
   });
 
-  it("clears pending/notice on session.loaded reconnect", () => {
-    const payload = {
-      title: "Stale",
-      description: "Should go away",
-      query: {},
-      presentation: {
-        layout: "layered",
-        direction: "top-down",
-      } as const,
-    };
-    const state = {
-      ...initialVisualAppState,
-      pendingViewSave: payload,
-      viewSaveNotice: true,
-    };
-    const reloaded = visualAppReducer(state, {
-      type: "session.loaded",
-      snapshot: visualAppSnapshotFrom({
-        ...serverSnapshot,
-        authority: "canonical",
-        title: "Test",
-        description: "Test session",
-        views: [],
-        lastSequence: 0,
-        agentTurnOpen: false,
-      }),
-    });
-    expect(reloaded.pendingViewSave).toBe(null);
-    expect(reloaded.viewSaveNotice).toBe(false);
+  it("counts a changeset holding only a view as something to commit", () => {
+    // Found in a browser, not here: the commit button's own guard asked only
+    // whether `operations` was empty, so pressing Commit on a staged view did
+    // nothing at all and said nothing about why. Every control that asks "is
+    // there anything to commit" has to ask it of both lists.
+    expect(changesetIsEmpty(EMPTY_CHANGESET)).toBe(true);
+    expect(
+      changesetIsEmpty(
+        staged(write(".yarramate/projections/current-engine.yaml"))
+          .pendingChangeset,
+      ),
+    ).toBe(false);
+    expect(
+      changesetIsEmpty(
+        visualAppReducer(initialVisualAppState, {
+          type: "changeset.staged",
+          operation: {
+            op: "update-concept",
+            document: "main.yaml",
+            concept: { id: "api", name: "API" },
+          },
+        }).pendingChangeset,
+      ),
+    ).toBe(false);
   });
 });
 

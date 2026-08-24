@@ -1,10 +1,14 @@
 import { useState } from "react";
 import type { ProjectionQuery } from "../projection.js";
 import type {
-  VisualViewSavePayload,
+  VisualViewOperation,
   VisualViewSummary,
 } from "../adapters/visual/protocol-contract.js";
-import { ConfirmDialog } from "./confirm-dialog.js";
+import {
+  composeProjection,
+  projectionPathFor,
+  viewIdFrom,
+} from "../adapters/visual/view-identity.js";
 
 export interface SaveViewControlProps {
   readonly views: readonly VisualViewSummary[];
@@ -14,8 +18,6 @@ export interface SaveViewControlProps {
   readonly showLifecycle: boolean;
   readonly showEvidence: boolean;
   readonly showOwnership: boolean;
-  readonly pendingSave: boolean;
-  readonly notice: boolean;
   /**
    * Openness is the caller's, not the panel's: the tree's new-view button
    * opens this form from the other side of the shell, and two components
@@ -23,12 +25,21 @@ export interface SaveViewControlProps {
    */
   readonly open: boolean;
   readonly onToggle: () => void;
-  readonly onSave: (payload: VisualViewSavePayload) => void;
-  readonly onDismissNotice: () => void;
+  /** Stages the write. Nothing is on disk until the changeset is committed. */
+  readonly onStage: (operation: VisualViewOperation) => void;
 }
 
 export interface BuildPayloadParams {
+  /** The view being overwritten, or undefined to mint a new one. */
   readonly id: string | undefined;
+  /**
+   * Every view id already in use, so a new one takes a free slug. The server
+   * used to mint this; a staged row has to name the document it will write
+   * before it is committed, so the browser mints it now (ADR 0103).
+   */
+  readonly taken: ReadonlySet<string>;
+  /** Where the overwritten view's document already lives, if there is one. */
+  readonly path: string | undefined;
   readonly title: string;
   readonly description: string;
   readonly query: ProjectionQuery | null;
@@ -46,12 +57,21 @@ export interface BuildPayloadParams {
   readonly carriedDirection: "top-down" | "left-right" | undefined;
 }
 
-/** Pure translation from the form's local state to the wire payload — no
+/**
+ * Pure translation from the form's local state to the staged operation — no
  * active filter names an unfiltered view, since every field of a
- * `ProjectionQuery` is optional and `{}` is itself a valid, if
- * unconstrained, query. */
+ * `ProjectionQuery` is optional and `{}` is itself a valid, if unconstrained,
+ * query.
+ *
+ * A saved view is a row in the changeset rather than a write (ADR 0103), so
+ * this composes the whole projection document and the path it will occupy.
+ * Overwriting keeps the path the view already has; a new view takes a fresh
+ * slug in the default directory.
+ */
 export const buildPayload = ({
   id,
+  taken,
+  path,
   title,
   description,
   query,
@@ -60,25 +80,31 @@ export const buildPayload = ({
   showEvidence,
   showOwnership,
   carriedDirection,
-}: BuildPayloadParams): VisualViewSavePayload => ({
-  ...(id === undefined ? {} : { id }),
-  title,
-  description,
-  query: query ?? {},
-  presentation: {
-    layout,
-    ...(carriedDirection === undefined ? {} : { direction: carriedDirection }),
-    showLifecycle,
-    showEvidence,
-    showOwnership,
-  },
-});
+}: BuildPayloadParams): VisualViewOperation => {
+  const viewId = id ?? viewIdFrom(title, taken);
+  return {
+    op: "write-view",
+    path: path ?? projectionPathFor(viewId),
+    projection: composeProjection({
+      id: viewId,
+      title,
+      description,
+      query: query ?? {},
+      presentation: {
+        layout,
+        ...(carriedDirection === undefined
+          ? {}
+          : { direction: carriedDirection }),
+        showLifecycle,
+        showEvidence,
+        showOwnership,
+      },
+    }),
+  };
+};
 
 interface SaveViewFormProps {
   readonly activeView: VisualViewSummary | null;
-  readonly pendingSave: boolean;
-  readonly notice: boolean;
-  readonly onDismissNotice: () => void;
   readonly onSubmit: (
     id: string | undefined,
     title: string,
@@ -95,13 +121,7 @@ interface SaveViewFormProps {
  * an overwrite of the active view with nothing retyped, and closing it
  * discard a half-typed name that was never workspace state.
  */
-function SaveViewForm({
-  activeView,
-  pendingSave,
-  notice,
-  onDismissNotice,
-  onSubmit,
-}: SaveViewFormProps) {
+function SaveViewForm({ activeView, onSubmit }: SaveViewFormProps) {
   const [title, setTitle] = useState(activeView?.title ?? "");
   const [description, setDescription] = useState(activeView?.description ?? "");
 
@@ -113,14 +133,6 @@ function SaveViewForm({
   return (
     <div className="save-view-panel">
       <div id="save-view-panel-body" className="save-view-panel-body">
-        {notice ? (
-          <p className="save-view-notice" role="status">
-            View saved
-            <button type="button" onClick={onDismissNotice}>
-              Dismiss
-            </button>
-          </p>
-        ) : null}
         <form
           className="save-view-form"
           onSubmit={(event) => {
@@ -136,7 +148,6 @@ function SaveViewForm({
               type="text"
               value={title}
               onChange={(event) => setTitle(event.currentTarget.value)}
-              disabled={pendingSave}
               required
             />
           </div>
@@ -146,20 +157,19 @@ function SaveViewForm({
               id="save-view-description"
               value={description}
               onChange={(event) => setDescription(event.currentTarget.value)}
-              disabled={pendingSave}
               required
             />
           </div>
           <div className="save-view-actions">
             <button
               type="submit"
-              disabled={pendingSave || activeView === null || incomplete}
+              disabled={activeView === null || incomplete}
             >
               Save
             </button>
             <button
               type="button"
-              disabled={pendingSave || incomplete}
+              disabled={incomplete}
               onClick={() => {
                 if (incomplete) return;
                 onSubmit(undefined, title, description);
@@ -174,12 +184,17 @@ function SaveViewForm({
   );
 }
 
+
 /**
- * Saves the reviewer's current filter and presentation as a named
- * projection document. "Save" overwrites whatever view is active — behind a
- * confirm dialog, since that is destructive — and "Save As New" always
- * creates a fresh one, which the server can never collide with a
- * client-chosen id, so it needs no confirmation.
+ * Stages the reviewer's current filter and presentation as a named projection
+ * document. "Save" overwrites whatever view is active and "Save As New" mints
+ * a fresh id.
+ *
+ * Neither writes anything: both stage a row in the changeset (ADR 0103), which
+ * is why the overwrite no longer asks first. The confirmation existed because
+ * an overwrite was immediate and unundoable; a staged overwrite is a row the
+ * reviewer can read, discard and undo before it lands, which is a better
+ * answer than a dialog.
  */
 export function SaveViewControl({
   views,
@@ -189,19 +204,10 @@ export function SaveViewControl({
   showLifecycle,
   showEvidence,
   showOwnership,
-  pendingSave,
-  notice,
   open,
   onToggle,
-  onSave,
-  onDismissNotice,
+  onStage,
 }: SaveViewControlProps) {
-  // What an overwrite would send, held while the reviewer is asked to confirm
-  // it — the payload rather than the id, because the fields it was built from
-  // belong to the form and the dialog has to outlive them.
-  const [confirming, setConfirming] = useState<VisualViewSavePayload | null>(
-    null,
-  );
   const activeView = views.find((view) => view.id === activeViewId) ?? null;
 
   const submit = (
@@ -209,25 +215,27 @@ export function SaveViewControl({
     title: string,
     description: string,
   ) => {
-    const payload = buildPayload({
-      id,
-      title,
-      description,
-      query,
-      layout,
-      showLifecycle,
-      showEvidence,
-      showOwnership,
-      // Overwriting carries the view's own direction; a brand new view has
-      // none to carry, and the export's own default applies.
-      carriedDirection:
-        id === undefined ? undefined : activeView?.presentation?.direction,
-    });
-    if (id === undefined) {
-      onSave(payload);
-      return;
-    }
-    setConfirming(payload);
+    onStage(
+      buildPayload({
+        id,
+        taken: new Set(views.map((view) => view.id)),
+        // Overwriting writes the document the view already occupies, which is
+        // not always the one its id would derive: a view saved into a folder
+        // keeps its folder rather than being moved by a later save.
+        path: id === undefined ? undefined : activeView?.path,
+        title,
+        description,
+        query,
+        layout,
+        showLifecycle,
+        showEvidence,
+        showOwnership,
+        // Overwriting carries the view's own direction; a brand new view has
+        // none to carry, and the export's own default applies.
+        carriedDirection:
+          id === undefined ? undefined : activeView?.presentation?.direction,
+      }),
+    );
   };
 
   return (
@@ -238,7 +246,6 @@ export function SaveViewControl({
         aria-expanded={open}
         aria-controls="save-view-panel-body"
         onClick={onToggle}
-        disabled={pendingSave}
       >
         Save view
       </button>
@@ -248,25 +255,9 @@ export function SaveViewControl({
           // the fields describe the view the Save button would overwrite.
           key={activeViewId}
           activeView={activeView}
-          pendingSave={pendingSave}
-          notice={notice}
-          onDismissNotice={onDismissNotice}
           onSubmit={submit}
         />
       ) : null}
-      {confirming === null ? null : (
-        <ConfirmDialog
-          title="Overwrite this view?"
-          message={`Saving will replace "${activeView?.title ?? confirming.id ?? ""}" with the current filter and layout.`}
-          confirmLabel="Overwrite"
-          cancelLabel="Cancel"
-          onConfirm={() => {
-            onSave(confirming);
-            setConfirming(null);
-          }}
-          onCancel={() => setConfirming(null)}
-        />
-      )}
     </div>
   );
 }

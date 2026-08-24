@@ -19,13 +19,17 @@ import type {
 } from "../../projection.js";
 
 /**
- * The wire this adapter speaks. v4 retypes every path-carrying field from a
- * bare native string to a canonical local `file:` URI (ADR 0096), which is a
- * field-shape change rather than an additive one, so it mints a new protocol
- * version and new `format` versions on the three documents that carry a path.
- * A v3 peer and a v4 peer refuse each other at the first document exchanged.
+ * The wire this adapter speaks. v5 makes a view a staged change rather than an
+ * immediate write (ADR 0103): a commit carries `viewOperations` beside its
+ * model operations, a model frame carries the projection digests those
+ * operations pin against, and the `view.save` event that wrote a projection
+ * the moment it was composed is gone. A v4 peer and a v5 peer refuse each
+ * other at the first document exchanged.
+ *
+ * v4 retyped every path-carrying field from a bare native string to a
+ * canonical local `file:` URI (ADR 0096).
  */
-export const VISUAL_PROTOCOL_VERSION = "yarramate/visual-protocol/v4" as const;
+export const VISUAL_PROTOCOL_VERSION = "yarramate/visual-protocol/v5" as const;
 
 export const VISUAL_LIMITS = {
   messageBytes: 64 * 1024,
@@ -200,8 +204,37 @@ export interface VisualLayoutPositions {
   readonly [subjectId: string]: { readonly x: number; readonly y: number };
 }
 
+/**
+ * A change to a projection document, staged rather than written (ADR 0103).
+ *
+ * These ride beside the model's operations rather than inside them: Core holds
+ * that a projection is never an operation's own target, and a view is
+ * presentation rather than semantics. Atomicity does not come from sharing a
+ * list - it comes from the runtime planning both and issuing one
+ * `SourceStore.writeAll`, so a view and the subjects it shows land together or
+ * not at all.
+ *
+ * `path` is manifest-relative, the way `VisualViewSummary.path` names it. A
+ * `write-view` at a path the manifest's patterns do not cover is refused
+ * rather than written, because a projection nothing loads is worse than a
+ * refusal (ADR 0043).
+ */
+export type VisualViewOperation =
+  | {
+      readonly op: "write-view";
+      readonly path: string;
+      readonly projection: ProjectionDefinition;
+    }
+  | { readonly op: "delete-view"; readonly path: string };
+
 export interface VisualChangesetCommitPayload {
   readonly operations: readonly YarramateOperation[];
+  /**
+   * Projection writes and removals landing in the same batch as `operations`.
+   * Required, not optional, for the same reason `sourceDigests` is: a browser
+   * that may omit it is one whose commits mean two different things.
+   */
+  readonly viewOperations: readonly VisualViewOperation[];
   /**
    * What the browser believed each targeted document held when the rows were
    * staged — sha256 keyed by manifest-relative path, pinned at staging time and
@@ -212,6 +245,11 @@ export interface VisualChangesetCommitPayload {
    * Required, not optional: a browser that omits it is exactly the browser that
    * cannot detect the conflict, which is why this field is what makes the
    * protocol `v3`.
+   *
+   * One map covers both lists. On the model frame the two are kept apart,
+   * because there they mean different things — what the graph was compiled
+   * from, and what the views are — but a pin means the same thing for either:
+   * what the browser expected to find on disk.
    */
   readonly sourceDigests: Readonly<Record<string, string>>;
 }
@@ -277,11 +315,6 @@ export type VisualBrowserInput =
       readonly payload: VisualFilterQueryPayload;
     }
   | {
-      readonly type: "view.save";
-      readonly lastAcknowledgedSequence: number;
-      readonly payload: VisualViewSavePayload;
-    }
-  | {
       readonly type: "changeset.commit";
       readonly lastAcknowledgedSequence: number;
       readonly payload: VisualChangesetCommitPayload;
@@ -318,7 +351,6 @@ export type VisualEvent =
       VisualBrowserDisconnectedPayload
     >
   | VisualEventEnvelope<"filter.query", VisualFilterQueryPayload>
-  | VisualEventEnvelope<"view.save", VisualViewSavePayload>
   | VisualEventEnvelope<"changeset.commit", VisualChangesetCommitPayload>
   | VisualEventEnvelope<"layout.save", VisualLayoutSavePayload>;
 

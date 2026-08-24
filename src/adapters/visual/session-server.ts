@@ -73,9 +73,15 @@ import {
   type SemanticGraph,
 } from "../../compiler.js";
 import {
-  landOperations,
+  planOperations,
   posixDirectoryOf,
+  writeConflictDiagnostics,
+  type ApplyOutcome,
+  type PlannedOperations,
 } from "../../apply-command.js";
+import type { PendingWrite, SourceStore } from "../../source-store.js";
+import type { YarramateApplyResult } from "../../operations.js";
+import { DEFAULT_PROJECTION_DIRECTORY } from "./view-identity.js";
 import { createFileSystemStore } from "../../source-store.js";
 import { projectGraphForCanvas } from "../../graph-projection.js";
 import { kindLabelOf } from "../../kind-label.js";
@@ -83,7 +89,10 @@ import {
   loadWorkspaceManifest,
   type ResolvedWorkspace,
 } from "../../workspace.js";
-import type { VisualKindOption } from "./protocol-contract.js";
+import type {
+  VisualKindOption,
+  VisualViewOperation,
+} from "./protocol-contract.js";
 import type {
   VisualRenderedModel,
   VisualServerFrame,
@@ -490,8 +499,6 @@ const eventFrom = (
       return { ...envelope, type: input.type, payload: input.payload };
     case "filter.query":
       return { ...envelope, type: input.type, payload: input.payload };
-    case "view.save":
-      return { ...envelope, type: input.type, payload: input.payload };
     case "changeset.commit":
       return { ...envelope, type: input.type, payload: input.payload };
     case "layout.save":
@@ -500,25 +507,169 @@ const eventFrom = (
 };
 
 /**
- * Turns a view title into a schema-valid projection id: lowercase,
- * hyphen-separated, letter-led. A title with no letters or digits degrades
- * to "view" rather than producing an id the schema would reject.
+ * Whether the workspace would load a projection written at this path.
+ *
+ * This is a DIRECTORY check, not a pattern match, and deliberately so: ADR
+ * 0100 recorded that the manifest's pattern dialect has never been named - it
+ * is whatever `globSync` happens to support, undocumented and untested past
+ * one wildcard - so a matcher written here would be inventing the dialect
+ * rather than honouring it. A directory that already holds a projection the
+ * manifest resolved is a directory the manifest demonstrably reaches.
+ *
+ * A workspace with no projections at all has nothing to demonstrate, so the
+ * default directory is allowed: refusing there would make the first view in a
+ * fresh workspace impossible to create.
  */
-const slugify = (title: string): string => {
-  const cleaned = title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-  if (cleaned.length === 0) return "view";
-  return /^[a-z]/.test(cleaned) ? cleaned : `view-${cleaned}`;
+const projectionDirectoryIsCovered = (
+  path: string,
+  workspace: ResolvedWorkspace,
+): boolean => {
+  if (workspace.projections.length === 0) {
+    return posixDirectoryOf(path) === DEFAULT_PROJECTION_DIRECTORY;
+  }
+  const covered = new Set(workspace.projections.map(posixDirectoryOf));
+  return covered.has(posixDirectoryOf(path));
 };
 
-/** Appends a numeric suffix only when the base id collides with a known view. */
-const uniqueViewId = (base: string, taken: ReadonlySet<string>): string => {
-  if (!taken.has(base)) return base;
-  let suffix = 2;
-  while (taken.has(`${base}-${suffix}`)) suffix += 1;
-  return `${base}-${suffix}`;
+/**
+ * Turns staged view operations into pending writes, refusing before anything
+ * is written (ADR 0103).
+ *
+ * A `write-view` is validated through the same `loadProjection` the CLI's own
+ * projection writes go through, so a document the schema would reject never
+ * reaches the store. A `delete-view` names a revision, which is what makes a
+ * removal refusable rather than a silent success on a file someone else
+ * already changed.
+ */
+const planViewWrites = (
+  operations: readonly VisualViewOperation[],
+  workspace: ResolvedWorkspace,
+  store: SourceStore,
+):
+  | { readonly ok: true; readonly writes: readonly PendingWrite[] }
+  | { readonly ok: false; readonly diagnostics: readonly VisualDiagnostic[] } => {
+  const writes: PendingWrite[] = [];
+  const diagnostics: VisualDiagnostic[] = [];
+  for (const operation of operations) {
+    const held = store.read(operation.path);
+    if (operation.op === "delete-view") {
+      if (held === undefined) {
+        diagnostics.push(
+          serverDiagnostic(
+            "YMVS314",
+            `View "${operation.path}" is already gone`,
+          ),
+        );
+        continue;
+      }
+      writes.push({
+        path: operation.path,
+        source: null,
+        expected: held.revision,
+      });
+      continue;
+    }
+    if (
+      held === undefined &&
+      !projectionDirectoryIsCovered(operation.path, workspace)
+    ) {
+      // A projection no pattern reaches is a file the workspace never loads,
+      // which is worse than a refusal because nothing later says so (ADR 0043).
+      diagnostics.push(
+        serverDiagnostic(
+          "YMVS315",
+          `The workspace manifest covers no projection in "${posixDirectoryOf(
+            operation.path,
+          )}", so a view saved there would never load`,
+        ),
+      );
+      continue;
+    }
+    const source = stringify(operation.projection);
+    const loaded = loadProjection({ path: operation.path, source });
+    if (!loaded.ok) {
+      // The composed document is the only source these are about, so they are
+      // published against it rather than against the workspace.
+      diagnostics.push(
+        ...published(loaded.diagnostics, [{ path: operation.path, source }]),
+      );
+      continue;
+    }
+    writes.push({
+      path: operation.path,
+      source,
+      expected: held?.revision ?? null,
+    });
+  }
+  return diagnostics.length > 0
+    ? { ok: false, diagnostics }
+    : { ok: true, writes };
+};
+
+/**
+ * What a batch that changes no subject reports.
+ *
+ * A commit carrying only view operations never reaches Core: an operations
+ * document with an empty list is refused by the operations schema (`YM201`),
+ * and rightly - "apply nothing" is not a batch. The receipt still has to name
+ * the documents that changed, which here are the projections.
+ */
+const noModelChange = (
+  workspace: string,
+  documents: readonly string[],
+): YarramateApplyResult => ({
+  format: "yarramate/apply-result/v1",
+  workspace,
+  applied: {
+    addedConcepts: 0,
+    addedRelationships: 0,
+    updatedConcepts: 0,
+    updatedRelationships: 0,
+    deletedConcepts: 0,
+    deletedRelationships: 0,
+    renamedConcepts: 0,
+    renamedRelationships: 0,
+    addedObservations: 0,
+    updatedObservations: 0,
+    deletedObservations: 0,
+  },
+  documents,
+});
+
+/**
+ * Lands a planned batch plus the view writes beside it, as one `writeAll`.
+ *
+ * `landOperations` would write the model's half on its own, which is the one
+ * thing this must not do: two calls are two batches, and a view removed in one
+ * and a subject edited in the other can half land.
+ */
+const landPlanned = (
+  store: SourceStore,
+  planned: PlannedOperations | null,
+  viewWrites: readonly PendingWrite[],
+  operationsPath: string,
+  workspaceId: string,
+): ApplyOutcome => {
+  if (planned !== null && !planned.ok) return planned.outcome;
+  const writes = [...(planned?.writes ?? []), ...viewWrites];
+  const outcome: ApplyOutcome =
+    planned === null
+      ? {
+          ok: true,
+          sources: [],
+          result: noModelChange(
+            workspaceId,
+            viewWrites.map((write) => write.path),
+          ),
+        }
+      : planned.outcome;
+  if (writes.length === 0) return outcome;
+  const written = store.writeAll(writes);
+  if (written.ok) return outcome;
+  return {
+    ok: false,
+    diagnostics: writeConflictDiagnostics(written.conflicts, operationsPath),
+  };
 };
 
 /**
@@ -604,39 +755,50 @@ export const startVisualServer = async (
     );
   })();
 
-  // Saved views join this list as they are written (see `view.save`), because
-  // a reconnecting browser is handed it in its snapshot and `layout.save`
-  // checks projection ids against it.
+  /**
+   * One view, read off disk. `undefined` for a projection that is unreadable
+   * or that the schema refuses — a broken saved view skips rather than failing
+   * the session, the same way a broken layout sidecar does.
+   *
+   * `subjectCount` is left at zero here and filled in by `recountViews`:
+   * counting needs the compiled graph, which does not exist yet when the
+   * session builds its first list.
+   */
+  const readViewSummary = (
+    projectionPath: string,
+  ): VisualViewSummary | undefined => {
+    try {
+      const projectionSource = readFileSync(
+        resolve(options.cwd, projectionPath),
+        "utf8",
+      );
+      const loaded = loadProjection({
+        path: projectionPath,
+        source: projectionSource,
+      });
+      if (!loaded.ok) return undefined;
+      const { projection } = loaded;
+      return {
+        id: projection.id,
+        title: projection.presentation?.title ?? projection.id,
+        description: projection.presentation?.description ?? "",
+        query: projection.query,
+        presentation: projection.presentation,
+        path: projectionPath,
+        subjectCount: 0,
+      };
+    } catch {
+      return undefined;
+    }
+  };
+
+  // Saved views join this list as a commit lands them (see `adoptLandedViews`),
+  // because a reconnecting browser is handed it in its snapshot and
+  // `layout.save` checks projection ids against it.
   const views: VisualViewSummary[] = resolvedWorkspace.projections.flatMap(
     (projectionPath) => {
-      try {
-        const projectionSource = readFileSync(
-          resolve(options.cwd, projectionPath),
-          "utf8",
-        );
-        const loaded = loadProjection({
-          path: projectionPath,
-          source: projectionSource,
-        });
-        if (!loaded.ok) return [];
-        const { projection } = loaded;
-        return [
-          {
-            id: projection.id,
-            title: projection.presentation?.title ?? projection.id,
-            description: projection.presentation?.description ?? "",
-            query: projection.query,
-            presentation: projection.presentation,
-            path: projectionPath,
-            // Filled in by `recountViews`: counting needs the compiled graph,
-            // which is not built until after this list is.
-            subjectCount: 0,
-          },
-        ];
-      } catch {
-        // Skipped projection: session continues with remaining views.
-        return [];
-      }
+      const summary = readViewSummary(projectionPath);
+      return summary === undefined ? [] : [summary];
     },
   );
 
@@ -684,6 +846,10 @@ export const startVisualServer = async (
     vocabulary: { conceptKinds: [], relationshipKinds: [] },
     layouts,
     sourceDigests: request.initialModel.sourceDigests,
+    // The request's model has no projections in it - `visual-model/v1` carries
+    // a graph, not a workspace - so the fallback states nothing rather than
+    // guessing. `recompileWorkspace` below fills it from disk immediately.
+    projectionDigests: {},
   };
 
   const capabilities: VisualCapabilities = {
@@ -736,6 +902,31 @@ export const startVisualServer = async (
     }
   };
 
+  /**
+   * The digest of every projection the session knows about, read now.
+   *
+   * Read from `views` rather than from `resolvedWorkspace.projections`,
+   * because a view created mid-session joins the former and never the latter:
+   * the manifest is resolved once at startup and never again. One that has
+   * been removed is simply absent, which is the same thing the map says about
+   * one that never existed — and the browser reads both as "no pin", which is
+   * correct for a create and refused by the store for a delete.
+   */
+  const projectionDigestsNow = (): Readonly<Record<string, string>> => {
+    const digests: Record<string, string> = {};
+    for (const view of views) {
+      try {
+        digests[view.path] = digestOf(
+          readFileSync(resolve(options.cwd, view.path), "utf8"),
+        );
+      } catch {
+        // Gone from disk: nothing to pin against, and the commit's own
+        // conflict check is what reports it rather than a guess made here.
+      }
+    }
+    return digests;
+  };
+
   const recompileWorkspace = (): boolean => {
     try {
       const sources = workspaceSources();
@@ -777,6 +968,11 @@ export const startVisualServer = async (
         sourceDigests: Object.fromEntries(
           sources.map(({ path, source }) => [path, digestOf(source)]),
         ),
+        // Kept apart from `sourceDigests`, which means what this graph was
+        // compiled from and is what `YMVS112` checks — a projection is not
+        // that. A staged view operation pins against these (ADR 0103), and a
+        // projection missing from the map is one the commit will create.
+        projectionDigests: projectionDigestsNow(),
       };
       return true;
     } catch {
@@ -814,6 +1010,31 @@ export const startVisualServer = async (
       compiledWorkspace.profileContext,
     );
     return result.subjects.filter(({ type }) => type === "concept").length;
+  };
+
+  /**
+   * Brings `views` into line with the view operations a commit just landed.
+   *
+   * Nothing else does this. `resolvedWorkspace` is resolved once at startup, so
+   * a recompile learns nothing about a projection that has just appeared or
+   * gone; `recountViews` recounts what this list already holds rather than
+   * discovering what it should. A view is read back off disk rather than
+   * reconstructed from the operation, so what the rail shows is what landed.
+   */
+  const adoptLandedViews = (
+    operations: readonly VisualViewOperation[],
+  ): void => {
+    for (const operation of operations) {
+      const at = views.findIndex((view) => view.path === operation.path);
+      if (operation.op === "delete-view") {
+        if (at !== -1) views.splice(at, 1);
+        continue;
+      }
+      const summary = readViewSummary(operation.path);
+      if (summary === undefined) continue;
+      if (at === -1) views.push(summary);
+      else views[at] = summary;
+    }
   };
 
   /**
@@ -1405,61 +1626,6 @@ export const startVisualServer = async (
         });
         return;
       }
-      if (event.type === "view.save") {
-        // Saving a view is a pure filesystem write plus schema validation: it
-        // never asks the agent anything, so it is answered here directly
-        // rather than through the pending queue a poll would drain.
-        const existingIds = new Set(views.map((view) => view.id));
-        const id =
-          event.payload.id ??
-          uniqueViewId(slugify(event.payload.title), existingIds);
-        const presentation: ProjectionDefinition["presentation"] = {
-          ...(event.payload.presentation ?? {}),
-          title: event.payload.title,
-          description: event.payload.description,
-        };
-        const candidate: ProjectionDefinition = {
-          format: "yarramate/projection/v1",
-          id,
-          version: "1.0",
-          query: event.payload.query,
-          presentation,
-        };
-        const path = `.yarramate/projections/${id}.yaml`;
-        const source = stringify(candidate);
-        const loaded = loadProjection({ path, source });
-        if (!loaded.ok) {
-          sendFrame(socket, {
-            kind: "view-save-result",
-            result: { ok: false, diagnostics: loaded.diagnostics },
-          });
-          return;
-        }
-        mkdirSync(resolve(options.cwd, ".yarramate/projections"), {
-          recursive: true,
-        });
-        writeFileSync(resolve(options.cwd, path), source, "utf8");
-        // On disk is not enough: the list handed to a reconnecting browser and
-        // checked by `layout.save` lives here, so an overwrite replaces its
-        // summary in place and a new view joins the end.
-        const summary: VisualViewSummary = {
-          id,
-          title: event.payload.title,
-          description: event.payload.description,
-          query: event.payload.query,
-          presentation,
-          path,
-          subjectCount: conceptCount(event.payload.query),
-        };
-        const saved = views.findIndex((view) => view.id === id);
-        if (saved === -1) views.push(summary);
-        else views[saved] = summary;
-        sendFrame(socket, {
-          kind: "view-save-result",
-          result: { ok: true, id, path, subjectCount: summary.subjectCount },
-        });
-        return;
-      }
       if (event.type === "changeset.commit") {
         // Landing a batch is mechanical: Core's `applyOperations` never asks
         // the agent anything, so it is answered here directly rather than
@@ -1479,9 +1645,14 @@ export const startVisualServer = async (
         // state is decoration.
         const pins = event.payload.sourceDigests;
         const refused: VisualDiagnostic[] = [];
-        for (const path of new Set(
-          event.payload.operations.map((operation) => operation.document),
-        )) {
+        for (const path of new Set([
+          ...event.payload.operations.map((operation) => operation.document),
+          // A staged view is a document this batch touches like any other, so
+          // it answers to the same precondition (ADR 0103). Without this a
+          // projection someone edited on disk would be overwritten by a
+          // reviewer who never saw the edit.
+          ...event.payload.viewOperations.map((operation) => operation.path),
+        ])) {
           let held: string | undefined;
           try {
             held = digestOf(readFileSync(resolve(options.cwd, path), "utf8"));
@@ -1559,18 +1730,45 @@ export const startVisualServer = async (
           });
           return;
         }
-        const outcome = landOperations(
-          createFileSystemStore(options.cwd),
-          {
-            workspace: loadedWorkspace.workspace,
-            operations: {
-              path: "changeset.yaml",
-              source: operationsSource,
-            },
-            manifestDirectory: posixDirectoryOf(
-              relative(options.cwd, manifestPath),
-            ),
-          },
+        const store = createFileSystemStore(options.cwd);
+        // Core is asked nothing when nothing about the model changed: an
+        // operations document with an empty list is refused by the operations
+        // schema, and a batch of views only is a legitimate thing to commit.
+        const planned =
+          event.payload.operations.length === 0
+            ? null
+            : planOperations(store, {
+                workspace: loadedWorkspace.workspace,
+                operations: {
+                  path: "changeset.yaml",
+                  source: operationsSource,
+                },
+                manifestDirectory: posixDirectoryOf(
+                  relative(options.cwd, manifestPath),
+                ),
+              });
+        // The views' own writes, composed and validated the same way
+        // `view.save` used to compose one, but not yet written: both halves go
+        // to the store in a single batch so a view and the subjects it shows
+        // land together or not at all (ADR 0103).
+        const viewWrites = planViewWrites(
+          event.payload.viewOperations,
+          loadedWorkspace.workspace,
+          store,
+        );
+        if (!viewWrites.ok) {
+          sendFrame(socket, {
+            kind: "apply-result",
+            result: { ok: false, diagnostics: viewWrites.diagnostics },
+          });
+          return;
+        }
+        const outcome = landPlanned(
+          store,
+          planned,
+          viewWrites.writes,
+          "changeset.yaml",
+          loadedWorkspace.workspace.id,
         );
         if (!outcome.ok) {
           // Nothing landed: forward Core's diagnostics verbatim (ADR 0062)
@@ -1584,6 +1782,14 @@ export const startVisualServer = async (
           });
           return;
         }
+        // The views list is maintained by hand, because nothing else will:
+        // `resolvedWorkspace` was resolved once at startup and never again, so
+        // a recompile re-reads the documents it already knew about and learns
+        // nothing about a projection this batch just created or removed. The
+        // rail, `layout.save`'s id check, and a reconnecting browser all read
+        // this list, so leaving it stale is how they come to disagree with the
+        // disk.
+        adoptLandedViews(event.payload.viewOperations);
         sendFrame(socket, {
           kind: "apply-result",
           result: { ok: true, result: outcome.result },

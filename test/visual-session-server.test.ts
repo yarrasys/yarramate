@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { once } from "node:events";
 import { watch as watchEagerly } from "node:fs";
 import {
@@ -1736,7 +1736,7 @@ describe("startVisualServer lifecycle", () => {
     );
     expect(descriptor).toMatchObject({
       format: "yarramate/visual-session-descriptor/v2",
-      protocolVersion: "yarramate/visual-protocol/v4",
+      protocolVersion: "yarramate/visual-protocol/v5",
       sessionId: server.started.sessionId,
       origin: server.started.origin,
       sessionRoot: server.started.sessionRoot,
@@ -2709,7 +2709,14 @@ evidence: []
   });
 });
 
-describe("startVisualServer view.save", () => {
+/**
+ * Saving a view is a row in a changeset, not a write of its own (ADR 0103).
+ * These replace the `view.save` round-trip tests: the event is gone, and what
+ * matters now is that a view and the model land in ONE batch, that a view
+ * answers to the same staleness pin every other document does, and that a
+ * removal is refused rather than half-applied.
+ */
+describe("startVisualServer staged view operations", () => {
   const document = `format: yarramate/v1
 id: main
 profile: yarramate/core@0.1
@@ -2724,16 +2731,33 @@ id: save-fixture
 documents:
   - architecture/main.yaml
 profiles: []
-projections: []
+projections:
+  - projections/*.yaml
 adapterMappings: []
 evidence: []
+`;
+  const seeded = `format: yarramate/projection/v1
+id: seeded
+version: '1.0'
+query:
+  kinds:
+    - yarramate/core@0.1#businessActor
+presentation:
+  title: Seeded
+  description: A view that already exists
 `;
 
   const withWorkspace = async () => {
     await mkdir(join(baseDir, ".yarramate/architecture"), { recursive: true });
+    await mkdir(join(baseDir, ".yarramate/projections"), { recursive: true });
     await writeFile(
       join(baseDir, ".yarramate/architecture/main.yaml"),
       document,
+      "utf8",
+    );
+    await writeFile(
+      join(baseDir, ".yarramate/projections/seeded.yaml"),
+      seeded,
       "utf8",
     );
     await writeFile(
@@ -2743,180 +2767,237 @@ evidence: []
     );
   };
 
-  const sendViewSave = (
+  const projection = (id: string, title: string) => ({
+    format: "yarramate/projection/v1" as const,
+    id,
+    version: "1.0",
+    query: { kinds: ["yarramate/core@0.1#businessActor"] },
+    presentation: { title, description: "staged" },
+  });
+
+  /** A commit carrying whatever mix of the two lists a test needs. */
+  const sendCommit = (
     socket: WebSocket,
     payload: {
-      readonly id?: string;
-      readonly title: string;
-      readonly description: string;
-      readonly query: Record<string, unknown>;
-      readonly presentation?: Record<string, unknown>;
+      readonly operations?: readonly unknown[];
+      readonly viewOperations?: readonly unknown[];
+      readonly sourceDigests?: Readonly<Record<string, string>>;
     },
   ) => {
-    const result = nextFrame(socket, "view-save-result");
+    const result = nextFrame(socket, "apply-result");
     socket.send(
       JSON.stringify({
-        type: "view.save",
+        type: "changeset.commit",
         lastAcknowledgedSequence: 0,
-        payload,
+        payload: {
+          operations: payload.operations ?? [],
+          viewOperations: payload.viewOperations ?? [],
+          sourceDigests: payload.sourceDigests ?? {},
+        },
       }),
     );
     return result;
   };
 
-  it("saves a new view with no id in the payload", async () => {
+  const digestOfFile = async (path: string): Promise<string> =>
+    createHash("sha256")
+      .update(await readFile(join(baseDir, path), "utf8"), "utf8")
+      .digest("hex");
+
+  const sessionViews = async (
+    server: Awaited<ReturnType<typeof start>>,
+    cookie: string,
+  ) => {
+    const body = (await (
+      await fetch(`${server.started.origin}/api/session`, {
+        headers: { Cookie: cookie },
+      })
+    ).json()) as { readonly views: readonly VisualViewSummary[] };
+    return body.views;
+  };
+
+  it("writes a projection a commit staged", async () => {
+    await withWorkspace();
     const server = await start();
     const { cookie } = await bootstrap(server);
     const socket = await openBrowserSocket(server, cookie);
 
-    const frame = await sendViewSave(socket, {
-      title: "My View",
-      description: "desc",
-      query: { kinds: ["yarramate/core@0.1#businessActor"] },
-      presentation: { layout: "layered" },
-    });
-
-    expect(frame.result).toEqual({
-      ok: true,
-      id: "my-view",
-      path: ".yarramate/projections/my-view.yaml",
-      // This fixture's manifest declares no documents, so the query it just
-      // saved matches nothing — the count is measured, not assumed.
-      subjectCount: 0,
-    });
-
-    const fileContent = await readFile(
-      join(baseDir, ".yarramate/projections/my-view.yaml"),
-      "utf8",
-    );
-    const parsed = parse(fileContent);
-    expect(parsed).toMatchObject({
-      id: "my-view",
-      version: "1.0",
-      query: { kinds: ["yarramate/core@0.1#businessActor"] },
-      presentation: {
-        title: "My View",
-        description: "desc",
-        layout: "layered",
-      },
-    });
-    socket.close();
-  });
-
-  it("hands a saved view to a browser that reloads, replacing it on overwrite", async () => {
-    const server = await start();
-    const { cookie } = await bootstrap(server);
-    const socket = await openBrowserSocket(server, cookie);
-    // The reload path: a returning browser reads its whole starting state
-    // from this snapshot, so a view saved mid-session has to be in it.
-    const reloadedViews = async () => {
-      const body = (await (
-        await fetch(`${server.started.origin}/api/session`, {
-          headers: { Cookie: cookie },
-        })
-      ).json()) as { readonly views: readonly VisualViewSummary[] };
-      return body.views;
-    };
-
-    await sendViewSave(socket, {
-      id: "reload-view",
-      title: "Reload View",
-      description: "first",
-      query: { kinds: ["yarramate/core@0.1#businessActor"] },
-      presentation: { layout: "layered" },
-    });
-
-    expect(await reloadedViews()).toEqual([
-      {
-        id: "reload-view",
-        title: "Reload View",
-        description: "first",
-        query: { kinds: ["yarramate/core@0.1#businessActor"] },
-        presentation: {
-          layout: "layered",
-          title: "Reload View",
-          description: "first",
+    const frame = await sendCommit(socket, {
+      viewOperations: [
+        {
+          op: "write-view",
+          path: ".yarramate/projections/my-view.yaml",
+          projection: projection("my-view", "My View"),
         },
-        path: ".yarramate/projections/reload-view.yaml",
-        subjectCount: 0,
-      },
-    ]);
-
-    // An overwrite must replace the summary the next reload reads, never
-    // stack a second entry under the same id.
-    await sendViewSave(socket, {
-      id: "reload-view",
-      title: "Reload View",
-      description: "second",
-      query: { kinds: ["yarramate/core@0.1#businessActor"] },
-      presentation: { layout: "layered" },
+      ],
     });
 
-    const after = await reloadedViews();
-    expect(after).toHaveLength(1);
-    expect(after[0]).toMatchObject({
-      id: "reload-view",
-      description: "second",
-      presentation: { layout: "layered" },
+    expect(frame.result).toMatchObject({ ok: true });
+    expect(
+      parse(
+        await readFile(
+          join(baseDir, ".yarramate/projections/my-view.yaml"),
+          "utf8",
+        ),
+      ),
+    ).toMatchObject({
+      id: "my-view",
+      presentation: { title: "My View", description: "staged" },
     });
     socket.close();
   });
 
-  it("overwrites an existing view when the payload carries its id", async () => {
+  it("joins the view list a reloading browser is handed", async () => {
+    // `resolvedWorkspace` is resolved once at startup and never again, so a
+    // projection created mid-session reaches this list only because the commit
+    // handler puts it there. The rail and `layout.save` both read it.
+    await withWorkspace();
     const server = await start();
     const { cookie } = await bootstrap(server);
     const socket = await openBrowserSocket(server, cookie);
 
-    const created = await sendViewSave(socket, {
-      id: "shared-view",
-      title: "Original Title",
-      description: "original desc",
-      query: { kinds: ["yarramate/core@0.1#businessActor"] },
-      presentation: { layout: "layered" },
-    });
-    expect(created.result).toEqual({
-      ok: true,
-      id: "shared-view",
-      path: ".yarramate/projections/shared-view.yaml",
-      subjectCount: 0,
+    await sendCommit(socket, {
+      viewOperations: [
+        {
+          op: "write-view",
+          path: ".yarramate/projections/joined.yaml",
+          projection: projection("joined", "Joined"),
+        },
+      ],
     });
 
-    const overwritten = await sendViewSave(socket, {
-      id: "shared-view",
-      title: "Updated Title",
-      description: "updated desc",
-      query: { kinds: ["yarramate/core@0.1#businessActor"] },
-      presentation: { layout: "layered" },
-    });
-    expect(overwritten.result).toEqual({
-      ok: true,
-      id: "shared-view",
-      path: ".yarramate/projections/shared-view.yaml",
-      subjectCount: 0,
-    });
-
-    const fileContent = await readFile(
-      join(baseDir, ".yarramate/projections/shared-view.yaml"),
-      "utf8",
-    );
-    expect(parse(fileContent)).toMatchObject({
-      id: "shared-view",
-      presentation: {
-        title: "Updated Title",
-        description: "updated desc",
-        layout: "layered",
-      },
-    });
+    expect((await sessionViews(server, cookie)).map((view) => view.id)).toEqual([
+      "seeded",
+      "joined",
+    ]);
     socket.close();
   });
 
-  it("rejects a view whose query violates the protocol schema", async () => {
-    // query/presentation reuse the exact same $defs as ProjectionDefinition's
-    // (see schema/yarramate-visual-event.schema.json), so any query that
-    // would fail loadProjection's schema check fails the browser-input
-    // schema first. The browser sees a protocol-level 'rejected' frame, not
-    // a 'view-save-result' - loadProjection's own !ok branch in
-    // session-server.ts is unreachable defense-in-depth from a live socket.
+  it("removes a projection a commit staged, and drops it from the view list", async () => {
+    await withWorkspace();
+    const server = await start();
+    const { cookie } = await bootstrap(server);
+    const socket = await openBrowserSocket(server, cookie);
+
+    const frame = await sendCommit(socket, {
+      viewOperations: [
+        { op: "delete-view", path: ".yarramate/projections/seeded.yaml" },
+      ],
+      sourceDigests: {
+        ".yarramate/projections/seeded.yaml": await digestOfFile(
+          ".yarramate/projections/seeded.yaml",
+        ),
+      },
+    });
+
+    expect(frame.result).toMatchObject({ ok: true });
+    await expect(
+      readFile(join(baseDir, ".yarramate/projections/seeded.yaml"), "utf8"),
+    ).rejects.toThrow();
+    expect(await sessionViews(server, cookie)).toEqual([]);
+    socket.close();
+  });
+
+  it("lands a view and a subject as one batch, or neither", async () => {
+    // The property the whole adapter-level shape exists for: one `writeAll`,
+    // so a view and the subjects it shows cannot half arrive.
+    await withWorkspace();
+    const server = await start();
+    const { cookie } = await bootstrap(server);
+    const socket = await openBrowserSocket(server, cookie);
+
+    const frame = await sendCommit(socket, {
+      operations: [
+        {
+          op: "update-concept",
+          document: ".yarramate/architecture/main.yaml",
+          concept: { id: "user", name: "Renamed User" },
+        },
+      ],
+      viewOperations: [
+        {
+          op: "write-view",
+          path: ".yarramate/projections/together.yaml",
+          projection: projection("together", "Together"),
+        },
+      ],
+      sourceDigests: {
+        ".yarramate/architecture/main.yaml": await digestOfFile(
+          ".yarramate/architecture/main.yaml",
+        ),
+      },
+    });
+
+    expect(frame.result).toMatchObject({ ok: true });
+    expect(
+      await readFile(join(baseDir, ".yarramate/architecture/main.yaml"), "utf8"),
+    ).toContain("Renamed User");
+    expect(
+      await readFile(
+        join(baseDir, ".yarramate/projections/together.yaml"),
+        "utf8",
+      ),
+    ).toContain("together");
+    socket.close();
+  });
+
+  it("refuses the whole batch when a staged view changed on disk, writing nothing", async () => {
+    await withWorkspace();
+    const server = await start();
+    const { cookie } = await bootstrap(server);
+    const socket = await openBrowserSocket(server, cookie);
+
+    const stale = await digestOfFile(".yarramate/projections/seeded.yaml");
+    // Somebody else edits it after the row was staged.
+    await writeFile(
+      join(baseDir, ".yarramate/projections/seeded.yaml"),
+      seeded.replace("A view that already exists", "Edited elsewhere"),
+      "utf8",
+    );
+
+    const frame = await sendCommit(socket, {
+      operations: [
+        {
+          op: "update-concept",
+          document: ".yarramate/architecture/main.yaml",
+          concept: { id: "user", name: "Should Not Land" },
+        },
+      ],
+      viewOperations: [
+        {
+          op: "write-view",
+          path: ".yarramate/projections/seeded.yaml",
+          projection: projection("seeded", "Overwritten"),
+        },
+      ],
+      sourceDigests: {
+        ".yarramate/architecture/main.yaml": await digestOfFile(
+          ".yarramate/architecture/main.yaml",
+        ),
+        ".yarramate/projections/seeded.yaml": stale,
+      },
+    });
+
+    expect(frame.result).toMatchObject({ ok: false });
+    // Neither half landed: the model document is untouched and the projection
+    // still holds what the other writer put there.
+    expect(
+      await readFile(join(baseDir, ".yarramate/architecture/main.yaml"), "utf8"),
+    ).not.toContain("Should Not Land");
+    expect(
+      await readFile(
+        join(baseDir, ".yarramate/projections/seeded.yaml"),
+        "utf8",
+      ),
+    ).toContain("Edited elsewhere");
+    socket.close();
+  });
+
+  it("refuses a malformed projection at the gate, before the handler sees it", async () => {
+    // `viewOperation` in the event schema refs the projection schema, so a
+    // document the schema would refuse never reaches the commit path at all -
+    // the refusal is a `rejected` frame rather than an `apply-result`.
+    await withWorkspace();
     const server = await start();
     const { cookie } = await bootstrap(server);
     const socket = await openBrowserSocket(server, cookie);
@@ -2924,55 +3005,79 @@ evidence: []
     const rejected = nextFrame(socket, "rejected");
     socket.send(
       JSON.stringify({
-        type: "view.save",
+        type: "changeset.commit",
         lastAcknowledgedSequence: 0,
         payload: {
-          title: "Bad Query",
-          description: "empty subjects",
-          query: { subjects: [] },
-          presentation: {},
+          operations: [],
+          viewOperations: [
+            {
+              op: "write-view",
+              path: ".yarramate/projections/bad.yaml",
+              projection: {
+                ...projection("bad", "Bad"),
+                query: { kinds: "not-a-list" },
+              },
+            },
+          ],
+          sourceDigests: {},
         },
       }),
     );
-    expect((await rejected).diagnostics.length).toBeGreaterThan(0);
 
+    expect((await rejected).refused).toBe("changeset.commit");
     await expect(
-      readFile(join(baseDir, ".yarramate/projections/bad-query.yaml"), "utf8"),
+      readFile(join(baseDir, ".yarramate/projections/bad.yaml"), "utf8"),
     ).rejects.toThrow();
     socket.close();
   });
 
-  it("journals the save for audit without waking the agent poll loop", async () => {
-    const server = await start({ agentPollMs: 60 });
-    const capability = await capabilityOf(server);
+  it("refuses a view saved where the manifest covers no projection", async () => {
+    // This repo's own manifest uses `projections/*.yaml`, which reaches no
+    // subdirectory - a view written there is a file the workspace never loads,
+    // and nothing later would say so (ADR 0043).
+    await withWorkspace();
+    const server = await start();
     const { cookie } = await bootstrap(server);
     const socket = await openBrowserSocket(server, cookie);
 
-    await sendViewSave(socket, {
-      title: "Audit Test",
-      description: "test",
-      query: { kinds: ["yarramate/core@0.1#businessActor"] },
-      presentation: { layout: "layered" },
+    const frame = await sendCommit(socket, {
+      viewOperations: [
+        {
+          op: "write-view",
+          path: ".yarramate/projections/current/nested.yaml",
+          projection: projection("nested", "Nested"),
+        },
+      ],
     });
 
-    const journal = await journalOf(server);
-    expect(journal.at(-1)).toMatchObject({
-      type: "view.save",
-      payload: {
-        title: "Audit Test",
-        description: "test",
-      },
-    });
-    // Non-actionable: the poll loop never saw it, so a poll from before the
-    // journal's start is still waiting rather than replaying it.
-    await expect(
-      (
-        await agentFetch(server, capability, "/api/agent/events?after=0")
-      ).json(),
-    ).resolves.toMatchObject({ waiting: true, lastSequence: 2 });
+    expect(frame.result).toMatchObject({ ok: false });
+    expect(
+      JSON.stringify((frame.result as { readonly diagnostics: unknown })
+        .diagnostics),
+    ).toContain("YMVS315");
+    socket.close();
+  });
+
+  it("publishes the projection digests a staged view pins against", async () => {
+    await withWorkspace();
+    const server = await start();
+    const { cookie } = await bootstrap(server);
+    const socket = await openBrowserSocket(server, cookie);
+    const ready = await nextFrame(socket, "ready");
+
+    const digests = ready.snapshot.model.projectionDigests;
+    expect(digests[".yarramate/projections/seeded.yaml"]).toBe(
+      await digestOfFile(".yarramate/projections/seeded.yaml"),
+    );
+    // Kept out of `sourceDigests`, which states what the GRAPH was compiled
+    // from and is what `YMVS112` checks.
+    expect(
+      ready.snapshot.model.sourceDigests[".yarramate/projections/seeded.yaml"],
+    ).toBeUndefined();
     socket.close();
   });
 });
+
 
 it("keeps the fixture asset root free of anything the server must not serve", async () => {
   expect(dirname(assetRoot)).toBe(fixtures.replace(/\/$/, ""));

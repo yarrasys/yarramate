@@ -26,7 +26,7 @@ import type {
   VisualChoicePresentPayload,
   VisualDiagnostic,
   VisualLayoutSavePayload,
-  VisualViewSavePayload,
+  VisualViewOperation,
   VisualViewSummary,
 } from "../adapters/visual/protocol-contract.js";
 import { useVisualSession } from "./session-client.js";
@@ -123,8 +123,7 @@ const CommandStrip = ({
   onQuickFilterChange,
   saveViewOpen,
   onToggleSaveView,
-  onSaveView,
-  onDismissSavedNotice,
+  onStageView,
   onEnd,
 }: {
   readonly state: VisualAppState;
@@ -149,8 +148,7 @@ const CommandStrip = ({
   readonly onQuickFilterChange: (text: string) => void;
   readonly saveViewOpen: boolean;
   readonly onToggleSaveView: () => void;
-  readonly onSaveView: (payload: VisualViewSavePayload) => void;
-  readonly onDismissSavedNotice: () => void;
+  readonly onStageView: (operation: VisualViewOperation) => void;
   readonly onEnd: () => void;
 }) => (
   <header className="command-strip">
@@ -188,12 +186,9 @@ const CommandStrip = ({
         showLifecycle={showLifecycle}
         showEvidence={showEvidence}
         showOwnership={showOwnership}
-        pendingSave={state.pendingViewSave !== null}
-        notice={state.viewSaveNotice}
         open={saveViewOpen}
         onToggle={onToggleSaveView}
-        onSave={onSaveView}
-        onDismissNotice={onDismissSavedNotice}
+        onStage={onStageView}
       />
       <button
         type="button"
@@ -884,9 +879,8 @@ export const App = () => {
     filter,
     clearFilter,
     setQuickFilterText,
-    saveView,
+    stageViewChange,
     saveLayout,
-    dismissSavedNotice,
     discardChange,
     stageChange,
     clearChangeset,
@@ -1112,8 +1106,21 @@ export const App = () => {
         setSaveViewOpen(true);
         dispatchWorkspace({ type: "menu.dismissed" });
         return;
+      case "view.delete":
+        // Asked, not done: removing a projection is the one view operation
+        // that destroys authored text, so it goes through the same
+        // confirm-then-stage shape a subject deletion does.
+        dispatchWorkspace({ type: "viewDeletion.asked", id: intent.id });
+        return;
     }
   };
+
+  const pendingViewDelete =
+    workspace.pendingViewDeletion === null
+      ? null
+      : (state.views.find(
+          (view) => view.id === workspace.pendingViewDeletion,
+        ) ?? null);
 
   return (
     <main className="visual-shell" style={shellStyle}>
@@ -1143,8 +1150,7 @@ export const App = () => {
         onQuickFilterChange={setQuickFilterText}
         saveViewOpen={saveViewOpen}
         onToggleSaveView={() => setSaveViewOpen((open) => !open)}
-        onSaveView={saveView}
-        onDismissSavedNotice={dismissSavedNotice}
+        onStageView={stageViewChange}
         onEnd={end}
       />
       <div
@@ -1286,6 +1292,22 @@ export const App = () => {
           y={workspace.contextMenu.y}
           onChoose={runIntent}
           onDismiss={() => dispatchWorkspace({ type: "menu.dismissed" })}
+        />
+      )}
+      {pendingViewDelete === null ? null : (
+        <ConfirmDialog
+          title="Delete view"
+          message={`Stage the removal of "${pendingViewDelete.title}"? The projection document goes when the changeset is committed; no subject is touched.`}
+          confirmLabel="Delete"
+          cancelLabel="Keep"
+          onConfirm={() => {
+            stageViewChange({
+              op: "delete-view",
+              path: pendingViewDelete.path,
+            });
+            dispatchWorkspace({ type: "viewDeletion.dismissed" });
+          }}
+          onCancel={() => dispatchWorkspace({ type: "viewDeletion.dismissed" })}
         />
       )}
     </main>
