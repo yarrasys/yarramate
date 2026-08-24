@@ -111,6 +111,20 @@ body {
   gap: var(--step);
 }
 
+/* One line about what this session IS, which is identity. It sits beside the
+   name rather than behind a disclosure, because a button that only ever
+   revealed a sentence was a control the strip had no reason to keep (#249). */
+.session-description {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 13px;
+  color: var(--quiet);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .command-identity {
   /* Shrinks — the title ellipsises — down to a floor that still reads as a
      session name. Below it the actions take their own row rather than
@@ -343,14 +357,13 @@ body {
   overflow: hidden;
 }
 
-.workspace-conversation-open {
+/* Rail, canvas, splitter, sections. The right column has no open/closed mode:
+   its sections collapse one by one, and three shut headers say more than a
+   hidden column did (#249). */
+.workspace {
   grid-template-columns: var(--rail-width) minmax(0, 1fr) auto var(
       --conversation-width
     );
-}
-
-.workspace-conversation-closed {
-  grid-template-columns: var(--rail-width) minmax(0, 1fr);
 }
 
 /* ------------------------------------------------------------- view tree */
@@ -520,6 +533,18 @@ body {
   background: var(--paper);
 }
 
+/* The canvas's own controls, top-right: the quick filter narrows what is
+   drawn, so it sits with the drawing rather than in a strip across the window
+   (#249). */
+.canvas-controls {
+  position: absolute;
+  inset: var(--step) var(--step) auto auto;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: var(--step);
+}
+
 /* Cytoscape measures the element it mounts into and draws nothing when that
    box collapses, so the container is sized here rather than left to the
    canvas element it creates inside. */
@@ -625,6 +650,120 @@ body {
 
 /* ------------------------------------------------------------------ talk */
 
+/* ------------------------------------------------------------ section stack */
+
+/* Properties takes what is left; changes and chat hold the heights their
+   splitters were dragged to, and chat is last because it is pinned at the foot
+   (#249). A shut section contributes only its header, which is what `auto`
+   means once its body is hidden. */
+.section-stack {
+  display: grid;
+  grid-template-rows:
+    minmax(0, 1fr) auto var(--changes-height, 200px) auto
+    var(--chat-height, 246px);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-left: 1px solid var(--rule);
+  background: var(--sheet);
+}
+
+.stack-section {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: var(--step);
+  min-height: 32px;
+  margin: 0;
+  padding-right: calc(var(--step) * 1.5);
+  border-bottom: 1px solid var(--rule);
+  font-size: inherit;
+  font-weight: 400;
+}
+
+.section-toggle {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--step) * 0.75);
+  min-height: 32px;
+  padding: 0 calc(var(--step) * 1.5);
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font-family: var(--utility);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+
+.section-chevron {
+  color: var(--quiet);
+  font-size: 10px;
+}
+
+/* What the section holds, readable while it is shut: the selected subject, how
+   many rows are staged, whose turn it is. */
+.section-meta {
+  margin-left: auto;
+  overflow: hidden;
+  font-family: var(--utility);
+  font-size: 11px;
+  color: var(--quiet);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.section-body {
+  min-height: 0;
+  overflow: auto;
+}
+
+.section-body[hidden] {
+  display: none;
+}
+
+.section-empty {
+  margin: 0;
+  padding: calc(var(--step) * 1.5);
+  font-size: 13px;
+  color: var(--quiet);
+}
+
+/* The grab strip between two sections. Same anatomy as the conversation's own
+   separator, turned through ninety degrees. */
+.section-splitter {
+  position: relative;
+  height: 7px;
+  border: none;
+  background: transparent;
+  cursor: row-resize;
+}
+
+/* The grab area is 7px so it can be hit; what it DRAWS is a hairline, because
+   a seven-pixel bar between two sections reads as a section of its own. */
+.section-splitter::after {
+  content: "";
+  position: absolute;
+  inset: 3px 0;
+  background: var(--rule);
+}
+
+.section-splitter:hover::after,
+.section-splitter:focus-visible::after {
+  inset: 2px 0;
+  background: var(--cobalt);
+}
+
+.section-splitter:focus-visible {
+  outline: none;
+}
+
 .talk {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -632,8 +771,19 @@ body {
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  border-left: 1px solid var(--rule);
   background: var(--sheet);
+}
+
+/* The session's own control, under the composer it belongs beside. */
+.session-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--step);
+  padding: 0 calc(var(--step) * 1.5) calc(var(--step) * 1.5);
+}
+
+.session-foot .end-session {
+  margin-left: auto;
 }
 
 .talk[hidden] {
@@ -770,11 +920,37 @@ body {
 }
 
 .subject-draft-open {
-  position: absolute;
-  z-index: 2;
-  top: calc(var(--step) * 1.5);
-  right: calc(var(--step) * 1.5);
   min-height: 28px;
+  padding: 0 0.7rem;
+  border: 1px solid var(--rule-firm);
+  border-radius: 0;
+  background: var(--sheet);
+  color: var(--ink);
+  cursor: pointer;
+  font-family: var(--utility);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+
+.subject-draft-open:hover {
+  border-color: var(--cobalt);
+}
+
+/* The quick filter, sized for the canvas rather than for a strip. */
+.canvas-controls .quick-filter {
+  min-height: 28px;
+  width: min(220px, 30vw);
+  padding: 0 0.6rem;
+  border: 1px solid var(--rule-firm);
+  border-radius: 0;
+  background: var(--sheet);
+  color: var(--ink);
+  font-family: var(--utility);
+  font-size: 12px;
+}
+
+.canvas-controls .quick-filter::placeholder {
+  color: var(--quiet);
 }
 
 .subject-draft-panel {
@@ -1440,12 +1616,10 @@ body {
     max-height: 30dvh;
   }
 
-  .talk {
+  .section-stack {
     max-height: 56dvh;
     border-top: 1px solid var(--rule);
     border-left: 0;
-    border-radius: 18px 18px 0 0;
-    box-shadow: 0 -12px 36px rgb(19 35 57 / 14%);
   }
 }
 
@@ -1485,15 +1659,20 @@ body {
   cursor: not-allowed;
 }
 
+.save-view-control {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  background: color-mix(in oklab, var(--ink) 22%, transparent);
+}
+
 .save-view-panel {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
   background: var(--sheet);
   border: 1px solid var(--rule-firm);
   border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-  z-index: 10;
+  box-shadow: 0 8px 28px rgb(19 35 57 / 18%);
 }
 
 .save-view-panel-body {

@@ -10,7 +10,7 @@ import {
   viewIdFrom,
 } from "../adapters/visual/view-identity.js";
 
-export interface SaveViewControlProps {
+export interface SaveViewDialogProps {
   readonly views: readonly VisualViewSummary[];
   readonly activeViewId: string;
   readonly query: ProjectionQuery | null;
@@ -19,9 +19,10 @@ export interface SaveViewControlProps {
   readonly showEvidence: boolean;
   readonly showOwnership: boolean;
   /**
-   * Openness is the caller's, not the panel's: the tree's new-view button
-   * opens this form from the other side of the shell, and two components
-   * cannot both own one boolean.
+   * Openness is the caller's, not the form's: every way in is somewhere else -
+   * the rail's new-view button, three context-menu items - and two components
+   * cannot both own one boolean. The strip's own `Save view` button is gone
+   * with the rest of the strip's controls (#249).
    */
   readonly open: boolean;
   /**
@@ -30,7 +31,7 @@ export interface SaveViewControlProps {
    * folder…", which names one that does not exist yet. Undefined is no folder.
    */
   readonly folder: string | undefined;
-  readonly onToggle: () => void;
+  readonly onClose: () => void;
   /** Stages the write. Nothing is on disk until the changeset is committed. */
   readonly onStage: (operation: VisualViewOperation) => void;
 }
@@ -129,6 +130,7 @@ interface SaveViewFormProps {
     title: string,
     description: string,
   ) => void;
+  readonly onCancel: () => void;
 }
 
 /**
@@ -140,7 +142,7 @@ interface SaveViewFormProps {
  * an overwrite of the active view with nothing retyped, and closing it
  * discard a half-typed name that was never workspace state.
  */
-function SaveViewForm({ activeView, onSubmit }: SaveViewFormProps) {
+function SaveViewForm({ activeView, onSubmit, onCancel }: SaveViewFormProps) {
   const [title, setTitle] = useState(activeView?.title ?? "");
   const [description, setDescription] = useState(activeView?.description ?? "");
 
@@ -196,6 +198,9 @@ function SaveViewForm({ activeView, onSubmit }: SaveViewFormProps) {
             >
               Save As New
             </button>
+            <button type="button" onClick={onCancel}>
+              Cancel
+            </button>
           </div>
         </form>
       </div>
@@ -215,7 +220,7 @@ function SaveViewForm({ activeView, onSubmit }: SaveViewFormProps) {
  * reviewer can read, discard and undo before it lands, which is a better
  * answer than a dialog.
  */
-export function SaveViewControl({
+export function SaveViewDialog({
   views,
   activeViewId,
   query,
@@ -225,9 +230,9 @@ export function SaveViewControl({
   showOwnership,
   open,
   folder,
-  onToggle,
+  onClose,
   onStage,
-}: SaveViewControlProps) {
+}: SaveViewDialogProps) {
   const activeView = views.find((view) => view.id === activeViewId) ?? null;
 
   const submit = (
@@ -265,26 +270,20 @@ export function SaveViewControl({
     );
   };
 
+  if (!open) return null;
   return (
     <div className="save-view-control">
-      <button
-        type="button"
-        className="save-view-toggle"
-        aria-expanded={open}
-        aria-controls="save-view-panel-body"
-        onClick={onToggle}
-      >
-        Save view
-      </button>
-      {open ? (
-        <SaveViewForm
-          // Remount when the reviewer switches view with the panel open, so
-          // the fields describe the view the Save button would overwrite.
-          key={activeViewId}
-          activeView={activeView}
-          onSubmit={submit}
-        />
-      ) : null}
+      <SaveViewForm
+        // Remount when the reviewer switches view with the form open, so the
+        // fields describe the view the Save button would overwrite.
+        key={activeViewId}
+        activeView={activeView}
+        onSubmit={(id, title, description) => {
+          submit(id, title, description);
+          onClose();
+        }}
+        onCancel={onClose}
+      />
     </div>
   );
 }
