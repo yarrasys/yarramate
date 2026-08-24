@@ -507,8 +507,13 @@ body {
   color: var(--quiet);
 }
 
+/* The canvas keeps every pixel the panel is not using, which at rest is all of
+   them but the tab strip. `auto` rather than a fraction: an open panel is as
+   tall as its own content allows, and the canvas gives up exactly that. */
 .diagram-workspace {
   position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -1053,57 +1058,11 @@ body {
 /* ---------------------------------------------------------------- narrow */
 
 
-/* --------------------------------------------------------- filter panel */
-
-.filter-panel {
-  position: relative;
-}
-
-.filter-panel > button {
-  min-height: 32px;
-  padding: 0 0.7rem;
-  font-family: var(--utility);
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  color: var(--ink);
-  background: var(--paper);
-  border: 1px solid var(--rule-firm);
-  border-radius: 0;
-  cursor: pointer;
-}
-
-.filter-panel > button:hover:enabled {
-  border-color: var(--cobalt);
-}
-
-.filter-panel > button[aria-expanded='true'] {
-  color: var(--paper);
-  background: var(--cobalt);
-  border-color: var(--cobalt);
-}
-
-.filter-panel-body {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  z-index: 9;
-  min-width: 320px;
-  max-width: 480px;
-  padding: calc(var(--step) * 1.5);
-  margin-top: -1px;
-  border: 1px solid var(--rule-firm);
-  border-top: none;
-  background: var(--sheet);
-  box-shadow: 0 12px 28px rgb(19 35 57 / 12%);
-}
-
-.filter-panel-body[hidden] {
-  display: none;
-}
+/* ----------------------------------------------------------- query fields */
 
 .filter-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: calc(var(--step) * 1.5);
 }
 
@@ -1209,6 +1168,235 @@ body {
   cursor: pointer;
 }
 
+/* ----------------------------------------------------------- bottom panel */
+
+/* Along the foot of the CANVAS COLUMN, not the window: the right column runs
+   full height and its own foot is the chat section. Collapsed at rest, so the
+   diagram keeps the room until the reviewer asks for the panel. */
+.bottom-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-top: 1px solid var(--rule-firm);
+  background: var(--sheet);
+}
+
+.bottom-panel-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  min-height: 32px;
+}
+
+.bottom-panel-tab {
+  min-height: 32px;
+  padding: 0 0.9rem;
+  font-family: var(--utility);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--quiet);
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--rule);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+
+.bottom-panel-tab:hover {
+  color: var(--ink);
+}
+
+.bottom-panel-tab[aria-selected='true'] {
+  color: var(--ink);
+  background: var(--paper);
+  border-bottom-color: var(--cobalt);
+}
+
+/* What the tab would have said if it were open, so a collapsed panel still
+   answers the question it exists to answer. */
+.bottom-panel-summary {
+  display: flex;
+  align-items: center;
+  padding-inline: 0.9rem;
+  font-family: var(--utility);
+  font-size: 12px;
+  color: var(--quiet);
+}
+
+.bottom-panel-collapse {
+  margin-left: auto;
+  min-width: 32px;
+  min-height: 32px;
+  color: var(--quiet);
+  background: transparent;
+  border: none;
+  border-left: 1px solid var(--rule);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.bottom-panel-collapse:hover {
+  color: var(--ink);
+}
+
+.bottom-panel-body {
+  min-height: 0;
+  max-height: 42dvh;
+  overflow: auto;
+  border-top: 1px solid var(--rule);
+  background: var(--paper);
+}
+
+/* Three readings of one query, side by side: what it selects with, what it
+   leaves out, and the document it resolves to. Each column scrolls on its own
+   so a long exclusion list never pushes the fields off the panel. */
+.query-tab {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: calc(var(--step) * 2);
+  padding: calc(var(--step) * 1.5);
+}
+
+.query-tab > div {
+  min-width: 0;
+}
+
+.query-tab h3 {
+  margin: 0 0 var(--step);
+  font-family: var(--utility);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--quiet);
+}
+
+.query-tab-fields {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--step) * 1.5);
+}
+
+.query-tab-outcome > h3:not(:first-child) {
+  margin-top: calc(var(--step) * 2);
+}
+
+.query-match-count {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 15px;
+}
+
+.query-match-count strong {
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.query-outcome-stale,
+.query-outcome-note {
+  margin: var(--step) 0 0;
+  font-size: 13px;
+  color: var(--quiet);
+}
+
+/* A query that draws nothing is a query the reviewer has to be told about
+   before they stage it, not a blank canvas they have to interpret. */
+.query-outcome-empty {
+  margin: var(--step) 0 0;
+  font-size: 13px;
+  color: var(--ochre);
+}
+
+.query-exclusions {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.query-exclusions > li + li {
+  margin-top: var(--step);
+}
+
+.query-exclusions ul {
+  margin: calc(var(--step) * 0.5) 0 0;
+  padding-left: calc(var(--step) * 2);
+  list-style: none;
+  font-size: 13px;
+  color: var(--quiet);
+}
+
+.query-exclusion-facet {
+  font-family: var(--utility);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.query-exclusion-count {
+  font-family: var(--utility);
+  font-size: 11px;
+  color: var(--quiet);
+}
+
+.query-exclusion-more {
+  font-style: italic;
+}
+
+.query-tab-document {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* The document as it would be written, by the serialiser that writes it. */
+.query-document {
+  flex: 1;
+  min-height: 0;
+  max-height: 22dvh;
+  margin: 0;
+  padding: var(--step);
+  overflow: auto;
+  border: 1px solid var(--rule);
+  background: var(--sheet);
+  font-family: var(--utility);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.query-tab-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--step);
+  margin-top: var(--step);
+}
+
+.query-tab-actions button {
+  min-height: 32px;
+  padding: 0 0.7rem;
+  font-family: var(--utility);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--paper);
+  background: var(--cobalt);
+  border: 1px solid var(--cobalt);
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.query-tab-actions button:disabled {
+  color: var(--quiet);
+  background: var(--paper);
+  border-color: var(--rule-firm);
+  cursor: default;
+}
+
+.query-stage-status {
+  font-size: 13px;
+  color: var(--quiet);
+}
+
 @media (max-width: 899px) {
   .command-strip {
     gap: calc(var(--step) * 0.5);
@@ -1237,6 +1425,19 @@ body {
 
   .conversation-separator {
     display: none;
+  }
+
+  /* Three columns will not fit beside a canvas this narrow, so the readings
+     stack in the order they are read in: fields, outcome, document. */
+  .query-tab {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* A narrow window already lies the tree down across the top, so an open
+     panel at its full height would leave the canvas a strip. It gives up more
+     of itself here than it does beside a wide diagram. */
+  .bottom-panel-body {
+    max-height: 30dvh;
   }
 
   .talk {

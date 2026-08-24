@@ -15,6 +15,7 @@ import type {
 } from "../../operations.js";
 import type {
   ProjectionDefinition,
+  ProjectionExclusion,
   ProjectionQuery,
 } from "../../projection.js";
 
@@ -190,6 +191,23 @@ export interface VisualFilterQueryPayload {
 export interface VisualFilterResultPayload {
   readonly query: ProjectionQuery;
   readonly matchedIds: readonly string[];
+  /**
+   * Every concept this query DROPPED, each with the facet that dropped it, as
+   * `explainProjection` reports it. The editor needs it to say why a subject
+   * is not on the canvas: a query that quietly drops the one subject the
+   * reviewer was looking for is otherwise indistinguishable from a model that
+   * does not hold it.
+   *
+   * A frame field, not a document field. `yarramate/projection-result/v1` is
+   * `additionalProperties: false` and this is a question about a query rather
+   * than part of what a projection IS, so the exclusions ride on the answer to
+   * the question that asked for them and nowhere else.
+   *
+   * Relationships are absent by construction: they enter a view through their
+   * endpoints rather than by matching a facet, so "why" for a relationship is
+   * a statement about the concepts it joins.
+   */
+  readonly excluded: readonly ProjectionExclusion[];
 }
 
 export interface VisualViewSavePayload {

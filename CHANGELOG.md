@@ -2,6 +2,36 @@
 
 ## 1.0.0
 
+- **Fixed.** A committed query edit re-asked the query the browser was holding,
+  which is that query as it was — the same defect the `view` source had, and
+  the query tab's `editor` source needed the same answer.
+
+- **Added.** A collapsible tabbed panel along the foot of the canvas column,
+  with the view's query as its first tab (#248). The facets that used to sit in
+  a dropdown *over* the diagram they were narrowing now sit under it, beside a
+  live match count, the subjects the query drops with the facet that dropped
+  each one, and the projection document the query resolves to — serialised by
+  the same `yaml` the runtime writes it with, so what the reviewer reads is
+  what a commit would put on disk. Collapsed at rest, and the tab strip still
+  carries the match count, so a shut panel is not a silent one. **A query edit
+  stages a `write-view`** rather than saving, so it lands in the same batch as
+  every other change; the edit is filtered under a new `editor` source, which
+  leaves the view's name standing in the tree while its query is being changed.
+  The count is of SUBJECTS, not of the match set: `matchedIds` names concepts
+  and relationships together, and counting it whole reports five for three
+  components with two relationships between them.
+
+- **Added.** `explainProjection`, beside `evaluateProjection`: every concept a
+  query leaves out, and the facet that left it out. The concept filter is now
+  one ordered list of named facet checks hoisted into a `conceptSelector` that
+  both functions read, so the reason the editor shows and the set the canvas
+  draws can never come from two readings of one query. A subject is reported
+  against the FIRST facet that rejects it, in the order the query applies them:
+  a list of every reason is a list nobody reads. `filter-result` frames carry
+  the exclusions as `excluded`; the published `yarramate/projection-result/v1`
+  is unchanged, because this is a question about a query rather than part of
+  what a projection is.
+
 - **Fixed.** A commit from the visual editor died on any workspace that
   declares a profile. `planOperations` gathered documents, projections,
   evidence and adapter mappings and left the PROFILES out, and

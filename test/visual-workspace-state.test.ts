@@ -747,3 +747,61 @@ describe("visualWorkspaceReducer context menu", () => {
     ).toBe(workspaceState);
   });
 });
+
+describe("the canvas column's bottom panel", () => {
+  const workspaceState = createVisualWorkspaceState(1280);
+
+  it("is collapsed at rest, on the tab it will open on", () => {
+    // The canvas keeps the room until the reviewer asks for the panel.
+    expect(workspaceState.bottomPanel).toEqual({
+      open: false,
+      tab: "view-query",
+    });
+  });
+
+  it("opens and shuts on the toggle", () => {
+    const opened = visualWorkspaceReducer(workspaceState, {
+      type: "bottomPanel.toggled",
+    });
+
+    expect(opened.bottomPanel.open).toBe(true);
+    expect(
+      visualWorkspaceReducer(opened, { type: "bottomPanel.toggled" })
+        .bottomPanel.open,
+    ).toBe(false);
+  });
+
+  it("opens the panel when a tab is named, because naming one asks to read it", () => {
+    const selected = visualWorkspaceReducer(workspaceState, {
+      type: "bottomPanel.tabSelected",
+      tab: "view-query",
+    });
+
+    expect(selected.bottomPanel).toEqual({ open: true, tab: "view-query" });
+  });
+
+  it("remembers the tab while the panel is shut", () => {
+    const shut = visualWorkspaceReducer(
+      visualWorkspaceReducer(workspaceState, {
+        type: "bottomPanel.tabSelected",
+        tab: "view-query",
+      }),
+      { type: "bottomPanel.toggled" },
+    );
+
+    expect(shut.bottomPanel).toEqual({ open: false, tab: "view-query" });
+  });
+
+  it("changes nothing when the tab it is already showing is named again", () => {
+    const opened = visualWorkspaceReducer(workspaceState, {
+      type: "bottomPanel.toggled",
+    });
+
+    expect(
+      visualWorkspaceReducer(opened, {
+        type: "bottomPanel.tabSelected",
+        tab: "view-query",
+      }),
+    ).toBe(opened);
+  });
+});

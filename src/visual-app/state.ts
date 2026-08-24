@@ -20,7 +20,10 @@ import {
   withMembership,
 } from "../adapters/visual/view-identity.js";
 import type { YarramateOperation } from "../operations.js";
-import type { ProjectionQuery } from "../projection.js";
+import type {
+  ProjectionExclusion,
+  ProjectionQuery,
+} from "../projection.js";
 import type {
   VisualRenderedModel,
   VisualServerFrame,
@@ -37,6 +40,34 @@ import type {
  * application may change what is on screen. Transcript records are plain text
  * and are rendered through React text nodes, never as markup.
  */
+
+/**
+ * Who asked for the filter that is standing.
+ *
+ * `view` is a named view being applied; `editor` is that view's own query
+ * being edited in the canvas panel, which is still THAT view and so leaves its
+ * name standing; `panel` is an ad-hoc query belonging to no view; `chat` is the
+ * agent's.
+ */
+export type FilterSource = "view" | "editor" | "panel" | "chat";
+
+/** The standing filter: the query, what it matched, and who asked. */
+export interface ActiveFilter {
+  readonly query: ProjectionQuery;
+  readonly matchedIds: readonly string[];
+  /**
+   * What the query dropped and why, or `null` when nobody reported it.
+   *
+   * A `filter-result` always carries the exclusions; a chat turn's
+   * `appliedQuery` cannot - it is a schema-bound document requiring exactly
+   * `query` and `matchedIds` (ADR 0090), and widening it would be a protocol
+   * change to answer a question chat never asked. So `null` means unknown,
+   * and the editor says nothing rather than reporting that a query dropped
+   * nothing.
+   */
+  readonly excluded: readonly ProjectionExclusion[] | null;
+  readonly source: FilterSource;
+}
 
 /** How long after losing the socket the server still holds this session. */
 export const RECONNECT_WINDOW_MS = VISUAL_LIMITS.reconnectMs;
@@ -99,11 +130,7 @@ export interface VisualAppState {
   readonly lastSequence: number;
   readonly frozen: boolean;
   /** The last query the reviewer applied, and what it matched. `null` = unfiltered. */
-  readonly activeFilter: {
-    readonly query: ProjectionQuery;
-    readonly matchedIds: readonly string[];
-    readonly source: "view" | "panel" | "chat";
-  } | null;
+  readonly activeFilter: ActiveFilter | null;
   /** Client-side substring narrowing layered on top of `activeFilter`. */
   readonly quickFilterText: string;
   readonly closedReason: string | null;
@@ -170,7 +197,9 @@ export type VisualAppAction =
       readonly type: "filter.applied";
       readonly query: ProjectionQuery;
       readonly matchedIds: readonly string[];
-      readonly source: "view" | "panel" | "chat";
+      /** `null` where the answer did not carry them, never `[]`. */
+      readonly excluded: readonly ProjectionExclusion[] | null;
+      readonly source: FilterSource;
     }
   | { readonly type: "filter.cleared" }
   | { readonly type: "quickFilter.changed"; readonly text: string }
@@ -601,12 +630,20 @@ const transition = (
         activeFilter: {
           query: action.query,
           matchedIds: action.matchedIds,
+          excluded: action.excluded,
           source: action.source,
         },
         // Only a view's own query leaves its name standing. A filter from the
         // panel or from chat draws something the named view does not describe,
         // so the tree stops claiming it rather than naming what is not shown.
-        activeView: action.source === "view" ? state.activeView : "",
+        //
+        // An `editor` filter is that view's query being edited, which is still
+        // the same view: forgetting its name mid-edit would take away the very
+        // document the edit is going to be staged against.
+        activeView:
+          action.source === "view" || action.source === "editor"
+            ? state.activeView
+            : "",
       };
     case "filter.cleared":
       // Clearing the filter also leaves whatever named view was active -
@@ -948,7 +985,7 @@ export const filterToReresolve = (
   state: VisualAppState,
 ): {
   readonly query: ProjectionQuery;
-  readonly source: "view" | "panel" | "chat";
+  readonly source: FilterSource;
 } | null => {
   if (frame.kind !== "model") return null;
   // No filter standing is "everything is drawn", which a new subject joins by
@@ -961,13 +998,19 @@ export const filterToReresolve = (
   // disk names the new subject, and the canvas does not change. So the view's
   // query is re-read off the frame that replaced the model.
   //
-  // Only for a filter the view itself issued. A reviewer holding their own
-  // panel filter must not have the view's query put back underneath them,
-  // which is the same rule `source` exists for.
+  // Only for a filter that view issued - which includes the query tab editing
+  // it (`editor`), because a committed query edit is exactly the case: the
+  // reviewer changed the view's query, the commit landed it, and the query the
+  // browser holds is the one from before. A reviewer holding their own panel
+  // filter must not have the view's query put back underneath them, which is
+  // the same rule `source` exists for.
+  const fromTheView =
+    state.activeFilter.source === "view" ||
+    state.activeFilter.source === "editor";
   const landed = frame.views.find(({ id }) => id === state.activeView);
   return {
     query:
-      state.activeFilter.source === "view" && landed !== undefined
+      fromTheView && landed !== undefined
         ? landed.query
         : state.activeFilter.query,
     source: state.activeFilter.source,
@@ -985,7 +1028,7 @@ export const filterToReresolve = (
  */
 export const visualAppActionsForFrame = (
   frame: VisualServerFrame,
-  filterOrigin: "view" | "panel" | "chat" = "panel",
+  filterOrigin: FilterSource = "panel",
 ): readonly VisualAppAction[] => {
   switch (frame.kind) {
     case "ready":
@@ -1018,6 +1061,7 @@ export const visualAppActionsForFrame = (
           type: "filter.applied",
           query: frame.result.query,
           matchedIds: frame.result.matchedIds,
+          excluded: frame.result.excluded,
           source: filterOrigin,
         },
       ];
@@ -1040,6 +1084,8 @@ export const visualAppActionsForFrame = (
               // (ADR 0090); a query it resolved to nothing still highlights
               // nothing rather than leaving the previous filter standing.
               matchedIds: applied.matchedIds ?? [],
+              // Unknown, not empty: `appliedQuery` carries no exclusions.
+              excluded: null,
               source: "chat",
             });
           }

@@ -62,7 +62,9 @@ import {
 import {
   loadProjection,
   evaluateProjection,
+  explainProjection,
   type ProjectionDefinition,
+  type ProjectionExclusion,
   type ProjectionQuery,
 } from "../../projection.js";
 import {
@@ -1002,6 +1004,28 @@ export const startVisualServer = async (
   };
 
   /**
+   * Why a query dropped what it dropped, as the editor's "excluded, and why"
+   * list reads it (#248).
+   *
+   * Resolved here rather than in the browser for the same reason the match set
+   * is: a `ProjectionQuery` needs the semantic graph to answer, and the browser
+   * has the rendered model rather than the graph. One evaluator, one answer -
+   * `explainProjection` shares `conceptSelector` with `evaluateProjection`, so
+   * the reason the editor shows and the set the canvas draws cannot come from
+   * two readings of the same query.
+   */
+  const filterExclusions = (
+    query: ProjectionQuery,
+  ): readonly ProjectionExclusion[] => {
+    if (compiledWorkspace === undefined) return [];
+    return explainProjection(
+      compiledWorkspace.graph,
+      { format: "yarramate/projection/v1", id: "ad-hoc", version: "0", query },
+      compiledWorkspace.profileContext,
+    );
+  };
+
+  /**
    * How many CONCEPTS a query matches, which is not the size of its match set.
    *
    * A `SemanticGraph`'s `subjects` are concepts and relationships together, so
@@ -1631,6 +1655,7 @@ export const startVisualServer = async (
           result: {
             query: event.payload.query,
             matchedIds: filterMatchedIds(event.payload.query),
+            excluded: filterExclusions(event.payload.query),
           },
         });
         return;

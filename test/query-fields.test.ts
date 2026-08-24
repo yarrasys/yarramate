@@ -6,7 +6,7 @@ import {
   presentationToggleHandler,
   type PresentationFlag,
   type QueryFields,
-} from '../src/visual-app/filter-panel.js'
+} from '../src/visual-app/query-fields.js'
 import type { ProjectionQuery } from '../src/projection.js'
 
 // A populated value for every one of the 13 `ProjectionQuery` dimensions, so
@@ -111,7 +111,7 @@ describe('presentationToggleHandler', () => {
   it('never composes a ProjectionQuery or fires the debounced filter.query round-trip', () => {
     vi.useFakeTimers()
     try {
-      // The badge checkboxes wire directly to this handler in filter-panel.tsx
+      // The badge checkboxes wire directly to this handler in query-fields.tsx
       // - it never touches `fields`/`composeQuery`/`scheduleApply`, so no
       // amount of waiting past the 300ms apply debounce can produce a query.
       const onApply = vi.fn()

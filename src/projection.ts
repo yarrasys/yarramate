@@ -190,11 +190,47 @@ const claimReferences = (
       : [],
   )
 
-export function evaluateProjection(
+/**
+ * A facet of a query, named the way the query names it. What
+ * {@link explainProjection} reports as the reason a subject is not in a view.
+ */
+export type ConceptFacet =
+  | 'states'
+  | 'subjects'
+  | 'documents'
+  | 'kinds'
+  | 'layers'
+  | 'statuses'
+  | 'excludeStatuses'
+  | 'owners'
+  | 'constraints'
+
+/** One subject a query dropped, and the facet that dropped it. */
+export interface ProjectionExclusion {
+  readonly id: string
+  readonly facet: ConceptFacet
+}
+
+interface ConceptSelector {
+  /** The facet that drops this concept, or `undefined` when the query keeps it. */
+  readonly droppedBy: (id: string) => ConceptFacet | undefined
+  readonly architectureStateIds: ReadonlySet<string>
+  readonly participatesInSelectedState: (subject: string) => boolean
+}
+
+/**
+ * How a query decides about concepts, built once and shared by the two things
+ * that ask.
+ *
+ * `evaluateProjection` asks whether a subject is in; `explainProjection` asks
+ * why one is out. They must never be able to disagree, which is why there is
+ * one selector rather than a filter here and a reason-finder somewhere else.
+ */
+const conceptSelector = (
   graph: SemanticGraph,
   projection: ProjectionDefinition,
   profileContext?: ResolvedProfileContext,
-): ProjectionResult {
+): ConceptSelector => {
   const architectureStateIds = new Set(
     graph.claims
       .filter(({ predicate }) => predicate === 'yarramate/state/type')
@@ -219,6 +255,152 @@ export function evaluateProjection(
       presence.some((state) => selectedStateIds.includes(state))
     )
   }
+  // A subject id no longer carries the document that declared it, so the
+  // `documents` selector reads provenance from the claim that declares the
+  // concept's kind - the one claim every concept has, recorded in the document
+  // that authored it. Built once: the alternative is a claim scan per subject
+  // per query.
+  const documentOfSubject = new Map<string, string>()
+  for (const claim of graph.claims) {
+    if (claim.predicate !== 'yarramate/concept/kind') continue
+    const document = claim.source?.document
+    if (typeof document === 'string') {
+      documentOfSubject.set(claim.subject, document)
+    }
+  }
+
+  return {
+    architectureStateIds,
+    participatesInSelectedState,
+    droppedBy: (id: string): ConceptFacet | undefined => {
+      const query = projection.query
+      const documentId = documentOfSubject.get(id) ?? ''
+      const kind = claimValue(graph.claims, id, 'yarramate/concept/kind')
+      const status = claimValue(graph.claims, id, 'yarramate/lifecycle/status')
+      const owner = claimReference(
+        graph.claims,
+        id,
+        'yarramate/ownership/owner',
+      )
+      const constraints = claimReferences(
+        graph.claims,
+        id,
+        'yarramate/constraint/requires',
+      )
+      const kindLayer =
+        kind === undefined
+          ? undefined
+          : profileContext?.conceptKindLayers.get(kind)
+
+      // Ordered the way a query declares its facets, so "the first reason" is
+      // the one a reader would reach first themselves.
+      if (
+        query.states !== undefined &&
+        (architectureStateIds.has(id) || !participatesInSelectedState(id))
+      ) {
+        return 'states'
+      }
+      if (query.subjects !== undefined && !query.subjects.includes(id)) {
+        return 'subjects'
+      }
+      if (
+        query.documents !== undefined &&
+        !query.documents.includes(documentId)
+      ) {
+        return 'documents'
+      }
+      if (
+        query.kinds !== undefined &&
+        !(
+          kind !== undefined &&
+          query.kinds.some(
+            (selectedKind) =>
+              selectedKind === kind ||
+              (query.kindMatching === 'descendants' &&
+                profileContext?.conceptKindLineages
+                  .get(kind)
+                  ?.includes(selectedKind) === true),
+          )
+        )
+      ) {
+        return 'kinds'
+      }
+      if (
+        query.layers !== undefined &&
+        !(kindLayer !== undefined && query.layers.includes(kindLayer))
+      ) {
+        return 'layers'
+      }
+      if (
+        query.statuses !== undefined &&
+        !(
+          status !== undefined &&
+          query.statuses.includes(status as LifecycleStatus)
+        )
+      ) {
+        return 'statuses'
+      }
+      if (
+        query.excludeStatuses !== undefined &&
+        status !== undefined &&
+        query.excludeStatuses.includes(status as LifecycleStatus)
+      ) {
+        return 'excludeStatuses'
+      }
+      if (
+        query.owners !== undefined &&
+        !(owner !== undefined && query.owners.includes(owner))
+      ) {
+        return 'owners'
+      }
+      if (
+        query.constraints !== undefined &&
+        !constraints.some((constraint) => query.constraints?.includes(constraint))
+      ) {
+        return 'constraints'
+      }
+      return undefined
+    },
+  }
+}
+
+/**
+ * Every concept a query leaves out, and the facet that left it out.
+ *
+ * The editor needs this to say why a subject is not on the canvas (#248): a
+ * query that selects nothing, or that quietly drops the one subject the
+ * reviewer was looking for, is otherwise indistinguishable from a model that
+ * does not hold it. Relationships are not reported - they enter a view through
+ * their endpoints rather than by matching a facet of their own, so "why" for a
+ * relationship is a statement about the concepts it joins.
+ *
+ * Separate from `evaluateProjection` rather than a field on its result,
+ * because `yarramate/projection-result/v1` is a published document with
+ * `additionalProperties: false` and this is a question about a query rather
+ * than part of what a projection IS.
+ */
+export function explainProjection(
+  graph: SemanticGraph,
+  projection: ProjectionDefinition,
+  profileContext?: ResolvedProfileContext,
+): readonly ProjectionExclusion[] {
+  const { droppedBy } = conceptSelector(graph, projection, profileContext)
+  const exclusions: ProjectionExclusion[] = []
+  for (const subject of graph.subjects) {
+    if (subject.type !== 'concept') continue
+    const facet = droppedBy(subject.id)
+    if (facet !== undefined) exclusions.push({ id: subject.id, facet })
+  }
+  return exclusions
+}
+
+export function evaluateProjection(
+  graph: SemanticGraph,
+  projection: ProjectionDefinition,
+  profileContext?: ResolvedProfileContext,
+): ProjectionResult {
+  const { droppedBy, architectureStateIds, participatesInSelectedState } =
+    conceptSelector(graph, projection, profileContext)
   const endpointExcluded = (id: string): boolean => {
     if (!participatesInSelectedState(id)) return true
     const status = claimValue(
@@ -232,85 +414,10 @@ export function evaluateProjection(
         true
     )
   }
-  // A subject id no longer carries the document that declared it, so the
-  // `documents` selector reads provenance from the claim that declares the
-  // concept's kind - the one claim every concept has, recorded in the document
-  // that authored it. Built once: the alternative is a claim scan per subject
-  // per query. Only concepts are filtered this way, exactly as before;
-  // relationships enter a view through `between`/`connected`, never by
-  // document.
-  const documentOfSubject = new Map<string, string>()
-  for (const claim of graph.claims) {
-    if (claim.predicate !== 'yarramate/concept/kind') continue
-    const document = claim.source?.document
-    if (typeof document === 'string') documentOfSubject.set(claim.subject, document)
-  }
   const initiallySelectedConceptIds = new Set(
     graph.subjects
       .filter(({ type }) => type === 'concept')
-      .filter(({ id }) => {
-        const documentId = documentOfSubject.get(id) ?? ''
-        const kind = claimValue(
-          graph.claims,
-          id,
-          'yarramate/concept/kind',
-        )
-        const status = claimValue(
-          graph.claims,
-          id,
-          'yarramate/lifecycle/status',
-        )
-        const owner = claimReference(
-          graph.claims,
-          id,
-          'yarramate/ownership/owner',
-        )
-        const constraints = claimReferences(
-          graph.claims,
-          id,
-          'yarramate/constraint/requires',
-        )
-        return (
-          (projection.query.states === undefined ||
-            (!architectureStateIds.has(id) &&
-              participatesInSelectedState(id))) &&
-          (projection.query.subjects === undefined ||
-            projection.query.subjects.includes(id)) &&
-          (projection.query.documents === undefined ||
-            projection.query.documents.includes(documentId)) &&
-          (projection.query.kinds === undefined ||
-            (kind !== undefined &&
-              projection.query.kinds.some(
-                (selectedKind) =>
-                  selectedKind === kind ||
-                  (projection.query.kindMatching === 'descendants' &&
-                    profileContext?.conceptKindLineages
-                      .get(kind)
-                      ?.includes(selectedKind) === true),
-              ))) &&
-          (projection.query.layers === undefined ||
-            (kind !== undefined &&
-              profileContext?.conceptKindLayers.get(kind) !== undefined &&
-              projection.query.layers.includes(
-                profileContext.conceptKindLayers.get(kind)!,
-              ))) &&
-          (projection.query.statuses === undefined ||
-            (status !== undefined &&
-              projection.query.statuses.includes(status as LifecycleStatus))) &&
-          (projection.query.excludeStatuses === undefined ||
-            status === undefined ||
-            !projection.query.excludeStatuses.includes(
-              status as LifecycleStatus,
-            )) &&
-          (projection.query.owners === undefined ||
-            (owner !== undefined &&
-              projection.query.owners.includes(owner))) &&
-          (projection.query.constraints === undefined ||
-            constraints.some((constraint) =>
-              projection.query.constraints?.includes(constraint),
-            ))
-        )
-      })
+      .filter(({ id }) => droppedBy(id) === undefined)
       .map(({ id }) => id),
   )
   const selectedConceptIds = new Set(initiallySelectedConceptIds)

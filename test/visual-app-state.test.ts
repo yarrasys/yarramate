@@ -22,6 +22,7 @@ import {
   visualBrowserInputFor,
   type VisualAppAction,
   activeViewMembership,
+  type FilterSource,
   type VisualAppState,
 } from "../src/visual-app/state.js";
 import type { ProjectionQuery } from "../src/projection.js";
@@ -419,6 +420,7 @@ describe("visualAppReducer model rendering", () => {
       type: "filter.applied",
       query: { subjects: ["Q1"] },
       matchedIds: ["node1"],
+      excluded: [],
       source: "panel",
     });
     const searched = visualAppReducer(filtered, {
@@ -433,6 +435,7 @@ describe("visualAppReducer model rendering", () => {
     expect(next.activeFilter).toEqual({
       query: { subjects: ["Q1"] },
       matchedIds: ["node1"],
+      excluded: [],
       source: "panel",
     });
     expect(next.quickFilterText).toBe("checkout");
@@ -1292,7 +1295,7 @@ describe("visualAppReducer filter state", () => {
   it("applies a filter with panel source from filter-result frame", () => {
     const actions = visualAppActionsForFrame({
       kind: "filter-result",
-      result: { query, matchedIds },
+      result: { query, matchedIds, excluded: [] },
     });
     const filtered = actions.reduce(
       (state, action) => visualAppReducer(state, action),
@@ -1301,6 +1304,7 @@ describe("visualAppReducer filter state", () => {
     expect(filtered.activeFilter).toEqual({
       query,
       matchedIds,
+      excluded: [],
       source: "panel",
     });
   });
@@ -1323,6 +1327,10 @@ describe("visualAppReducer filter state", () => {
     expect(filtered.activeFilter).toEqual({
       query,
       matchedIds,
+      // Unknown rather than empty: a chat turn's `appliedQuery` is a
+      // schema-bound document that carries a match set and no reasons, so
+      // claiming the query dropped nothing would be an invention.
+      excluded: null,
       source: "chat",
     });
   });
@@ -1330,13 +1338,13 @@ describe("visualAppReducer filter state", () => {
   it("labels a filter result with the origin the browser recorded", () => {
     const frame = {
       kind: "filter-result",
-      result: { query, matchedIds },
+      result: { query, matchedIds, excluded: [] },
     } as const;
     expect(visualAppActionsForFrame(frame, "view")).toEqual([
-      { type: "filter.applied", query, matchedIds, source: "view" },
+      { type: "filter.applied", query, matchedIds, excluded: [], source: "view" },
     ]);
     expect(visualAppActionsForFrame(frame)).toEqual([
-      { type: "filter.applied", query, matchedIds, source: "panel" },
+      { type: "filter.applied", query, matchedIds, excluded: [], source: "panel" },
     ]);
   });
 
@@ -1345,7 +1353,22 @@ describe("visualAppReducer filter state", () => {
       type: "filter.applied",
       query,
       matchedIds,
+      excluded: [],
       source: "view",
+    });
+    expect(filtered.activeView).toBe(activeState.activeView);
+  });
+
+  it("keeps the named view standing while its own query is being edited", () => {
+    // The query tab stages an edit against the view it is editing, so a
+    // keystroke that made the app forget which view that was would take away
+    // the document the edit is going to be written to.
+    const filtered = visualAppReducer(activeState, {
+      type: "filter.applied",
+      query,
+      matchedIds,
+      excluded: [],
+      source: "editor",
     });
     expect(filtered.activeView).toBe(activeState.activeView);
   });
@@ -1355,6 +1378,7 @@ describe("visualAppReducer filter state", () => {
       type: "filter.applied",
       query,
       matchedIds,
+      excluded: [],
       source: "panel",
     });
     expect(activeState.activeView).not.toBe("");
@@ -1366,6 +1390,7 @@ describe("visualAppReducer filter state", () => {
       type: "filter.applied",
       query,
       matchedIds,
+      excluded: [],
       source: "chat",
     });
     expect(filtered.activeView).toBe("");
@@ -1376,6 +1401,7 @@ describe("visualAppReducer filter state", () => {
       type: "filter.applied",
       query,
       matchedIds,
+      excluded: [],
       source: "panel",
     });
     expect(filtered.activeFilter).not.toBe(null);
@@ -1390,6 +1416,7 @@ describe("visualAppReducer filter state", () => {
       type: "filter.applied",
       query,
       matchedIds,
+      excluded: [],
       source: "panel",
     });
     const cleared = visualAppReducer(withFilter, {
@@ -1404,6 +1431,7 @@ describe("visualAppReducer filter state", () => {
       type: "filter.applied",
       query,
       matchedIds: ["node1"],
+      excluded: [],
       source: "panel",
     });
     const newQuery: ProjectionQuery = { subjects: ["Q2"] };
@@ -1411,11 +1439,13 @@ describe("visualAppReducer filter state", () => {
       type: "filter.applied",
       query: newQuery,
       matchedIds: ["node4", "node5"],
+      excluded: [],
       source: "chat",
     });
     expect(filtered2.activeFilter).toEqual({
       query: newQuery,
       matchedIds: ["node4", "node5"],
+      excluded: [],
       source: "chat",
     });
   });
@@ -1425,6 +1455,7 @@ describe("visualAppReducer filter state", () => {
       type: "filter.applied",
       query,
       matchedIds,
+      excluded: [],
       source: "panel",
     });
     const typed = visualAppReducer(withFilter, {
@@ -1623,13 +1654,14 @@ describe("filterToReresolve", () => {
    * The commit reported success and the diagram did not change.
    */
   const standing = (
-    source: "view" | "panel" | "chat",
+    source: FilterSource,
     matchedIds: readonly string[] = ["checkout"],
   ): VisualAppState => ({
     ...initialVisualAppState,
     activeFilter: {
       query: { kinds: ["yarramate/core@0.1#applicationComponent"] },
       matchedIds,
+      excluded: [],
       source,
     },
   });
@@ -1647,7 +1679,7 @@ describe("filterToReresolve", () => {
     });
   });
 
-  it.each(["panel", "chat"] as const)(
+  it.each(["panel", "chat", "editor"] as const)(
     "re-asks a %s filter under the source that asked for it",
     (source) => {
       // A reviewer holding their own filter must not have the active view's
@@ -1684,6 +1716,7 @@ describe("filterToReresolve", () => {
           activeFilter: {
             query: { subjects: ["checkout"] },
             matchedIds: ["checkout"],
+            excluded: [],
             source: "view",
           },
         },
@@ -1691,6 +1724,45 @@ describe("filterToReresolve", () => {
     ).toEqual({
       query: { subjects: ["checkout", "fraud-screening"] },
       source: "view",
+    });
+  });
+
+  it("re-asks an EDITED view with the query the commit landed", () => {
+    // The query tab edits the active view under its own source, and staging
+    // that edit commits it like any other change. Re-asking the held query
+    // there is the same defect as for a view: the projection on disk names the
+    // edited query and the canvas goes on drawing the old one.
+    expect(
+      filterToReresolve(
+        {
+          kind: "model",
+          model: model("all"),
+          views: [
+            {
+              id: "payment-flow",
+              title: "Payment flow",
+              description: "",
+              query: { subjects: ["checkout", "fraud-screening"] },
+              presentation: {},
+              path: ".yarramate/projections/payment-flow.yaml",
+              subjectCount: 2,
+            },
+          ],
+        },
+        {
+          ...standing("editor"),
+          activeView: "payment-flow",
+          activeFilter: {
+            query: { subjects: ["checkout"] },
+            matchedIds: ["checkout"],
+            excluded: [],
+            source: "editor",
+          },
+        },
+      ),
+    ).toEqual({
+      query: { subjects: ["checkout", "fraud-screening"] },
+      source: "editor",
     });
   });
 
@@ -1734,6 +1806,7 @@ describe("filterToReresolve", () => {
           result: {
             query: { kinds: ["yarramate/core@0.1#applicationComponent"] },
             matchedIds: ["checkout", "payment-gateway"],
+            excluded: [],
           },
         },
         standing("view"),

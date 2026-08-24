@@ -97,8 +97,11 @@ export type {
 export {
   canonicalProjection,
   evaluateProjection,
+  explainProjection,
   loadProjection,
   renderProjectionMarkdown,
+  type ConceptFacet,
+  type ProjectionExclusion,
 } from './projection.js'
 export {
   loadAdapterMapping,

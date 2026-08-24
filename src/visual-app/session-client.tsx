@@ -18,6 +18,7 @@ import {
   visualAppReducer,
   visualAppSnapshotFrom,
   visualBrowserInputFor,
+  type FilterSource,
   type VisualAppIntent,
   type VisualAppState,
 } from './state.js'
@@ -43,7 +44,7 @@ export interface VisualSession {
   readonly ask: (text: string) => void
   readonly choose: (optionId: string) => void
   readonly navigate: (viewId: string) => void
-  readonly filter: (query: ProjectionQuery, origin?: 'view' | 'panel' | 'chat') => void
+  readonly filter: (query: ProjectionQuery, origin?: FilterSource) => void
   readonly clearFilter: () => void
   readonly setQuickFilterText: (text: string) => void
   readonly stageViewChange: (operation: VisualViewOperation) => void
@@ -76,7 +77,7 @@ export const useVisualSession = (): VisualSession => {
   // the reason the browser last asked, so a result can be told apart from a
   // named view being applied. Panel is the honest default: an unsolicited
   // result is not a view this browser can claim to be showing.
-  const filterOriginRef = useRef<'view' | 'panel' | 'chat'>('panel')
+  const filterOriginRef = useRef<FilterSource>('panel')
 
   useEffect(() => {
     let stopped = false
@@ -219,7 +220,7 @@ export const useVisualSession = (): VisualSession => {
   )
 
   const filter = useCallback(
-    (query: ProjectionQuery, origin: 'view' | 'panel' | 'chat' = 'panel') => {
+    (query: ProjectionQuery, origin: FilterSource = 'panel') => {
       filterOriginRef.current = origin
       send({ kind: 'filter', query })
     },
