@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.visual.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "declarationMap": false,
+    "rootDir": "./src",
+    "outDir": "./dist/visual-app-lib/types",
+    "noCheck": true
+  },
+  "files": ["src/visual-app/mount.tsx"],
+  "include": [],
+}

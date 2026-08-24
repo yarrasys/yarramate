@@ -16,7 +16,15 @@ import workspaceSchema from '../schema/yarramate-workspace.schema.json' with {
   type: 'json',
 }
 
-const Ajv2020 = Ajv2020Module.default
+// `.default ?? module`, not a bare `.default`: NodeNext sees the raw CJS
+// `module.exports` and a bundler the unwrapped class. This file resolves a
+// manifest's globs against a real filesystem and so is never bundled, but the
+// two shapes cost one `??` and a reader should not have to work out which of
+// the engine's four Ajv sites is the odd one.
+const ajv2020Module = Ajv2020Module as unknown as {
+  default?: typeof Ajv2020Module
+} & typeof Ajv2020Module
+const Ajv2020 = ajv2020Module.default ?? ajv2020Module
 const validateWorkspace = new Ajv2020({ allErrors: true }).compile(
   workspaceSchema,
 )

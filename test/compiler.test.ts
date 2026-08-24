@@ -172,6 +172,7 @@ relationships: []
           object: { ref: 'baseline' },
         }),
         expect.objectContaining({
+          id: 'payments~present-in-746172676574',
           subject: 'payments',
           predicate: 'yarramate/state/present-in',
           object: { ref: 'target' },

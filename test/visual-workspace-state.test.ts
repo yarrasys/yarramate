@@ -15,6 +15,7 @@ import {
   type SelectedDiagramSubject,
   type VisualWorkspaceState,
 } from "../src/visual-app/workspace-state.js";
+import { stackRows } from "../src/visual-app/section-stack.js";
 
 const canvasNode = (overrides: Partial<CanvasNode> = {}): CanvasNode => ({
   id: "system.api",
@@ -913,5 +914,63 @@ describe("the right column's sections", () => {
         height: state.conversation.chatHeight,
       }),
     ).toBe(state);
+  });
+});
+
+/**
+ * Which rows the stack draws, given the sections a host asked for (#252).
+ * A handle sits between two sections; the first present one never gets one.
+ */
+describe("stackRows", () => {
+  const bodies = {
+    properties: "properties-body",
+    changes: "changes-body",
+    chat: "chat-body",
+  } as const;
+  const splitters = {
+    changes: "changes-splitter",
+    chat: "chat-splitter",
+  } as const;
+  const rows = (sections: readonly RightSectionId[]) =>
+    stackRows(sections, bodies, splitters).map(
+      (row) => (row as { readonly key: string | null }).key,
+    );
+
+  it("draws every section and the handles between them by default", () => {
+    expect(rows(RIGHT_SECTIONS)).toEqual([
+      "properties",
+      "splitter-changes",
+      "changes",
+      "splitter-chat",
+      "chat",
+    ]);
+  });
+
+  it("takes a section's handle away with the section", () => {
+    expect(rows(["properties", "chat"])).toEqual([
+      "properties",
+      "splitter-chat",
+      "chat",
+    ]);
+  });
+
+  it("gives a lone section no handle at all", () => {
+    // Nothing to resize it against, and a stray handle at the top of the
+    // column is the kind of thing only the configuration nobody rendered has.
+    expect(rows(["chat"])).toEqual(["chat"]);
+    expect(rows(["properties"])).toEqual(["properties"]);
+  });
+
+  it("keeps the stack's own order, whatever order the host wrote", () => {
+    // The sequence means something - properties above changes above chat, which
+    // is pinned at the foot - so a host cannot reorder the shell by writing its
+    // array differently.
+    expect(rows(["chat", "properties", "changes"])).toEqual(
+      rows(RIGHT_SECTIONS),
+    );
+  });
+
+  it("draws nothing for a host that asked for nothing", () => {
+    expect(rows([])).toEqual([]);
   });
 });

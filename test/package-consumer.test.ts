@@ -63,6 +63,13 @@ describe('consumer package contract', () => {
     expect(
       packageJson.exports['./schema/visual-diagnostic-result'],
     ).toBe('./schema/yarramate-visual-diagnostic-result.schema.json')
+    expect(packageJson.exports['./visual-app']).toEqual({
+      types: './dist/visual-app-lib/editor.d.ts',
+      import: './dist/visual-app-lib/editor.js',
+    })
+    expect(packageJson.exports['./visual-app/styles.css']).toBe(
+      './dist/visual-app-lib/styles.css',
+    )
 
     const consumerGuide = readFileSync(
       join(repositoryRoot, 'docs/CONSUMING-YARRAMATE.md'),
@@ -118,6 +125,9 @@ describe('consumer package contract', () => {
         'package/skills/yarramate-architecture/references/visual-conversations.md',
       )
       expect(files).toContain('package/dist/adapters/visual-cli.js')
+      expect(files).toContain('package/dist/visual-app-lib/editor.js')
+      expect(files).toContain('package/dist/visual-app-lib/editor.d.ts')
+      expect(files).toContain('package/dist/visual-app-lib/styles.css')
       expect(files).toContain('package/dist/visual-app/index.html')
       // The eleven standalone visual documents a consumer validates against,
       // each exported under `./schema/visual-*`.
@@ -481,6 +491,109 @@ views:
     } finally {
       rmSync(consumer, { recursive: true, force: true })
     }
+    },
+  )
+
+  it(
+    'typechecks a local editor consumer without React',
+    { timeout: 30_000 },
+    () => {
+      const consumer = mkdtempSync(
+        join(tmpdir(), 'yarramate-editor-consumer-'),
+      )
+      try {
+        const archive = packTarball(consumer)
+        const packagePath = join(consumer, 'node_modules/yarramate')
+        mkdirSync(packagePath, { recursive: true })
+        execFileSync(
+          'tar',
+          [
+            '-xzf',
+            archive,
+            '-C',
+            packagePath,
+            '--strip-components=1',
+          ],
+        )
+        writeFileSync(
+          join(consumer, 'editor.ts'),
+          `import {
+  createLocalHost,
+  mountEditor,
+  type EditorHost,
+  type LocalHostOptions,
+  type MountOptions,
+  type MountedEditor,
+  type RightSectionId,
+} from 'yarramate/visual-app'
+import 'yarramate/visual-app/styles.css'
+
+const options: LocalHostOptions = {
+  store: {
+    list: () => [],
+    read: () => undefined,
+    writeAll: () => ({ ok: true, revisions: new Map() }),
+  },
+  workspace: {
+    id: 'consumer',
+    documents: [],
+    profiles: [],
+    projections: [],
+    adapterMappings: [],
+    evidence: [],
+    contracts: [],
+  },
+}
+const host: EditorHost = createLocalHost(options)
+const sections: readonly RightSectionId[] = ['properties', 'changes']
+const mountOptions: MountOptions = { ...options, sections }
+const mounted: MountedEditor = mountEditor(
+  document.createElement('main'),
+  mountOptions,
+)
+
+void host
+mounted.unmount()
+`,
+        )
+        // The one ambient declaration a bundler-based TypeScript project
+        // already carries - vite consumers get it from `vite/client`, Next
+        // from `next-env.d.ts`. Without it the documented `import
+        // 'yarramate/visual-app/styles.css'` is TS2882: TypeScript resolves
+        // the export, finds a `.css`, and has no types for it. That is a
+        // property of importing CSS from TypeScript at all, not of this
+        // package, so the fixture states it the way a consumer would rather
+        // than dropping the line the docs publish.
+        writeFileSync(join(consumer, 'css.d.ts'), "declare module '*.css'\n")
+        writeFileSync(
+          join(consumer, 'tsconfig.json'),
+          JSON.stringify({
+            compilerOptions: {
+              target: 'ES2022',
+              lib: ['ES2022', 'DOM', 'DOM.Iterable'],
+              module: 'ESNext',
+              moduleResolution: 'Bundler',
+              strict: true,
+              noEmit: true,
+              skipLibCheck: true,
+              types: [],
+            },
+            files: ['css.d.ts', 'editor.ts'],
+          }),
+        )
+
+        execFileSync(
+          process.execPath,
+          [
+            join(repositoryRoot, 'node_modules/typescript/bin/tsc'),
+            '--project',
+            join(consumer, 'tsconfig.json'),
+          ],
+          { cwd: consumer, encoding: 'utf8' },
+        )
+      } finally {
+        rmSync(consumer, { recursive: true, force: true })
+      }
     },
   )
 })

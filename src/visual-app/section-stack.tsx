@@ -1,5 +1,12 @@
-import { useRef, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 import {
+  Fragment,
+  useRef,
+  type KeyboardEvent,
+  type PointerEvent,
+  type ReactNode,
+} from "react";
+import {
+  RIGHT_SECTIONS,
   sectionHeightBounds,
   type RightSectionId,
 } from "./workspace-state.js";
@@ -142,3 +149,35 @@ export function SectionSplitter({
     />
   );
 }
+
+/**
+ * The stack's rows: the sections a host asked for, in the stack's own order,
+ * with a handle between each adjacent pair (#252).
+ *
+ * The order is `RIGHT_SECTIONS`, never the order the host happened to write:
+ * the sections mean something as a sequence - properties above changes above
+ * chat, which is pinned at the foot - and a host should not reorder the shell
+ * by writing its array differently.
+ *
+ * A handle sits BETWEEN two sections, so the first present section never gets
+ * one. That is the whole rule, and it is why this is a function rather than
+ * three conditionals in the markup: with `chat` alone there is nothing to
+ * resize against, and a stray handle at the top of the column is the kind of
+ * thing that only shows up in the one configuration nobody rendered.
+ */
+export const stackRows = (
+  sections: readonly RightSectionId[],
+  bodies: Readonly<Record<RightSectionId, ReactNode>>,
+  splitters: Readonly<Partial<Record<RightSectionId, ReactNode>>>,
+): readonly ReactNode[] =>
+  RIGHT_SECTIONS.filter((id) => sections.includes(id)).flatMap(
+    (id, index): readonly ReactNode[] => {
+      const splitter = index === 0 ? undefined : splitters[id];
+      return [
+        ...(splitter === undefined
+          ? []
+          : [<Fragment key={`splitter-${id}`}>{splitter}</Fragment>]),
+        <Fragment key={id}>{bodies[id]}</Fragment>,
+      ];
+    },
+  );

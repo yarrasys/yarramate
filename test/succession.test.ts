@@ -39,6 +39,9 @@ concepts:
 relationships: []
 `)
     expect(claims).toHaveLength(1)
+    expect(claims[0]?.id).toBe(
+      'order-api~supersedes-6f726465722d67617465776179',
+    )
     expect(claims[0]?.subject).toBe('order-api')
     expect(claims[0]?.object).toEqual({ ref: 'order-gateway' })
     expect(claims[0]?.origin).toBe('declared')

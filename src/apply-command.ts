@@ -1,5 +1,3 @@
-import { readFileSync, writeFileSync } from 'node:fs'
-import { resolve, sep } from 'node:path'
 import {
   isMap,
   isScalar,
@@ -12,12 +10,6 @@ import {
 } from 'yaml'
 import Ajv2020Module from 'ajv/dist/2020.js'
 import { loadAdapterMapping } from './adapter-mapping.js'
-import {
-  diagnosticJson,
-  humanDiagnostics,
-  usage,
-  type CliResult,
-} from './cli-support.js'
 import {
   compileWorkspace,
   withDiagnosticSubjects,
@@ -36,12 +28,8 @@ import {
   scanSubjectReferences,
   type SubjectReferenceGroup,
 } from './subject-references.js'
+import type { ResolvedWorkspace } from './workspace.js'
 import {
-  loadWorkspaceManifest,
-  type ResolvedWorkspace,
-} from './workspace.js'
-import {
-  createFileSystemStore,
   type PendingWrite,
   type SourceStore,
   type WriteConflict,
@@ -50,9 +38,13 @@ import {
 /**
  * The directory part of a workspace path, in the `/`-separated terms a
  * manifest is written in rather than the platform's.
+ *
+ * Both separators by hand rather than `node:path`'s `sep`: this module is
+ * reachable from a browser (#252), where there is no platform separator to
+ * ask about, and a manifest path is `/`-separated wherever it is read.
  */
 export const posixDirectoryOf = (path: string): string => {
-  const normalised = path.split(sep).join('/')
+  const normalised = path.split(/[\\/]/).join('/')
   const cut = normalised.lastIndexOf('/')
   return cut === -1 ? '' : normalised.slice(0, cut)
 }
@@ -71,7 +63,13 @@ import type {
   YarramateOperation,
 } from './operations.js'
 
-const Ajv2020 = Ajv2020Module.default
+// `.default ?? module`, not a bare `.default`: NodeNext sees the raw CJS
+// `module.exports` and a bundler sees the unwrapped class, and this file is
+// reachable from a browser through `./apply-operations.js` (#252).
+const ajv2020Module = Ajv2020Module as unknown as {
+  default?: typeof Ajv2020Module
+} & typeof Ajv2020Module
+const Ajv2020 = ajv2020Module.default ?? ajv2020Module
 // `discriminator` routes a batch entry to the single branch its `op` names, so
 // one malformed operation reports one fault instead of ten near-misses.
 const validateOperations = new Ajv2020({
@@ -1298,89 +1296,5 @@ export const landOperations = (
       written.conflicts,
       input.operations.path,
     ),
-  }
-}
-
-export function runApplyCommand(
-  options: readonly string[],
-  cwd: string,
-): CliResult {
-  const json = options.includes('--json')
-  const rest = options.filter((option) => option !== '--json')
-  const [operationsPath, workspacePath] = rest
-  if (
-    rest.length !== 2 ||
-    operationsPath === undefined ||
-    workspacePath === undefined ||
-    rest.some((option) => option.startsWith('-'))
-  ) {
-    return { exitCode: 2, stdout: '', stderr: usage }
-  }
-
-  try {
-    const manifestSource = readFileSync(resolve(cwd, workspacePath), 'utf8')
-    if (
-      parseDocument(manifestSource).get('format') !== 'yarramate/workspace/v1'
-    ) {
-      return {
-        exitCode: 2,
-        stdout: '',
-        stderr:
-          'apply requires an explicit workspace manifest (yarramate/workspace/v1)\n',
-      }
-    }
-    const operationsSource = readFileSync(
-      resolve(cwd, operationsPath),
-      'utf8',
-    )
-    const loadedWorkspace = loadWorkspaceManifest(
-      { path: workspacePath, source: manifestSource },
-      cwd,
-    )
-    if (!loadedWorkspace.ok) {
-      return {
-        exitCode: 1,
-        stdout: json
-          ? diagnosticJson(loadedWorkspace.diagnostics)
-          : humanDiagnostics(loadedWorkspace.diagnostics),
-        stderr: '',
-      }
-    }
-    const outcome = landOperations(createFileSystemStore(cwd), {
-      workspace: loadedWorkspace.workspace,
-      operations: { path: operationsPath, source: operationsSource },
-      manifestDirectory: posixDirectoryOf(workspacePath),
-    })
-    if (!outcome.ok) {
-      return {
-        exitCode: 1,
-        stdout: json
-          ? diagnosticJson(outcome.diagnostics)
-          : humanDiagnostics(outcome.diagnostics),
-        stderr: '',
-      }
-    }
-    const { result } = outcome
-    if (json) {
-      return {
-        exitCode: 0,
-        stdout: `${JSON.stringify(result, null, 2)}\n`,
-        stderr: '',
-      }
-    }
-    // Every counter, summed by iteration rather than by hand, so a new
-    // operation kind cannot silently report zero work.
-    const applied = Object.values(result.applied).reduce(
-      (total, count) => total + count,
-      0,
-    )
-    return {
-      exitCode: 0,
-      stdout: `Applied ${applied} operation${applied === 1 ? '' : 's'} to ${result.documents.join(', ')}\n`,
-      stderr: '',
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    return { exitCode: 2, stdout: '', stderr: `${message}\n` }
   }
 }

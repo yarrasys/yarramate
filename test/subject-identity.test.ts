@@ -184,6 +184,7 @@ concepts:
     name: Order Gateway
     aka:
       - OG
+      - café
       - the gateway
 relationships: []
 `)
@@ -192,10 +193,21 @@ relationships: []
     const aliases = result.graph.claims.filter(
       ({ predicate }) => predicate === 'yarramate/concept/alias',
     )
-    expect(aliases.map((claim) => ('value' in claim.object ? claim.object.value : ''))).toEqual([
-      'OG',
-      'the gateway',
-    ])
+    expect(
+      aliases.map((claim) => ('value' in claim.object ? claim.object.value : '')),
+    ).toEqual(['OG', 'café', 'the gateway'])
+    expect(aliases).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'order-gateway~alias-4f47',
+          object: { value: 'OG' },
+        }),
+        expect.objectContaining({
+          id: 'order-gateway~alias-636166c3a9',
+          object: { value: 'café' },
+        }),
+      ]),
+    )
     expect(aliases.every(({ subject }) => subject === 'order-gateway')).toBe(true)
 
     const reordered = compile(`format: yarramate/v1
@@ -207,6 +219,7 @@ concepts:
     name: Order Gateway
     aka:
       - the gateway
+      - café
       - OG
 relationships: []
 `)
@@ -241,6 +254,9 @@ relationships: []
     if (!result.ok) return
     const claim = result.graph.claims.find(
       ({ predicate }) => predicate === 'yarramate/identity/distinct-from',
+    )
+    expect(claim?.id).toBe(
+      'order-gateway~distinct-from-6f72646572732d73657276696365',
     )
     expect(claim?.subject).toBe('order-gateway')
     expect(claim?.object).toEqual({ ref: 'orders-service' })

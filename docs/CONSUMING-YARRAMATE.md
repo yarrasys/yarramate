@@ -232,6 +232,54 @@ the notation module is the rendering vocabulary for that mode; the element
 vocabulary and relationship table themselves are implemented in the core
 profile (ADR 0097).
 
+### Mount the visual editor
+
+Mount the packaged editor when the consuming product owns the sources and
+already has a resolved workspace:
+
+```ts
+import { mountEditor } from 'yarramate/visual-app'
+import 'yarramate/visual-app/styles.css'
+
+const editor = mountEditor(document.querySelector('#editor')!, {
+  store,
+  workspace,
+  sections: ['properties', 'changes'],
+})
+
+// Later, when the owning screen is removed:
+editor.unmount()
+```
+
+`store` is the caller's synchronous `SourceStore`; `workspace` is the caller's
+pre-resolved `ResolvedWorkspace`. The local host compiles, projects, filters,
+commits and saves layouts over that store. A changeset's model and view writes
+land together in one compare-and-swap batch; the caller therefore owns
+persistence. An asynchronous product fetches into a synchronous in-memory
+store before mounting and flushes writes itself, per
+[ADR 0100](adr/0100-sources-come-from-a-store-and-a-batch-lands-by-compare-and-swap.md).
+
+The stylesheet ships beside the bundle and is not imported by it, so a host
+attaches it one of two ways. A bundler takes the `import` above; because that
+import is a `.css` file rather than a module, TypeScript needs the ambient
+declaration a bundler project already carries (`vite/client` for Vite,
+`next-env.d.ts` for Next, or `declare module '*.css'`), and reports TS2882
+without one. A plain page has no bundler to answer an `import`, and links it
+instead:
+
+```html
+<link rel="stylesheet" href="/path/to/yarramate/dist/visual-app-lib/styles.css">
+```
+
+The browser bundle is self-contained: the host supplies no React. The declared
+sections omit `chat` because a local host has no agent, choices, handoff,
+journal or session end. A product with its own protocol-compatible server or
+transport instead imports `mountEditorWith` from `yarramate/visual-app` and
+mounts it with its `EditorHost`; `yarramate-visual` remains the supplied
+socket/session host.
+
+[...]
+
 ## MCP server for agent harnesses
 
 Harnesses that load MCP servers can connect the bundled read-only adapter:
