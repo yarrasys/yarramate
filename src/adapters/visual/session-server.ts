@@ -61,12 +61,22 @@ import {
 } from "./session-store.js";
 import {
   loadProjection,
-  evaluateProjection,
-  explainProjection,
   type ProjectionDefinition,
   type ProjectionExclusion,
   type ProjectionQuery,
 } from "../../projection.js";
+export { VISUAL_SERVER_DOCUMENT } from "./workspace-model.js";
+import {
+  VISUAL_SERVER_DOCUMENT,
+  adoptLandedViews,
+  exclusionsOf,
+  matchedIdsOf,
+  planViewWrites,
+  published,
+  renderedWorkspaceOf,
+  serverDiagnostic,
+  viewSummaryOf,
+} from "./workspace-model.js";
 import {
   compileWorkspaceWithProfileContext,
   withDiagnosticSubjects,
@@ -85,16 +95,10 @@ import type { PendingWrite, SourceStore } from "../../source-store.js";
 import type { YarramateApplyResult } from "../../operations.js";
 import { DEFAULT_PROJECTION_DIRECTORY } from "./view-identity.js";
 import { createFileSystemStore } from "../../source-store.js";
-import { projectGraphForCanvas } from "../../graph-projection.js";
-import { kindLabelOf } from "../../kind-label.js";
 import {
   loadWorkspaceManifest,
   type ResolvedWorkspace,
 } from "../../workspace.js";
-import type {
-  VisualKindOption,
-  VisualViewOperation,
-} from "./protocol-contract.js";
 import type {
   VisualRenderedModel,
   VisualServerFrame,
@@ -123,13 +127,6 @@ export type {
   VisualSessionSnapshot,
   VisualTranscriptRecord,
 };
-
-/**
- * Document name reported by diagnostics the server itself raises — a refused
- * frame, a frozen queue, or a transport violation that no protocol document
- * owns.
- */
-export const VISUAL_SERVER_DOCUMENT = "visual-session-server";
 
 /**
  * Returned on every response. The policy admits no external origin at all, so
@@ -384,25 +381,6 @@ const serverError = (code: string, message: string) =>
  * derivation was written for and never did, so every diagnostic it sent to a
  * browser arrived anchored to a byte offset the browser cannot use.
  */
-const published = (
-  diagnostics: readonly Diagnostic[],
-  sources: readonly { readonly path: string; readonly source: string }[],
-): readonly VisualDiagnostic[] =>
-  withDiagnosticSubjects(diagnostics, sources) as readonly VisualDiagnostic[];
-
-const serverDiagnostic = (
-  code: string,
-  message: string,
-  pointer = "/",
-): VisualDiagnostic => ({
-  severity: "error",
-  code,
-  message,
-  path: VISUAL_SERVER_DOCUMENT,
-  pointer,
-  line: 1,
-  column: 1,
-});
 
 /**
  * Compares two capabilities without leaking where they differ, or how long the
@@ -508,105 +486,6 @@ const eventFrom = (
   }
 };
 
-/**
- * Whether the workspace would load a projection written at this path.
- *
- * This is a DIRECTORY check, not a pattern match, and deliberately so: ADR
- * 0100 recorded that the manifest's pattern dialect has never been named - it
- * is whatever `globSync` happens to support, undocumented and untested past
- * one wildcard - so a matcher written here would be inventing the dialect
- * rather than honouring it. A directory that already holds a projection the
- * manifest resolved is a directory the manifest demonstrably reaches.
- *
- * A workspace with no projections at all has nothing to demonstrate, so the
- * default directory is allowed: refusing there would make the first view in a
- * fresh workspace impossible to create.
- */
-const projectionDirectoryIsCovered = (
-  path: string,
-  workspace: ResolvedWorkspace,
-): boolean => {
-  if (workspace.projections.length === 0) {
-    return posixDirectoryOf(path) === DEFAULT_PROJECTION_DIRECTORY;
-  }
-  const covered = new Set(workspace.projections.map(posixDirectoryOf));
-  return covered.has(posixDirectoryOf(path));
-};
-
-/**
- * Turns staged view operations into pending writes, refusing before anything
- * is written (ADR 0103).
- *
- * A `write-view` is validated through the same `loadProjection` the CLI's own
- * projection writes go through, so a document the schema would reject never
- * reaches the store. A `delete-view` names a revision, which is what makes a
- * removal refusable rather than a silent success on a file someone else
- * already changed.
- */
-const planViewWrites = (
-  operations: readonly VisualViewOperation[],
-  workspace: ResolvedWorkspace,
-  store: SourceStore,
-):
-  | { readonly ok: true; readonly writes: readonly PendingWrite[] }
-  | { readonly ok: false; readonly diagnostics: readonly VisualDiagnostic[] } => {
-  const writes: PendingWrite[] = [];
-  const diagnostics: VisualDiagnostic[] = [];
-  for (const operation of operations) {
-    const held = store.read(operation.path);
-    if (operation.op === "delete-view") {
-      if (held === undefined) {
-        diagnostics.push(
-          serverDiagnostic(
-            "YMVS314",
-            `View "${operation.path}" is already gone`,
-          ),
-        );
-        continue;
-      }
-      writes.push({
-        path: operation.path,
-        source: null,
-        expected: held.revision,
-      });
-      continue;
-    }
-    if (
-      held === undefined &&
-      !projectionDirectoryIsCovered(operation.path, workspace)
-    ) {
-      // A projection no pattern reaches is a file the workspace never loads,
-      // which is worse than a refusal because nothing later says so (ADR 0043).
-      diagnostics.push(
-        serverDiagnostic(
-          "YMVS315",
-          `The workspace manifest covers no projection in "${posixDirectoryOf(
-            operation.path,
-          )}", so a view saved there would never load`,
-        ),
-      );
-      continue;
-    }
-    const source = stringify(operation.projection);
-    const loaded = loadProjection({ path: operation.path, source });
-    if (!loaded.ok) {
-      // The composed document is the only source these are about, so they are
-      // published against it rather than against the workspace.
-      diagnostics.push(
-        ...published(loaded.diagnostics, [{ path: operation.path, source }]),
-      );
-      continue;
-    }
-    writes.push({
-      path: operation.path,
-      source,
-      expected: held?.revision ?? null,
-    });
-  }
-  return diagnostics.length > 0
-    ? { ok: false, diagnostics }
-    : { ok: true, writes };
-};
 
 /**
  * What a batch that changes no subject reports.
@@ -771,9 +650,9 @@ export const startVisualServer = async (
    * or that the schema refuses — a broken saved view skips rather than failing
    * the session, the same way a broken layout sidecar does.
    *
-   * `subjectCount` is left at zero here and filled in by `recountViews`:
-   * counting needs the compiled graph, which does not exist yet when the
-   * session builds its first list.
+   * `subjectCount` is left at zero here and refreshed by
+   * `renderedWorkspaceOf`: counting needs the compiled graph, which does not
+   * exist yet when the session builds its first list.
    */
   const readViewSummary = (
     projectionPath: string,
@@ -788,16 +667,7 @@ export const startVisualServer = async (
         source: projectionSource,
       });
       if (!loaded.ok) return undefined;
-      const { projection } = loaded;
-      return {
-        id: projection.id,
-        title: projection.presentation?.title ?? projection.id,
-        description: projection.presentation?.description ?? "",
-        query: projection.query,
-        presentation: projection.presentation,
-        path: projectionPath,
-        subjectCount: 0,
-      };
+      return viewSummaryOf(loaded.projection, projectionPath);
     } catch {
       return undefined;
     }
@@ -950,29 +820,10 @@ export const startVisualServer = async (
         graph: compiled.graph,
         profileContext: compiled.profileContext,
       };
-      // `[0]` is the nearest declared ancestor, the same reading
-      // `projectGraphForCanvas` gives an authored subject its `coreKindLabel`.
-      // A kind with no lineage IS a core kind and stands for itself.
-      const optionsFrom = (
-        lineages: ReadonlyMap<string, readonly string[]>,
-      ): readonly VisualKindOption[] =>
-        [...lineages.keys()].map((id) => ({
-          id,
-          label: kindLabelOf(id),
-          coreLabel: kindLabelOf(lineages.get(id)?.[0] ?? id),
-        }));
-      const conceptKinds = optionsFrom(
-        compiled.profileContext.conceptKindLineages,
-      );
-      const relationshipKinds = optionsFrom(
-        compiled.profileContext.relationshipKindLineages,
-      );
-      rendered = {
+      const workspaceModel = renderedWorkspaceOf(compiledWorkspace, views, {
         authority: rendered.authority,
         initialView: rendered.initialView,
-        graph: projectGraphForCanvas(compiled.graph, compiled.profileContext),
         documents: resolvedWorkspace.documents,
-        vocabulary: { conceptKinds, relationshipKinds },
         layouts: rendered.layouts,
         // Minted from the bytes this compile just read, so what the browser
         // renders and what it can later claim it rendered are the same read.
@@ -984,7 +835,11 @@ export const startVisualServer = async (
         // that. A staged view operation pins against these (ADR 0103), and a
         // projection missing from the map is one the commit will create.
         projectionDigests: projectionDigestsNow(),
-      };
+      });
+      // Closures below retain this array, so refresh its contents without
+      // replacing the identity the session started with.
+      views.splice(0, views.length, ...workspaceModel.views);
+      rendered = workspaceModel.model;
       return true;
     } catch {
       compiledWorkspace = undefined;
@@ -993,15 +848,14 @@ export const startVisualServer = async (
   };
   recompileWorkspace();
 
-  const filterMatchedIds = (query: ProjectionQuery): readonly string[] => {
-    if (compiledWorkspace === undefined) return [];
-    const result = evaluateProjection(
-      compiledWorkspace.graph,
-      { format: "yarramate/projection/v1", id: "ad-hoc", version: "0", query },
-      compiledWorkspace.profileContext,
-    );
-    return result.subjects.map(({ id }) => id);
-  };
+  const filterMatchedIds = (query: ProjectionQuery): readonly string[] =>
+    compiledWorkspace === undefined
+      ? []
+      : matchedIdsOf(
+          compiledWorkspace.graph,
+          query,
+          compiledWorkspace.profileContext,
+        );
 
   /**
    * Why a query dropped what it dropped, as the editor's "excluded, and why"
@@ -1016,78 +870,14 @@ export const startVisualServer = async (
    */
   const filterExclusions = (
     query: ProjectionQuery,
-  ): readonly ProjectionExclusion[] => {
-    if (compiledWorkspace === undefined) return [];
-    return explainProjection(
-      compiledWorkspace.graph,
-      { format: "yarramate/projection/v1", id: "ad-hoc", version: "0", query },
-      compiledWorkspace.profileContext,
-    );
-  };
-
-  /**
-   * How many CONCEPTS a query matches, which is not the size of its match set.
-   *
-   * A `SemanticGraph`'s `subjects` are concepts and relationships together, so
-   * `filterMatchedIds` returns both — right for narrowing a canvas that draws
-   * edges as well as nodes, and wrong for a number sitting beside a view
-   * called its subject count. A view over three application components with
-   * two relationships between them would read as five, and the reviewer
-   * counting boxes on the canvas would find three.
-   */
-  const conceptCount = (query: ProjectionQuery): number => {
-    if (compiledWorkspace === undefined) return 0;
-    const result = evaluateProjection(
-      compiledWorkspace.graph,
-      { format: "yarramate/projection/v1", id: "ad-hoc", version: "0", query },
-      compiledWorkspace.profileContext,
-    );
-    return result.subjects.filter(({ type }) => type === "concept").length;
-  };
-
-  /**
-   * Brings `views` into line with the view operations a commit just landed.
-   *
-   * Nothing else does this. `resolvedWorkspace` is resolved once at startup, so
-   * a recompile learns nothing about a projection that has just appeared or
-   * gone; `recountViews` recounts what this list already holds rather than
-   * discovering what it should. A view is read back off disk rather than
-   * reconstructed from the operation, so what the rail shows is what landed.
-   */
-  const adoptLandedViews = (
-    operations: readonly VisualViewOperation[],
-  ): void => {
-    for (const operation of operations) {
-      const at = views.findIndex((view) => view.path === operation.path);
-      if (operation.op === "delete-view") {
-        if (at !== -1) views.splice(at, 1);
-        continue;
-      }
-      const summary = readViewSummary(operation.path);
-      if (summary === undefined) continue;
-      if (at === -1) views.push(summary);
-      else views[at] = summary;
-    }
-  };
-
-  /**
-   * Every view's `subjectCount`, against the graph as it stands now.
-   *
-   * A count is not a property of a projection document — it is what that
-   * document's query matches in this workspace — so landing a changeset moves
-   * it. Callers refresh the whole list rather than reading a number recorded
-   * when the session opened: the snapshot a connection is handed, and every
-   * `model` frame a recompile broadcasts. A view saved mid-session is counted
-   * here too, since it joins `views` rather than the manifest's already
-   * expanded projection list.
-   */
-  const recountViews = (): readonly VisualViewSummary[] => {
-    for (let index = 0; index < views.length; index += 1) {
-      const view = views[index]!;
-      views[index] = { ...view, subjectCount: conceptCount(view.query) };
-    }
-    return views;
-  };
+  ): readonly ProjectionExclusion[] =>
+    compiledWorkspace === undefined
+      ? []
+      : exclusionsOf(
+          compiledWorkspace.graph,
+          query,
+          compiledWorkspace.profileContext,
+        );
 
   let listening = false;
   let bootstrapSpent = false;
@@ -1291,7 +1081,7 @@ export const startVisualServer = async (
     webSocketUrl,
     model: rendered,
     transcript: [...transcript],
-    views: recountViews(),
+    views,
     agentTurnOpen: openTurn(),
     pendingChoice,
     styleNonce,
@@ -1733,7 +1523,7 @@ export const startVisualServer = async (
             result: { ok: false, diagnostics: refused },
           });
           if (recompileWorkspace())
-            broadcast({ kind: "model", model: rendered, views: recountViews() });
+            broadcast({ kind: "model", model: rendered, views });
           return;
         }
         const operationsSource = stringify({
@@ -1822,14 +1612,22 @@ export const startVisualServer = async (
         // nothing about a projection this batch just created or removed. The
         // rail, `layout.save`'s id check, and a reconnecting browser all read
         // this list, so leaving it stale is how they come to disagree with the
-        // disk.
-        adoptLandedViews(event.payload.viewOperations);
+        // disk. Preserve the mutable list identity that session closures hold.
+        views.splice(
+          0,
+          views.length,
+          ...adoptLandedViews(
+            views,
+            event.payload.viewOperations,
+            readViewSummary,
+          ),
+        );
         sendFrame(socket, {
           kind: "apply-result",
           result: { ok: true, result: outcome.result },
         });
         if (recompileWorkspace()) {
-          broadcast({ kind: "model", model: rendered, views: recountViews() });
+          broadcast({ kind: "model", model: rendered, views });
           return;
         }
         // A post-write compile failure is a bug, not a user error: the batch

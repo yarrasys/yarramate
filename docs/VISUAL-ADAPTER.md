@@ -18,6 +18,25 @@ sibling binary beside `yarramate-likec4`, `yarramate-graphify`, and
 `yarramate` CLI, and never a second claim origin. YarraMate Core does not
 depend on it and stays unaware of any session.
 
+## Host seam
+
+The editor's seam is the existing visual protocol: a host delivers server
+frames and accepts browser inputs. The socket/session host behind
+`yarramate-visual` is one implementation, preserving the conversation journey,
+session lifecycle and journal. The mounted local host is another: it runs the
+same browser engine over a caller-owned synchronous `SourceStore` and
+pre-resolved `ResolvedWorkspace`, with no server.
+
+Both hosts compile and project the workspace, evaluate filters, commit changes,
+and save layouts. The local host sends model and view writes from one changeset
+to its store in one compare-and-swap batch. It cannot provide chat, choices, a
+journal, handoff, or session end; consumers omit the `chat` section when they
+mount it. An asynchronous product fetches into a synchronous in-memory store
+and flushes writes itself, as [ADR 0100](adr/0100-sources-come-from-a-store-and-a-batch-lands-by-compare-and-swap.md)
+decides.
+
+[...]
+
 ## Editing is mechanical, and it lands through `apply`
 
 A rendered model is always `canonical` — the projection of a real workspace

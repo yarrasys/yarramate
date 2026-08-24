@@ -350,21 +350,31 @@ const immutableMap = <K, V>(
 const compareById = <T extends { readonly id: string }>(left: T, right: T) =>
   left.id.localeCompare(right.id)
 
+const utf8Encoder = new TextEncoder()
+
+const utf8Hex = (value: string): string => {
+  let hex = ''
+  for (const byte of utf8Encoder.encode(value)) {
+    hex += byte.toString(16).padStart(2, '0')
+  }
+  return hex
+}
+
 const presenceClaimId = (subject: string, state: string) =>
-  `${subject}~present-in-${Buffer.from(state, 'utf8').toString('hex')}`
+  `${subject}~present-in-${utf8Hex(state)}`
 
 // Alternative labels and distinctness records are unordered sets, not
 // authored lists with ids. Hex-encoding the value the way presence
 // encodes its state keeps the claim id derived from content rather than
 // position, so reordering the YAML leaves the graph byte-identical.
 const aliasClaimId = (subject: string, alias: string) =>
-  `${subject}~alias-${Buffer.from(alias, 'utf8').toString('hex')}`
+  `${subject}~alias-${utf8Hex(alias)}`
 
 const distinctFromClaimId = (subject: string, other: string) =>
-  `${subject}~distinct-from-${Buffer.from(other, 'utf8').toString('hex')}`
+  `${subject}~distinct-from-${utf8Hex(other)}`
 
 const supersedesClaimId = (subject: string, predecessor: string) =>
-  `${subject}~supersedes-${Buffer.from(predecessor, 'utf8').toString('hex')}`
+  `${subject}~supersedes-${utf8Hex(predecessor)}`
 
 export {
   ATTESTATION_PREDICATE_PREFIX,

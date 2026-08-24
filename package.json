@@ -54,6 +54,11 @@
       "types": "./dist/notation/archimate.d.ts",
       "import": "./dist/notation/archimate.js"
     },
+    "./visual-app": {
+      "types": "./dist/visual-app-lib/editor.d.ts",
+      "import": "./dist/visual-app-lib/editor.js"
+    },
+    "./visual-app/styles.css": "./dist/visual-app-lib/styles.css",
     "./schema/document": "./schema/yarramate-document.schema.json",
     "./schema/profile": "./schema/yarramate-profile.schema.json",
     "./schema/projection": "./schema/yarramate-projection.schema.json",
@@ -107,7 +112,7 @@
   },
   "scripts": {
     "build:node": "tsc -p tsconfig.build.json",
-    "build:visual": "vite build --config vite.visual.config.ts --logLevel warn",
+    "build:visual": "vite build --config vite.visual.config.ts --logLevel warn && vite build --config vite.visual-lib.config.ts --logLevel warn && tsc --project tsconfig.visual-lib.json",
     "build": "pnpm build:node && pnpm build:visual",
     "prepack": "pnpm build",
     "docs:dev": "pnpm self:export:likec4 && likec4 serve .yarramate-out/likec4",

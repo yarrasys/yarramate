@@ -2,6 +2,14 @@
 
 ## 1.0.0
 
+- **Added.** The mountable visual editor (#252):
+  `yarramate/visual-app` exports `mountEditor`, `mountEditorWith`, and
+  `createLocalHost`, with styles at `yarramate/visual-app/styles.css`. Its
+  self-contained browser engine mounts over a caller-owned synchronous
+  `SourceStore` and resolved workspace; the caller declares the right-column
+  sections and normally omits `chat` when no agent exists. The supplied
+  `yarramate-visual` socket/session path is unchanged.
+
 - **Changed.** The right column is a stack of collapsible sections — element
   properties, changes, chat — split by handles a pointer or the arrow keys can
   drag, with chat pinned at the foot (#249). There is no open/closed mode for

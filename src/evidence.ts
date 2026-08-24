@@ -14,7 +14,14 @@ import evidenceSchema from '../schema/yarramate-evidence.schema.json' with {
   type: 'json',
 }
 
-const Ajv2020 = Ajv2020Module.default
+// `.default ?? module`, not a bare `.default`: NodeNext sees the raw CJS
+// `module.exports` and a bundler the unwrapped class. One shape for all of
+// them, so which modules a browser happens to reach is not a thing anyone has
+// to keep track of (#252).
+const ajv2020Module = Ajv2020Module as unknown as {
+  default?: typeof Ajv2020Module
+} & typeof Ajv2020Module
+const Ajv2020 = ajv2020Module.default ?? ajv2020Module
 const validateEvidenceSchema = new Ajv2020({ allErrors: true }).compile(
   evidenceSchema,
 )

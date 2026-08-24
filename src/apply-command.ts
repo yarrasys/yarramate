@@ -11,12 +11,6 @@ import {
 import Ajv2020Module from 'ajv/dist/2020.js'
 import { loadAdapterMapping } from './adapter-mapping.js'
 import {
-  diagnosticJson,
-  humanDiagnostics,
-  usage,
-  type CliResult,
-} from './cli-support.js'
-import {
   compileWorkspace,
   withDiagnosticSubjects,
   type Diagnostic,
@@ -34,10 +28,7 @@ import {
   scanSubjectReferences,
   type SubjectReferenceGroup,
 } from './subject-references.js'
-import {
-  loadWorkspaceManifest,
-  type ResolvedWorkspace,
-} from './workspace.js'
+import type { ResolvedWorkspace } from './workspace.js'
 import {
   type PendingWrite,
   type SourceStore,

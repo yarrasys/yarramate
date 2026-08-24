@@ -27,6 +27,8 @@
     "test/visual-context-menu.test.ts",
     "test/graph-canvas.test.ts",
     "test/query-fields.test.ts",
+    "test/visual-local-host.test.ts",
+    "test/visual-mount.test.ts",
     "test/query-panel.test.ts",
     "test/save-view.test.ts",
     "test/graph-canvas-layout.test.ts",
