@@ -2,6 +2,17 @@
 
 ## 1.0.0
 
+- **Fixed.** A commit from the visual editor died on any workspace that
+  declares a profile. `planOperations` gathered documents, projections,
+  evidence and adapter mappings and left the PROFILES out, and
+  `applyOperations` reads nothing it is not handed (ADR 0100) — so the compile
+  inside it was shown an empty string where a profile should be, which parses
+  to `null`, and the compiler asked that `null` for its `profile`. The browser
+  reported `YMVS307 Cannot read properties of null` and nothing landed. Every
+  fixture in `apply-operations.test.ts` declared `profiles: []`, which is
+  exactly why a green suite never saw it; this repository's own workspace
+  declares one, so the visual editor could not commit anything to it at all.
+
 - **Added.** View CRUD from the rail's context menu (#246): **Rename**,
   **Duplicate**, **New view in this folder**, **Copy projection path**, and
   **Export PNG** on the canvas. Rename and duplicate stage a row like every

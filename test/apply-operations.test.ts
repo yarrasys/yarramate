@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   applyOperations,
   landOperations,
+  planOperations,
   posixDirectoryOf,
 } from '../src/apply-command.js'
 import { createFileSystemStore } from '../src/source-store.js'
@@ -654,5 +655,140 @@ relationships: []
     if (!outcome.ok) throw new Error(JSON.stringify(outcome.diagnostics))
     expect(read('architecture/other.yaml')).toBe(other)
     expect(outcome.result.documents).not.toContain('architecture/other.yaml')
+  })
+})
+
+/**
+ * A commit through a store must read the workspace's PROFILES as well as its
+ * documents.
+ *
+ * `applyOperations` reads nothing (ADR 0100): a source it is not handed does
+ * not exist as far as it is concerned. `planOperations` gathered documents,
+ * projections, evidence and adapter mappings and left the profiles out, so the
+ * compile inside it was shown an empty string where a profile should be. An
+ * empty document parses to `null`, and the compiler asks a document for its
+ * `profile` - so every commit against a workspace that declares one died with
+ * `Cannot read properties of null`, and the visual editor could not commit
+ * anything to this repository at all.
+ *
+ * Every fixture in this file declared `profiles: []`, which is exactly why a
+ * green suite never saw it.
+ */
+describe('planOperations reads every source the workspace resolves to', () => {
+  let cwd: string
+
+  beforeEach(() => {
+    cwd = mkdtempSync(join(tmpdir(), 'yarramate-apply-profiles-'))
+    mkdirSync(join(cwd, 'architecture'), { recursive: true })
+    mkdirSync(join(cwd, 'profiles'), { recursive: true })
+    writeFileSync(
+      join(cwd, 'profiles/house.yaml'),
+      `format: yarramate/profile/v1
+id: house/style
+version: "0.1"
+extends: yarramate/core@0.1
+conceptKinds:
+  - id: house-service
+    name: House service
+    parent: yarramate/core@0.1#applicationService
+relationshipKinds: []
+`,
+      'utf8',
+    )
+    writeFileSync(
+      join(cwd, 'architecture/main.yaml'),
+      `format: yarramate/v1
+id: main
+profile: house/style@0.1
+concepts:
+  - id: user
+    kind: businessActor
+    name: User
+relationships: []
+`,
+      'utf8',
+    )
+    writeFileSync(
+      join(cwd, 'workspace.yaml'),
+      `format: yarramate/workspace/v1
+id: profile-fixture
+documents:
+  - architecture/main.yaml
+profiles:
+  - profiles/house.yaml
+projections: []
+adapterMappings: []
+evidence: []
+`,
+      'utf8',
+    )
+  })
+
+  afterEach(() => {
+    rmSync(cwd, { recursive: true, force: true })
+  })
+
+  it('plans a batch against a workspace that declares a profile', () => {
+    const loaded = loadWorkspaceManifest(
+      { path: 'workspace.yaml', source: readFileSync(join(cwd, 'workspace.yaml'), 'utf8') },
+      cwd,
+    )
+    if (!loaded.ok) throw new Error('fixture manifest did not load')
+
+    const planned = planOperations(createFileSystemStore(cwd), {
+      workspace: loaded.workspace,
+      operations: {
+        path: 'changeset.yaml',
+        source: `format: yarramate/operations/v1
+operations:
+  - op: add-concept
+    document: architecture/main.yaml
+    concept:
+      id: billing
+      kind: house-service
+      name: Billing
+`,
+      },
+      manifestDirectory: posixDirectoryOf('workspace.yaml'),
+    })
+
+    expect(planned.ok).toBe(true)
+    // The kind is the PROFILE's, so a plan that compiled without the profile
+    // could not have accepted it even if it had survived the null.
+    expect(planned.ok && planned.writes.map(({ path }) => path)).toEqual([
+      'architecture/main.yaml',
+    ])
+  })
+
+  it('never offers a profile as something the batch writes', () => {
+    // Read to be compiled against, never written: no operation can target a
+    // profile, and a plan that offered one would be offering to rewrite the
+    // vocabulary a batch was checked against.
+    const loaded = loadWorkspaceManifest(
+      { path: 'workspace.yaml', source: readFileSync(join(cwd, 'workspace.yaml'), 'utf8') },
+      cwd,
+    )
+    if (!loaded.ok) throw new Error('fixture manifest did not load')
+
+    const planned = planOperations(createFileSystemStore(cwd), {
+      workspace: loaded.workspace,
+      operations: {
+        path: 'changeset.yaml',
+        source: `format: yarramate/operations/v1
+operations:
+  - op: add-concept
+    document: architecture/main.yaml
+    concept:
+      id: billing
+      kind: house-service
+      name: Billing
+`,
+      },
+      manifestDirectory: posixDirectoryOf('workspace.yaml'),
+    })
+
+    expect(
+      planned.ok && planned.writes.some(({ path }) => path.startsWith('profiles/')),
+    ).toBe(false)
   })
 })
