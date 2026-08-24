@@ -26,6 +26,7 @@ const canvasNode = (overrides: Partial<CanvasNode> = {}): CanvasNode => ({
   aka: [],
   status: null,
   owner: null,
+  folder: null,
   distinctFrom: [],
   supersedes: [],
   constraints: [],

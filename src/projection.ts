@@ -68,6 +68,13 @@ export interface ProjectionDefinition {
     readonly showEvidence?: boolean
     readonly showOwnership?: boolean
     /**
+     * The folder this view files itself under in an editor's rail: a label the
+     * author declares, nested with `/`, never the directory the projection
+     * sits in (ADR 0104). The same word `yarramate/likec4-project/v1` uses for
+     * the same thing.
+     */
+    readonly folder?: string
+    /**
      * The notation this view draws in. `archimate` is the only one, and the
      * field is kept rather than dropped so a second notation has somewhere to
      * land - the same reason `layout` stayed an enum when `radial` and `force`

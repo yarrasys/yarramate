@@ -4,7 +4,6 @@ import type { VisualViewSummary } from "../src/adapters/visual/protocol-contract
 import {
   buildModelTree,
   buildViewTree,
-  commonDirectory,
   folderOf,
   matchesFilter,
 } from "../src/visual-app/view-tree-model.js";
@@ -34,6 +33,7 @@ const node = (overrides: Partial<CanvasNode> = {}): CanvasNode => ({
   aka: [],
   status: null,
   owner: null,
+  folder: null,
   distinctFrom: [],
   supersedes: [],
   constraints: [],
@@ -43,7 +43,7 @@ const node = (overrides: Partial<CanvasNode> = {}): CanvasNode => ({
   ...overrides,
 });
 
-describe("view folders from projection paths", () => {
+describe("view folders, which the author declares", () => {
   it("gives a flat workspace no folders at all", () => {
     const views = [
       view({ id: "a", path: ".yarramate/projections/a.yaml" }),
@@ -59,19 +59,11 @@ describe("view folders from projection paths", () => {
     expect(tree.loose.map((row) => row.id)).toEqual(["a", "b"]);
   });
 
-  it("folders a workspace that sorts its projections into directories", () => {
+  it("folders the views that declare one, and leaves the rest loose", () => {
     const views = [
-      view({
-        id: "now",
-        title: "Now",
-        path: ".yarramate/projections/current/now.yaml",
-      }),
-      view({
-        id: "then",
-        title: "Then",
-        path: ".yarramate/projections/target/then.yaml",
-      }),
-      view({ id: "loose", title: "Loose", path: ".yarramate/projections/loose.yaml" }),
+      view({ id: "now", title: "Now", presentation: { folder: "Current" } }),
+      view({ id: "then", title: "Then", presentation: { folder: "Target" } }),
+      view({ id: "loose", title: "Loose" }),
     ];
     const tree = buildViewTree({
       views,
@@ -80,24 +72,25 @@ describe("view folders from projection paths", () => {
       filterText: "",
     });
     expect(tree.folders.map((folder) => folder.name)).toEqual([
-      "current",
-      "target",
+      "Current",
+      "Target",
     ]);
     expect(tree.folders[0]?.views.map((row) => row.id)).toEqual(["now"]);
     expect(tree.loose.map((row) => row.id)).toEqual(["loose"]);
   });
 
-  it("names a view nested deeper by its whole relative path rather than truncating it", () => {
-    const shared = commonDirectory([
-      ".yarramate/projections/a.yaml",
-      ".yarramate/projections/current/before/b.yaml",
-    ]);
-    expect(folderOf(".yarramate/projections/current/before/b.yaml", shared)).toBe(
-      "current/before",
+  it("takes the label verbatim, one level, however it nests", () => {
+    // The tree draws a folder, not a folder tree: `Current/Engine` is one
+    // folder with that name. The separator is reserved so nesting can be drawn
+    // later without the label meaning something different in the meantime.
+    expect(folderOf(view({ presentation: { folder: "Current/Engine" } }))).toBe(
+      "Current/Engine",
     );
   });
 
-  it("gives a single view no folder, since its own directory is the shared one", () => {
+  it("ignores the directory the projection sits in", () => {
+    // The whole reframe (ADR 0104): a folder is an organising concept the
+    // author declares, not a consequence of where a file happens to sit.
     const tree = buildViewTree({
       views: [view({ path: "deeply/nested/only.yaml" })],
       activeViewId: "",
@@ -128,9 +121,9 @@ describe("view rows", () => {
 
   it("narrows to titles that match, and keeps a whole folder the reviewer named", () => {
     const views = [
-      view({ id: "now", title: "Now", path: ".yarramate/projections/target/now.yaml" }),
-      view({ id: "then", title: "Then", path: ".yarramate/projections/target/then.yaml" }),
-      view({ id: "other", title: "Other", path: ".yarramate/projections/other.yaml" }),
+      view({ id: "now", title: "Now", presentation: { folder: "Target" } }),
+      view({ id: "then", title: "Then", presentation: { folder: "Target" } }),
+      view({ id: "other", title: "Other" }),
     ];
     const byTitle = buildViewTree({
       views,
@@ -222,5 +215,102 @@ describe("the model root", () => {
     expect(groups).toHaveLength(1);
     expect(groups[0]?.label).toBe("unlayered");
     expect(groups[0]?.subjects[0]?.id).toBe("x");
+  });
+});
+
+/**
+ * Model folders (ADR 0104). Layer is the DEFAULT grouping and stays derived and
+ * always correct; a declared folder OVERRIDES it for the subjects that declare
+ * one, and nothing else moves.
+ */
+describe("the model root, once subjects declare folders", () => {
+  const nodes = [
+    node({ id: "app.checkout", name: "Checkout", layer: "application", folder: "Payments" }),
+    node({ id: "app.ledger", name: "Ledger", layer: "application", folder: "Payments" }),
+    node({ id: "app.search", name: "Search", layer: "application" }),
+    node({
+      id: "biz.pay",
+      name: "Pay a supplier",
+      layer: "business",
+      kindLabel: "businessProcess",
+    }),
+  ];
+
+  it("puts a foldered subject in its folder and nowhere else", () => {
+    // Override, not coexistence: a subject in two groups is one the reviewer
+    // finds twice and edits once.
+    const groups = buildModelTree({ nodes, inViewIds: null, filterText: "" });
+    const payments = groups.find((group) => group.label === "Payments");
+    const application = groups.find((group) => group.label === "application");
+
+    expect(payments?.subjects.map((subject) => subject.name)).toEqual([
+      "Checkout",
+      "Ledger",
+    ]);
+    expect(application?.subjects.map((subject) => subject.name)).toEqual([
+      "Search",
+    ]);
+  });
+
+  it("puts declared folders above derived layers, and keeps profile order below", () => {
+    // What the author chose sits above what the profile derived; the layers
+    // keep the order the canvas bands them in.
+    expect(
+      buildModelTree({ nodes, inViewIds: null, filterText: "" }).map(
+        (group) => group.label,
+      ),
+    ).toEqual(["Payments", "business", "application"]);
+  });
+
+  it("says which grouping a row sits under, because they are not the same kind of thing", () => {
+    const groups = buildModelTree({ nodes, inViewIds: null, filterText: "" });
+
+    expect(groups.map(({ label, grouping }) => [label, grouping])).toEqual([
+      ["Payments", "folder"],
+      ["business", "layer"],
+      ["application", "layer"],
+    ]);
+  });
+
+  it("keeps a folder and a layer of the same name apart", () => {
+    // An author may call a folder `business`. It is not that layer, and one
+    // collapse set holds both keys.
+    const groups = buildModelTree({
+      nodes: [
+        node({ id: "a", name: "A", layer: "application", folder: "business" }),
+        node({ id: "b", name: "B", layer: "business" }),
+      ],
+      inViewIds: null,
+      filterText: "",
+    });
+
+    expect(groups.map((group) => group.key)).toEqual([
+      "model-folder:business",
+      "model-layer:business",
+    ]);
+  });
+
+  it("shows a whole folder the reviewer named, the way it shows a whole layer", () => {
+    const groups = buildModelTree({
+      nodes,
+      inViewIds: null,
+      filterText: "payments",
+    });
+
+    expect(groups.map((group) => group.label)).toEqual(["Payments"]);
+    expect(groups[0]?.subjects).toHaveLength(2);
+  });
+
+  it("groups a model nobody has foldered exactly as it did before", () => {
+    const plain = nodes.map((subject) => ({ ...subject, folder: null }));
+
+    expect(
+      buildModelTree({ nodes: plain, inViewIds: null, filterText: "" }).map(
+        ({ label, grouping }) => [label, grouping],
+      ),
+    ).toEqual([
+      ["business", "layer"],
+      ["application", "layer"],
+    ]);
   });
 });

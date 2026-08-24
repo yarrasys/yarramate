@@ -27,6 +27,7 @@ const node: CanvasNode = {
   aka: ['Checkout'],
   status: 'current',
   owner: 'payments-team',
+  folder: null,
   distinctFrom: [],
   supersedes: [],
   constraints: [],

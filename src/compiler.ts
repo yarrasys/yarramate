@@ -83,6 +83,7 @@ interface NativeConcept {
   readonly aka?: readonly string[]
   readonly status?: 'planned' | 'current' | 'retired'
   readonly owner?: string
+  readonly folder?: string
   readonly distinctFrom?: readonly string[]
   readonly supersedes?: readonly string[]
   readonly constraints?: ReadonlyArray<{
@@ -1974,6 +1975,23 @@ function compileWorkspaceResolved(
           source: location(
             ['concepts', index, 'owner'],
             `/concepts/${index}/owner`,
+          ),
+        })
+      }
+      if (concept.folder !== undefined) {
+        claims.push({
+          id: `${subject}~folder`,
+          subject,
+          predicate: 'yarramate/organisation/folder',
+          // A VALUE, not a ref. A folder is a label the author writes, not a
+          // subject the workspace declares: nothing can be said about it, it
+          // resolves to nothing, and two documents writing the same label mean
+          // the same folder without either naming the other (ADR 0104).
+          object: { value: concept.folder },
+          origin: 'declared',
+          source: location(
+            ['concepts', index, 'folder'],
+            `/concepts/${index}/folder`,
           ),
         })
       }

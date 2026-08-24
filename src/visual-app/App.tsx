@@ -51,7 +51,7 @@ import { SubjectDraftPanel } from "./subject-draft-panel.js";
 import { ConfirmDialog } from "./confirm-dialog.js";
 import { PromptDialog } from "./prompt-dialog.js";
 import {
-  directoryOf,
+  declaredFolder,
   duplicateView,
   renameView,
 } from "../adapters/visual/view-identity.js";
@@ -128,7 +128,7 @@ const CommandStrip = ({
   quickFilterText,
   onQuickFilterChange,
   saveViewOpen,
-  saveViewDirectory,
+  saveViewFolder,
   onToggleSaveView,
   onStageView,
   onEnd,
@@ -149,7 +149,7 @@ const CommandStrip = ({
   readonly quickFilterText: string;
   readonly onQuickFilterChange: (text: string) => void;
   readonly saveViewOpen: boolean;
-  readonly saveViewDirectory: string | undefined;
+  readonly saveViewFolder: string | undefined;
   readonly onToggleSaveView: () => void;
   readonly onStageView: (operation: VisualViewOperation) => void;
   readonly onEnd: () => void;
@@ -182,7 +182,7 @@ const CommandStrip = ({
         showEvidence={showEvidence}
         showOwnership={showOwnership}
         open={saveViewOpen}
-        directory={saveViewDirectory}
+        folder={saveViewFolder}
         onToggle={onToggleSaveView}
         onStage={onStageView}
       />
@@ -954,7 +954,10 @@ export const App = () => {
   // Which folder a new view is saved into. Set by "New view in this folder…"
   // and cleared by every other opener, so the default directory is what a
   // plain "New view…" gets.
-  const [saveViewDirectory, setSaveViewDirectory] = useState<
+  // Whether the reviewer is naming a brand new folder. Only the openness: the
+  // half-typed name belongs to the dialog while it is on screen.
+  const [namingFolder, setNamingFolder] = useState(false);
+  const [saveViewFolder, setSaveViewFolder] = useState<
     string | undefined
   >(undefined);
   // A way to photograph the canvas, handed up by `GraphCanvas` while one
@@ -1177,7 +1180,7 @@ export const App = () => {
         // starts from the whole model, and the form seeds itself from what is
         // active, so clearing first is what makes its fields blank.
         clearFilter();
-        setSaveViewDirectory(undefined);
+        setSaveViewFolder(undefined);
         setSaveViewOpen(true);
         dispatchWorkspace({ type: "menu.dismissed" });
         return;
@@ -1189,6 +1192,12 @@ export const App = () => {
         return;
       case "view.rename":
         dispatchWorkspace({ type: "viewRename.asked", id: intent.id });
+        return;
+      case "view.new-folder":
+        // A folder is a label on a document, so an empty one cannot persist:
+        // naming a folder and putting the first view in it are one motion.
+        setNamingFolder(true);
+        dispatchWorkspace({ type: "menu.dismissed" });
         return;
       case "view.duplicate": {
         const view = state.views.find((candidate) => candidate.id === intent.id);
@@ -1204,11 +1213,10 @@ export const App = () => {
       case "view.new-in-folder": {
         const view = state.views.find((candidate) => candidate.id === intent.id);
         if (view === undefined) return;
-        // The form writes into this folder rather than the default one. A
-        // folder that already holds a projection is one the manifest reaches,
-        // which is why the only way to name a folder is to point at a view in
-        // it.
-        setSaveViewDirectory(directoryOf(view.path));
+        // The new view declares the folder this one declares. Nothing about
+        // the filesystem is involved: both documents sit beside every other
+        // projection and say which folder they belong to (ADR 0104).
+        setSaveViewFolder(declaredFolder(view));
         clearFilter();
         setSaveViewOpen(true);
         dispatchWorkspace({ type: "menu.dismissed" });
@@ -1271,7 +1279,7 @@ export const App = () => {
         quickFilterText={state.quickFilterText}
         onQuickFilterChange={setQuickFilterText}
         saveViewOpen={saveViewOpen}
-        saveViewDirectory={saveViewDirectory}
+        saveViewFolder={saveViewFolder}
         onToggleSaveView={() => setSaveViewOpen((open) => !open)}
         onStageView={stageViewChange}
         onEnd={end}
@@ -1306,7 +1314,7 @@ export const App = () => {
             // the last one narrowed to, and the form seeds itself from the
             // active view — so clearing first is what makes its fields blank.
             clearFilter();
-            setSaveViewDirectory(undefined);
+            setSaveViewFolder(undefined);
             setSaveViewOpen(true);
           }}
           onSelectSubject={(id) => {
@@ -1452,6 +1460,27 @@ export const App = () => {
           y={workspace.contextMenu.y}
           onChoose={runIntent}
           onDismiss={() => dispatchWorkspace({ type: "menu.dismissed" })}
+        />
+      )}
+      {!namingFolder ? null : (
+        <PromptDialog
+          title="New folder"
+          label="Folder"
+          initialValue=""
+          confirmLabel="Continue"
+          cancelLabel="Cancel"
+          onConfirm={(folder) => {
+            setNamingFolder(false);
+            const named = folder.trim();
+            if (named === "") return;
+            // Straight into the save form with the folder filled in: a folder
+            // with no view in it is a folder no document declares, and so not
+            // a folder at all.
+            setSaveViewFolder(named);
+            clearFilter();
+            setSaveViewOpen(true);
+          }}
+          onCancel={() => setNamingFolder(false)}
         />
       )}
       {pendingViewRename === null ? null : (

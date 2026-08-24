@@ -150,6 +150,12 @@
         },
         "notation": {
           "enum": ["archimate"]
+        },
+        "folder": {
+          "type": "string",
+          "description": "The folder this view files itself under in an editor's rail. A LABEL the author declares, never the directory the projection sits in: nest with '/' separators, and the filesystem is never consulted (ADR 0104).",
+          "pattern": "^[^/]+(?:/[^/]+)*$",
+          "minLength": 1
         }
       }
     },

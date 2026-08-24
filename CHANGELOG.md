@@ -2,6 +2,32 @@
 
 ## 1.0.0
 
+- **Changed.** A folder is something the author declares, not where the file
+  sits (#261, ADR 0104). `presentation.folder` on a projection and `folder` on
+  a concept, both labels nested with `/`, both optional, neither resolved
+  against anything. View folders used to be derived from the directories their
+  projections happened to occupy, which made the filesystem the author of the
+  organisation: a workspace could not name a folder without moving files, could
+  not name one at all if its manifest patterns reached no subdirectory, and
+  "New folder" meant either refusing the ordinary case or editing the author's
+  manifest (ADR 0043). A label answers all three, and it is the word
+  `yarramate/likec4-project/v1` already uses for the same thing (ADR 0067).
+  **Path derivation is gone**: a workspace that sorts projections into
+  directories keeps loading, and its folders flatten until it declares them.
+
+- **Added.** The Model tree groups by a declared folder. Layer stays the
+  default — derived from the kind, always correct, so a model nobody has
+  organised is grouped exactly as it was — and a declared folder **overrides**
+  it rather than sitting beside it, because a subject in two groups is one the
+  reviewer finds twice and edits once. A folder compiles to a
+  `yarramate/organisation/folder` claim carrying a **value**, not a reference:
+  a folder is an organising word, not a subject that can be related, owned or
+  reported on.
+
+- **Added.** **New folder…** in the rail and canvas menus. It names the folder
+  and opens the save form with it filled in — a folder no document declares is
+  not a folder, so naming one and putting the first view in it are one motion.
+
 - **Fixed.** A committed query edit re-asked the query the browser was holding,
   which is that query as it was — the same defect the `view` source had, and
   the query tab's `editor` source needed the same answer.

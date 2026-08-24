@@ -31,6 +31,12 @@ export interface CanvasNode {
   readonly aka: readonly string[]
   readonly status: string | null
   readonly owner: string | null // ref
+  /**
+   * The folder the author filed this subject under, or null. A label, never a
+   * directory (ADR 0104): the rail groups by it where it is set and by the
+   * subject's ArchiMate layer where it is not.
+   */
+  readonly folder: string | null
   readonly distinctFrom: readonly string[] // refs
   readonly supersedes: readonly string[] // refs
   readonly constraints: ReadonlyArray<{
@@ -84,6 +90,7 @@ const LIFECYCLE_STATUS_PREDICATE = 'yarramate/lifecycle/status'
 const IDENTITY_DISTINCT_FROM_PREDICATE = 'yarramate/identity/distinct-from'
 const LINEAGE_SUPERSEDES_PREDICATE = 'yarramate/lineage/supersedes'
 const OWNERSHIP_OWNER_PREDICATE = 'yarramate/ownership/owner'
+const ORGANISATION_FOLDER_PREDICATE = 'yarramate/organisation/folder'
 const CONSTRAINT_REQUIRES_PREDICATE = 'yarramate/constraint/requires'
 const REFERENCE_REFERS_TO_PREDICATE = 'yarramate/reference/refers-to'
 const STATE_PRESENT_IN_PREDICATE = 'yarramate/state/present-in'
@@ -168,6 +175,9 @@ const projectConcept = (
   )
   const statusClaim = claims.find((claim) => claim.predicate === LIFECYCLE_STATUS_PREDICATE)
   const ownerClaim = claims.find((claim) => claim.predicate === OWNERSHIP_OWNER_PREDICATE)
+  const folderClaim = claims.find(
+    (claim) => claim.predicate === ORGANISATION_FOLDER_PREDICATE,
+  )
 
   const constraints = claims
     .filter((claim) => claim.predicate === CONSTRAINT_REQUIRES_PREDICATE)
@@ -240,6 +250,7 @@ const projectConcept = (
       .sort(),
     status: statusClaim === undefined ? null : claimValue(statusClaim),
     owner: ownerClaim === undefined ? null : claimRef(ownerClaim),
+    folder: folderClaim === undefined ? null : claimValue(folderClaim),
     distinctFrom: claims
       .filter((claim) => claim.predicate === IDENTITY_DISTINCT_FROM_PREDICATE)
       .map(claimRef)

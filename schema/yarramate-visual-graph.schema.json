@@ -38,6 +38,7 @@
         "aka",
         "status",
         "owner",
+        "folder",
         "distinctFrom",
         "supersedes",
         "constraints",
@@ -113,6 +114,9 @@
           "type": ["string", "null"]
         },
         "owner": {
+          "type": ["string", "null"]
+        },
+        "folder": {
           "type": ["string", "null"]
         },
         "distinctFrom": {

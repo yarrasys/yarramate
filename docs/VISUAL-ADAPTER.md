@@ -263,6 +263,30 @@ changes nothing, and a rename staged underneath it survives that.
 The tray names what a row moved rather than which file it writes:
 `write-view · Payment flow · +fraud-screening`, badged `view`.
 
+### Folders
+
+The rail's folders are DECLARED, not derived from where a projection sits
+(ADR 0104). A view files itself with `presentation.folder`, a concept with
+`folder`, and both are labels nested with `/`.
+
+- **Views.** `buildViewTree` reads `presentation.folder`; a view that declares
+  none is loose under the root. Every projection is written into one directory,
+  so a new view can never land where the manifest's patterns do not reach —
+  which is what makes **New folder…** something the editor can offer at all. It
+  names the folder and opens the save form with it filled in, because a folder
+  no document declares is not a folder.
+- **The model.** `buildModelTree` groups by a subject's declared folder where
+  it has one and by its ArchiMate layer where it does not. Layer is the
+  default: it is derived from the kind and always correct, so a model nobody
+  has organised is grouped exactly as it was. A declared folder OVERRIDES the
+  layer rather than sitting beside it — a subject in two groups is one the
+  reviewer finds twice and edits once. Each group says which of the two put it
+  together, and a folder named `business` and the `business` layer keep
+  separate collapse keys.
+
+One level: the rail draws a folder, not a folder tree, so `Current/Engine` is
+one folder with that name.
+
 ### Nesting
 
 `presentation.nesting` names the relationship kinds that draw as containment in

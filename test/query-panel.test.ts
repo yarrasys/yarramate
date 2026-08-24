@@ -31,6 +31,7 @@ const node = (id: string, name: string): CanvasNode => ({
   aka: [],
   status: null,
   owner: null,
+  folder: null,
   distinctFrom: [],
   supersedes: [],
   constraints: [],

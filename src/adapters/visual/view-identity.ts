@@ -50,15 +50,17 @@ export const viewIdFrom = (
 ): string => uniqueViewId(slugify(title), taken);
 
 /**
- * Where a view's document goes. `directory` is manifest-relative and comes
- * from the folder the reviewer saved into — folders are read back off these
- * paths rather than declared in the format (#245), so the path is the only
- * place a folder is ever stated.
+ * Where a view's document goes: beside every other one.
+ *
+ * The directory no longer carries meaning. Folders are DECLARED in the
+ * projection now (ADR 0104), so a view files itself with a label and the path
+ * is only an address - which is what makes "New folder" a thing the editor can
+ * do at all. Writing into a subdirectory was the one motion that could put a
+ * projection where the manifest's patterns do not reach (`YMVS315`), and the
+ * editor no longer has a reason to try.
  */
-export const projectionPathFor = (
-  id: string,
-  directory: string = DEFAULT_PROJECTION_DIRECTORY,
-): string => `${directory.replace(/\/+$/, "")}/${id}.yaml`;
+export const projectionPathFor = (id: string): string =>
+  `${DEFAULT_PROJECTION_DIRECTORY}/${id}.yaml`;
 
 /**
  * The projection document a saved view is, composed from what the form holds.
@@ -68,9 +70,10 @@ export const projectionPathFor = (
  * presentation field the active view declared is carried through — dropping
  * one here is how overwriting a view silently loses its nesting or direction.
  */
-/** The folder a projection sits in, which is the only place a folder is stated. */
-export const directoryOf = (path: string): string =>
-  path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
+/** The folder a saved view declares, or `""` for none. */
+export const declaredFolder = (view: {
+  readonly presentation: ProjectionDefinition["presentation"];
+}): string => view.presentation?.folder ?? "";
 
 /**
  * Retitling a view, as a staged write.
@@ -103,9 +106,10 @@ export const renameView = (
  * Copying a view into a new document beside it.
  *
  * The copy keeps the original's folder, because a duplicate the reviewer then
- * has to move is a duplicate in the wrong place, and the folder is one the
- * manifest demonstrably reaches. It does NOT inherit the layout sidecar: that
- * is keyed by id, and a copy is a different view that lays itself out.
+ * has to move is a duplicate in the wrong place - and it comes along for free
+ * now that a folder is a declared field `composeProjection` carries with every
+ * other one. It does NOT inherit the layout sidecar: that is keyed by id, and
+ * a copy is a different view that lays itself out.
  */
 export const duplicateView = (
   view: SavedView,
@@ -114,7 +118,7 @@ export const duplicateView = (
   const title = `${view.title} copy`;
   const id = viewIdFrom(title, taken);
   return {
-    path: projectionPathFor(id, directoryOf(view.path)),
+    path: projectionPathFor(id),
     projection: composeProjection({
       id,
       title,
