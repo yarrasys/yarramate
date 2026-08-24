@@ -1813,3 +1813,38 @@ body {
   color: var(--cobalt);
   border-color: color-mix(in oklab, var(--cobalt) 40%, transparent);
 }
+
+/* The rename prompt: `ConfirmDialog`'s sibling, so it borrows that dialog's
+   box and only adds the field. */
+.prompt-dialog-form {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--step) * 0.75);
+  text-align: left;
+}
+
+.prompt-dialog-form label {
+  font-family: var(--utility);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--quiet);
+}
+
+.prompt-dialog-form input {
+  padding: calc(var(--step) * 0.75);
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule-firm);
+  border-radius: 2px;
+}
+
+.prompt-dialog-form input:focus {
+  border-color: var(--cobalt);
+}
+
+.prompt-dialog-form .confirm-dialog-actions {
+  margin-top: calc(var(--step) * 0.5);
+}

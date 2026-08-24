@@ -68,6 +68,73 @@ export const projectionPathFor = (
  * presentation field the active view declared is carried through — dropping
  * one here is how overwriting a view silently loses its nesting or direction.
  */
+/** The folder a projection sits in, which is the only place a folder is stated. */
+export const directoryOf = (path: string): string =>
+  path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
+
+/**
+ * Retitling a view, as a staged write.
+ *
+ * The path and the id do NOT move. A projection's id decides its filename and
+ * also keys its layout sidecar (`.yarramate/visual-layout/<id>.yaml`), so a
+ * rename that carried the id along would silently orphan the positions the
+ * reviewer dragged. Renaming is a change to what the view is called; moving it
+ * is a different motion, and not one #246 asked for.
+ *
+ * Every other presentation field the view declared is carried through by
+ * `composeProjection`, so a rename cannot quietly drop a nesting vocabulary or
+ * a direction the canvas never showed.
+ */
+export const renameView = (
+  view: SavedView,
+  title: string,
+): { readonly path: string; readonly projection: ProjectionDefinition } => ({
+  path: view.path,
+  projection: composeProjection({
+    id: view.id,
+    title,
+    description: view.description,
+    query: view.query,
+    presentation: view.presentation,
+  }),
+});
+
+/**
+ * Copying a view into a new document beside it.
+ *
+ * The copy keeps the original's folder, because a duplicate the reviewer then
+ * has to move is a duplicate in the wrong place, and the folder is one the
+ * manifest demonstrably reaches. It does NOT inherit the layout sidecar: that
+ * is keyed by id, and a copy is a different view that lays itself out.
+ */
+export const duplicateView = (
+  view: SavedView,
+  taken: ReadonlySet<string>,
+): { readonly path: string; readonly projection: ProjectionDefinition } => {
+  const title = `${view.title} copy`;
+  const id = viewIdFrom(title, taken);
+  return {
+    path: projectionPathFor(id, directoryOf(view.path)),
+    projection: composeProjection({
+      id,
+      title,
+      description: view.description,
+      query: view.query,
+      presentation: view.presentation,
+    }),
+  };
+};
+
+/** What these need of a saved view, and nothing about how it is drawn. */
+export interface SavedView {
+  readonly id: string;
+  readonly title: string;
+  readonly description: string;
+  readonly query: ProjectionQuery;
+  readonly presentation: ProjectionDefinition["presentation"];
+  readonly path: string;
+}
+
 export const composeProjection = (input: {
   readonly id: string;
   readonly title: string;

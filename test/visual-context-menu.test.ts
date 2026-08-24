@@ -143,7 +143,11 @@ describe("the view/model split every menu has to teach", () => {
     expect(groups.every((group) => group.scope === "view")).toBe(true);
     expect(labels(groups)).toEqual([
       "Open view",
+      "Rename…",
+      "Duplicate",
+      "New view in this folder…",
       "New view…",
+      "Copy projection path",
       "Delete view…",
     ]);
   });
@@ -153,7 +157,19 @@ describe("what each menu offers", () => {
   it("offers the canvas a view group and a model group", () => {
     const groups = contextMenuFor({ kind: "canvas" }, context());
     expect(groups.map((group) => group.label)).toEqual(["View", "Model"]);
-    expect(labels(groups)).toEqual(["New view…", "Add subject…"]);
+    expect(labels(groups)).toEqual([
+      "New view…",
+      "Export PNG",
+      "Add subject…",
+    ]);
+  });
+
+  it("gives the all-subjects row no rename, duplicate or path to copy", () => {
+    // It is the absence of a view, not a document: there is nothing to
+    // retitle, nothing to copy, and no folder to add a sibling to.
+    expect(labels(contextMenuFor({ kind: "view-row", id: "" }, context()))).toEqual(
+      ["Show all subjects", "New view…"],
+    );
   });
 
   it("offers to show all only while something is narrowing the canvas", () => {

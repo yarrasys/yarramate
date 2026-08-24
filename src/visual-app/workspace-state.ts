@@ -139,6 +139,11 @@ export interface VisualWorkspaceState {
    * with it, a view's removes one projection document and touches no subject.
    */
   readonly pendingViewDeletion: string | null;
+  /**
+   * The view being retitled, held while the reviewer types. Only the id: the
+   * half-typed name belongs to the dialog while it is on screen.
+   */
+  readonly pendingViewRename: string | null;
   readonly descriptionExpanded: boolean;
   readonly detailsOpen: boolean;
   /**
@@ -195,6 +200,8 @@ export type VisualWorkspaceAction =
   | { readonly type: "deletion.dismissed" }
   | { readonly type: "viewDeletion.asked"; readonly id: string }
   | { readonly type: "viewDeletion.dismissed" }
+  | { readonly type: "viewRename.asked"; readonly id: string }
+  | { readonly type: "viewRename.dismissed" }
   | {
       readonly type: "subject.selected";
       readonly subject: SelectedDiagramSubject;
@@ -362,6 +369,7 @@ export const createVisualWorkspaceState = (
   draftingSubject: false,
   pendingDeletion: null,
   pendingViewDeletion: null,
+  pendingViewRename: null,
   contextMenu: null,
   nesting: DEFAULT_NESTING,
   layout: "layered",
@@ -486,6 +494,12 @@ export const visualWorkspaceReducer = (
       return state.pendingViewDeletion === null
         ? state
         : { ...state, pendingViewDeletion: null };
+    case "viewRename.asked":
+      return { ...state, pendingViewRename: action.id, contextMenu: null };
+    case "viewRename.dismissed":
+      return state.pendingViewRename === null
+        ? state
+        : { ...state, pendingViewRename: null };
     case "subject.selected":
       return {
         ...state,

@@ -51,6 +51,17 @@ export type ContextMenuIntent =
   | { readonly type: "view.open"; readonly id: string }
   | { readonly type: "view.clear" }
   | { readonly type: "view.new" }
+  /**
+   * A new view in the folder this one occupies. Folders come from projection
+   * paths (#245), so the only way to name one is to point at a view already in
+   * it — which also means the folder is one the manifest demonstrably reaches.
+   */
+  | { readonly type: "view.new-in-folder"; readonly id: string }
+  /** Retitles the view. The id and the path do not move — see `viewRowMenu`. */
+  | { readonly type: "view.rename"; readonly id: string }
+  | { readonly type: "view.duplicate"; readonly id: string }
+  | { readonly type: "view.copy-path"; readonly id: string }
+  | { readonly type: "canvas.export-png" }
   | { readonly type: "view.delete"; readonly id: string };
 
 /** Which half of the split an operation belongs to. */
@@ -209,7 +220,17 @@ const canvasMenu = (
       scope: "view",
       label: "View",
       destructive: false,
-      items: context.filtered ? [NEW_VIEW, SHOW_ALL] : [NEW_VIEW],
+      items: [
+        NEW_VIEW,
+        ...(context.filtered ? [SHOW_ALL] : []),
+        // What is on screen, as a picture. A view-scope read rather than a
+        // model one: it takes a copy of the canvas and changes nothing.
+        {
+          key: "canvas.export-png",
+          label: "Export PNG",
+          intent: { type: "canvas.export-png" },
+        },
+      ],
     },
     {
       key: "model",
@@ -237,17 +258,44 @@ const viewRowMenu = (
       scope: "view",
       label: "View",
       destructive: false,
-      items: [
+      items:
         id === ALL_SUBJECTS_VIEW
-          ? SHOW_ALL
-          : {
-              key: "view.open",
-              label: "Open view",
-              intent: { type: "view.open", id },
-              ...(id === context.activeViewId ? { current: true as const } : {}),
-            },
-        NEW_VIEW,
-      ],
+          ? [SHOW_ALL, NEW_VIEW]
+          : [
+              {
+                key: "view.open",
+                label: "Open view",
+                intent: { type: "view.open", id },
+                ...(id === context.activeViewId
+                  ? { current: true as const }
+                  : {}),
+              },
+              // Retitling only. The id decides the path AND keys the layout
+              // sidecar (`.yarramate/visual-layout/<id>.yaml`), so a rename
+              // that moved the id would silently orphan the positions the
+              // reviewer dragged. Moving a view is a different motion.
+              {
+                key: "view.rename",
+                label: "Rename…",
+                intent: { type: "view.rename", id },
+              },
+              {
+                key: "view.duplicate",
+                label: "Duplicate",
+                intent: { type: "view.duplicate", id },
+              },
+              {
+                key: "view.new-in-folder",
+                label: "New view in this folder…",
+                intent: { type: "view.new-in-folder", id },
+              },
+              NEW_VIEW,
+              {
+                key: "view.copy-path",
+                label: "Copy projection path",
+                intent: { type: "view.copy-path", id },
+              },
+            ],
     },
   ];
   // "All subjects" is the absence of a view, not a document, so there is

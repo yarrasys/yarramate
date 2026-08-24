@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { buildPayload } from '../src/visual-app/save-view.js'
 import type { ProjectionQuery } from '../src/projection.js'
+import {
+  directoryOf,
+  duplicateView,
+  renameView,
+} from '../src/adapters/visual/view-identity.js'
 
 const query: ProjectionQuery = { kinds: ['yarramate/core@0.1#businessActor'] }
 
@@ -18,6 +23,7 @@ const build = (
     id: 'existing-view',
     taken: new Set<string>(),
     path: '.yarramate/projections/existing-view.yaml',
+    directory: undefined,
     title: 'My View',
     description: 'desc',
     query,
@@ -118,5 +124,80 @@ describe('buildPayload', () => {
     expect(
       projectionOf(build({ carriedDirection: undefined })).presentation,
     ).not.toHaveProperty('direction')
+  })
+
+  it('writes a new view into the folder it was asked for', () => {
+    const operation = build({
+      id: undefined,
+      path: undefined,
+      directory: '.yarramate/projections/current',
+      title: 'In A Folder',
+    })
+
+    expect(operation.path).toBe('.yarramate/projections/current/in-a-folder.yaml')
+  })
+})
+
+describe('renaming and duplicating a view', () => {
+  const view = {
+    id: 'current-engine',
+    title: 'Current engine',
+    description: 'What is built today',
+    query,
+    presentation: {
+      title: 'Current engine',
+      description: 'What is built today',
+      layout: 'layered',
+      direction: 'top-down',
+      nesting: ['composition'],
+    },
+    path: '.yarramate/projections/current/current-engine.yaml',
+  } as const
+
+  it('renames without moving the document or the id', () => {
+    // The id keys the layout sidecar (`.yarramate/visual-layout/<id>.yaml`), so
+    // a rename that carried it along would orphan the positions the reviewer
+    // dragged. Renaming is what a view is CALLED.
+    const renamed = renameView(view, 'Engine today')
+
+    expect(renamed.path).toBe(view.path)
+    expect(renamed.projection.id).toBe('current-engine')
+    expect(renamed.projection.presentation?.title).toBe('Engine today')
+  })
+
+  it('carries every other presentation field through a rename', () => {
+    const renamed = renameView(view, 'Engine today')
+
+    expect(renamed.projection.presentation?.direction).toBe('top-down')
+    expect(renamed.projection.presentation?.nesting).toEqual(['composition'])
+    expect(renamed.projection.query).toEqual(query)
+  })
+
+  it('duplicates into the same folder, with a free id', () => {
+    // A duplicate the reviewer then has to move is a duplicate in the wrong
+    // place - and the source's folder is one the manifest demonstrably reaches.
+    const copy = duplicateView(view, new Set(['current-engine']))
+
+    expect(copy.path).toBe(
+      '.yarramate/projections/current/current-engine-copy.yaml',
+    )
+    expect(copy.projection.id).toBe('current-engine-copy')
+    expect(copy.projection.presentation?.title).toBe('Current engine copy')
+  })
+
+  it('steps past a duplicate id already taken', () => {
+    const copy = duplicateView(
+      view,
+      new Set(['current-engine', 'current-engine-copy']),
+    )
+
+    expect(copy.projection.id).toBe('current-engine-copy-2')
+  })
+
+  it('reads a folder off a path, and calls the default directory no folder', () => {
+    expect(directoryOf('.yarramate/projections/current/a.yaml')).toBe(
+      '.yarramate/projections/current',
+    )
+    expect(directoryOf('a.yaml')).toBe('')
   })
 })

@@ -2,6 +2,20 @@
 
 ## 1.0.0
 
+- **Added.** View CRUD from the rail's context menu (#246): **Rename**,
+  **Duplicate**, **New view in this folder**, **Copy projection path**, and
+  **Export PNG** on the canvas. Rename and duplicate stage a row like every
+  other change, so both are visible before they land and undoable after.
+  **A rename changes what a view is called and moves nothing**: a projection's
+  id decides its filename *and* keys its layout sidecar
+  (`.yarramate/visual-layout/<id>.yaml`), so a rename that carried the id along
+  would silently orphan the positions the reviewer dragged. Duplicating keeps
+  the source's folder and takes a free id; it does not inherit the layout,
+  because that is keyed by id and a copy is a different view.
+  A view saved *in this folder* names its folder by pointing at a view already
+  in it, which is also what makes the folder one the manifest demonstrably
+  reaches.
+
 - **Breaking.** Saving a view is a staged change, not a write. `view.save` is
   gone, and a commit carries `viewOperations` beside its model operations
   (`yarramate/visual-protocol/v5`, ADR 0103). Saving used to compose a
