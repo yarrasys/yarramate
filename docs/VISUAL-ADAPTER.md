@@ -208,6 +208,22 @@ ArchiMate table has no row to judge it against and is offered rather than
 refused on a guess. The kind an edge already carries is always offered, because
 a model authored outside this editor is not the editor's to silently rewrite.
 
+A view row carries its own CRUD: **Open**, **Rename…**, **Duplicate**, **New
+view in this folder…**, **Copy projection path**, and **Delete view…** behind
+the rule. Rename and duplicate stage rows like anything else.
+
+**A rename changes what a view is called and moves nothing.** A projection's id
+decides its filename and also keys its layout sidecar
+(`.yarramate/visual-layout/<id>.yaml`), so a rename that carried the id along
+would silently orphan the positions the reviewer dragged. Duplicating keeps the
+source's folder and takes a free id, and does not inherit the layout — that is
+keyed by id, and a copy is a different view that lays itself out.
+
+Folders are read off projection paths (#245), so the only way to name one is to
+point at a view already in it — which is also what makes it a folder the
+manifest demonstrably reaches. **Export PNG** on the canvas menu photographs
+what is drawn, at 2× on white.
+
 What a menu contains is a pure function of the model (`contextMenuFor`), and
 its items name intents rather than carrying callbacks, so what a right-click
 puts on screen is something a test can read. It is rebuilt on every render

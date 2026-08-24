@@ -47,6 +47,12 @@ import { ConnectionPanel } from "./connection-panel.js";
 import { faultedSubjects } from "./faults.js";
 import { SubjectDraftPanel } from "./subject-draft-panel.js";
 import { ConfirmDialog } from "./confirm-dialog.js";
+import { PromptDialog } from "./prompt-dialog.js";
+import {
+  directoryOf,
+  duplicateView,
+  renameView,
+} from "../adapters/visual/view-identity.js";
 import { ContextMenu } from "./context-menu.js";
 import {
   contextMenuFor,
@@ -122,6 +128,7 @@ const CommandStrip = ({
   quickFilterText,
   onQuickFilterChange,
   saveViewOpen,
+  saveViewDirectory,
   onToggleSaveView,
   onStageView,
   onEnd,
@@ -147,6 +154,7 @@ const CommandStrip = ({
   readonly quickFilterText: string;
   readonly onQuickFilterChange: (text: string) => void;
   readonly saveViewOpen: boolean;
+  readonly saveViewDirectory: string | undefined;
   readonly onToggleSaveView: () => void;
   readonly onStageView: (operation: VisualViewOperation) => void;
   readonly onEnd: () => void;
@@ -187,6 +195,7 @@ const CommandStrip = ({
         showEvidence={showEvidence}
         showOwnership={showOwnership}
         open={saveViewOpen}
+        directory={saveViewDirectory}
         onToggle={onToggleSaveView}
         onStage={onStageView}
       />
@@ -315,6 +324,7 @@ const DiagramWorkspace = ({
   onCanvasMenu,
   onClearFilter,
   onSaveLayout,
+  onCanvasReady,
 }: {
   readonly state: VisualAppState;
   readonly selectedId: string | null;
@@ -343,6 +353,7 @@ const DiagramWorkspace = ({
   ) => void;
   readonly onClearFilter: () => void;
   readonly onSaveLayout: (payload: VisualLayoutSavePayload) => void;
+  readonly onCanvasReady: (png: (() => string) | null) => void;
 }) => {
   // An edge names its endpoints by node id; the reviewer reads titles. The
   // rendering model the renderer itself draws answers that, so nothing here
@@ -471,6 +482,7 @@ const DiagramWorkspace = ({
             activeViewId={state.activeView}
             savedPositions={state.model.layouts[state.activeView]}
             onSaveLayout={onSaveLayout}
+            onCanvasReady={onCanvasReady}
           />
         )}
         {state.layoutNotice === null ? null : (
@@ -900,6 +912,16 @@ export const App = () => {
   // The save-view form has two openers now — its own toggle in the strip and
   // the tree's new-view button — so the shell owns whether it is open.
   const [saveViewOpen, setSaveViewOpen] = useState(false);
+  // Which folder a new view is saved into. Set by "New view in this folder…"
+  // and cleared by every other opener, so the default directory is what a
+  // plain "New view…" gets.
+  const [saveViewDirectory, setSaveViewDirectory] = useState<
+    string | undefined
+  >(undefined);
+  // A way to photograph the canvas, handed up by `GraphCanvas` while one
+  // exists. A ref rather than state: nothing renders differently because of
+  // it, and a menu item reads it at the moment it is chosen.
+  const canvasPngRef = useRef<(() => string) | null>(null);
 
   useEffect(() => {
     const resized = () =>
@@ -1103,6 +1125,7 @@ export const App = () => {
         // starts from the whole model, and the form seeds itself from what is
         // active, so clearing first is what makes its fields blank.
         clearFilter();
+        setSaveViewDirectory(undefined);
         setSaveViewOpen(true);
         dispatchWorkspace({ type: "menu.dismissed" });
         return;
@@ -1112,6 +1135,51 @@ export const App = () => {
         // confirm-then-stage shape a subject deletion does.
         dispatchWorkspace({ type: "viewDeletion.asked", id: intent.id });
         return;
+      case "view.rename":
+        dispatchWorkspace({ type: "viewRename.asked", id: intent.id });
+        return;
+      case "view.duplicate": {
+        const view = state.views.find((candidate) => candidate.id === intent.id);
+        if (view === undefined) return;
+        const copy = duplicateView(
+          view,
+          new Set(state.views.map((candidate) => candidate.id)),
+        );
+        stageViewChange({ op: "write-view", ...copy });
+        dispatchWorkspace({ type: "menu.dismissed" });
+        return;
+      }
+      case "view.new-in-folder": {
+        const view = state.views.find((candidate) => candidate.id === intent.id);
+        if (view === undefined) return;
+        // The form writes into this folder rather than the default one. A
+        // folder that already holds a projection is one the manifest reaches,
+        // which is why the only way to name a folder is to point at a view in
+        // it.
+        setSaveViewDirectory(directoryOf(view.path));
+        clearFilter();
+        setSaveViewOpen(true);
+        dispatchWorkspace({ type: "menu.dismissed" });
+        return;
+      }
+      case "view.copy-path": {
+        const view = state.views.find((candidate) => candidate.id === intent.id);
+        if (view === undefined) return;
+        void navigator.clipboard?.writeText(view.path);
+        dispatchWorkspace({ type: "menu.dismissed" });
+        return;
+      }
+      case "canvas.export-png": {
+        const png = canvasPngRef.current;
+        if (png === null) return;
+        // A local page, so an anchor with a data: href is the whole download.
+        const link = document.createElement("a");
+        link.href = png();
+        link.download = `${state.activeView === "" ? "all-subjects" : state.activeView}.png`;
+        link.click();
+        dispatchWorkspace({ type: "menu.dismissed" });
+        return;
+      }
     }
   };
 
@@ -1121,6 +1189,12 @@ export const App = () => {
       : (state.views.find(
           (view) => view.id === workspace.pendingViewDeletion,
         ) ?? null);
+
+  const pendingViewRename =
+    workspace.pendingViewRename === null
+      ? null
+      : (state.views.find((view) => view.id === workspace.pendingViewRename) ??
+        null);
 
   return (
     <main className="visual-shell" style={shellStyle}>
@@ -1149,6 +1223,7 @@ export const App = () => {
         quickFilterText={state.quickFilterText}
         onQuickFilterChange={setQuickFilterText}
         saveViewOpen={saveViewOpen}
+        saveViewDirectory={saveViewDirectory}
         onToggleSaveView={() => setSaveViewOpen((open) => !open)}
         onStageView={stageViewChange}
         onEnd={end}
@@ -1183,6 +1258,7 @@ export const App = () => {
             // the last one narrowed to, and the form seeds itself from the
             // active view — so clearing first is what makes its fields blank.
             clearFilter();
+            setSaveViewDirectory(undefined);
             setSaveViewOpen(true);
           }}
           onSelectSubject={(id) => {
@@ -1247,6 +1323,9 @@ export const App = () => {
           }
           onClearFilter={clearFilter}
           onSaveLayout={saveLayout}
+          onCanvasReady={(png) => {
+            canvasPngRef.current = png;
+          }}
         />
         {conversationOpen ? (
           <ConversationSeparator
@@ -1292,6 +1371,23 @@ export const App = () => {
           y={workspace.contextMenu.y}
           onChoose={runIntent}
           onDismiss={() => dispatchWorkspace({ type: "menu.dismissed" })}
+        />
+      )}
+      {pendingViewRename === null ? null : (
+        <PromptDialog
+          title="Rename view"
+          label="Title"
+          initialValue={pendingViewRename.title}
+          confirmLabel="Rename"
+          cancelLabel="Cancel"
+          onConfirm={(title) => {
+            stageViewChange({
+              op: "write-view",
+              ...renameView(pendingViewRename, title),
+            });
+            dispatchWorkspace({ type: "viewRename.dismissed" });
+          }}
+          onCancel={() => dispatchWorkspace({ type: "viewRename.dismissed" })}
         />
       )}
       {pendingViewDelete === null ? null : (

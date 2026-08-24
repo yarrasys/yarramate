@@ -889,6 +889,13 @@ interface GraphCanvasProps {
   /** Saved layout for the active view, or undefined when it has none yet. */
   readonly savedPositions: VisualLayoutPositions | undefined
   readonly onSaveLayout: (payload: VisualLayoutSavePayload) => void
+  /**
+   * A way to take a picture of what is drawn, handed up once the instance
+   * exists and withdrawn when it goes. The shell holds it so a menu item can
+   * export a PNG without reaching into cytoscape itself; `null` means there is
+   * no canvas to photograph, which is what the menu reads to stay honest.
+   */
+  readonly onCanvasReady?: (png: (() => string) | null) => void
 }
 
 /**
@@ -912,6 +919,7 @@ export function GraphCanvas({
   activeViewId,
   savedPositions,
   onSaveLayout,
+  onCanvasReady,
   showLifecycle,
   showEvidence,
   showOwnership,
@@ -919,6 +927,8 @@ export function GraphCanvas({
   const containerRef = useRef<HTMLDivElement>(null)
   const cyRef = useRef<Core | null>(null)
   const onSelectRef = useRef(onSelect)
+  const onCanvasReadyRef = useRef(onCanvasReady)
+  onCanvasReadyRef.current = onCanvasReady
   const onContextMenuRef = useRef(onContextMenu)
   const isInitialSyncRef = useRef(true)
   const isInitialPresentationSyncRef = useRef(true)
@@ -981,6 +991,15 @@ export function GraphCanvas({
     })
 
     cyRef.current = cy
+
+    // Hand the shell a way to photograph what is drawn. Cytoscape renders to a
+    // canvas, so the only thing that can produce the image is the instance
+    // itself; a white background rather than transparent, because a diagram
+    // pasted onto a dark surface with transparent gaps is not a picture of
+    // what was on screen.
+    onCanvasReadyRef.current?.(() =>
+      cy.png({ full: true, scale: 2, bg: '#ffffff' }),
+    )
 
     // Tap handler for nodes
     cy.on('tap', 'node', (evt) => {
@@ -1090,6 +1109,9 @@ export function GraphCanvas({
       cancelAnimationFrame(pendingFrame)
       observer.disconnect()
       dragSaveHandleRef.current?.dispose()
+      // Withdrawn before the instance goes, so nothing can photograph a
+      // destroyed canvas.
+      onCanvasReadyRef.current?.(null)
       cy.destroy()
       cyRef.current = null
     }

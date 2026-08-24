@@ -24,6 +24,12 @@ export interface SaveViewControlProps {
    * cannot both own one boolean.
    */
   readonly open: boolean;
+  /**
+   * Where a NEW view is written. Comes from "New view in this folder…", which
+   * names a folder by pointing at a view already in it - so the folder is one
+   * the manifest demonstrably reaches. Undefined is the default directory.
+   */
+  readonly directory: string | undefined;
   readonly onToggle: () => void;
   /** Stages the write. Nothing is on disk until the changeset is committed. */
   readonly onStage: (operation: VisualViewOperation) => void;
@@ -40,6 +46,8 @@ export interface BuildPayloadParams {
   readonly taken: ReadonlySet<string>;
   /** Where the overwritten view's document already lives, if there is one. */
   readonly path: string | undefined;
+  /** Which folder a NEW view goes in. Undefined is the default directory. */
+  readonly directory: string | undefined;
   readonly title: string;
   readonly description: string;
   readonly query: ProjectionQuery | null;
@@ -72,6 +80,7 @@ export const buildPayload = ({
   id,
   taken,
   path,
+  directory,
   title,
   description,
   query,
@@ -84,7 +93,7 @@ export const buildPayload = ({
   const viewId = id ?? viewIdFrom(title, taken);
   return {
     op: "write-view",
-    path: path ?? projectionPathFor(viewId),
+    path: path ?? projectionPathFor(viewId, directory),
     projection: composeProjection({
       id: viewId,
       title,
@@ -205,6 +214,7 @@ export function SaveViewControl({
   showEvidence,
   showOwnership,
   open,
+  directory,
   onToggle,
   onStage,
 }: SaveViewControlProps) {
@@ -222,7 +232,11 @@ export function SaveViewControl({
         // Overwriting writes the document the view already occupies, which is
         // not always the one its id would derive: a view saved into a folder
         // keeps its folder rather than being moved by a later save.
-        path: id === undefined ? undefined : activeView?.path,
+        path:
+          id === undefined
+            ? undefined
+            : activeView?.path,
+        directory,
         title,
         description,
         query,
