@@ -1,4 +1,4 @@
-import { createRequire } from 'node:module'
+import Ajv2020Import from 'ajv/dist/2020.js'
 import type Ajv2020Type from 'ajv/dist/2020.js'
 import { LineCounter, parse, parseDocument } from 'yaml'
 import {
@@ -32,14 +32,21 @@ import {
 } from './shipped-profile.js'
 
 const coreProfile = 'yarramate/core@0.1'
-// `ajv/dist/2020.js` is CJS. Its default-export shape is resolved
+// `ajv/dist/2020.js` is CJS, and its default-export shape is resolved
 // differently under this repo's two tsconfigs: NodeNext (root) sees the raw
 // `module.exports` (needs `.default`), Bundler+esModuleInterop
-// (tsconfig.visual.json) sees the already-unwrapped class. `require()`
-// sidesteps the value-level ambiguity; the type is normalized the same way.
+// (tsconfig.visual.json) sees the already-unwrapped class. The `??` picks
+// whichever arrived; the type is normalized the same way.
+//
+// A STATIC import, never `createRequire`. A bundler cannot follow
+// `createRequire`, so loading Ajv that way put `(0, cre.createRequire)(...)`
+// into the browser bundle, where it is not a function - which is exactly how
+// this module became unimportable from a browser, and why the editor could
+// only ever run behind a Node process (#252).
 type Ajv2020Ctor = typeof Ajv2020Type extends { default: infer D } ? D : typeof Ajv2020Type
-const require = createRequire(import.meta.url)
-const ajv2020Module = require('ajv/dist/2020.js') as { default?: Ajv2020Ctor } & Ajv2020Ctor
+const ajv2020Module = Ajv2020Import as unknown as {
+  default?: Ajv2020Ctor
+} & Ajv2020Ctor
 const Ajv2020 = ajv2020Module.default ?? ajv2020Module
 const validateDocument = new Ajv2020({ allErrors: true }).compile(documentSchema)
 const validateProfile = new Ajv2020({ allErrors: true }).compile(profileSchema)

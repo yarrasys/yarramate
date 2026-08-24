@@ -18,7 +18,7 @@ import {
 import { runAskCommand } from './ask-command.js'
 import { runCheckCommand } from './check-command.js'
 import { runExportCommand } from './export-command.js'
-import { runApplyCommand } from './apply-command.js'
+import { runApplyCommand } from './apply-cli.js'
 import { runDesignCommand } from './design-command.js'
 import {
   evaluateEvidenceWorkspace,
