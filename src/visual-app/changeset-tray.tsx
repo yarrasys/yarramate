@@ -2,7 +2,9 @@ import type {
   VisualChangesetCommitPayload,
   VisualDiagnostic,
   VisualViewOperation,
+  VisualViewSummary,
 } from '../adapters/visual/protocol-contract.js'
+import { membershipDelta } from '../adapters/visual/view-identity.js'
 import { summarise } from './faults.js'
 import type { CanvasGraph } from '../graph-projection.js'
 import type { YarramateOperation } from '../operations.js'
@@ -64,30 +66,55 @@ export interface ChangesetRowDescription {
 export const changesetRows = (
   changeset: VisualChangesetCommitPayload,
   graph: CanvasGraph | null,
+  views: readonly VisualViewSummary[],
 ): readonly ChangesetRowDescription[] => [
   ...changeset.operations.map((operation) =>
     describeChangesetRow(operation, graph),
   ),
-  ...changeset.viewOperations.map(describeViewRow),
+  ...changeset.viewOperations.map((operation) =>
+    describeViewRow(operation, views),
+  ),
 ]
 
 /**
  * A staged view, reduced the same way. The document's path is the subject:
  * a view has no id on the canvas to resolve a name from, and the path is what
  * the reviewer picked the folder of.
+ *
+ * A row that moves the view's MEMBERSHIP says which subjects it moves rather
+ * than which file it writes: `+fraud-screening` is what the reviewer did, and
+ * the path is what every other view row already says. Read against the saved
+ * view, so a second membership edit reports both subjects and not just the
+ * latest one - staged rows replace by path, and one row can carry several
+ * subjects (#255).
  */
 export const describeViewRow = (
   operation: VisualViewOperation,
-): ChangesetRowDescription => ({
-  verb: operation.op,
-  subjectName:
-    operation.op === 'write-view'
-      ? (operation.projection.presentation?.title ?? operation.projection.id)
-      : operation.path,
-  fields: operation.op === 'write-view' ? [operation.path] : [],
-  removedFields: [],
-  scope: 'view',
-})
+  views: readonly VisualViewSummary[],
+): ChangesetRowDescription => {
+  if (operation.op === 'delete-view') {
+    return {
+      verb: operation.op,
+      subjectName: operation.path,
+      fields: [],
+      removedFields: [],
+      scope: 'view',
+    }
+  }
+  const saved = views.find((view) => view.path === operation.path)
+  const membership =
+    saved === undefined
+      ? []
+      : membershipDelta(saved.query, operation.projection.query)
+  return {
+    verb: operation.op,
+    subjectName:
+      operation.projection.presentation?.title ?? operation.projection.id,
+    fields: membership.length > 0 ? membership : [operation.path],
+    removedFields: [],
+    scope: 'view',
+  }
+}
 
 export const describeChangesetRow = (
   operation: YarramateOperation,
@@ -288,7 +315,7 @@ export const ChangesetTray = ({
   // Both lists, as one: a changeset holding only a staged view is not an empty
   // one, and a tray that hid it would let the reviewer commit a write they
   // could not see.
-  const rows = changesetRows(state.pendingChangeset, graph)
+  const rows = changesetRows(state.pendingChangeset, graph, state.views)
   // History keeps the tray mounted even with nothing staged: undoing the last
   // row back to an empty set must leave Redo reachable, and discarding all of
   // them must leave Undo reachable.

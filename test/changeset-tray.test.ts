@@ -5,6 +5,7 @@ import type {
   VisualChangesetCommitPayload,
   VisualDiagnostic,
   VisualViewOperation,
+  VisualViewSummary,
 } from '../src/adapters/visual/protocol-contract.js'
 import type { CanvasGraph } from '../src/graph-projection.js'
 import type { YarramateOperation } from '../src/operations.js'
@@ -12,6 +13,7 @@ import type { VisualAppState } from '../src/visual-app/state.js'
 import {
   ChangesetTray,
   changesetRowLabel,
+  describeViewRow,
   describeChangesetRow,
   partitionDiagnostics,
   resolveSubjectName,
@@ -529,5 +531,61 @@ describe('what a refusal says it could not show', () => {
     })
 
     expect(markup).toContain('1 problem: 0 marked on the diagram, 1 not on it.')
+  })
+})
+
+describe('a staged view row says what it moved', () => {
+  const view: VisualViewSummary = {
+    id: 'payment-flow',
+    title: 'Payment flow',
+    description: 'The hop',
+    query: { subjects: ['checkout', 'ledger'] },
+    presentation: { title: 'Payment flow' },
+    path: '.yarramate/projections/payment-flow.yaml',
+    subjectCount: 2,
+  }
+
+  const write = (subjects: readonly string[]): VisualViewOperation => ({
+    op: 'write-view',
+    path: view.path,
+    projection: {
+      format: 'yarramate/projection/v1',
+      id: view.id,
+      version: '1.0',
+      query: { subjects },
+      presentation: { title: 'Payment flow' },
+    },
+  })
+
+  it('names the subjects a membership edit moves, not the file it writes', () => {
+    const row = describeViewRow(write(['checkout', 'ledger', 'fraud-screening']), [view])
+
+    expect(changesetRowLabel(row)).toBe(
+      'write-view · Payment flow · +fraud-screening',
+    )
+    expect(row.scope).toBe('view')
+  })
+
+  it('names every subject one row moved, because rows replace by path', () => {
+    const row = describeViewRow(write(['checkout', 'fraud-screening']), [view])
+
+    expect(changesetRowLabel(row)).toBe(
+      'write-view · Payment flow · +fraud-screening, -ledger',
+    )
+  })
+
+  it('falls back to the path for a row that moved something else', () => {
+    // A rename, a query edit, a presentation flag: the row is about the
+    // document, and the membership has nothing to report.
+    expect(changesetRowLabel(describeViewRow(write(['checkout', 'ledger']), [view]))).toBe(
+      'write-view · Payment flow · .yarramate/projections/payment-flow.yaml',
+    )
+  })
+
+  it('falls back to the path for a view the workspace has never seen', () => {
+    // A brand new view has nothing to be compared against.
+    expect(
+      describeViewRow(write(['checkout']), []).fields,
+    ).toEqual(['.yarramate/projections/payment-flow.yaml'])
   })
 })

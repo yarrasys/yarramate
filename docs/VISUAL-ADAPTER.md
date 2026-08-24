@@ -230,6 +230,39 @@ puts on screen is something a test can read. It is rebuilt on every render
 rather than captured when it opened: a commit landing underneath an open menu
 redraws it instead of leaving items pointing at a subject that has gone.
 
+### View membership
+
+A view that ENUMERATES `subjects:` is the only kind that can be told which
+subjects it holds. A view that describes them with facets — a layer, a kind, a
+state — already includes anything matching them, so there is nothing a
+membership edit could say to it: the subject is in or out by what it *is*, and
+changing that means editing the query.
+
+Three motions stage the same thing, a `write-view` amending that list:
+
+- **creating a subject** stages two rows, the model's `add-concept` and the
+  view's membership, so a subject the reviewer made on a view appears on that
+  view rather than nowhere;
+- **Add to this view**, on a subject in the rail's Model tree or on one drawn
+  but not listed (`relationships: connected` takes the other end of a
+  relationship with it);
+- **Remove from view**, which rewrites one projection and leaves every other
+  view — and the subject itself — alone. It is a different item, in a different
+  group, from **Delete from model…**, which takes every relationship naming the
+  subject with it.
+
+Neither item appears where the active view has no list to edit.
+
+The reducer composes the amendment, not the caller. Staged view rows replace by
+path, so a second membership edit composed from the SAVED document would
+silently drop the first; composing where both the saved views and the pending
+rows are held is the only place it cannot be forgotten. An edit that returns the
+document to what is on disk drops the row rather than staging a write that
+changes nothing, and a rename staged underneath it survives that.
+
+The tray names what a row moved rather than which file it writes:
+`write-view · Payment flow · +fraud-screening`, badged `view`.
+
 ### Nesting
 
 `presentation.nesting` names the relationship kinds that draw as containment in

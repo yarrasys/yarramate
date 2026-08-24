@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { buildPayload } from '../src/visual-app/save-view.js'
-import type { ProjectionQuery } from '../src/projection.js'
+import type {
+  ProjectionDefinition,
+  ProjectionQuery,
+} from '../src/projection.js'
 import {
   directoryOf,
   duplicateView,
+  membershipDelta,
   renameView,
+  withMembership,
 } from '../src/adapters/visual/view-identity.js'
 
 const query: ProjectionQuery = { kinds: ['yarramate/core@0.1#businessActor'] }
@@ -199,5 +204,76 @@ describe('renaming and duplicating a view', () => {
       '.yarramate/projections/current',
     )
     expect(directoryOf('a.yaml')).toBe('')
+  })
+})
+
+describe('view membership', () => {
+  const listed: ProjectionDefinition = {
+    format: 'yarramate/projection/v1',
+    id: 'payment-flow',
+    version: '1.0',
+    query: { subjects: ['checkout', 'ledger'], relationships: 'between' },
+    presentation: { title: 'Payment flow', description: 'The hop' },
+  }
+
+  const described: ProjectionDefinition = {
+    ...listed,
+    query: { layers: ['application'] },
+  }
+
+  it('adds a subject to a view that lists its subjects', () => {
+    expect(
+      withMembership(listed, 'fraud-screening', 'add')?.query.subjects,
+    ).toEqual(['checkout', 'ledger', 'fraud-screening'])
+  })
+
+  it('appends rather than sorting, because the list belongs to its author', () => {
+    // Sorting it in would rewrite lines nobody touched, and a projection
+    // document is read by people as well as by the compiler.
+    expect(withMembership(listed, 'a-first-alphabetically', 'add')?.query.subjects)
+      .toEqual(['checkout', 'ledger', 'a-first-alphabetically'])
+  })
+
+  it('takes a subject out of the list', () => {
+    expect(withMembership(listed, 'ledger', 'remove')?.query.subjects).toEqual([
+      'checkout',
+    ])
+  })
+
+  it('has nothing to say to a view that describes its subjects', () => {
+    // A facet query already includes anything matching it: membership is
+    // decided by what the subject IS, so there is no list to amend.
+    expect(withMembership(described, 'checkout', 'add')).toBeNull()
+    expect(withMembership(described, 'checkout', 'remove')).toBeNull()
+  })
+
+  it('has nothing to say when the list already says it', () => {
+    // Not an unchanged document: the absence, so no row reaches the tray for
+    // a reviewer to read and discard for nothing.
+    expect(withMembership(listed, 'checkout', 'add')).toBeNull()
+    expect(withMembership(listed, 'fraud-screening', 'remove')).toBeNull()
+  })
+
+  it('carries every other field of the document through untouched', () => {
+    const amended = withMembership(listed, 'fraud-screening', 'add')
+
+    expect(amended?.query.relationships).toBe('between')
+    expect(amended?.presentation?.title).toBe('Payment flow')
+    expect(amended?.id).toBe('payment-flow')
+  })
+
+  it('reports what a row moved, as the tray reads it', () => {
+    expect(
+      membershipDelta(listed.query, {
+        subjects: ['checkout', 'fraud-screening'],
+      }),
+    ).toEqual(['+fraud-screening', '-ledger'])
+  })
+
+  it('reports nothing where the membership did not move', () => {
+    // A rename or a presentation edit is a row about something else, and says
+    // so by other means.
+    expect(membershipDelta(listed.query, listed.query)).toEqual([])
+    expect(membershipDelta(described.query, described.query)).toEqual([])
   })
 })

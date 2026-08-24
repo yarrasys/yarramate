@@ -30,6 +30,7 @@ import type {
   VisualViewSummary,
 } from "../adapters/visual/protocol-contract.js";
 import { useVisualSession } from "./session-client.js";
+import { activeViewMembership } from "./state.js";
 import type { VisualAppRecord, VisualAppState } from "./state.js";
 import {
   conversationWidthBounds,
@@ -315,6 +316,7 @@ const DiagramWorkspace = ({
   onConnectTarget,
   onConnectCancel,
   onConnectStage,
+  onDraftStage,
   draftingSubject,
   onDraftSubject,
   onDraftSubjectClose,
@@ -338,6 +340,12 @@ const DiagramWorkspace = ({
   readonly onConnectTarget: (id: string) => void;
   readonly onConnectCancel: () => void;
   readonly onConnectStage: (operation: YarramateOperation) => void;
+  /**
+   * Staging for a subject the reviewer is CREATING, which is not the same
+   * motion as staging a relationship or a deletion: a created subject also
+   * joins the view that created it (#255).
+   */
+  readonly onDraftStage: (operation: YarramateOperation) => void;
   readonly draftingSubject: boolean;
   readonly onDraftSubject: () => void;
   readonly onDraftSubjectClose: () => void;
@@ -413,7 +421,7 @@ const DiagramWorkspace = ({
               state.model.documents[0] ??
               ""
             }
-            onStage={onConnectStage}
+            onStage={onDraftStage}
             onCancel={onDraftSubjectClose}
           />
         )}
@@ -892,6 +900,7 @@ export const App = () => {
     clearFilter,
     setQuickFilterText,
     stageViewChange,
+    stageViewMembership,
     saveLayout,
     discardChange,
     stageChange,
@@ -1048,6 +1057,7 @@ export const App = () => {
           relationshipKinds: state.model?.vocabulary.relationshipKinds ?? [],
           activeViewId: state.activeView,
           filtered: state.activeFilter !== null,
+          membership: activeViewMembership(state),
         });
 
   /**
@@ -1111,6 +1121,18 @@ export const App = () => {
       }
       case "canvas.draft-subject":
         dispatchWorkspace({ type: "subject.draft.opened" });
+        return;
+      case "view.add-subject":
+      case "view.remove-subject":
+        // Always the ACTIVE view: the menu only offers these where that view
+        // has a membership list, and `activeViewMembership` is what decided
+        // which of the two it offered.
+        stageViewMembership(
+          state.activeView,
+          intent.id,
+          intent.type === "view.add-subject" ? "add" : "remove",
+        );
+        dispatchWorkspace({ type: "menu.dismissed" });
         return;
       case "view.open":
         navigate(intent.id);
@@ -1294,6 +1316,21 @@ export const App = () => {
             dispatchWorkspace({ type: "connection.cancelled" })
           }
           onConnectStage={stageChange}
+          onDraftStage={(operation) => {
+            stageChange(operation);
+            // A view that LISTS its subjects cannot match one that did not
+            // exist when the list was written, so it has to be told. A view
+            // that describes them with facets already knows, and the reducer
+            // is what decides which this is - the shell states the intent and
+            // holds no copy of the rule.
+            if (operation.op === "add-concept") {
+              stageViewMembership(
+                state.activeView,
+                operation.concept.id,
+                "add",
+              );
+            }
+          }}
           draftingSubject={workspace.draftingSubject}
           onDraftSubject={() =>
             dispatchWorkspace({ type: "subject.draft.opened" })

@@ -1202,6 +1202,14 @@ export const planOperations = (
   const revisions = new Map<string, string>()
   const sources: WorkspaceSource[] = []
   for (const path of [
+    // Profiles included, because `applyOperations` reads NOTHING: a source it
+    // is not handed does not exist as far as it is concerned, and it compiles
+    // the candidate workspace from `[...profiles, ...documents]`. Leaving them
+    // out handed the compiler an empty string where a profile should be, which
+    // parses to `null` and is not a document at all - every commit against a
+    // workspace that declares a profile died on it. No operation can target a
+    // profile, so they are read to be COMPILED against, never to be written.
+    ...input.workspace.profiles,
     ...input.workspace.documents,
     ...input.workspace.projections,
     ...input.workspace.evidence,

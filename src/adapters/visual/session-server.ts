@@ -652,17 +652,26 @@ const landPlanned = (
 ): ApplyOutcome => {
   if (planned !== null && !planned.ok) return planned.outcome;
   const writes = [...(planned?.writes ?? []), ...viewWrites];
+  const viewPaths = viewWrites.map((write) => write.path);
   const outcome: ApplyOutcome =
     planned === null
       ? {
           ok: true,
           sources: [],
-          result: noModelChange(
-            workspaceId,
-            viewWrites.map((write) => write.path),
-          ),
+          result: noModelChange(workspaceId, viewPaths),
         }
-      : planned.outcome;
+      : {
+          ...planned.outcome,
+          // Core names the documents IT rewrote, which is the model's half.
+          // The projections went out in the same `writeAll`, so a receipt that
+          // named only Core's half would report one file where two landed -
+          // and a mixed batch is the ordinary case now that creating a subject
+          // also puts it in the view that created it (#255).
+          result: {
+            ...planned.outcome.result,
+            documents: [...planned.outcome.result.documents, ...viewPaths],
+          },
+        };
   if (writes.length === 0) return outcome;
   const written = store.writeAll(writes);
   if (written.ok) return outcome;

@@ -62,7 +62,13 @@ export type ContextMenuIntent =
   | { readonly type: "view.duplicate"; readonly id: string }
   | { readonly type: "view.copy-path"; readonly id: string }
   | { readonly type: "canvas.export-png" }
-  | { readonly type: "view.delete"; readonly id: string };
+  | { readonly type: "view.delete"; readonly id: string }
+  /**
+   * One subject into or out of the ACTIVE view's membership list. Only a view
+   * that enumerates `subjects:` has one — see `ContextMenuContext.membership`.
+   */
+  | { readonly type: "view.add-subject"; readonly id: string }
+  | { readonly type: "view.remove-subject"; readonly id: string };
 
 /** Which half of the split an operation belongs to. */
 export type ContextMenuScope = "view" | "model";
@@ -96,6 +102,49 @@ export interface ContextMenuContext {
   readonly activeViewId: string;
   /** Whether anything at all is narrowing the canvas right now. */
   readonly filtered: boolean;
+  /**
+   * The active view's own membership list, or `null`.
+   *
+   * `null` covers both "no view is active" and "the active view describes its
+   * subjects with facets": in neither case is there a list to put a subject
+   * into or take it out of, so neither offers a membership item at all rather
+   * than offering one that would do nothing (#255).
+   */
+  readonly membership: readonly string[] | null;
+}
+
+/**
+ * Putting a subject into the active view, or taking it out — whichever the
+ * view's list does not already say. One group, because a subject is either in
+ * the list or not and only one of the two items is ever true.
+ */
+const membershipGroup = (
+  id: string,
+  context: ContextMenuContext,
+): readonly ContextMenuGroup[] => {
+  if (context.membership === null) return [];
+  const held = context.membership.includes(id);
+  return [
+    {
+      key: "view",
+      scope: "view",
+      label: "View",
+      destructive: false,
+      items: [
+        held
+          ? {
+              key: "view.remove-subject",
+              label: "Remove from view",
+              intent: { type: "view.remove-subject", id },
+            }
+          : {
+              key: "view.add-subject",
+              label: "Add to this view",
+              intent: { type: "view.add-subject", id },
+            },
+      ],
+    },
+  ];
 }
 
 const NEW_VIEW: ContextMenuItem = {
@@ -128,6 +177,10 @@ const subjectMenu = (
   const node = context.graph?.nodes.find((candidate) => candidate.id === id);
   if (node === undefined) return [];
   return [
+    // Removing a subject from a view rewrites one projection; deleting it from
+    // the model takes every relationship naming it. View first, destructive
+    // last, and the two never neighbours.
+    ...membershipGroup(id, context),
     {
       key: "model",
       scope: "model",
@@ -328,6 +381,9 @@ const modelRowMenu = (
   const node = context.graph?.nodes.find((candidate) => candidate.id === id);
   if (node === undefined) return [];
   return [
+    // The rail's own answer to "add this one to the view I am looking at",
+    // which is what the design draws as a drag from this tree onto the canvas.
+    ...membershipGroup(id, context),
     {
       key: "model",
       scope: "model",
