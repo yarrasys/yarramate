@@ -1,0 +1,28 @@
+format: yarramate/projection/v1
+id: contact-update-solution
+version: "1.0"
+# The headline integration view: API-led layering from the consumer through
+# Experience, Process, and System to the system of record.
+#
+# Selected by layer rather than by listing subjects, so a subject added to the
+# business or application layer joins this view automatically instead of the
+# view quietly going stale. `relationships: between` is what keeps it a
+# solution diagram rather than a dependency dump: an edge is drawn only when
+# both of its ends are in the view, so the motivation and technology layers
+# cannot leak in through a single relationship.
+query:
+  layers:
+    - business
+    - application
+  excludeStatuses:
+    - retired
+  relationships: between
+presentation:
+  layout: layered
+  direction: top-down
+  title: Contact update — API-led solution overview
+  description: >-
+    Sales Representative into Salesforce through three API layers. Each
+    component composes the interface it exposes and is assigned the process
+    that realizes its declared service; the request path is the flow chain
+    across the interfaces.

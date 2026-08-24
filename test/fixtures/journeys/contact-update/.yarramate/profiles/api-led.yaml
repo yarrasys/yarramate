@@ -1,0 +1,17 @@
+format: yarramate/profile/v1
+id: yarrasys/api-led
+version: "1.0"
+extends: yarramate/core@0.1
+conceptKinds:
+  # An API in the API-led sense: one addressable unit of the layering,
+  # made of a component, the interface it composes, and the service that
+  # interface exposes. Extending grouping keeps it a spec-legal ArchiMate
+  # element (the 3.2 table's grouping row governs it, Archi export maps
+  # it), while giving the cluster an identity a requirement can point at,
+  # an owner can hold, and evidence can attest. The shape itself is
+  # enforced by the api-led question catalogue beside this profile, not
+  # by the vocabulary: a profile can only name the kind.
+  - id: api
+    name: API
+    parent: yarramate/core@0.1#grouping
+relationshipKinds: []

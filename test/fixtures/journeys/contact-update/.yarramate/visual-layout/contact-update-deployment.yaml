@@ -1,0 +1,114 @@
+format: yarramate/visual-layout/v1
+projectionId: contact-update-deployment
+positions:
+  accept-contact-update:
+    x: 277.9000000000001
+    y: 594.5
+  at-least-once-upsert:
+    x: 30.5
+    y: 52.5
+  cloudhub2:
+    x: 1704.2333333333336
+    y: 288.5
+  contact-api-contract:
+    x: 194.5
+    y: 448.5
+  contact-api-deployables:
+    x: 1636.0333333333335
+    y: 341.5
+  contact-exp-api:
+    x: 493.0040238450076
+    y: 431.3902136115251
+  contact-exp-api-interface:
+    x: 277.9000000000001
+    y: 448.5
+  contact-orchestration-service:
+    x: 758.4000000000002
+    y: 469.5
+  contact-prc-api:
+    x: 792.9057128663688
+    y: 431.451564828614
+  contact-prc-api-interface:
+    x: 961.5666666666668
+    y: 133.5
+  contact-record:
+    x: 91.5
+    y: 479.5
+  contact-sys-api:
+    x: 1109.437704918033
+    y: 429.87506209637365
+  contact-sys-api-interface:
+    x: 1126.9
+    y: 237.5
+  contact-update-service:
+    x: 194.5
+    y: 615.5
+  crm-product-owner:
+    x: 1636.0333333333335
+    y: 463.5
+  duplicate-contacts-erode-trust:
+    x: 1429.0333333333335
+    y: 517.5
+  experience-rate-limit:
+    x: 111.5
+    y: 52.5
+  gateway-oauth:
+    x: 192.5
+    y: 52.5
+  https-rest:
+    x: 273.5
+    y: 52.5
+  one-sanctioned-write-path:
+    x: 1251.5666666666668
+    y: 490.5
+  orchestrate-contact-update:
+    x: 1366.0333333333335
+    y: 639.5
+  reps-update-contacts-without-crm-logins:
+    x: 91.5
+    y: 540.5
+  sales-rep:
+    x: 91.5
+    y: 601.5
+  sales-systems-team:
+    x: 1366.0333333333335
+    y: 578.5
+  salesforce-allocation-is-shared:
+    x: 1460.5333333333335
+    y: 456.5
+  salesforce-api-limit:
+    x: 354.5
+    y: 52.5
+  salesforce-contact-interface:
+    x: 961.5666666666668
+    y: 237.5
+  salesforce-contact-service:
+    x: 805.1500000000002
+    y: 387.5
+  salesforce-crm:
+    x: 1413.0450761640864
+    y: 428.54168159140676
+  salesforce-jwt-bearer:
+    x: 435.5
+    y: 52.5
+  salesforce-platform:
+    x: 1460.5333333333335
+    y: 395.5
+  salesforce-rest-api:
+    x: 516.5
+    y: 52.5
+  salesforce-tenant-infrastructure:
+    x: 1636.0333333333335
+    y: 402.5
+  salesforce-write-service:
+    x: 961.5666666666668
+    y: 552.5
+  serve-contact-sobject:
+    x: 961.5666666666668
+    y: 395.5
+  update-salesforce-contact:
+    x: 1111.3166666666668
+    y: 552.5
+  work-an-account:
+    x: 30.5
+    y: 601.5

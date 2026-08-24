@@ -1,0 +1,22 @@
+format: yarramate/projection/v1
+id: contact-update-context
+version: "1.0"
+# Why the integration exists, for the audience that funds it rather than
+# builds it. Motivation plus business, so the drivers and the goal they
+# produce sit beside the actor whose work they are about.
+query:
+  layers:
+    - motivation
+    - business
+  excludeStatuses:
+    - retired
+  relationships: between
+presentation:
+  layout: layered
+  direction: top-down
+  title: Contact update — drivers and intent
+  description: >-
+    Duplicate contacts erode trust in the CRM, and the Salesforce API
+    allocation is shared org-wide. Together those two pressures produce the
+    goal of exactly one sanctioned write path, and the outcome of reps
+    updating contacts without opening Salesforce.

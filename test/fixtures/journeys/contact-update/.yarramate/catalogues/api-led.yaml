@@ -1,0 +1,98 @@
+format: yarramate/question-catalogue/v1
+id: api-led-shape
+version: "1.0"
+profile: yarrasys/api-led@1.0
+presentation:
+  title: API shape contract
+  description: >-
+    What the api kind promises and the vocabulary alone cannot enforce:
+    every API aggregates the component that implements it, the interface
+    it is called at, and the service that interface exposes. One question
+    per missing part, so an API missing two parts is asked twice rather
+    than once vaguely.
+waves:
+  - id: shape
+    name: Shape
+    description: Whether each declared API has the parts the kind promises.
+questions:
+  - id: api-no-component
+    wave: shape
+    since: "1.0"
+    scope: subject
+    subjects:
+      kinds:
+        - yarrasys/api-led@1.0#api
+    trigger:
+      - condition: missing-linkage
+        kinds:
+          - yarramate/core@0.1#aggregation
+        direction: outgoing
+        counterpartKinds:
+          - yarramate/core@0.1#applicationComponent
+    question: >-
+      What implements {subject.name}?
+    askPlain: >-
+      "{subject.name}" is declared as an API but aggregates no
+      application component. What actually implements it?
+    materiality: >-
+      An API with no implementing component is a name on a diagram: no
+      deployable realizes it, no evidence can attest it, and reconcile
+      has nothing to compare against the repository.
+    authority: human
+    resolution: >-
+      Add an aggregation from the API to the applicationComponent that
+      implements it, or retire the API.
+  - id: api-no-interface
+    wave: shape
+    since: "1.0"
+    scope: subject
+    subjects:
+      kinds:
+        - yarrasys/api-led@1.0#api
+    trigger:
+      - condition: missing-linkage
+        kinds:
+          - yarramate/core@0.1#aggregation
+        direction: outgoing
+        counterpartKinds:
+          - yarramate/core@0.1#applicationInterface
+    question: >-
+      Where is {subject.name} called?
+    askPlain: >-
+      "{subject.name}" aggregates no application interface. What do
+      consumers actually call: which verb, path, protocol, auth?
+    materiality: >-
+      Without an interface the API has no contract surface: nothing
+      carries the protocol binding, rate-limit attribution, or status
+      codes, so consumer questions cannot be interrogated.
+    authority: human
+    resolution: >-
+      Add an aggregation from the API to the applicationInterface that
+      exposes it.
+  - id: api-no-service
+    wave: shape
+    since: "1.0"
+    scope: subject
+    subjects:
+      kinds:
+        - yarrasys/api-led@1.0#api
+    trigger:
+      - condition: missing-linkage
+        kinds:
+          - yarramate/core@0.1#aggregation
+        direction: outgoing
+        counterpartKinds:
+          - yarramate/core@0.1#applicationService
+    question: >-
+      What does {subject.name} offer?
+    askPlain: >-
+      "{subject.name}" aggregates no application service. What promise
+      does the layer above actually consume?
+    materiality: >-
+      The service is the reason the API exists: without one, serving
+      edges have no source and the layer above depends on an
+      implementation detail instead of a promise.
+    authority: human
+    resolution: >-
+      Add an aggregation from the API to the applicationService it
+      offers.
