@@ -96,6 +96,7 @@ const context = (
   relationshipKinds: VOCABULARY,
   activeViewId: "",
   filtered: false,
+  membership: null,
   ...overrides,
 });
 
@@ -415,5 +416,53 @@ describe("what the menu draws", () => {
 
   it("draws nothing at all for a target that has gone", () => {
     expect(render({ kind: "subject", id: "gone" })).toBe("");
+  });
+});
+
+/**
+ * Membership is a VIEW operation on a MODEL subject, which is exactly the pair
+ * the split exists to keep apart: removing a subject from a view rewrites one
+ * projection, and the item one group below it takes the subject out of the
+ * model entirely (#255).
+ */
+describe("putting a subject into a view, and taking it out", () => {
+  const held = context({ membership: ["api", "ui"] });
+  const notHeld = context({ membership: ["ui"] });
+
+  it("offers Remove from view for a subject the view lists", () => {
+    expect(labels(contextMenuFor({ kind: "subject", id: "api" }, held))).toEqual(
+      ["Remove from view", "Properties", "Connect from here…", "Delete from model…"],
+    );
+  });
+
+  it("offers Add to this view for one it does not", () => {
+    // A subject can be DRAWN without being listed - `relationships: connected`
+    // takes the other end of a relationship with it - so what is on the canvas
+    // does not settle what the list says.
+    expect(
+      labels(contextMenuFor({ kind: "subject", id: "api" }, notHeld)),
+    ).toContain("Add to this view");
+  });
+
+  it("offers neither where the view has no list to edit", () => {
+    // No view active, or a view that describes its subjects with facets: an
+    // item that could only ever do nothing is worse than no item.
+    const groups = contextMenuFor({ kind: "subject", id: "api" }, context());
+    expect(labels(groups)).not.toContain("Remove from view");
+    expect(labels(groups)).not.toContain("Add to this view");
+    expect(groups.every((group) => group.scope === "model")).toBe(true);
+  });
+
+  it("gives the rail's model rows the same offer, which is what a drag would do", () => {
+    expect(
+      labels(contextMenuFor({ kind: "model-row", id: "api" }, notHeld)),
+    ).toEqual(["Add to this view", "Properties", "Delete from model…"]);
+  });
+
+  it("keeps the membership item in the view half, above the model's", () => {
+    const groups = contextMenuFor({ kind: "subject", id: "api" }, held);
+    expect(groups[0]?.scope).toBe("view");
+    expect(groups[0]?.label).toBe("View");
+    expect(groups[groups.length - 1]?.destructive).toBe(true);
   });
 });

@@ -152,3 +152,100 @@ export const composeProjection = (input: {
     description: input.description,
   },
 });
+
+/**
+ * Whether a view can be told which subjects it holds.
+ *
+ * Only a view that ENUMERATES `subjects:` can. A view that describes its
+ * subjects with facets — a layer, a kind, a state — already includes anything
+ * matching them and excludes anything that does not, so there is nothing for a
+ * membership edit to say to it: the subject is in or out by what it is, and
+ * saying otherwise means editing the query rather than a list (#255).
+ */
+export const enumeratesSubjects = (
+  query: ProjectionQuery,
+): query is ProjectionQuery & { readonly subjects: readonly string[] } =>
+  query.subjects !== undefined;
+
+/**
+ * The same view, holding one more subject or one fewer.
+ *
+ * `null` when there is nothing to stage: the view describes its subjects
+ * rather than listing them, or the list already says what was asked for.
+ * Returning the absence rather than an unchanged document is what keeps a
+ * no-op out of the changeset, where a row that writes a file back exactly as
+ * it was is a row the reviewer has to read and discard for nothing.
+ */
+export const withMembership = (
+  projection: ProjectionDefinition,
+  subjectId: string,
+  membership: "add" | "remove",
+): ProjectionDefinition | null => {
+  if (!enumeratesSubjects(projection.query)) return null;
+  const subjects = projection.query.subjects;
+  const holds = subjects.includes(subjectId);
+  if (membership === "add" ? holds : !holds) return null;
+  return {
+    ...projection,
+    query: {
+      ...projection.query,
+      subjects:
+        membership === "add"
+          ? // Appended rather than sorted in: the list is the author's, and
+            // reordering it would rewrite lines nobody touched.
+            [...subjects, subjectId]
+          : subjects.filter((id) => id !== subjectId),
+    },
+  };
+};
+
+/**
+ * What a membership edit did to a view, as the tray reads it: `+id` for a
+ * subject this row adds, `-id` for one it drops, against the document the
+ * workspace holds. Empty when the row changed something else — a title, a
+ * query, a presentation flag — which the row says by other means.
+ */
+export const membershipDelta = (
+  saved: ProjectionQuery,
+  staged: ProjectionQuery,
+): readonly string[] => {
+  if (!enumeratesSubjects(saved) || !enumeratesSubjects(staged)) return [];
+  return [
+    ...staged.subjects
+      .filter((id) => !saved.subjects.includes(id))
+      .map((id) => `+${id}`),
+    ...saved.subjects
+      .filter((id) => !staged.subjects.includes(id))
+      .map((id) => `-${id}`),
+  ];
+};
+
+/**
+ * Two projection documents, compared by what they SAY rather than by how they
+ * are written.
+ *
+ * Key order is the author's: a document read back off YAML holds its fields in
+ * the order someone wrote them, and one composed here holds them in the order
+ * this file writes them. Comparing the two as text reports every view as
+ * changed the moment anything touches it.
+ */
+export const sameDocument = (
+  left: ProjectionDefinition,
+  right: ProjectionDefinition,
+): boolean => canonical(left) === canonical(right);
+
+const canonical = (value: unknown): string => {
+  if (Array.isArray(value)) {
+    // Order is meaningful inside a list - a subjects list is the author's own
+    // ordering - so only object keys are sorted.
+    return `[${value.map(canonical).join(",")}]`;
+  }
+  if (value !== null && typeof value === "object") {
+    return `{${Object.entries(value as Record<string, unknown>)
+      .filter(([, entry]) => entry !== undefined)
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([key, entry]) => `${JSON.stringify(key)}:${canonical(entry)}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
+};

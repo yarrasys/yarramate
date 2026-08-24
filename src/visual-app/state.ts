@@ -13,6 +13,12 @@ import {
   type VisualViewSummary,
 } from "../adapters/visual/protocol-contract.js";
 
+import {
+  composeProjection,
+  enumeratesSubjects,
+  sameDocument,
+  withMembership,
+} from "../adapters/visual/view-identity.js";
 import type { YarramateOperation } from "../operations.js";
 import type { ProjectionQuery } from "../projection.js";
 import type {
@@ -175,6 +181,22 @@ export type VisualAppAction =
   | {
       readonly type: "changeset.viewStaged";
       readonly operation: VisualViewOperation;
+    }
+  /**
+   * One subject into or out of one view's own membership list.
+   *
+   * Not a `write-view` composed by the caller, because a second membership
+   * edit has to be composed on top of the first: rows replace by path, so a
+   * caller that composed from the SAVED document would silently drop the
+   * subject it staged a moment ago. The reducer holds both the saved views and
+   * the pending rows, so composing here is the only place it cannot be
+   * forgotten.
+   */
+  | {
+      readonly type: "changeset.viewMembership";
+      readonly viewId: string;
+      readonly subjectId: string;
+      readonly membership: "add" | "remove";
     }
   | { readonly type: "changeset.discarded"; readonly index: number }
   | { readonly type: "changeset.cleared" }
@@ -632,6 +654,50 @@ const transition = (
         commitNotice: null,
       };
     }
+    case "changeset.viewMembership": {
+      const view = state.views.find(({ id }) => id === action.viewId);
+      if (view === undefined) return state;
+      // On top of what is already staged for this document, or on the saved
+      // document when nothing is.
+      const pending = state.pendingChangeset.viewOperations.find(
+        (operation) => operation.path === view.path,
+      );
+      const saved = composeProjection({
+        id: view.id,
+        title: view.title,
+        description: view.description,
+        query: view.query,
+        presentation: view.presentation,
+      });
+      const base = pending?.op === "write-view" ? pending.projection : saved;
+      const amended = withMembership(base, action.subjectId, action.membership);
+      // A view that describes its subjects has nothing to be told, and a list
+      // that already says this has nothing to change.
+      if (amended === null) return state;
+      const others = state.pendingChangeset.viewOperations.filter(
+        (operation) => operation.path !== view.path,
+      );
+      // Back to what the workspace already holds: the row goes rather than
+      // staging a write that changes nothing. The WHOLE document is compared,
+      // not just the list, so a membership edit undone by hand leaves a rename
+      // staged beneath it standing.
+      const undone = sameDocument(amended, saved);
+      return {
+        ...state,
+        pendingChangeset: restage(state.pendingChangeset, state.model, {
+          viewOperations: undone
+            ? others
+            : [
+                ...others,
+                { op: "write-view", path: view.path, projection: amended },
+              ],
+        }),
+        undoStack: [...state.undoStack, state.pendingChangeset],
+        redoStack: [],
+        commitDiagnostics: null,
+        commitNotice: null,
+      };
+    }
     case "changeset.discarded": {
       // The tray shows one list, so the reviewer discards by one index. Which
       // of the two underlying lists that row came from is arithmetic, done
@@ -853,6 +919,30 @@ export const visualBrowserInputFor = (
  * query put back underneath them, and a chat-issued filter must not start
  * reporting itself as the reviewer's own.
  */
+/**
+ * The active view's membership list, as the menus must read it.
+ *
+ * `null` where there is no list to edit: no view is active, or the view
+ * describes its subjects with facets rather than naming them.
+ *
+ * Read through the PENDING row when one is staged, not off the saved document.
+ * A reviewer who has just added a subject and right-clicks it again must be
+ * offered "Remove from view"; a menu built from the saved list would offer
+ * "Add to this view" a second time and stage nothing.
+ */
+export const activeViewMembership = (
+  state: VisualAppState,
+): readonly string[] | null => {
+  const view = state.views.find(({ id }) => id === state.activeView);
+  if (view === undefined) return null;
+  const pending = state.pendingChangeset.viewOperations.find(
+    (operation) => operation.path === view.path,
+  );
+  const query =
+    pending?.op === "write-view" ? pending.projection.query : view.query;
+  return enumeratesSubjects(query) ? query.subjects : null;
+};
+
 export const filterToReresolve = (
   frame: VisualServerFrame,
   state: VisualAppState,
@@ -864,8 +954,22 @@ export const filterToReresolve = (
   // No filter standing is "everything is drawn", which a new subject joins by
   // existing. There is nothing to re-ask.
   if (state.activeFilter === null) return null;
+  // A commit can land a change to the VIEW'S OWN QUERY - putting the subject
+  // the reviewer just created into the list (#255) - and the browser is still
+  // holding that query as it was before the commit. Re-asking the held one
+  // draws the view as it was: the commit reports success, the projection on
+  // disk names the new subject, and the canvas does not change. So the view's
+  // query is re-read off the frame that replaced the model.
+  //
+  // Only for a filter the view itself issued. A reviewer holding their own
+  // panel filter must not have the view's query put back underneath them,
+  // which is the same rule `source` exists for.
+  const landed = frame.views.find(({ id }) => id === state.activeView);
   return {
-    query: state.activeFilter.query,
+    query:
+      state.activeFilter.source === "view" && landed !== undefined
+        ? landed.query
+        : state.activeFilter.query,
     source: state.activeFilter.source,
   };
 };

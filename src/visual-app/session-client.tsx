@@ -47,6 +47,13 @@ export interface VisualSession {
   readonly clearFilter: () => void
   readonly setQuickFilterText: (text: string) => void
   readonly stageViewChange: (operation: VisualViewOperation) => void
+  /** One subject into or out of a view's own membership list, composed on top
+   * of whatever is already staged for that view. */
+  readonly stageViewMembership: (
+    viewId: string,
+    subjectId: string,
+    membership: 'add' | 'remove',
+  ) => void
   readonly stageChange: (operation: YarramateOperation) => void
   readonly discardChange: (index: number) => void
   readonly clearChangeset: () => void
@@ -238,6 +245,13 @@ export const useVisualSession = (): VisualSession => {
     dispatch({ type: 'changeset.viewStaged', operation })
   }, [])
 
+  const stageViewMembership = useCallback(
+    (viewId: string, subjectId: string, membership: 'add' | 'remove') => {
+      dispatch({ type: 'changeset.viewMembership', viewId, subjectId, membership })
+    },
+    [],
+  )
+
   const discardChange = useCallback((index: number) => {
     dispatch({ type: 'changeset.discarded', index })
   }, [])
@@ -288,6 +302,7 @@ export const useVisualSession = (): VisualSession => {
     clearFilter,
     setQuickFilterText,
     stageViewChange,
+    stageViewMembership,
     stageChange,
     discardChange,
     clearChangeset,

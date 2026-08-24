@@ -13,6 +13,26 @@
   exactly why a green suite never saw it; this repository's own workspace
   declares one, so the visual editor could not commit anything to it at all.
 
+- **Added.** Creating a subject puts it in the view that created it (#255). A
+  view that enumerates `subjects:` cannot match a subject that did not exist
+  when the list was written, so creating one now stages two rows — the model's
+  `add-concept` and the view's membership — and the tray tells them apart:
+  `write-view · Payment flow · +fraud-screening`, badged `view`. **Remove from
+  view** and **Add to this view** stage the same amendment from the subject and
+  Model-tree menus, in the view group, above the model's and well away from
+  **Delete from model…**. Neither appears for a view that describes its
+  subjects with facets, because there is no list to edit.
+
+- **Fixed.** A commit that landed a change to the active view's own query
+  re-asked the query the browser was holding, which is that query as it was.
+  The commit reported success, the projection on disk named the new subject,
+  and the canvas did not change. The view's query is now re-read off the model
+  frame that replaced it.
+
+- **Fixed.** A commit that wrote both model documents and projections reported
+  only the model's half: "Committed · 1 file" where two landed. Core names the
+  documents it rewrote, and the projections went out in the same `writeAll`.
+
 - **Added.** View CRUD from the rail's context menu (#246): **Rename**,
   **Duplicate**, **New view in this folder**, **Copy projection path**, and
   **Export PNG** on the canvas. Rename and duplicate stage a row like every

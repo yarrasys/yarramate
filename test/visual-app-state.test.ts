@@ -21,10 +21,14 @@ import {
   visualAppSnapshotFrom,
   visualBrowserInputFor,
   type VisualAppAction,
+  activeViewMembership,
   type VisualAppState,
 } from "../src/visual-app/state.js";
 import type { ProjectionQuery } from "../src/projection.js";
-import type { VisualViewOperation } from "../src/adapters/visual/protocol-contract.js";
+import type {
+  VisualViewOperation,
+  VisualViewSummary,
+} from "../src/adapters/visual/protocol-contract.js";
 
 /** A rendered model with an empty canvas graph — only initialView matters here. */
 const model = (
@@ -1653,6 +1657,69 @@ describe("filterToReresolve", () => {
     },
   );
 
+  it("re-asks a view with the query the commit just landed, not the held one", () => {
+    // The defect: creating a subject stages the model row AND a row putting it
+    // into the view's own `subjects:` list (#255). Both land, the projection on
+    // disk names the new subject - and the browser re-asked the query it was
+    // holding, which is the list as it was. The commit reported success and the
+    // canvas did not change.
+    const landedViews: readonly VisualViewSummary[] = [
+      {
+        id: "payment-flow",
+        title: "Payment flow",
+        description: "The hop",
+        query: { subjects: ["checkout", "fraud-screening"] },
+        presentation: {},
+        path: ".yarramate/projections/payment-flow.yaml",
+        subjectCount: 2,
+      },
+    ];
+
+    expect(
+      filterToReresolve(
+        { kind: "model", model: model("all"), views: landedViews },
+        {
+          ...standing("view"),
+          activeView: "payment-flow",
+          activeFilter: {
+            query: { subjects: ["checkout"] },
+            matchedIds: ["checkout"],
+            source: "view",
+          },
+        },
+      ),
+    ).toEqual({
+      query: { subjects: ["checkout", "fraud-screening"] },
+      source: "view",
+    });
+  });
+
+  it("leaves a panel filter alone when a view's query lands underneath it", () => {
+    // A reviewer holding their own query must not have the view's put back.
+    const held = { kinds: ["yarramate/core@0.1#applicationComponent"] };
+
+    expect(
+      filterToReresolve(
+        {
+          kind: "model",
+          model: model("all"),
+          views: [
+            {
+              id: "payment-flow",
+              title: "Payment flow",
+              description: "",
+              query: { subjects: ["checkout", "fraud-screening"] },
+              presentation: {},
+              path: ".yarramate/projections/payment-flow.yaml",
+              subjectCount: 2,
+            },
+          ],
+        },
+        { ...standing("panel"), activeView: "payment-flow" },
+      ),
+    ).toEqual({ query: held, source: "panel" });
+  });
+
   it("has nothing to re-ask when no filter is standing", () => {
     // Unfiltered draws everything, which a new subject joins by existing.
     expect(filterToReresolve(modelFrame, initialVisualAppState)).toBeNull();
@@ -1682,5 +1749,253 @@ describe("filterToReresolve", () => {
     ] as unknown as VisualServerFrame[]) {
       expect(filterToReresolve(frame, standing("view"))).toBeNull();
     }
+  });
+});
+
+/**
+ * A subject into or out of one view's own membership list (#255).
+ *
+ * Composed by the reducer rather than by the caller, because a second edit has
+ * to be composed on top of the first: view rows replace by path, so a caller
+ * composing from the saved document would drop the subject it staged a moment
+ * ago and never say so.
+ */
+describe("visualAppReducer view membership", () => {
+  const PATH = ".yarramate/projections/payment-flow.yaml";
+
+  const view = (
+    query: VisualViewSummary["query"],
+  ): VisualViewSummary => ({
+    id: "payment-flow",
+    title: "Payment flow",
+    description: "The hop",
+    query,
+    presentation: { title: "Payment flow", description: "The hop" },
+    path: PATH,
+    subjectCount: 2,
+  });
+
+  const on = (
+    query: VisualViewSummary["query"] = { subjects: ["checkout", "ledger"] },
+  ): VisualAppState => ({
+    ...initialVisualAppState,
+    activeView: "payment-flow",
+    views: [view(query)],
+  });
+
+  const stage = (
+    state: VisualAppState,
+    subjectId: string,
+    membership: "add" | "remove",
+  ) =>
+    visualAppReducer(state, {
+      type: "changeset.viewMembership",
+      viewId: "payment-flow",
+      subjectId,
+      membership,
+    });
+
+  const subjectsOf = (state: VisualAppState) => {
+    const operation = state.pendingChangeset.viewOperations[0];
+    return operation?.op === "write-view"
+      ? operation.projection.query.subjects
+      : undefined;
+  };
+
+  it("stages the view's document with one more subject in it", () => {
+    const state = stage(on(), "fraud-screening", "add");
+
+    expect(state.pendingChangeset.viewOperations).toHaveLength(1);
+    expect(state.pendingChangeset.viewOperations[0]?.path).toBe(PATH);
+    expect(subjectsOf(state)).toEqual([
+      "checkout",
+      "ledger",
+      "fraud-screening",
+    ]);
+  });
+
+  it("composes a second edit on top of the first, not on the saved document", () => {
+    // The defect this exists to close: rows replace by path, so composing the
+    // second edit from the saved view would silently drop the first.
+    const twice = stage(stage(on(), "fraud-screening", "add"), "refunds", "add");
+
+    expect(twice.pendingChangeset.viewOperations).toHaveLength(1);
+    expect(subjectsOf(twice)).toEqual([
+      "checkout",
+      "ledger",
+      "fraud-screening",
+      "refunds",
+    ]);
+  });
+
+  it("drops the row when the membership comes back to what is on disk", () => {
+    // Adding and then removing is not a write that changes nothing; it is no
+    // change at all, and a row nobody can act on should not be in the tray.
+    const undone = stage(
+      stage(on(), "fraud-screening", "add"),
+      "fraud-screening",
+      "remove",
+    );
+
+    expect(undone.pendingChangeset.viewOperations).toEqual([]);
+  });
+
+  it("says nothing to a view that describes its subjects with facets", () => {
+    // The rule lives here rather than in the shell: a caller that had to know
+    // which views enumerate is a caller that can forget.
+    const described = stage(on({ layers: ["application"] }), "checkout", "add");
+
+    expect(described.pendingChangeset.viewOperations).toEqual([]);
+    expect(described.undoStack).toEqual([]);
+  });
+
+  it("says nothing when no view is active, or the view has gone", () => {
+    const noView = visualAppReducer(initialVisualAppState, {
+      type: "changeset.viewMembership",
+      viewId: "",
+      subjectId: "checkout",
+      membership: "add",
+    });
+
+    expect(noView).toBe(initialVisualAppState);
+  });
+
+  it("says nothing when the list already holds the subject", () => {
+    expect(stage(on(), "checkout", "add").pendingChangeset.viewOperations).toEqual(
+      [],
+    );
+  });
+
+  it("is undoable like every other staged row", () => {
+    const state = stage(on(), "fraud-screening", "add");
+    const undone = visualAppReducer(state, { type: "changeset.undone" });
+
+    expect(undone.pendingChangeset.viewOperations).toEqual([]);
+    expect(
+      visualAppReducer(undone, { type: "changeset.redone" }).pendingChangeset
+        .viewOperations,
+    ).toHaveLength(1);
+  });
+
+  it("keeps the view's other fields, so a membership edit is not a rewrite", () => {
+    const state = stage(
+      on({ subjects: ["checkout"], relationships: "connected" }),
+      "ledger",
+      "add",
+    );
+    const operation = state.pendingChangeset.viewOperations[0];
+
+    expect(operation?.op === "write-view" ? operation.projection : null)
+      .toMatchObject({
+        id: "payment-flow",
+        query: { relationships: "connected" },
+        presentation: { title: "Payment flow" },
+      });
+  });
+});
+
+describe("activeViewMembership", () => {
+  const PATH = ".yarramate/projections/payment-flow.yaml";
+  const summary: VisualViewSummary = {
+    id: "payment-flow",
+    title: "Payment flow",
+    description: "The hop",
+    query: { subjects: ["checkout"] },
+    presentation: {},
+    path: PATH,
+    subjectCount: 1,
+  };
+
+  it("is the active view's list", () => {
+    expect(
+      activeViewMembership({
+        ...initialVisualAppState,
+        activeView: "payment-flow",
+        views: [summary],
+      }),
+    ).toEqual(["checkout"]);
+  });
+
+  it("is null where no view is active, or the view describes its subjects", () => {
+    expect(
+      activeViewMembership({ ...initialVisualAppState, views: [summary] }),
+    ).toBeNull();
+    expect(
+      activeViewMembership({
+        ...initialVisualAppState,
+        activeView: "payment-flow",
+        views: [{ ...summary, query: { layers: ["application"] } }],
+      }),
+    ).toBeNull();
+  });
+
+  it("reads through the staged row, so a menu never offers the same edit twice", () => {
+    // A reviewer who has just added a subject and right-clicks it again must
+    // be offered Remove; the saved list would offer Add a second time and
+    // stage nothing.
+    const staged = visualAppReducer(
+      { ...initialVisualAppState, activeView: "payment-flow", views: [summary] },
+      {
+        type: "changeset.viewMembership",
+        viewId: "payment-flow",
+        subjectId: "ledger",
+        membership: "add",
+      },
+    );
+
+    expect(activeViewMembership(staged)).toEqual(["checkout", "ledger"]);
+  });
+});
+
+describe("a membership edit under a rename", () => {
+  const PATH = ".yarramate/projections/payment-flow.yaml";
+  const summary: VisualViewSummary = {
+    id: "payment-flow",
+    title: "Payment flow",
+    description: "The hop",
+    query: { subjects: ["checkout"] },
+    presentation: { title: "Payment flow", description: "The hop" },
+    path: PATH,
+    subjectCount: 1,
+  };
+  const renamed: VisualViewOperation = {
+    op: "write-view",
+    path: PATH,
+    projection: {
+      format: "yarramate/projection/v1",
+      id: "payment-flow",
+      version: "1.0",
+      query: { subjects: ["checkout"] },
+      presentation: { title: "Payments", description: "The hop" },
+    },
+  };
+
+  it("keeps the rename when the membership is put back", () => {
+    // One row per document, so the two edits share a row. Dropping it because
+    // the LIST came back to what is on disk would silently discard a rename
+    // the reviewer never undid.
+    const base: VisualAppState = {
+      ...initialVisualAppState,
+      activeView: "payment-flow",
+      views: [summary],
+    };
+    const withRename = visualAppReducer(base, {
+      type: "changeset.viewStaged",
+      operation: renamed,
+    });
+    const added = visualAppReducer(withRename, {
+      type: "changeset.viewMembership",
+      viewId: "payment-flow",
+      subjectId: "ledger",
+      membership: "add",
+    });
+    const removed = visualAppReducer(added, {
+      type: "changeset.viewMembership",
+      viewId: "payment-flow",
+      subjectId: "ledger",
+      membership: "remove",
+    });
+
+    expect(removed.pendingChangeset.viewOperations).toEqual([renamed]);
   });
 });
