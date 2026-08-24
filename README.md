@@ -183,9 +183,12 @@ projections, evidence, and architecture states; and exposes a stable CLI for
 people, CI, skills, and agent harnesses.
 
 Optional adapters provide LikeC4 visualization from semantic projections,
-Graphify observations as evidence overlays, and loopback-only visual
-conversations that render the native model and land reviewer edits through
-the same validated `apply` batch (beta). Core depends on none of them.
+Graphify observations as evidence overlays, and a visual editor that
+renders the native model and lands reviewer edits through the same
+validated `apply` batch (beta). The editor runs two ways: as the
+loopback-only session `yarramate-visual start` serves, or mounted inside
+another product from `yarramate/visual-app`, over a store that product
+owns, with no Node process behind it. Core depends on none of them.
 
 YarraMate's core profile implements the ArchiMate® 3.2 element vocabulary
 and relationship table: a relationship between two kinds is valid exactly
