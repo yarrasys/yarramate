@@ -1,6 +1,6 @@
 format: yarramate/v1
 id: contact-update
-profile: yarramate/core@0.1
+profile: yarrasys/api-led@1.0
 concepts:
   # ============================================================== motivation
   - id: crm-product-owner
@@ -299,6 +299,22 @@ concepts:
       The vendor's own runtime. Recorded so the CRM does not read as something
       this team deploys.
     status: current
+  - id: contact-experience-api
+    kind: api
+    name: Experience API
+    description: The experience-layer API a sales rep's client calls.
+  - id: contact-process-api
+    kind: api
+    name: Process API
+    description: The process-layer API that orchestrates a contact update.
+  - id: contact-system-api
+    kind: api
+    name: System API
+    description: The system-layer API over Salesforce.
+  - id: salesforce-contact-api
+    kind: api
+    name: Salesforce Contact API
+    description: The vendor API the system layer consumes.
 
 relationships:
   # --- components own the interfaces they expose (renders as nesting) -------
@@ -558,3 +574,77 @@ relationships:
     kind: realization
     from: salesforce-platform
     to: salesforce-crm
+  - id: contact-sys-api-flow-salesforce-crm
+    kind: flow
+    from: contact-sys-api
+    to: salesforce-crm
+  - id: contact-experience-api-aggregates-contact-exp-api
+    kind: aggregation
+    from: contact-experience-api
+    to: contact-exp-api
+  - id: contact-experience-api-aggregates-contact-exp-api-interface
+    kind: aggregation
+    from: contact-experience-api
+    to: contact-exp-api-interface
+  - id: contact-experience-api-aggregates-contact-update-service
+    kind: aggregation
+    from: contact-experience-api
+    to: contact-update-service
+  - id: contact-process-api-aggregates-contact-prc-api
+    kind: aggregation
+    from: contact-process-api
+    to: contact-prc-api
+  - id: contact-process-api-aggregates-contact-prc-api-interface
+    kind: aggregation
+    from: contact-process-api
+    to: contact-prc-api-interface
+  - id: contact-process-api-aggregates-contact-orchestration-service
+    kind: aggregation
+    from: contact-process-api
+    to: contact-orchestration-service
+  - id: contact-system-api-aggregates-contact-sys-api
+    kind: aggregation
+    from: contact-system-api
+    to: contact-sys-api
+  - id: contact-system-api-aggregates-contact-sys-api-interface
+    kind: aggregation
+    from: contact-system-api
+    to: contact-sys-api-interface
+  - id: contact-system-api-aggregates-salesforce-write-service
+    kind: aggregation
+    from: contact-system-api
+    to: salesforce-write-service
+  - id: salesforce-contact-api-aggregates-salesforce-crm
+    kind: aggregation
+    from: salesforce-contact-api
+    to: salesforce-crm
+  - id: salesforce-contact-api-aggregates-salesforce-contact-interface
+    kind: aggregation
+    from: salesforce-contact-api
+    to: salesforce-contact-interface
+  - id: salesforce-contact-api-aggregates-salesforce-contact-service
+    kind: aggregation
+    from: salesforce-contact-api
+    to: salesforce-contact-service
+  # API-grain commitments (#268 phase 0 interim). Each is the macro fact the
+  # pattern layer will one day expand through ports; today the member wiring
+  # beneath it is authored by hand and named in the description, which is the
+  # correspondence the phase-1 checker will verify instead of trusting.
+  - id: salesforce-api-serves-system-api
+    kind: serving
+    from: salesforce-contact-api
+    to: contact-system-api
+    description: >-
+      Met by salesforce-contact-service serving contact-sys-api.
+  - id: system-api-serves-process-api
+    kind: serving
+    from: contact-system-api
+    to: contact-process-api
+    description: >-
+      Met by salesforce-write-service serving contact-prc-api.
+  - id: process-api-serves-experience-api
+    kind: serving
+    from: contact-process-api
+    to: contact-experience-api
+    description: >-
+      Met by contact-orchestration-service serving contact-exp-api.

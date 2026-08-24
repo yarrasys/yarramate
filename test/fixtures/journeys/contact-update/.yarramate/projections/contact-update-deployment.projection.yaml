@@ -1,0 +1,21 @@
+format: yarramate/projection/v1
+id: contact-update-deployment
+version: "1.0"
+query:
+  subjects:
+    - contact-exp-api
+    - contact-prc-api
+    - contact-sys-api
+    - salesforce-crm
+  relationships: between
+presentation:
+  layout: layered
+  direction: top-down
+  showLifecycle: true
+  showEvidence: true
+  showOwnership: false
+  title: High-Level Solution Design
+  description: Three Mule applications on CloudHub 2.0; the CRM on vendor-operated
+    infrastructure this team does not run, patch, or audit. Each node is
+    assigned the artifact it carries and the artifact realizes the component, so
+    the boundary between the two nodes is the boundary the integration crosses.

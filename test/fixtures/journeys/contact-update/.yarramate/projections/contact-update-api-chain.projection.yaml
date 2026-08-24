@@ -1,0 +1,19 @@
+format: yarramate/projection/v1
+id: contact-update-api-chain
+version: "1.0"
+query:
+  kinds:
+    - yarramate/core@0.1#applicationComponent
+    - yarramate/core@0.1#applicationInterface
+    - yarramate/core@0.1#applicationService
+  relationships: between
+presentation:
+  title: Contact update — API chain
+  description: >-
+    The API-led chain at its authored grain. Each component composes its
+    interface, each interface exposes a service, and the service serves the
+    component above. Nothing here is a derived summary, so nothing can drift
+    from the model it summarises.
+  nesting:
+    - composition
+    - assignment

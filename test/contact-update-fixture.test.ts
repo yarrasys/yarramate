@@ -54,9 +54,26 @@ const catalogue = (() => {
   return loaded.catalogue
 })()
 
+// The api-led profile is a workspace source like the documents: the
+// fixture's api groupings are kinded against it (yarrasys/api-led@1.0#api
+// extends grouping), so compiling without it is YM403.
+const profileFixture = (name: string): WorkspaceSource => ({
+  path: `profiles/${name}`,
+  source: readFileSync(
+    fileURLToPath(
+      new URL(
+        `./fixtures/journeys/contact-update/.yarramate/profiles/${name}`,
+        import.meta.url,
+      ),
+    ),
+    'utf8',
+  ),
+})
+
 const result = compileWorkspaceWithProfileContext([
   fixture('contact-update.yaml'),
   fixture('contact-update.policy.yaml'),
+  profileFixture('api-led.yaml'),
 ])
 
 // Narrowed once, so the three tests below read the graph without each
