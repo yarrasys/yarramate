@@ -80,6 +80,39 @@ canonical; see
 for what changed and why a mechanical operation batch is not an inferred
 model.
 
+## The shell
+
+Three columns, and the middle one is the diagram.
+
+**The command strip carries identity and nothing else** (#249): the session's
+name, its beta badge, the authority line, the connection state, and one line of
+description. Every control it used to hold has gone to the thing it acts on —
+the quick filter to the canvas it narrows, saving a view to the rail that lists
+views, ending the session to the chat section that owns the conversation. The
+`Details` disclosure went with them: it only ever revealed a sentence, and a
+sentence about what the session *is* belongs beside the name.
+
+**The right column is a stack of collapsible sections**, split by handles a
+pointer or the arrow keys can drag:
+
+1. **Element properties** — the subject form. Its header names the selected
+   subject; selecting one opens the section, because that is what selecting was
+   for.
+2. **Changes** — the staged rows, and how many are staged.
+3. **Chat** — pinned at the foot, owning the session's own control.
+
+There is no open/closed mode for the column. The sections collapse one at a
+time, and a shut header still says what is behind it — the selected subject,
+the staged count, whose turn it is — where a shut column said nothing at all.
+That is also why an unread count only appears while **Chat** is shut: a reply
+that lands in front of the reviewer needs no number standing in for it.
+
+**`Return to agent` is one button, and it does what it always did**: hand
+control back to the main agent, which is what the notice it writes has always
+said. The design draws a second, `End session`, for a handback that leaves the
+session live. Nothing can do that yet — `session.end` freezes the session — and
+a button that claimed otherwise would be lying about the lifecycle.
+
 ## Layout is presentation the repository keeps
 
 Dragging a node saves absolute positions to an adapter-owned sidecar,

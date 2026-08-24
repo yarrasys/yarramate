@@ -7,8 +7,6 @@ import { DEFAULT_NESTING, type NestingKind } from "../nesting.js";
 import type { ContextMenuTarget } from "./context-menu-model.js";
 import type { BottomPanelTabId } from "./query-panel.js";
 
-export type ConversationMode = "auto" | "open" | "closed";
-
 export interface SelectedElement {
   readonly type: "element";
   readonly id: string;
@@ -101,16 +99,61 @@ const nextRelationship = (
     : normalizeSelectedRelationship(edge, nodeTitlesOf(graph));
 };
 
+/**
+ * The right column's sections, in the order they stack (#249, ADR-free: the
+ * design settles the order and nothing derives it).
+ *
+ * Chat is last because it is pinned at the foot and owns the session's own
+ * control - the reviewer ends the conversation beside the conversation, not
+ * from a strip that carries identity and nothing else.
+ */
+export const RIGHT_SECTIONS = ["properties", "changes", "chat"] as const;
+
+export type RightSectionId = (typeof RIGHT_SECTIONS)[number];
+
+/** How short a section may be dragged before it is just a header. */
+export const SECTION_MIN_HEIGHT = 96;
+/** Room the sections above one must keep, however far it is dragged. */
+export const SECTION_HEADROOM = 160;
+
+export const sectionHeightBounds = (viewportHeight: number) => ({
+  min: SECTION_MIN_HEIGHT,
+  max: Math.max(SECTION_MIN_HEIGHT, viewportHeight - SECTION_HEADROOM),
+});
+
+export const clampSectionHeight = (
+  height: number,
+  viewportHeight: number,
+): number => {
+  const { min, max } = sectionHeightBounds(viewportHeight);
+  return Math.min(max, Math.max(min, height));
+};
+
 export const CONVERSATION_MIN_WIDTH = 320;
 export const CONVERSATION_MAX_WIDTH = 640;
 /** The share of the viewport the approved design lets the conversation take. */
 const CONVERSATION_MAX_VIEWPORT_SHARE = 0.45;
 
 export interface VisualWorkspaceState {
+  /**
+   * The right column: one width, and the sections stacked inside it.
+   *
+   * There is no longer an open/closed mode. The column is always drawn,
+   * because the sections are collapsible one by one and a reviewer who wants
+   * the canvas back shuts the sections rather than the column - which leaves
+   * three headers saying what is behind them instead of a strip button
+   * saying nothing (#249).
+   */
   readonly conversation: {
-    readonly mode: ConversationMode;
     readonly width: number;
     readonly unread: number;
+    /** The sections the reviewer has shut. Held as what is CLOSED so a
+     * section added later arrives open rather than hidden behind a default
+     * nobody chose - the same rule the rail's branches follow. */
+    readonly collapsed: readonly RightSectionId[];
+    /** Heights for the two sections that have one; properties takes the rest. */
+    readonly changesHeight: number;
+    readonly chatHeight: number;
   };
   /**
    * The viewport this state was last clamped against. Presentation reads its
@@ -118,6 +161,11 @@ export interface VisualWorkspaceState {
    * reaches the separator's reported minimum and maximum.
    */
   readonly viewportWidth: number;
+  /** The viewport the SECTION heights are clamped against, held for the same
+   * reason the width is: a shorter window changes what a splitter may be
+   * dragged to, and a render that read the live global would only say so by
+   * accident. */
+  readonly viewportHeight: number;
   readonly selectedSubject: SelectedDiagramSubject | null;
   /** The relationship being drawn, or null when the tool is not in use. */
   readonly connection: ConnectionDraft | null;
@@ -193,9 +241,21 @@ export interface VisualWorkspaceState {
 }
 
 export type VisualWorkspaceAction =
-  | { readonly type: "conversation.toggled" }
+  | {
+      readonly type: "section.toggled";
+      readonly section: RightSectionId;
+    }
+  | {
+      readonly type: "section.resized";
+      readonly section: "changes" | "chat";
+      readonly height: number;
+    }
   | { readonly type: "conversation.resized"; readonly width: number }
-  | { readonly type: "viewport.resized"; readonly viewportWidth: number }
+  | {
+      readonly type: "viewport.resized";
+      readonly viewportWidth: number;
+      readonly viewportHeight?: number;
+    }
   | { readonly type: "attention.received" }
   | {
       readonly type: "connection.started";
@@ -371,13 +431,23 @@ const clampInitialConversationWidth = (
 
 export const createVisualWorkspaceState = (
   viewportWidth: number,
+  viewportHeight = 0,
 ): VisualWorkspaceState => ({
   conversation: {
-    mode: "auto",
     width: clampInitialConversationWidth(viewportWidth * 0.28, viewportWidth),
     unread: 0,
+    // Every section open: the reviewer has not shut anything yet, and a stack
+    // that opened closed would say nothing about what is in it.
+    collapsed: [],
+    changesHeight: 200,
+    // Measured rather than taken from the design's 246: the composer, its
+    // status row and the session's own button come to about 180, and a chat
+    // section that fits them with no room left for the transcript pushes
+    // `Return to agent` under the fold at rest.
+    chatHeight: 300,
   },
   viewportWidth,
+  viewportHeight,
   selectedSubject: null,
   descriptionExpanded: false,
   detailsOpen: false,
@@ -404,16 +474,33 @@ export const visualWorkspaceReducer = (
   action: VisualWorkspaceAction,
 ): VisualWorkspaceState => {
   switch (action.type) {
-    case "conversation.toggled": {
-      const mode = state.conversation.mode === "open" ? "closed" : "open";
+    case "section.toggled": {
+      const shut = state.conversation.collapsed.includes(action.section);
       return {
         ...state,
         conversation: {
           ...state.conversation,
-          mode,
-          unread: mode === "open" ? 0 : state.conversation.unread,
+          collapsed: shut
+            ? state.conversation.collapsed.filter(
+                (section) => section !== action.section,
+              )
+            : [...state.conversation.collapsed, action.section],
+          // Opening chat is reading it, so the count it carried goes with the
+          // reason it was there.
+          unread:
+            action.section === "chat" && shut ? 0 : state.conversation.unread,
         },
       };
+    }
+    case "section.resized": {
+      const height = clampSectionHeight(action.height, state.viewportHeight);
+      const key = action.section === "chat" ? "chatHeight" : "changesHeight";
+      return state.conversation[key] === height
+        ? state
+        : {
+            ...state,
+            conversation: { ...state.conversation, [key]: height },
+          };
     }
     case "conversation.resized": {
       const width = clampConversationWidth(action.width, state.viewportWidth);
@@ -426,30 +513,46 @@ export const visualWorkspaceReducer = (
         state.conversation.width,
         action.viewportWidth,
       );
+      const viewportHeight = action.viewportHeight ?? state.viewportHeight;
+      const changesHeight = clampSectionHeight(
+        state.conversation.changesHeight,
+        viewportHeight,
+      );
+      const chatHeight = clampSectionHeight(
+        state.conversation.chatHeight,
+        viewportHeight,
+      );
       return width === state.conversation.width &&
-        action.viewportWidth === state.viewportWidth
+        changesHeight === state.conversation.changesHeight &&
+        chatHeight === state.conversation.chatHeight &&
+        action.viewportWidth === state.viewportWidth &&
+        viewportHeight === state.viewportHeight
         ? state
         : {
             ...state,
-            conversation: { ...state.conversation, width },
+            conversation: {
+              ...state.conversation,
+              width,
+              changesHeight,
+              chatHeight,
+            },
             viewportWidth: action.viewportWidth,
+            viewportHeight,
           };
     }
     case "attention.received":
-      if (state.conversation.mode === "open") return state;
-      if (state.conversation.mode === "auto") {
-        return {
-          ...state,
-          conversation: { ...state.conversation, mode: "open", unread: 0 },
-        };
-      }
-      return {
-        ...state,
-        conversation: {
-          ...state.conversation,
-          unread: state.conversation.unread + 1,
-        },
-      };
+      // Chat is on screen unless the reviewer shut it, so an arriving reply
+      // needs no count to stand in for it. A shut section is the only case
+      // where something happened out of sight.
+      return state.conversation.collapsed.includes("chat")
+        ? {
+            ...state,
+            conversation: {
+              ...state.conversation,
+              unread: state.conversation.unread + 1,
+            },
+          }
+        : state;
     // A menu is dismissed by everything it can lead to, and by the commit that
     // can take its target away, rather than by a blanket rule over every
     // action: a reviewer who right-clicks and then reads an agent's reply
@@ -521,7 +624,15 @@ export const visualWorkspaceReducer = (
     case "subject.selected":
       return {
         ...state,
-        conversation: { ...state.conversation, mode: "open", unread: 0 },
+        // Selecting a subject opens the section that describes it, because
+        // that is what the selection was for. Nothing else about the stack
+        // moves - a reviewer who shut Changes did not ask for it back.
+        conversation: {
+          ...state.conversation,
+          collapsed: state.conversation.collapsed.filter(
+            (section) => section !== "properties",
+          ),
+        },
         selectedSubject: action.subject,
         descriptionExpanded: false,
         contextMenu: null,

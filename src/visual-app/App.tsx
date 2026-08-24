@@ -3,7 +3,7 @@ import type { PresentationFlag } from "./query-fields.js";
 import { QueryPanel, type BottomPanelTabId } from "./query-panel.js";
 import { QuickFilterBox } from "./quick-filter.js";
 import { ViewTree } from "./view-tree.js";
-import { SaveViewControl } from "./save-view.js";
+import { SaveViewDialog } from "./save-view.js";
 import { describeQuery } from "./describe-query.js";
 import { ChangesetTray } from "./changeset-tray.js";
 import { ConceptForm, RelationshipForm } from "./subject-form.js";
@@ -30,6 +30,7 @@ import type {
   VisualViewOperation,
   VisualViewSummary,
 } from "../adapters/visual/protocol-contract.js";
+import { Section, SectionSplitter } from "./section-stack.js";
 import { useVisualSession } from "./session-client.js";
 import { activeViewMembership } from "./state.js";
 import type { VisualAppRecord, VisualAppState } from "./state.js";
@@ -43,6 +44,7 @@ import {
   viewNeedingApplication,
   visualWorkspaceReducer,
   type ConnectionDraft,
+  type RightSectionId,
   type SelectedDiagramSubject,
 } from "./workspace-state.js";
 import { ConnectionPanel } from "./connection-panel.js";
@@ -111,48 +113,25 @@ const endTransitionStatus = (state: VisualAppState): string => {
   return "Ending conversation — preparing a handoff for the main agent.";
 };
 
+/**
+ * Identity, and nothing else (#249).
+ *
+ * Every control the strip used to carry has gone to the thing it acts on: the
+ * quick filter to the canvas it narrows, saving a view to the rail that lists
+ * views, ending the session to the chat section that owns the conversation. A
+ * strip that carried them put the session's most consequential button as far
+ * from the conversation as the window allows.
+ *
+ * The description sits here rather than behind a `Details` disclosure. It is
+ * one line about what this session IS, which is identity - and a button that
+ * only ever revealed a sentence was a control the strip had no reason to keep.
+ */
 const CommandStrip = ({
   state,
   connection,
-  detailsOpen,
-  conversationOpen,
-  unread,
-  layout,
-  views,
-  onToggleDetails,
-  onToggleConversation,
-  onSelectLayout,
-  showLifecycle,
-  showEvidence,
-  showOwnership,
-  quickFilterText,
-  onQuickFilterChange,
-  saveViewOpen,
-  saveViewFolder,
-  onToggleSaveView,
-  onStageView,
-  onEnd,
 }: {
   readonly state: VisualAppState;
   readonly connection: string;
-  readonly detailsOpen: boolean;
-  readonly conversationOpen: boolean;
-  readonly unread: number;
-  readonly layout: "layered";
-  readonly views: readonly VisualViewSummary[];
-  readonly onToggleDetails: () => void;
-  readonly onToggleConversation: () => void;
-  readonly onSelectLayout: (layout: "layered") => void;
-  readonly showLifecycle: boolean;
-  readonly showEvidence: boolean;
-  readonly showOwnership: boolean;
-  readonly quickFilterText: string;
-  readonly onQuickFilterChange: (text: string) => void;
-  readonly saveViewOpen: boolean;
-  readonly saveViewFolder: string | undefined;
-  readonly onToggleSaveView: () => void;
-  readonly onStageView: (operation: VisualViewOperation) => void;
-  readonly onEnd: () => void;
 }) => (
   <header className="command-strip">
     <div className="command-identity">
@@ -163,68 +142,11 @@ const CommandStrip = ({
         {connection}
       </span>
     </div>
-    <div className="command-actions">
-      <span
-        className="end-transition-status"
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-      >
-        {endTransitionStatus(state)}
-      </span>
-      <QuickFilterBox value={quickFilterText} onChange={onQuickFilterChange} />
-      <SaveViewControl
-        views={views}
-        activeViewId={state.activeView}
-        query={state.activeFilter?.query ?? null}
-        layout={layout}
-        showLifecycle={showLifecycle}
-        showEvidence={showEvidence}
-        showOwnership={showOwnership}
-        open={saveViewOpen}
-        folder={saveViewFolder}
-        onToggle={onToggleSaveView}
-        onStage={onStageView}
-      />
-      <button
-        type="button"
-        aria-expanded={detailsOpen}
-        aria-controls="session-details"
-        onClick={onToggleDetails}
-      >
-        Details
-      </button>
-      <button
-        type="button"
-        aria-expanded={conversationOpen}
-        aria-controls="conversation-panel"
-        onClick={onToggleConversation}
-      >
-        Conversation
-        {unread === 0 ? null : (
-          <span className="attention-count">{unread}</span>
-        )}
-      </button>
-      <button
-        type="button"
-        className="end-session"
-        onClick={onEnd}
-        disabled={state.lifecycle !== "active"}
-      >
-        {state.lifecycle === "ending" || state.lifecycle === "closed"
-          ? "Ending…"
-          : "End"}
-      </button>
-    </div>
-    {/* Static prose is not worth the canvas: the disclosure is laid over the
-        workspace from the strip rather than taking a row of its own, so opening
-        it never reflows the diagram or the conversation. */}
-    <div id="session-details" className="session-details" hidden={!detailsOpen}>
-      <p>{state.description}</p>
-      <button type="button" className="details-close" onClick={onToggleDetails}>
-        Close details
-      </button>
-    </div>
+    {state.description === "" ? null : (
+      <p className="session-description" title={state.description}>
+        {state.description}
+      </p>
+    )}
   </header>
 );
 
@@ -313,6 +235,7 @@ const DiagramWorkspace = ({
   onClearFilter,
   onSaveLayout,
   onCanvasReady,
+  onQuickFilterChange,
   view,
   bottomPanel,
   onTogglePresentation,
@@ -355,6 +278,7 @@ const DiagramWorkspace = ({
   readonly onClearFilter: () => void;
   readonly onSaveLayout: (payload: VisualLayoutSavePayload) => void;
   readonly onCanvasReady: (png: (() => string) | null) => void;
+  readonly onQuickFilterChange: (text: string) => void;
   readonly view: VisualViewSummary | null;
   readonly bottomPanel: {
     readonly open: boolean;
@@ -407,13 +331,22 @@ const DiagramWorkspace = ({
       ) : null}
       <div className="canvas">
         {state.model === null ? null : (
-          <button
-            type="button"
-            className="subject-draft-open"
-            onClick={onDraftSubject}
-          >
-            Add subject
-          </button>
+          // On the canvas, because the canvas is what it narrows. It used to
+          // sit in the command strip, as far from the diagram as the window
+          // allows, next to controls that had nothing to do with it (#249).
+          <div className="canvas-controls">
+            <QuickFilterBox
+              value={state.quickFilterText}
+              onChange={onQuickFilterChange}
+            />
+            <button
+              type="button"
+              className="subject-draft-open"
+              onClick={onDraftSubject}
+            >
+              Add subject
+            </button>
+          </div>
         )}
         {!draftingSubject || state.model === null ? null : (
           <SubjectDraftPanel
@@ -678,42 +611,45 @@ const SelectedSubjectInspector = ({
   );
 };
 
-const ConversationPanel = ({
+/**
+ * The chat section: the transcript, the composer, and the session's own
+ * control (#249).
+ *
+ * `Return to agent` lives HERE, beside the conversation it ends, rather than in
+ * a strip that carries identity and nothing else. It is one button and it does
+ * what it always did - hand control back to the main agent, which is what the
+ * notice it writes has always said. The design draws a second, `End session`,
+ * for a handback that leaves the session live; nothing can do that yet, and a
+ * button that claimed to would be lying about the lifecycle.
+ */
+/**
+ * What the Chat header says while it is shut, which is whose turn it is. A
+ * count belongs there only when something arrived unread; the rest of the time
+ * the useful word is what the agent is doing.
+ */
+const chatMeta = (state: VisualAppState): string =>
+  state.lifecycle !== "active"
+    ? "closed"
+    : state.awaitingAgent
+      ? (STATUS_WORDS[state.agentStatus?.state ?? "thinking"] ?? "working")
+      : "agent idle";
+
+const ChatSection = ({
   state,
-  hidden,
   disabled,
   selectedSubject,
-  descriptionExpanded,
   onSend,
   onChoice,
-  onToggleDescription,
   onClearSubject,
-  onConnect,
-  onDelete,
-  onDiscardChange,
-  onStageChange,
-  onClearChangeset,
-  onUndoChangeset,
-  onRedoChangeset,
-  onCommitChangeset,
+  onEnd,
 }: {
   readonly state: VisualAppState;
-  readonly hidden: boolean;
   readonly disabled: boolean;
   readonly selectedSubject: SelectedDiagramSubject | null;
-  readonly descriptionExpanded: boolean;
   readonly onSend: (text: string) => void;
   readonly onChoice: (optionId: string) => void;
-  readonly onToggleDescription: () => void;
   readonly onClearSubject: () => void;
-  readonly onConnect: (from: string) => void;
-  readonly onDelete: (id: string) => void;
-  readonly onDiscardChange: (index: number) => void;
-  readonly onStageChange: (operation: YarramateOperation) => void;
-  readonly onClearChangeset: () => void;
-  readonly onUndoChangeset: () => void;
-  readonly onRedoChangeset: () => void;
-  readonly onCommitChangeset: () => void;
+  readonly onEnd: () => void;
 }) => {
   const [draft, setDraft] = useState("");
   const agentWaiting = state.lifecycle === "active" && state.awaitingAgent;
@@ -735,36 +671,8 @@ const ConversationPanel = ({
   };
 
   return (
-    <section
-      id="conversation-panel"
-      className="talk"
-      aria-label="Conversation"
-      hidden={hidden}
-    >
+    <div className="talk">
       <div className="conversation-scroll">
-        {selectedSubject === null || state.model === null ? null : (
-          <SelectedSubjectInspector
-            subject={selectedSubject}
-            model={state.model}
-            operations={state.pendingChangeset.operations}
-            expanded={descriptionExpanded}
-            onToggleDescription={onToggleDescription}
-            onClear={onClearSubject}
-            onConnect={onConnect}
-            onDelete={onDelete}
-            onStageChange={onStageChange}
-          />
-        )}
-
-        <ChangesetTray
-          state={state}
-          onDiscardChange={onDiscardChange}
-          onClearChangeset={onClearChangeset}
-          onUndoChangeset={onUndoChangeset}
-          onRedoChangeset={onRedoChangeset}
-          onCommitChangeset={onCommitChangeset}
-        />
-
         <ol className="ledger" role="log" aria-live="polite">
           {state.transcript.length === 0 ? (
             <li className="empty">
@@ -851,8 +759,28 @@ const ConversationPanel = ({
             Send
           </button>
         </div>
+        <div className="session-foot">
+          <span
+            className="end-transition-status"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            {endTransitionStatus(state)}
+          </span>
+          <button
+            type="button"
+            className="end-session"
+            onClick={onEnd}
+            disabled={state.lifecycle !== "active"}
+          >
+            {state.lifecycle === "ending" || state.lifecycle === "closed"
+              ? "Returning…"
+              : "Return to agent"}
+          </button>
+        </div>
       </form>
-    </section>
+    </div>
   );
 };
 
@@ -943,13 +871,17 @@ export const App = () => {
 
   const [workspace, dispatchWorkspace] = useReducer(
     visualWorkspaceReducer,
-    window.innerWidth,
-    createVisualWorkspaceState,
+    // Both dimensions: the column's width is clamped against one and the
+    // sections' heights against the other, and a stack seeded with no height
+    // clamps every splitter to its floor (#249).
+    { width: window.innerWidth, height: window.innerHeight },
+    ({ width, height }) => createVisualWorkspaceState(width, height),
   );
 
   const [layoutWaiting, setLayoutWaiting] = useState<string | null>(null);
-  // The save-view form has two openers now — its own toggle in the strip and
-  // the tree's new-view button — so the shell owns whether it is open.
+  // The save-view form has several openers - the rail's new-view button and
+  // three context-menu items - and none of them is the form, so the shell owns
+  // whether it is open.
   const [saveViewOpen, setSaveViewOpen] = useState(false);
   // Which folder a new view is saved into. Set by "New view in this folder…"
   // and cleared by every other opener, so the default directory is what a
@@ -970,6 +902,7 @@ export const App = () => {
       dispatchWorkspace({
         type: "viewport.resized",
         viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
       });
     window.addEventListener("resize", resized);
     return () => window.removeEventListener("resize", resized);
@@ -1059,13 +992,26 @@ export const App = () => {
         ? "Reading the session"
         : "No model to draw";
 
-  const conversationOpen = workspace.conversation.mode === "open";
+  const stagedCount =
+    state.pendingChangeset.operations.length +
+    state.pendingChangeset.viewOperations.length;
+  const sectionOpen = (section: RightSectionId) =>
+    !workspace.conversation.collapsed.includes(section);
   const treeCollapsed = useMemo(
     () => new Set(workspace.tree.collapsed),
     [workspace.tree.collapsed],
   );
   const shellStyle = {
     "--conversation-width": `${workspace.conversation.width}px`,
+    // The two sections that have a height of their own; properties takes what
+    // is left. A shut section is its header and nothing more, so the height it
+    // was dragged to waits for it to open again.
+    "--changes-height": sectionOpen("changes")
+      ? `${workspace.conversation.changesHeight}px`
+      : "auto",
+    "--chat-height": sectionOpen("chat")
+      ? `${workspace.conversation.chatHeight}px`
+      : "auto",
   } as CSSProperties;
 
   const openMenu = (
@@ -1176,10 +1122,9 @@ export const App = () => {
         dispatchWorkspace({ type: "menu.dismissed" });
         return;
       case "view.new":
-        // Same two motions the rail's own new-view button makes: a new view
-        // starts from the whole model, and the form seeds itself from what is
-        // active, so clearing first is what makes its fields blank.
-        clearFilter();
+        // Same motion the rail's own new-view button makes, and seeded the
+        // same way: from the query on the canvas, because that is what a
+        // reviewer reaching for "new view" is usually keeping (#249).
         setSaveViewFolder(undefined);
         setSaveViewOpen(true);
         dispatchWorkspace({ type: "menu.dismissed" });
@@ -1217,7 +1162,6 @@ export const App = () => {
         // the filesystem is involved: both documents sit beside every other
         // projection and say which folder they belong to (ADR 0104).
         setSaveViewFolder(declaredFolder(view));
-        clearFilter();
         setSaveViewOpen(true);
         dispatchWorkspace({ type: "menu.dismissed" });
         return;
@@ -1258,37 +1202,8 @@ export const App = () => {
 
   return (
     <main className="visual-shell" style={shellStyle}>
-      <CommandStrip
-        state={state}
-        connection={connectionOf(state, connected)}
-        detailsOpen={workspace.detailsOpen}
-        conversationOpen={conversationOpen}
-        unread={workspace.conversation.unread}
-        layout={workspace.layout}
-        showLifecycle={workspace.showLifecycle}
-        showEvidence={workspace.showEvidence}
-        showOwnership={workspace.showOwnership}
-        views={state.views}
-        onToggleDetails={() => dispatchWorkspace({ type: "details.toggled" })}
-        onToggleConversation={() =>
-          dispatchWorkspace({ type: "conversation.toggled" })
-        }
-        onSelectLayout={(layout) =>
-          dispatchWorkspace({ type: "layout.set", layout })
-        }
-        quickFilterText={state.quickFilterText}
-        onQuickFilterChange={setQuickFilterText}
-        saveViewOpen={saveViewOpen}
-        saveViewFolder={saveViewFolder}
-        onToggleSaveView={() => setSaveViewOpen((open) => !open)}
-        onStageView={stageViewChange}
-        onEnd={end}
-      />
-      <div
-        className={`workspace workspace-conversation-${
-          conversationOpen ? "open" : "closed"
-        }`}
-      >
+      <CommandStrip state={state} connection={connectionOf(state, connected)} />
+      <div className="workspace">
         <ViewTree
           views={state.views}
           activeViewId={state.activeView}
@@ -1310,10 +1225,12 @@ export const App = () => {
           onSelectView={(id) => navigate(id)}
           onClearView={clearFilter}
           onNewView={() => {
-            // A new view starts from the whole model rather than from whatever
-            // the last one narrowed to, and the form seeds itself from the
-            // active view — so clearing first is what makes its fields blank.
-            clearFilter();
+            // Seeded from what is on the canvas, not from a blank model. The
+            // strip's `Save view` button was how a reviewer kept the query they
+            // were looking at, and the strip carries identity only now (#249) -
+            // so this is that motion, and clearing the filter first would throw
+            // away the thing being saved. It reverses the call #245 made when
+            // this item was the only way to reach the form.
             setSaveViewFolder(undefined);
             setSaveViewOpen(true);
           }}
@@ -1397,6 +1314,7 @@ export const App = () => {
           onCanvasReady={(png) => {
             canvasPngRef.current = png;
           }}
+          onQuickFilterChange={setQuickFilterText}
           view={
             state.views.find((candidate) => candidate.id === state.activeView) ??
             null
@@ -1416,40 +1334,121 @@ export const App = () => {
           onApplyFilter={(query) => filter(query, "editor")}
           onStageView={stageViewChange}
         />
-        {conversationOpen ? (
-          <ConversationSeparator
-            width={workspace.conversation.width}
-            viewportWidth={workspace.viewportWidth}
-            onResize={(width) =>
-              dispatchWorkspace({ type: "conversation.resized", width })
+        <ConversationSeparator
+          width={workspace.conversation.width}
+          viewportWidth={workspace.viewportWidth}
+          onResize={(width) =>
+            dispatchWorkspace({ type: "conversation.resized", width })
+          }
+        />
+        <aside className="section-stack" aria-label="Session">
+          <Section
+            id="properties"
+            label="Element properties"
+            meta={workspace.selectedSubject?.id}
+            open={sectionOpen("properties")}
+            onToggle={() =>
+              dispatchWorkspace({ type: "section.toggled", section: "properties" })
+            }
+          >
+            {workspace.selectedSubject === null || state.model === null ? (
+              <p className="section-empty">
+                Nothing selected. Pick a subject on the canvas or in the rail.
+              </p>
+            ) : (
+              <SelectedSubjectInspector
+                subject={workspace.selectedSubject}
+                model={state.model}
+                operations={state.pendingChangeset.operations}
+                expanded={workspace.descriptionExpanded}
+                onToggleDescription={() =>
+                  dispatchWorkspace({ type: "description.toggled" })
+                }
+                onClear={() => dispatchWorkspace({ type: "subject.cleared" })}
+                onConnect={(from) =>
+                  dispatchWorkspace({ type: "connection.started", from })
+                }
+                onDelete={(id) =>
+                  dispatchWorkspace({ type: "deletion.asked", id })
+                }
+                onStageChange={stageChange}
+              />
+            )}
+          </Section>
+          <SectionSplitter
+            label="Resize the changes section"
+            height={workspace.conversation.changesHeight}
+            viewportHeight={workspace.viewportHeight}
+            onResize={(height) =>
+              dispatchWorkspace({
+                type: "section.resized",
+                section: "changes",
+                height,
+              })
             }
           />
-        ) : null}
-        <ConversationPanel
-          state={state}
-          hidden={!conversationOpen}
-          disabled={!state.composerEnabled}
-          selectedSubject={workspace.selectedSubject}
-          descriptionExpanded={workspace.descriptionExpanded}
-          onSend={(text) =>
-            ask(formatContextualQuestion(text, workspace.selectedSubject))
-          }
-          onChoice={choose}
-          onToggleDescription={() =>
-            dispatchWorkspace({ type: "description.toggled" })
-          }
-          onClearSubject={() => dispatchWorkspace({ type: "subject.cleared" })}
-          onConnect={(from) =>
-            dispatchWorkspace({ type: "connection.started", from })
-          }
-          onDelete={(id) => dispatchWorkspace({ type: "deletion.asked", id })}
-          onDiscardChange={discardChange}
-          onStageChange={stageChange}
-          onClearChangeset={clearChangeset}
-          onUndoChangeset={undoChangeset}
-          onRedoChangeset={redoChangeset}
-          onCommitChangeset={commitChangeset}
-        />
+          <Section
+            id="changes"
+            label="Changes"
+            meta={stagedCount === 0 ? "nothing staged" : `${stagedCount} staged`}
+            open={sectionOpen("changes")}
+            onToggle={() =>
+              dispatchWorkspace({ type: "section.toggled", section: "changes" })
+            }
+          >
+            <ChangesetTray
+              state={state}
+              onDiscardChange={discardChange}
+              onClearChangeset={clearChangeset}
+              onUndoChangeset={undoChangeset}
+              onRedoChangeset={redoChangeset}
+              onCommitChangeset={commitChangeset}
+            />
+          </Section>
+          <SectionSplitter
+            label="Resize the chat section"
+            height={workspace.conversation.chatHeight}
+            viewportHeight={workspace.viewportHeight}
+            onResize={(height) =>
+              dispatchWorkspace({
+                type: "section.resized",
+                section: "chat",
+                height,
+              })
+            }
+          />
+          <Section
+            id="chat"
+            label="Chat"
+            meta={
+              workspace.conversation.unread === 0 ? (
+                chatMeta(state)
+              ) : (
+                <span className="attention-count">
+                  {workspace.conversation.unread}
+                </span>
+              )
+            }
+            open={sectionOpen("chat")}
+            onToggle={() =>
+              dispatchWorkspace({ type: "section.toggled", section: "chat" })
+            }
+          >
+            <ChatSection
+              state={state}
+              disabled={!state.composerEnabled}
+              selectedSubject={workspace.selectedSubject}
+              onSend={(text) =>
+                ask(formatContextualQuestion(text, workspace.selectedSubject))
+              }
+              onChoice={choose}
+              onClearSubject={() =>
+                dispatchWorkspace({ type: "subject.cleared" })
+              }
+              onEnd={end}
+            />
+          </Section>
+        </aside>
       </div>
       {/* At the shell, not inside the canvas or the rail: a menu opened on the
           last row of the rail has to be able to hang past the rail's edge. */}
@@ -1462,6 +1461,21 @@ export const App = () => {
           onDismiss={() => dispatchWorkspace({ type: "menu.dismissed" })}
         />
       )}
+      <SaveViewDialog
+        views={state.views}
+        activeViewId={state.activeView}
+        // Seeded from what the canvas is drawing: saving a view is keeping the
+        // query on screen, which is why nothing clears it on the way in.
+        query={state.activeFilter?.query ?? null}
+        layout={workspace.layout}
+        showLifecycle={workspace.showLifecycle}
+        showEvidence={workspace.showEvidence}
+        showOwnership={workspace.showOwnership}
+        open={saveViewOpen}
+        folder={saveViewFolder}
+        onClose={() => setSaveViewOpen(false)}
+        onStage={stageViewChange}
+      />
       {!namingFolder ? null : (
         <PromptDialog
           title="New folder"
@@ -1477,7 +1491,6 @@ export const App = () => {
             // with no view in it is a folder no document declares, and so not
             // a folder at all.
             setSaveViewFolder(named);
-            clearFilter();
             setSaveViewOpen(true);
           }}
           onCancel={() => setNamingFolder(false)}

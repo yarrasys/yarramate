@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { CanvasEdge, CanvasNode } from "../src/graph-projection.js";
 import {
+  RIGHT_SECTIONS,
   conversationWidthBounds,
+  sectionHeightBounds,
   createVisualWorkspaceState,
   formatContextualQuestion,
   normalizeSelectedElement,
@@ -9,7 +11,9 @@ import {
   presentationActionsFor,
   viewNeedingApplication,
   visualWorkspaceReducer,
+  type RightSectionId,
   type SelectedDiagramSubject,
+  type VisualWorkspaceState,
 } from "../src/visual-app/workspace-state.js";
 
 const canvasNode = (overrides: Partial<CanvasNode> = {}): CanvasNode => ({
@@ -64,43 +68,51 @@ const elementSubject: SelectedDiagramSubject = {
 };
 
 describe("visual workspace state", () => {
-  it("starts collapsed at the responsive default width", () => {
+  it("starts with every section open, at the responsive default width", () => {
     const state = createVisualWorkspaceState(1568);
     expect(state.conversation).toEqual({
-      mode: "auto",
       width: expect.closeTo(439.04, 2),
       unread: 0,
+      collapsed: [],
+      changesHeight: 200,
+      chatHeight: 300,
     });
   });
 
   it("caps the default width at 480px on wide viewports", () => {
-    const state = createVisualWorkspaceState(1920);
-    expect(state.conversation).toEqual({
-      mode: "auto",
+    expect(createVisualWorkspaceState(1920).conversation).toMatchObject({
       width: 480,
-      unread: 0,
     });
   });
 
-  it("opens automatically for first activity but respects a manual close", () => {
+  it("counts an arriving reply only while chat is shut", () => {
+    // Chat is a section on screen now, not a panel behind a toggle (#249), so
+    // a reply that lands in front of the reviewer needs no count standing in
+    // for it. A shut section is the only case where something happened out of
+    // sight, and opening it is reading it.
     const initial = createVisualWorkspaceState(1568);
-    const opened = visualWorkspaceReducer(initial, {
+    const seen = visualWorkspaceReducer(initial, {
       type: "attention.received",
     });
-    expect(opened.conversation.mode).toBe("open");
+    expect(seen.conversation.unread).toBe(0);
 
-    const closed = visualWorkspaceReducer(opened, {
-      type: "conversation.toggled",
+    const shut = visualWorkspaceReducer(initial, {
+      type: "section.toggled",
+      section: "chat",
     });
-    const waiting = visualWorkspaceReducer(closed, {
+    const waiting = visualWorkspaceReducer(shut, {
       type: "attention.received",
     });
-    expect(waiting.conversation).toMatchObject({ mode: "closed", unread: 1 });
+    expect(waiting.conversation).toMatchObject({
+      collapsed: ["chat"],
+      unread: 1,
+    });
 
     const reopened = visualWorkspaceReducer(waiting, {
-      type: "conversation.toggled",
+      type: "section.toggled",
+      section: "chat",
     });
-    expect(reopened.conversation).toMatchObject({ mode: "open", unread: 0 });
+    expect(reopened.conversation).toMatchObject({ collapsed: [], unread: 0 });
   });
 
   it("re-reads a held subject from the replacement model and drops it only when removed", () => {
@@ -108,7 +120,8 @@ describe("visual workspace state", () => {
       type: "subject.selected",
       subject: elementSubject,
     });
-    expect(selected.conversation.mode).toBe("open");
+    // Selecting opens the section that describes the selection.
+    expect(selected.conversation.collapsed).not.toContain("properties");
     expect(selected.selectedSubject).toEqual(elementSubject);
 
     // A commit that renamed the held subject: the inspector follows the edit
@@ -122,7 +135,7 @@ describe("visual workspace state", () => {
       id: "system.api",
       title: "Gateway API",
     });
-    expect(renamed.conversation.mode).toBe("open");
+    expect(renamed.conversation.collapsed).not.toContain("properties");
 
     // A commit that deleted it, and a session with no model at all: nothing
     // left to point at either way.
@@ -132,7 +145,7 @@ describe("visual workspace state", () => {
         graph,
       });
       expect(gone.selectedSubject).toBeNull();
-      expect(gone.conversation.mode).toBe("open");
+      expect(gone.conversation.collapsed).not.toContain("properties");
     }
   });
 
@@ -804,5 +817,101 @@ describe("the canvas column's bottom panel", () => {
         tab: "view-query",
       }),
     ).toBe(opened);
+  });
+});
+
+/**
+ * The right column's sections (#249). The column has no open/closed mode any
+ * more: the sections collapse one by one, and three shut headers say what is
+ * behind each of them where a shut column said nothing.
+ */
+describe("the right column's sections", () => {
+  const state = createVisualWorkspaceState(1568, 900);
+
+  const toggle = (
+    from: VisualWorkspaceState,
+    section: RightSectionId,
+  ): VisualWorkspaceState =>
+    visualWorkspaceReducer(from, { type: "section.toggled", section });
+
+  it("stacks properties, changes and chat, with chat last", () => {
+    // Chat is pinned at the foot because it owns the session's own control -
+    // the reviewer ends the conversation beside the conversation.
+    expect(RIGHT_SECTIONS).toEqual(["properties", "changes", "chat"]);
+  });
+
+  it("shuts and reopens one section without touching the others", () => {
+    const shut = toggle(state, "changes");
+    expect(shut.conversation.collapsed).toEqual(["changes"]);
+
+    const both = toggle(shut, "properties");
+    expect(both.conversation.collapsed).toEqual(["changes", "properties"]);
+
+    expect(toggle(both, "changes").conversation.collapsed).toEqual([
+      "properties",
+    ]);
+  });
+
+  it("holds what is CLOSED, so a section added later arrives open", () => {
+    // The same rule the rail's branches follow: a default nobody chose should
+    // not hide something nobody has seen.
+    expect(state.conversation.collapsed).toEqual([]);
+  });
+
+  it("drags the height of the section below the handle", () => {
+    const dragged = visualWorkspaceReducer(state, {
+      type: "section.resized",
+      section: "chat",
+      height: 320,
+    });
+
+    expect(dragged.conversation.chatHeight).toBe(320);
+    expect(dragged.conversation.changesHeight).toBe(
+      state.conversation.changesHeight,
+    );
+  });
+
+  it("keeps a section from being dragged shorter than a header or past the window", () => {
+    const bounds = sectionHeightBounds(900);
+    expect(bounds).toEqual({ min: 96, max: 740 });
+
+    expect(
+      visualWorkspaceReducer(state, {
+        type: "section.resized",
+        section: "chat",
+        height: 10,
+      }).conversation.chatHeight,
+    ).toBe(96);
+    expect(
+      visualWorkspaceReducer(state, {
+        type: "section.resized",
+        section: "chat",
+        height: 5_000,
+      }).conversation.chatHeight,
+    ).toBe(740);
+  });
+
+  it("re-clamps the sections when the window gets shorter", () => {
+    // Held against the viewport the state was clamped for, never read live:
+    // a shorter window changes what a splitter may be dragged to, and a render
+    // that read the global would only say so by accident.
+    const short = visualWorkspaceReducer(state, {
+      type: "viewport.resized",
+      viewportWidth: 1568,
+      viewportHeight: 400,
+    });
+
+    expect(short.conversation.chatHeight).toBe(240);
+    expect(short.viewportHeight).toBe(400);
+  });
+
+  it("changes nothing when a drag lands on the height it already has", () => {
+    expect(
+      visualWorkspaceReducer(state, {
+        type: "section.resized",
+        section: "chat",
+        height: state.conversation.chatHeight,
+      }),
+    ).toBe(state);
   });
 });

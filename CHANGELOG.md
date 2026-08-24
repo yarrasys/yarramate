@@ -2,6 +2,33 @@
 
 ## 1.0.0
 
+- **Changed.** The right column is a stack of collapsible sections — element
+  properties, changes, chat — split by handles a pointer or the arrow keys can
+  drag, with chat pinned at the foot (#249). There is no open/closed mode for
+  the column any more: a shut section header still says what is behind it (the
+  selected subject, the staged count, whose turn it is) where a shut column
+  said nothing, which is also why an unread count now appears only while
+  **Chat** is shut.
+
+- **Breaking.** The command strip carries identity and nothing else. Its
+  controls went to the things they act on: the **quick filter** to the canvas
+  it narrows, **Save view** to the form the rail and the menus already open,
+  **End** to the chat section that owns the conversation. The **Details**
+  disclosure is gone — it only ever revealed one sentence, and a sentence about
+  what the session *is* now sits beside the name. **Conversation** is gone with
+  the mode it toggled.
+
+- **Changed.** `End` is **Return to agent**, which is what it always did — its
+  own notice has always read "Returning control to the main agent". One button:
+  the design draws `End session` beside it for a handback that leaves the
+  session live, nothing can do that yet, and a button that claimed to would be
+  lying about the lifecycle.
+
+- **Changed.** **New view…** seeds from the query on screen instead of clearing
+  it first. Saving a view is keeping what you are looking at, and the strip
+  button that used to do that is gone; this reverses the call #245 made when
+  the menu item was the only way to reach the form.
+
 - **Changed.** A folder is something the author declares, not where the file
   sits (#261, ADR 0104). `presentation.folder` on a projection and `folder` on
   a concept, both labels nested with `/`, both optional, neither resolved

@@ -146,7 +146,7 @@ describe('visual conversation rendering', () => {
     expect(markup).toContain('Awaiting agent response')
   })
 
-  it('explains that End is preparing the main-agent handoff', () => {
+  it('explains that returning to the agent is preparing the handoff', () => {
     const markup = renderSession({ lifecycle: 'ending', handoff: null })
 
     expect(markup).toContain('class="end-transition-status"')
@@ -154,7 +154,7 @@ describe('visual conversation rendering', () => {
     expect(markup).toContain(
       'Ending conversation — preparing a handoff for the main agent.',
     )
-    expect(markup).toContain('>Ending…</button>')
+    expect(markup).toContain('>Returning…</button>')
   })
 
   it('reports when the handoff is ready for the main agent', () => {
@@ -189,12 +189,12 @@ describe('visual conversation rendering', () => {
   })
 
   it.each(['connecting', 'disconnected'] as const)(
-    'keeps the End label before an End request while %s',
+    'keeps the Return label before a return is requested while %s',
     (lifecycle) => {
       const markup = renderSession({ lifecycle })
 
-      expect(markup).toContain('>End</button>')
-      expect(markup).not.toContain('>Ending…</button>')
+      expect(markup).toContain('>Return to agent</button>')
+      expect(markup).not.toContain('>Returning…</button>')
     },
   )
 
@@ -321,11 +321,16 @@ describe('visual conversation rendering', () => {
     )
   })
 
-  it('renders the quick-filter box with the current quickFilterText as its value', () => {
-    const markup = renderSession({ quickFilterText: 'checkout' })
+  it('puts the quick filter on the canvas it narrows, not in the strip', () => {
+    // It used to sit in the command strip, as far from the diagram as the
+    // window allows, beside controls with nothing to do with it (#249).
+    const markup = renderSession({ model: renderedModel, quickFilterText: 'checkout' })
 
+    expect(markup).toContain('class="canvas-controls"')
     expect(markup).toContain('class="quick-filter"')
     expect(markup).toContain('value="checkout"')
+    const strip = markup.slice(0, markup.indexOf('</header>'))
+    expect(strip).not.toContain('quick-filter')
   })
 
   it('edits the query at the foot of the canvas, not in a dropdown over it', () => {
@@ -368,5 +373,74 @@ describe('command strip', () => {
     expect(markup).not.toContain('Top-Down')
     expect(markup).not.toContain('Left-Right')
     expect(markup).not.toContain('direction-notice')
+  })
+})
+
+/**
+ * The shell the design asks for (#249): identity in the strip, three sections
+ * in the right column, and the session's own control beside the conversation.
+ */
+describe('the right column, as a stack of sections', () => {
+  it('draws all three sections, chat last', () => {
+    const markup = renderSession()
+
+    expect(markup).toContain('class="section-stack"')
+    const order = ['properties', 'changes', 'chat'].map((id) =>
+      markup.indexOf(`stack-section-${id}`),
+    )
+    expect(order.every((at) => at !== -1)).toBe(true)
+    expect(order).toEqual([...order].sort((a, b) => a - b))
+  })
+
+  it('says what a section holds while it is shut', () => {
+    // A closed strip button said nothing. A closed header says whose turn it
+    // is, how many rows are staged, and which subject is selected.
+    const markup = renderSession()
+
+    expect(markup).toContain('>Element properties</span>')
+    expect(markup).toContain('class="section-meta">nothing staged</span>')
+  })
+
+  it('gives each pair of sections a handle a keyboard can reach', () => {
+    const markup = renderSession()
+
+    expect(markup).toContain('aria-label="Resize the changes section"')
+    expect(markup).toContain('aria-label="Resize the chat section"')
+    expect(markup).toContain('aria-orientation="horizontal"')
+    expect(markup).toContain('tabindex="0"')
+  })
+
+  it('leaves the command strip carrying identity and nothing else', () => {
+    const markup = renderSession()
+    const strip = markup.slice(0, markup.indexOf('</header>'))
+
+    expect(strip).toContain('class="command-identity"')
+    for (const gone of [
+      '>Details</button>',
+      '>Conversation</button>',
+      '>Save view</button>',
+      'class="quick-filter"',
+      'class="end-session"',
+    ]) {
+      expect(strip, `${gone} has left the strip`).not.toContain(gone)
+    }
+  })
+
+  it('ends the session from the chat section, and calls it what it does', () => {
+    // One button, not two. The design draws `End session` beside it for a
+    // handback that leaves the session live; nothing can do that yet, and a
+    // button that claimed to would be lying about the lifecycle.
+    const markup = renderSession()
+    const chat = markup.slice(markup.indexOf('stack-section-chat'))
+
+    expect(chat).toContain('>Return to agent</button>')
+    expect(markup).not.toContain('>End session</button>')
+  })
+
+  it('reads the session description in the strip rather than behind a disclosure', () => {
+    const markup = renderSession()
+
+    expect(markup).toContain('class="session-description"')
+    expect(markup).not.toContain('id="session-details"')
   })
 })
