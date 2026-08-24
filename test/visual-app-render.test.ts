@@ -217,7 +217,12 @@ describe('visual conversation rendering', () => {
     'shows a filter pill naming a %s-issued query the tree cannot name',
     (source) => {
       const markup = renderSession({
-        activeFilter: { query: { layers: ['application'] }, matchedIds: ['a'], source },
+        activeFilter: {
+          query: { layers: ['application'] },
+          matchedIds: ['a'],
+          excluded: [],
+          source,
+        },
       })
 
       expect(markup).toContain('class="filter-pill"')
@@ -229,7 +234,12 @@ describe('visual conversation rendering', () => {
 
   it('hides the filter pill for a view-sourced filter the tree already names', () => {
     const markup = renderSession({
-      activeFilter: { query: { layers: ['application'] }, matchedIds: ['a'], source: 'view' },
+      activeFilter: {
+        query: { layers: ['application'] },
+        matchedIds: ['a'],
+        excluded: [],
+        source: 'view',
+      },
     })
 
     expect(markup).not.toContain('class="filter-pill"')
@@ -287,6 +297,7 @@ describe('visual conversation rendering', () => {
       activeFilter: {
         query: {},
         matchedIds: ['app.checkout', 'checkout-serves-ledger'],
+        excluded: [],
         source: 'view',
       },
     })
@@ -316,11 +327,23 @@ describe('visual conversation rendering', () => {
     expect(markup).toContain('value="checkout"')
   })
 
-  it('renders the filter panel toggle button', () => {
+  it('edits the query at the foot of the canvas, not in a dropdown over it', () => {
     const markup = renderSession()
 
-    expect(markup).toContain('class="filter-panel"')
-    expect(markup).toContain('>Filter</button>')
+    // The facets moved into the canvas column's own panel (#248), where the
+    // match count, the excluded list and the document sit beside them. A
+    // dropdown could only ever overlay the diagram it was narrowing.
+    expect(markup).not.toContain('class="filter-panel"')
+    expect(markup).not.toContain('>Filter</button>')
+    expect(markup).toContain('class="bottom-panel"')
+    expect(markup).toContain('>View query</button>')
+  })
+
+  it('leaves the query panel collapsed until it is asked for', () => {
+    const markup = renderSession()
+
+    expect(markup).toContain('aria-expanded="false"')
+    expect(markup).not.toContain('role="tabpanel"')
   })
 })
 

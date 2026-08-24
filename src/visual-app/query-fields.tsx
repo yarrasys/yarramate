@@ -1,5 +1,16 @@
-import { useRef, useState, type KeyboardEvent } from 'react'
+import { useState, type KeyboardEvent } from 'react'
 import type { LifecycleStatus, ProjectionQuery } from '../projection.js'
+
+/**
+ * The fields a `ProjectionQuery` is edited through, and the translation
+ * between them and the wire shape.
+ *
+ * The panel that used to own them is gone: a query is edited in the canvas
+ * column's bottom panel now (#248), where the match count, the excluded list
+ * and the document a query resolves to sit beside the fields instead of
+ * overlaying the diagram they narrow. The fields themselves did not change, so
+ * they live here and `query-panel.tsx` composes them.
+ */
 
 /**
  * The form's own shape, not the wire shape: every one of the 13 query
@@ -47,9 +58,6 @@ const LIFECYCLE_STATUSES: readonly LifecycleStatus[] = [
   'current',
   'retired',
 ]
-
-/** How long the reviewer must pause before an edit becomes a live query. */
-const APPLY_DEBOUNCE_MS = 300
 
 export const queryToFields = (query: ProjectionQuery | null): QueryFields =>
   query === null
@@ -223,18 +231,6 @@ const ChoiceField = <Value extends string>({
   </div>
 )
 
-export interface FilterPanelProps {
-  /** The server's last-applied query, used to seed the form each time it
-   * opens. `null` means unfiltered — the panel starts empty for an ad-hoc
-   * query rather than guessing at one. */
-  readonly query: ProjectionQuery | null
-  readonly onApply: (query: ProjectionQuery) => void
-  readonly showLifecycle: boolean
-  readonly showEvidence: boolean
-  readonly showOwnership: boolean
-  readonly onTogglePresentation: (flag: PresentationFlag, value: boolean) => void
-}
-
 export type PresentationFlag = 'showLifecycle' | 'showEvidence' | 'showOwnership'
 
 /** The checkbox's onChange handler, extracted so it is directly testable in
@@ -248,185 +244,161 @@ export const presentationToggleHandler =
     onTogglePresentation(flag, value)
 
 /**
- * A structured, always-valid-by-construction editor over all 13
- * `ProjectionQuery` dimensions. Every edit is live: after a short pause the
- * live-composed query is sent as a filter, so the reviewer sees the diagram
- * narrow as they build the query rather than submitting a form. A malformed
- * value (an unrecognised layer, say) is caught by the same Ajv validation
- * every other browser input goes through and surfaces through `Faults` —
- * this component adds no validation of its own.
+ * All 13 `ProjectionQuery` dimensions as one always-valid-by-construction
+ * grid. A malformed value (an unrecognised layer, say) is caught by the same
+ * Ajv validation every other browser input goes through and surfaces through
+ * `Faults` — this component adds no validation of its own.
  */
-export function FilterPanel({
-  query,
-  onApply,
+export function QueryFacets({
+  fields,
+  onChange,
+}: {
+  readonly fields: QueryFields
+  readonly onChange: <K extends keyof QueryFields>(
+    key: K,
+    value: QueryFields[K],
+  ) => void
+}) {
+  return (
+    <div className="filter-grid">
+      <TagField
+        id="filter-subjects"
+        label="Subjects"
+        values={fields.subjects}
+        onChange={(values) => onChange('subjects', values)}
+      />
+      <TagField
+        id="filter-documents"
+        label="Documents"
+        values={fields.documents}
+        onChange={(values) => onChange('documents', values)}
+      />
+      <TagField
+        id="filter-kinds"
+        label="Kinds"
+        values={fields.kinds}
+        onChange={(values) => onChange('kinds', values)}
+      />
+      <TagField
+        id="filter-layers"
+        label="Layers"
+        values={fields.layers}
+        onChange={(values) => onChange('layers', values)}
+      />
+      <TagField
+        id="filter-states"
+        label="States"
+        values={fields.states}
+        onChange={(values) => onChange('states', values)}
+      />
+      <TagField
+        id="filter-owners"
+        label="Owners"
+        values={fields.owners}
+        onChange={(values) => onChange('owners', values)}
+      />
+      <TagField
+        id="filter-constraints"
+        label="Constraints"
+        values={fields.constraints}
+        onChange={(values) => onChange('constraints', values)}
+      />
+      <TagField
+        id="filter-relationship-kinds"
+        label="Relationship kinds"
+        values={fields.relationshipKinds}
+        onChange={(values) => onChange('relationshipKinds', values)}
+      />
+      <StatusGroup
+        legend="Statuses"
+        values={fields.statuses}
+        onChange={(values) => onChange('statuses', values)}
+      />
+      <StatusGroup
+        legend="Exclude statuses"
+        values={fields.excludeStatuses}
+        onChange={(values) => onChange('excludeStatuses', values)}
+      />
+      <ChoiceField
+        id="filter-kind-matching"
+        label="Kind matching"
+        value={fields.kindMatching}
+        options={['exact', 'descendants'] as const}
+        onChange={(value) => onChange('kindMatching', value)}
+      />
+      <ChoiceField
+        id="filter-relationships"
+        label="Relationships"
+        value={fields.relationships}
+        options={['between', 'connected', 'none'] as const}
+        onChange={(value) => onChange('relationships', value)}
+      />
+      <ChoiceField
+        id="filter-isolated-concepts"
+        label="Isolated concepts"
+        value={fields.isolatedConcepts}
+        options={['include', 'exclude'] as const}
+        onChange={(value) => onChange('isolatedConcepts', value)}
+      />
+    </div>
+  )
+}
+
+/**
+ * The three badge toggles. Presentation, not query: they are written into the
+ * view document's `presentation` and never composed into a `ProjectionQuery`,
+ * which is why they take their own handler rather than sharing `onChange`.
+ */
+export function PresentationToggles({
   showLifecycle,
   showEvidence,
   showOwnership,
   onTogglePresentation,
-}: FilterPanelProps) {
-  const debounceHandle = useRef<number | null>(null)
-  const [fields, setFields] = useState<QueryFields>(() => queryToFields(query))
-  const [open, setOpen] = useState(false)
-  const scheduleApply = (next: QueryFields) => {
-    if (debounceHandle.current !== null) window.clearTimeout(debounceHandle.current)
-    debounceHandle.current = window.setTimeout(() => {
-      debounceHandle.current = null
-      onApply(composeQuery(next))
-    }, APPLY_DEBOUNCE_MS)
-  }
-
-  const update = <K extends keyof QueryFields>(key: K, value: QueryFields[K]) => {
-    setFields((previous) => {
-      const next = { ...previous, [key]: value }
-      scheduleApply(next)
-      return next
-    })
-  }
-
-  const toggle = () => {
-    if (debounceHandle.current !== null) window.clearTimeout(debounceHandle.current)
-    setOpen((wasOpen) => {
-      const nowOpen = !wasOpen
-      // Opening re-seeds from whatever the server last applied — a view just
-      // picked, or nothing if the reviewer is starting from scratch — so the
-      // panel never shows a stale draft from a previous open.
-      if (nowOpen) setFields(queryToFields(query))
-      return nowOpen
-    })
-  }
-
+}: {
+  readonly showLifecycle: boolean
+  readonly showEvidence: boolean
+  readonly showOwnership: boolean
+  readonly onTogglePresentation: (flag: PresentationFlag, value: boolean) => void
+}) {
   return (
-    <div className="filter-panel">
-      <button
-        type="button"
-        aria-expanded={open}
-        aria-controls="filter-panel-body"
-        onClick={toggle}
-      >
-        Filter
-      </button>
-      <div id="filter-panel-body" className="filter-panel-body" hidden={!open}>
-        <div className="filter-grid">
-          <TagField
-            id="filter-subjects"
-            label="Subjects"
-            values={fields.subjects}
-            onChange={(values) => update('subjects', values)}
-          />
-          <TagField
-            id="filter-documents"
-            label="Documents"
-            values={fields.documents}
-            onChange={(values) => update('documents', values)}
-          />
-          <TagField
-            id="filter-kinds"
-            label="Kinds"
-            values={fields.kinds}
-            onChange={(values) => update('kinds', values)}
-          />
-          <TagField
-            id="filter-layers"
-            label="Layers"
-            values={fields.layers}
-            onChange={(values) => update('layers', values)}
-          />
-          <TagField
-            id="filter-states"
-            label="States"
-            values={fields.states}
-            onChange={(values) => update('states', values)}
-          />
-          <TagField
-            id="filter-owners"
-            label="Owners"
-            values={fields.owners}
-            onChange={(values) => update('owners', values)}
-          />
-          <TagField
-            id="filter-constraints"
-            label="Constraints"
-            values={fields.constraints}
-            onChange={(values) => update('constraints', values)}
-          />
-          <TagField
-            id="filter-relationship-kinds"
-            label="Relationship kinds"
-            values={fields.relationshipKinds}
-            onChange={(values) => update('relationshipKinds', values)}
-          />
-          <StatusGroup
-            legend="Statuses"
-            values={fields.statuses}
-            onChange={(values) => update('statuses', values)}
-          />
-          <StatusGroup
-            legend="Exclude statuses"
-            values={fields.excludeStatuses}
-            onChange={(values) => update('excludeStatuses', values)}
-          />
-          <ChoiceField
-            id="filter-kind-matching"
-            label="Kind matching"
-            value={fields.kindMatching}
-            options={['exact', 'descendants'] as const}
-            onChange={(value) => update('kindMatching', value)}
-          />
-          <ChoiceField
-            id="filter-relationships"
-            label="Relationships"
-            value={fields.relationships}
-            options={['between', 'connected', 'none'] as const}
-            onChange={(value) => update('relationships', value)}
-          />
-          <ChoiceField
-            id="filter-isolated-concepts"
-            label="Isolated concepts"
-            value={fields.isolatedConcepts}
-            options={['include', 'exclude'] as const}
-            onChange={(value) => update('isolatedConcepts', value)}
-          />
-        </div>
-        <fieldset className="filter-field filter-presentation-group">
-          <legend>Presentation</legend>
-          <label className="filter-checkbox-option">
-            <input
-              type="checkbox"
-              checked={showLifecycle}
-              onChange={(event) =>
-                presentationToggleHandler(onTogglePresentation, 'showLifecycle')(
-                  event.currentTarget.checked,
-                )
-              }
-            />
-            Lifecycle badges
-          </label>
-          <label className="filter-checkbox-option">
-            <input
-              type="checkbox"
-              checked={showEvidence}
-              onChange={(event) =>
-                presentationToggleHandler(onTogglePresentation, 'showEvidence')(
-                  event.currentTarget.checked,
-                )
-              }
-            />
-            Evidence badges
-          </label>
-          <label className="filter-checkbox-option">
-            <input
-              type="checkbox"
-              checked={showOwnership}
-              onChange={(event) =>
-                presentationToggleHandler(onTogglePresentation, 'showOwnership')(
-                  event.currentTarget.checked,
-                )
-              }
-            />
-            Ownership badges
-          </label>
-        </fieldset>
-      </div>
-    </div>
+    <fieldset className="filter-field filter-presentation-group">
+      <legend>Presentation</legend>
+      <label className="filter-checkbox-option">
+        <input
+          type="checkbox"
+          checked={showLifecycle}
+          onChange={(event) =>
+            presentationToggleHandler(onTogglePresentation, 'showLifecycle')(
+              event.currentTarget.checked,
+            )
+          }
+        />
+        Lifecycle badges
+      </label>
+      <label className="filter-checkbox-option">
+        <input
+          type="checkbox"
+          checked={showEvidence}
+          onChange={(event) =>
+            presentationToggleHandler(onTogglePresentation, 'showEvidence')(
+              event.currentTarget.checked,
+            )
+          }
+        />
+        Evidence badges
+      </label>
+      <label className="filter-checkbox-option">
+        <input
+          type="checkbox"
+          checked={showOwnership}
+          onChange={(event) =>
+            presentationToggleHandler(onTogglePresentation, 'showOwnership')(
+              event.currentTarget.checked,
+            )
+          }
+        />
+        Ownership badges
+      </label>
+    </fieldset>
   )
 }

@@ -1,5 +1,6 @@
 import { GraphCanvas } from "./graph-canvas.js";
-import { FilterPanel, type PresentationFlag } from "./filter-panel.js";
+import type { PresentationFlag } from "./query-fields.js";
+import { QueryPanel, type BottomPanelTabId } from "./query-panel.js";
 import { QuickFilterBox } from "./quick-filter.js";
 import { ViewTree } from "./view-tree.js";
 import { SaveViewControl } from "./save-view.js";
@@ -124,8 +125,6 @@ const CommandStrip = ({
   showLifecycle,
   showEvidence,
   showOwnership,
-  onTogglePresentation,
-  onApplyFilter,
   quickFilterText,
   onQuickFilterChange,
   saveViewOpen,
@@ -147,11 +146,6 @@ const CommandStrip = ({
   readonly showLifecycle: boolean;
   readonly showEvidence: boolean;
   readonly showOwnership: boolean;
-  readonly onTogglePresentation: (
-    flag: PresentationFlag,
-    value: boolean,
-  ) => void;
-  readonly onApplyFilter: (query: ProjectionQuery) => void;
   readonly quickFilterText: string;
   readonly onQuickFilterChange: (text: string) => void;
   readonly saveViewOpen: boolean;
@@ -179,14 +173,6 @@ const CommandStrip = ({
         {endTransitionStatus(state)}
       </span>
       <QuickFilterBox value={quickFilterText} onChange={onQuickFilterChange} />
-      <FilterPanel
-        query={state.activeFilter?.query ?? null}
-        onApply={onApplyFilter}
-        showLifecycle={showLifecycle}
-        showEvidence={showEvidence}
-        showOwnership={showOwnership}
-        onTogglePresentation={onTogglePresentation}
-      />
       <SaveViewControl
         views={views}
         activeViewId={state.activeView}
@@ -327,6 +313,13 @@ const DiagramWorkspace = ({
   onClearFilter,
   onSaveLayout,
   onCanvasReady,
+  view,
+  bottomPanel,
+  onTogglePresentation,
+  onToggleBottomPanel,
+  onSelectBottomTab,
+  onApplyFilter,
+  onStageView,
 }: {
   readonly state: VisualAppState;
   readonly selectedId: string | null;
@@ -362,6 +355,19 @@ const DiagramWorkspace = ({
   readonly onClearFilter: () => void;
   readonly onSaveLayout: (payload: VisualLayoutSavePayload) => void;
   readonly onCanvasReady: (png: (() => string) | null) => void;
+  readonly view: VisualViewSummary | null;
+  readonly bottomPanel: {
+    readonly open: boolean;
+    readonly tab: BottomPanelTabId;
+  };
+  readonly onTogglePresentation: (
+    flag: PresentationFlag,
+    value: boolean,
+  ) => void;
+  readonly onToggleBottomPanel: () => void;
+  readonly onSelectBottomTab: (tab: BottomPanelTabId) => void;
+  readonly onApplyFilter: (query: ProjectionQuery) => void;
+  readonly onStageView: (operation: VisualViewOperation) => void;
 }) => {
   // An edge names its endpoints by node id; the reviewer reads titles. The
   // rendering model the renderer itself draws answers that, so nothing here
@@ -379,12 +385,16 @@ const DiagramWorkspace = ({
   return (
     <section className="diagram-workspace" aria-label="Architecture diagram">
       {/*
-       * A view's own query is named by the tree, so a pill would repeat it.
-       * Every other standing filter has nothing else naming it - the panel can
-       * be collapsed and chat can be scrolled away - so the canvas would show a
-       * subset while every control claimed the whole model.
+       * A view's own query is named by the tree, so a pill would repeat it,
+       * and that holds while the reviewer edits it: the query tab is showing
+       * the edit and the tree is still naming the view. Every other standing
+       * filter has nothing else naming it - the tab can be collapsed and chat
+       * can be scrolled away - so the canvas would show a subset while every
+       * control claimed the whole model.
        */}
-      {state.activeFilter !== null && state.activeFilter.source !== "view" ? (
+      {state.activeFilter !== null &&
+      state.activeFilter.source !== "view" &&
+      state.activeFilter.source !== "editor" ? (
         <div className="filter-pill" role="status">
           <span>
             Filtered by {state.activeFilter.source}:{" "}
@@ -500,6 +510,26 @@ const DiagramWorkspace = ({
         )}
         {waiting === null ? null : <p className="waiting">{waiting}</p>}
       </div>
+      <QueryPanel
+        // Re-seeded when the reviewer moves to another view, and not when they
+        // edit the one they are on: an `editor` filter leaves `activeView`
+        // standing, so the fields survive every keystroke and are replaced
+        // only by a navigation that means "edit a different view".
+        key={state.activeView}
+        nodes={state.model?.graph.nodes ?? []}
+        activeFilter={state.activeFilter}
+        view={view}
+        open={bottomPanel.open}
+        tab={bottomPanel.tab}
+        showLifecycle={showLifecycle}
+        showEvidence={showEvidence}
+        showOwnership={showOwnership}
+        onTogglePresentation={onTogglePresentation}
+        onToggleOpen={onToggleBottomPanel}
+        onSelectTab={onSelectBottomTab}
+        onApply={onApplyFilter}
+        onStage={onStageView}
+      />
     </section>
   );
 };
@@ -1238,10 +1268,6 @@ export const App = () => {
         onSelectLayout={(layout) =>
           dispatchWorkspace({ type: "layout.set", layout })
         }
-        onTogglePresentation={(flag, value) =>
-          dispatchWorkspace({ type: "presentation.toggled", flag, value })
-        }
-        onApplyFilter={filter}
         quickFilterText={state.quickFilterText}
         onQuickFilterChange={setQuickFilterText}
         saveViewOpen={saveViewOpen}
@@ -1363,6 +1389,24 @@ export const App = () => {
           onCanvasReady={(png) => {
             canvasPngRef.current = png;
           }}
+          view={
+            state.views.find((candidate) => candidate.id === state.activeView) ??
+            null
+          }
+          bottomPanel={workspace.bottomPanel}
+          onTogglePresentation={(flag, value) =>
+            dispatchWorkspace({ type: "presentation.toggled", flag, value })
+          }
+          onToggleBottomPanel={() =>
+            dispatchWorkspace({ type: "bottomPanel.toggled" })
+          }
+          onSelectBottomTab={(tab) =>
+            dispatchWorkspace({ type: "bottomPanel.tabSelected", tab })
+          }
+          // An edit of the active view's query is still that view, so it is
+          // filtered as `editor` and the tree goes on naming what is drawn.
+          onApplyFilter={(query) => filter(query, "editor")}
+          onStageView={stageViewChange}
         />
         {conversationOpen ? (
           <ConversationSeparator

@@ -304,13 +304,13 @@ is meant to prevent.
 
 ### Presentation toggles
 
-Three presentation state fields ride alongside layout in `presentation`, saved via `view.save` and persisted in the projection document:
+Three presentation state fields ride alongside layout in `presentation`, staged with the view and persisted in the projection document:
 
 - `showLifecycle` — renders a status badge (lifecycle: `planned` / `current` / `retired`) on each node's top-left, using the existing CSS tokens from `src/visual-app/styles.css`.
 - `showEvidence` — renders a checkmark badge on each node's bottom-left, only when the node has attestations (`hasAttestations: boolean`). Binary presence, never a graded state.
 - `showOwnership` — renders the owner's initials in a coloured circle on each node's bottom-right, hashing the owner ref onto a four-colour palette from `styles.css` (eucalyptus, ochre, cobalt, ink) deterministically and stably across reloads and machines. Colour is only informative here; initials identify the owner at a glance.
 
-None of these toggle a projection query or compose a `filter.query` event; toggling a checkbox dispatches `onTogglePresentation` and updates local state only. They are presentation, not semantic queries, so they save without consulting the model, reload without validating against the model, and appear in no changeset. Switching views triggers a relayout; toggling a badge does not, since badges are derived from existing node data.
+The three checkboxes live in the query panel's **View query** tab, beside the facets and above the document they are written into. None of them toggles a projection query or composes a `filter.query` event; toggling a checkbox dispatches `onTogglePresentation` and updates local state only. They are presentation, not semantic queries, so they save without consulting the model, reload without validating against the model, and appear in no changeset. Switching views triggers a relayout; toggling a badge does not, since badges are derived from existing node data.
 
 ### ArchiMate notation
 
@@ -349,7 +349,7 @@ ArchiMate mode is pure rendering: the schema, vocabulary, kinds, relationships, 
 Narrowing the canvas is one mechanic with one evaluator. The browser sends
 `filter.query` carrying a `ProjectionQuery`; the runtime evaluates it against
 the compiled graph the session is already rendering and answers a
-`filter-result` frame with `{ query, matchedIds }`. The panel and the chat
+`filter-result` frame with `{ query, matchedIds, excluded }`. The panel and the chat
 agent both go through it: an agent asked to "show me only the application
 layer" sets `appliedQuery: { query }` on its `chat.response` and the runtime
 resolves `matchedIds` server-side, so the same query never lights up two
@@ -362,6 +362,55 @@ query that produced it and a one-click way back to the full model, because a
 narrowing the reviewer did not perform is one they must be able to see and
 undo. Clearing a filter also returns the picker to the unfiltered view rather
 than leaving a stale named view selected.
+
+`excluded` is every concept the query DROPPED, each with the facet that dropped
+it, resolved by `explainProjection`. It shares its selector with
+`evaluateProjection`, so the reason the editor gives and the set the canvas
+draws cannot come from two readings of one query. A subject is reported against
+the FIRST facet that rejects it, in the order the query applies them
+(`states`, `subjects`, `documents`, `kinds`, `layers`, `statuses`,
+`excludeStatuses`, `owners`, `constraints`): a list of every reason is a list
+nobody reads. Relationships are absent by construction — they enter a view
+through their endpoints, so "why" for a relationship is a statement about the
+concepts it joins.
+
+It is a frame field, never a document field:
+`yarramate/projection-result/v1` is `additionalProperties: false`, and this is
+a question about a query rather than part of what a projection is. A chat
+turn's `appliedQuery` carries no exclusions either — it is a schema-bound
+document holding exactly `query` and `matchedIds` — so the browser records
+"unknown" for a chat filter rather than reporting that it dropped nothing.
+
+### The query panel
+
+A collapsible tabbed panel runs along the foot of the CANVAS COLUMN, collapsed
+at rest so the diagram keeps the room. It spans the canvas column rather than
+the window: the right column runs full height and its own foot is chat. **View
+query** is its first tab, and the tab strip carries the live match count so a
+collapsed panel still answers what it was opened for.
+
+The tab holds the same 13 facets the old filter dropdown did, and three things
+that dropdown could not offer:
+
+- a **live match count** against the checked model, counting SUBJECTS rather
+  than the match set — `matchedIds` names concepts and relationships together,
+  so counting it whole reports five for three components with two
+  relationships between them;
+- the **excluded, and why** list, grouped by facet. Its SET comes from
+  `matchedIds` and its REASONS from `excluded`, so the list can never disagree
+  with the diagram beside it. A concept a facet dropped can still be drawn —
+  `relationships: connected` takes the other end of a relationship with it —
+  and that is reported as a line rather than hidden; a concept no facet reports
+  was dropped by `isolatedConcepts: exclude`, which runs after the facets;
+- the **projection document** the query resolves to, serialised with the same
+  `yaml` the runtime writes it with, so what the reviewer reads is what a
+  commit would put on disk.
+
+Editing a query **stages** a `write-view` rather than saving it, so a query
+edit lands in the same batch as every other change (ADR 0103). An edit is
+filtered under the `editor` source, which leaves the view's name standing in
+the tree — a keystroke that made the app forget which view was being edited
+would take away the document the edit is written to.
 
 
 ## Commands

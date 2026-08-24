@@ -5,6 +5,7 @@ import type {
 } from "../graph-projection.js";
 import { DEFAULT_NESTING, type NestingKind } from "../nesting.js";
 import type { ContextMenuTarget } from "./context-menu-model.js";
+import type { BottomPanelTabId } from "./query-panel.js";
 
 export type ConversationMode = "auto" | "open" | "closed";
 
@@ -147,6 +148,17 @@ export interface VisualWorkspaceState {
   readonly descriptionExpanded: boolean;
   readonly detailsOpen: boolean;
   /**
+   * The canvas column's foot panel: whether it is open, and which tab it shows.
+   *
+   * Collapsed at rest, because the canvas keeps the room until the reviewer
+   * asks for it. The tab is remembered while it is shut, so re-opening returns
+   * to the tab that was last read rather than to the first one.
+   */
+  readonly bottomPanel: {
+    readonly open: boolean;
+    readonly tab: BottomPanelTabId;
+  };
+  /**
    * The left rail's own state. The text narrows the rail and nothing else —
    * `quickFilterText` still narrows the canvas — and `collapsed` holds only
    * the branches the reviewer shut, so a folder or layer that appears later
@@ -209,6 +221,11 @@ export type VisualWorkspaceAction =
   | { readonly type: "subject.cleared" }
   | { readonly type: "description.toggled" }
   | { readonly type: "details.toggled" }
+  | { readonly type: "bottomPanel.toggled" }
+  | {
+      readonly type: "bottomPanel.tabSelected";
+      readonly tab: BottomPanelTabId;
+    }
   | {
       readonly type: "menu.opened";
       readonly target: ContextMenuTarget;
@@ -364,6 +381,7 @@ export const createVisualWorkspaceState = (
   selectedSubject: null,
   descriptionExpanded: false,
   detailsOpen: false,
+  bottomPanel: { open: false, tab: "view-query" },
   tree: { filterText: "", collapsed: [] },
   connection: null,
   draftingSubject: false,
@@ -518,6 +536,18 @@ export const visualWorkspaceReducer = (
         : { ...state, descriptionExpanded: !state.descriptionExpanded };
     case "details.toggled":
       return { ...state, detailsOpen: !state.detailsOpen };
+    case "bottomPanel.toggled":
+      return {
+        ...state,
+        bottomPanel: { ...state.bottomPanel, open: !state.bottomPanel.open },
+      };
+    case "bottomPanel.tabSelected":
+      // Choosing a tab opens the panel: a reviewer who names a tab has asked
+      // to read it, and a selection that left the panel shut would be a click
+      // with nothing to show for it.
+      return state.bottomPanel.open && state.bottomPanel.tab === action.tab
+        ? state
+        : { ...state, bottomPanel: { open: true, tab: action.tab } };
     case "tree.filtered":
       return state.tree.filterText === action.filterText
         ? state

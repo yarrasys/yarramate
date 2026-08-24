@@ -2480,7 +2480,11 @@ evidence: []
 
   const sendFilterQuery = (
     socket: WebSocket,
-    query: { readonly kinds?: readonly string[] },
+    query: {
+      readonly kinds?: readonly string[];
+      readonly subjects?: readonly string[];
+      readonly statuses?: readonly string[];
+    },
   ) => {
     const result = nextFrame(socket, "filter-result");
     socket.send(
@@ -2506,7 +2510,47 @@ evidence: []
     expect(frame.result).toEqual({
       query: { kinds: ["yarramate/core@0.1#businessActor"] },
       matchedIds: ["user"],
+      // The editor asks why a subject is not on the canvas, and the runtime is
+      // the only side that can answer: the query needs the semantic graph, and
+      // the browser holds the rendered model (#248).
+      excluded: [{ id: "todo-service", facet: "kinds" }],
     });
+    socket.close();
+  });
+
+  it("names the FIRST facet that dropped each subject, not every facet that would", async () => {
+    await withWorkspace();
+    const server = await start();
+    const { cookie } = await bootstrap(server);
+    const socket = await openBrowserSocket(server, cookie);
+
+    // The actor fails both facets. `subjects` is checked first, so that is
+    // what it is reported against: a list of every reason is a list nobody
+    // reads. The service passes `subjects` and is dropped by `statuses`,
+    // which is planned rather than current.
+    const frame = await sendFilterQuery(socket, {
+      subjects: ["todo-service"],
+      statuses: ["current"],
+    });
+
+    expect(frame.result.matchedIds).toEqual([]);
+    expect(
+      Object.fromEntries(
+        frame.result.excluded.map(({ id, facet }) => [id, facet]),
+      ),
+    ).toEqual({ user: "subjects", "todo-service": "statuses" });
+    socket.close();
+  });
+
+  it("reports no exclusions for a query that keeps everything", async () => {
+    await withWorkspace();
+    const server = await start();
+    const { cookie } = await bootstrap(server);
+    const socket = await openBrowserSocket(server, cookie);
+
+    const frame = await sendFilterQuery(socket, {});
+
+    expect(frame.result.excluded).toEqual([]);
     socket.close();
   });
 
@@ -2522,6 +2566,9 @@ evidence: []
     expect(frame.result).toEqual({
       query: { kinds: ["yarramate/core@0.1#businessActor"] },
       matchedIds: [],
+      // Nothing compiled is nothing to explain, not "the query dropped
+      // everything": there is no graph to have dropped anything from.
+      excluded: [],
     });
     socket.close();
   });
