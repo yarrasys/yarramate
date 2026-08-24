@@ -22,6 +22,10 @@ export const MODEL_ROOT_KEY = "model";
 /** Collapse keys are strings so one set holds every branch of both trees. */
 export const folderKey = (folder: string): string => `view-folder:${folder}`;
 export const layerKey = (layer: string): string => `model-layer:${layer}`;
+/** A declared folder in the MODEL tree, kept apart from a layer of the same
+ * name: an author may call a folder `business`, and it is not that layer. */
+export const modelFolderKey = (folder: string): string =>
+  `model-folder:${folder}`;
 
 /** Where a subject with no resolved layer is grouped, last. */
 export const UNLAYERED = "unlayered";
@@ -36,7 +40,7 @@ export interface ViewTreeRow {
 
 export interface ViewTreeFolder {
   readonly key: string;
-  /** The directory the views share, relative to where all of them live. */
+  /** The label its views declare, verbatim. */
   readonly name: string;
   readonly views: readonly ViewTreeRow[];
 }
@@ -54,6 +58,8 @@ export interface ModelSubjectRow {
   readonly name: string;
   readonly kindLabel: string;
   readonly layer: Layer | null;
+  /** The folder the author filed it under, or null. */
+  readonly folder: string | null;
   /**
    * Whether the canvas is drawing this subject. Read from the standing
    * filter's match set, never from the graph: the graph holds every subject
@@ -63,9 +69,16 @@ export interface ModelSubjectRow {
   readonly inView: boolean;
 }
 
-export interface ModelLayerGroup {
+export interface ModelTreeGroup {
   readonly key: string;
   readonly label: string;
+  /**
+   * What put these subjects together. A `layer` group is DERIVED and always
+   * correct - every subject has one, or is unlayered - and a `folder` group is
+   * DECLARED, which is neither. The rail says which so a reader knows whether
+   * moving a subject means editing a document or changing its kind.
+   */
+  readonly grouping: "folder" | "layer";
   readonly subjects: readonly ModelSubjectRow[];
 }
 
@@ -85,53 +98,24 @@ const matches = (haystack: string, needle: string): boolean =>
 export const matchesFilter = (label: string, filterText: string): boolean =>
   matches(label, normalize(filterText));
 
-const directoryOf = (path: string): readonly string[] => {
-  const segments = path.split("/");
-  return segments.slice(0, -1);
-};
-
 /**
- * The deepest directory every one of these paths sits under.
+ * The folder a view files itself under, or `""` for none.
  *
- * This is what makes folders fall out of the workspace rather than out of the
- * projection format: a workspace whose projections all sit in one directory
- * shares that whole directory and so shows no folders at all, while one that
- * sorts them into `current/` and `target/` shares only the parent, and those
- * two directory names become the folders. Nothing in the format had to gain a
- * folder concept for either to work.
+ * DECLARED, never derived (ADR 0104). Folders used to fall out of the
+ * directories the projections happened to sit in, which made a folder a
+ * consequence of the filesystem: a workspace could not name one without moving
+ * files, a manifest whose patterns reach no subdirectory could not have one at
+ * all, and "New folder" meant "write somewhere the manifest may not load".
+ * A label answers all three, and it is the same word `yarramate/likec4-project/v1`
+ * already uses for the same thing (ADR 0067).
+ *
+ * One level: the tree draws a folder, not a folder tree, so `current/target`
+ * is one folder called `current/target` rather than two nested ones. The
+ * separator is reserved so nesting can be drawn later without the label
+ * meaning something different.
  */
-export const commonDirectory = (
-  paths: readonly string[],
-): readonly string[] => {
-  if (paths.length === 0) return [];
-  const directories = paths.map(directoryOf);
-  const first = directories[0] ?? [];
-  let shared = first.length;
-  for (const directory of directories.slice(1)) {
-    let index = 0;
-    while (
-      index < shared &&
-      index < directory.length &&
-      directory[index] === first[index]
-    ) {
-      index += 1;
-    }
-    shared = index;
-  }
-  return first.slice(0, shared);
-};
-
-/**
- * The folder a view belongs to: whatever directory it sits in below the one
- * they all share. A view alone in that shared directory has no folder, and a
- * view nested two deep is labelled by the whole relative path rather than
- * splitting into a second level — the tree draws one level of folder, so a
- * deeper path is named in full rather than silently truncated.
- */
-export const folderOf = (
-  path: string,
-  shared: readonly string[],
-): string => directoryOf(path).slice(shared.length).join("/");
+export const folderOf = (view: VisualViewSummary): string =>
+  view.presentation?.folder ?? "";
 
 export interface ViewTreeInput {
   readonly views: readonly VisualViewSummary[];
@@ -153,12 +137,11 @@ export const buildViewTree = ({
   filterText,
 }: ViewTreeInput): ViewTree => {
   const needle = normalize(filterText);
-  const shared = commonDirectory(views.map((view) => view.path));
   const rowsByFolder = new Map<string, ViewTreeRow[]>();
 
   for (const view of views) {
     const active = view.id === activeViewId;
-    const folder = folderOf(view.path, shared);
+    const folder = folderOf(view);
     // A folder that matches shows everything it holds: the reviewer typing
     // `target` is asking for that folder, not for views whose titles happen
     // to say so.
@@ -213,13 +196,19 @@ export const buildModelTree = ({
   nodes,
   inViewIds,
   filterText,
-}: ModelTreeInput): readonly ModelLayerGroup[] => {
+}: ModelTreeInput): readonly ModelTreeGroup[] => {
   const needle = normalize(filterText);
+  const byFolder = new Map<string, ModelSubjectRow[]>();
   const byLayer = new Map<string, ModelSubjectRow[]>();
 
   for (const node of nodes) {
     const layer = node.layer;
-    const group = layer ?? UNLAYERED;
+    // A declared folder OVERRIDES the layer rather than sitting beside it: a
+    // subject in two groups is a subject the reviewer finds twice and edits
+    // once. Layer stays the default, so a model nobody has foldered - which is
+    // every model today - is grouped exactly as it was.
+    const folder = node.folder;
+    const group = folder ?? layer ?? UNLAYERED;
     // Kind is searchable because it is how an architect names a set of
     // subjects — "every applicationComponent" — and the row already shows it.
     if (
@@ -234,26 +223,46 @@ export const buildModelTree = ({
       name: node.name,
       kindLabel: node.kindLabel,
       layer,
+      folder,
       inView: inViewIds === null || inViewIds.has(node.id),
     };
-    const existing = byLayer.get(group);
-    if (existing === undefined) byLayer.set(group, [row]);
+    const into = folder === null ? byLayer : byFolder;
+    const existing = into.get(group);
+    if (existing === undefined) into.set(group, [row]);
     else existing.push(row);
   }
 
-  // Profile order, not alphabetical: the layers stack motivation over strategy
-  // over business the way the canvas bands them, and a rail that reordered
-  // them would disagree with the diagram it sits beside.
+  const byName = (a: ModelSubjectRow, b: ModelSubjectRow): number =>
+    a.name.localeCompare(b.name);
+
+  // Declared folders first, alphabetically: what the author chose sits above
+  // what the profile derived. Layers keep PROFILE ORDER, not alphabetical -
+  // they stack motivation over strategy over business the way the canvas bands
+  // them, and a rail that reordered them would disagree with the diagram it
+  // sits beside.
+  const folders = [...byFolder.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([folder, subjects]) => ({
+      key: modelFolderKey(folder),
+      label: folder,
+      grouping: "folder" as const,
+      subjects: [...subjects].sort(byName),
+    }));
+
   const order = [...layers, UNLAYERED];
-  return order.flatMap((layer) => {
-    const subjects = byLayer.get(layer);
-    if (subjects === undefined || subjects.length === 0) return [];
-    return [
-      {
-        key: layerKey(layer),
-        label: layer,
-        subjects: [...subjects].sort((a, b) => a.name.localeCompare(b.name)),
-      },
-    ];
-  });
+  return [
+    ...folders,
+    ...order.flatMap((layer) => {
+      const subjects = byLayer.get(layer);
+      if (subjects === undefined || subjects.length === 0) return [];
+      return [
+        {
+          key: layerKey(layer),
+          label: layer,
+          grouping: "layer" as const,
+          subjects: [...subjects].sort(byName),
+        },
+      ];
+    }),
+  ];
 };

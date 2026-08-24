@@ -26,6 +26,7 @@ const node = (overrides: Partial<CanvasNode> = {}): CanvasNode => ({
   aka: [],
   status: null,
   owner: null,
+  folder: null,
   distinctFrom: [],
   supersedes: [],
   constraints: [],
@@ -148,6 +149,7 @@ describe("the view/model split every menu has to teach", () => {
       "Duplicate",
       "New view in this folder…",
       "New view…",
+      "New folder…",
       "Copy projection path",
       "Delete view…",
     ]);
@@ -160,6 +162,7 @@ describe("what each menu offers", () => {
     expect(groups.map((group) => group.label)).toEqual(["View", "Model"]);
     expect(labels(groups)).toEqual([
       "New view…",
+      "New folder…",
       "Export PNG",
       "Add subject…",
     ]);
@@ -167,9 +170,10 @@ describe("what each menu offers", () => {
 
   it("gives the all-subjects row no rename, duplicate or path to copy", () => {
     // It is the absence of a view, not a document: there is nothing to
-    // retitle, nothing to copy, and no folder to add a sibling to.
+    // retitle, nothing to copy, and no folder of its own to add a sibling to.
+    // Making a view, and making a folder to put one in, still make sense here.
     expect(labels(contextMenuFor({ kind: "view-row", id: "" }, context()))).toEqual(
-      ["Show all subjects", "New view…"],
+      ["Show all subjects", "New view…", "New folder…"],
     );
   });
 
@@ -192,7 +196,11 @@ describe("what each menu offers", () => {
 
   it("gives the all-subjects row the clearing item, not an open", () => {
     const groups = contextMenuFor({ kind: "view-row", id: "" }, context());
-    expect(labels(groups)).toEqual(["Show all subjects", "New view…"]);
+    expect(labels(groups)).toEqual([
+      "Show all subjects",
+      "New view…",
+      "New folder…",
+    ]);
   });
 
   it("draws nothing for a target the model no longer holds", () => {

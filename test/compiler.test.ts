@@ -358,6 +358,72 @@ relationships:
     })
   })
 
+  it('records a declared folder as a value, not a reference', () => {
+    // A folder is a LABEL the author writes (ADR 0104), not a subject the
+    // workspace declares: nothing can be said about it, it resolves to
+    // nothing, and two documents writing the same label mean the same folder
+    // without either naming the other. A ref would demand a subject to point
+    // at, and inventing one is how an organising word becomes a thing in the
+    // model.
+    const result = compileWorkspace([
+      {
+        path: 'organisation.yaml',
+        source:
+          'format: yarramate/v1\n' +
+          'id: organisation\n' +
+          'profile: yarramate/core@0.1\n' +
+          'concepts:\n' +
+          '  - id: payments-api\n' +
+          '    kind: applicationService\n' +
+          '    name: Payments API\n' +
+          '    folder: Payments/Core\n' +
+          'relationships: []\n',
+      },
+    ])
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.graph.claims).toContainEqual({
+      id: 'payments-api~folder',
+      subject: 'payments-api',
+      predicate: 'yarramate/organisation/folder',
+      object: { value: 'Payments/Core' },
+      origin: 'declared',
+      source: {
+        document: 'organisation',
+        path: 'organisation.yaml',
+        pointer: '/concepts/0/folder',
+        line: 8,
+        column: 13,
+      },
+    })
+  })
+
+  it('claims nothing about a concept that declares no folder', () => {
+    const result = compileWorkspace([
+      {
+        path: 'organisation.yaml',
+        source:
+          'format: yarramate/v1\n' +
+          'id: organisation\n' +
+          'profile: yarramate/core@0.1\n' +
+          'concepts:\n' +
+          '  - id: payments-api\n' +
+          '    kind: applicationService\n' +
+          '    name: Payments API\n' +
+          'relationships: []\n',
+      },
+    ])
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(
+      result.graph.claims.some(
+        ({ predicate }) => predicate === 'yarramate/organisation/folder',
+      ),
+    ).toBe(false)
+  })
+
   it('reports an unresolved owner at the authored reference', () => {
     const result = compileWorkspace([
       {

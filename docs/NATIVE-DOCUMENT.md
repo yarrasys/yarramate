@@ -53,6 +53,28 @@ reference. It compiles to a stable `~owner` claim with predicate
 `yarramate/ownership/owner`. The claim expresses accountable stewardship,
 not approval authority or workflow. Core checks only that the subject exists.
 
+A concept may declare the folder it files itself under:
+
+```yaml
+concepts:
+  - id: payments-api
+    kind: applicationService
+    name: Payments API
+    folder: Payments/Core
+```
+
+`folder` is a LABEL, never a directory: the filesystem is not consulted, and
+nothing resolves it (ADR 0104). It compiles to a stable `~folder` claim with
+predicate `yarramate/organisation/folder` carrying a **value**, not a
+reference — a folder is an organising word, not a subject that can be related,
+owned or reported on, and two documents writing the same label mean the same
+folder without either naming the other. Nest with `/`.
+
+An editor groups the model by whatever a subject declares here, and by the
+subject's ArchiMate layer where it declares nothing. Core reads the claim and
+checks its shape; it derives no meaning from a folder and no diagnostic
+depends on one.
+
 A concept may record the other names it is known by:
 
 ```yaml

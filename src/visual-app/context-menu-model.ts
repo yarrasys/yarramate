@@ -52,6 +52,12 @@ export type ContextMenuIntent =
   | { readonly type: "view.clear" }
   | { readonly type: "view.new" }
   /**
+   * A new view in a folder that does not exist yet. A folder is a label on a
+   * document (ADR 0104), so an empty one cannot persist and this is what
+   * "New folder" honestly is: name the folder, then put the first view in it.
+   */
+  | { readonly type: "view.new-folder" }
+  /**
    * A new view in the folder this one occupies. Folders come from projection
    * paths (#245), so the only way to name one is to point at a view already in
    * it — which also means the folder is one the manifest demonstrably reaches.
@@ -151,6 +157,12 @@ const NEW_VIEW: ContextMenuItem = {
   key: "view.new",
   label: "New view…",
   intent: { type: "view.new" },
+};
+
+const NEW_FOLDER: ContextMenuItem = {
+  key: "view.new-folder",
+  label: "New folder…",
+  intent: { type: "view.new-folder" },
 };
 
 const SHOW_ALL: ContextMenuItem = {
@@ -275,6 +287,7 @@ const canvasMenu = (
       destructive: false,
       items: [
         NEW_VIEW,
+        NEW_FOLDER,
         ...(context.filtered ? [SHOW_ALL] : []),
         // What is on screen, as a picture. A view-scope read rather than a
         // model one: it takes a copy of the canvas and changes nothing.
@@ -313,7 +326,7 @@ const viewRowMenu = (
       destructive: false,
       items:
         id === ALL_SUBJECTS_VIEW
-          ? [SHOW_ALL, NEW_VIEW]
+          ? [SHOW_ALL, NEW_VIEW, NEW_FOLDER]
           : [
               {
                 key: "view.open",
@@ -343,6 +356,7 @@ const viewRowMenu = (
                 intent: { type: "view.new-in-folder", id },
               },
               NEW_VIEW,
+              NEW_FOLDER,
               {
                 key: "view.copy-path",
                 label: "Copy projection path",

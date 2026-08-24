@@ -115,6 +115,12 @@
         "owner": {
           "$ref": "#/$defs/reference"
         },
+        "folder": {
+          "type": "string",
+          "description": "The folder this files itself under in an editor's tree. A LABEL the author declares, never a directory: nest with '/' separators, and the filesystem is never consulted (ADR 0104).",
+          "pattern": "^[^/]+(?:/[^/]+)*$",
+          "minLength": 1
+        },
         "distinctFrom": {
           "$ref": "#/$defs/subjectReferences"
         },

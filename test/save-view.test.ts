@@ -5,7 +5,7 @@ import type {
   ProjectionQuery,
 } from '../src/projection.js'
 import {
-  directoryOf,
+  declaredFolder,
   duplicateView,
   membershipDelta,
   renameView,
@@ -28,7 +28,7 @@ const build = (
     id: 'existing-view',
     taken: new Set<string>(),
     path: '.yarramate/projections/existing-view.yaml',
-    directory: undefined,
+    folder: undefined,
     title: 'My View',
     description: 'desc',
     query,
@@ -131,15 +131,42 @@ describe('buildPayload', () => {
     ).not.toHaveProperty('direction')
   })
 
-  it('writes a new view into the folder it was asked for', () => {
+  it('declares the folder a new view was asked for, and files it beside the rest', () => {
+    // A folder is a LABEL now (ADR 0104): the document says which folder it
+    // belongs to, and every projection sits in one directory. Writing into a
+    // subdirectory was the one motion that could put a projection where the
+    // manifest's patterns do not reach.
     const operation = build({
       id: undefined,
       path: undefined,
-      directory: '.yarramate/projections/current',
+      folder: 'Current',
       title: 'In A Folder',
     })
 
-    expect(operation.path).toBe('.yarramate/projections/current/in-a-folder.yaml')
+    expect(operation.path).toBe('.yarramate/projections/in-a-folder.yaml')
+    expect(projectionOf(operation).presentation).toMatchObject({
+      folder: 'Current',
+    })
+  })
+
+  it('writes no folder for a view that was not asked to be in one', () => {
+    // An empty label is not "no folder", it is a folder with no name, and the
+    // schema refuses it.
+    expect(
+      projectionOf(build({ id: undefined, path: undefined, folder: '' }))
+        .presentation,
+    ).not.toHaveProperty('folder')
+  })
+
+  it('writes the folder it is given, because the presentation is composed here', () => {
+    // Carried, never assumed: this builds the whole presentation block, so a
+    // field it is not handed is a field the save drops - the same trap
+    // `direction` fell into. The control decides WHICH folder that is: the one
+    // the reviewer named for a new view, the one the view already declares for
+    // an overwrite.
+    expect(
+      projectionOf(build({ folder: 'Somewhere Else' })).presentation,
+    ).toMatchObject({ folder: 'Somewhere Else' })
   })
 })
 
@@ -178,14 +205,10 @@ describe('renaming and duplicating a view', () => {
     expect(renamed.projection.query).toEqual(query)
   })
 
-  it('duplicates into the same folder, with a free id', () => {
-    // A duplicate the reviewer then has to move is a duplicate in the wrong
-    // place - and the source's folder is one the manifest demonstrably reaches.
+  it('duplicates beside the original, with a free id', () => {
     const copy = duplicateView(view, new Set(['current-engine']))
 
-    expect(copy.path).toBe(
-      '.yarramate/projections/current/current-engine-copy.yaml',
-    )
+    expect(copy.path).toBe('.yarramate/projections/current-engine-copy.yaml')
     expect(copy.projection.id).toBe('current-engine-copy')
     expect(copy.projection.presentation?.title).toBe('Current engine copy')
   })
@@ -199,11 +222,22 @@ describe('renaming and duplicating a view', () => {
     expect(copy.projection.id).toBe('current-engine-copy-2')
   })
 
-  it('reads a folder off a path, and calls the default directory no folder', () => {
-    expect(directoryOf('.yarramate/projections/current/a.yaml')).toBe(
-      '.yarramate/projections/current',
+  it('reads the folder a view declares, and calls an undeclared one none', () => {
+    expect(
+      declaredFolder({ presentation: { folder: 'Current / Engine' } }),
+    ).toBe('Current / Engine')
+    expect(declaredFolder({ presentation: {} })).toBe('')
+    expect(declaredFolder({ presentation: undefined })).toBe('')
+  })
+
+  it('keeps the original folder on a duplicate, without keeping its path', () => {
+    const copy = duplicateView(
+      { ...view, presentation: { ...view.presentation, folder: 'Current' } },
+      new Set<string>(),
     )
-    expect(directoryOf('a.yaml')).toBe('')
+
+    expect(copy.projection.presentation).toMatchObject({ folder: 'Current' })
+    expect(copy.path).toBe('.yarramate/projections/current-engine-copy.yaml')
   })
 })
 

@@ -7,7 +7,7 @@ import {
   buildModelTree,
   buildViewTree,
   matchesFilter,
-  type ModelLayerGroup,
+  type ModelTreeGroup,
   type ViewTreeRow,
 } from "./view-tree-model.js";
 
@@ -189,7 +189,7 @@ export function ViewTree({
         : nodes.filter((node) => inViewIds.has(node.id)).length,
     filterText,
   });
-  const model: readonly ModelLayerGroup[] = buildModelTree({
+  const model: readonly ModelTreeGroup[] = buildModelTree({
     nodes,
     inViewIds,
     filterText,

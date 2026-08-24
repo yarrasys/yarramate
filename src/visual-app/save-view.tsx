@@ -25,11 +25,11 @@ export interface SaveViewControlProps {
    */
   readonly open: boolean;
   /**
-   * Where a NEW view is written. Comes from "New view in this folder…", which
-   * names a folder by pointing at a view already in it - so the folder is one
-   * the manifest demonstrably reaches. Undefined is the default directory.
+   * The folder a NEW view declares. Comes from "New view in this folder…",
+   * which names one by pointing at a view already in it, or from "New
+   * folder…", which names one that does not exist yet. Undefined is no folder.
    */
-  readonly directory: string | undefined;
+  readonly folder: string | undefined;
   readonly onToggle: () => void;
   /** Stages the write. Nothing is on disk until the changeset is committed. */
   readonly onStage: (operation: VisualViewOperation) => void;
@@ -46,8 +46,13 @@ export interface BuildPayloadParams {
   readonly taken: ReadonlySet<string>;
   /** Where the overwritten view's document already lives, if there is one. */
   readonly path: string | undefined;
-  /** Which folder a NEW view goes in. Undefined is the default directory. */
-  readonly directory: string | undefined;
+  /**
+   * The folder this document declares. Carried rather than composed, for the
+   * same reason `carriedDirection` is: this builds the presentation block from
+   * scratch, so a field it is not given is a field the save DROPS - and a
+   * reviewer who overwrote a view would find it had left its folder.
+   */
+  readonly folder: string | undefined;
   readonly title: string;
   readonly description: string;
   readonly query: ProjectionQuery | null;
@@ -74,13 +79,14 @@ export interface BuildPayloadParams {
  * A saved view is a row in the changeset rather than a write (ADR 0103), so
  * this composes the whole projection document and the path it will occupy.
  * Overwriting keeps the path the view already has; a new view takes a fresh
- * slug in the default directory.
+ * slug beside every other one, and says which folder it belongs to rather than
+ * being put in a directory named after it (ADR 0104).
  */
 export const buildPayload = ({
   id,
   taken,
   path,
-  directory,
+  folder,
   title,
   description,
   query,
@@ -93,7 +99,7 @@ export const buildPayload = ({
   const viewId = id ?? viewIdFrom(title, taken);
   return {
     op: "write-view",
-    path: path ?? projectionPathFor(viewId, directory),
+    path: path ?? projectionPathFor(viewId),
     projection: composeProjection({
       id: viewId,
       title,
@@ -104,6 +110,10 @@ export const buildPayload = ({
         ...(carriedDirection === undefined
           ? {}
           : { direction: carriedDirection }),
+        // A folder is written only where there is one to write: an empty
+        // string is not "no folder", it is a folder with no name, and the
+        // schema refuses it.
+        ...(folder === undefined || folder === "" ? {} : { folder }),
         showLifecycle,
         showEvidence,
         showOwnership,
@@ -214,7 +224,7 @@ export function SaveViewControl({
   showEvidence,
   showOwnership,
   open,
-  directory,
+  folder,
   onToggle,
   onStage,
 }: SaveViewControlProps) {
@@ -236,7 +246,10 @@ export function SaveViewControl({
           id === undefined
             ? undefined
             : activeView?.path,
-        directory,
+        // A new view takes the folder the caller named; an overwrite carries
+        // the one the view already declares, which is not the same thing as
+        // the one this control happens to be holding.
+        folder: id === undefined ? folder : (activeView?.presentation?.folder),
         title,
         description,
         query,

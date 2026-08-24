@@ -84,6 +84,7 @@ const modelWith = (): VisualModel => ({
         aka: [],
         status: null,
         owner: null,
+        folder: null,
         distinctFrom: [],
         supersedes: [],
         constraints: [],
