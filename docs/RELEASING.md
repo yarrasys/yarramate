@@ -14,11 +14,13 @@ either action.
 
 ## Release preparation
 
-1. Select the version and update `package.json`. Set the first non-comment
-   line of `assets/taglines.txt` to the same version (`vX.Y.Z`); the lines
-   after it are the rotating hero taglines on [yarramate.dev](https://yarramate.dev),
-   fetched from `main` at page load — refresh them when the release changes
-   the story.
+1. Select the version and update `package.json`.
+
+   `assets/taglines.txt` is **not** part of this step and has not been since
+   2026-08-04, when the site's simplification pass removed rotating taglines
+   and all release-coupled runtime content (yarramate-website `DECISIONS.md`).
+   Nothing fetches the file. It stays in the tree as a source of product
+   phrasing, and it carries no version marker anyone has to keep in sync.
 2. Update public documentation for any stable-interface change.
 3. Ensure the `pnpm` on `PATH` matches the `packageManager` field in
    `package.json` — `corepack enable` provides it where Corepack is installed,
