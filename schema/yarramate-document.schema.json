@@ -127,6 +127,24 @@
         "supersedes": {
           "$ref": "#/$defs/successionReferences"
         },
+        "forbids": {
+          "description": "Relationship shapes this subject rules out, checked against the graph. A constraint nothing tests is a comment. Deliberately narrow: forbid a relationship kind between named endpoints, with exceptions, which covers \"everything goes through X\" and needs no traversal.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["relationship"],
+            "anyOf": [{ "required": ["from"] }, { "required": ["to"] }],
+            "properties": {
+              "relationship": { "type": "string", "minLength": 1 },
+              "from": { "type": "string", "minLength": 1 },
+              "to": { "type": "string", "minLength": 1 },
+              "exceptFrom": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+              "exceptTo": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+            }
+          }
+        },
         "constraints": {
           "type": "array",
           "items": {
