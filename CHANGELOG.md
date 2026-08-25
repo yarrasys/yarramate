@@ -2,6 +2,34 @@
 
 ## 1.1.0
 
+- **Added.** An interrogation report says which engine answered, not only which
+  catalogue asked. `semantics` carries the version of condition evaluation
+  itself, exported as `INTERROGATION_SEMANTICS_VERSION`, and it changes only
+  when an existing question's answer can change for an unchanged model. It is
+  not the package version: every patch bumps that and almost none change what a
+  condition means, and a signal that fires on noise gets discounted.
+  [ADR 0106](docs/adr/0106-a-report-says-which-engine-answered.md) records the
+  reasoning and what was deliberately left out.
+
+  A consumer holding stored answers can now tell an engine change from a model
+  change. Before this, it could attribute a flipped answer to the model, or to
+  the catalogue via `since`, but not to the engine, which is what ADR 0097 did
+  when it replaced four aspect rules with the ArchiMate 3.2 table and began
+  answering `missing-relationship` differently for unchanged models.
+
+  **Compatibility.** `semantics` is required, and the report schema and its
+  copy inside `ask-result` are both `additionalProperties: false`, so **output
+  from 1.1.0 fails validation against a pinned pre-1.1.0 schema**. The schemas
+  ship with the package and move with it, so only a consumer pinning a schema
+  copy independently of the runtime is affected. `design-step`, `reconcile`,
+  `check`, `rtm` and `apply` are unchanged.
+
+  The promise is enforced rather than remembered:
+  `test/interrogation-semantics.test.ts` exercises every condition against a
+  fixture and fingerprints the answers, so changing what a condition means
+  fails the suite and names the version to bump.
+
+
 - **Added.** The interrogation engine is public API. `evaluateCatalogue`,
   `loadQuestionCatalogue`, `renderQuestion` and `renderInterrogationReport`
   are exported from the package entry, with the catalogue and report types

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import Ajv2020Module from 'ajv/dist/2020.js'
 import { describe, expect, it } from 'vitest'
 import {
+  INTERROGATION_SEMANTICS_VERSION,
   compileWorkspaceWithProfileContext,
   evaluateCatalogue,
   loadQuestionCatalogue,
@@ -160,6 +161,13 @@ describe('interrogation engine as public API', () => {
     const question = questionById(evaluate(), 'component-unattested')
     expect(question.open).toBe(true)
     expect(question.subjects?.map(({ id }) => id)).toEqual(['billing'])
+  })
+
+  it('stamps the engine semantics version the answers were produced under', () => {
+    // The catalogue says which questions were asked; this says which engine
+    // answered them, which is what a consumer holding stored answers needs in
+    // order to tell an engine change from a model change.
+    expect(evaluate().semantics).toBe(INTERROGATION_SEMANTICS_VERSION)
   })
 
   it('round-trips authority from the catalogue into the report', () => {
