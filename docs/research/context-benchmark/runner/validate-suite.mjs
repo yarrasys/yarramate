@@ -55,7 +55,12 @@ for (const suitePath of suitePaths) {
   for (const [family, count] of Object.entries(families)) {
     if (count < MIN_PER_FAMILY) fail(suitePath, `family ${family} has ${count} tasks, needs >= ${MIN_PER_FAMILY}`);
   }
-  if (!failed) console.log(`${suitePath}: ok (${suite.tasks.length} tasks, headline=${suite.headline})`);
+  if (!failed) {
+    const retired = suite.retired
+      ? ` RETIRED ${suite.retired.since} (conditions ${suite.retired.conditions.join(',')} cannot run)`
+      : '';
+    console.log(`${suitePath}: ok (${suite.tasks.length} tasks, headline=${suite.headline})${retired}`);
+  }
 }
 
 process.exit(failed ? 1 : 0);

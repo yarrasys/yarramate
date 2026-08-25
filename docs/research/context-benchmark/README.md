@@ -58,13 +58,34 @@ subject repos. That authoring is still outstanding (#56).
 Suites reference the models published in
 [yarramate-gallery](https://github.com/yarrasys/yarramate-gallery) at pinned
 source commits. `yarramate-self.yaml` is `headline: false` and reported
-separately (self-serving ground truth). The six external suites (fastify,
-httpie, miniflux, uptime-kuma, keycloak, kafka) cover every showcase currently
-in the gallery, clearing the **N ≥ 5** external-repository threshold for
-headline pooling. Keycloak and Kafka anchor the enterprise end of the gallery's
-CLI-to-enterprise spectrum; their comprehension tasks were authored multi-hop
-from the start (see "Suite versions" above on issue #56) rather than needing a
-later v2 errata round.
+separately (self-serving ground truth).
+
+⚠️ **Nine of the eleven suites are retired as of 2026-08-25.** The gallery
+narrowed to a small set of deep showcases
+([yarramate-gallery#10](https://github.com/yarrasys/yarramate-gallery/pull/10)):
+keeping a broad corpus of models current costs more than the breadth is worth,
+given how fast yarramate's vocabulary moves. The five external showcases those
+suites place under conditions B and C (fastify, httpie, miniflux, uptime-kuma,
+keycloak) no longer exist, so **B and C cannot run for them**, and with no B
+there is no comparative result to pool. Each affected suite carries a `retired`
+block naming the date, the reason, and the blocked conditions;
+`run-benchmark.mjs` refuses those conditions by name rather than failing later
+on a missing directory.
+
+What survives the retirement:
+
+- **The tasks and their ground truth.** They were verified against the subject
+  source at the pinned commit, never against the model, so they stay a valid
+  frozen corpus and condition A still runs. Nothing here is deleted, and the
+  published [2026-07-29 results](RESULTS-2026-07-29.md) stand as recorded.
+- **Two runnable suites**: `tasks/kafka.yaml` (external, `headline: true`) and
+  `tasks/yarramate-self.yaml` (`headline: false`, its model being the
+  repository's own `.yarramate`). All four `tasks/v2/` suites are retired, so
+  the v2 errata round has no runnable member left.
+
+This drops the corpus below the **N ≥ 5** external-repository threshold for
+headline pooling. A future headline sweep needs new suites authored against
+showcases that exist, which is part of the outstanding work in #56.
 
 ## Running
 
@@ -79,10 +100,10 @@ node runner/validate-suite.mjs yarramate-benchmark-suite.schema.json \
 node --test 'runner/*.test.mjs'
 
 # 3. inspect the matrix (no side effects, no cost)
-node runner/run-benchmark.mjs --suite tasks/v2/miniflux.yaml --out /tmp/bench --dry-run
+node runner/run-benchmark.mjs --suite tasks/kafka.yaml --out /tmp/bench --dry-run
 
 # 4. live run — one suite, one condition, one capability tier (costs agent tokens)
-node runner/run-benchmark.mjs --suite tasks/v2/miniflux.yaml \
+node runner/run-benchmark.mjs --suite tasks/kafka.yaml \
   --gallery ~/work/yarrasys/projects/yarramate-gallery \
   --toolchain <dir>/node_modules/.bin \
   --out results/2026-07-29 --conditions B --label sonnet \
@@ -90,7 +111,7 @@ node runner/run-benchmark.mjs --suite tasks/v2/miniflux.yaml \
 
 # 5. deterministic scoring + adjudication queue
 node runner/score.mjs --runs results/2026-07-29/runs.jsonl \
-  --suite tasks/v2/miniflux.yaml --toolchain <dir>/node_modules/.bin
+  --suite tasks/kafka.yaml --toolchain <dir>/node_modules/.bin
 ```
 
 The harness command receives the composed prompt (condition instruction +

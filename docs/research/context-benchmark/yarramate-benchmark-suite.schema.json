@@ -35,6 +35,22 @@
       "type": "array",
       "minItems": 6,
       "items": { "$ref": "#/$defs/task" }
+    },
+    "retired": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["since", "reason", "conditions"],
+      "description": "Present when the suite can no longer run in full. The tasks and their ground truth stay valid: they were verified against the subject source at the pinned commit, never against a model.",
+      "properties": {
+        "since": { "type": "string", "description": "ISO date the suite was retired." },
+        "reason": { "$ref": "#/$defs/nonEmptyText" },
+        "conditions": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "enum": ["A", "B", "C"] },
+          "description": "Condition ids that can no longer run. Any condition not listed is still runnable."
+        }
+      }
     }
   },
   "$defs": {
