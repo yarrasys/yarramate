@@ -146,3 +146,19 @@ export {
   draftDeletion,
   type DeletionBlocker,
 } from './deletion-drafting.js'
+export {
+  evaluateCatalogue,
+  loadQuestionCatalogue,
+  renderInterrogationReport,
+  renderQuestion,
+  type CatalogueCondition,
+  type CatalogueLoadResult,
+  type CatalogueQuestion,
+  type CatalogueSelector,
+  type InterrogationReport,
+  type InterrogationSummary,
+  type OpenSubject,
+  type QuestionCatalogue,
+  type ReportQuestion,
+  type ReportWave,
+} from './interrogate-command.js'

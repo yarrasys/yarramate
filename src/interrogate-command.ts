@@ -1,10 +1,10 @@
 import Ajv2020Module from 'ajv/dist/2020.js'
-import {
-  type Diagnostic,
-  type GraphClaim,
-  type ResolvedProfileContext,
-  type SemanticGraph,
-  type WorkspaceSource,
+import type {
+  Diagnostic,
+  GraphClaim,
+  ResolvedProfileContext,
+  SemanticGraph,
+  WorkspaceSource,
 } from './compiler.js'
 import {
   loadSourceDocument,
@@ -27,14 +27,14 @@ const validateCatalogue = new Ajv2020({ allErrors: true }).compile(
   catalogueSchema,
 )
 
-interface CatalogueSelector {
+export interface CatalogueSelector {
   readonly kinds: readonly string[]
   readonly kindMatching?: 'exact' | 'descendants'
   readonly statuses?: readonly string[]
   readonly documents?: readonly string[]
 }
 
-type CatalogueCondition =
+export type CatalogueCondition =
   | { readonly condition: 'missing-claim'; readonly predicate: string }
   | {
       readonly condition: 'missing-relationship'
@@ -116,13 +116,13 @@ export interface QuestionCatalogue {
   readonly questions: readonly CatalogueQuestion[]
 }
 
-interface OpenSubject {
+export interface OpenSubject {
   readonly id: string
   readonly name?: string
   readonly question: string
 }
 
-interface ReportQuestion {
+export interface ReportQuestion {
   readonly id: string
   readonly scope: 'workspace' | 'subject'
   readonly authority: 'human' | 'agent' | 'either'
@@ -134,20 +134,24 @@ interface ReportQuestion {
   readonly subjects?: readonly OpenSubject[]
 }
 
+export interface ReportWave {
+  readonly id: string
+  readonly name: string
+  readonly questions: readonly ReportQuestion[]
+}
+
+export interface InterrogationSummary {
+  readonly questions: number
+  readonly openQuestions: number
+  readonly open: number
+}
+
 export interface InterrogationReport {
   readonly format: 'yarramate/interrogation-report/v1'
   readonly workspace: string
   readonly catalogue: string
-  readonly summary: {
-    readonly questions: number
-    readonly openQuestions: number
-    readonly open: number
-  }
-  readonly waves: readonly {
-    readonly id: string
-    readonly name: string
-    readonly questions: readonly ReportQuestion[]
-  }[]
+  readonly summary: InterrogationSummary
+  readonly waves: readonly ReportWave[]
 }
 
 interface GraphIndex {

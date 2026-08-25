@@ -54,6 +54,10 @@
       "types": "./dist/notation/archimate.d.ts",
       "import": "./dist/notation/archimate.js"
     },
+    "./interrogation": {
+      "types": "./dist/interrogation-entry.d.ts",
+      "import": "./dist/interrogation-entry.js"
+    },
     "./visual-app": {
       "types": "./dist/visual-app-lib/editor.d.ts",
       "import": "./dist/visual-app-lib/editor.js"

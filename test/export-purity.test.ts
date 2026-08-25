@@ -59,6 +59,14 @@ describe('package export purity', () => {
     const { hits } = runtimeImportGraph('notation/archimate.ts')
     expect(hits).toEqual([])
   })
+
+  it('interrogation import graph stays free of Node, ws, session, and compiler runtime', () => {
+    // The engine is the one piece a Durable Object runs on every model write,
+    // so the compiler's Ajv/YAML weight and every Node builtin have to stay
+    // out of its import graph. The compiler is reached for types only.
+    const { hits } = runtimeImportGraph('interrogation-entry.ts')
+    expect(hits).toEqual([])
+  })
 })
 
 describe('adapter/visual-graph barrel', () => {

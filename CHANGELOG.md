@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.1.0
+
+- **Added.** The interrogation engine is public API. `evaluateCatalogue`,
+  `loadQuestionCatalogue`, `renderQuestion` and `renderInterrogationReport`
+  are exported from the package entry, with the catalogue and report types
+  named alongside them (`QuestionCatalogue`, `CatalogueQuestion`,
+  `CatalogueSelector`, `CatalogueCondition`, `CatalogueLoadResult`,
+  `InterrogationReport`, `InterrogationSummary`, `ReportWave`,
+  `ReportQuestion`, `OpenSubject`). The question-catalogue and
+  interrogation-report schemas were already published, so the contract was
+  legible to consumers who had no way to run the engine behind it.
+
+- **Added.** `yarramate/interrogation`, a subpath carrying that engine on its
+  own. The `.` barrel reaches `node:fs`, `node:path` and `node:child_process`
+  through workspace loading, the filesystem source store and git-derived
+  attestation staleness, so a consumer evaluating catalogues inside a Worker
+  or a Durable Object could not take the engine from it without dragging Node
+  in behind. The subpath is pinned free of Node builtins by the same purity
+  test that guards `yarramate/adapter/visual-graph`, and reaches the compiler
+  for types only. Prefer it wherever the runtime is not Node.
+
+  No CLI porcelain joins either surface: a command runner takes a working
+  directory and returns an exit code, which is not a contract this package
+  offers. A test pins that too.
+
 ## 1.0.0
 
 - **Added.** The mountable visual editor (#252):
