@@ -92,7 +92,7 @@ interface NativeConcept {
   readonly owner?: string
   readonly folder?: string
   readonly distinctFrom?: readonly string[]
-  readonly supersedes?: readonly string[]
+  readonly supersedes?: readonly NativeSuccession[]
   readonly constraints?: ReadonlyArray<{
     readonly id: string
     readonly ref: string
@@ -389,6 +389,29 @@ const aliasClaimId = (subject: string, alias: string) =>
 
 const distinctFromClaimId = (subject: string, other: string) =>
   `${subject}~distinct-from-${utf8Hex(other)}`
+
+/**
+ * A succession entry: a bare predecessor id, or one with the respect in which
+ * it was superseded.
+ *
+ * The scope is load-bearing rather than decorative. A model claimed that Zoekt
+ * superseded the Elasticsearch indexer, unqualified, while the source it was
+ * built from says Zoekt "handles only code search and does not replace
+ * Elasticsearch". The prose carried the qualifier and the field could not, and
+ * `ask --compare` reads the field, so the declared target architecture became
+ * the deletion of a component that is not being deleted (ADR 0109).
+ */
+export type NativeSuccession =
+  | string
+  | { readonly subject: string; readonly inRespectOf: string }
+
+export const successionSubject = (entry: NativeSuccession): string =>
+  typeof entry === 'string' ? entry : entry.subject
+
+export const successionScope = (
+  entry: NativeSuccession,
+): string | undefined =>
+  typeof entry === 'string' ? undefined : entry.inRespectOf
 
 const supersedesClaimId = (subject: string, predecessor: string) =>
   `${subject}~supersedes-${utf8Hex(predecessor)}`
@@ -1182,7 +1205,7 @@ function compileWorkspaceResolved(
               [
                 concept.id,
                 concept.supersedes.map((predecessor) =>
-                  qualifyReference(value.id, predecessor),
+                  qualifyReference(value.id, successionSubject(predecessor)),
                 ),
               ] as const,
             ],
@@ -1466,7 +1489,10 @@ function compileWorkspaceResolved(
         concept.supersedes ?? []
       ).entries()) {
         const pointer = `/concepts/${index}/supersedes/${supersedesIndex}`
-        const predecessorIdentity = qualifyReference(value.id, predecessor)
+        const predecessorIdentity = qualifyReference(
+          value.id,
+          successionSubject(predecessor),
+        )
         const subjectIdentity = concept.id
         if (!conceptByQualifiedId.has(predecessorIdentity)) {
           const source = location(
@@ -1476,7 +1502,7 @@ function compileWorkspaceResolved(
           diagnostics.push({
             severity: 'error',
             code: 'YM312',
-            message: `Unresolved succession reference "${predecessor}"`,
+            message: `Unresolved succession reference "${successionSubject(predecessor)}"`,
             path: input.path,
             pointer,
             line: source.line,
@@ -2035,18 +2061,37 @@ function compileWorkspaceResolved(
       for (const [supersedesIndex, predecessor] of (
         concept.supersedes ?? []
       ).entries()) {
-        const predecessorIdentity = qualifyReference(value.id, predecessor)
+        const predecessorIdentity = qualifyReference(
+          value.id,
+          successionSubject(predecessor),
+        )
+        const scope = successionScope(predecessor)
+        const successionSource = location(
+          ['concepts', index, 'supersedes', supersedesIndex],
+          `/concepts/${index}/supersedes/${supersedesIndex}`,
+        )
         claims.push({
           id: supersedesClaimId(subject, predecessorIdentity),
           subject,
           predicate: 'yarramate/lineage/supersedes',
           object: { ref: predecessorIdentity },
           origin: 'declared',
-          source: location(
-            ['concepts', index, 'supersedes', supersedesIndex],
-            `/concepts/${index}/supersedes/${supersedesIndex}`,
-          ),
+          source: successionSource,
         })
+        // The respect is a claim of its own rather than a field on the
+        // succession claim: `GraphClaim` is a triple, and widening it would
+        // widen the published graph schema for one optional string. Its id is
+        // the succession claim's, suffixed, so the two correlate.
+        if (scope !== undefined) {
+          claims.push({
+            id: `${supersedesClaimId(subject, predecessorIdentity)}~respect`,
+            subject,
+            predicate: 'yarramate/lineage/supersedes-respect',
+            object: { value: scope },
+            origin: 'declared',
+            source: successionSource,
+          })
+        }
       }
       if (concept.owner !== undefined) {
         claims.push({

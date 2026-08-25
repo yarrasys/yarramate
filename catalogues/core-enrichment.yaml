@@ -1,6 +1,6 @@
 format: yarramate/question-catalogue/v1
 id: core-enrichment
-version: "1.0"
+version: "1.1"
 profile: yarramate/core@0.1
 presentation:
   title: Core enrichment interview
@@ -1549,3 +1549,34 @@ questions:
       falsifiable. If nothing in scope is assigned to it, reclassify it
       to a kind that does carry a claim, or retire it with a description
       saying why it sits outside this architecture.
+
+  - id: succession-unscoped
+    wave: hygiene
+    since: "1.1"
+    scope: subject
+    subjects: {}
+    trigger:
+      - condition: unscoped-succession
+    question: >-
+      {subject.name} supersedes a predecessor that is still current. In what
+      respect does it supersede it, and what remains of the predecessor?
+    askPlain: >-
+      {subject.name} takes over from something that is still here. What part
+      does it take over, and what is the old one still needed for?
+    materiality: >-
+      A succession that replaced its predecessor outright says so by the
+      predecessor being gone. One where both are still current is usually
+      partial, and the part it does not cover is exactly what a reader
+      planning against the model needs to know. An unqualified claim reads
+      as a total replacement to every surface that consumes the field, and
+      `ask --compare` reads the field rather than the prose beside it, so a
+      partial succession recorded without its scope turns into a declared
+      removal of something nobody is removing.
+    authority: either
+    resolution: >-
+      Record the respect on the succession entry:
+      `supersedes: [{ subject: <predecessor>, inRespectOf: <the part taken
+      over> }]`. If the succession really is total, retire the predecessor,
+      which says the same thing without a qualifier. If the two subjects
+      simply coexist and neither takes over from the other, the succession
+      is the wrong claim; remove it.

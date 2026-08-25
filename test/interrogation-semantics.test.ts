@@ -22,7 +22,7 @@ import {
 // existing question answers.
 
 const EXPECTED_SEMANTICS = '1'
-const EXPECTED_FINGERPRINT = '50f0a37db8ad99e1'
+const EXPECTED_FINGERPRINT = '86669858b84e4d8f'
 
 const profile = 'yarramate/core@0.1'
 
@@ -107,6 +107,7 @@ const conditions: readonly (readonly [string, readonly string[]])[] = [
   ['missing-attestation', ['      - condition: missing-attestation', '        topic: adequacy']],
   ['near-duplicate', ['      - condition: near-duplicate']],
   ['unconstrained-kind', ['      - condition: unconstrained-kind']],
+  ['unscoped-succession', ['      - condition: unscoped-succession']],
 ]
 
 const catalogue = [
@@ -181,11 +182,18 @@ describe('interrogation semantics are versioned and pinned', () => {
       .slice(0, 16)
     expect(
       fingerprint,
-      `Condition evaluation changed. If that was deliberate, bump ` +
-        `INTERROGATION_SEMANTICS_VERSION in src/interrogate-command.ts and ` +
-        `set EXPECTED_FINGERPRINT here to ${fingerprint}. If it was not ` +
-        `deliberate, an existing question now answers differently for an ` +
-        `unchanged model, which is a bug.`,
+      `The fingerprint moved. Two different causes, and they want ` +
+        `different responses.\n` +
+        `  ADDED A CONDITION: this fixture gained a question, so only ` +
+        `EXPECTED_FINGERPRINT changes. Set it to ${fingerprint}. Do NOT bump ` +
+        `INTERROGATION_SEMANTICS_VERSION: no existing question answers ` +
+        `differently.\n` +
+        `  CHANGED WHAT A CONDITION MEANS: an existing question now answers ` +
+        `differently for an unchanged model. Bump ` +
+        `INTERROGATION_SEMANTICS_VERSION in src/interrogate-command.ts, set ` +
+        `EXPECTED_SEMANTICS here to match, and set EXPECTED_FINGERPRINT to ` +
+        `${fingerprint}.\n` +
+        `  NEITHER: it is a bug. Answers moved and nothing asked them to.`,
     ).toBe(EXPECTED_FINGERPRINT)
   })
 

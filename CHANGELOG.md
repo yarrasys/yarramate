@@ -2,6 +2,24 @@
 
 ## 1.1.0
 
+- **Added.** A succession can be partial. `supersedes` accepts
+  `{ subject, inRespectOf }` beside the bare id, and the interview asks for the
+  respect when a subject supersedes a predecessor that is still current
+  (`unscoped-succession`, catalogue 1.1).
+  [ADR 0109](docs/adr/0109-a-succession-can-be-partial.md).
+
+  Every succession the field could express was total. A shipped model claimed
+  Zoekt superseded the Elasticsearch indexer while the source it was built from
+  says Zoekt "does not replace" it for any scope but code search. The prose
+  carried the qualifier and the field could not, and `ask --compare` reads the
+  field, so the declared target architecture became the deletion of a component
+  nobody is deleting.
+
+  A selector may now omit `kinds`, which selects every concept: succession can
+  be declared on any subject, and enumerating the kinds that may carry it would
+  be a list nobody can keep right. Additive; the bare succession form and every
+  existing selector are unchanged.
+
 - **Added.** A declared constraint can be checked. A subject may carry
   `forbids`, naming relationship shapes it rules out, and a violation is a
   `check` error (YM415).

@@ -50,7 +50,13 @@ const validateCatalogue = new Ajv2020({ allErrors: true }).compile(
 export const INTERROGATION_SEMANTICS_VERSION = '1'
 
 export interface CatalogueSelector {
-  readonly kinds: readonly string[]
+  /**
+   * Kinds to select. Absent selects every concept, which is what a
+   * kind-agnostic condition wants: succession can be declared on any subject,
+   * so enumerating the kinds that may carry it would be a list nobody can keep
+   * right rather than a constraint (ADR 0109).
+   */
+  readonly kinds?: readonly string[]
   readonly kindMatching?: 'exact' | 'descendants'
   readonly statuses?: readonly string[]
   readonly documents?: readonly string[]
@@ -106,6 +112,7 @@ export type CatalogueCondition =
   | { readonly condition: 'missing-attestation'; readonly topic: string }
   | { readonly condition: 'near-duplicate' }
   | { readonly condition: 'unconstrained-kind' }
+  | { readonly condition: 'unscoped-succession' }
 
 export interface CatalogueQuestion {
   readonly id: string
@@ -339,9 +346,17 @@ const selectSubjects = (
   // The schema's declared default for kindMatching is descendants, so a
   // profile-derived kind satisfies a catalogue written against its parent.
   const matching = selector.kindMatching ?? 'descendants'
-  let ids = [...index.concepts].filter((id) =>
-    kindMatches(index.kindOf.get(id), selector.kinds, matching, profileContext),
-  )
+  let ids =
+    selector.kinds === undefined
+      ? [...index.concepts]
+      : [...index.concepts].filter((id) =>
+          kindMatches(
+            index.kindOf.get(id),
+            selector.kinds!,
+            matching,
+            profileContext,
+          ),
+        )
   if (selector.statuses !== undefined) {
     const statuses = new Set(selector.statuses)
     ids = ids.filter((id) => {
@@ -468,6 +483,28 @@ const conditionHolds = (
       return !(index.claimsBySubject.get(subjectId!) ?? []).some(
         ({ predicate }) => predicate === condition.predicate,
       )
+    case 'unscoped-succession': {
+      // A succession that replaced its predecessor outright says so by the
+      // predecessor being gone. One where both subjects are still current is
+      // usually partial, and the respect is the part a reader needs: a model
+      // claimed Zoekt superseded the Elasticsearch indexer while the source
+      // said Zoekt "does not replace" it for any scope but code search
+      // (ADR 0109). Fires only where the qualifier is missing AND the
+      // predecessor is still current, so a completed replacement stays quiet.
+      const claims = index.claimsBySubject.get(subjectId!) ?? []
+      return claims.some((claim) => {
+        if (claim.predicate !== 'yarramate/lineage/supersedes') return false
+        if (!('ref' in claim.object)) return false
+        const scoped = claims.some(
+          (other) =>
+            other.predicate === 'yarramate/lineage/supersedes-respect' &&
+            other.id === `${claim.id}~respect`,
+        )
+        if (scoped) return false
+        const predecessorStatus = index.statusOf.get(claim.object.ref)
+        return predecessorStatus !== 'retired'
+      })
+    }
     case 'missing-relationship': {
       // Relationship kinds resolve through profile lineage by default, the
       // same rule as selectors: a catalogue written against core kinds must

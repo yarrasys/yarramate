@@ -255,7 +255,18 @@
       "minItems": 1,
       "uniqueItems": true,
       "items": {
-        "$ref": "#/$defs/reference"
+        "oneOf": [
+          { "$ref": "#/$defs/reference" },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["subject", "inRespectOf"],
+            "properties": {
+              "subject": { "$ref": "#/$defs/reference" },
+              "inRespectOf": { "$ref": "#/$defs/nonEmptyText" }
+            }
+          }
+        ]
       }
     },
     "relationship": {

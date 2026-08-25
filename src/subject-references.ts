@@ -46,6 +46,14 @@ export const SUBJECT_REFERENCE_POSITIONS: readonly SubjectReferencePosition[] =
       path: ['concepts', '*', 'supersedes', '*'],
       form: 'reference',
     },
+    // The scoped succession form, `{ subject, inRespectOf }` (ADR 0109). A
+    // rename has to move this one too, or a scoped succession would silently
+    // keep pointing at the old address while the bare form beside it moved.
+    {
+      group: 'document',
+      path: ['concepts', '*', 'supersedes', '*', 'subject'],
+      form: 'reference',
+    },
     {
       group: 'document',
       path: ['concepts', '*', 'constraints', '*', 'ref'],
