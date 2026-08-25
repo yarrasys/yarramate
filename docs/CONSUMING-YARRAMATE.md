@@ -232,6 +232,42 @@ the notation module is the rendering vocabulary for that mode; the element
 vocabulary and relationship table themselves are implemented in the core
 profile (ADR 0097).
 
+## Evaluating question catalogues off Node
+
+The interrogation engine is public API. A consumer that compiles a workspace
+itself can load a catalogue and evaluate it without the CLI:
+
+```ts
+import {
+  evaluateCatalogue,
+  loadQuestionCatalogue,
+  INTERROGATION_SEMANTICS_VERSION,
+} from 'yarramate/interrogation'
+```
+
+**Import the subpath, not the package entry, wherever the runtime is not
+Node.** The `.` barrel reaches `node:fs`, `node:path` and `node:child_process`
+through workspace loading, the filesystem source store and git-derived
+attestation staleness, so taking the engine from there drags Node in behind it.
+`yarramate/interrogation` carries the engine alone and is pinned free of Node
+built-ins by the same test that guards `yarramate/adapter/visual-graph`. The
+same names are also exported from `.` for Node consumers.
+
+`evaluateCatalogue` returns the report without its `workspace`, which the
+caller supplies:
+
+```ts
+const report = { workspace: id, ...evaluateCatalogue(catalogue, graph, profileContext) }
+```
+
+The report carries `semantics`, the version of condition evaluation, which
+changes only when an existing question's answer can change for an unchanged
+model ([ADR 0106](adr/0106-a-report-says-which-engine-answered.md)). A consumer
+that **persists** answers should store it beside them: equal means a flipped
+answer is about the model and belongs in front of a user, different means the
+engine moved and the right response is to re-baseline silently rather than
+reopen someone's queue.
+
 ### Mount the visual editor
 
 Mount the packaged editor when the consuming product owns the sources and

@@ -1,6 +1,8 @@
-# yarramate.dev rotating hero taglines.
-# Line 1 (first non-comment line) is the released version; every later
-# non-empty line is one tagline. Update with each release — docs/RELEASING.md.
+# Product phrasing, kept as a source rather than a published surface.
+# yarramate.dev stopped fetching this file in the 2026-08-04 simplification
+# pass, which removed rotating taglines and all release-coupled runtime
+# content. The version line below is frozen at the last release that updated
+# it and is not maintained; nothing reads it.
 v1.0.0
 a design interview any agent can resume.
 the hop questions before the owner questions.
