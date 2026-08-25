@@ -104,9 +104,7 @@
       "description": "Which subjects a subject-scope question applies to. Field vocabulary mirrors the projection query selector (ADR 0017).",
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "kinds"
-      ],
+      
       "properties": {
         "kinds": {
           "type": "array",
@@ -489,6 +487,19 @@
           "properties": {
             "condition": {
               "const": "unconstrained-kind"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "The subject supersedes a predecessor that is still current, and does not say in what respect. A succession that replaced its predecessor outright says so by the predecessor being gone; one where both remain is usually partial, and the respect is the part a reader needs (ADR 0109).",
+          "required": [
+            "condition"
+          ],
+          "properties": {
+            "condition": {
+              "const": "unscoped-succession"
             }
           }
         }
