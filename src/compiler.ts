@@ -98,6 +98,23 @@ interface NativeConcept {
     readonly ref: string
     readonly expects?: NativeExpectedObservation
   }>
+  /**
+   * Relationship shapes this subject rules out, checked against the graph.
+   *
+   * A constraint nothing tests is a comment: it reads like a rule, survives
+   * review because the prose is true, and never once contradicts the model it
+   * is attached to (ADR 0108). Deliberately narrow: forbid a relationship kind
+   * between named endpoints, with exceptions. That covers "everything goes
+   * through X", the most common architectural rule anyone writes, and needs no
+   * traversal, so it stays inside the no-derivation boundary of ADR 0003.
+   */
+  readonly forbids?: ReadonlyArray<{
+    readonly relationship: string
+    readonly from?: string
+    readonly to?: string
+    readonly exceptFrom?: readonly string[]
+    readonly exceptTo?: readonly string[]
+  }>
   readonly references?: readonly NativeIdentifiedReference[]
   readonly presentIn?: readonly string[]
   readonly attestations?: ReadonlyArray<{
@@ -1060,6 +1077,19 @@ function compileWorkspaceResolved(
     seenDocumentIds.add(value.id)
   }
 
+  // Every `forbids` rule in the workspace, with the subject that declared it.
+  // A rule is about the graph, not about who wrote it down, so it is applied
+  // wherever it was declared and the message names the declarer (ADR 0108).
+  interface ForbidRule {
+    readonly declaredBy: string
+    readonly relationship: string
+    readonly from?: string
+    readonly to?: string
+    readonly exceptFrom: ReadonlySet<string>
+    readonly exceptTo: ReadonlySet<string>
+  }
+  const forbidRules: ForbidRule[] = []
+
   const conceptByQualifiedId = new Map<
     string,
     {
@@ -1082,6 +1112,20 @@ function compileWorkspaceResolved(
       ),
     ),
   )
+  for (const { value } of documents) {
+    for (const concept of value.concepts) {
+      for (const rule of concept.forbids ?? []) {
+        forbidRules.push({
+          declaredBy: concept.id,
+          relationship: rule.relationship,
+          ...(rule.from === undefined ? {} : { from: rule.from }),
+          ...(rule.to === undefined ? {} : { to: rule.to }),
+          exceptFrom: new Set(rule.exceptFrom ?? []),
+          exceptTo: new Set(rule.exceptTo ?? []),
+        })
+      }
+    }
+  }
   // Subject identity is the authored id, unique across the workspace, so a
   // reference resolves as written. Kept as a named step rather than inlined
   // because every reference in the model passes through here, and that is
@@ -1817,6 +1861,30 @@ function compileWorkspaceResolved(
             candidates.length === 0
               ? ''
               : `; ArchiMate 3.2 permits: ${candidates.join(', ')}`
+          // A declared rule about the graph, checked against the graph. The
+          // field is new, so no existing model can violate one: this can only
+          // fire on a rule someone deliberately wrote (ADR 0108).
+          for (const rule of forbidRules) {
+            const kindMatches =
+              rule.relationship === relationship.kind ||
+              rule.relationship === policy.coreKind
+            if (!kindMatches) continue
+            if (rule.from !== undefined && rule.from !== relationship.from) {
+              continue
+            }
+            if (rule.to !== undefined && rule.to !== relationship.to) continue
+            if (rule.exceptFrom.has(relationship.from)) continue
+            if (rule.exceptTo.has(relationship.to)) continue
+            const pointer = `/relationships/${index}/kind`
+            diagnostics.push({
+              severity: 'error',
+              code: 'YM415',
+              message:
+                `Relationship "${relationship.kind}" from "${relationship.from}" ` +
+                `to "${relationship.to}" is forbidden by "${rule.declaredBy}"`,
+              ...location(['relationships', index, 'kind'], pointer),
+            })
+          }
           if (!permitted.has(policy.coreKind)) {
             const pointer = `/relationships/${index}/kind`
             const source = location(['relationships', index, 'kind'], pointer)

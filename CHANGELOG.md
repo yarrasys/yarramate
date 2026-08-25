@@ -2,6 +2,21 @@
 
 ## 1.1.0
 
+- **Added.** A declared constraint can be checked. A subject may carry
+  `forbids`, naming relationship shapes it rules out, and a violation is a
+  `check` error (YM415).
+  [ADR 0108](docs/adr/0108-a-constraint-nothing-tests-is-a-comment.md).
+
+  ADR 0083 found that a kind nothing constrains is a label; the same held one
+  level up. A shipped model declared "no component reads repository storage
+  directly", recorded three edges doing exactly that, and passed
+  `check --strict`. Its only wiring in the graph was two `association` edges.
+
+  Deliberately narrow: forbid a relationship kind between named endpoints, with
+  exceptions. That covers "everything goes through X" and needs no traversal,
+  so it stays inside the no-derivation boundary. Additive, and a new field, so
+  no existing model can violate a rule it never declared.
+
 - **Added.** An absence can now be audited. A `not-observed` observation may
   record `searched`, the globs and greps that found nothing, and any
   observation may record `measured`, a figure with the method that produced it.
