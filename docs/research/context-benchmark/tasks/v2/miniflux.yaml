@@ -30,6 +30,18 @@
 type: yarramate/benchmark-suite/v2
 suite: miniflux
 headline: true
+retired:
+  since: '2026-08-25'
+  reason: >-
+    The gallery showcase this suite points at was retired in
+    yarrasys/yarramate-gallery#10: keeping a broad set of models current costs
+    more than the breadth is worth, given how fast yarramate's vocabulary
+    moves. Conditions B and C have no model to place and cannot run. The tasks
+    in this suite and their ground truth remain valid, having been verified against the
+    subject source at the pinned commit and never against the model, so
+    condition A is still runnable. A comparative result needs B, so this suite
+    no longer contributes to headline pooling.
+  conditions: [B, C]
 repository:
   name: miniflux
   source: https://github.com/miniflux/v2

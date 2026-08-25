@@ -62,6 +62,28 @@ const dryRun = flag('dry-run');
 const resume = flag('resume');
 const agentConfigPolicy = flag('keep-subject-agent-config') ? 'keep' : 'neutralize';
 
+// A retired suite has lost the model its model-bearing conditions place, so
+// those conditions would fail later on a missing directory. Refuse them here,
+// by name, and let any condition the suite still supports through: the tasks
+// were verified against the subject source at the pinned commit, not the model.
+if (suite.retired) {
+  const blocked = conditionIds.filter((id) => suite.retired.conditions.includes(id));
+  if (blocked.length) {
+    const message =
+      `suite ${suite.suite} was retired on ${suite.retired.since}; ` +
+      `condition${blocked.length > 1 ? 's' : ''} ${blocked.join(',')} cannot run.\n` +
+      `  ${suite.retired.reason.trim().replace(/\s+/g, ' ')}`;
+    // A dry run has no side effects and no cost, so it stays useful for
+    // inspecting a retired corpus; only a live run is refused.
+    if (dryRun) {
+      console.error(`run-benchmark: warning: ${message}`);
+    } else {
+      console.error(`run-benchmark: ${message}`);
+      process.exit(2);
+    }
+  }
+}
+
 const modelSourceDir = () => {
   if (suite.repository.gallery && !galleryDir) {
     console.error('run-benchmark: suite references a gallery model; pass --gallery <local clone of the gallery repo>');
