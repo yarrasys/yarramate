@@ -879,6 +879,10 @@
             },
             "notObserved": {
               "type": "integer"
+            },
+            "unsupportedAbsences": {
+              "type": "integer",
+              "minimum": 0
             }
           },
           "additionalProperties": false
@@ -953,6 +957,10 @@
         },
         "notObserved": {
           "type": "integer"
+        },
+        "unsupportedAbsences": {
+          "type": "integer",
+          "minimum": 0
         },
         "subjectsWithoutEvidence": {
           "type": "integer"

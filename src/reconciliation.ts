@@ -116,6 +116,13 @@ export interface ReconciliationReport {
     readonly contradicted: number
     readonly unknown: number
     readonly notObserved: number
+    /**
+     * `not-observed` observations naming no search. A negative claim about a
+     * tree nobody read exhaustively is the one result whose message nothing
+     * can check, so the ones offering a reader nothing to re-run are counted
+     * rather than left to read like any other finding (ADR 0107).
+     */
+    readonly unsupportedAbsences?: number
     readonly subjectsWithoutEvidence: number
     readonly staleAttestations?: number
     readonly unconfirmedAttestations?: number
@@ -366,6 +373,7 @@ export function reconcileEvidenceReports(
     contradicted: 0,
     unknown: 0,
     notObserved: 0,
+    unsupportedAbsences: 0,
     subjectsWithoutEvidence: unobservedSubjects.length,
     // Attestation staleness is assessed only when the caller derived it
     // (the reconcile command); the counter appears exactly then, so a
@@ -386,6 +394,7 @@ export function reconcileEvidenceReports(
     ...(staleness?.findings ?? []),
     ...unconfirmed,
   ]
+  const absenceNotes: string[] = []
   for (const report of reports) {
     summary.observations += report.observations.length
     for (const observation of report.observations) {
@@ -395,6 +404,21 @@ export function reconcileEvidenceReports(
       }
       if (observation.result === 'not-observed') {
         summary.notObserved += 1
+        // A not-observed asserts a negative, and is the only result whose
+        // message nothing else in the pipeline can check: the locator it
+        // carries points at what the author looked at, not at the absence
+        // they claim. One naming no search offers a reader nothing to
+        // re-run, so it is counted and named rather than left to read like
+        // a checked finding (ADR 0107).
+        if ((observation.searched ?? []).length === 0) {
+          summary.unsupportedAbsences += 1
+          const named =
+            'subject' in observation ? observation.subject : observation.claim
+          absenceNotes.push(
+            `The not-observed observation for ${named} names no search, ` +
+              `so nothing here can be re-run to test the absence it asserts.`,
+          )
+        }
       } else {
         summary[observation.result] += 1
       }
@@ -438,7 +462,7 @@ export function reconcileEvidenceReports(
     ),
   )
   summary.findings = findings.length
-  const notes = staleness?.notes ?? []
+  const notes = [...(staleness?.notes ?? []), ...absenceNotes]
   return {
     format: 'yarramate/reconciliation-report/v1',
     workspace,

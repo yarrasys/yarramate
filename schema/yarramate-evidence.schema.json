@@ -27,6 +27,44 @@
     }
   },
   "$defs": {
+    "searchProbe": {
+      "description": "One search a provider performed and found nothing at. Recorded so a reader can re-run it; yarramate does not execute it.",
+      "type": "object",
+      "additionalProperties": false,
+      "oneOf": [{ "required": ["glob"] }, { "required": ["grep"] }],
+      "properties": {
+        "glob": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A path glob that matched nothing, e.g. PRAEFECT_*"
+        },
+        "grep": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A pattern that matched nothing."
+        },
+        "paths": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Paths the search covered. Absent means the whole tree."
+        }
+      }
+    },
+    "measurement": {
+      "description": "A figure quoted in an evidence message, with how it was produced. Recorded so a reader can re-derive it rather than trust it; yarramate does not execute the method.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "method"],
+      "properties": {
+        "value": { "type": "string", "minLength": 1 },
+        "method": {
+          "type": "string",
+          "minLength": 1,
+          "description": "How the value was obtained, precisely enough to reproduce."
+        }
+      }
+    },
     "id": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
@@ -76,6 +114,18 @@
             "unknown",
             "not-observed"
           ]
+        },
+        "searched": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/searchProbe" },
+          "description": "What was searched and found empty. Meaningful on a not-observed result, which is the one result that asserts a negative about a tree nobody read exhaustively."
+        },
+        "measured": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/measurement" },
+          "description": "Figures quoted in the message, with how each was produced."
         },
         "key": {
           "$ref": "#/$defs/observationKey"

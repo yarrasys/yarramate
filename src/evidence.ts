@@ -47,17 +47,43 @@ export interface EvidenceObservedValue {
   readonly value: string
 }
 
+/**
+ * One search a provider ran and found nothing at, recorded so a reader can
+ * re-run it. yarramate never executes it: the engine has no access to the
+ * subject tree, and gaining one would be a different decision (ADR 0107).
+ */
+export type SearchProbe =
+  | { readonly glob: string }
+  | { readonly grep: string; readonly paths?: readonly string[] }
+
+/**
+ * A figure quoted in an evidence message, with how it was produced, so a
+ * reader can tell a measured number from a remembered one and re-derive it at
+ * a later commit.
+ */
+export interface Measurement {
+  readonly value: string
+  readonly method: string
+}
+
+interface ObservationProvenance {
+  readonly searched?: readonly SearchProbe[]
+  readonly measured?: readonly Measurement[]
+}
+
 export type EvidenceObservation =
   | ({
       readonly subject: string
       readonly result: EvidenceResult
       readonly evidence: EvidenceLocator
-    } & Partial<EvidenceObservedValue>)
+    } & ObservationProvenance &
+      Partial<EvidenceObservedValue>)
   | ({
       readonly claim: string
       readonly result: EvidenceResult
       readonly evidence: EvidenceLocator
-    } & Partial<EvidenceObservedValue>)
+    } & ObservationProvenance &
+      Partial<EvidenceObservedValue>)
 
 export interface EvidenceDocument {
   readonly format: 'yarramate/evidence/v1'
