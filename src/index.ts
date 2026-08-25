@@ -147,6 +147,7 @@ export {
   type DeletionBlocker,
 } from './deletion-drafting.js'
 export {
+  INTERROGATION_SEMANTICS_VERSION,
   evaluateCatalogue,
   loadQuestionCatalogue,
   renderInterrogationReport,

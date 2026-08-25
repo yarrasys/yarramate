@@ -27,6 +27,28 @@ const validateCatalogue = new Ajv2020({ allErrors: true }).compile(
   catalogueSchema,
 )
 
+/**
+ * The version of condition evaluation itself, not of the package.
+ *
+ * A report says which catalogue asked its questions. It could not say which
+ * engine answered them, so a consumer holding stored answers could tell a
+ * model change from a catalogue deepening (via `since`) but not from a change
+ * in what a condition means. ADR 0097 replaced four aspect rules with the
+ * ArchiMate 3.2 table and flipped `missing-relationship` answers for unchanged
+ * models and unchanged questions; ADR 0083's `unconstrained-kind` goes
+ * near-empty under that same table. Neither was visible in any report.
+ *
+ * **Bump this when an existing question's answer can change for an unchanged
+ * model.** Do not bump it for anything else: not a release, not a new
+ * condition, not a catalogue edit, not a rendering change. A version that
+ * moves when answers did not is a version consumers learn to ignore.
+ *
+ * `test/interrogation-semantics.test.ts` fingerprints every condition against
+ * a fixture and fails if evaluation moves without this bumping, so the rule is
+ * enforced rather than remembered.
+ */
+export const INTERROGATION_SEMANTICS_VERSION = '1'
+
 export interface CatalogueSelector {
   readonly kinds: readonly string[]
   readonly kindMatching?: 'exact' | 'descendants'
@@ -150,6 +172,8 @@ export interface InterrogationReport {
   readonly format: 'yarramate/interrogation-report/v1'
   readonly workspace: string
   readonly catalogue: string
+  /** {@link INTERROGATION_SEMANTICS_VERSION} at the time of evaluation. */
+  readonly semantics: string
   readonly summary: InterrogationSummary
   readonly waves: readonly ReportWave[]
 }
@@ -753,6 +777,7 @@ export function evaluateCatalogue(
   return {
     format: 'yarramate/interrogation-report/v1',
     catalogue: `${catalogue.id}@${catalogue.version}`,
+    semantics: INTERROGATION_SEMANTICS_VERSION,
     summary: {
       questions: applicableQuestions.length,
       openQuestions,

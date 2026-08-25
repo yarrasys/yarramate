@@ -8,6 +8,7 @@
 // in-memory graph, and a test pins the import graph free of Node builtins.
 // The same shape the visual-graph projector uses (`./adapter/visual-graph`).
 export {
+  INTERROGATION_SEMANTICS_VERSION,
   evaluateCatalogue,
   loadQuestionCatalogue,
   renderInterrogationReport,

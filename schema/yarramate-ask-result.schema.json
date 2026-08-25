@@ -522,6 +522,7 @@
             "format",
             "workspace",
             "catalogue",
+            "semantics",
             "summary",
             "waves"
           ],
@@ -533,6 +534,9 @@
               "type": "string"
             },
             "catalogue": {
+              "type": "string"
+            },
+            "semantics": {
               "type": "string"
             },
             "summary": {

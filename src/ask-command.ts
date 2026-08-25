@@ -1106,6 +1106,7 @@ export function runAskCommand(
         format: report.format,
         workspace: report.workspace,
         catalogue: report.catalogue,
+        semantics: report.semantics,
         summary: report.summary,
         waves: report.waves,
       }

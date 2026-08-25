@@ -4,7 +4,7 @@
   "title": "YarraMate interrogation report",
   "type": "object",
   "additionalProperties": false,
-  "required": ["format", "workspace", "catalogue", "summary", "waves"],
+  "required": ["format", "workspace", "catalogue", "semantics", "summary", "waves"],
   "properties": {
     "format": {
       "const": "yarramate/interrogation-report/v1"
@@ -16,6 +16,11 @@
     "catalogue": {
       "type": "string",
       "minLength": 1
+    },
+    "semantics": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The version of condition evaluation that produced this report, as distinct from the package version. It changes only when an existing question's answer can change for an unchanged model, so a consumer holding stored answers can tell an engine change from a model change. Absent on reports produced before yarramate 1.1.0."
     },
     "summary": {
       "type": "object",
