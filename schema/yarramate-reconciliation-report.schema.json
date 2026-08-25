@@ -30,7 +30,12 @@
         "unknown": { "type": "integer", "minimum": 0 },
         "notObserved": { "type": "integer", "minimum": 0 },
         "subjectsWithoutEvidence": { "type": "integer", "minimum": 0 },
-        "staleAttestations": { "type": "integer", "minimum": 0 },
+        "unsupportedAbsences": {
+        "type": "integer",
+        "minimum": 0,
+        "description": "not-observed observations that name no search. A not-observed asserts a negative about a tree nobody read exhaustively, and is the one result whose message nothing can check; this counts the ones offering a reader nothing to re-run."
+      },
+      "staleAttestations": { "type": "integer", "minimum": 0 },
         "unconfirmedAttestations": { "type": "integer", "minimum": 0 },
         "expectationsCompared": { "type": "integer", "minimum": 0 },
         "expectationsWithoutObservation": { "type": "integer", "minimum": 0 }

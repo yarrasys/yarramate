@@ -2,6 +2,25 @@
 
 ## 1.1.0
 
+- **Added.** An absence can now be audited. A `not-observed` observation may
+  record `searched`, the globs and greps that found nothing, and any
+  observation may record `measured`, a figure with the method that produced it.
+  `reconcile` counts the `not-observed` observations naming no search as
+  `summary.unsupportedAbsences` and names each in `notes`.
+  [ADR 0107](docs/adr/0107-a-recorded-search-makes-an-absence-auditable.md).
+
+  Every evidence result except one is checkable by something. `not-observed`
+  asserts a negative about a tree nobody read exhaustively, and its message was
+  free prose nothing could test, which is how a shipped model asserted that a
+  component had no client in a tree containing a class named after it. Its
+  locator resolved; the locator and the assertion were about different things.
+
+  **yarramate does not run the recorded probe.** It has never resolved an
+  evidence locator, and gaining the ability to read a foreign tree and execute
+  patterns from a committed file is a separate decision. Recording comes first,
+  because the data has to exist before running it means anything.
+
+
 - **Added.** An interrogation report says which engine answered, not only which
   catalogue asked. `semantics` carries the version of condition evaluation
   itself, exported as `INTERROGATION_SEMANTICS_VERSION`, and it changes only
