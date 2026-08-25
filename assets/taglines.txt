@@ -1,7 +1,7 @@
 # yarramate.dev rotating hero taglines.
 # Line 1 (first non-comment line) is the released version; every later
 # non-empty line is one tagline. Update with each release — docs/RELEASING.md.
-v1.0.0
+v1.1.0
 a design interview any agent can resume.
 the hop questions before the owner questions.
 the map your coding agents share.
