@@ -17,13 +17,20 @@ import { describe, expect, it } from 'vitest'
 
 const repositoryRoot = fileURLToPath(new URL('..', import.meta.url))
 
-// `npm pack --json` runs the `prepack` build, whose pnpm and vite output
-// shares stdout with the JSON report, so parse from the array delimiter
-// rather than the first byte. Returns the packed tarball path.
+// `--ignore-scripts` because `prepack` is `pnpm build`, and a build here
+// rewrites the repository's `dist/` underneath every other test file that
+// reads it: `vite build` empties `dist/visual-app-lib` before rewriting it,
+// so a concurrent reader sees the gap and fails on an artifact that exists
+// either side of it. `verify` builds before it tests, so the tree this packs
+// is already the built one, and `prepack` itself is asserted below by
+// declaration rather than by running it.
+//
+// npm's own output still shares stdout with the JSON report, so parse from
+// the array delimiter rather than the first byte. Returns the tarball path.
 const packTarball = (destination: string): string => {
   const stdout = execFileSync(
     'npm',
-    ['pack', '--json', '--pack-destination', destination],
+    ['pack', '--json', '--ignore-scripts', '--pack-destination', destination],
     {
       cwd: repositoryRoot,
       encoding: 'utf8',
