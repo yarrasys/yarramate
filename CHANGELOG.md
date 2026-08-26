@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- **Fixed.** The cytoscape container declares `position: relative`, so
+  cytoscape stops warning that it "can not use UI extensions properly"
+  (#325). Harmless while this app draws its own React context menu positioned
+  against the window, and a trap for whoever first reaches for a cytoscape UI
+  extension and finds it mispositioned with the reason already printed and
+  ignored on every session.
+
+  **The blocked inline style in the same console is now identified**, which
+  was the open half of that issue. It is cytoscape's own: it inserts a
+  `<style>` element whose entire content is
+  `.__________cytoscape_container { position: relative; }`, the session CSP
+  refuses it, and the refusal is why the position stayed static and the
+  warning fired. Confirmed rather than inferred: the hash the CSP names,
+  `sha256-pgvDUBa4IjFA2yuSJ2cqcyxmNYJMborsd0ORcRv9vw8=`, is the SHA-256 of
+  exactly that rule. It is deliberately **not** allowlisted. The rule it
+  carries is the one now set directly, so permitting it would admit an inline
+  style the application provably does not need.
+
 - **Fixed.** A catalogue naming a kind its profile does not have is refused,
   rather than loading clean and asking a question that can never fire (#351).
   `loadQuestionCatalogue` validated the schema and the undeclared-wave check
