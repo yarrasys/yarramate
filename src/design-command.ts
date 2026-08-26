@@ -393,10 +393,21 @@ export function runDesignCommand(
       '',
     ]
     if (step === null) {
+      // "No open questions" has two causes and only one of them is complete
+      // (#334). Every wave gated shut asks NOTHING, so a blank model reaches
+      // zero without a single question having been put - and claiming the
+      // model answers everything the catalogue asks is then flatly false
+      // about a catalogue that asked nothing. Completion inferred from an
+      // empty set is the same fault the wave rail and the report renderer
+      // each carried; this is the sentence an agent reads to decide it is
+      // done, so it is the worst place for it.
+      const asked = report.waves.some((wave) => wave.questions.length > 0)
       lines.push(
-        subjectFilter === undefined
-          ? 'Interview complete: no open questions. The model answers everything the catalogue asks.'
-          : `Interview complete for ${subjectFilter}: no open questions touch it.`,
+        !asked
+          ? 'No wave has opened yet: this catalogue asks nothing until the model has substance. Declare a subject and run this again.'
+          : subjectFilter === undefined
+            ? 'Interview complete: no open questions. The model answers everything the catalogue asks.'
+            : `Interview complete for ${subjectFilter}: no open questions touch it.`,
       )
     } else {
       // --facilitate prefers the workshop phrasing and falls back to the

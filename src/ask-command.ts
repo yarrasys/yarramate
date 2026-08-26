@@ -850,9 +850,18 @@ export function runAskCommand(
       if (reconciliation !== undefined) {
         lines.push(reconciliationLine(reconciliation))
       }
+      // Zero open has two causes and only one is complete (#334): a
+      // catalogue whose waves are all gated shut has asked nothing, and
+      // reporting that as a finished interview is the same empty-set
+      // flattery the wave rail carried.
+      const askedAnything = report.waves.some(
+        (wave) => wave.questions.length > 0,
+      )
       lines.push(
         report.summary.open === 0
-          ? `Design interview complete (catalogue ${report.catalogue}): no open questions.`
+          ? askedAnything
+            ? `Design interview complete (catalogue ${report.catalogue}): no open questions.`
+            : `Design interview not started (catalogue ${report.catalogue}): no wave has opened yet.`
           : `Design interview: ${plural(report.summary.open, 'open question')} (catalogue ${report.catalogue}) — continue: yarramate design ${workspacePath}`,
         '',
         'Backlog — planned, dependency order:',

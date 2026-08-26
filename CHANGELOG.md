@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- **Fixed.** "No open questions" no longer reads as a finished interview
+  when nothing was asked (#334). A catalogue whose waves are all gated shut
+  reaches zero open questions without a single question having been put, and
+  `design` then said *"Interview complete: no open questions. The model
+  answers everything the catalogue asks"* — flatly false about a catalogue
+  that asked nothing, in the sentence an agent reads to decide it is done.
+  Both `design` and `ask` now check whether any opened wave carries a
+  question before claiming completion, and say the interview has not started
+  otherwise. This is the fourth instance of completion inferred from an
+  empty set found in one day, across two codebases: a consuming product's
+  wave rail, this repository's report renderer, that product's project
+  dashboard, and this.
+
 - **Fixed.** A wave that has not opened no longer reads as a finished one
   (#334). `ask` printed a bare `== Implementation ==` heading with nothing
   under it, which is visually identical to a wave whose questions are all
