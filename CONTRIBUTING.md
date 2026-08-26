@@ -113,9 +113,18 @@ because they do not pay the same price:
 - **Reading is unaffected** by a new field. Existing code goes on reading the
   fields it already knew about.
 - **Constructing breaks** on a *required* field, at typecheck rather than at
-  runtime, in every object literal that builds one. **Test fixtures are almost
-  always constructors**, so the break lands in a consumer's test suite, which
-  is where it is most confusing and least expected.
+  runtime, in every object literal that builds one. Test fixtures are the
+  usual constructors, so the break often lands in a consumer's test suite,
+  which is where it is most confusing and least expected.
+
+**They are not the only constructors, and the exceptions are the ones that
+matter.** A type a consumer must *build* to satisfy an API of ours is
+guaranteed to have constructors in production code: `ResolvedWorkspace` is
+built by every embedder of the mounted editor, because ADR 0100 has the
+embedder resolve its own manifest. When it gained a required `patterns`, a
+consuming product's manifest module broke — not its fixtures. Ask which of
+your types a consumer has to construct in order to call you, and treat those
+as the sharp ones.
 
 "Consumers reading the graph see no change" is a true sentence that has
 misled someone by the time they read it in a red build. Say which direction
@@ -125,7 +134,9 @@ rediscovered.
 This is recorded because it was learned the hard way: `portKinds` (#268 phase
 3) was described as costing readers nothing, which was true and beside the
 point. Adding it required edits in eighteen files here and three in a
-consuming product, all of them fixtures, none of them readers.
+consuming product, all of them fixtures, none of them readers. In the same
+release `ResolvedWorkspace` gained a required `patterns` and broke that
+product's manifest module, which is production code.
 
 ### An empty set is not a finished one
 
