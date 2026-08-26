@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- **Added.** `yarramate init` names the workspace after its directory
+  (#275). The seed document and workspace manifest ids derive from the
+  target directory's basename, slugified to the id grammar both schemas
+  share (lowercased, non-alphanumeric runs collapsed to single hyphens,
+  trimmed) and validated against it, with `main` kept as the fallback
+  when the basename yields nothing usable (`.`, an all-symbol name, a
+  digit-led slug). `init .` resolves the cwd first, so the first
+  `reconcile` report says the project's own name instead of
+  `workspace: main`. The seed file path and the AGENTS.md/CLAUDE.md
+  pointer are unchanged.
+  [ADR 0112](docs/adr/0112-init-names-the-workspace-after-its-directory.md).
+
+- **Fixed.** `yarramate reconcile` accepts `--json` (#275). Bare
+  reconcile already emits JSON, but the flag was rejected with the usage
+  screen and exit 2 while `design`, `check`, and `ask` all accept it —
+  the worst of both for a harness scripting "add `--json` to every
+  verb". It is now accepted as a no-op with byte-identical output, and
+  the usage string says so.
+
 - **Added.** The canvas carries the interview's nudges (#292). Every visual
   host now evaluates the shipped question catalogue per successful recompile
   and ships the result beside the graph; the editor draws a quiet count chip
