@@ -9,6 +9,7 @@ import type {
   CanvasEdge,
 } from '../graph-projection.js'
 import { DEFAULT_NESTING, type NestingKind } from '../nesting.js'
+import { DEFAULT_DIRECTION, type LayoutDirection } from '../layout-direction.js'
 import type {
   VisualLayoutPositions,
   VisualLayoutSavePayload,
@@ -201,18 +202,34 @@ const COMPONENT_ASPECT_RATIO = 2.5
 // `force` ever read went with them - the projection schema had required a
 // seed of every view that declared a layout at all, for one backend's benefit.
 //
-// `elk.direction` is read only by `layered`, and it is `DOWN`: ArchiMate's
-// layer bands only read top-down, so a left-right run would draw bands
-// corresponding to nothing. This used to be a pin applied over a reviewer's
-// stored `direction`, kept so that returning to native notation restored what
-// they declared. There is no native notation to return to, so the pin is now
-// simply the value. `presentation.direction` stays in the projection format:
-// the LikeC4 export reads it for its own `autoLayout`, which is not drawing
-// ArchiMate bands and has no reason to be held top-down.
-export function buildLayoutConfig(): cytoscape.LayoutOptions {
+// `elk.direction` is read only by `layered`, and the view says which way it
+// runs (#274, ADR 0121). It was pinned `DOWN` on the reasoning that ArchiMate's
+// layer bands only read top-down, which is right for a layer-band view and
+// wrong for the others: a deployment realization chain and a fan-out both read
+// better left to right, and `presentation.direction` has been in the projection
+// format all along, honoured by the LikeC4 export for its own `autoLayout`. A
+// view that says nothing still runs top-down, so the band reasoning keeps the
+// default it earned and stops being the only answer.
+const ELK_DIRECTION: Readonly<Record<LayoutDirection, 'DOWN' | 'RIGHT'>> = {
+  'top-down': 'DOWN',
+  'left-right': 'RIGHT',
+}
+
+export function buildLayoutConfig(direction: LayoutDirection): cytoscape.LayoutOptions {
   const elk: ElkLayoutOptions['elk'] = {
     algorithm: 'layered',
-    'elk.direction': 'DOWN',
+    'elk.direction': ELK_DIRECTION[direction],
+    // Placement measured across every authored view in this repository - the
+    // six contact-update journey views and the self-model's twenty-two - and
+    // adopted on that sweep rather than on the single 8-subject view #274
+    // opened with (ADR 0121). Holding direction DOWN, NETWORK_SIMPLEX against
+    // the BRANDES_KOEPF default cut total edge length by a third (1.46M px to
+    // 987k), narrowed the summed layout by 15%, and moved crossings 1888 to
+    // 1821: fewer on ten views, more on three, unchanged on fifteen. The three
+    // it costs crossings are the three largest, and each pays for them with 12
+    // to 40% less edge - which is why the trade is taken here once for every
+    // view rather than declared per view.
+    'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
     // Bare key on purpose - replaces cytoscape-elk's injected viewport
     // ratio; see COMPONENT_ASPECT_RATIO.
     aspectRatio: COMPONENT_ASPECT_RATIO,
@@ -872,8 +889,8 @@ export function graphToElements(
   const drawnPerPair = new Map<string, number>()
   const pairKey = (edge: CanvasEdge): string =>
     edge.from < edge.to
-      ? `${edge.from} ${edge.to}`
-      : `${edge.to} ${edge.from}`
+      ? `${edge.from}\u0000${edge.to}`
+      : `${edge.to}\u0000${edge.from}`
   for (const edge of drawnEdges) {
     const key = pairKey(edge)
     drawnPerPair.set(key, (drawnPerPair.get(key) ?? 0) + 1)
@@ -1022,8 +1039,11 @@ export function applyFilter(
 // the nodes it left overlapping. With `layered` the only backend a layout run
 // cannot still be in flight when the next one is requested, so none of that
 // apparatus has anything left to guard.
-function runLayout(eles: Core | CollectionReturnValue): void {
-  eles.layout(buildLayoutConfig()).run()
+function runLayout(
+  eles: Core | CollectionReturnValue,
+  direction: LayoutDirection,
+): void {
+  eles.layout(buildLayoutConfig(direction)).run()
 }
 
 
@@ -1035,8 +1055,8 @@ function runLayout(eles: Core | CollectionReturnValue): void {
 // default re-frames the viewport to the result, so no separate fit call is
 // needed; `layout()` is a no-op on an empty visible collection, so callers
 // never need to guard against "the new view matched nothing".
-export function relayoutVisible(cy: Core): void {
-  runLayout(cy.elements(':visible'))
+export function relayoutVisible(cy: Core, direction: LayoutDirection): void {
+  runLayout(cy.elements(':visible'), direction)
 }
 
 // Re-frames the viewport around what is visible without moving a single node.
@@ -1220,6 +1240,12 @@ interface GraphCanvasProps {
    * overlay; an empty map (host shipped no overlay) draws no chips. */
   readonly openQuestionCounts: ReadonlyMap<string, number>
   readonly activeViewId: string
+  /**
+   * Which way the active view runs its layers (#274, ADR 0121), from its
+   * `presentation.direction`. A view that declares none is handed
+   * `DEFAULT_DIRECTION`, so the canvas never has to decide what silence means.
+   */
+  readonly direction: LayoutDirection
   /** Saved layout for the active view, or undefined when it has none yet. */
   readonly savedPositions: VisualLayoutPositions | undefined
   readonly onSaveLayout: (payload: VisualLayoutSavePayload) => void
@@ -1263,6 +1289,7 @@ export function GraphCanvas({
   faultedIds,
   decorations,
   activeViewId,
+  direction,
   savedPositions,
   onSaveLayout,
   onKindDrop,
@@ -1297,6 +1324,7 @@ export function GraphCanvas({
   const isInitialSyncRef = useRef(true)
   const isInitialPresentationSyncRef = useRef(true)
   const activeViewIdRef = useRef(activeViewId)
+  const directionRef = useRef(direction)
   const pendingViewFitRef = useRef(false)
   const matchedIdsRef = useRef(matchedIds)
   // Seeded with the prop so the mount render never reads as "the quick filter
@@ -1529,7 +1557,7 @@ export function GraphCanvas({
       cyRef.current.add(elements)
     }
 
-    runLayout(cyRef.current)
+    runLayout(cyRef.current, direction)
     // `openQuestionCounts` is derived from the same model frame as `graph`,
     // so its identity moves exactly when the graph's does - listed for
     // honesty, never an extra rerun.
@@ -1571,21 +1599,25 @@ export function GraphCanvas({
     }
   }, [selectedId, graph])
 
-  // Arms a pending fit when the active view changes. It used to arm on layout
-  // direction and notation too, because both fed `buildLayoutConfig` and a
-  // notation swap would otherwise leave ArchiMate shapes sitting in the native
-  // direction's geometry. Neither is a variable any more: there is one
-  // notation and one direction, so the view is the only thing left that can
-  // change what the layout should be.
+  // Arms a pending fit when the active view changes, or when the direction it
+  // declares does (#274). Direction is a variable again: it feeds
+  // `buildLayoutConfig`, so a view whose `presentation.direction` is edited
+  // and committed would otherwise keep the geometry of the direction it no
+  // longer declares. Notation is still not one - there is a single notation -
+  // so the view and its direction are all that can change what the layout
+  // should be.
   // Declared before the filter-apply effect below - same-phase effects commit
   // in source order, so a view switch whose filter result lands in the very
   // same render (e.g. clearing back to "All") is still armed in time for that
   // commit.
   useEffect(() => {
-    if (activeViewId === activeViewIdRef.current) return
+    if (activeViewId === activeViewIdRef.current && direction === directionRef.current) {
+      return
+    }
     activeViewIdRef.current = activeViewId
+    directionRef.current = direction
     pendingViewFitRef.current = true
-  }, [activeViewId])
+  }, [activeViewId, direction])
 
   // Apply structural filter (matchedIds) and quick-filter narrowing, then,
   // only once a pending view-switch relayout is armed and its filter result
@@ -1617,7 +1649,7 @@ export function GraphCanvas({
     quickFilterTextRef.current = quickFilterText
     if (pendingViewFitRef.current || matchedChanged) {
       pendingViewFitRef.current = false
-      relayoutVisible(cyRef.current)
+      relayoutVisible(cyRef.current, direction)
     } else if (quickFilterChanged && fitVisible(cyRef.current)) {
       // A quick-filter keystroke never relayouts - the survivors keep their
       // positions (a reviewer's drags included) and the viewport re-frames
@@ -1633,7 +1665,7 @@ export function GraphCanvas({
         pan: { ...cyRef.current.pan() },
       }
     }
-  }, [matchedIds, quickFilterText, graph])
+  }, [matchedIds, quickFilterText, graph, direction])
 
   // Session-local discard of the active view's saved layout: record the
   // discard, drop the pin the layoutstop handler would re-apply, and run a
@@ -1647,7 +1679,7 @@ export function GraphCanvas({
     setDiscardedViews((prev) => new Set(prev).add(activeViewId))
     savedPositionsRef.current = undefined
     dragSaveHandleRef.current?.cancelPending()
-    if (cyRef.current !== null) relayoutVisible(cyRef.current)
+    if (cyRef.current !== null) relayoutVisible(cyRef.current, direction)
   }
 
   // The on-canvas zoom cluster (#308). A press zooms about the viewport's own
@@ -1655,11 +1687,11 @@ export function GraphCanvas({
   // meaningful position. The reviewer's resulting viewport is theirs: it is
   // deliberately not recorded as automatic framing, so a later panel resize
   // leaves it standing, exactly as a wheel zoom is left standing.
-  const zoomStep = (direction: 1 | -1): void => {
+  const zoomStep = (step: 1 | -1): void => {
     const cy = cyRef.current
     if (cy === null) return
     cy.zoom({
-      level: steppedZoom(cy.zoom(), direction),
+      level: steppedZoom(cy.zoom(), step),
       renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 },
     })
   }

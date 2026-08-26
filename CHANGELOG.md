@@ -2,6 +2,35 @@
 
 ## Unreleased
 
+- **Changed.** A view says which way it runs, and the canvas listens
+  (#274, ADR 0121). `presentation.direction` has been in
+  `yarramate/projection/v1` all along and the LikeC4 export has always
+  honoured it; the canvas pinned `elk.direction: DOWN` and took no
+  argument that could say otherwise, so the format declared something one
+  of its two renderers silently discarded, and `docs/VISUAL-ADAPTER.md`
+  said both things in two different sections. The pin's reasoning was
+  right for a layer-band view and wrong for a deployment realization
+  chain or a fan-out, so it keeps the default rather than being the only
+  answer: `top-down` maps to `DOWN`, `left-right` to `RIGHT`, and a view
+  that declares nothing still runs top-down. Direction is derived from
+  the active view the same way `nesting` is, restored to the default on a
+  view that omits it rather than carried across from the view before, and
+  a direction edit re-arms the relayout so the canvas cannot keep the
+  geometry of a direction the view no longer declares. There is still no
+  direction control on screen: the view declares it, and a save carries a
+  declared direction through untouched.
+- **Changed.** Node placement is now `NETWORK_SIMPLEX` rather than ELK's
+  `BRANDES_KOEPF` default, on every view (#274, ADR 0121). Adopted on a
+  sweep of every authored view in the repository, the six contact-update
+  journey views and the self-model's twenty-two, rather than on the
+  single 8-subject view the proposal opened with. Holding direction
+  `DOWN`: total edge length across the 28 views falls from 1.46M px to
+  987k, summed layout width narrows 15%, and crossings move from 1888 to
+  1821, fewer on ten views, more on three, unchanged on fifteen. The
+  three that pay crossings are the three largest and each buys 12 to 40%
+  less edge with them. Every view's drawing changes; no saved layout
+  does, since a saved layout is applied over the result.
+
 - **Added.** The interview asks about what is not there (#272, ADR 0120).
   Every question that fired before anchored on a declared subject, so a
   kind with zero subjects could not be asked about and a whole absent

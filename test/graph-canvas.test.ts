@@ -184,7 +184,7 @@ describe('relayoutVisible', () => {
     const visibleBefore = { ...cy.getElementById('node1').position() }
     const settled = new Promise<void>((resolve) => cy.one('layoutstop', () => resolve()))
 
-    relayoutVisible(cy)
+    relayoutVisible(cy, 'top-down')
     await settled
 
     expect(cy.getElementById('node3').position()).toEqual(hiddenBefore)
@@ -194,7 +194,7 @@ describe('relayoutVisible', () => {
   it('is a safe no-op when nothing is visible', () => {
     const cy = buildPositionedCy()
     applyFilter(cy, [], '')
-    expect(() => relayoutVisible(cy)).not.toThrow()
+    expect(() => relayoutVisible(cy, 'top-down')).not.toThrow()
   })
 })
 

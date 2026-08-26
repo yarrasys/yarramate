@@ -327,18 +327,49 @@ describe("visualWorkspaceReducer layout", () => {
     expect(next.layout).toBe("layered");
   });
 
-  // A view may still declare `direction` - the LikeC4 export reads it - and
-  // the canvas must take no notice: it draws ArchiMate, which is top-down by
-  // construction, and there is no control for a declared direction to move.
-  it("ignores a direction a view declares", () => {
+  // A view says which way it runs and the canvas takes notice (#274, ADR
+  // 0121). The ArchiMate bands that pinned this top-down keep the DEFAULT, not
+  // the only answer: a deployment chain or a fan-out reads better left to
+  // right, and the format has carried the field all along for the LikeC4
+  // export.
+  it("adopts a direction a view declares", () => {
     const actions = presentationActionsFor({
       layout: "layered",
       direction: "left-right",
-    } as Parameters<typeof presentationActionsFor>[0]);
+    });
     expect(actions).toEqual([
       { type: "layout.set", layout: "layered" },
       { type: "nesting.set", nesting: ["composition"] },
+      { type: "direction.set", direction: "left-right" },
     ]);
+    const next = actions.reduce(visualWorkspaceReducer, workspaceState);
+    expect(next.direction).toBe("left-right");
+  });
+
+  // Restored to the default rather than left holding the previous view's run,
+  // the rule `nesting` follows: a view that says nothing is top-down, and
+  // arriving from a left-right view must not tilt it.
+  it("restores the default direction for a view that declares none", () => {
+    const leftRight = presentationActionsFor({ direction: "left-right" }).reduce(
+      visualWorkspaceReducer,
+      workspaceState,
+    );
+    expect(leftRight.direction).toBe("left-right");
+    const back = presentationActionsFor({}).reduce(
+      visualWorkspaceReducer,
+      leftRight,
+    );
+    expect(back.direction).toBe("top-down");
+  });
+
+  // Every identity memo downstream of this state reads its reference, so
+  // restating the same direction must not mint a new object - the rule
+  // `nesting.set` states for the same reason.
+  it("returns the same state when a view restates the direction in force", () => {
+    const actions = presentationActionsFor({ direction: "top-down" });
+    expect(actions.reduce(visualWorkspaceReducer, workspaceState)).toBe(
+      workspaceState,
+    );
   });
 
   it("leaves layout untouched when a view declares none", () => {
@@ -358,6 +389,7 @@ describe("visualWorkspaceReducer layout", () => {
     expect(actions).toEqual([
       { type: "layout.set", layout: "layered" },
       { type: "nesting.set", nesting: ["composition"] },
+      { type: "direction.set", direction: "top-down" },
     ]);
   });
 });
@@ -416,6 +448,7 @@ describe("visualWorkspaceReducer presentation", () => {
     const actions = presentationActionsFor({ showOwnership: true });
     expect(actions).toEqual([
       { type: "nesting.set", nesting: ["composition"] },
+      { type: "direction.set", direction: "top-down" },
       { type: "presentation.toggled", flag: "showOwnership", value: true },
     ]);
   });

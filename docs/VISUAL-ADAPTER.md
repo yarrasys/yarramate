@@ -154,8 +154,18 @@ session.
 
 One backend: **`layered`** (`elk layered`), selected by `presentation.layout`,
 which now admits only that value. It honours `presentation.direction`
-(`top-down` → `elk.direction: DOWN`, `left-right` → `RIGHT`) and measured
-112 ms on this repository's 258-node graph.
+(`top-down` → `elk.direction: DOWN`, `left-right` → `RIGHT`), which a view that
+declares none runs as `top-down`, and measured 112 ms on this repository's
+258-node graph.
+
+Node placement is `NETWORK_SIMPLEX` rather than ELK's `BRANDES_KOEPF` default
+([ADR 0121](adr/0121-a-view-says-which-way-it-runs.md)), adopted on a sweep of
+every authored view here: the six contact-update journey views and the
+self-model's twenty-two. Holding direction `DOWN`, it cut total edge length
+across the 28 views from 1.46M px to 987k, narrowed the summed layout by 15%,
+and moved crossings from 1888 to 1821 (fewer on ten views, more on three,
+unchanged on fifteen). The three that pay crossings are the three largest, and
+each buys 12 to 40% less edge with them.
 
 `radial` (cytoscape `concentric`) and `force` (elk `stress` then
 `sporeOverlap`) were removed in 1.0. Measured against `layered` on every view
@@ -416,10 +426,13 @@ alone, so a second notation has somewhere to land — the same reason
 projection asking for `native` is refused rather than quietly drawn as
 ArchiMate.
 
-`presentation.direction` also stays, and the canvas ignores it: the LikeC4
-export reads it for its own `autoLayout`, and that export draws no layer bands.
-A save carries a view's declared direction through untouched rather than
-dropping a value the canvas never offered to set.
+`presentation.direction` is honoured rather than ignored (#274,
+[ADR 0121](adr/0121-a-view-says-which-way-it-runs.md)). The canvas was pinned
+`DOWN` on the reasoning that ArchiMate's layer bands only read top-down, which
+is right for a layer-band view and wrong for a deployment realization chain or
+a fan-out; the bands keep the default and stop being the only answer. There is
+still no on-screen direction control: the view declares it, the same as
+`nesting`, and a save carries a declared direction through untouched.
 
 The kind colours, aspect shapes, glyphs, and relationship line styles are
 defined once in the published `yarramate/notation/archimate` module; this app
