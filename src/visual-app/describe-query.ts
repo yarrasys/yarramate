@@ -16,7 +16,12 @@ export function describeQuery(query: ProjectionQuery): string {
     query.subjects.length > 0
   ) {
     const verb = query.relationships === 'connected' ? 'connected to' : 'between'
-    return `${verb} ${query.subjects.join(', ')}`
+    const whole = `${verb} ${query.subjects.join(', ')}`
+    // The exception still has to be read back: a gloss that dropped it would
+    // describe a view drawing subjects the reviewer took out (#267).
+    return query.exclude === undefined || query.exclude.length === 0
+      ? whole
+      : `${whole} · except: ${query.exclude.join(', ')}`
   }
 
   const parts: string[] = []
@@ -39,6 +44,10 @@ export function describeQuery(query: ProjectionQuery): string {
   list('owners', query.owners)
   list('constraints', query.constraints)
   list('relationship kinds', query.relationshipKinds)
+  // Read as what it does to the view rather than as the field's name: the
+  // list holds what the rule would have taken and the author took back out
+  // (#267).
+  list('except', query.exclude)
 
   if (query.isolatedConcepts === 'exclude') parts.push('connected concepts only')
   if (query.isolatedConcepts === 'include') parts.push('including isolated concepts')

@@ -25,6 +25,7 @@
 import type { CanvasGraph } from "../graph-projection.js";
 import type { VisualKindOption } from "../adapters/visual/protocol-contract.js";
 import { relationshipKindOffer } from "./relationship-kind-options.js";
+import type { ActiveViewMembership } from "./state.js";
 
 /** The id of the "All subjects" row, which is the absence of a view. */
 export const ALL_SUBJECTS_VIEW = "";
@@ -109,14 +110,16 @@ export interface ContextMenuContext {
   /** Whether anything at all is narrowing the canvas right now. */
   readonly filtered: boolean;
   /**
-   * The active view's own membership list, or `null`.
+   * How the active view can be told what it holds, or `null` when no view is
+   * active and there is nothing to tell.
    *
-   * `null` covers both "no view is active" and "the active view describes its
-   * subjects with facets": in neither case is there a list to put a subject
-   * into or take it out of, so neither offers a membership item at all rather
-   * than offering one that would do nothing (#255).
+   * A view that enumerates its subjects is told by its list; one that
+   * describes them with facets is told by `exclude` (#267, ADR 0122). A
+   * faceted view used to be `null` here, on the reasoning that an item which
+   * could only ever do nothing is worse than no item (#255) - true of adding a
+   * subject to a rule, and never true of taking one out of it.
    */
-  readonly membership: readonly string[] | null;
+  readonly membership: ActiveViewMembership | null;
   /**
    * A viewer, not an author (#298, ADR 0117). A read-only menu keeps the items
    * that read or navigate and drops every item whose intent stages a change -
@@ -143,15 +146,25 @@ const READING_INTENTS: ReadonlySet<ContextMenuIntent["type"]> = new Set([
 
 /**
  * Putting a subject into the active view, or taking it out — whichever the
- * view's list does not already say. One group, because a subject is either in
- * the list or not and only one of the two items is ever true.
+ * view does not already say. One group, because a subject is either in the
+ * view or not and only one of the two items is ever true.
+ *
+ * The two kinds of view read the same question from opposite fields: an
+ * enumerating view holds a subject when its list names it, a faceted one holds
+ * a subject unless `exclude` names it. On a faceted view the item that is NOT
+ * offered is the honest one: "add" only ever lifts an exception, because
+ * adding a subject the facets do not select would need an `include` tier that
+ * does not exist and would quietly turn the rule into a list (#267).
  */
 const membershipGroup = (
   id: string,
   context: ContextMenuContext,
 ): readonly ContextMenuGroup[] => {
   if (context.membership === null) return [];
-  const held = context.membership.includes(id);
+  const held =
+    context.membership.kind === "enumerated"
+      ? context.membership.subjects.includes(id)
+      : !context.membership.excluded.includes(id);
   return [
     {
       key: "view",

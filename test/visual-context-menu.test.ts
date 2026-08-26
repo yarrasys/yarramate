@@ -434,8 +434,12 @@ describe("what the menu draws", () => {
  * model entirely (#255).
  */
 describe("putting a subject into a view, and taking it out", () => {
-  const held = context({ membership: ["api", "ui"] });
-  const notHeld = context({ membership: ["ui"] });
+  const held = context({
+    membership: { kind: "enumerated", subjects: ["api", "ui"] },
+  });
+  const notHeld = context({
+    membership: { kind: "enumerated", subjects: ["ui"] },
+  });
 
   it("offers Remove from view for a subject the view lists", () => {
     expect(labels(contextMenuFor({ kind: "subject", id: "api" }, held))).toEqual(
@@ -452,13 +456,40 @@ describe("putting a subject into a view, and taking it out", () => {
     ).toContain("Add to this view");
   });
 
-  it("offers neither where the view has no list to edit", () => {
-    // No view active, or a view that describes its subjects with facets: an
-    // item that could only ever do nothing is worse than no item.
+  it("offers neither where no view is active", () => {
+    // Nothing to tell: the item would have no document to write to at all.
     const groups = contextMenuFor({ kind: "subject", id: "api" }, context());
     expect(labels(groups)).not.toContain("Remove from view");
     expect(labels(groups)).not.toContain("Add to this view");
     expect(groups.every((group) => group.scope === "model")).toBe(true);
+  });
+
+  // A facet view states a rule, and the exception it cannot state is exactly
+  // where a reviewer most wants to say "not that one" (#267, ADR 0122). The
+  // group used to vanish here on the reasoning that an item which could only
+  // ever do nothing is worse than no item - true of ADDING a subject to a
+  // rule, and never true of taking one out of it.
+  describe("a view that describes its subjects with facets", () => {
+    const faceted = context({ membership: { kind: "faceted", excluded: [] } });
+    const withException = context({
+      membership: { kind: "faceted", excluded: ["api"] },
+    });
+
+    it("offers Remove from view, which stages the exception", () => {
+      expect(
+        labels(contextMenuFor({ kind: "subject", id: "api" }, faceted)),
+      ).toContain("Remove from view");
+    });
+
+    it("offers Add to this view only to lift an exception it already holds", () => {
+      expect(
+        labels(contextMenuFor({ kind: "subject", id: "api" }, withException)),
+      ).toContain("Add to this view");
+      // The other subject is not excepted, so its own offer is the removal.
+      expect(
+        labels(contextMenuFor({ kind: "subject", id: "ui" }, withException)),
+      ).toContain("Remove from view");
+    });
   });
 
   it("gives the rail's model rows the same offer, which is what a drag would do", () => {
@@ -482,7 +513,10 @@ describe("putting a subject into a view, and taking it out", () => {
  * them.
  */
 describe("a read-only menu offers no way to stage", () => {
-  const readOnly = context({ readOnly: true, membership: ["api"] });
+  const readOnly = context({
+    readOnly: true,
+    membership: { kind: "enumerated", subjects: ["api"] },
+  });
 
   it("leaves a subject its Properties and nothing that stages", () => {
     expect(

@@ -1390,8 +1390,11 @@ export const App = ({
       case "view.add-subject":
       case "view.remove-subject":
         // Always the ACTIVE view: the menu only offers these where that view
-        // has a membership list, and `activeViewMembership` is what decided
-        // which of the two it offered.
+        // can be told what it holds, and `activeViewMembership` is what
+        // decided which of the two it offered. Which document field moves is
+        // the view's own business - a list for a view that enumerates, the
+        // `exclude` exception for one that describes (#267, ADR 0122) - and
+        // `withMembership` decides it from the query it is handed.
         stageViewMembership(
           state.activeView,
           intent.id,

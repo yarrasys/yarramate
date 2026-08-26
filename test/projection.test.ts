@@ -262,6 +262,150 @@ relationships:
     ])
   })
 
+  // The exception a rule cannot state (#267, ADR 0122). A facet view says
+  // `layers: [application]`, and the author would rather write down the one
+  // subject that does not belong than abandon the facet for a hand-enumerated
+  // list.
+  describe('exclude takes a subject out of a rule', () => {
+    const graphOf = () => {
+      const compilation = compileWorkspace([
+        { path: 'projection-model.yaml', source },
+      ])
+      if (!compilation.ok) throw new Error('the fixture must compile')
+      return compilation.graph
+    }
+
+    const evaluate = (query: ProjectionDefinition['query']) =>
+      evaluateProjection(graphOf(), {
+        format: 'yarramate/projection/v1',
+        id: 'excepted',
+        version: '1.0',
+        query,
+      } as ProjectionDefinition).subjects.map(({ id }) => id)
+
+    it('drops the named concept from a facet the query still states', () => {
+      expect(evaluate({ kinds: ['yarramate/core@0.1#capability'] })).toEqual([
+        'first',
+        'first-supports-second',
+        'second',
+      ])
+      expect(
+        evaluate({
+          kinds: ['yarramate/core@0.1#capability'],
+          exclude: ['second'],
+        }),
+      ).toEqual(['first'])
+    })
+
+    // The relationship goes with its endpoint: a line drawn to a subject that
+    // is not on the canvas has nowhere to land.
+    it('takes the relationships that touched it with it', () => {
+      expect(evaluate({ exclude: ['second'] })).toEqual([
+        'australia-only',
+        'first',
+        'first-influences-future',
+        'future',
+        'platform-team',
+      ])
+    })
+
+    // The half that makes the exclusion final rather than advisory:
+    // `relationships: connected` adds the far end of every relationship it
+    // draws, so an exclusion applied only to the initial selection would let
+    // the subject walk back in by the other end.
+    it('is not undone by relationships: connected pulling the far end back', () => {
+      expect(
+        evaluate({
+          subjects: ['first'],
+          relationships: 'connected',
+        }),
+      ).toEqual(['first', 'first-influences-future', 'first-supports-second', 'future', 'second'])
+      expect(
+        evaluate({
+          subjects: ['first'],
+          relationships: 'connected',
+          exclude: ['second'],
+        }),
+      ).toEqual(['first', 'first-influences-future', 'future'])
+    })
+
+    it('takes a relationship out by name, leaving both its ends drawn', () => {
+      expect(evaluate({ exclude: ['first-supports-second'] })).toEqual([
+        'australia-only',
+        'first',
+        'first-influences-future',
+        'future',
+        'platform-team',
+        'second',
+        'second-supports-future',
+      ])
+    })
+
+    // An exclusion is a statement about the rule, not about today's match set,
+    // so naming a subject no facet selects is allowed and simply inert. It
+    // becomes meaningful the moment the model grows into the facet.
+    it('is inert where the query would not have selected the subject anyway', () => {
+      expect(
+        evaluate({ kinds: ['yarramate/core@0.1#goal'], exclude: ['first'] }),
+      ).toEqual(['future'])
+    })
+
+    it('reports itself as the reason, ahead of any rule that also dropped it', () => {
+      const explained = explainProjection(graphOf(), {
+        format: 'yarramate/projection/v1',
+        id: 'excepted',
+        version: '1.0',
+        // `second` is dropped by the kind facet as well; the explicit
+        // exception is what a reader would reach for first.
+        query: { kinds: ['yarramate/core@0.1#goal'], exclude: ['second'] },
+      } as ProjectionDefinition)
+
+      expect(explained).toContainEqual({ id: 'second', facet: 'exclude' })
+      expect(explained).toContainEqual({ id: 'first', facet: 'kinds' })
+    })
+
+    it('loads through the normative schema and round-trips canonically', () => {
+      const loaded = loadProjection({
+        path: 'excepted.projection.yaml',
+        source: `format: yarramate/projection/v1
+id: excepted
+version: "1.0"
+query:
+  layers:
+    - application
+  exclude:
+    - legacy-gateway
+`,
+      })
+
+      expect(loaded).toEqual({
+        ok: true,
+        projection: {
+          format: 'yarramate/projection/v1',
+          id: 'excepted',
+          version: '1.0',
+          query: { layers: ['application'], exclude: ['legacy-gateway'] },
+        },
+      })
+    })
+
+    it('refuses an empty exclusion list, which says nothing', () => {
+      const loaded = loadProjection({
+        path: 'excepted.projection.yaml',
+        source: `format: yarramate/projection/v1
+id: excepted
+version: "1.0"
+query:
+  layers:
+    - application
+  exclude: []
+`,
+      })
+
+      expect(loaded.ok).toBe(false)
+    })
+  })
+
   it('loads relationship-kind and connected-endpoint selectors through the normative schema', () => {
     const loaded = loadProjection({
       path: 'connected.projection.yaml',

@@ -36,6 +36,15 @@
             "$ref": "#/$defs/subjectIdentity"
           }
         },
+        "exclude": {
+          "description": "Subjects this query would otherwise select and the author has taken out: the exception a rule cannot state (#267, ADR 0122). Applied after every other facet and after relationship expansion, so an excluded subject is out whichever way it would have come back in. Naming a subject no facet selects is allowed and inert until the model grows into the rule.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/subjectIdentity"
+          }
+        },
         "documents": {
           "type": "array",
           "uniqueItems": true,

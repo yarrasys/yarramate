@@ -185,7 +185,9 @@ export const withMembership = (
   subjectId: string,
   membership: "add" | "remove",
 ): ProjectionDefinition | null => {
-  if (!enumeratesSubjects(projection.query)) return null;
+  if (!enumeratesSubjects(projection.query)) {
+    return withExclusion(projection, subjectId, membership);
+  }
   const subjects = projection.query.subjects;
   const holds = subjects.includes(subjectId);
   if (membership === "add" ? holds : !holds) return null;
@@ -204,6 +206,49 @@ export const withMembership = (
 };
 
 /**
+ * The same faceted view, holding one more exception or one fewer (#267,
+ * ADR 0122).
+ *
+ * A view that describes its subjects with facets states a RULE, and there is
+ * no list to edit — which is why membership used to stop here. But every
+ * interesting rule has an exception, and `exclude` is where the author writes
+ * one down instead of abandoning the facet for a hand-enumerated list. So
+ * "remove from view" names the subject in `exclude`, and "add to this view"
+ * takes the name back out.
+ *
+ * The asymmetry is deliberate and is the whole reason there is no `include`
+ * tier here: taking an exception BACK is expressible, while adding a subject
+ * the facets do not select is not — that would silently convert the rule into
+ * a list. A subject that is neither excluded nor selected therefore gets
+ * `null`, the same answer this returns for every other no-op.
+ *
+ * `exclude` is a statement about the rule rather than about today's match set,
+ * so it is written whether or not the subject happens to be drawn: a model
+ * that later grows into the facet still honours the decision someone made.
+ */
+const withExclusion = (
+  projection: ProjectionDefinition,
+  subjectId: string,
+  membership: "add" | "remove",
+): ProjectionDefinition | null => {
+  const excluded = projection.query.exclude ?? [];
+  const isExcluded = excluded.includes(subjectId);
+  if (membership === "add" ? !isExcluded : isExcluded) return null;
+  const next = membership === "add"
+    ? excluded.filter((id) => id !== subjectId)
+    : // Appended rather than sorted in, the rule the subjects list follows.
+      [...excluded, subjectId];
+  // The last exception leaving takes the key with it: `exclude: []` says the
+  // same thing as no key at all, and the schema's `minItems` refuses it
+  // anyway. Rebuilt rather than spread-over so the key is genuinely absent.
+  const { exclude: _dropped, ...rest } = projection.query;
+  return {
+    ...projection,
+    query: next.length === 0 ? rest : { ...rest, exclude: next },
+  };
+};
+
+/**
  * What a membership edit did to a view, as the tray reads it: `+id` for a
  * subject this row adds, `-id` for one it drops, against the document the
  * workspace holds. Empty when the row changed something else — a title, a
@@ -213,6 +258,24 @@ export const membershipDelta = (
   saved: ProjectionQuery,
   staged: ProjectionQuery,
 ): readonly string[] => {
+  if (!enumeratesSubjects(saved) && !enumeratesSubjects(staged)) {
+    // A faceted view's membership moves through `exclude`, and reads inverted
+    // there: a name ARRIVING in the exclusion list is a subject leaving the
+    // view (#267). The tray says what happened to the view, not what happened
+    // to the list.
+    const savedExclusions = saved.exclude ?? [];
+    const stagedExclusions = staged.exclude ?? [];
+    return [
+      ...savedExclusions
+        .filter((id) => !stagedExclusions.includes(id))
+        .map((id) => `+${id}`),
+      ...stagedExclusions
+        .filter((id) => !savedExclusions.includes(id))
+        .map((id) => `-${id}`),
+    ];
+  }
+  // One side enumerates and the other does not: the query changed shape rather
+  // than its membership, which the row says by other means.
   if (!enumeratesSubjects(saved) || !enumeratesSubjects(staged)) return [];
   return [
     ...staged.subjects

@@ -41,6 +41,16 @@ export interface ProjectionDefinition {
   readonly version: string
   readonly query: {
     readonly subjects?: readonly string[]
+    /**
+     * Subjects this query would otherwise select and the author has taken out
+     * (#267, ADR 0122). A facet view states a rule, and every interesting rule
+     * has an exception someone would rather state than abandon the rule for;
+     * this is where that exception is written down instead of being the silent
+     * absence a hand-enumerated list produces. Applied after every other facet
+     * AND after `relationships: connected` expansion, so an excluded subject is
+     * out whichever way it would have come back in.
+     */
+    readonly exclude?: readonly string[]
     readonly documents?: readonly string[]
     readonly kinds?: readonly string[]
     readonly layers?: readonly string[]
@@ -216,6 +226,7 @@ const claimReferences = (
  * {@link explainProjection} reports as the reason a subject is not in a view.
  */
 export type ConceptFacet =
+  | 'exclude'
   | 'states'
   | 'subjects'
   | 'documents'
@@ -314,7 +325,13 @@ const conceptSelector = (
           : profileContext?.conceptKindLayers.get(kind)
 
       // Ordered the way a query declares its facets, so "the first reason" is
-      // the one a reader would reach first themselves.
+      // the one a reader would reach first themselves - except the explicit
+      // exception, which outranks every rule: when someone has written the
+      // subject down as taken out, that IS the first reason, whatever else
+      // would also have dropped it (#267).
+      if (query.exclude?.includes(id) === true) {
+        return 'exclude'
+      }
       if (
         query.states !== undefined &&
         (architectureStateIds.has(id) || !participatesInSelectedState(id))
@@ -423,6 +440,11 @@ export function evaluateProjection(
   const { droppedBy, architectureStateIds, participatesInSelectedState } =
     conceptSelector(graph, projection, profileContext)
   const endpointExcluded = (id: string): boolean => {
+    // An exclusion is final (#267, ADR 0122). Dropping the subject from the
+    // initial selection alone would not be: `relationships: connected` adds
+    // the far end of every relationship it draws, so an excluded subject would
+    // walk back in by the other end of a relationship to one that stayed.
+    if (projection.query.exclude?.includes(id) === true) return true
     if (!participatesInSelectedState(id)) return true
     const status = claimValue(
       graph.claims,
@@ -458,6 +480,9 @@ export function evaluateProjection(
         'yarramate/lifecycle/status',
       )
       if (
+        // A relationship can be taken out by name too: `exclude` names
+        // subjects, and a relationship is a subject.
+        projection.query.exclude?.includes(subject.id) === true ||
         relationship === undefined ||
         !('ref' in relationship.object) ||
         (projection.query.excludeStatuses !== undefined &&
