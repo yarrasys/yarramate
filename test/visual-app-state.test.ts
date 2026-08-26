@@ -2043,27 +2043,45 @@ describe("activeViewMembership", () => {
     subjectCount: 1,
   };
 
-  it("is the active view's list", () => {
+  it("is the active view's list where the view enumerates", () => {
     expect(
       activeViewMembership({
         ...initialVisualAppState,
         activeView: "payment-flow",
         views: [summary],
       }),
-    ).toEqual(["checkout"]);
+    ).toEqual({ kind: "enumerated", subjects: ["checkout"] });
   });
 
-  it("is null where no view is active, or the view describes its subjects", () => {
+  it("is null only where no view is active", () => {
     expect(
       activeViewMembership({ ...initialVisualAppState, views: [summary] }),
     ).toBeNull();
+  });
+
+  // A faceted view is told what it holds through `exclude`, the exception a
+  // rule cannot state (#267, ADR 0122). It used to answer null here, which
+  // took the whole View group off the menu on half the authored views.
+  it("is the exclusion list where the view describes its subjects", () => {
     expect(
       activeViewMembership({
         ...initialVisualAppState,
         activeView: "payment-flow",
         views: [{ ...summary, query: { layers: ["application"] } }],
       }),
-    ).toBeNull();
+    ).toEqual({ kind: "faceted", excluded: [] });
+    expect(
+      activeViewMembership({
+        ...initialVisualAppState,
+        activeView: "payment-flow",
+        views: [
+          {
+            ...summary,
+            query: { layers: ["application"], exclude: ["ledger"] },
+          },
+        ],
+      }),
+    ).toEqual({ kind: "faceted", excluded: ["ledger"] });
   });
 
   it("reads through the staged row, so a menu never offers the same edit twice", () => {
@@ -2080,7 +2098,31 @@ describe("activeViewMembership", () => {
       },
     );
 
-    expect(activeViewMembership(staged)).toEqual(["checkout", "ledger"]);
+    expect(activeViewMembership(staged)).toEqual({
+      kind: "enumerated",
+      subjects: ["checkout", "ledger"],
+    });
+  });
+
+  // The same motion on a faceted view, staged through the same action: the
+  // reducer writes to `exclude` because `withMembership` reads the query it is
+  // handed, and the menu is offered Add next time round.
+  it("stages a removal from a faceted view as an exclusion", () => {
+    const faceted = { ...summary, query: { layers: ["application"] } };
+    const staged = visualAppReducer(
+      { ...initialVisualAppState, activeView: "payment-flow", views: [faceted] },
+      {
+        type: "changeset.viewMembership",
+        viewId: "payment-flow",
+        subjectId: "ledger",
+        membership: "remove",
+      },
+    );
+
+    expect(activeViewMembership(staged)).toEqual({
+      kind: "faceted",
+      excluded: ["ledger"],
+    });
   });
 });
 

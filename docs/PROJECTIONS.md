@@ -29,6 +29,13 @@ presentation:
 Query fields combine with logical AND:
 
 - `subjects` filters globally qualified concept subject identities;
+- `exclude` names subjects this query would otherwise select and the author
+  has taken out: the exception a rule cannot state (#267,
+  [ADR 0122](adr/0122-a-rule-can-name-its-exception.md)). It applies after
+  every other facet AND after `connected` expansion, so an excluded subject is
+  out whichever way it would have come back in, and relationships touching one
+  are dropped with it. A relationship can be named too. Naming a subject no
+  facet selects is allowed and inert until the model grows into the rule;
 - `documents` filters canonical document IDs;
 - `kinds` filters globally qualified concept kind identities;
 - `kindMatching` is `exact` or `descendants` and defaults to `exact`;

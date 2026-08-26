@@ -91,7 +91,9 @@ export const EXCLUSION_LABELS: {
   readonly [Reason in ExclusionReason]: string;
 } = {
   // Ordered the way `explainProjection` reaches them, so a reader meets the
-  // reasons in the order the query applies them.
+  // reasons in the order the query applies them - the explicit exception
+  // first, because it outranks every rule (#267).
+  exclude: "Taken out of this view",
   states: "States",
   subjects: "Subjects",
   documents: "Documents",

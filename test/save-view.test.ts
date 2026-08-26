@@ -280,11 +280,41 @@ describe('view membership', () => {
     ])
   })
 
-  it('has nothing to say to a view that describes its subjects', () => {
-    // A facet query already includes anything matching it: membership is
-    // decided by what the subject IS, so there is no list to amend.
+  // A facet query states a RULE, and every interesting rule has an exception
+  // the author would rather state than abandon the rule for (#267, ADR 0122).
+  // `exclude` is where that exception is written down; there is deliberately no
+  // matching `include`, so the two directions are not symmetric here.
+  it('takes a subject out of a described view by naming the exception', () => {
+    expect(withMembership(described, 'checkout', 'remove')?.query).toEqual({
+      layers: ['application'],
+      exclude: ['checkout'],
+    })
+  })
+
+  it('appends the exception, and refuses to say it twice', () => {
+    const once = withMembership(described, 'checkout', 'remove')
+    expect(
+      withMembership(once!, 'ledger', 'remove')?.query.exclude,
+    ).toEqual(['checkout', 'ledger'])
+    expect(withMembership(once!, 'checkout', 'remove')).toBeNull()
+  })
+
+  it('lifts an exception it holds, and takes the key with the last one', () => {
+    const excepted: ProjectionDefinition = {
+      ...described,
+      query: { layers: ['application'], exclude: ['checkout'] },
+    }
+    const lifted = withMembership(excepted, 'checkout', 'add')
+    expect(lifted?.query).toEqual({ layers: ['application'] })
+    // Genuinely absent, not an empty list: `exclude: []` says the same thing
+    // as no key, and the schema's minItems refuses it.
+    expect(lifted?.query).not.toHaveProperty('exclude')
+  })
+
+  it('cannot add a subject a facet does not already select', () => {
+    // That would need an `include` tier, which would quietly turn the rule
+    // into a list. Adding only ever LIFTS an exception.
     expect(withMembership(described, 'checkout', 'add')).toBeNull()
-    expect(withMembership(described, 'checkout', 'remove')).toBeNull()
   })
 
   it('has nothing to say when the list already says it', () => {

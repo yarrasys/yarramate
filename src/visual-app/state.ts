@@ -957,19 +957,27 @@ export const visualBrowserInputFor = (
  * reporting itself as the reviewer's own.
  */
 /**
- * The active view's membership list, as the menus must read it.
+ * How the active view can be told what it holds, as the menus must read it.
  *
- * `null` where there is no list to edit: no view is active, or the view
- * describes its subjects with facets rather than naming them.
+ * `null` only where there is no view at all. A view that ENUMERATES its
+ * subjects is told by editing that list; a view that describes them with
+ * FACETS is told by editing `exclude`, the exception a rule cannot state
+ * (#267, ADR 0122). Both are membership; they differ in which field moves and
+ * in which direction, which is why the shape is a union rather than a list
+ * with a flag.
  *
  * Read through the PENDING row when one is staged, not off the saved document.
  * A reviewer who has just added a subject and right-clicks it again must be
  * offered "Remove from view"; a menu built from the saved list would offer
  * "Add to this view" a second time and stage nothing.
  */
+export type ActiveViewMembership =
+  | { readonly kind: "enumerated"; readonly subjects: readonly string[] }
+  | { readonly kind: "faceted"; readonly excluded: readonly string[] };
+
 export const activeViewMembership = (
   state: VisualAppState,
-): readonly string[] | null => {
+): ActiveViewMembership | null => {
   const view = state.views.find(({ id }) => id === state.activeView);
   if (view === undefined) return null;
   const pending = state.pendingChangeset.viewOperations.find(
@@ -977,7 +985,9 @@ export const activeViewMembership = (
   );
   const query =
     pending?.op === "write-view" ? pending.projection.query : view.query;
-  return enumeratesSubjects(query) ? query.subjects : null;
+  return enumeratesSubjects(query)
+    ? { kind: "enumerated", subjects: query.subjects }
+    : { kind: "faceted", excluded: query.exclude ?? [] };
 };
 
 export const filterToReresolve = (

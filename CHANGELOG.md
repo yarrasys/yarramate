@@ -2,6 +2,37 @@
 
 ## Unreleased
 
+- **Added.** A rule can name its exception (#267, ADR 0122).
+  `yarramate/projection/v1` gains `query.exclude`, a list of subjects the
+  query would otherwise select and the author has taken out. A facet view
+  states a rule, and every interesting rule has an exception someone
+  would rather state than abandon the rule for; until now the only ways
+  out were to enumerate every subject by hand or to leave the unwanted
+  one on the canvas. The exclusion is final: it is a concept facet and an
+  endpoint veto, so `relationships: connected` cannot walk an excluded
+  subject back in by the far end of a relationship, and relationships
+  touching one are dropped with it. A relationship can be excluded by
+  name too. It is also the first reason `explainProjection` reaches, so a
+  subject taken out reads as taken out rather than as dropped by whatever
+  rule would also have dropped it, and the query panel labels it "Taken
+  out of this view". Naming a subject no facet selects is allowed and
+  inert until the model grows into the rule. The LikeC4 export inherits
+  all of this without change, since it evaluates the query rather than
+  translating it.
+- **Changed.** `Remove from view` and `Add to this view` are offered on a
+  view that describes its subjects with facets (#267, ADR 0122), where
+  the whole View group used to vanish. It was absent on half the authored
+  views of the contact-update journey. On a faceted view, removing names
+  the subject in `exclude` and adding lifts an exception the view already
+  holds; adding a subject the facets never selected is still not offered,
+  because that would need an `include` tier and writing it into
+  `subjects` would quietly convert the rule into a list. The changeset
+  tray reports what happened to the VIEW rather than to the list, so a
+  name arriving in `exclude` reads as the subject leaving.
+  `activeViewMembership` changes shape accordingly, from a list or `null`
+  to a union naming which kind of view it describes; `null` now means
+  only that no view is active.
+
 - **Changed.** A view says which way it runs, and the canvas listens
   (#274, ADR 0121). `presentation.direction` has been in
   `yarramate/projection/v1` all along and the LikeC4 export has always

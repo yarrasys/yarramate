@@ -90,6 +90,11 @@ export const SUBJECT_REFERENCE_POSITIONS: readonly SubjectReferencePosition[] =
       path: ['query', 'subjects', '*'],
       form: 'qualified',
     },
+    {
+      group: 'projection',
+      path: ['query', 'exclude', '*'],
+      form: 'qualified',
+    },
     { group: 'projection', path: ['query', 'owners', '*'], form: 'qualified' },
     {
       group: 'projection',

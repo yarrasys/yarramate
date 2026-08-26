@@ -49,6 +49,22 @@ describe('describeQuery', () => {
     )
   })
 
+  // The exception a rule states about itself (#267, ADR 0122). It has to be
+  // read back either way a query can be glossed, or the pill describes a view
+  // that draws subjects the reviewer took out.
+  it('reads the exception back, in both glosses', () => {
+    expect(
+      describeQuery({ layers: ['application'], exclude: ['legacy-gateway'] }),
+    ).toBe('layers: application · except: legacy-gateway')
+    expect(
+      describeQuery({
+        subjects: ['checkout'],
+        relationships: 'connected',
+        exclude: ['ledger'],
+      }),
+    ).toBe('connected to checkout · except: ledger')
+  })
+
   it('falls back to "all" for a query with nothing populated', () => {
     expect(describeQuery({})).toBe('all')
   })
