@@ -20,6 +20,7 @@ export const SubjectDraftPanel = ({
   kinds,
   documents,
   defaultDocument,
+  initialKind,
   onStage,
   onCancel,
 }: {
@@ -27,6 +28,10 @@ export const SubjectDraftPanel = ({
   readonly kinds: readonly VisualKindOption[]
   readonly documents: readonly string[]
   readonly defaultDocument: string
+  /** A kind the reviewer picked up on the way in - dragged from the palette
+   * or clicked there (#295). Their own choice arriving with the gesture, not
+   * a default this form chose for them, so the no-default rule below stands. */
+  readonly initialKind?: string
   readonly onStage: (operation: YarramateOperation) => void
   readonly onCancel: () => void
 }): React.ReactElement => {
@@ -34,7 +39,7 @@ export const SubjectDraftPanel = ({
   // No default. The first kind alphabetically is `andJunction`, a plumbing
   // construct nobody means to create, and a form that quietly picks one is a
   // form that makes that subject by accident.
-  const [kind, setKind] = useState('')
+  const [kind, setKind] = useState(initialKind ?? '')
   const [document, setDocument] = useState(defaultDocument)
 
   const proposed = name.trim() === '' ? null : proposeConceptId(graph, name)

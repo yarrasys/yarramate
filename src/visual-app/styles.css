@@ -750,11 +750,77 @@ body {
   flex: 0 0 var(--chat-height, 300px);
 }
 
-/* With properties absent there is no slack-taker, so the section above the
-   foot takes it instead - otherwise a two-section stack leaves a gap under
-   the last one. */
-.section-stack > .stack-section:first-child {
+/* With properties absent there is no slack-taker, so the first section that
+   is not the palette takes it instead - otherwise a short stack leaves a gap
+   under the last one. Never the palette: it lists a fixed vocabulary, not
+   the reviewer's work, so the room passes it by (#295). */
+.section-stack:not(:has(> .stack-section-properties))
+  > .stack-section:nth-child(1 of .stack-section:not(.stack-section-palette)) {
   flex: 1 1 auto;
+}
+
+/* Unless the palette stands alone - there is nobody else to give the room
+   to, and a lone section with a gap under it reads as a broken stack. */
+.section-stack > .stack-section-palette:only-child {
+  flex: 1 1 auto;
+  max-height: none;
+}
+
+/* The palette keeps to its content and scrolls past 45% of the column - a
+   vocabulary of sixty kinds must not push the properties, the changes and
+   the chat off the foot of the stack (#295). */
+.stack-section-palette {
+  flex: 0 1 auto;
+  max-height: 45%;
+}
+
+.kind-palette {
+  padding: calc(var(--step) * 0.5) 0 calc(var(--step) * 0.75);
+}
+
+/* The layer bands, in the profile's order - the same grouping the model tree
+   reads in, so the palette and the rail are one organisation. */
+.kind-palette-layer-name {
+  margin: 0;
+  padding: calc(var(--step) * 0.75) calc(var(--step) * 1.5)
+    calc(var(--step) * 0.25);
+  font-family: var(--utility);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--quiet);
+}
+
+.kind-palette-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A row is a thing to pick up, and a button a keyboard can press for the same
+   dialog - so it reads like a tree row and grabs like a handle. */
+.kind-palette-row {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--step) * 0.75);
+  width: 100%;
+  padding: 0.3rem calc(var(--step) * 1.5);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  border-radius: 0;
+  cursor: grab;
+}
+
+.kind-palette-row:hover,
+.kind-palette-row:focus-visible {
+  background: color-mix(in oklab, var(--cobalt) 10%, transparent);
+}
+
+.kind-palette-row img {
+  flex: 0 0 auto;
 }
 
 .section-head {

@@ -114,11 +114,16 @@ sentence about what the session *is* belongs beside the name.
 **The right column is a stack of collapsible sections**, split by handles a
 pointer or the arrow keys can drag:
 
-1. **Element properties** — the subject form. Its header names the selected
+1. **Kind palette** — the profile's concept kinds, grouped by layer, dragged
+   onto the canvas or clicked: either way the Add-subject dialog opens with
+   the kind preselected (#295).
+2. **Element properties** — the subject form. Its header names the selected
    subject; selecting one opens the section, because that is what selecting was
    for.
-2. **Changes** — the staged rows, and how many are staged.
-3. **Chat** — pinned at the foot, owning the session's own control.
+3. **Open questions** — what the interrogation overlay asks, beside what is
+   declared; drawn only when the host ships the overlay (#292).
+4. **Changes** — the staged rows, and how many are staged.
+5. **Chat** — pinned at the foot, owning the session's own control.
 
 There is no open/closed mode for the column. The sections collapse one at a
 time, and a shut header still says what is behind it — the selected subject,

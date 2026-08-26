@@ -836,12 +836,14 @@ describe("the right column's sections", () => {
   ): VisualWorkspaceState =>
     visualWorkspaceReducer(from, { type: "section.toggled", section });
 
-  it("stacks properties, questions, changes and chat, with chat last", () => {
-    // Chat is pinned at the foot because it owns the session's own control -
-    // the reviewer ends the conversation beside the conversation. Questions
-    // sit under properties: what is asked about a subject reads beside what
-    // is declared about it (#292).
+  it("stacks palette, properties, questions, changes and chat, in that order", () => {
+    // The palette leads: it is the tool that makes subjects, and tools read
+    // above inspection (#295). Chat is pinned at the foot because it owns the
+    // session's own control - the reviewer ends the conversation beside the
+    // conversation. Questions sit under properties: what is asked about a
+    // subject reads beside what is declared about it (#292).
     expect(RIGHT_SECTIONS).toEqual([
+      "palette",
       "properties",
       "questions",
       "changes",
@@ -1035,6 +1037,7 @@ describe("the right column can leave (#294)", () => {
  */
 describe("stackRows", () => {
   const bodies = {
+    palette: "palette-body",
     properties: "properties-body",
     questions: "questions-body",
     changes: "changes-body",
@@ -1051,6 +1054,7 @@ describe("stackRows", () => {
 
   it("draws every section and the handles between them by default", () => {
     expect(rows(RIGHT_SECTIONS)).toEqual([
+      "palette",
       "properties",
       "questions",
       "splitter-changes",
@@ -1079,9 +1083,9 @@ describe("stackRows", () => {
     // The sequence means something - properties above changes above chat, which
     // is pinned at the foot - so a host cannot reorder the shell by writing its
     // array differently.
-    expect(rows(["chat", "questions", "properties", "changes"])).toEqual(
-      rows(RIGHT_SECTIONS),
-    );
+    expect(
+      rows(["chat", "questions", "palette", "properties", "changes"]),
+    ).toEqual(rows(RIGHT_SECTIONS));
   });
 
   it("draws nothing for a host that asked for nothing", () => {

@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **Added.** A kind palette the canvas accepts by drag (#295). A `palette`
+  section leads the right column, listing the profile's concept kinds —
+  the same `vocabulary.conceptKinds` the Add-subject dialog compiles its
+  Kind select from — grouped into layer bands by core lineage, each row
+  carrying the glyph the canvas draws for that kind. Dragging a row onto
+  the canvas (a custom `application/x-yarramate-kind` payload, so stray
+  text drops stay inert) opens the existing Add-subject dialog with the
+  kind preselected; clicking a row does the same without the drag. The
+  palette holds no armed mode and the plain openers still start with no
+  kind chosen; the drop position is converted to model coordinates and
+  handed up but deliberately not carried into the staged result —
+  placement belongs to the layout system. Hosts opt in or out through
+  the `sections` vocabulary, like every other section.
+  [ADR 0116](docs/adr/0116-a-kind-is-picked-up-not-remembered.md).
+
 - **Added.** The right column can leave (#294). A hide control on a slim
   rim above the section stack collapses the entire column — sections,
   splitters and separator — and gives the canvas the full width; the
