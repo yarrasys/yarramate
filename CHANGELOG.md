@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **Fixed.** A wave that has not opened no longer reads as a finished one
+  (#334). `ask` printed a bare `== Implementation ==` heading with nothing
+  under it, which is visually identical to a wave whose questions are all
+  closed — and the empty reading is the flattering one: "nothing
+  outstanding here" rather than "nobody has been asked anything here". It
+  now prints `not yet — this wave has not opened`. `docs/INTERROGATION.md`
+  states the hazard for consumers, because the state is one this release
+  created: a rail computing `done` as `answered === questions` ticks at
+  zero, and both this renderer and a consuming product's wave rail had that
+  fault on the day the gate shipped.
+
 - **Fixed.** A blank project is no longer greeted with six questions about
   what it does not have (#334, ADR 0125). Measured against 1.3.0: a fresh
   `yarramate init` opened **nine** questions, six of them of the form "you
