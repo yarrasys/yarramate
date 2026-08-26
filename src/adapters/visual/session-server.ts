@@ -780,12 +780,18 @@ export const startVisualServer = async (
    * Returns whether it compiled, so a post-write failure can freeze the
    * session instead of serving a stale graph.
    */
-  const workspaceSources = (): readonly {
-    readonly path: string;
-    readonly source: string;
-  }[] => {
+  const workspaceSources = ():
+    | {
+        readonly ok: true;
+        readonly sources: readonly {
+          readonly path: string;
+          readonly source: string;
+        }[];
+      }
+    | { readonly ok: false; readonly path: string; readonly reason: string } => {
+    let reading = "";
     try {
-      return [
+      const paths = [
         ...resolvedWorkspace.profiles,
         // Patterns are compiler input like profiles (#268). Without them a
         // session recompiles a workspace the manifest does not describe: an
@@ -795,16 +801,48 @@ export const startVisualServer = async (
         // rather than as a compile that failed.
         ...resolvedWorkspace.patterns,
         ...resolvedWorkspace.documents,
-      ].map((path) => ({
-        path,
-        source: readFileSync(resolve(options.cwd, path), "utf8"),
-      }));
-    } catch {
-      // A source that cannot be read is one whose diagnostics belong to no
-      // subject anyway, so an empty list is the right answer rather than a
-      // throw from a path that is only trying to add detail.
-      return [];
+      ];
+      return {
+        ok: true,
+        sources: paths.map((path) => {
+          reading = path;
+          return {
+            path,
+            source: readFileSync(resolve(options.cwd, path), "utf8"),
+          };
+        }),
+      };
+    } catch (cause) {
+      // Never an empty list. Compiling one SUCCEEDS - `compileWorkspaceResolved`
+      // over no sources returns an empty graph, not a failure - so swallowing
+      // the read error here made an unreadable workspace indistinguishable
+      // from an empty one, and the session then served "your model has nothing
+      // in it" as though it were an answer (#349). The older comment defended
+      // the empty list as belonging to a path "only trying to add detail";
+      // this feeds the single compile that produces what the browser draws.
+      return {
+        ok: false,
+        path: reading,
+        reason: cause instanceof Error ? cause.message : String(cause),
+      };
     }
+  };
+
+  /**
+   * The sources, for attaching subjects to a diagnostic that already exists.
+   *
+   * Here an unreadable source really is nothing worth reporting: the caller is
+   * decorating a refusal it has already decided on, so a missing file costs a
+   * subject marker and nothing else. That was the whole of the old
+   * `workspaceSources` contract, and it stayed correct for exactly these two
+   * callers while being wrong for the compile (#349).
+   */
+  const sourcesForDetail = (): readonly {
+    readonly path: string;
+    readonly source: string;
+  }[] => {
+    const read = workspaceSources();
+    return read.ok ? read.sources : [];
   };
 
   /**
@@ -832,13 +870,42 @@ export const startVisualServer = async (
     return digests;
   };
 
-  const recompileWorkspace = (): boolean => {
+  /**
+   * Why a recompile failed, in the browser's own diagnostic shape.
+   *
+   * A failure KEEPS the last good `compiledWorkspace` and `rendered` rather
+   * than clearing them (#349). Clearing them emptied every view and every
+   * filter answer, which reads as a model that has gone blank rather than a
+   * compile that failed - and it made the browser's own `Faults` heading
+   * ("the diagram still shows the model that did") untrue. `local-host.ts`
+   * already takes this posture, refusing a filter with YMVS318 while the last
+   * good model stays as it is.
+   */
+  type RecompileOutcome =
+    | { readonly ok: true }
+    | { readonly ok: false; readonly diagnostics: readonly VisualDiagnostic[] };
+
+  const recompileWorkspace = (): RecompileOutcome => {
     try {
-      const sources = workspaceSources();
+      const read = workspaceSources();
+      if (!read.ok) {
+        return {
+          ok: false,
+          diagnostics: [
+            serverDiagnostic(
+              "YMVS319",
+              `Workspace source ${read.path} cannot be read, so the workspace was not recompiled; the last good model stays as it is: ${read.reason}`,
+            ),
+          ],
+        };
+      }
+      const sources = read.sources;
       const compiled = compileWorkspaceWithProfileContext(sources);
       if (!compiled.ok) {
-        compiledWorkspace = undefined;
-        return false;
+        return {
+          ok: false,
+          diagnostics: published(compiled.diagnostics, sources),
+        };
       }
       compiledWorkspace = {
         graph: compiled.graph,
@@ -864,13 +931,40 @@ export const startVisualServer = async (
       // replacing the identity the session started with.
       views.splice(0, views.length, ...workspaceModel.views);
       rendered = workspaceModel.model;
-      return true;
-    } catch {
-      compiledWorkspace = undefined;
-      return false;
+      // Recovered: a browser connecting now is not handed a fault that has
+      // been fixed since. The connected ones clear it on the `model` frame
+      // this success is about to broadcast.
+      standingDiagnostics = [];
+      return { ok: true };
+    } catch (cause) {
+      return {
+        ok: false,
+        diagnostics: [
+          serverDiagnostic(
+            "YMVS319",
+            `Workspace could not be recompiled, so the last good model stays as it is: ${
+              cause instanceof Error ? cause.message : String(cause)
+            }`,
+          ),
+        ],
+      };
     }
   };
-  recompileWorkspace();
+
+  /**
+   * What the last recompile could not do, held for a browser that is not
+   * connected yet.
+   *
+   * The startup recompile runs before any socket exists, so a failure there
+   * has nobody to tell. Holding it means the first browser to arrive is told
+   * what every later one would have heard, rather than opening onto a session
+   * that looks well and answers nothing.
+   */
+  let standingDiagnostics: readonly VisualDiagnostic[] = [];
+  {
+    const started = recompileWorkspace();
+    if (!started.ok) standingDiagnostics = started.diagnostics;
+  }
 
   const filterMatchedIds = (query: ProjectionQuery): readonly string[] =>
     compiledWorkspace === undefined
@@ -1169,6 +1263,39 @@ export const startVisualServer = async (
 
   const broadcast = (frame: VisualServerFrame) => {
     for (const socket of connections.values()) sendFrame(socket, frame);
+  };
+
+  /**
+   * Tells the browser the workspace no longer compiles, and what said so.
+   *
+   * Journalled as an ordinary `diagnostic` response rather than a new frame
+   * kind, because that is the one the browser already renders - `Faults`
+   * reads `state.diagnostics`, which a `model` frame clears, so a recovered
+   * recompile clears the banner without anyone clearing it (#349). Held in
+   * `standingDiagnostics` too, for the browser that has not connected yet.
+   */
+  const reportRecompileFailure = async (
+    diagnostics: readonly VisualDiagnostic[],
+    eventId = drawHex(16),
+  ): Promise<void> => {
+    standingDiagnostics = diagnostics;
+    const response: VisualResponse = {
+      format: "yarramate/visual-response/v1",
+      sessionId,
+      responseId: drawHex(16),
+      eventId,
+      type: "diagnostic",
+      timestamp: stamp(),
+      payload: { diagnostics },
+    };
+    const appended = await appendVisualResponse(paths, response);
+    if (appended.ok) {
+      transcriptBytes = appended.transcriptBytes;
+      recordResponse(response);
+      broadcast({ kind: "response", response });
+    } else if (appended.freeze !== undefined) {
+      freeze(appended.freeze);
+    }
   };
 
   const idleDelivery = (): VisualEventDelivery => ({
@@ -1546,8 +1673,16 @@ export const startVisualServer = async (
             kind: "apply-result",
             result: { ok: false, diagnostics: refused },
           });
-          if (recompileWorkspace())
+          const refreshed = recompileWorkspace();
+          if (refreshed.ok) {
             broadcast({ kind: "model", model: rendered, views });
+          } else {
+            // Nothing at all reached the browser here before (#349): a refused
+            // apply whose refresh also failed left the reviewer with a
+            // refusal about their rows and no word that the workspace itself
+            // had stopped compiling.
+            await reportRecompileFailure(refreshed.diagnostics);
+          }
           return;
         }
         const operationsSource = stringify({
@@ -1572,7 +1707,7 @@ export const startVisualServer = async (
               ok: false,
               diagnostics: published(
                 loadedWorkspace.diagnostics,
-                workspaceSources(),
+                sourcesForDetail(),
               ),
             },
           });
@@ -1625,7 +1760,7 @@ export const startVisualServer = async (
             kind: "apply-result",
             result: {
               ok: false,
-              diagnostics: published(outcome.diagnostics, workspaceSources()),
+              diagnostics: published(outcome.diagnostics, sourcesForDetail()),
             },
           });
           return;
@@ -1650,7 +1785,8 @@ export const startVisualServer = async (
           kind: "apply-result",
           result: { ok: true, result: outcome.result },
         });
-        if (recompileWorkspace()) {
+        const recompiled = recompileWorkspace();
+        if (recompiled.ok) {
           broadcast({ kind: "model", model: rendered, views });
           return;
         }
@@ -1658,34 +1794,19 @@ export const startVisualServer = async (
         // landed but produced a document Core itself can no longer parse.
         // The freeze alone only tells the browser input is refused, not why
         // the graph on screen has gone stale, so a diagnostic response is
-        // journaled alongside it.
-        const diagnosticResponse: VisualResponse = {
-          format: "yarramate/visual-response/v1",
-          sessionId,
-          responseId: drawHex(16),
-          eventId: event.eventId,
-          type: "diagnostic",
-          timestamp: stamp(),
-          payload: {
-            diagnostics: [
-              serverDiagnostic(
-                "YMVS310",
-                "Workspace failed to recompile after a landed changeset",
-              ),
-            ],
-          },
-        };
-        const appendedResponse = await appendVisualResponse(
-          paths,
-          diagnosticResponse,
+        // journaled alongside it - and it carries the compiler's OWN
+        // diagnostics, because YMVS310 by itself names no document, no code
+        // and no line (#349).
+        await reportRecompileFailure(
+          [
+            serverDiagnostic(
+              "YMVS310",
+              "Workspace failed to recompile after a landed changeset",
+            ),
+            ...recompiled.diagnostics,
+          ],
+          event.eventId,
         );
-        if (appendedResponse.ok) {
-          transcriptBytes = appendedResponse.transcriptBytes;
-          recordResponse(diagnosticResponse);
-          broadcast({ kind: "response", response: diagnosticResponse });
-        } else if (appendedResponse.freeze !== undefined) {
-          freeze(appendedResponse.freeze);
-        }
         freeze("recompile-failed");
         return;
       }
@@ -1853,6 +1974,22 @@ export const startVisualServer = async (
         return;
       }
       sendFrame(socket, { kind: "ready", snapshot: snapshot() });
+      // A recompile that failed before this socket existed - the one at
+      // startup, most often - has had nobody to tell until now (#349).
+      if (standingDiagnostics.length > 0) {
+        sendFrame(socket, {
+          kind: "response",
+          response: {
+            format: "yarramate/visual-response/v1",
+            sessionId,
+            responseId: drawHex(16),
+            eventId: drawHex(16),
+            type: "diagnostic",
+            timestamp: stamp(),
+            payload: { diagnostics: standingDiagnostics },
+          },
+        });
+      }
     });
   };
 

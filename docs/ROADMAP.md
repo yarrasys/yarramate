@@ -150,7 +150,7 @@ notation.
   `.yarramate/visual-layout` sidecars. Dropdown-constrained field edits
   accumulate in a changeset that commits through `yarramate/operations/v1` and
   `yarramate apply`, so the browser holds no private write path. The wire is
-  the published `yarramate/visual-protocol/v4` contract; see
+  the published `yarramate/visual-protocol/v5` contract; see
   `docs/VISUAL-ADAPTER.md` and ADRs 0081, 0084 to 0088, and 0096. Ordered in-app
   undo and redo over the staged changeset walks an ordered history of whole
   staged-operation snapshots, covering staging, one discarded row, and a
