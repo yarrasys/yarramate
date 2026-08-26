@@ -90,6 +90,7 @@ vi.mock('../src/visual-app/workspace-state.js', async (importOriginal) => {
 })
 
 import { App } from '../src/visual-app/App.js'
+import { KIND_MIME } from '../src/visual-app/kind-palette.js'
 
 const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window')
 
@@ -488,11 +489,11 @@ describe('command strip', () => {
  * in the right column, and the session's own control beside the conversation.
  */
 describe('the right column, as a stack of sections', () => {
-  it('draws all three sections, chat last', () => {
+  it('draws the sections in the stack order, palette first and chat last', () => {
     const markup = renderSession()
 
     expect(markup).toContain('class="section-stack"')
-    const order = ['properties', 'changes', 'chat'].map((id) =>
+    const order = ['palette', 'properties', 'changes', 'chat'].map((id) =>
       markup.indexOf(`stack-section-${id}`),
     )
     expect(order.every((at) => at !== -1)).toBe(true)
@@ -582,10 +583,10 @@ describe('a host that asks for some of the sections', () => {
     expect(markup).not.toContain('class="section-splitter"')
   })
 
-  it('draws all three when the host says nothing', () => {
+  it('draws every section when the host says nothing', () => {
     const markup = renderSession()
 
-    for (const id of ['properties', 'changes', 'chat']) {
+    for (const id of ['palette', 'properties', 'changes', 'chat']) {
       expect(markup).toContain(`stack-section-${id}`)
     }
   })
@@ -684,6 +685,99 @@ describe('open questions section (#292)', () => {
     // overlay must see the canvas it always saw, not a section of zeros.
     const markup = renderSession({ model: renderedModel })
     expect(markup).not.toContain('Open questions')
+  })
+})
+
+/**
+ * The kind palette (#295): the profile's concept kinds as a section, each row
+ * a thing to drag onto the canvas or click, either way opening the Add-subject
+ * dialog with the kind preselected. The rows come from the model frame's own
+ * `vocabulary.conceptKinds` - the list the dialog's Kind select compiles from -
+ * so the palette and the select can never disagree.
+ */
+describe('kind palette (#295)', () => {
+  const kindsModel: VisualRenderedModel = {
+    ...renderedModel,
+    vocabulary: {
+      conceptKinds: [
+        {
+          id: 'yarramate/core@0.1#applicationComponent',
+          label: 'applicationComponent',
+          coreLabel: 'applicationComponent',
+        },
+        {
+          id: 'yarramate/core@0.1#businessActor',
+          label: 'businessActor',
+          coreLabel: 'businessActor',
+        },
+        {
+          id: 'yarramate/core@0.1#goal',
+          label: 'goal',
+          coreLabel: 'goal',
+        },
+      ],
+      relationshipKinds: [],
+    },
+  }
+
+  it('lists the vocabulary the model frame carries, and counts it in the header', () => {
+    const markup = renderSession({ model: kindsModel })
+
+    expect(markup).toContain('stack-section-palette')
+    expect(markup).toContain('>Kind palette</span>')
+    expect(markup).toContain('class="section-meta">3 kinds</span>')
+    expect(markup).toContain('data-kind="applicationComponent"')
+    expect(markup).toContain('data-kind="businessActor"')
+    expect(markup).toContain('data-kind="goal"')
+  })
+
+  it('makes every row draggable and clickable, never a plain span', () => {
+    const markup = renderSession({ model: kindsModel })
+
+    const rows = [...markup.matchAll(/class="kind-palette-row"/g)]
+    expect(rows).toHaveLength(3)
+    expect(
+      [...markup.matchAll(/<button[^>]*class="kind-palette-row"[^>]*>/g)].every(
+        (row) => row[0].includes('draggable="true"'),
+      ),
+    ).toBe(true)
+  })
+
+  it('groups the rows into layer bands, in the profile layer order', () => {
+    // The same organisation the model tree reads in: motivation before
+    // business before application, whatever order the wire listed the kinds.
+    const markup = renderSession({ model: kindsModel })
+
+    const bands = ['motivation', 'business', 'application'].map((layer) =>
+      markup.indexOf(`class="kind-palette-layer-name">${layer}<`),
+    )
+    expect(bands.every((at) => at !== -1)).toBe(true)
+    expect(bands).toEqual([...bands].sort((a, b) => a - b))
+  })
+
+  it('says the kinds arrive with the model while there is none', () => {
+    const markup = renderSession()
+
+    expect(markup).toContain('stack-section-palette')
+    expect(markup).toContain('No model yet. The kinds arrive with it.')
+  })
+
+  it('renders no palette for a host that did not ask for one', () => {
+    // The section vocabulary is the host's opt-in, like every other section.
+    const markup = renderSession(
+      { model: kindsModel },
+      { sections: ['properties', 'changes'] },
+    )
+
+    expect(markup).not.toContain('stack-section-palette')
+    expect(markup).not.toContain('kind-palette-row')
+  })
+
+  it('names the drag payload type hosts and tests can rely on', () => {
+    // The wire format of the gesture: a canvas accepts exactly this type, so
+    // a stray text drop stays inert. Static markup cannot carry the
+    // `dataTransfer` call; the constant is the contract.
+    expect(KIND_MIME).toBe('application/x-yarramate-kind')
   })
 })
 

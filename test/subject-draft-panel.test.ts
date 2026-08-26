@@ -29,9 +29,10 @@ concepts:
 relationships: []
 `)
 
-const render = () =>
+const render = (overrides: { readonly initialKind?: string } = {}) =>
   renderToStaticMarkup(
     createElement(SubjectDraftPanel, {
+      ...overrides,
       graph,
       kinds: [
         // id is the full identity the wire carries; label is the short name a
@@ -88,6 +89,28 @@ describe('SubjectDraftPanel', () => {
 
     expect(values).toContain('applicationComponent')
     expect(values.some((value) => value.includes('#'))).toBe(false)
+  })
+
+  /**
+   * The palette's half of #295: a kind dragged or clicked there arrives as
+   * `initialKind` and the select opens on it. Not a default - the reviewer's
+   * own pick riding the gesture in - so the untouched form's no-default rule
+   * (below) stands, and the guidance moves on to the name the id still needs.
+   */
+  it('seeds the kind a palette gesture picked up', () => {
+    const markup = render({ initialKind: 'businessActor' })
+
+    // Only the Kind select: Document legitimately opens on its default too.
+    const kindSelect =
+      /<select id="subject-draft-kind"[^>]*>([\s\S]*?)<\/select>/.exec(
+        markup,
+      )?.[1] ?? ''
+    const seeded = [...kindSelect.matchAll(/<option ([^>]*)>/g)]
+      .filter((match) => match[1]!.includes('selected'))
+      .map((match) => /value="([^"]*)"/.exec(match[1]!)?.[1])
+    expect(seeded).toEqual(['businessActor'])
+    expect(markup).toContain('Give it a name.')
+    expect(markup).not.toContain('Choose a kind.')
   })
 
   it('picks no kind for the reviewer', () => {

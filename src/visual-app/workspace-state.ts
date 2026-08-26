@@ -103,11 +103,14 @@ const nextRelationship = (
  * The right column's sections, in the order they stack (#249, ADR-free: the
  * design settles the order and nothing derives it).
  *
- * Chat is last because it is pinned at the foot and owns the session's own
- * control - the reviewer ends the conversation beside the conversation, not
- * from a strip that carries identity and nothing else.
+ * The palette leads (#295): it is the tool that makes subjects, and tools
+ * read above inspection - a reviewer reaches for what to add before what is
+ * selected. Chat is last because it is pinned at the foot and owns the
+ * session's own control - the reviewer ends the conversation beside the
+ * conversation, not from a strip that carries identity and nothing else.
  */
 export const RIGHT_SECTIONS = [
+  "palette",
   "properties",
   "questions",
   "changes",

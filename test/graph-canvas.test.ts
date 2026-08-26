@@ -1,6 +1,10 @@
 import cytoscape from 'cytoscape'
 import { describe, expect, it } from 'vitest'
-import { applyFilter, relayoutVisible } from '../src/visual-app/graph-canvas.js'
+import {
+  applyFilter,
+  modelPositionOf,
+  relayoutVisible,
+} from '../src/visual-app/graph-canvas.js'
 
 // A small headless cytoscape instance (no container/DOM needed for hide/show
 // and data queries) - mirrors the shape graphToElements produces, without
@@ -227,5 +231,28 @@ describe('a subject the model has just gained', () => {
     applyFilter(cy, null, '')
 
     expect(cy.getElementById('payment-gateway').visible()).toBe(true)
+  })
+})
+
+/**
+ * Where a palette drop lands (#295): the container's own coordinates, undone
+ * through whatever pan and zoom are standing, give the model position under
+ * the pointer. Pure arithmetic, so it is stated without a canvas to drop on.
+ */
+describe('modelPositionOf', () => {
+  it('is the identity under no pan and unit zoom', () => {
+    expect(modelPositionOf({ x: 120, y: 80 }, { x: 0, y: 0 }, 1)).toEqual({
+      x: 120,
+      y: 80,
+    })
+  })
+
+  it('undoes the standing pan and zoom', () => {
+    // A canvas panned to (50, -20) and zoomed to 2 draws model (35, 50) at
+    // rendered (120, 80): the drop must give back the model point.
+    expect(modelPositionOf({ x: 120, y: 80 }, { x: 50, y: -20 }, 2)).toEqual({
+      x: 35,
+      y: 50,
+    })
   })
 })

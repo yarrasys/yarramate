@@ -22,6 +22,7 @@ import {
   ownerInitialsOf,
 } from './badges.js'
 import { ICON_SIZE, kindIconUriOf } from './kind-icons.js'
+import { KIND_MIME } from './kind-palette.js'
 import { ASPECT_SHAPES, LAYER_COLORS, RELATIONSHIP_NOTATION } from '../notation/archimate.js'
 
 // Register elk extension once at module load, guarded against re-registration
@@ -888,6 +889,18 @@ export function savedLayoutInForce(
   return drawn.some((id) => saved[id] !== undefined)
 }
 
+// A drop lands in the container's own coordinates; the graph lives in model
+// coordinates under whatever pan and zoom are standing. One conversion,
+// cytoscape's own rendered-to-model arithmetic, exported so the sum is a fact
+// a test can state without a canvas to drop on.
+export function modelPositionOf(
+  rendered: { readonly x: number; readonly y: number },
+  pan: { readonly x: number; readonly y: number },
+  zoom: number,
+): { readonly x: number; readonly y: number } {
+  return { x: (rendered.x - pan.x) / zoom, y: (rendered.y - pan.y) / zoom }
+}
+
 export interface DragSaveHandle {
   /** Cancels a queued save without unbinding the drag listener. */
   readonly cancelPending: () => void
@@ -964,6 +977,17 @@ interface GraphCanvasProps {
   readonly savedPositions: VisualLayoutPositions | undefined
   readonly onSaveLayout: (payload: VisualLayoutSavePayload) => void
   /**
+   * A kind dropped from the palette (#295): the kind's label and the model
+   * position under the pointer. Optional because only a shell with a palette
+   * has anything to drop; a host without one never sees a drop at all - the
+   * `dragover` acceptance is gated on the callback too, so a stray drag is
+   * left to the browser's default refusal.
+   */
+  readonly onKindDrop?: (
+    kindLabel: string,
+    position: { readonly x: number; readonly y: number },
+  ) => void
+  /**
    * A way to take a picture of what is drawn, handed up once the instance
    * exists and withdrawn when it goes. The shell holds it so a menu item can
    * export a PNG without reaching into cytoscape itself; `null` means there is
@@ -993,6 +1017,7 @@ export function GraphCanvas({
   activeViewId,
   savedPositions,
   onSaveLayout,
+  onKindDrop,
   onCanvasReady,
   showLifecycle,
   showEvidence,
@@ -1018,6 +1043,8 @@ export function GraphCanvas({
   const onSelectRef = useRef(onSelect)
   const onCanvasReadyRef = useRef(onCanvasReady)
   onCanvasReadyRef.current = onCanvasReady
+  const onKindDropRef = useRef(onKindDrop)
+  onKindDropRef.current = onKindDrop
   const onContextMenuRef = useRef(onContextMenu)
   const isInitialSyncRef = useRef(true)
   const isInitialPresentationSyncRef = useRef(true)
@@ -1367,6 +1394,34 @@ export function GraphCanvas({
         ref={containerRef}
         style={{ width: '100%', height: '100%' }}
         onContextMenu={(event) => event.preventDefault()}
+        // A kind dragged from the palette (#295). Accepted on the container
+        // rather than on any cytoscape element: a new subject belongs to no
+        // node yet, and the container is the one element that is always under
+        // the pointer. Only the palette's own type is accepted - the payload
+        // itself is unreadable until the drop, but the type list is not.
+        onDragOver={(event) => {
+          if (
+            onKindDropRef.current !== undefined &&
+            event.dataTransfer.types.includes(KIND_MIME)
+          ) {
+            event.preventDefault()
+          }
+        }}
+        onDrop={(event) => {
+          const kindLabel = event.dataTransfer.getData(KIND_MIME)
+          if (kindLabel === '' || onKindDropRef.current === undefined) return
+          event.preventDefault()
+          const box = event.currentTarget.getBoundingClientRect()
+          const cy = cyRef.current
+          onKindDropRef.current(
+            kindLabel,
+            modelPositionOf(
+              { x: event.clientX - box.left, y: event.clientY - box.top },
+              cy?.pan() ?? { x: 0, y: 0 },
+              cy?.zoom() ?? 1,
+            ),
+          )
+        }}
       />
       {savedLayoutShown ? (
         <div className="saved-layout-pill" role="status">

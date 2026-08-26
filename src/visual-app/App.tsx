@@ -52,6 +52,7 @@ import {
 } from "./workspace-state.js";
 import { ConnectionPanel } from "./connection-panel.js";
 import { faultedSubjects } from "./faults.js";
+import { KindPalette } from "./kind-palette.js";
 import { SubjectDraftPanel } from "./subject-draft-panel.js";
 import { ConfirmDialog } from "./confirm-dialog.js";
 import { PromptDialog } from "./prompt-dialog.js";
@@ -231,6 +232,8 @@ const DiagramWorkspace = ({
   onConnectStage,
   onDraftStage,
   draftingSubject,
+  draftInitialKind,
+  onKindDrop,
   onDraftSubject,
   onDraftSubjectClose,
   pendingDeletion,
@@ -270,6 +273,14 @@ const DiagramWorkspace = ({
    */
   readonly onDraftStage: (operation: YarramateOperation) => void;
   readonly draftingSubject: boolean;
+  /** The kind the open draft was seeded with - a palette pick (#295) - or
+   * undefined for a draft opened plain. */
+  readonly draftInitialKind: string | undefined;
+  /** A kind dropped from the palette onto the canvas (#295). */
+  readonly onKindDrop: (
+    kindLabel: string,
+    position: { readonly x: number; readonly y: number },
+  ) => void;
   readonly onDraftSubject: () => void;
   readonly onDraftSubjectClose: () => void;
   readonly pendingDeletion: string | null;
@@ -357,6 +368,11 @@ const DiagramWorkspace = ({
         )}
         {!draftingSubject || state.model === null ? null : (
           <SubjectDraftPanel
+            // Keyed on the seed: a kind picked up while the form is already
+            // open is a fresh draft, re-seeded, rather than a pick that
+            // silently changes nothing (ADR 0116).
+            key={draftInitialKind ?? ""}
+            initialKind={draftInitialKind}
             graph={state.model.graph}
             kinds={state.model.vocabulary.conceptKinds}
             documents={state.model.documents}
@@ -442,6 +458,7 @@ const DiagramWorkspace = ({
             activeViewId={state.activeView}
             savedPositions={state.model.layouts[state.activeView]}
             onSaveLayout={onSaveLayout}
+            onKindDrop={onKindDrop}
             onCanvasReady={onCanvasReady}
           />
         )}
@@ -917,6 +934,12 @@ export const App = ({
   const [saveViewFolder, setSaveViewFolder] = useState<
     string | undefined
   >(undefined);
+  // The kind a palette gesture picked up, seeding the Add-subject dialog it
+  // opens (#295). Shell state like `saveViewFolder`, not workspace state: it
+  // is the gesture's payload on its way to the form, not a fact about the
+  // workspace - the reducer keeps only that the draft is open. A plain opener
+  // clears it, so "Add subject" still starts with no kind chosen (ADR 0116).
+  const [draftKind, setDraftKind] = useState<string | undefined>(undefined);
   // A way to photograph the canvas, handed up by `GraphCanvas` while one
   // exists. A ref rather than state: nothing renders differently because of
   // it, and a menu item reads it at the moment it is chosen.
@@ -1051,6 +1074,10 @@ export const App = ({
       : selectedElementId === null
         ? interrogation.workspace.length
         : (openQuestionCounts.get(selectedElementId) ?? 0);
+  // The palette's rows are the model frame's own vocabulary (#295) - the same
+  // list the Add-subject dialog compiles its Kind select from, so the two can
+  // never disagree about what a workspace may contain.
+  const paletteKinds = state.model?.vocabulary.conceptKinds ?? [];
   const treeCollapsed = useMemo(
     () => new Set(workspace.tree.collapsed),
     [workspace.tree.collapsed],
@@ -1072,6 +1099,18 @@ export const App = ({
       ? `${workspace.conversation.chatHeight}px`
       : "auto",
   } as CSSProperties;
+
+  // Every palette gesture ends here (#295): the kind rides along to seed the
+  // form, and the same Add-subject dialog opens - a drop is not a shortcut
+  // past the name and the document, it is a shortcut past the Kind select.
+  // The drop's position is deliberately NOT taken further: placement belongs
+  // to the layout system, so a dropped kind lands where elk puts it, and the
+  // canvas hands the position up only so a future layout integration has the
+  // seam already cut (ADR 0116).
+  const draftWithKind = (kindLabel: string) => {
+    setDraftKind(kindLabel);
+    dispatchWorkspace({ type: "subject.draft.opened" });
+  };
 
   const openMenu = (
     target: ContextMenuTarget,
@@ -1158,6 +1197,9 @@ export const App = ({
         return;
       }
       case "canvas.draft-subject":
+        // A plain opener: no kind arrives with the gesture, so none is left
+        // over from an earlier palette pick.
+        setDraftKind(undefined);
         dispatchWorkspace({ type: "subject.draft.opened" });
         return;
       case "view.add-subject":
@@ -1357,9 +1399,14 @@ export const App = ({
             }
           }}
           draftingSubject={workspace.draftingSubject}
-          onDraftSubject={() =>
-            dispatchWorkspace({ type: "subject.draft.opened" })
-          }
+          draftInitialKind={draftKind}
+          onKindDrop={(kindLabel) => draftWithKind(kindLabel)}
+          onDraftSubject={() => {
+            // The plain opener starts with no kind chosen, whatever a palette
+            // gesture seeded last time (ADR 0116).
+            setDraftKind(undefined);
+            dispatchWorkspace({ type: "subject.draft.opened" });
+          }}
           onDraftSubjectClose={() =>
             dispatchWorkspace({ type: "subject.draft.closed" })
           }
@@ -1467,6 +1514,31 @@ export const App = ({
               {stackRows(
                 visibleSections,
                 {
+                  palette: (
+                    <Section
+                      id="palette"
+                      label="Kind palette"
+                      meta={
+                        paletteKinds.length === 0
+                          ? undefined
+                          : paletteKinds.length === 1
+                            ? "1 kind"
+                            : `${paletteKinds.length} kinds`
+                      }
+                      open={sectionOpen("palette")}
+                      onToggle={() =>
+                        dispatchWorkspace({ type: "section.toggled", section: "palette" })
+                      }
+                    >
+                      {paletteKinds.length === 0 ? (
+                        <p className="section-empty">
+                          No model yet. The kinds arrive with it.
+                        </p>
+                      ) : (
+                        <KindPalette kinds={paletteKinds} onPick={draftWithKind} />
+                      )}
+                    </Section>
+                  ),
                   properties: (
                     <Section
                       id="properties"
