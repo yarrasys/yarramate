@@ -307,6 +307,12 @@ export interface QueryPanelProps {
    * write: what is on screen is what the reviewer is composing. */
   readonly onApply: (query: ProjectionQuery) => void;
   readonly onStage: (operation: VisualViewOperation) => void;
+  /**
+   * A viewer, not an author (#298): the fields still narrow the canvas - a
+   * live filter writes nothing - but the affordance that stages the edit as a
+   * view change is absent. The document still shows, because it is a fact.
+   */
+  readonly readOnly?: boolean;
 }
 
 export function QueryPanel({
@@ -324,6 +330,7 @@ export function QueryPanel({
   onSelectTab,
   onApply,
   onStage,
+  readOnly = false,
 }: QueryPanelProps) {
   const debounceHandle = useRef<number | null>(null);
   // The VIEW's own query first, and the standing filter only when no view is
@@ -510,31 +517,34 @@ export function QueryPanel({
               <h3>Document</h3>
               {documentInput === null ? (
                 <p className="query-outcome-note">
-                  No view is active, so this query has no document yet. Pick one
-                  in the tree, or save this query as a new view.
+                  {readOnly
+                    ? "No view is active, so this query has no document. Pick one in the tree."
+                    : "No view is active, so this query has no document yet. Pick one in the tree, or save this query as a new view."}
                 </p>
               ) : (
                 <>
                   <pre className="query-document">
                     {stringify(viewDocument(documentInput))}
                   </pre>
-                  <div className="query-tab-actions">
-                    <button
-                      type="button"
-                      disabled={!documentChanged(documentInput)}
-                      onClick={() => {
-                        onStage(stagedViewEdit(documentInput));
-                        setStaged(true);
-                      }}
-                    >
-                      Stage view change
-                    </button>
-                    <span role="status" className="query-stage-status">
-                      {staged
-                        ? "Staged. It lands when the changeset is committed."
-                        : ""}
-                    </span>
-                  </div>
+                  {readOnly ? null : (
+                    <div className="query-tab-actions">
+                      <button
+                        type="button"
+                        disabled={!documentChanged(documentInput)}
+                        onClick={() => {
+                          onStage(stagedViewEdit(documentInput));
+                          setStaged(true);
+                        }}
+                      >
+                        Stage view change
+                      </button>
+                      <span role="status" className="query-stage-status">
+                        {staged
+                          ? "Staged. It lands when the changeset is committed."
+                          : ""}
+                      </span>
+                    </div>
+                  )}
                 </>
               )}
             </div>

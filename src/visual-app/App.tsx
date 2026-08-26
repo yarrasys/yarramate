@@ -6,7 +6,12 @@ import { ViewTree } from "./view-tree.js";
 import { SaveViewDialog } from "./save-view.js";
 import { describeQuery } from "./describe-query.js";
 import { ChangesetTray } from "./changeset-tray.js";
-import { ConceptForm, RelationshipForm } from "./subject-form.js";
+import {
+  ConceptFacts,
+  ConceptForm,
+  RelationshipFacts,
+  RelationshipForm,
+} from "./subject-form.js";
 import { OpenQuestions } from "./open-questions.js";
 import {
   useEffect,
@@ -251,6 +256,7 @@ const DiagramWorkspace = ({
   onSelectBottomTab,
   onApplyFilter,
   onStageView,
+  readOnly,
 }: {
   readonly state: VisualAppState;
   readonly selectedId: string | null;
@@ -310,6 +316,13 @@ const DiagramWorkspace = ({
   readonly onSelectBottomTab: (tab: BottomPanelTabId) => void;
   readonly onApplyFilter: (query: ProjectionQuery) => void;
   readonly onStageView: (operation: VisualViewOperation) => void;
+  /**
+   * A viewer, not an author (#298, ADR 0117). The canvas still selects,
+   * filters and navigates; everything that stages - the Add-subject opener,
+   * the palette drop, the stage-view-change affordance - is absent, and a
+   * drag still moves a node transiently but writes no layout.
+   */
+  readonly readOnly: boolean;
 }) => {
   // An edge names its endpoints by node id; the reviewer reads titles. The
   // rendering model the renderer itself draws answers that, so nothing here
@@ -357,13 +370,15 @@ const DiagramWorkspace = ({
               value={state.quickFilterText}
               onChange={onQuickFilterChange}
             />
-            <button
-              type="button"
-              className="subject-draft-open"
-              onClick={onDraftSubject}
-            >
-              Add subject
-            </button>
+            {readOnly ? null : (
+              <button
+                type="button"
+                className="subject-draft-open"
+                onClick={onDraftSubject}
+              >
+                Add subject
+              </button>
+            )}
           </div>
         )}
         {!draftingSubject || state.model === null ? null : (
@@ -457,8 +472,14 @@ const DiagramWorkspace = ({
             openQuestionCounts={openQuestionCounts}
             activeViewId={state.activeView}
             savedPositions={state.model.layouts[state.activeView]}
-            onSaveLayout={onSaveLayout}
-            onKindDrop={onKindDrop}
+            // A read-only drag still moves the node - arranging what is on
+            // screen is reading - but the debounced save it would queue goes
+            // nowhere: nothing a viewer does may write. The saved-layout pill
+            // keeps working either way; Discard is session-local.
+            onSaveLayout={readOnly ? () => undefined : onSaveLayout}
+            // No palette in a read-only mount, so nothing honest could drop:
+            // an undefined handler makes the canvas refuse the drag itself.
+            onKindDrop={readOnly ? undefined : onKindDrop}
             onCanvasReady={onCanvasReady}
           />
         )}
@@ -489,6 +510,7 @@ const DiagramWorkspace = ({
         onSelectTab={onSelectBottomTab}
         onApply={onApplyFilter}
         onStage={onStageView}
+        readOnly={readOnly}
       />
     </section>
   );
@@ -556,6 +578,7 @@ const SelectedSubjectInspector = ({
   onConnect,
   onDelete,
   onStageChange,
+  readOnly,
 }: {
   readonly subject: SelectedDiagramSubject;
   readonly model: VisualRenderedModel;
@@ -566,6 +589,12 @@ const SelectedSubjectInspector = ({
   readonly onConnect: (from: string) => void;
   readonly onDelete: (id: string) => void;
   readonly onStageChange: (operation: YarramateOperation) => void;
+  /**
+   * A viewer, not an author (#298): Connect and Delete are absent and the
+   * facts render as values rather than as the editable forms. Clear stays -
+   * putting a selection down is reading.
+   */
+  readonly readOnly: boolean;
 }) => {
   const node =
     subject.type === "element"
@@ -591,7 +620,7 @@ const SelectedSubjectInspector = ({
               : `${subject.sourceTitle} → ${subject.targetTitle}`}
           </h2>
         </div>
-        {subject.type === "element" ? (
+        {subject.type === "element" && !readOnly ? (
           <button
             type="button"
             className="subject-connect"
@@ -600,33 +629,43 @@ const SelectedSubjectInspector = ({
             Connect
           </button>
         ) : null}
-        <button
-          type="button"
-          className="subject-delete"
-          onClick={() => onDelete(subject.id)}
-        >
-          Delete
-        </button>
+        {readOnly ? null : (
+          <button
+            type="button"
+            className="subject-delete"
+            onClick={() => onDelete(subject.id)}
+          >
+            Delete
+          </button>
+        )}
         <button type="button" className="subject-clear" onClick={onClear}>
           Clear
         </button>
       </div>
 
       {node !== undefined ? (
-        <ConceptForm
-          node={node}
-          model={model}
-          operations={operations}
-          onStageChange={onStageChange}
-        />
+        readOnly ? (
+          <ConceptFacts node={node} model={model} />
+        ) : (
+          <ConceptForm
+            node={node}
+            model={model}
+            operations={operations}
+            onStageChange={onStageChange}
+          />
+        )
       ) : null}
       {edge !== undefined ? (
-        <RelationshipForm
-          edge={edge}
-          model={model}
-          operations={operations}
-          onStageChange={onStageChange}
-        />
+        readOnly ? (
+          <RelationshipFacts edge={edge} model={model} />
+        ) : (
+          <RelationshipForm
+            edge={edge}
+            model={model}
+            operations={operations}
+            onStageChange={onStageChange}
+          />
+        )
       ) : null}
 
       <ExpandableDescription
@@ -882,13 +921,21 @@ const ConversationSeparator = ({
  * embedder's own store with no server at all. `sections` is what the host
  * wants shown - a product with no agent behind it leaves `chat` out, and the
  * section and the session button go with it.
+ *
+ * `readOnly` is one flag, threaded once (#298, ADR 0117): a viewer keeps
+ * everything that reads - the canvas, the tree, the query fields, the facts,
+ * the questions - and every affordance that stages or commits is absent
+ * rather than disabled. A UI posture only: whatever this shell draws, the
+ * host still answers for its own store.
  */
 export const App = ({
   host,
   sections = RIGHT_SECTIONS,
+  readOnly = false,
 }: {
   readonly host: EditorHost;
   readonly sections?: readonly RightSectionId[];
+  readonly readOnly?: boolean;
 }) => {
   const {
     state,
@@ -1060,10 +1107,20 @@ export const App = ({
       ),
     [interrogation],
   );
+  // Read-only strips the sections that exist only to stage (#298, ADR 0117):
+  // a palette that cannot create and a changes tray that cannot commit are
+  // not "sections the host wants shown", whatever the list says. The filter
+  // sits beside the questions gate because both answer the same question -
+  // which sections have anything true to draw.
+  const offeredSections = readOnly
+    ? sections.filter(
+        (section) => section !== "palette" && section !== "changes",
+      )
+    : sections;
   const visibleSections =
     interrogation === undefined
-      ? sections.filter((section) => section !== "questions")
-      : sections;
+      ? offeredSections.filter((section) => section !== "questions")
+      : offeredSections;
   const selectedElementId =
     workspace.selectedSubject?.type === "element"
       ? workspace.selectedSubject.id
@@ -1135,6 +1192,7 @@ export const App = ({
           activeViewId: state.activeView,
           filtered: state.activeFilter !== null,
           membership: activeViewMembership(state),
+          readOnly,
         });
 
   /**
@@ -1368,6 +1426,7 @@ export const App = ({
               position,
             )
           }
+          readOnly={readOnly}
         />
         <DiagramWorkspace
           state={state}
@@ -1456,6 +1515,7 @@ export const App = ({
           // filtered as `editor` and the tree goes on naming what is drawn.
           onApplyFilter={(query) => filter(query, "editor")}
           onStageView={stageViewChange}
+          readOnly={readOnly}
         />
         {conversationHidden ? (
           // The way back stands where the column stood: a thin strip, not a
@@ -1570,6 +1630,7 @@ export const App = ({
                             dispatchWorkspace({ type: "deletion.asked", id })
                           }
                           onStageChange={stageChange}
+                          readOnly={readOnly}
                         />
                       )}
                     </Section>

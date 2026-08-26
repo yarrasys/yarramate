@@ -2208,6 +2208,15 @@ body {
   color: var(--ink);
 }
 
+/* A fact said as a value (#298): the read-only inspector's answer to a form
+   control - same label treatment above it, plain text where the input was. */
+.subject-fact-value {
+  font-family: var(--body);
+  font-size: 13px;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
 .subject-form-list {
   border-top: 1px solid var(--rule);
   padding-top: calc(var(--step) * 0.75);

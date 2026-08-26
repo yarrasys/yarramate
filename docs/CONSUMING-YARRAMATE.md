@@ -298,6 +298,17 @@ const editor = mountEditor(document.querySelector('#editor')!, {
 editor.unmount()
 ```
 
+Pass `readOnly: true` to mount a viewer over the same surface — for a frozen
+published snapshot, say ([ADR 0117](adr/0117-a-mounted-editor-can-refuse-the-pen.md)).
+The reviewer still selects, filters, navigates views and reads questions and
+properties (as values, not forms), but every affordance that stages or commits
+is absent rather than disabled: no Add subject, no palette or changes
+sections, no Connect/Delete, no view create/rename/delete, and drags move
+nodes without writing layouts. With no `sections` named, a read-only mount
+defaults to `['properties', 'questions']`. This is a UI posture only — pair it
+with a store that refuses writes; the two defenses are independent.
+`mountEditorWith` takes the same flag as its trailing parameter.
+
 `store` is the caller's synchronous `SourceStore`; `workspace` is the caller's
 pre-resolved `ResolvedWorkspace`. The local host compiles, projects, filters,
 commits and saves layouts over that store. A changeset's model and view writes

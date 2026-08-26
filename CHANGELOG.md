@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- **Added.** A mounted editor can refuse the pen (#298). `mountEditor`
+  gains `readOnly?: boolean` (default `false`) and `mountEditorWith` a
+  trailing `readOnly` parameter, so a host can render a frozen snapshot
+  with the authoring surface's own visual language. Read-only keeps
+  everything that reads — the canvas, selection, the quick filter, view
+  navigation, live query narrowing, open questions, the properties
+  facts (rendered as values where the editable forms stood), Export PNG
+  and the session-local layout Discard — and every affordance that
+  stages or commits is absent, not disabled: no Add subject, no
+  palette or changes sections (stripped from whatever `sections` names;
+  the read-only `mountEditor` default is `['properties', 'questions']`),
+  no Connect/Delete, no Stage view change, no new/rename/duplicate/
+  delete menu items, and a drag still moves a node but writes no
+  layout. A UI posture only: the host's store refuses writes on its own
+  authority, and the two defenses are independent. The session shell
+  and the `EditorHost` seam are unchanged.
+  [ADR 0117](docs/adr/0117-a-mounted-editor-can-refuse-the-pen.md).
+
 - **Added.** A kind palette the canvas accepts by drag (#295). A `palette`
   section leads the right column, listing the profile's concept kinds —
   the same `vocabulary.conceptKinds` the Add-subject dialog compiles its

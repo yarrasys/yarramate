@@ -773,6 +773,97 @@ export const ConceptForm = ({ node, model, operations, onStageChange }: ConceptF
   )
 }
 
+// ---------------------------------------------------------------------------
+// The read-only twins (#298, ADR 0117). The same fields the forms edit, said
+// as values: a read-only mount renders these instead of the forms, so the
+// facts still read where nothing may be staged. Fields the model does not
+// declare are skipped rather than shown empty - a viewer reads what is there,
+// and a wall of blank labels says less than their absence.
+
+const FactRow = ({
+  label,
+  value,
+}: {
+  readonly label: string
+  readonly value: string
+}) =>
+  value === '' ? null : (
+    <div className="subject-form-field">
+      <span className="subject-form-label">{label}</span>
+      <span className="subject-fact-value">{value}</span>
+    </div>
+  )
+
+export const ConceptFacts = ({
+  node,
+  model,
+}: {
+  readonly node: CanvasNode
+  readonly model: VisualRenderedModel
+}) => (
+  <div className="subject-form subject-facts">
+    <div className="subject-form-field">
+      <span className="subject-form-label">Identity</span>
+      <code>{node.id}</code>
+    </div>
+    <FactRow label="Kind" value={kindLabelFor(node.kind, model.vocabulary.conceptKinds)} />
+    <FactRow label="Name" value={node.name} />
+    <FactRow label="Status" value={node.status ?? ''} />
+    <FactRow label="Owner" value={node.owner ?? ''} />
+    <FactRow label="Aka" value={node.aka.join(', ')} />
+    <FactRow label="Distinct from" value={node.distinctFrom.join(', ')} />
+    <FactRow label="Supersedes" value={node.supersedes.join(', ')} />
+    <FactRow label="Present in" value={node.presentIn.join(', ')} />
+    <FactRow
+      label="References"
+      value={node.references.map((row) => `${row.id}: ${row.ref}`).join('; ')}
+    />
+    <FactRow
+      label="Constraints"
+      value={node.constraints.map((row) => `${row.id}: ${row.ref}`).join('; ')}
+    />
+    <FactRow
+      label="Attestations"
+      value={node.attestations
+        .map((row) => `${row.topic} by ${row.by} on ${row.on}`)
+        .join('; ')}
+    />
+  </div>
+)
+
+export const RelationshipFacts = ({
+  edge,
+  model,
+}: {
+  readonly edge: CanvasEdge
+  readonly model: VisualRenderedModel
+}) => {
+  // Endpoints are node ids; the reviewer reads titles, the same answer the
+  // editable form's endpoint selects give.
+  const titleOf = (ref: string): string =>
+    model.graph.nodes.find((candidate) => candidate.id === ref)?.name ?? ref
+  return (
+    <div className="subject-form subject-facts">
+      <div className="subject-form-field">
+        <span className="subject-form-label">Identity</span>
+        <code>{edge.id}</code>
+      </div>
+      <FactRow label="Kind" value={kindLabelFor(edge.kind, model.vocabulary.relationshipKinds)} />
+      <FactRow label="From" value={titleOf(edge.from)} />
+      <FactRow label="To" value={titleOf(edge.to)} />
+      <FactRow label="Name" value={edge.name ?? ''} />
+      <FactRow label="Mode" value={edge.mode ?? ''} />
+      <FactRow label="Content" value={edge.content ?? ''} />
+      <FactRow label="Status" value={edge.status ?? ''} />
+      <FactRow
+        label="References"
+        value={edge.references.map((row) => `${row.id}: ${row.ref}`).join('; ')}
+      />
+      <FactRow label="Present in" value={edge.presentIn.join(', ')} />
+    </div>
+  )
+}
+
 export interface RelationshipFormProps {
   readonly edge: CanvasEdge
   readonly model: VisualRenderedModel
