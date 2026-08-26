@@ -149,7 +149,11 @@ export const createLocalHost = (options: LocalHostOptions): EditorHost => {
    * shown no profile is shown an empty string where one should be.
    */
   const sourcesOf = (): readonly WorkspaceSource[] =>
-    [...workspace.profiles, ...workspace.documents].flatMap((path) => {
+    [
+      ...workspace.profiles,
+      ...workspace.patterns,
+      ...workspace.documents,
+    ].flatMap((path) => {
       const held = store.read(path)
       return held === undefined ? [] : [{ path, source: held.source }]
     })
@@ -193,6 +197,7 @@ export const createLocalHost = (options: LocalHostOptions): EditorHost => {
       // would have to invent a crypto library to compute.
       sourceDigests: revisionsOf([
         ...workspace.profiles,
+        ...workspace.patterns,
         ...workspace.documents,
       ]),
       // The manifest's resolved projections are static. Pins belong to the

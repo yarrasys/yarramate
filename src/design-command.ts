@@ -280,7 +280,11 @@ export function runDesignCommand(
     if (!loadedCatalogue.ok) return failed(loadedCatalogue.diagnostics)
 
     const compilation = compileWorkspaceWithProfileContext(
-      [...workspace.profiles, ...workspace.documents].map((path) => ({
+      [
+        ...workspace.profiles,
+        ...workspace.patterns,
+        ...workspace.documents,
+      ].map((path) => ({
         path,
         source: readFileSync(resolve(cwd, path), 'utf8'),
       })),

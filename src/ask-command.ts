@@ -758,7 +758,11 @@ export function runAskCommand(
       }
 
       const compilation = compileWorkspaceWithProfileContext(
-        [...workspace.profiles, ...workspace.documents].map((path) => ({
+        [
+          ...workspace.profiles,
+          ...workspace.patterns,
+          ...workspace.documents,
+        ].map((path) => ({
           path,
           source: readFileSync(resolve(cwd, path), 'utf8'),
         })),
@@ -875,7 +879,11 @@ export function runAskCommand(
 
     // Every other mode reads the compiled model directly.
     const compilation = compileWorkspaceWithProfileContext(
-      [...workspace.profiles, ...workspace.documents].map((path) => ({
+      [
+          ...workspace.profiles,
+          ...workspace.patterns,
+          ...workspace.documents,
+        ].map((path) => ({
         path,
         source: readFileSync(resolve(cwd, path), 'utf8'),
       })),

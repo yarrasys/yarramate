@@ -787,6 +787,13 @@ export const startVisualServer = async (
     try {
       return [
         ...resolvedWorkspace.profiles,
+        // Patterns are compiler input like profiles (#268). Without them a
+        // session recompiles a workspace the manifest does not describe: an
+        // instance binding parts fails YM419, `compiledWorkspace` becomes
+        // undefined, and every view's filter then matches nothing while the
+        // rail still shows the initial model - which reads as a filter bug
+        // rather than as a compile that failed.
+        ...resolvedWorkspace.patterns,
         ...resolvedWorkspace.documents,
       ].map((path) => ({
         path,

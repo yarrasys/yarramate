@@ -1078,6 +1078,10 @@ export const applyOperations = (
   // single byte is written; any diagnostic rejects the entire batch.
   const compiled = [
     ...resolvedWorkspace.profiles,
+    // Without patterns this gate compiles a workspace the manifest does not
+    // describe, so every commit against a workspace holding pattern instances
+    // was refused with YM419 for a pattern that was declared (#268).
+    ...resolvedWorkspace.patterns,
     ...resolvedWorkspace.documents,
   ].map((path) => ({
     path,
@@ -1208,6 +1212,9 @@ export const planOperations = (
     // workspace that declares a profile died on it. No operation can target a
     // profile, so they are read to be COMPILED against, never to be written.
     ...input.workspace.profiles,
+    // Patterns are compiled against too, and are no more writable than a
+    // profile: no operation can target one.
+    ...input.workspace.patterns,
     ...input.workspace.documents,
     ...input.workspace.projections,
     ...input.workspace.evidence,

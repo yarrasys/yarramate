@@ -213,7 +213,11 @@ export function runExportCommand(
     const workspace = loadedWorkspace.workspace
 
     const compilation = compileWorkspaceWithProfileContext(
-      [...workspace.profiles, ...workspace.documents].map((path) => ({
+      [
+        ...workspace.profiles,
+        ...workspace.patterns,
+        ...workspace.documents,
+      ].map((path) => ({
         path,
         source: readFileSync(resolve(cwd, path), 'utf8'),
       })),

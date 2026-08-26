@@ -1,5 +1,7 @@
 import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { resolveCliWorkspaceSources } from '../src/cli-support.js'
 import { describe, expect, it } from 'vitest'
 import {
   compileWorkspaceWithProfileContext,
@@ -163,5 +165,46 @@ describe('the contact-update journey fixture', () => {
     expect(
       interaction?.questions.filter((question) => question.open).map((q) => q.id),
     ).toEqual([])
+  })
+})
+
+// The journey fixture is meant to represent a REAL workspace, and nothing
+// resolved its manifest until this. Every other test here hands the compiler
+// an explicit source list, which is why `patterns` being declared in the
+// manifest and never passed to the compiler was invisible: the fixture failed
+// YM419 on all four api instances through its own manifest while every test
+// passed. The check that passes was not the check that mattered (#268).
+describe('the fixture compiles through its own manifest', () => {
+  it('resolves and checks clean, patterns included', () => {
+    const root = fileURLToPath(
+      new URL('./fixtures/journeys/contact-update/', import.meta.url),
+    )
+    const resolved = resolveCliWorkspaceSources(
+      ['.yarramate/workspace.yaml'],
+      root,
+      { includeAdapterMappings: true },
+    )
+    expect(resolved.ok, JSON.stringify(resolved)).toBe(true)
+    if (!resolved.ok) return
+
+    // Declared AND handed over are two different things; only the first was
+    // true.
+    expect(resolved.patterns).toEqual(['.yarramate/patterns/api-led.yaml'])
+    expect(resolved.paths).toContain('.yarramate/patterns/api-led.yaml')
+
+    const compiled = compileWorkspaceWithProfileContext(
+      resolved.paths.map((path) => ({
+        path,
+        source: readFileSync(join(root, path), 'utf8'),
+      })),
+    )
+    expect(
+      compiled.ok,
+      compiled.ok
+        ? ''
+        : compiled.diagnostics
+            .map(({ code, message }) => `${code} ${message}`)
+            .join('; '),
+    ).toBe(true)
   })
 })

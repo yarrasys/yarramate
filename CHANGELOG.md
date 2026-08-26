@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- **Fixed.** A pattern document declared in a workspace manifest is
+  actually loaded (#268). 1.4.0 added the `patterns` manifest category and
+  the workspace loader resolved it — and **not one caller passed it to the
+  compiler**. Ten source lists across the CLI, the visual session server,
+  the browser host, the apply gate and the request builder each said
+  `[...profiles, ...documents]`. So a workspace that declared a pattern
+  compiled without it: every instance binding `parts` failed `YM419` for a
+  pattern sitting in its own manifest, **every commit against such a
+  workspace was refused** by the atomic gate, and a visual session
+  recompiled to nothing and drew every view empty while the rail still
+  showed the model. The feature was unreachable except by handing the
+  compiler an explicit source list — which is exactly what every test did,
+  which is why 1800 of them passed. `check`'s summary counts patterns
+  rather than reporting them as profiles, and the contact-update fixture
+  now declares its pattern and is compiled through its own manifest by a
+  test.
+
 - **Fixed.** `design`'s wave summary says which waves have not opened.
   It read `implementation 0 open` for a gated wave — the same empty-set
   flattery as the completion sentence directly below it, which 1.4.0
