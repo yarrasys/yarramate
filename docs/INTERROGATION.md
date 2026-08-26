@@ -125,6 +125,14 @@ being answered. A model that has started and declares no work keeps
 `implementation-path-missing` open, and that open question is still the model
 saying nothing is changing (ADR 0120).
 
+**A closed wave must not be rendered as a finished one.** Both carry no open
+questions, and completion inferred from an empty set is the more flattering of
+the two readings — a rail computing `done` as `answered === questions` ticks at
+zero. `ask` prints `not yet — this wave has not opened` rather than an empty
+heading, and a consumer should read `opened` rather than counting. This is
+worth stating because both this repository's own renderer and a consuming
+product's wave rail had the same fault on the day the gate shipped.
+
 Wave order is load-bearing because of this. A catalogue that sequences
 motivation before implementation is making a claim the engine now honours,
 where before the order was presentational and questions fired in whatever

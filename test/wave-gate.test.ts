@@ -3,6 +3,7 @@ import {
   compileWorkspaceWithProfileContext,
   evaluateCatalogue,
   loadQuestionCatalogue,
+  renderInterrogationReport,
 } from '../src/index.js'
 
 // The wave gate (#334, ADR 0125). A workspace-scoped absence question could
@@ -153,5 +154,31 @@ describe('the counts stay honest through a closed gate', () => {
       openQuestions: 2,
       open: 2,
     })
+  })
+})
+
+describe('a closed wave does not read like a finished one', () => {
+  // Both carry no OPEN questions, and a bare heading with nothing under it is
+  // the more flattering reading: "nothing outstanding here" rather than
+  // "nobody has been asked anything here". The identical shape - completion
+  // inferred from an empty set - was found in a consuming product's wave rail
+  // on the same day this gate shipped.
+  const rendered = (compiled: typeof EMPTY) =>
+    renderInterrogationReport({
+      ...reportOf(GATED, compiled),
+      workspace: 'fixture',
+    })
+
+  it('says the wave has not opened, rather than showing an empty heading', () => {
+    const text = rendered(EMPTY)
+    expect(text).toContain('== Late ==\n  not yet — this wave has not opened')
+    // And the open wave is unaffected.
+    expect(text).toContain('OPEN   outcome-missing')
+  })
+
+  it('renders the wave normally once it opens', () => {
+    const text = rendered(POPULATED)
+    expect(text).not.toContain('not yet')
+    expect(text).toContain('OPEN   implementation-path-missing')
   })
 })

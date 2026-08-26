@@ -974,6 +974,16 @@ export function renderInterrogationReport(
   ]
   for (const wave of report.waves) {
     lines.push('', `== ${wave.name} ==`)
+    // A wave that has not opened must not read like one whose questions are
+    // all closed (#334). Both carry no OPEN questions, and a bare heading with
+    // nothing under it is the more flattering of the two readings: "nothing
+    // outstanding here" rather than "nobody has been asked anything here".
+    // The same shape - completion inferred from an empty set - was found in a
+    // consuming product's wave rail on the same day.
+    if (!wave.opened) {
+      lines.push('  not yet — this wave has not opened')
+      continue
+    }
     for (const question of wave.questions) {
       if (!question.open) {
         lines.push(`  closed ${question.id}`)
