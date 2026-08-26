@@ -22,7 +22,7 @@ import {
 // existing question answers.
 
 const EXPECTED_SEMANTICS = '1'
-const EXPECTED_FINGERPRINT = '3f1dec3d08690ce7'
+const EXPECTED_FINGERPRINT = 'c1d51437c346fb07'
 
 const profile = 'yarramate/core@0.1'
 
@@ -109,6 +109,7 @@ const conditions: readonly (readonly [string, readonly string[]])[] = [
   ['unconstrained-kind', ['      - condition: unconstrained-kind']],
   ['unscoped-succession', ['      - condition: unscoped-succession']],
   ['unchallenged-evidence', ['      - condition: unchallenged-evidence']],
+  ['has-any-subject', ['      - condition: has-any-subject']],
 ]
 
 // The overlay the unchallenged-evidence probe reads: one confirmed

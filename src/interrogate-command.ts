@@ -114,6 +114,7 @@ export type CatalogueCondition =
   | { readonly condition: 'unconstrained-kind' }
   | { readonly condition: 'unscoped-succession' }
   | { readonly condition: 'unchallenged-evidence' }
+  | { readonly condition: 'has-any-subject' }
 
 /**
  * One observation from the workspace's evidence overlay, reduced to what
@@ -160,6 +161,11 @@ export interface QuestionCatalogue {
     readonly id: string
     readonly name: string
     readonly description?: string
+    /**
+     * Conditions that must all hold before this wave opens (#334, ADR 0125).
+     * Absent means always open, which is what every wave did before this.
+     */
+    readonly opensWhen?: readonly CatalogueCondition[]
   }[]
   readonly questions: readonly CatalogueQuestion[]
 }
@@ -193,6 +199,16 @@ export interface ReportQuestion {
 export interface ReportWave {
   readonly id: string
   readonly name: string
+  /**
+   * Whether the wave's gate is met (#334, ADR 0125). A wave with no
+   * `opensWhen` is always open.
+   *
+   * A wave reported `false` carries NO questions and contributes nothing to
+   * the summary. Its questions are premature rather than answered, and a
+   * progress rail that counted them as answered would flatter itself exactly
+   * where someone is most likely to trust it.
+   */
+  readonly opened: boolean
   readonly questions: readonly ReportQuestion[]
 }
 
@@ -507,6 +523,13 @@ const conditionHolds = (
   evidence: readonly CatalogueEvidenceObservation[] | undefined,
 ): boolean => {
   switch (condition.condition) {
+    case 'has-any-subject':
+      // The guard a late wave needs to say "only once the model has
+      // substance" (#334). An empty model is not an architecture at rest -
+      // ADR 0120's reading, which stays true for a model that HAS started -
+      // it has not begun, and asking it how the planned architecture becomes
+      // real greets someone ahead of question one.
+      return index.concepts.size > 0
     case 'unchallenged-evidence':
       // Fires where the overlay records observations and every one is a
       // frictionless confirmation: no contradicted, unknown, or
@@ -806,10 +829,22 @@ export function evaluateCatalogue(
   const applicableQuestions = catalogue.questions.filter((question) =>
     questionIsApplicable(question, graph.profiles),
   )
+  const waveOpens = (wave: QuestionCatalogue['waves'][number]): boolean =>
+    wave.opensWhen === undefined ||
+    wave.opensWhen.every((condition) =>
+      conditionHolds(index, condition, undefined, profileContext, evidence),
+    )
   const waves = catalogue.waves.map((wave) => ({
     id: wave.id,
     name: wave.name,
-    questions: applicableQuestions
+    opened: waveOpens(wave),
+    // A closed wave asks nothing. Its questions are not evaluated at all,
+    // rather than evaluated and reported closed - the latter would say they
+    // had been asked and answered - so they reach neither the report nor the
+    // summary.
+    questions: !waveOpens(wave)
+      ? []
+      : applicableQuestions
       .filter((question) => question.wave === wave.id)
       .map((question): ReportQuestion => {
         const base = {
@@ -870,7 +905,13 @@ export function evaluateCatalogue(
     catalogue: `${catalogue.id}@${catalogue.version}`,
     semantics: INTERROGATION_SEMANTICS_VERSION,
     summary: {
-      questions: applicableQuestions.length,
+      // Questions in OPENED waves only (#334, ADR 0125). A closed wave's
+      // questions have not been asked, so counting them in the denominator
+      // would report them as answered - "3 of 51" reading as forty-eight
+      // done when forty-eight were never put. The denominator grows as the
+      // model gains substance and waves open, which is the interview
+      // revealing itself rather than a rail filling up.
+      questions: waves.reduce((total, wave) => total + wave.questions.length, 0),
       openQuestions,
       open,
     },

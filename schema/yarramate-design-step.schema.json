@@ -537,6 +537,19 @@
         {
           "type": "object",
           "additionalProperties": false,
+          "description": "The workspace holds at least one concept (#334, ADR 0125). The guard a late wave needs to say \"only once the model has substance\": an empty model is not an architecture at rest, it has not started, and asking it how the planned architecture becomes real greets someone ahead of question one.",
+          "required": [
+            "condition"
+          ],
+          "properties": {
+            "condition": {
+              "const": "has-any-subject"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
           "description": "The workspace's evidence overlay records observations and every one is a frictionless confirmation: no contradicted, unknown, or not-observed result, and no recorded search (ADR 0107). A discovery that never records anything but success never tested a claim it might fail. The one condition that reads the evidence overlay rather than the compiled graph; where the evaluating consumer supplies no overlay it stays quiet (ADR 0120).",
           "required": [
             "condition"

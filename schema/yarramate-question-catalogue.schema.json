@@ -63,6 +63,14 @@
           },
           "description": {
             "$ref": "#/$defs/nonEmptyText"
+          },
+          "opensWhen": {
+            "description": "Conditions that must all hold before this wave opens (#334, ADR 0125). A wave that has not opened asks nothing: its questions are premature rather than answered, and the report says so with `opened: false` and no questions rather than reporting them closed. Written in the same condition vocabulary a question's trigger uses, so a reviewer reads a gate the way they already read a trigger. Absent means the wave is always open, which is what every wave did before this existed.",
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/$defs/condition"
+            }
           }
         }
       }
@@ -500,6 +508,19 @@
           "properties": {
             "condition": {
               "const": "unscoped-succession"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "The workspace holds at least one concept (#334, ADR 0125). The guard a late wave needs to say \"only once the model has substance\": an empty model is not an architecture at rest, it has not started, and asking it how the planned architecture becomes real greets someone ahead of question one.",
+          "required": [
+            "condition"
+          ],
+          "properties": {
+            "condition": {
+              "const": "has-any-subject"
             }
           }
         },

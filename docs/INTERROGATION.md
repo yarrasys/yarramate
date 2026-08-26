@@ -64,6 +64,8 @@ questions. Each question binds:
   and design steps verbatim as the question's machine-readable answer
   shape, so a consumer builds its answering affordance from the report
   instead of re-deriving the shape from a catalogue copy (ADR 0110);
+  `has-any-subject` (the workspace holds at least one concept — the guard a
+  late wave needs to say "only once the model has substance"; see ADR 0125),
 - a **scope** — `workspace` (asked once) or `subject` (asked per matching
   subject, selected by kinds, statuses, and documents, with `descendants`
   kind matching by default so profile-derived kinds satisfy a catalogue
@@ -94,6 +96,39 @@ profile (ADR 0095).
 Catalogues are ordinary versioned data: extend the shipped one under a new
 identity or write one per organisation, then pass it with `--catalogue`.
 Composition via `extends` is deferred from v1 (ADR 0053).
+
+## Waves open when the model has substance
+
+A wave may declare `opensWhen`, conditions that must all hold before it opens
+([ADR 0125](adr/0125-a-wave-opens-when-the-model-has-substance.md)):
+
+```yaml
+waves:
+  - id: implementation
+    name: Implementation
+    opensWhen:
+      - condition: has-any-subject
+```
+
+A wave that has not opened **asks nothing**. Its questions are not evaluated
+at all — rather than evaluated and reported closed, which would say they had
+been asked and answered — so they appear in neither the report nor the
+summary, and the wave carries `opened: false`. That is the third state a
+progress rail needs: neither answered nor open, but not yet applicable.
+
+`summary.questions` therefore counts questions in **opened waves only**. A
+blank project reports 3 of 11 rather than 3 of 51, forty-eight of which were
+never put; the denominator grows as the model gains substance and waves open.
+
+The gate is about the **model** having substance, never about a previous wave
+being answered. A model that has started and declares no work keeps
+`implementation-path-missing` open, and that open question is still the model
+saying nothing is changing (ADR 0120).
+
+Wave order is load-bearing because of this. A catalogue that sequences
+motivation before implementation is making a claim the engine now honours,
+where before the order was presentational and questions fired in whatever
+order the model happened to trip them.
 
 ## Evaluation model
 
