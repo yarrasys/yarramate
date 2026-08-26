@@ -2560,6 +2560,43 @@ body {
 
 .saved-layout-pill button:hover {
   color: var(--ink);
+}
+
+/* Zoom and fit, on the canvas they act on (#308). Bottom-right is the free
+   corner: the quick filter and the save notice hold the top-right, the
+   standing filter pill the top-left, the saved-layout pill the bottom-left,
+   and the empty-state pill the centre. One bordered cluster rather than
+   three floating buttons, so the group reads as a single instrument. */
+.zoom-controls {
+  position: absolute;
+  inset: auto var(--step) var(--step) auto;
+  z-index: 4;
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--rule-firm);
+  border-radius: calc(var(--step) * 0.75);
+  background: var(--sheet);
+}
+
+.zoom-controls button {
+  padding: 0.3rem 0.6rem;
+  border: none;
+  background: none;
+  color: var(--ink);
+  font-family: var(--utility);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.zoom-controls button + button {
+  border-left: 1px solid var(--rule);
+}
+
+.zoom-controls button:hover {
+  background: var(--paper);
+}
 
 /* A staged row is the reviewer's own uncommitted intent beside landed truth
    (ADR 0114): the title leans and a small chip says so. Quiet on purpose —

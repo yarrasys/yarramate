@@ -10,6 +10,7 @@ import {
   registerDragSave,
   relayoutVisible,
   savedLayoutInForce,
+  steppedZoom,
 } from '../src/visual-app/graph-canvas.js'
 import { ASPECT_SHAPES, RELATIONSHIP_NOTATION } from '../src/notation/archimate.js'
 import type {
@@ -266,6 +267,20 @@ const buildHubFixture = () =>
     ],
   })
 
+// Subjects with no relationships at all - the register-transcription shape
+// (#308): every node is its own ELK component, so what this exercises is the
+// component packing, not the layering.
+const buildDisconnectedFixture = (count: number) =>
+  cytoscape({
+    styleEnabled: true,
+    style: LAYOUT_FIXTURE_STYLE,
+    layout: { name: 'null' },
+    elements: Array.from({ length: count }, (_, i) => ({
+      data: { id: `subject${i}` },
+      group: 'nodes' as const,
+    })),
+  })
+
 // elk-backed layouts (layered, force) resolve asynchronously; the built-in
 // concentric layout (radial) resolves synchronously but still fires
 // `layoutstop`, so one helper covers all three.
@@ -305,6 +320,35 @@ describe('buildLayoutConfig', () => {
     expect(buildLayoutConfig.length).toBe(0)
   })
 
+  // Nine subjects, no relationships (#308). Before the packing ratio was
+  // pinned, cytoscape-elk's injected `aspectRatio` (the viewport's momentary
+  // shape - NaN headless) let ELK's component packing emit one 172x1092
+  // column: w/h 0.16, every node in the same 250px-wide lane. A grid has
+  // several lanes in both axes and bounded elongation either way.
+  it('packs disconnected subjects into a grid, never one column (#308)', async () => {
+    const cy = buildDisconnectedFixture(9)
+    await runLayout(cy, buildLayoutConfig())
+    const bb = cy.nodes().boundingBox()
+    expect(bb.w / bb.h).toBeGreaterThan(0.5)
+    expect(bb.w / bb.h).toBeLessThan(4)
+    // Grid-ish, stated structurally as well as proportionally: more than one
+    // distinct column of node centres, and more than one distinct row.
+    const xs = new Set(cy.nodes().map((node) => Math.round(node.position().x)))
+    const ys = new Set(cy.nodes().map((node) => Math.round(node.position().y)))
+    expect(xs.size).toBeGreaterThan(1)
+    expect(ys.size).toBeGreaterThan(1)
+    expect(countOverlappingPairs(cy)).toBe(0)
+  })
+
+  // The packing ratio is this config's own, stated on the bare `aspectRatio`
+  // key on purpose: cytoscape-elk injects `aspectRatio: cy.width() /
+  // cy.height()` into the very bag it forwards to ELK, and only the same
+  // spelling replaces that injection instead of racing it as a second key.
+  it('pins the component packing ratio, replacing the injected viewport shape (#308)', () => {
+    const config = buildLayoutConfig() as unknown as { elk: Record<string, unknown> }
+    expect(config.elk['aspectRatio']).toBe(2.5)
+  })
+
   // `layered` is the only backend, so a layout run is one synchronous elk
   // pass. Nothing can still be in flight when the next request arrives, which
   // is what retired the busy notice, the two-pass chain and the in-flight
@@ -317,6 +361,21 @@ describe('buildLayoutConfig', () => {
   })
 })
 
+
+// One press of the on-canvas zoom buttons (#308): a full quarter step, where
+// a wheel notch at `wheelSensitivity: 0.1` barely moves, clamped only
+// against runaway repeat-presses.
+describe('steppedZoom', () => {
+  it('steps a quarter up or down from where the viewport stands', () => {
+    expect(steppedZoom(0.4, 1)).toBeCloseTo(0.5)
+    expect(steppedZoom(0.5, -1)).toBeCloseTo(0.4)
+  })
+
+  it('clamps runaway presses at both ends', () => {
+    expect(steppedZoom(0.02, -1)).toBe(0.02)
+    expect(steppedZoom(10, 1)).toBe(10)
+  })
+})
 
 describe('buildStylesheet ArchiMate notation', () => {
   const edgeRule = (
