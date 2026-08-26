@@ -64,6 +64,31 @@ vi.mock('../src/visual-app/session-client.js', () => ({
   }),
 }))
 
+// Static markup cannot click, so the workspace the shell opens with is the
+// seam: everything real is re-exported, and only the initial state is bent -
+// which is exactly what a session that had hidden the column looks like on
+// the next render (#294).
+const workspace = vi.hoisted(() => ({ hidden: false, unread: 0 }))
+
+vi.mock('../src/visual-app/workspace-state.js', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../src/visual-app/workspace-state.js')>()
+  return {
+    ...actual,
+    createVisualWorkspaceState: (width: number, height?: number) => {
+      const state = actual.createVisualWorkspaceState(width, height)
+      return {
+        ...state,
+        conversation: {
+          ...state.conversation,
+          hidden: workspace.hidden,
+          unread: workspace.unread,
+        },
+      }
+    },
+  }
+})
+
 import { App } from '../src/visual-app/App.js'
 
 const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window')
@@ -94,6 +119,11 @@ const idleHost: EditorHost = {
   open: () => () => {},
   send: () => {},
 }
+
+beforeEach(() => {
+  workspace.hidden = false
+  workspace.unread = 0
+})
 
 const renderSession = (
   overrides: Partial<VisualAppState> = {},
@@ -654,5 +684,76 @@ describe('open questions section (#292)', () => {
     // overlay must see the canvas it always saw, not a section of zeros.
     const markup = renderSession({ model: renderedModel })
     expect(markup).not.toContain('Open questions')
+  })
+})
+
+/**
+ * The right column can leave (#294): a hide control on the column, a thin
+ * reopen strip in its place, and the attention a hidden column would have
+ * shown carried on the strip.
+ */
+describe('a hidden right column (#294)', () => {
+  it('offers the hide control on the column while it is on screen', () => {
+    const markup = renderSession()
+
+    expect(markup).toContain('class="conversation-hide"')
+    expect(markup).toContain('aria-label="Hide the session panel"')
+    expect(markup).not.toContain('conversation-reopen')
+  })
+
+  it('takes the column, its separator and its grid track away when hidden', () => {
+    workspace.hidden = true
+    const markup = renderSession()
+
+    expect(markup).not.toContain('section-stack')
+    expect(markup).not.toContain('stack-section-')
+    expect(markup).not.toContain('conversation-separator')
+    expect(markup).toContain('--conversation-width:0px')
+  })
+
+  it('leaves a reopen strip standing where the column stood', () => {
+    workspace.hidden = true
+    const markup = renderSession()
+
+    expect(markup).toContain('class="conversation-reopen"')
+    expect(markup).toContain('aria-label="Show the session panel"')
+  })
+
+  it('carries the unread count on the strip', () => {
+    // The presenting moments are exactly when a reply must not be missed:
+    // what the chat header would have counted, the strip counts.
+    workspace.hidden = true
+    workspace.unread = 3
+    const markup = renderSession()
+
+    expect(markup).toContain('class="attention-count">3</span>')
+    expect(markup).toContain(
+      'aria-label="Show the session panel, 3 unread"',
+    )
+  })
+
+  it('signals a pending agent choice on the strip', () => {
+    workspace.hidden = true
+    const markup = renderSession({
+      choices: {
+        choiceId: 'choice-1',
+        question: 'Which option?',
+        options: [{ id: 'option-a', label: 'Option A' }],
+      },
+    })
+
+    expect(markup).toContain('class="attention-choice"')
+    expect(markup).toContain(
+      'aria-label="Show the session panel, the agent is waiting on a choice"',
+    )
+  })
+
+  it('keeps the dragged width in the shell while shown', () => {
+    // The width the strip restores is the one the state still holds: hiding
+    // is a mode, not a zero width.
+    const markup = renderSession()
+
+    expect(markup).not.toContain('--conversation-width:0px')
+    expect(markup).toContain('--conversation-width:')
   })
 })

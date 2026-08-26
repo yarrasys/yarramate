@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- **Added.** The right column can leave (#294). A hide control on a slim
+  rim above the section stack collapses the entire column — sections,
+  splitters and separator — and gives the canvas the full width; the
+  canvas refits through the `ResizeObserver` it already reframes with. A
+  thin reopen strip stands where the column stood, and it carries the
+  attention a hidden column would have shown: the chat unread count
+  (`attention.received` now counts arrivals while the column is hidden,
+  not only while the chat section is shut) and a marker while the agent
+  is waiting on a choice, both also spoken in the strip's accessible
+  name. Reopening restores the previous width, sections and splitter
+  heights intact — `hidden` lives in
+  `VisualWorkspaceState.conversation` beside the width, moved by
+  `conversation.toggled` beside `conversation.resized`, and a resize
+  arriving while hidden is ignored. Host-supplied `sections` behaviour
+  is unchanged; a keyboard shortcut is deferred.
+  [ADR 0115](docs/adr/0115-the-right-column-can-leave.md).
+
 - **Fixed.** A staged view is visible in the rail, marked (#299). The view
   tree now merges the pending changeset's view operations over the landed
   views: a staged new view — and the folder it declares, which is how "New

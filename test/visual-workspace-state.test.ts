@@ -73,6 +73,7 @@ describe("visual workspace state", () => {
     const state = createVisualWorkspaceState(1568);
     expect(state.conversation).toEqual({
       width: expect.closeTo(439.04, 2),
+      hidden: false,
       unread: 0,
       collapsed: [],
       changesHeight: 200,
@@ -921,6 +922,110 @@ describe("the right column's sections", () => {
         height: state.conversation.chatHeight,
       }),
     ).toBe(state);
+  });
+});
+
+/**
+ * The whole column can leave (#294). Hiding is a mode beside the width, not a
+ * zero width: the width stays what it was, so reopening restores the layout -
+ * sections, splitters and dragged width intact - and the reopen strip carries
+ * the attention the hidden column would have shown.
+ */
+describe("the right column can leave (#294)", () => {
+  const state = createVisualWorkspaceState(1568, 900);
+  const toggled = (from: VisualWorkspaceState): VisualWorkspaceState =>
+    visualWorkspaceReducer(from, { type: "conversation.toggled" });
+
+  it("starts on screen: hiding is a gesture, never a resting state", () => {
+    expect(state.conversation.hidden).toBe(false);
+  });
+
+  it("hides on the toggle, leaving the width and sections untouched", () => {
+    const shutChanges = visualWorkspaceReducer(state, {
+      type: "section.toggled",
+      section: "changes",
+    });
+    const hidden = toggled(shutChanges);
+
+    expect(hidden.conversation.hidden).toBe(true);
+    expect(hidden.conversation.width).toBe(state.conversation.width);
+    expect(hidden.conversation.collapsed).toEqual(["changes"]);
+  });
+
+  it("reopens at the previous dragged width, splitters intact", () => {
+    const dragged = visualWorkspaceReducer(
+      visualWorkspaceReducer(state, {
+        type: "conversation.resized",
+        width: 560,
+      }),
+      { type: "section.resized", section: "chat", height: 360 },
+    );
+    const reopened = toggled(toggled(dragged));
+
+    expect(reopened.conversation.hidden).toBe(false);
+    expect(reopened.conversation.width).toBe(560);
+    expect(reopened.conversation.chatHeight).toBe(360);
+  });
+
+  it("ignores a resize while hidden: no separator is on screen to drag", () => {
+    // Honouring a stray resize would make reopening restore a width the
+    // reviewer never dragged to.
+    const hidden = toggled(state);
+    expect(
+      visualWorkspaceReducer(hidden, {
+        type: "conversation.resized",
+        width: 640,
+      }),
+    ).toBe(hidden);
+  });
+
+  it("survives a viewport resize, and the held width is still re-clamped", () => {
+    // The mode is not the width: a window that narrows while the column is
+    // away must still leave a width the reopen can legally restore.
+    const wide = toggled(
+      visualWorkspaceReducer(state, {
+        type: "conversation.resized",
+        width: 640,
+      }),
+    );
+    const narrowed = visualWorkspaceReducer(wide, {
+      type: "viewport.resized",
+      viewportWidth: 900,
+    });
+
+    expect(narrowed.conversation.hidden).toBe(true);
+    expect(narrowed.conversation.width).toBe(405);
+  });
+
+  it("counts what arrives while hidden, and reopening reads it", () => {
+    // The whole column away is chat out of sight, whatever the section list
+    // says - and reopening puts chat back in front of the reviewer, so the
+    // count goes the way it goes when the section itself is opened.
+    const waiting = visualWorkspaceReducer(toggled(state), {
+      type: "attention.received",
+    });
+    expect(waiting.conversation.unread).toBe(1);
+
+    expect(toggled(waiting).conversation.unread).toBe(0);
+  });
+
+  it("keeps the count for a chat the reviewer had shut before hiding", () => {
+    // Reopening the column does not open the chat section, so the arrival is
+    // still out of sight: the count moves to the chat header instead.
+    const shutChat = visualWorkspaceReducer(state, {
+      type: "section.toggled",
+      section: "chat",
+    });
+    const waiting = visualWorkspaceReducer(toggled(shutChat), {
+      type: "attention.received",
+    });
+    const reopened = toggled(waiting);
+
+    expect(reopened.conversation.hidden).toBe(false);
+    expect(reopened.conversation).toMatchObject({
+      collapsed: ["chat"],
+      unread: 1,
+    });
   });
 });
 

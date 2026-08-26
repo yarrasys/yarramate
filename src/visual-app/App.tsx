@@ -1055,8 +1055,13 @@ export const App = ({
     () => new Set(workspace.tree.collapsed),
     [workspace.tree.collapsed],
   );
+  const conversationHidden = workspace.conversation.hidden;
   const shellStyle = {
-    "--conversation-width": `${workspace.conversation.width}px`,
+    // A hidden column gives its grid track back to the canvas; the dragged
+    // width stays in state, waiting for the reopen (#294).
+    "--conversation-width": conversationHidden
+      ? "0px"
+      : `${workspace.conversation.width}px`,
     // The two sections that have a height of their own; properties takes what
     // is left. A shut section is its header and nothing more, so the height it
     // was dragged to waits for it to open again.
@@ -1254,6 +1259,16 @@ export const App = ({
       : (state.views.find((view) => view.id === workspace.pendingViewRename) ??
         null);
 
+  // The reopen strip's accessible name says what the hidden column is
+  // holding back: a reader who cannot see the badges gets the same facts.
+  const reopenLabel = [
+    "Show the session panel",
+    ...(workspace.conversation.unread === 0
+      ? []
+      : [`${workspace.conversation.unread} unread`]),
+    ...(state.choices === null ? [] : ["the agent is waiting on a choice"]),
+  ].join(", ");
+
   return (
     <main className="visual-shell" style={shellStyle}>
       <CommandStrip state={state} connection={connectionOf(state, connected)} />
@@ -1395,162 +1410,210 @@ export const App = ({
           onApplyFilter={(query) => filter(query, "editor")}
           onStageView={stageViewChange}
         />
-        <ConversationSeparator
-          width={workspace.conversation.width}
-          viewportWidth={workspace.viewportWidth}
-          onResize={(width) =>
-            dispatchWorkspace({ type: "conversation.resized", width })
-          }
-        />
-        <aside className="section-stack" aria-label="Session">
-          {stackRows(
-            visibleSections,
-            {
-              properties: (
-                <Section
-                  id="properties"
-                  label="Element properties"
-                  meta={workspace.selectedSubject?.id}
-                  open={sectionOpen("properties")}
-                  onToggle={() =>
-                    dispatchWorkspace({ type: "section.toggled", section: "properties" })
+        {conversationHidden ? (
+          // The way back stands where the column stood: a thin strip, not a
+          // memory test, and it carries what the hidden column would have
+          // shown - the unread count and a waiting choice - so presenting
+          // never means missing the agent (#294).
+          <button
+            type="button"
+            className="conversation-reopen"
+            title="Show the session panel"
+            aria-label={reopenLabel}
+            onClick={() => dispatchWorkspace({ type: "conversation.toggled" })}
+          >
+            <span className="reopen-chevron" aria-hidden="true">
+              «
+            </span>
+            {workspace.conversation.unread === 0 ? null : (
+              <span className="attention-count">
+                {workspace.conversation.unread}
+              </span>
+            )}
+            {state.choices === null ? null : (
+              <span
+                className="attention-choice"
+                title="The agent is waiting on a choice"
+              >
+                ?
+              </span>
+            )}
+          </button>
+        ) : (
+          <>
+            {/* Never against a hidden column: the separator resizes what is
+                on screen, and the reopen strip is not a thing to drag. */}
+            <ConversationSeparator
+              width={workspace.conversation.width}
+              viewportWidth={workspace.viewportWidth}
+              onResize={(width) =>
+                dispatchWorkspace({ type: "conversation.resized", width })
+              }
+            />
+            <aside className="section-stack" aria-label="Session">
+              <div className="stack-rim">
+                <button
+                  type="button"
+                  className="conversation-hide"
+                  title="Hide the session panel"
+                  aria-label="Hide the session panel"
+                  onClick={() =>
+                    dispatchWorkspace({ type: "conversation.toggled" })
                   }
                 >
-                  {workspace.selectedSubject === null || state.model === null ? (
-                    <p className="section-empty">
-                      Nothing selected. Pick a subject on the canvas or in the rail.
-                    </p>
-                  ) : (
-                    <SelectedSubjectInspector
-                      subject={workspace.selectedSubject}
-                      model={state.model}
-                      operations={state.pendingChangeset.operations}
-                      expanded={workspace.descriptionExpanded}
-                      onToggleDescription={() =>
-                        dispatchWorkspace({ type: "description.toggled" })
+                  »
+                </button>
+              </div>
+              {stackRows(
+                visibleSections,
+                {
+                  properties: (
+                    <Section
+                      id="properties"
+                      label="Element properties"
+                      meta={workspace.selectedSubject?.id}
+                      open={sectionOpen("properties")}
+                      onToggle={() =>
+                        dispatchWorkspace({ type: "section.toggled", section: "properties" })
                       }
-                      onClear={() => dispatchWorkspace({ type: "subject.cleared" })}
-                      onConnect={(from) =>
-                        dispatchWorkspace({ type: "connection.started", from })
+                    >
+                      {workspace.selectedSubject === null || state.model === null ? (
+                        <p className="section-empty">
+                          Nothing selected. Pick a subject on the canvas or in the rail.
+                        </p>
+                      ) : (
+                        <SelectedSubjectInspector
+                          subject={workspace.selectedSubject}
+                          model={state.model}
+                          operations={state.pendingChangeset.operations}
+                          expanded={workspace.descriptionExpanded}
+                          onToggleDescription={() =>
+                            dispatchWorkspace({ type: "description.toggled" })
+                          }
+                          onClear={() => dispatchWorkspace({ type: "subject.cleared" })}
+                          onConnect={(from) =>
+                            dispatchWorkspace({ type: "connection.started", from })
+                          }
+                          onDelete={(id) =>
+                            dispatchWorkspace({ type: "deletion.asked", id })
+                          }
+                          onStageChange={stageChange}
+                        />
+                      )}
+                    </Section>
+                  ),
+                  questions: (
+                    <Section
+                      id="questions"
+                      label="Open questions"
+                      meta={
+                        openQuestionMeta === undefined
+                          ? undefined
+                          : openQuestionMeta === 0
+                            ? "nothing open"
+                            : `${openQuestionMeta} open`
                       }
-                      onDelete={(id) =>
-                        dispatchWorkspace({ type: "deletion.asked", id })
+                      open={sectionOpen("questions")}
+                      onToggle={() =>
+                        dispatchWorkspace({ type: "section.toggled", section: "questions" })
                       }
-                      onStageChange={stageChange}
+                    >
+                      {interrogation === undefined ? null : (
+                        <OpenQuestions
+                          overlay={interrogation}
+                          selectedId={selectedElementId}
+                        />
+                      )}
+                    </Section>
+                  ),
+                  changes: (
+                    <Section
+                      id="changes"
+                      label="Changes"
+                      meta={stagedCount === 0 ? "nothing staged" : `${stagedCount} staged`}
+                      open={sectionOpen("changes")}
+                      onToggle={() =>
+                        dispatchWorkspace({ type: "section.toggled", section: "changes" })
+                      }
+                    >
+                      <ChangesetTray
+                        state={state}
+                        onDiscardChange={discardChange}
+                        onClearChangeset={clearChangeset}
+                        onUndoChangeset={undoChangeset}
+                        onRedoChangeset={redoChangeset}
+                        onCommitChangeset={commitChangeset}
+                      />
+                    </Section>
+                  ),
+                  chat: (
+                    <Section
+                      id="chat"
+                      label="Chat"
+                      meta={
+                        workspace.conversation.unread === 0 ? (
+                          chatMeta(state)
+                        ) : (
+                          <span className="attention-count">
+                            {workspace.conversation.unread}
+                          </span>
+                        )
+                      }
+                      open={sectionOpen("chat")}
+                      onToggle={() =>
+                        dispatchWorkspace({ type: "section.toggled", section: "chat" })
+                      }
+                    >
+                      <ChatSection
+                        state={state}
+                        disabled={!state.composerEnabled}
+                        selectedSubject={workspace.selectedSubject}
+                        onSend={(text) =>
+                          ask(formatContextualQuestion(text, workspace.selectedSubject))
+                        }
+                        onChoice={choose}
+                        onClearSubject={() =>
+                          dispatchWorkspace({ type: "subject.cleared" })
+                        }
+                        onEnd={end}
+                      />
+                    </Section>
+                  ),
+                },
+                {
+                  changes: (
+                    <SectionSplitter
+                      label="Resize the changes section"
+                      height={workspace.conversation.changesHeight}
+                      viewportHeight={workspace.viewportHeight}
+                      onResize={(height) =>
+                        dispatchWorkspace({
+                          type: "section.resized",
+                          section: "changes",
+                          height,
+                        })
+                      }
                     />
-                  )}
-                </Section>
-              ),
-              questions: (
-                <Section
-                  id="questions"
-                  label="Open questions"
-                  meta={
-                    openQuestionMeta === undefined
-                      ? undefined
-                      : openQuestionMeta === 0
-                        ? "nothing open"
-                        : `${openQuestionMeta} open`
-                  }
-                  open={sectionOpen("questions")}
-                  onToggle={() =>
-                    dispatchWorkspace({ type: "section.toggled", section: "questions" })
-                  }
-                >
-                  {interrogation === undefined ? null : (
-                    <OpenQuestions
-                      overlay={interrogation}
-                      selectedId={selectedElementId}
+                  ),
+                  chat: (
+                    <SectionSplitter
+                      label="Resize the chat section"
+                      height={workspace.conversation.chatHeight}
+                      viewportHeight={workspace.viewportHeight}
+                      onResize={(height) =>
+                        dispatchWorkspace({
+                          type: "section.resized",
+                          section: "chat",
+                          height,
+                        })
+                      }
                     />
-                  )}
-                </Section>
-              ),
-              changes: (
-                <Section
-                  id="changes"
-                  label="Changes"
-                  meta={stagedCount === 0 ? "nothing staged" : `${stagedCount} staged`}
-                  open={sectionOpen("changes")}
-                  onToggle={() =>
-                    dispatchWorkspace({ type: "section.toggled", section: "changes" })
-                  }
-                >
-                  <ChangesetTray
-                    state={state}
-                    onDiscardChange={discardChange}
-                    onClearChangeset={clearChangeset}
-                    onUndoChangeset={undoChangeset}
-                    onRedoChangeset={redoChangeset}
-                    onCommitChangeset={commitChangeset}
-                  />
-                </Section>
-              ),
-              chat: (
-                <Section
-                  id="chat"
-                  label="Chat"
-                  meta={
-                    workspace.conversation.unread === 0 ? (
-                      chatMeta(state)
-                    ) : (
-                      <span className="attention-count">
-                        {workspace.conversation.unread}
-                      </span>
-                    )
-                  }
-                  open={sectionOpen("chat")}
-                  onToggle={() =>
-                    dispatchWorkspace({ type: "section.toggled", section: "chat" })
-                  }
-                >
-                  <ChatSection
-                    state={state}
-                    disabled={!state.composerEnabled}
-                    selectedSubject={workspace.selectedSubject}
-                    onSend={(text) =>
-                      ask(formatContextualQuestion(text, workspace.selectedSubject))
-                    }
-                    onChoice={choose}
-                    onClearSubject={() =>
-                      dispatchWorkspace({ type: "subject.cleared" })
-                    }
-                    onEnd={end}
-                  />
-                </Section>
-              ),
-            },
-            {
-              changes: (
-                <SectionSplitter
-                  label="Resize the changes section"
-                  height={workspace.conversation.changesHeight}
-                  viewportHeight={workspace.viewportHeight}
-                  onResize={(height) =>
-                    dispatchWorkspace({
-                      type: "section.resized",
-                      section: "changes",
-                      height,
-                    })
-                  }
-                />
-              ),
-              chat: (
-                <SectionSplitter
-                  label="Resize the chat section"
-                  height={workspace.conversation.chatHeight}
-                  viewportHeight={workspace.viewportHeight}
-                  onResize={(height) =>
-                    dispatchWorkspace({
-                      type: "section.resized",
-                      section: "chat",
-                      height,
-                    })
-                  }
-                />
-              ),
-            },
-          )}
-        </aside>
+                  ),
+                },
+              )}
+            </aside>
+          </>
+        )}
       </div>
       {/* At the shell, not inside the canvas or the rail: a menu opened on the
           last row of the rail has to be able to hang past the rail's edge. */}

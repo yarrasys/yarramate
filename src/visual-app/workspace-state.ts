@@ -141,16 +141,26 @@ const CONVERSATION_MAX_VIEWPORT_SHARE = 0.45;
 
 export interface VisualWorkspaceState {
   /**
-   * The right column: one width, and the sections stacked inside it.
+   * The right column: one width, whether the reviewer has put the whole
+   * column away, and the sections stacked inside it.
    *
-   * There is no longer an open/closed mode. The column is always drawn,
-   * because the sections are collapsible one by one and a reviewer who wants
-   * the canvas back shuts the sections rather than the column - which leaves
-   * three headers saying what is behind them instead of a strip button
-   * saying nothing (#249).
+   * The sections are collapsible one by one, and a reviewer who wants room
+   * shuts sections rather than the column - shut headers say what is behind
+   * them (#249). `hidden` is the further step for the moments that want the
+   * whole canvas - presenting, a projector, a laptop - and the reopen strip
+   * that stands in for the column carries what a shut header would have
+   * said: the unread count and a waiting choice (#294).
    */
   readonly conversation: {
     readonly width: number;
+    /**
+     * Whether the reviewer has put the whole column away (#294). A mode
+     * beside the width rather than a zero width, so the width stays what it
+     * was and reopening restores it - sections and splitters intact. The
+     * presenting moments are exactly when this is used, and presentation
+     * must not cost the reviewer their layout.
+     */
+    readonly hidden: boolean;
     readonly unread: number;
     /** The sections the reviewer has shut. Held as what is CLOSED so a
      * section added later arrives open rather than hidden behind a default
@@ -257,6 +267,7 @@ export type VisualWorkspaceAction =
       readonly height: number;
     }
   | { readonly type: "conversation.resized"; readonly width: number }
+  | { readonly type: "conversation.toggled" }
   | {
       readonly type: "viewport.resized";
       readonly viewportWidth: number;
@@ -445,6 +456,9 @@ export const createVisualWorkspaceState = (
 ): VisualWorkspaceState => ({
   conversation: {
     width: clampInitialConversationWidth(viewportWidth * 0.28, viewportWidth),
+    // On screen: hiding the column is a presenting gesture the reviewer
+    // makes, never a resting state a session opens into.
+    hidden: false,
     unread: 0,
     // Every section open: the reviewer has not shut anything yet, and a stack
     // that opened closed would say nothing about what is in it.
@@ -516,10 +530,32 @@ export const visualWorkspaceReducer = (
           };
     }
     case "conversation.resized": {
+      // No separator is drawn against a hidden column, so a resize arriving
+      // while hidden is a stray - and honouring it would make reopening
+      // restore a width the reviewer never dragged to.
+      if (state.conversation.hidden) return state;
       const width = clampConversationWidth(action.width, state.viewportWidth);
       return width === state.conversation.width
         ? state
         : { ...state, conversation: { ...state.conversation, width } };
+    }
+    case "conversation.toggled": {
+      const hidden = !state.conversation.hidden;
+      return {
+        ...state,
+        conversation: {
+          ...state.conversation,
+          hidden,
+          // Reopening puts chat back in front of the reviewer, so the count
+          // goes the way it goes when the section itself is opened - unless
+          // they had shut the section, where the arrival is still out of
+          // sight and the count moves to the chat header instead.
+          unread:
+            !hidden && !state.conversation.collapsed.includes("chat")
+              ? 0
+              : state.conversation.unread,
+        },
+      };
     }
     case "viewport.resized": {
       const width = clampConversationWidth(
@@ -555,9 +591,10 @@ export const visualWorkspaceReducer = (
     }
     case "attention.received":
       // Chat is on screen unless the reviewer shut it, so an arriving reply
-      // needs no count to stand in for it. A shut section is the only case
-      // where something happened out of sight.
-      return state.conversation.collapsed.includes("chat")
+      // needs no count to stand in for it. A shut section - or the whole
+      // column hidden (#294) - is where something happened out of sight.
+      return state.conversation.hidden ||
+        state.conversation.collapsed.includes("chat")
         ? {
             ...state,
             conversation: {
