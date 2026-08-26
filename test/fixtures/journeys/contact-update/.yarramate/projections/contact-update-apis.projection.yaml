@@ -8,5 +8,11 @@ query:
 presentation:
   title: Contact update — APIs
   description: >-
-    The API-grain picture: one box per API, each an authored Grouping that
-    aggregates its component, interface and service (yarrasys/api-led@1.0#api).
+    The API-grain picture, and the folded view #268 asked for: one box per API,
+    with the API-grain servings drawn between them. No canvas mode is involved
+    — a view over the pattern kind IS the fold, because a macro edge survives
+    its expansion and stays an ordinary subject a query can select. Each API
+    aggregates its component, interface and service through the pattern's
+    wiring rather than by hand, and the servings drawn here are checked against
+    that member wiring by the serving port rather than asserted in a
+    description (ADR 0123, ADR 0124).

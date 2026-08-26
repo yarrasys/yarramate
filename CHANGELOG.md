@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+- **Added.** The connect palette narrows to a pattern's ports (#268 phase
+  3, ADR 0124). Between two pattern instances an editor now offers only
+  the relationship kinds *both* patterns port, rather than the ten of
+  eleven the ArchiMate table permits between two groupings. That restores
+  the guidance the table gives everywhere else, and it matches what phase
+  2 actually expands: an offer wider than the intersection proposes edges
+  that expand into nothing. Where either end has no ports there is no
+  macro grain to speak of and the table's answer stands, and a narrowing
+  that comes out empty falls back to the table rather than leaving the
+  edge undrawable. A `CanvasNode` carries `portKinds`, the resolved
+  profile context carries `patternPortKinds`, and
+  `yarramate/visual-graph/v1` gains the field — a wire change, so a
+  consumer validating against a pinned copy of that schema needs it
+  upgraded alongside the package.
+
+  **Folding needed no canvas mode.** Because a macro edge survives its
+  expansion and stays an ordinary subject, a projection over the pattern
+  kind with `relationships: between` already draws one box per instance
+  with the macro edges between them. The fixture's `contact-update-apis`
+  view is that fold, unchanged; what moved is that the servings it draws
+  are now checked against the member wiring by the port rather than
+  asserted in a description. A canvas *toggle* — collapsing clusters on
+  whatever view is on screen — remains open as a convenience rather than
+  a missing capability.
+
 - **Fixed.** An expansion the relationship table forbids is refused
   (#268, ADR 0124). A port's landing pair was minted without being judged
   against the table, so a pattern could emit a relationship `check` would

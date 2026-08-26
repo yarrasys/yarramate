@@ -87,6 +87,7 @@ const modelWith = (): VisualModel => ({
         kind: 'yarramate/core@0.1#applicationComponent',
         kindLabel: 'applicationComponent',
         coreKindLabel: 'applicationComponent',
+        portKinds: [],
         document: 'main.yaml',
         layer: null,
         aspect: null,
