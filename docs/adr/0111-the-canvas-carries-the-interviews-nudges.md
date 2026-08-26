@@ -17,9 +17,11 @@ recompile and ships it beside the graph in `VisualRenderedModel`:
 `{ catalogue, semantics, workspace: QuestionEntry[], subjects:
 Record<subjectId, QuestionEntry[]> }`, with per-subject phrasings already
 interpolated. The app draws a quiet count chip on each node with open
-questions, an "Open questions" section that scopes to the selected subject
-(and shows the workspace-scoped list when nothing is selected), and a
-presentation toggle beside lifecycle/evidence/ownership.
+questions — bottom-right, inset from the corner, stepping left when the
+ownership chip (which owns that corner) is drawn — an "Open questions"
+section that scopes to the selected subject (and shows the
+workspace-scoped list when nothing is selected), and a presentation
+toggle beside lifecycle/evidence/ownership.
 
 - **The overlay rides `VisualRenderedModel`, never `CanvasNode`.** The
   canvas-graph schema is published with `additionalProperties: false` and

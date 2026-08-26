@@ -204,8 +204,10 @@ interface BadgeStyleArrays {
 
 const BADGE_SIZE = 12
 // Kind icon top-left, lifecycle top-right, evidence
-// bottom-left, ownership bottom-right - each corner gets at most one image, so
-// none ever overlap on a single node. Plan Task 10 named the top-right slot for
+// bottom-left, ownership bottom-right - each corner gets at most one image on
+// it, so none ever overlap on a single node. The open-questions chip (#292)
+// also lives bottom-right but inset from the corner, and steps aside when
+// the ownership chip is drawn. Plan Task 10 named the top-right slot for
 // the icon, but Task 5 had already spent that corner on the lifecycle chip
 // (on by default), so the icon takes the one free corner rather than stacking.
 // Each layer is gated by its own presentation flag *and* the data it needs, so
@@ -228,22 +230,6 @@ function badgeLayersFor(
   if (icon !== null) {
     layers.push({ image: icon, positionX: '0%', positionY: '0%', size: ICON_SIZE })
   }
-  // Top-centre: all four corners are spent (icon, lifecycle, evidence,
-  // ownership). Gated on count > 0 - a bare node is how "nothing open" is
-  // drawn, never a zero chip (#292).
-  const openQuestions: unknown = ele.data('openQuestions')
-  if (
-    showNudges &&
-    typeof openQuestions === 'number' &&
-    openQuestions > 0
-  ) {
-    layers.push({
-      image: openQuestionsBadgeUri(openQuestions),
-      positionX: '50%',
-      positionY: '0%',
-      size: BADGE_SIZE,
-    })
-  }
   const status: unknown = ele.data('status')
   if (showLifecycle && isLifecycleStatus(status)) {
     layers.push({
@@ -263,11 +249,31 @@ function badgeLayersFor(
   }
   const owner = ele.data('owner')
   const ownerInitials = ele.data('ownerInitials')
-  if (showOwnership && owner !== null && ownerInitials !== null) {
+  const ownershipDrawn =
+    showOwnership && owner !== null && ownerInitials !== null
+  if (ownershipDrawn) {
     layers.push({
       image: ownerBadgeUri(owner, ownerInitials),
       positionX: '100%',
       positionY: '100%',
+      size: BADGE_SIZE,
+    })
+  }
+  // Bottom-right, inset from the corner (percent positioning: 96%/88% is a
+  // ~6px pad on the default node size). The ownership chip owns the corner
+  // itself, so when it is drawn the count chip steps left to sit beside it
+  // rather than under it. Gated on count > 0 - a bare node is how "nothing
+  // open" is drawn, never a zero chip (#292).
+  const openQuestions: unknown = ele.data('openQuestions')
+  if (
+    showNudges &&
+    typeof openQuestions === 'number' &&
+    openQuestions > 0
+  ) {
+    layers.push({
+      image: openQuestionsBadgeUri(openQuestions),
+      positionX: ownershipDrawn ? '84%' : '96%',
+      positionY: ownershipDrawn ? '100%' : '88%',
       size: BADGE_SIZE,
     })
   }

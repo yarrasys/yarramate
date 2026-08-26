@@ -324,6 +324,35 @@ describe('open-question badge layer (#292)', () => {
     expect(nudgeLayersFor(true, {})).toEqual([])
   })
 
+  it('sits inset from the bottom-right corner, and steps aside for the owner chip', () => {
+    const positions = (
+      showOwnership: boolean,
+      data: Record<string, unknown>,
+    ): { x: string[]; y: string[] } => {
+      const rule = buildStylesheet(false, false, showOwnership, true).find(
+        (block): block is cytoscape.StylesheetStyle =>
+          'style' in block &&
+          block.selector === 'node' &&
+          'background-image' in block.style,
+      )!
+      const style = rule.style as cytoscape.Css.Node
+      const read = (property: 'background-position-x' | 'background-position-y') =>
+        (style[property] as (ele: { data: (key: string) => unknown }) => string[])({
+          data: (key) => data[key],
+        })
+      return { x: read('background-position-x'), y: read('background-position-y') }
+    }
+    // Alone: the padded corner, never flush on it.
+    expect(positions(false, { openQuestions: 3 })).toEqual({
+      x: ['96%'],
+      y: ['88%'],
+    })
+    // Beside the owner chip, which keeps the corner itself.
+    expect(
+      positions(true, { openQuestions: 3, owner: 'main#team', ownerInitials: 'T' }),
+    ).toEqual({ x: ['100%', '84%'], y: ['100%', '100%'] })
+  })
+
   it('keeps distinct counts in distinct cache entries', () => {
     // One stylesheet instance serves both nodes; a cache keyed without the
     // count would hand the second node the first node's chip.
