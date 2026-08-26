@@ -182,3 +182,39 @@ describe('a closed wave does not read like a finished one', () => {
     expect(text).toContain('OPEN   implementation-path-missing')
   })
 })
+
+// The fourth instance of "completion inferred from an empty set" found in one
+// day, and the worst-placed: `design`'s headline sentence is what an agent
+// reads to decide it is finished. A catalogue whose waves are all gated shut
+// reaches zero open questions without a single question having been put, and
+// "the model answers everything the catalogue asks" is then flatly false about
+// a catalogue that asked nothing.
+describe('nothing asked is not the same as everything answered', () => {
+  const ALL_GATED = catalogueOf(`    opensWhen:
+      - condition: has-any-subject
+`)
+
+  it('reports a fully gated catalogue as asking nothing', () => {
+    const report = reportOf(ALL_GATED, EMPTY)
+    // The late wave is gated; the early one is not, so gate both by asking
+    // about the gated wave alone.
+    const late = report.waves.find(({ id }) => id === 'late')!
+    expect(late.opened).toBe(false)
+    expect(late.questions).toEqual([])
+  })
+
+  it('distinguishes an unasked catalogue from an answered one in the summary', () => {
+    // Asked and answered: questions exist in an opened wave.
+    const answered = reportOf(GATED, POPULATED)
+    expect(answered.waves.some((wave) => wave.questions.length > 0)).toBe(true)
+
+    // Asked nothing: no opened wave carries a question. This is the signal
+    // both `ask` and `design` read before claiming completion, rather than
+    // reading `open === 0`, which cannot tell the two apart.
+    const unopened = {
+      ...reportOf(GATED, EMPTY),
+      waves: reportOf(GATED, EMPTY).waves.filter(({ id }) => id === 'late'),
+    }
+    expect(unopened.waves.some((wave) => wave.questions.length > 0)).toBe(false)
+  })
+})
