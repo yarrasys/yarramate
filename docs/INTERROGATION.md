@@ -50,7 +50,10 @@ questions. Each question binds:
   subject were reclassified to a kind of another aspect, so its kind is a
   label no check can contradict; see ADR 0083 as amended by ADR 0097).
   Relationship kinds in conditions resolve through profile lineage by
-  default, the same rule as subject selectors;
+  default, the same rule as subject selectors. The trigger rides reports
+  and design steps verbatim as the question's machine-readable answer
+  shape, so a consumer builds its answering affordance from the report
+  instead of re-deriving the shape from a catalogue copy (ADR 0110);
 - a **scope** — `workspace` (asked once) or `subject` (asked per matching
   subject, selected by kinds, statuses, and documents, with `descendants`
   kind matching by default so profile-derived kinds satisfy a catalogue

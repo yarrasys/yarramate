@@ -93,6 +93,56 @@ describe('design command', () => {
     expect(result.stderr).toContain('Unknown subject identity: nope')
   })
 
+  it('prints a prefilled add-concept skeleton for a mapped workspace trigger', () => {
+    const result = runCli(['design', 'workspace.yaml'], workspace)
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toContain(
+      'Prefilled skeleton (edit the <placeholders>, save as operations.yaml):',
+    )
+    expect(result.stdout).toContain('- op: add-concept')
+    expect(result.stdout).toContain('document: architecture/main.yaml')
+    expect(result.stdout).toContain('kind: goal  # or: outcome')
+  })
+
+  it('prefills the subject endpoint in an add-relationship skeleton', () => {
+    writeFileSync(
+      join(workspace, 'architecture/main.yaml'),
+      [
+        'format: yarramate/v1',
+        'id: main',
+        'profile: yarramate/core@0.1',
+        'concepts:',
+        '  - id: north-star',
+        '    kind: goal',
+        '    name: North star',
+        'relationships: []',
+        '',
+      ].join('\n'),
+      'utf8',
+    )
+    const result = runCli(
+      ['design', 'workspace.yaml', '--subject', 'north-star'],
+      workspace,
+    )
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toContain('Q [motivation · goal-unrealized]')
+    expect(result.stdout).toContain('- op: add-relationship')
+    expect(result.stdout).toContain('kind: realization')
+    // goal-unrealized wants an incoming realization: the goal is the
+    // fixed endpoint, the missing realizer is the placeholder.
+    expect(result.stdout).toContain('from: <counterpart-id>')
+    expect(result.stdout).toContain('to: north-star')
+  })
+
+  it('offers no skeleton when the trigger does not map onto one operation', () => {
+    const result = runCli(
+      ['design', 'workspace.yaml', '--subject', 'todo-service'],
+      workspace,
+    )
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).not.toContain('Prefilled skeleton')
+  })
+
   it('emits a deterministic, schema-valid machine step', () => {
     const first = runCli(['design', 'workspace.yaml', '--json'], workspace)
     const second = runCli(['design', 'workspace.yaml', '--json'], workspace)

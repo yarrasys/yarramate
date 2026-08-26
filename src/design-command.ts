@@ -16,6 +16,7 @@ import {
   evaluateCatalogue,
   loadQuestionCatalogue,
   renderQuestion,
+  type CatalogueCondition,
   type InterrogationReport,
 } from './interrogate-command.js'
 import { evaluateProjection } from './projection.js'
@@ -42,6 +43,8 @@ interface DesignStep {
   readonly askPlain?: string
   readonly materiality: string
   readonly resolution: string
+  /** The catalogue trigger, verbatim: the question's answer shape (#289). */
+  readonly trigger: readonly CatalogueCondition[]
   readonly subject?: { readonly id: string; readonly name?: string }
   readonly remainingSubjects?: number
   readonly openSubjects?: readonly string[]
@@ -88,6 +91,7 @@ const selectStep = (
             : { askPlain: askPlainTemplate.trim() }),
           materiality: question.materiality,
           resolution: question.resolution,
+          trigger: question.trigger,
           ...(question.since === undefined ? {} : { since: question.since }),
         }
       }
@@ -108,6 +112,7 @@ const selectStep = (
           : { askPlain: renderQuestion(askPlainTemplate, first.id, first.name) }),
         materiality: question.materiality,
         resolution: question.resolution,
+        trigger: question.trigger,
         ...(question.since === undefined ? {} : { since: question.since }),
         subject: {
           id: first.id,
@@ -124,6 +129,71 @@ const selectStep = (
     }
   }
   return null
+}
+
+const localKind = (qualified: string): string => {
+  const hash = qualified.lastIndexOf('#')
+  return hash === -1 ? qualified : qualified.slice(hash + 1)
+}
+
+const skeletonHeader = (
+  documentAddress: string,
+  op: string,
+): readonly string[] => [
+  '',
+  'Prefilled skeleton (edit the <placeholders>, save as operations.yaml):',
+  '  format: yarramate/operations/v1',
+  '  operations:',
+  `    - op: ${op}`,
+  `      document: ${documentAddress}`,
+]
+
+// The skeleton is a rendering of the step's trigger (#289), printed only
+// when a single condition maps unambiguously onto one operation, so a
+// wrong skeleton is never offered; every other trigger leaves the output
+// exactly as before. Kinds print as local names: that is the form a
+// native document declares.
+const renderSkeleton = (
+  step: DesignStep,
+  documentAddress: string | undefined,
+): readonly string[] => {
+  if (documentAddress === undefined || step.trigger.length !== 1) return []
+  const condition = step.trigger[0]!
+  if (condition.condition === 'no-subject-of-kind') {
+    const kinds = condition.kinds.map(localKind)
+    const alternatives =
+      kinds.length > 1 ? `  # or: ${kinds.slice(1).join(', ')}` : ''
+    return [
+      ...skeletonHeader(documentAddress, 'add-concept'),
+      '      concept:',
+      '        id: <kebab-case-id>',
+      `        kind: ${kinds[0]}${alternatives}`,
+      '        name: <one line>',
+    ]
+  }
+  if (
+    condition.condition === 'missing-relationship' &&
+    step.subject !== undefined
+  ) {
+    const kinds = condition.kinds.map(localKind)
+    const alternatives =
+      kinds.length > 1 ? `  # or: ${kinds.slice(1).join(', ')}` : ''
+    const swap =
+      condition.direction === 'any' ? '  # or swap the endpoints' : ''
+    const from =
+      condition.direction === 'incoming' ? '<counterpart-id>' : step.subject.id
+    const to =
+      condition.direction === 'incoming' ? step.subject.id : '<counterpart-id>'
+    return [
+      ...skeletonHeader(documentAddress, 'add-relationship'),
+      '      relationship:',
+      '        id: <kebab-case-id>',
+      `        kind: ${kinds[0]}${alternatives}`,
+      `        from: ${from}${swap}`,
+      `        to: ${to}`,
+    ]
+  }
+  return []
 }
 
 export function runDesignCommand(
@@ -333,10 +403,26 @@ export function runDesignCommand(
       if (slice !== undefined) {
         lines.push('', 'Subject slice:', '', slice.trimEnd())
       }
+      // The skeleton's document address is the manifest-relative form
+      // when the first document sits under the manifest directory - the
+      // address an author naturally writes and apply accepts (#216) -
+      // falling back to the workspace path, which apply also accepts.
+      const manifestDirectory = workspacePath.includes('/')
+        ? workspacePath.slice(0, workspacePath.lastIndexOf('/'))
+        : ''
+      const firstDocument = workspace.documents[0]
+      const documentAddress =
+        firstDocument === undefined
+          ? undefined
+          : manifestDirectory !== '' &&
+              firstDocument.startsWith(`${manifestDirectory}/`)
+            ? firstDocument.slice(manifestDirectory.length + 1)
+            : firstDocument
       lines.push(
         '',
         'Answer by updating the model (one atomic batch):',
         `  yarramate apply <operations.yaml> ${workspacePath}`,
+        ...renderSkeleton(step, documentAddress),
         `Then re-run: yarramate design ${workspacePath}`,
       )
     }

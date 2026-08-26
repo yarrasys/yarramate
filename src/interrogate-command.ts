@@ -159,6 +159,14 @@ export interface ReportQuestion {
   readonly question: string
   readonly materiality: string
   readonly resolution: string
+  /**
+   * The catalogue trigger, verbatim (#289). The conditions that opened a
+   * question are its machine-readable answer shape: a host builds the
+   * matching affordance (a prefilled form, an operations skeleton) from
+   * them instead of re-deriving the shape from its own catalogue copy and
+   * drifting from engine semantics.
+   */
+  readonly trigger: readonly CatalogueCondition[]
   readonly since?: string
   readonly subjects?: readonly OpenSubject[]
 }
@@ -766,6 +774,7 @@ export function evaluateCatalogue(
           question: question.question.trim(),
           materiality: question.materiality.trim(),
           resolution: question.resolution.trim(),
+          trigger: question.trigger,
           ...(question.since === undefined ? {} : { since: question.since }),
         }
         if (question.scope === 'workspace') {
