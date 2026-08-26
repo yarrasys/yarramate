@@ -1728,7 +1728,16 @@ export function GraphCanvas({
     <>
       <div
         ref={containerRef}
-        style={{ width: '100%', height: '100%' }}
+        // `position: relative` because cytoscape checks the COMPUTED position
+        // of its container and refuses to set one itself: static earns
+        // "A Cytoscape container has style position:static and so can not use
+        // UI extensions properly" on every session, and then leaves it (#325).
+        // Harmless while this app draws its own React context menu positioned
+        // against the window, and a trap for whoever first reaches for a
+        // cytoscape UI extension and finds it mispositioned with the reason
+        // already printed and ignored. Rendering is unaffected: the layer
+        // holder cytoscape creates inside is already relative.
+        style={{ position: 'relative', width: '100%', height: '100%' }}
         onContextMenu={(event) => event.preventDefault()}
         // A kind dragged from the palette (#295). Accepted on the container
         // rather than on any cytoscape element: a new subject belongs to no
