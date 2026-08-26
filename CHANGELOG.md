@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+- **Fixed.** The rail's filter judges a subject the way the canvas
+  quick filter does, and its counts say what survives (#317,
+  completing the two asks #307 deferred out of #316). Parity: the
+  tree's own matching restated the predicate with `id` missing, so
+  id-shaped input — `cep` for `cep-salesforce` — emptied the tree
+  while the canvas kept drawing; the predicate #316 extracted
+  (`subjectMatchesQuickFilter`) now lives in a small pure module,
+  `subject-filter.ts`, imported by the canvas and the tree model
+  alike, because `view-tree-model.ts` keeps its no-React/no-cytoscape
+  discipline and merely loading `graph-canvas.tsx` registers
+  cytoscape-elk. The rail keeps its one extra: a folder or layer
+  label that matches still shows everything it holds, which the
+  canvas has no counterpart for. Counts: while the tree filter
+  narrows, the active view's row counts the drawn subjects that
+  survive the text (an honest zero included), the "All subjects" row
+  counts the survivors across the model, and a landed view whose
+  subjects live only in the server's semantic graph shows no number
+  at all rather than a full count the narrowing has made wrong — the
+  same honesty as a staged new row's missing count. Group rows
+  already list only survivors, so their counts follow. With no filter
+  text every count is exactly what it was.
+
 - **Fixed.** A second staged subject survives beside the first when
   their names slug to the same id (#315). `proposeConceptId` built its
   taken set from the landed graph alone, so with the first draft still

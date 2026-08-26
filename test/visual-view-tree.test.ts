@@ -10,6 +10,11 @@ import {
   folderOf,
   matchesFilter,
 } from "../src/visual-app/view-tree-model.js";
+import {
+  countMatchingSubjects,
+  normalizeFilterText,
+  subjectMatchesQuickFilter,
+} from "../src/visual-app/subject-filter.js";
 
 const view = (overrides: Partial<VisualViewSummary> = {}): VisualViewSummary => ({
   id: "current-engine",
@@ -56,7 +61,7 @@ describe("view folders, which the author declares", () => {
       views,
       stagedOperations: [],
       activeViewId: "",
-      activeSubjectCount: null,
+      activeSubjects: null,
       filterText: "",
     });
     expect(tree.folders).toEqual([]);
@@ -73,7 +78,7 @@ describe("view folders, which the author declares", () => {
       views,
       stagedOperations: [],
       activeViewId: "",
-      activeSubjectCount: null,
+      activeSubjects: null,
       filterText: "",
     });
     expect(tree.folders.map((folder) => folder.name)).toEqual([
@@ -100,7 +105,7 @@ describe("view folders, which the author declares", () => {
       views: [view({ path: "deeply/nested/only.yaml" })],
       stagedOperations: [],
       activeViewId: "",
-      activeSubjectCount: null,
+      activeSubjects: null,
       filterText: "",
     });
     expect(tree.folders).toEqual([]);
@@ -118,8 +123,11 @@ describe("view rows", () => {
       stagedOperations: [],
       activeViewId: "a",
       // A commit landed and this view now draws six, whatever the frame that
-      // carried its summary said.
-      activeSubjectCount: 6,
+      // carried its summary said. The tree gets the drawn subjects, and with
+      // no filter text the count is their plain length.
+      activeSubjects: Array.from({ length: 6 }, (_, index) =>
+        node({ id: `drawn.${index}`, name: `Drawn ${index}` }),
+      ),
       filterText: "",
     });
     expect(tree.loose[0]).toMatchObject({ id: "a", active: true, subjectCount: 6 });
@@ -136,7 +144,7 @@ describe("view rows", () => {
       views,
       stagedOperations: [],
       activeViewId: "",
-      activeSubjectCount: null,
+      activeSubjects: null,
       filterText: "the",
     });
     expect(byTitle.matched).toBe(2);
@@ -145,7 +153,7 @@ describe("view rows", () => {
       views,
       stagedOperations: [],
       activeViewId: "",
-      activeSubjectCount: null,
+      activeSubjects: null,
       filterText: "target",
     });
     expect(byFolder.matched).toBe(2);
@@ -362,7 +370,7 @@ describe("staged view operations, merged over the landed views", () => {
         writeOp("roadmap-first", { title: "Roadmap first", folder: "Roadmap" }),
       ],
       activeViewId: "",
-      activeSubjectCount: null,
+      activeSubjects: null,
       filterText: "",
     });
 
@@ -394,7 +402,7 @@ describe("staged view operations, merged over the landed views", () => {
         }),
       ],
       activeViewId: "",
-      activeSubjectCount: null,
+      activeSubjects: null,
       filterText: "",
     });
 
@@ -419,7 +427,7 @@ describe("staged view operations, merged over the landed views", () => {
         { op: "delete-view", path: ".yarramate/projections/current-engine.yaml" },
       ],
       activeViewId: "",
-      activeSubjectCount: null,
+      activeSubjects: null,
       filterText: "",
     });
 
@@ -439,14 +447,14 @@ describe("staged view operations, merged over the landed views", () => {
       views,
       stagedOperations: [writeOp("brand-new", { folder: "Roadmap" })],
       activeViewId: "",
-      activeSubjectCount: null,
+      activeSubjects: null,
       filterText: "",
     });
     const discarded = buildViewTree({
       views,
       stagedOperations: [],
       activeViewId: "",
-      activeSubjectCount: null,
+      activeSubjects: null,
       filterText: "",
     });
 
@@ -466,7 +474,7 @@ describe("staged view operations, merged over the landed views", () => {
         writeOp("target-next", { title: "Target next", folder: "Target" }),
       ],
       activeViewId: "",
-      activeSubjectCount: null,
+      activeSubjects: null,
     };
 
     // The staged folder is searchable the way a landed one is: typing it is
@@ -488,7 +496,7 @@ describe("staged view operations, merged over the landed views", () => {
         }),
       ],
       activeViewId: "",
-      activeSubjectCount: null,
+      activeSubjects: null,
     };
 
     // The row SHOWS the staged title, so the filter has to match it — a row
@@ -508,7 +516,11 @@ describe("staged view operations, merged over the landed views", () => {
         }),
       ],
       activeViewId: "current-engine",
-      activeSubjectCount: 3,
+      activeSubjects: [
+        node({ id: "a.one", name: "One" }),
+        node({ id: "a.two", name: "Two" }),
+        node({ id: "a.three", name: "Three" }),
+      ],
       filterText: "",
     });
 
@@ -524,7 +536,7 @@ describe("staged view operations, merged over the landed views", () => {
       views: [],
       stagedOperations: [{ op: "delete-view", path: "never-landed.yaml" }],
       activeViewId: "",
-      activeSubjectCount: null,
+      activeSubjects: null,
       filterText: "",
     });
 
@@ -542,11 +554,242 @@ describe("staged view operations, merged over the landed views", () => {
         writeOp("draft", { title: "Second thoughts", path: "draft.yaml" }),
       ],
       activeViewId: "",
-      activeSubjectCount: null,
+      activeSubjects: null,
       filterText: "",
     });
 
     expect(tree.matched).toBe(1);
     expect(tree.loose[0]?.title).toBe("Second thoughts");
+  });
+});
+
+/**
+ * The shared subject predicate (#317). #307 extracted it inside
+ * `graph-canvas.tsx` so the canvas pass and the shell's empty-state honesty
+ * could not drift; it now lives in `subject-filter.ts` so the rail's tree
+ * filter imports the same judgement — one predicate, three surfaces.
+ */
+describe("the shared subject predicate, which both filter boxes import", () => {
+  it("matches id, name, and kind label, case-insensitively", () => {
+    // The #307 field report: `CEP` and `cep` must both find
+    // `cep-salesforce` ("CEP (Salesforce)") — by id as well as by name.
+    expect(
+      subjectMatchesQuickFilter(
+        "cep",
+        "cep-salesforce",
+        "CEP (Salesforce)",
+        "applicationComponent",
+      ),
+    ).toBe(true);
+    expect(
+      subjectMatchesQuickFilter(
+        normalizeFilterText("  CEP "),
+        "cep-salesforce",
+        "CEP (Salesforce)",
+        "applicationComponent",
+      ),
+    ).toBe(true);
+    expect(
+      subjectMatchesQuickFilter(
+        "businessprocess",
+        "biz.pay",
+        "Pay a supplier",
+        "businessProcess",
+      ),
+    ).toBe(true);
+    expect(
+      subjectMatchesQuickFilter(
+        "ledger",
+        "cep-salesforce",
+        "CEP (Salesforce)",
+        "applicationComponent",
+      ),
+    ).toBe(false);
+  });
+
+  it("lets every subject through when the text is empty", () => {
+    expect(subjectMatchesQuickFilter("", "anything", undefined, undefined)).toBe(
+      true,
+    );
+  });
+
+  it("tolerates untyped cytoscape data without matching it", () => {
+    // The canvas reads name/kindLabel out of cytoscape data, which types
+    // nothing: a non-string is simply not a match, never a throw.
+    expect(subjectMatchesQuickFilter("x", "id", 42, null)).toBe(false);
+  });
+
+  it("counts survivors, and counts everything when nothing narrows", () => {
+    const subjects = [
+      node({ id: "cep-salesforce", name: "CEP (Salesforce)" }),
+      node({ id: "app.ledger", name: "Ledger" }),
+    ];
+    expect(countMatchingSubjects(subjects, "")).toBe(2);
+    expect(countMatchingSubjects(subjects, "  CEP ")).toBe(1);
+    expect(countMatchingSubjects(subjects, "nothing-says-this")).toBe(0);
+  });
+});
+
+/**
+ * Rail parity (#317): the rail keeps a subject by the very predicate the
+ * canvas quick filter applies, plus the rail's own group labels. #307's
+ * repro was id-shaped input — the rail matched only name/kind/group, so
+ * `cep` emptied the tree while the canvas kept drawing `cep-salesforce`.
+ */
+describe("the rail filter, which judges subjects the way the canvas does", () => {
+  const nodes = [
+    node({
+      id: "cep-salesforce",
+      name: "CEP (Salesforce)",
+      layer: "application",
+    }),
+    node({ id: "app.ledger", name: "Ledger", layer: "application" }),
+  ];
+
+  it("finds a subject by id, which the rail used to omit", () => {
+    const groups = buildModelTree({
+      nodes,
+      inViewIds: null,
+      filterText: "cep-sales",
+    });
+    expect(groups.flatMap((group) => group.subjects.map((s) => s.id))).toEqual([
+      "cep-salesforce",
+    ]);
+  });
+
+  it("keeps exactly the subjects the shared predicate keeps, group hits aside", () => {
+    // The no-drift sweep: for text naming no group, the rail's survivors are
+    // the predicate's survivors, verbatim.
+    for (const text of ["", "cep", "CEP", "ledger", "app.", "no-such-thing"]) {
+      const survivors = buildModelTree({ nodes, inViewIds: null, filterText: text })
+        .flatMap((group) => group.subjects.map((s) => s.id))
+        .sort();
+      const needle = normalizeFilterText(text);
+      const expected = nodes
+        .filter((n) => subjectMatchesQuickFilter(needle, n.id, n.name, n.kindLabel))
+        .map((n) => n.id)
+        .sort();
+      expect(survivors).toEqual(expected);
+    }
+  });
+
+  it("still shows a whole group the reviewer named", () => {
+    // The rail's own extra stands: a folder (or layer) that matches shows
+    // everything it holds, which the canvas has no counterpart for. The
+    // subject itself says "payments" nowhere, so only the group hit keeps it.
+    const groups = buildModelTree({
+      nodes: [
+        ...nodes,
+        node({
+          id: "app.gateway",
+          name: "Gateway",
+          layer: "application",
+          folder: "Payments",
+        }),
+      ],
+      inViewIds: null,
+      filterText: "payments",
+    });
+    expect(groups.flatMap((group) => group.subjects.map((s) => s.id))).toEqual([
+      "app.gateway",
+    ]);
+  });
+});
+
+/**
+ * Counts under the filter (#317): while the tree filter narrows, a number
+ * beside a view row counts SURVIVORS. The active view's drawn subjects are
+ * in the browser to count; every other landed view's subjects live only in
+ * the server's semantic graph, so those rows show no number rather than a
+ * full count the narrowing has made wrong — the same honesty as the staged
+ * new row's null. Clearing the text restores every count untouched.
+ */
+describe("view-row counts while the filter narrows", () => {
+  const drawn = [
+    node({ id: "cep-salesforce", name: "CEP (Salesforce)" }),
+    node({ id: "app.ledger", name: "Ledger" }),
+    node({ id: "app.checkout", name: "Checkout" }),
+  ];
+  const views = [
+    view({ id: "cep-map", title: "CEP landscape", subjectCount: 54 }),
+    view({
+      id: "cep-target",
+      title: "CEP target",
+      subjectCount: 9,
+      path: ".yarramate/projections/cep-target.yaml",
+    }),
+  ];
+
+  it("counts the active view's surviving subjects, not what it draws unfiltered", () => {
+    const tree = buildViewTree({
+      views,
+      stagedOperations: [],
+      activeViewId: "cep-map",
+      activeSubjects: drawn,
+      filterText: "cep",
+    });
+    // Three drawn, one survives `cep` — by id, the field the rail used to
+    // omit (#307).
+    expect(tree.loose[0]).toMatchObject({
+      id: "cep-map",
+      active: true,
+      subjectCount: 1,
+    });
+  });
+
+  it("says zero when the text matched the title but no drawn subject", () => {
+    const tree = buildViewTree({
+      views,
+      stagedOperations: [],
+      activeViewId: "cep-map",
+      activeSubjects: drawn,
+      filterText: "landscape",
+    });
+    // An honest zero, not the full count: nothing on the canvas says
+    // "landscape".
+    expect(tree.loose[0]?.subjectCount).toBe(0);
+  });
+
+  it("withholds the count of a view whose subjects the browser cannot see", () => {
+    const tree = buildViewTree({
+      views,
+      stagedOperations: [],
+      activeViewId: "cep-map",
+      activeSubjects: drawn,
+      filterText: "cep",
+    });
+    // The non-active row still shows (its title matches) but carries no
+    // number: its 9 subjects live in the semantic graph, and how many of
+    // them say `cep` is not knowable here.
+    expect(tree.loose[1]).toMatchObject({
+      id: "cep-target",
+      active: false,
+      subjectCount: null,
+    });
+  });
+
+  it("restores every count, untouched, when the text clears", () => {
+    const tree = buildViewTree({
+      views,
+      stagedOperations: [],
+      activeViewId: "cep-map",
+      activeSubjects: drawn,
+      filterText: "",
+    });
+    expect(tree.loose.map((row) => row.subjectCount)).toEqual([3, 9]);
+  });
+
+  it("withholds even the active count when nothing says what is drawn", () => {
+    // Active view, no standing match set to read subjects from: under a
+    // narrowing filter the landed count would be the wrong number, so the
+    // row shows none.
+    const tree = buildViewTree({
+      views,
+      stagedOperations: [],
+      activeViewId: "cep-map",
+      activeSubjects: null,
+      filterText: "cep",
+    });
+    expect(tree.loose[0]?.subjectCount).toBe(null);
   });
 });

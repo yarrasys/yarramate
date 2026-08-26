@@ -13,6 +13,7 @@ import {
   type ModelTreeGroup,
   type ViewTreeRow,
 } from "./view-tree-model.js";
+import { countMatchingSubjects } from "./subject-filter.js";
 
 /**
  * The rail: the saved views and the whole model, as one tree.
@@ -219,10 +220,12 @@ export function ViewTree({
     // Nodes drawn, not entries in the match set: a match set holds the
     // relationships a view matched as well as its concepts, and the number
     // beside a view has to be the one the reviewer can count on the canvas.
-    activeSubjectCount:
+    // The subjects themselves rather than their count, so the tree can say
+    // how many survive the typed filter (#317).
+    activeSubjects:
       inViewIds === null
         ? null
-        : nodes.filter((node) => inViewIds.has(node.id)).length,
+        : nodes.filter((node) => inViewIds.has(node.id)),
     filterText,
   });
   const model: readonly ModelTreeGroup[] = buildModelTree({
@@ -296,7 +299,11 @@ export function ViewTree({
                 >
                   <ViewGlyph />
                   <span className="tree-label">{ALL_SUBJECTS_LABEL}</span>
-                  <span className="tree-count">{nodes.length}</span>
+                  {/* Survivors of the typed filter, which with no text is
+                      every subject the model declares (#317). */}
+                  <span className="tree-count">
+                    {countMatchingSubjects(nodes, filterText)}
+                  </span>
                 </button>
               </li>
             )}

@@ -19,6 +19,12 @@ import type {
   VisualViewOperation,
   VisualViewSummary,
 } from "../adapters/visual/protocol-contract.js";
+import {
+  countMatchingSubjects,
+  normalizeFilterText,
+  subjectMatchesQuickFilter,
+  type FilterableSubject,
+} from "./subject-filter.js";
 
 export const VIEWS_ROOT_KEY = "views";
 export const MODEL_ROOT_KEY = "model";
@@ -49,9 +55,12 @@ export interface ViewTreeRow {
   /**
    * `null` when nothing has measured it: a staged NEW view has no landed
    * document, and resolving its query needs the semantic graph the browser
-   * does not hold. A number here is always the server's measure of what
-   * LANDED — a staged overwrite keeps the landed count, the same staleness
-   * story `VisualViewSummary.subjectCount` already tells.
+   * does not hold — and, while the tree filter narrows, every landed view
+   * but the active one, whose subjects live only in that same graph (#317).
+   * A number is either the server's measure of what LANDED (a staged
+   * overwrite keeps the landed count, the same staleness story
+   * `VisualViewSummary.subjectCount` already tells) or, on the active row,
+   * a count of the drawn subjects that survive the typed filter.
    */
   readonly subjectCount: number | null;
   readonly active: boolean;
@@ -102,8 +111,13 @@ export interface ModelTreeGroup {
   readonly subjects: readonly ModelSubjectRow[];
 }
 
-const normalize = (text: string): string => text.trim().toLowerCase();
-
+/**
+ * Whether a LABEL — a view title, a folder name, a group heading — survives
+ * the typed text. Subjects go through `subjectMatchesQuickFilter` instead,
+ * the very predicate the canvas quick filter applies (#317), so the two
+ * boxes cannot disagree about a subject; labels are a rail-only concept the
+ * canvas has no counterpart for, matched here with the same normalization.
+ */
 const matches = (haystack: string, needle: string): boolean =>
   needle === "" || haystack.toLowerCase().includes(needle);
 
@@ -116,7 +130,7 @@ const matches = (haystack: string, needle: string): boolean =>
  * leaves a view row standing above the line saying nothing matched.
  */
 export const matchesFilter = (label: string, filterText: string): boolean =>
-  matches(label, normalize(filterText));
+  matches(label, normalizeFilterText(filterText));
 
 /**
  * The folder a view files itself under, or `""` for none.
@@ -150,12 +164,16 @@ export interface ViewTreeInput {
   readonly stagedOperations: readonly VisualViewOperation[];
   readonly activeViewId: string;
   /**
-   * How many subjects the active view is drawing right now, from the standing
-   * filter's match set. The server's `subjectCount` was true when the frame
-   * carrying it was sent; this one is true of the canvas beside it, which is
-   * the number the reviewer can check by looking.
+   * The subjects the active view is drawing right now, from the standing
+   * filter's match set, or `null` when nothing is filtering the canvas. The
+   * subjects themselves rather than their count (#317): the active row's
+   * number is how many of them survive the typed filter, which a
+   * pre-computed count could not answer. Unfiltered it is their plain
+   * length — the number the reviewer can check by looking, where the
+   * server's `subjectCount` was only true when the frame carrying it was
+   * sent.
    */
-  readonly activeSubjectCount: number | null;
+  readonly activeSubjects: readonly FilterableSubject[] | null;
   readonly filterText: string;
 }
 
@@ -163,10 +181,21 @@ export const buildViewTree = ({
   views,
   stagedOperations,
   activeViewId,
-  activeSubjectCount,
+  activeSubjects,
   filterText,
 }: ViewTreeInput): ViewTree => {
-  const needle = normalize(filterText);
+  const needle = normalizeFilterText(filterText);
+  // While the filter narrows, a shown count has to count SURVIVORS (#317):
+  // the active view's drawn subjects are here to count, and every other
+  // landed view's subjects live only in the server's semantic graph, so its
+  // row shows no number rather than a full count the narrowing has made
+  // wrong — the same honesty as the staged new row's null. With no filter
+  // text every drawn subject survives, and every count is what it was.
+  const filtering = needle !== "";
+  const activeCount =
+    activeSubjects === null
+      ? null
+      : countMatchingSubjects(activeSubjects, filterText);
   const rowsByFolder = new Map<string, ViewTreeRow[]>();
 
   const place = (folder: string, row: ViewTreeRow): void => {
@@ -215,9 +244,11 @@ export const buildViewTree = ({
       title,
       path: view.path,
       subjectCount:
-        active && activeSubjectCount !== null
-          ? activeSubjectCount
-          : view.subjectCount,
+        active && activeCount !== null
+          ? activeCount
+          : filtering
+            ? null
+            : view.subjectCount,
       active,
       staged,
     });
@@ -280,7 +311,7 @@ export const buildModelTree = ({
   inViewIds,
   filterText,
 }: ModelTreeInput): readonly ModelTreeGroup[] => {
-  const needle = normalize(filterText);
+  const needle = normalizeFilterText(filterText);
   const byFolder = new Map<string, ModelSubjectRow[]>();
   const byLayer = new Map<string, ModelSubjectRow[]>();
 
@@ -292,11 +323,16 @@ export const buildModelTree = ({
     // every model today - is grouped exactly as it was.
     const folder = node.folder;
     const group = folder ?? layer ?? UNLAYERED;
-    // Kind is searchable because it is how an architect names a set of
-    // subjects — "every applicationComponent" — and the row already shows it.
+    // A subject survives by the canvas quick filter's own predicate — id,
+    // name, kind label — imported, never restated, so the two boxes cannot
+    // drift (#317; the rail used to omit `id`, and id-shaped input emptied
+    // the tree while the canvas kept drawing, #307). Kind is in the
+    // predicate because it is how an architect names a set of subjects —
+    // "every applicationComponent" — and the row already shows it. The
+    // group label is the rail's own extra: a folder or layer that matches
+    // shows everything it holds.
     if (
-      !matches(node.name, needle) &&
-      !matches(node.kindLabel, needle) &&
+      !subjectMatchesQuickFilter(needle, node.id, node.name, node.kindLabel) &&
       !matches(group, needle)
     ) {
       continue;

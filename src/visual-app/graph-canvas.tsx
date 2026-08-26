@@ -23,6 +23,10 @@ import {
 } from './badges.js'
 import { ICON_SIZE, kindIconUriOf } from './kind-icons.js'
 import { KIND_MIME } from './kind-palette.js'
+// The one substring judgement the canvas pass, the shell's empty-state
+// honesty, and the rail's tree filter share, so what hides and what is
+// reported can never drift (#307, #317).
+import { subjectMatchesQuickFilter } from './subject-filter.js'
 import { ASPECT_SHAPES, LAYER_COLORS, RELATIONSHIP_NOTATION } from '../notation/archimate.js'
 
 // Register elk extension once at module load, guarded against re-registration
@@ -779,28 +783,6 @@ export function graphToElements(
   )
 
   return [...nodeElements, ...edgeElements]
-}
-
-// The one substring judgement the canvas pass and the shell's empty-state
-// honesty share, so what hides and what is reported can never drift (#307):
-// case-insensitive, against a subject's id, name, and kind label. `name` and
-// `kindLabel` are `unknown` because the canvas reads them out of cytoscape
-// data, which types nothing.
-export function subjectMatchesQuickFilter(
-  trimmedLowerFilter: string,
-  id: string,
-  name: unknown,
-  kindLabel: unknown,
-): boolean {
-  if (trimmedLowerFilter === '') return true
-  if (id.toLowerCase().includes(trimmedLowerFilter)) return true
-  if (typeof name === 'string' && name.toLowerCase().includes(trimmedLowerFilter)) {
-    return true
-  }
-  return (
-    typeof kindLabel === 'string' &&
-    kindLabel.toLowerCase().includes(trimmedLowerFilter)
-  )
 }
 
 // How many of the graph's subjects the standing filter and the quick-filter
