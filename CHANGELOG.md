@@ -41,6 +41,14 @@
   the overlay carries the catalogue `id@version` and the engine `semantics`
   stamp (ADR 0106).
 
+- **Fixed.** The Add-subject popover clears the canvas toolbar, and its
+  labels reach their controls (#296). The popover opened at the toolbar's own
+  corner one stacking layer below it, so the filter bar painted over the Name
+  field's label; it now opens below the toolbar's row and stacks above it.
+  And the dialog's Name/Kind/Document labels carry explicit `for`/`id`
+  associations, so `getByLabel`-style queries and screen readers resolve
+  them; the other dialogs (save-view, prompt, confirm) already had theirs.
+
 ## 1.2.0
 
 - **Added.** An open question carries its machine-readable answer shape
