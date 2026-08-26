@@ -5,6 +5,7 @@ import {
   connectableKinds,
   draftRelationship,
   proposeRelationshipId,
+  stagedSubjectIds,
 } from '../src/relationship-drafting.js'
 import { applyOperations } from '../src/apply-command.js'
 import { stringify } from 'yaml'
@@ -125,6 +126,24 @@ describe('proposeRelationshipId', () => {
       ).toMatch(pattern)
     }
   })
+
+  it('steps past a reserved id the graph does not know yet (#306)', () => {
+    // A staged-but-uncommitted draft is not in the rendered graph, so its id
+    // arrives as `reserved` rather than as an edge. Without this the second
+    // parallel relationship re-proposed the identical id and staging
+    // swallowed it.
+    expect(
+      proposeRelationshipId(graph, 'orders', 'flow', 'billing', [
+        'orders-flow-billing',
+      ]),
+    ).toBe('orders-flow-billing-2')
+    expect(
+      proposeRelationshipId(graph, 'orders', 'flow', 'billing', [
+        'orders-flow-billing',
+        'orders-flow-billing-2',
+      ]),
+    ).toBe('orders-flow-billing-3')
+  })
 })
 
 describe('draftRelationship', () => {
@@ -199,5 +218,103 @@ describe('draftRelationship', () => {
     // Not passing by drafting nothing. A floor rather than the exact count,
     // which is a property of the ArchiMate table and not of this test.
     expect(drafted).toBeGreaterThan(12)
+  })
+
+  /**
+   * The ICWA register case from #306: two parallel `flow`s between the same
+   * pair, the second drafted while the first is still only staged. The schema
+   * has no uniqueness on the (from, kind, to) triple, so both must land -
+   * distinct ids, applied together, compiled cleanly.
+   */
+  it('drafts a second parallel relationship that lands beside the first (#306)', () => {
+    const first = draftRelationship(graph, 'orders', 'flow', 'billing')
+    expect(first?.op).toBe('add-relationship')
+    if (first?.op !== 'add-relationship') return
+
+    // The first is staged, not landed: the graph is unchanged, and only
+    // `stagedSubjectIds` can tell the proposal about it.
+    const second = draftRelationship(
+      graph,
+      'orders',
+      'flow',
+      'billing',
+      stagedSubjectIds([first]),
+    )
+    expect(second?.op).toBe('add-relationship')
+    if (second?.op !== 'add-relationship') return
+
+    expect(first.relationship.id).toBe('orders-flow-billing')
+    expect(second.relationship.id).toBe('orders-flow-billing-2')
+
+    const outcome = applyOperations({
+      workspace: {
+        id: 'drafting',
+        documents: ['architecture/main.yaml'],
+        profiles: [],
+        projections: [],
+        adapterMappings: [],
+        evidence: [],
+        contracts: [],
+      },
+      sources: [{ path: 'architecture/main.yaml', source: DOCUMENT }],
+      operations: {
+        path: 'changeset.yaml',
+        source: stringify({
+          format: 'yarramate/operations/v1',
+          operations: [first, second],
+        }),
+      },
+      manifestDirectory: '.yarramate',
+    })
+    expect(
+      outcome.ok ? [] : outcome.diagnostics.map((d) => d.code),
+    ).toEqual([])
+    if (!outcome.ok) return
+
+    const landed = graphOf(
+      outcome.sources.find(
+        (document) => document.path === 'architecture/main.yaml',
+      )!.source,
+    )
+    const parallel = landed.edges.filter(
+      (edge) =>
+        edge.from === 'orders' &&
+        edge.to === 'billing' &&
+        edge.coreKindLabel === 'flow',
+    )
+    expect(parallel.map((edge) => edge.localId).sort()).toEqual([
+      'orders-flow-billing',
+      'orders-flow-billing-2',
+    ])
+  })
+})
+
+describe('stagedSubjectIds', () => {
+  it('collects every id a pending changeset claims, renames included', () => {
+    expect(
+      stagedSubjectIds([
+        {
+          op: 'add-relationship',
+          document: 'architecture/main.yaml',
+          relationship: {
+            id: 'orders-flow-billing',
+            kind: 'flow',
+            from: 'orders',
+            to: 'billing',
+          },
+        },
+        {
+          op: 'add-concept',
+          document: 'architecture/main.yaml',
+          concept: { id: 'payments', kind: 'applicationComponent' },
+        },
+        {
+          op: 'rename-concept',
+          document: 'architecture/main.yaml',
+          concept: { id: 'billing' },
+          to: 'invoicing',
+        },
+      ]),
+    ).toEqual(['orders-flow-billing', 'payments', 'billing', 'invoicing'])
   })
 })

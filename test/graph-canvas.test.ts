@@ -2,9 +2,16 @@ import cytoscape from 'cytoscape'
 import { describe, expect, it } from 'vitest'
 import {
   applyFilter,
+  buildStylesheet,
+  graphToElements,
   modelPositionOf,
   relayoutVisible,
 } from '../src/visual-app/graph-canvas.js'
+import type {
+  CanvasEdge,
+  CanvasGraph,
+  CanvasNode,
+} from '../src/graph-projection.js'
 
 // A small headless cytoscape instance (no container/DOM needed for hide/show
 // and data queries) - mirrors the shape graphToElements produces, without
@@ -254,5 +261,131 @@ describe('modelPositionOf', () => {
       x: 35,
       y: 50,
     })
+  })
+})
+
+/**
+ * Two relationships between the same endpoints (#306). The projection delivers
+ * both and cytoscape keeps both as elements, but taxi routing is deterministic
+ * from the endpoints alone: parallel edges drew exactly on top of each other
+ * and read as one line, with only the topmost tappable. Members of a parallel
+ * pair now carry the `parallel` class, whose bezier curve style cytoscape
+ * separates automatically - so both are visible and individually selectable.
+ */
+describe('parallel relationships between the same pair', () => {
+  const node = (id: string): CanvasNode =>
+    ({
+      id,
+      localId: id,
+      document: 'main.yaml',
+      kind: 'yarramate/core@0.1#applicationComponent',
+      kindLabel: 'applicationComponent',
+      coreKindLabel: 'applicationComponent',
+      layer: 'application',
+      aspect: 'active-structure',
+      name: id,
+      description: null,
+      aka: [],
+      status: null,
+      owner: null,
+      folder: null,
+      distinctFrom: [],
+      supersedes: [],
+      constraints: [],
+      references: [],
+      presentIn: [],
+      attestations: [],
+    }) as unknown as CanvasNode
+
+  const edge = (
+    id: string,
+    kind: string,
+    from: string,
+    to: string,
+  ): CanvasEdge =>
+    ({
+      id,
+      localId: id,
+      document: 'main.yaml',
+      kind: `yarramate/core@0.1#${kind}`,
+      kindLabel: kind,
+      coreKindLabel: kind,
+      from,
+      to,
+      name: null,
+      description: null,
+      mode: null,
+      content: null,
+      status: null,
+      references: [],
+      presentIn: [],
+    }) as unknown as CanvasEdge
+
+  const graph: CanvasGraph = {
+    nodes: [node('a'), node('b'), node('c')],
+    edges: [
+      // Same direction, different kinds - the ICWA register case.
+      edge('e1', 'flow', 'a', 'b'),
+      edge('e2', 'association', 'a', 'b'),
+      // Opposite directions: an a->b over a b->a occludes just the same.
+      edge('e3', 'flow', 'b', 'c'),
+      edge('e4', 'access', 'c', 'b'),
+      // A single edge stays exactly as it was.
+      edge('e5', 'flow', 'a', 'c'),
+    ],
+  }
+
+  const elements = graphToElements(graph, [], new Map())
+  const elementById = new Map(
+    elements.map((element) => [element.data.id, element]),
+  )
+
+  it('keeps every parallel edge as its own element', () => {
+    for (const id of ['e1', 'e2', 'e3', 'e4', 'e5']) {
+      expect(elementById.get(id), id).toBeDefined()
+    }
+  })
+
+  it('marks members of a parallel pair, in either direction, and no single edge', () => {
+    expect(elementById.get('e1')?.classes).toBe('parallel')
+    expect(elementById.get('e2')?.classes).toBe('parallel')
+    expect(elementById.get('e3')?.classes).toBe('parallel')
+    expect(elementById.get('e4')?.classes).toBe('parallel')
+    expect(elementById.get('e5')?.classes).toBeUndefined()
+  })
+
+  it('resolves parallel edges to a curve style cytoscape separates', () => {
+    // The real stylesheet against the real elements, headless: parallel
+    // members leave `round-taxi` for `bezier` with a nonzero step, which is
+    // the mechanism that fans them apart; a single edge keeps `round-taxi`.
+    const cy = cytoscape({
+      styleEnabled: true,
+      elements,
+      style: buildStylesheet(false, false, false, false),
+    })
+    expect(cy.edges().length).toBe(5)
+    expect(cy.$id('e1').style('curve-style')).toBe('bezier')
+    expect(cy.$id('e2').style('curve-style')).toBe('bezier')
+    expect(cy.$id('e4').style('curve-style')).toBe('bezier')
+    expect(cy.$id('e1').style('control-point-step-size')).toBe('40px')
+    expect(cy.$id('e5').style('curve-style')).toBe('round-taxi')
+  })
+
+  it('does not count an edge consumed into nesting as a parallel member', () => {
+    const nested: CanvasGraph = {
+      nodes: [node('a'), node('b')],
+      edges: [
+        edge('c1', 'composition', 'a', 'b'),
+        edge('e1', 'flow', 'a', 'b'),
+      ],
+    }
+    const drawn = graphToElements(nested, ['composition'], new Map())
+    const ids = drawn.map((element) => element.data.id)
+    // The composition is consumed into the compound box, so the flow is the
+    // only line between the pair and keeps its ordinary routing.
+    expect(ids).not.toContain('c1')
+    expect(
+      drawn.find((element) => element.data.id === 'e1')?.classes,
+    ).toBeUndefined()
   })
 })

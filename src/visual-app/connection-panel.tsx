@@ -24,11 +24,20 @@ import type { ConnectionDraft } from './workspace-state.js'
 export const ConnectionPanel = ({
   draft,
   graph,
+  reservedIds,
   onStage,
   onCancel,
 }: {
   readonly draft: ConnectionDraft
   readonly graph: CanvasGraph
+  /**
+   * Ids the pending changeset already claims. The graph only knows what has
+   * landed, so without these a second relationship between the same pair
+   * proposed the identical id and replace-by-target staging swallowed it
+   * silently (#306). Required rather than defaulted: a caller has to say
+   * what is staged, even when the answer is nothing.
+   */
+  readonly reservedIds: readonly string[]
   readonly onStage: (operation: YarramateOperation) => void
   readonly onCancel: () => void
 }): React.ReactElement => {
@@ -75,6 +84,7 @@ export const ConnectionPanel = ({
                     draft.from,
                     kind,
                     target,
+                    reservedIds,
                   )
                   // Null here would mean this panel offered a kind the table
                   // does not permit, which `connectableKinds` cannot produce.

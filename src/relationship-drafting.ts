@@ -59,16 +59,26 @@ export const connectableKinds = (
  * relationship kind is a single lowercase word. A collision takes a numeric
  * suffix rather than a hash, because the id is authored text a human will read
  * in a diff.
+ *
+ * `reserved` carries ids the graph does not know yet: a staged-but-uncommitted
+ * draft never enters the rendered graph, so without it a second relationship
+ * between the same pair re-proposed the identical id and the editor's
+ * replace-by-target staging silently swallowed the first (#306). The schema
+ * places no uniqueness on the (from, kind, to) triple - parallel relationships
+ * with distinct ids compile cleanly - so the id proposal is the only place the
+ * collision can be stepped past.
  */
 export const proposeRelationshipId = (
   graph: CanvasGraph,
   fromId: string,
   kind: RelationshipKind,
   toId: string,
+  reserved: Iterable<string> = [],
 ): string => {
   const taken = new Set([
     ...graph.nodes.map((node) => node.id),
     ...graph.edges.map((edge) => edge.id),
+    ...reserved,
   ])
   const base = `${fromId}-${kind}-${toId}`
   if (!taken.has(base)) return base
@@ -90,12 +100,17 @@ export const proposeRelationshipId = (
  * relationship has to live somewhere, both endpoints are equally defensible,
  * and the source is where a reader looking for what this thing does would go
  * first.
+ *
+ * A caller holding drafts the graph has not landed yet - an editor with a
+ * pending changeset - passes their ids as `reserved`, so a second parallel
+ * relationship steps to `-2` instead of colliding with the first (#306).
  */
 export const draftRelationship = (
   graph: CanvasGraph,
   fromId: string,
   kind: RelationshipKind,
   toId: string,
+  reserved: Iterable<string> = [],
 ): YarramateOperation | null => {
   if (!connectableKinds(graph, fromId, toId).includes(kind)) return null
   const from = graph.nodes.find((node) => node.id === fromId)
@@ -104,10 +119,30 @@ export const draftRelationship = (
     op: 'add-relationship',
     document: from.document,
     relationship: {
-      id: proposeRelationshipId(graph, fromId, kind, toId),
+      id: proposeRelationshipId(graph, fromId, kind, toId, reserved),
       kind,
       from: fromId,
       to: toId,
     },
   }
 }
+
+/**
+ * The ids a pending changeset already claims, for `proposeRelationshipId`'s
+ * `reserved` parameter. Every operation that names a subject id reserves it -
+ * an update's id is already in the graph and reserving it twice is harmless,
+ * while an add's id is exactly the one the graph cannot know yet.
+ */
+export const stagedSubjectIds = (
+  operations: readonly YarramateOperation[],
+): readonly string[] =>
+  operations.flatMap((op) => {
+    // A staged rename claims the id it moves to as well as the one it leaves.
+    const renamedTo =
+      op.op === 'rename-concept' || op.op === 'rename-relationship'
+        ? [op.to]
+        : []
+    if ('relationship' in op) return [op.relationship.id, ...renamedTo]
+    if ('concept' in op) return [op.concept.id, ...renamedTo]
+    return renamedTo
+  })

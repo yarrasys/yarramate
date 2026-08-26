@@ -138,6 +138,7 @@ export {
   connectableKinds,
   draftRelationship,
   proposeRelationshipId,
+  stagedSubjectIds,
 } from './relationship-drafting.js'
 export { draftConcept, proposeConceptId } from './concept-drafting.js'
 export {

@@ -447,6 +447,20 @@ export function buildStylesheet(
       },
     },
     {
+      // Two or more relationships between the same pair of endpoints. Taxi
+      // routing is deterministic from the endpoints alone, so parallel edges
+      // route identically and draw as one line - the second relationship
+      // exists but cannot be seen or tapped (#306). Bezier is the one curve
+      // family cytoscape separates automatically for multi-edges:
+      // `control-point-step-size` fans them out, so each stays visible and
+      // individually selectable. Single edges keep `round-taxi` untouched.
+      selector: 'edge.parallel',
+      style: {
+        'curve-style': 'bezier',
+        'control-point-step-size': 40,
+      },
+    },
+    {
       selector: 'edge.selected',
       style: {
         'line-color': '#FF6B6B',
@@ -635,8 +649,10 @@ export function resolveNestingParents(
   return { parentOf, consumedEdgeIds }
 }
 
-// Convert CanvasGraph nodes and edges to cytoscape ElementDefinition format
-function graphToElements(
+// Convert CanvasGraph nodes and edges to cytoscape ElementDefinition format.
+// Exported for the headless tests: the parallel-edge class assignment below is
+// a rendering guarantee (#306) that has to be assertable without a DOM.
+export function graphToElements(
   graph: CanvasGraph,
   nesting: readonly NestingKind[],
   openQuestionCounts: ReadonlyMap<string, number>
@@ -681,21 +697,43 @@ function graphToElements(
     }
   })
 
-  const edgeElements = graph.edges
-    .filter((edge) => !consumedEdgeIds.has(edge.id))
-    .map(
-      (edge): ElementDefinition => ({
-        data: {
-          id: edge.id,
-          source: edge.from,
-          target: edge.to,
-          label: edge.name ?? edge.kindLabel,
-          wrapLabel: withWrapPoints(edge.name ?? edge.kindLabel),
-          coreKindLabel: edge.coreKindLabel,
-        },
-        group: 'edges',
-      })
-    )
+  const drawnEdges = graph.edges.filter(
+    (edge) => !consumedEdgeIds.has(edge.id)
+  )
+
+  // How many drawn edges share each unordered endpoint pair. Members of a
+  // multiple get the `parallel` class, which swaps their curve style to one
+  // cytoscape separates automatically - under the default taxi routing they
+  // draw exactly on top of each other and read as one relationship (#306).
+  // Unordered, because an A->B over a B->A occludes just the same. Counted
+  // over drawn edges only: an edge consumed into nesting is not on screen to
+  // collide with.
+  const drawnPerPair = new Map<string, number>()
+  const pairKey = (edge: CanvasEdge): string =>
+    edge.from < edge.to
+      ? `${edge.from} ${edge.to}`
+      : `${edge.to} ${edge.from}`
+  for (const edge of drawnEdges) {
+    const key = pairKey(edge)
+    drawnPerPair.set(key, (drawnPerPair.get(key) ?? 0) + 1)
+  }
+
+  const edgeElements = drawnEdges.map(
+    (edge): ElementDefinition => ({
+      data: {
+        id: edge.id,
+        source: edge.from,
+        target: edge.to,
+        label: edge.name ?? edge.kindLabel,
+        wrapLabel: withWrapPoints(edge.name ?? edge.kindLabel),
+        coreKindLabel: edge.coreKindLabel,
+      },
+      group: 'edges',
+      ...(drawnPerPair.get(pairKey(edge))! > 1
+        ? { classes: 'parallel' }
+        : {}),
+    })
+  )
 
   return [...nodeElements, ...edgeElements]
 }

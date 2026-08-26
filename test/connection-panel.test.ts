@@ -6,6 +6,7 @@ import { projectGraphForCanvas } from '../src/graph-projection.js'
 import { connectableKinds } from '../src/relationship-drafting.js'
 import { ConnectionPanel } from '../src/visual-app/connection-panel.js'
 import type { CanvasGraph } from '../src/graph-projection.js'
+import type { YarramateOperation } from '../src/operations.js'
 
 /**
  * What the panel puts on screen, which is the safety-critical half: a kind
@@ -40,6 +41,7 @@ const render = (draft: { from: string; to: string | null }) =>
     createElement(ConnectionPanel, {
       draft,
       graph,
+      reservedIds: [],
       onStage: () => undefined,
       onCancel: () => undefined,
     }),
@@ -104,6 +106,7 @@ describe('ConnectionPanel', () => {
       createElement(ConnectionPanel, {
         draft: { from: 'orders', to: 'settle' },
         graph: outside,
+        reservedIds: [],
         onStage: () => undefined,
         onCancel: () => undefined,
       }),
@@ -116,5 +119,51 @@ describe('ConnectionPanel', () => {
   it('can always be backed out of', () => {
     expect(render({ from: 'orders', to: null })).toContain('Cancel')
     expect(render({ from: 'orders', to: 'settle' })).toContain('Cancel')
+  })
+
+  it('threads reserved ids into the draft it stages (#306)', () => {
+    // The panel is hook-free, so it can be invoked as a plain function and
+    // its element tree walked for the kind button - no DOM needed. The
+    // reserved id plays a first relationship that is staged but not landed:
+    // clicking the same kind again must draft `-2`, not silently collide.
+    const staged: YarramateOperation[] = []
+    const buttonsOf = (
+      node: unknown,
+      found: Array<{ children?: unknown; onClick?: () => void }> = [],
+    ): Array<{ children?: unknown; onClick?: () => void }> => {
+      if (Array.isArray(node)) {
+        for (const child of node) buttonsOf(child, found)
+        return found
+      }
+      if (node === null || typeof node !== 'object') return found
+      const element = node as {
+        type?: unknown
+        props?: { children?: unknown; onClick?: () => void }
+      }
+      if (element.type === 'button' && element.props !== undefined) {
+        found.push(element.props)
+      }
+      buttonsOf(element.props?.children, found)
+      return found
+    }
+
+    const tree = ConnectionPanel({
+      draft: { from: 'orders', to: 'settle' },
+      graph,
+      reservedIds: ['orders-assignment-settle'],
+      onStage: (operation) => staged.push(operation),
+      onCancel: () => undefined,
+    })
+    const assignment = buttonsOf(tree).find(
+      (button) => button.children === 'assignment',
+    )
+    expect(assignment).toBeDefined()
+    assignment!.onClick!()
+
+    expect(staged).toHaveLength(1)
+    expect(staged[0]).toMatchObject({
+      op: 'add-relationship',
+      relationship: { id: 'orders-assignment-settle-2' },
+    })
   })
 })
