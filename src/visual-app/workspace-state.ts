@@ -100,6 +100,78 @@ const nextRelationship = (
 };
 
 /**
+ * What the imperative methods read at the moment they are called (#297,
+ * ADR 0118). A getter rather than a captured value, because the pointer is
+ * handed up once and the graph changes under it with every commit - a method
+ * bound to the model that existed at mount time would answer for a model
+ * that is gone.
+ */
+export interface EditorPointerContext {
+  readonly graph: CanvasGraph | null;
+  readonly readOnly: boolean;
+}
+
+/**
+ * The host's way of pointing at the canvas (#297, ADR 0118): three methods,
+ * each the programmatic twin of a gesture the surface already has - a canvas
+ * tap, a palette pick, the inspector's Connect. Every method answers with
+ * whether it acted; false means nothing moved - the id named nothing, the
+ * model has not arrived, or the mount is a viewer (#298) and the gesture
+ * would have reached for the pen.
+ */
+export interface EditorPointer {
+  readonly select: (subjectId: string) => boolean;
+  readonly openDraft: (options?: { readonly kind?: string }) => boolean;
+  readonly startConnection: (fromSubjectId: string) => boolean;
+}
+
+/**
+ * Builds the pointer over the shell's own dispatchers. Nothing here is a
+ * second write path: every method dispatches the same workspace action its
+ * on-screen twin dispatches, so what a host can reach is exactly what a
+ * reviewer can reach, and anything staged still lands through the changeset.
+ */
+export const editorPointerFor = (
+  context: () => EditorPointerContext,
+  dispatch: (action: VisualWorkspaceAction) => void,
+  seedDraftKind: (kind: string | undefined) => void,
+): EditorPointer => ({
+  select: (subjectId) => {
+    const { graph } = context();
+    if (graph === null) return false;
+    // The same lookup and normalization a canvas tap runs: a node becomes a
+    // selected element, an edge a selected relationship with its endpoint
+    // titles resolved, and an id that names neither moves nothing.
+    const subject =
+      nextElement(graph, subjectId) ?? nextRelationship(graph, subjectId);
+    if (subject === null) return false;
+    dispatch({ type: "subject.selected", subject });
+    return true;
+  },
+  openDraft: (options) => {
+    const { graph, readOnly } = context();
+    // A viewer has no pen (#298, ADR 0117), and before the model arrives
+    // there is no vocabulary to compile the Kind select from.
+    if (readOnly || graph === null) return false;
+    // The kind rides the same seed a palette pick rides (#295, ADR 0116):
+    // into the form's own state, cleared by a plain call, so a host opening
+    // the draft with no kind gets the no-default form every plain opener gets.
+    seedDraftKind(options?.kind);
+    dispatch({ type: "subject.draft.opened" });
+    return true;
+  },
+  startConnection: (fromSubjectId) => {
+    const { graph, readOnly } = context();
+    if (readOnly || graph === null) return false;
+    // Only a node can be a source: the connection tool draws from a subject,
+    // and an edge or an unknown id has no endpoint to draw from.
+    if (!graph.nodes.some((node) => node.id === fromSubjectId)) return false;
+    dispatch({ type: "connection.started", from: fromSubjectId });
+    return true;
+  },
+});
+
+/**
  * The right column's sections, in the order they stack (#249, ADR-free: the
  * design settles the order and nothing derives it).
  *
