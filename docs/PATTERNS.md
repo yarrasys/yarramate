@@ -152,6 +152,13 @@ serving prc-component`.
   `-expansion`, and its claim is sourced to the macro edge's line.
 - `out` is never `self` — an edge leaving the instance is the macro edge
   again.
+- **The expanded pair is judged against the relationship table**, and a
+  forbidden one is `YM404` against the macro edge. Wiring's legality is
+  settled when the pattern resolves, because the slot kinds fix both
+  endpoint kinds; a port's cannot be, because the two ends belong to
+  different patterns and neither knows the other's slots. Note that the
+  macro edge itself can be perfectly legal — two groupings permit almost
+  everything — while the pair it lands on is not.
 
 ## Diagnostics
 

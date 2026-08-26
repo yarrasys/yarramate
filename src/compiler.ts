@@ -3167,6 +3167,15 @@ function compileWorkspaceResolved(
     const instanceByIdForPorts = new Map(
       patternInstances.map((entry) => [entry.instance, entry] as const),
     )
+    const kindOfSubjectForPorts = new Map<string, string>()
+    for (const claim of claims) {
+      if (
+        claim.predicate === 'yarramate/concept/kind' &&
+        'value' in claim.object
+      ) {
+        kindOfSubjectForPorts.set(claim.subject, claim.object.value)
+      }
+    }
     const declaredIdsForPorts = new Set(subjects.map(({ id }) => id))
     const relationshipIdsForPorts = new Set(
       subjects.filter(({ type }) => type === 'relationship').map(({ id }) => id),
@@ -3216,6 +3225,37 @@ function compileWorkspaceResolved(
           column: edge.source.column,
         })
         continue
+      }
+      // Legality cannot be settled when the pattern resolves, the way wiring's
+      // is: the two ends belong to DIFFERENT patterns, and neither knows the
+      // other's slot kinds. So the pair the ports actually name is judged here,
+      // against the macro edge that asked for it. Without this the compiler
+      // would emit a relationship the table forbids - the one thing `check`
+      // exists to make impossible.
+      const expandedKind = relationshipKindByIdentity.get(edge.predicate)
+      const fromKind = kindOfSubjectForPorts.get(from)
+      const toKind = kindOfSubjectForPorts.get(to)
+      if (
+        expandedKind !== undefined &&
+        fromKind !== undefined &&
+        toKind !== undefined
+      ) {
+        const permitted = permittedBetween(fromKind, toKind)
+        if (permitted !== undefined && !permitted.has(expandedKind.coreKind)) {
+          diagnostics.push({
+            severity: 'error',
+            code: 'YM404',
+            message:
+              `Expanding "${edge.id}" through the ports lands ` +
+              `"${expandedKind.coreKind}" from "${from}" to "${to}", which is ` +
+              `not permitted between "${fromKind}" and "${toKind}"`,
+            path: edge.source.path,
+            pointer: edge.source.pointer,
+            line: edge.source.line,
+            column: edge.source.column,
+          })
+          continue
+        }
       }
       if (
         authoredPairs.has(`${from}\u0000${edge.predicate}\u0000${to}`)
