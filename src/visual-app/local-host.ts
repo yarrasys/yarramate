@@ -62,6 +62,45 @@ export interface LocalHostOptions {
   readonly description?: string
   /** Told after every landed commit, so a host can persist what it was given. */
   readonly onCommit?: (documents: readonly string[]) => void
+  /**
+   * The question catalogue the questions section evaluates, or the shipped
+   * `core-enrichment` one when absent (#328).
+   *
+   * The engine is yarramate's and so is the UI; the QUESTIONS belong to
+   * whoever adopted it. `core-enrichment` is a general modelling interview,
+   * right for this repository's own CLI and for a host with no domain of its
+   * own, and wrong for a product whose interview is about its own subject
+   * matter. Until this existed a host could have the questions UI only by
+   * also running yarramate's catalogue, so a product with its own interview
+   * had to omit the section and show its questions on a separate surface,
+   * away from the model they are about.
+   *
+   * Bytes rather than a parsed catalogue, matching what the seam beneath
+   * already takes: a catalogue that does not load leaves the overlay absent
+   * rather than failing the mount, because the overlay is a garnish on the
+   * model and a model frame must not be blocked by it.
+   */
+  readonly catalogue?: { readonly path: string; readonly source: string }
+  /**
+   * Questions this host has already dealt with and does not want asked again
+   * (#328).
+   *
+   * A host-supplied catalogue alone does not close this: the editor evaluates
+   * the catalogue itself and cannot know that a reviewer set a question aside,
+   * with a reason, recorded somewhere the editor cannot see. Without this the
+   * pane would go on asking a question its own product had answered.
+   *
+   * `subject` absent dismisses the question wherever it appears - the
+   * workspace-scoped entry and every subject's - which is "stop asking this".
+   * `subject` present dismisses it for that subject alone, which is "not for
+   * this one". Dismissal hides a question from the pane and changes nothing
+   * about the model or about what `ask --open` reports; the interview is not
+   * the editor's to settle.
+   */
+  readonly dismissed?: readonly {
+    readonly questionId: string
+    readonly subject?: string
+  }[]
 }
 
 const EMPTY_MODEL: VisualRenderedModel = {
@@ -160,7 +199,7 @@ export const createLocalHost = (options: LocalHostOptions): EditorHost => {
       // live list so a view created or removed during this editor session is
       // represented exactly as it is in the rail.
       projectionDigests: revisionsOf(views.map(({ path }) => path)),
-    }, SHIPPED_CATALOGUE)
+    }, options.catalogue ?? SHIPPED_CATALOGUE, options.dismissed)
     views = workspaceModel.views
     model = workspaceModel.model
     return true
