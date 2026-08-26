@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.5.0
 
 - **Fixed.** The cytoscape container declares `position: relative`, so
   cytoscape stops warning that it "can not use UI extensions properly"
