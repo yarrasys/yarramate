@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- **Fixed.** An expansion the relationship table forbids is refused
+  (#268, ADR 0124). A port's landing pair was minted without being judged
+  against the table, so a pattern could emit a relationship `check` would
+  refuse if anyone had written it by hand — the one thing `check` exists
+  to make impossible. Wiring never had this hole: its legality is settled
+  when the pattern resolves, because the slot kinds fix both endpoint
+  kinds. A port's cannot be, because the two ends belong to different
+  patterns and neither knows the other's slots, so the pair is judged at
+  expansion instead and a forbidden one is `YM404` against the macro
+  edge. The macro edge itself is often perfectly legal while its landing
+  pair is not — two groupings permit nearly everything — which is why
+  nothing earlier caught it.
+
 - **Added.** A port says where a macro edge lands (#268 phase 2, ADR
   0124). A pattern may declare `ports`, and a relationship authored
   between two pattern instances whose kind both patterns port is expanded

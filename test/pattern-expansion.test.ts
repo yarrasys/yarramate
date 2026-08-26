@@ -559,6 +559,33 @@ describe('a port says where a macro edge lands', () => {
     ).toContain('YM421')
   })
 
+  // The one legality question ports CANNOT settle when the pattern resolves:
+  // the two ends belong to different patterns, and neither knows the other's
+  // slot kinds. So the pair the ports actually name is judged at expansion,
+  // against the macro edge that asked for it. Without it the compiler emits a
+  // relationship the table forbids, which is the one thing check exists to
+  // make impossible.
+  it('refuses an expansion the relationship table forbids (YM404)', () => {
+    // composition is not permitted from an application service to an
+    // application component, though it IS permitted between the two groupings
+    // the macro edge joins - so nothing before this point can catch it.
+    const forbidden = pattern(
+      undefined,
+      `    ports:
+      - kind: yarramate/core@0.1#composition
+        out: service
+        in: component
+`,
+    )
+    const macroComposition = twoApis(`
+  - id: sys-composes-prc
+    kind: composition
+    from: sys-api
+    to: prc-api
+`)
+    expect(codes([profile, forbidden, macroComposition])).toContain('YM404')
+  })
+
   it('refuses a port naming a part the pattern does not declare (YM302)', () => {
     const stray = pattern(
       undefined,
