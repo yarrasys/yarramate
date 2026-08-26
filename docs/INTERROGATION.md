@@ -138,6 +138,34 @@ motivation before implementation is making a claim the engine now honours,
 where before the order was presentational and questions fired in whatever
 order the model happened to trip them.
 
+## A kind a catalogue names must exist where it says it does
+
+A catalogue is refused when it names a kind that its profile is loaded and
+does not declare (`YM914`). All three kind-bearing fields are checked: a
+question's `trigger`, its `subjects.kinds` selector, and a wave's `opensWhen`
+gate.
+
+The failure this prevents leaves nothing visibly wrong. A trigger whose kind
+does not resolve never matches, so the question never opens, and that is
+indistinguishable from a condition that is simply not met. A selector's kind
+scopes the question to an empty set. A gate's kind never holds, and since a
+closed wave carries no questions at all, one typo retires a whole wave and
+reads exactly like a wave waiting on the model.
+
+**A kind whose profile is not loaded is not an error.** That is a dormant
+cross-profile question, and it is a supported thing to write:
+`core-enrichment` names four `yarramate/policy@0.1` constraint kinds, and
+that profile loads only when a document selects it. Those four questions are
+correctly silent in a workspace with no policy, and refusing them would put
+four false positives on the shipped catalogue.
+
+The distinction is therefore between a kind that resolves **nowhere the
+catalogue could see** and one that resolves in a profile **this workspace did
+not load**. Only the first is a mistake. Resolution is tested through the
+kind maps rather than a declared-kinds list, so a kind inherited through
+`extends` counts: a profile that declares none of its own and inherits every
+one is exactly the case a declared-kinds check would call entirely missing.
+
 ## Evaluation model
 
 A question is **open** iff its trigger matches, and **closed** the moment it

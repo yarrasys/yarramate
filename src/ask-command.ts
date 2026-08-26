@@ -812,10 +812,13 @@ export function runAskCommand(
       const current = entries.filter(({ status }) => status === 'current')
       const retired = entries.filter(({ status }) => status === 'retired')
 
-      const loadedCatalogue = loadQuestionCatalogue({
-        path: shippedCataloguePath,
-        source: readFileSync(shippedCataloguePath, 'utf8'),
-      })
+      const loadedCatalogue = loadQuestionCatalogue(
+        {
+          path: shippedCataloguePath,
+          source: readFileSync(shippedCataloguePath, 'utf8'),
+        },
+        compilation.profileContext,
+      )
       if (!loadedCatalogue.ok) return failed(loadedCatalogue.diagnostics)
       const report = evaluateCatalogue(
         loadedCatalogue.catalogue,
@@ -1107,10 +1110,13 @@ export function runAskCommand(
         cataloguePath === undefined
           ? shippedCataloguePath
           : resolve(cwd, cataloguePath)
-      const loadedCatalogue = loadQuestionCatalogue({
-        path: cataloguePath ?? resolvedCataloguePath,
-        source: readFileSync(resolvedCataloguePath, 'utf8'),
-      })
+      const loadedCatalogue = loadQuestionCatalogue(
+        {
+          path: cataloguePath ?? resolvedCataloguePath,
+          source: readFileSync(resolvedCataloguePath, 'utf8'),
+        },
+        compilation.profileContext,
+      )
       if (!loadedCatalogue.ok) return failed(loadedCatalogue.diagnostics)
       // The evidence overlay rides along for the one condition that
       // reads it (unchallenged-evidence); a workspace declaring no
@@ -1481,10 +1487,13 @@ export function runAskCommand(
       cataloguePath === undefined
         ? shippedCataloguePath
         : resolve(cwd, cataloguePath)
-    const loadedCatalogue = loadQuestionCatalogue({
-      path: cataloguePath ?? resolvedCataloguePath,
-      source: readFileSync(resolvedCataloguePath, 'utf8'),
-    })
+    const loadedCatalogue = loadQuestionCatalogue(
+      {
+        path: cataloguePath ?? resolvedCataloguePath,
+        source: readFileSync(resolvedCataloguePath, 'utf8'),
+      },
+      compilation.profileContext,
+    )
     if (!loadedCatalogue.ok) return failed(loadedCatalogue.diagnostics)
     // Loaded ahead of evaluation so the overlay feeds the one condition
     // that reads it (unchallenged-evidence), then reused for the

@@ -923,10 +923,109 @@ export type CatalogueLoadResult =
   | { readonly ok: true; readonly catalogue: QuestionCatalogue }
   | { readonly ok: false; readonly diagnostics: readonly Diagnostic[] }
 
+/** One qualified kind a catalogue names, and where it names it. */
+interface CatalogueKindReference {
+  readonly kind: string
+  readonly path: readonly (string | number)[]
+}
+
+/**
+ * Every qualified kind a catalogue names, from all three fields that carry
+ * one.
+ *
+ * All three die the same way when the kind does not resolve, and two of them
+ * are easy to forget. A trigger's kind never matches, so the question never
+ * opens. A subject selector's kind selects nothing, so the question is scoped
+ * to an empty set. A wave gate's kind never holds, so after #334 the whole
+ * wave never opens and carries no questions at all - one typo silently
+ * retiring a wave (#351).
+ */
+const kindReferencesOf = (
+  catalogue: QuestionCatalogue,
+): readonly CatalogueKindReference[] => {
+  const found: CatalogueKindReference[] = []
+  const fromCondition = (
+    condition: unknown,
+    path: readonly (string | number)[],
+  ) => {
+    if (typeof condition !== 'object' || condition === null) return
+    for (const field of ['kinds', 'counterpartKinds'] as const) {
+      const value = (condition as Record<string, unknown>)[field]
+      if (!Array.isArray(value)) continue
+      value.forEach((kind, index) => {
+        if (typeof kind === 'string')
+          found.push({ kind, path: [...path, field, index] })
+      })
+    }
+  }
+  catalogue.waves.forEach((wave, waveIndex) => {
+    ;(wave.opensWhen ?? []).forEach((condition, conditionIndex) => {
+      fromCondition(condition, ['waves', waveIndex, 'opensWhen', conditionIndex])
+    })
+  })
+  catalogue.questions.forEach((question, questionIndex) => {
+    ;(question.subjects?.kinds ?? []).forEach((kind, index) => {
+      found.push({
+        kind,
+        path: ['questions', questionIndex, 'subjects', 'kinds', index],
+      })
+    })
+    question.trigger.forEach((condition, conditionIndex) => {
+      fromCondition(condition, [
+        'questions',
+        questionIndex,
+        'trigger',
+        conditionIndex,
+      ])
+    })
+  })
+  return found
+}
+
+/**
+ * Kinds this catalogue names that the profile they belong to does not have.
+ *
+ * The check is deliberately narrow, and the narrowness is the design (#351).
+ * A kind is reported ONLY when its profile is loaded and the kind is absent
+ * from it, which is unambiguously a typo. A kind whose profile is not loaded
+ * at all is left alone, because that is a legitimately dormant cross-profile
+ * question rather than a mistake: `core-enrichment` names four
+ * `yarramate/policy@0.1` constraint kinds, and `yarramate/policy@0.1` loads
+ * only when a document selects it or a profile extends it. Reporting those
+ * four would put four false positives on the catalogue this repository ships,
+ * and a check that cries wolf on its own catalogue gets turned off.
+ *
+ * Resolution is tested against the kind maps rather than a declared-kinds
+ * list, so a kind inherited through `extends` counts. A profile that declares
+ * no kinds of its own and inherits every one of them is the case a
+ * declared-kinds check would call entirely missing.
+ */
+const unresolvableKinds = (
+  catalogue: QuestionCatalogue,
+  profileContext: ResolvedProfileContext,
+): readonly CatalogueKindReference[] => {
+  const known = new Set<string>([
+    ...profileContext.conceptKindLineages.keys(),
+    ...profileContext.relationshipKindLineages.keys(),
+  ])
+  const loadedProfiles = new Set<string>()
+  for (const identity of known) {
+    const hash = identity.indexOf('#')
+    if (hash > 0) loadedProfiles.add(identity.slice(0, hash))
+  }
+  return kindReferencesOf(catalogue).filter(({ kind }) => {
+    if (known.has(kind)) return false
+    const hash = kind.indexOf('#')
+    // Profile absent entirely: dormant, not wrong.
+    return hash > 0 && loadedProfiles.has(kind.slice(0, hash))
+  })
+}
+
 // Shared by interrogate and design: schema validation plus the YM911
 // undeclared-wave check, both source-located against the catalogue file.
 export function loadQuestionCatalogue(
   catalogueSource: WorkspaceSource,
+  profileContext?: ResolvedProfileContext,
 ): CatalogueLoadResult {
   const loadedCatalogue = loadSourceDocument<QuestionCatalogue>(
     catalogueSource,
@@ -959,6 +1058,32 @@ export function loadQuestionCatalogue(
   )
   if (waveDiagnostics.length > 0) {
     return { ok: false, diagnostics: waveDiagnostics }
+  }
+  // Only when a caller has a compiled workspace to check against. Without one
+  // there is no way to tell a typo from a kind whose profile simply is not
+  // here, and guessing would be the false positive this check exists to avoid.
+  const kindDiagnostics =
+    profileContext === undefined
+      ? []
+      : unresolvableKinds(catalogue, profileContext).map(
+          ({ kind, path }): Diagnostic => ({
+            severity: 'error',
+            code: 'YM914',
+            message: `Kind "${kind}" is not declared by profile "${kind.slice(
+              0,
+              kind.indexOf('#'),
+            )}", which this workspace loads, so the question can never fire`,
+            ...locateSourcePath(
+              catalogueSource.path,
+              loadedCatalogue.document.yaml,
+              loadedCatalogue.document.lineCounter,
+              path,
+              `/${path.join('/')}`,
+            ),
+          }),
+        )
+  if (kindDiagnostics.length > 0) {
+    return { ok: false, diagnostics: kindDiagnostics }
   }
   return { ok: true, catalogue }
 }
