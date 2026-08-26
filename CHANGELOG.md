@@ -35,9 +35,13 @@
   that comes out empty falls back to the table rather than leaving the
   edge undrawable. A `CanvasNode` carries `portKinds`, the resolved
   profile context carries `patternPortKinds`, and
-  `yarramate/visual-graph/v1` gains the field — a wire change, so a
-  consumer validating against a pinned copy of that schema needs it
-  upgraded alongside the package.
+  `yarramate/visual-graph/v1` gains the field — a wire change. Reading a
+  graph is unaffected, but **constructing** one is not: `portKinds` is
+  required, so a consumer with `CanvasNode` object literals (test
+  fixtures, most likely) breaks at typecheck until each gains the field.
+  A named consumer reports three such files. A consumer validating
+  against a pinned copy of that schema needs it upgraded alongside the
+  package.
 
   **Folding needed no canvas mode.** Because a macro edge survives its
   expansion and stays an ordinary subject, a projection over the pattern
