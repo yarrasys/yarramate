@@ -669,6 +669,66 @@ body {
   background: var(--sheet);
 }
 
+/* The column's own rim: one slim row above the sections, holding the control
+   that puts the whole column away (#294). The sections' headers stay about
+   their sections; the rim is about the column. */
+.stack-rim {
+  display: flex;
+  flex: none;
+  justify-content: flex-end;
+  border-bottom: 1px solid var(--rule);
+}
+
+.conversation-hide {
+  min-height: 22px;
+  padding: 0 calc(var(--step) * 1.5);
+  border: none;
+  background: transparent;
+  color: var(--quiet);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.conversation-hide:hover,
+.conversation-hide:focus-visible {
+  color: var(--cobalt);
+}
+
+/* The way back while the column is away: a thin strip the full height of the
+   workspace, in the boundary's own place, carrying the attention the hidden
+   column would have shown - the unread count, and a waiting choice. */
+.conversation-reopen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--step);
+  width: 22px;
+  height: 100%;
+  padding: calc(var(--step) * 1.5) 0;
+  border: none;
+  border-left: 1px solid var(--rule);
+  background: var(--sheet);
+  color: var(--quiet);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.conversation-reopen:hover,
+.conversation-reopen:focus-visible {
+  color: var(--cobalt);
+}
+
+.attention-choice {
+  min-width: 1.25rem;
+  padding: 0 0.35rem;
+  border: 1px solid var(--cobalt);
+  border-radius: 999px;
+  color: var(--cobalt);
+  font-size: 11px;
+  text-align: center;
+}
+
 .stack-section {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
@@ -1650,6 +1710,18 @@ body {
     max-height: 56dvh;
     border-top: 1px solid var(--rule);
     border-left: 0;
+  }
+
+  /* The stack lies across the foot here, so its reopen strip does too. */
+  .conversation-reopen {
+    flex-direction: row;
+    justify-content: center;
+    width: auto;
+    height: auto;
+    min-height: 24px;
+    padding: 0;
+    border-left: 0;
+    border-top: 1px solid var(--rule);
   }
 }
 
