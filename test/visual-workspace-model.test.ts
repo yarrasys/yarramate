@@ -114,6 +114,62 @@ describe('interrogationOverlayOf', () => {
     expect(twice).toEqual(once)
   })
 
+  // A host with its own interrogation supplies its own questions AND what it
+  // has already dealt with (#328). The engine is yarramate's and so is the UI;
+  // the questions belong to whoever adopted it, and a question a reviewer set
+  // aside in the host's own product must not be asked again by a pane embedded
+  // in it.
+  describe('a host that has already dealt with a question', () => {
+    it('drops it from every subject when no subject is named', () => {
+      const overlay = interrogationOverlayOf(compiled(), catalogue, [
+        { questionId: 'actor-owner-missing' },
+      ])!
+      expect(Object.keys(overlay.subjects)).toEqual([])
+      // The workspace-scoped question is untouched: dismissing one says
+      // nothing about the others.
+      expect(overlay.workspace.map(({ questionId }) => questionId)).toEqual([
+        'goal-missing',
+      ])
+    })
+
+    it('drops a workspace-scoped question by id alone', () => {
+      const overlay = interrogationOverlayOf(compiled(), catalogue, [
+        { questionId: 'goal-missing' },
+      ])!
+      expect(overlay.workspace).toEqual([])
+    })
+
+    it('drops it for the named subject only', () => {
+      const kept = interrogationOverlayOf(compiled(), catalogue, [
+        { questionId: 'actor-owner-missing', subject: 'somebody-else' },
+      ])!
+      expect(Object.keys(kept.subjects)).toEqual(['teller'])
+
+      const dropped = interrogationOverlayOf(compiled(), catalogue, [
+        { questionId: 'actor-owner-missing', subject: 'teller' },
+      ])!
+      expect(Object.keys(dropped.subjects)).toEqual([])
+    })
+
+    // Dismissal decides what the PANE draws and nothing else: the model is
+    // untouched and `ask --open` still reports the question, because the
+    // interview is not the editor's to settle.
+    it('changes nothing about the catalogue the overlay names', () => {
+      const overlay = interrogationOverlayOf(compiled(), catalogue, [
+        { questionId: 'goal-missing' },
+        { questionId: 'actor-owner-missing' },
+      ])!
+      expect(overlay.catalogue).toBe('fixture@1.0')
+      expect(overlay.semantics.length).toBeGreaterThan(0)
+    })
+
+    it('is a no-op when the host has dismissed nothing', () => {
+      expect(interrogationOverlayOf(compiled(), catalogue, [])).toEqual(
+        interrogationOverlayOf(compiled(), catalogue),
+      )
+    })
+  })
+
   it('returns undefined for a catalogue that does not load, never a throw', () => {
     expect(
       interrogationOverlayOf(compiled(), {

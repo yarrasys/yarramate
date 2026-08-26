@@ -298,6 +298,47 @@ const editor = mountEditor(document.querySelector('#editor')!, {
 editor.unmount()
 ```
 
+### The questions are yours
+
+The questions section evaluates the shipped `core-enrichment` catalogue by
+default. A host with its own interrogation supplies its own instead (#328):
+
+```ts
+const editor = mountEditor(element, {
+  store,
+  workspace,
+  sections: ['palette', 'properties', 'questions', 'changes'],
+  catalogue: { path: 'catalogues/consulting.yaml', source: catalogueText },
+  dismissed: [
+    { questionId: 'register-fidelity', subject: 'crm-integration' },
+    { questionId: 'engagement-framing' },
+  ],
+})
+```
+
+The division this draws is deliberate. **The engine is yarramate's and so is
+the UI; the questions belong to whoever adopted it.** `core-enrichment` is a
+general modelling interview — right for yarramate's own CLI, and right for a
+host with no domain of its own — and wrong for a product whose interview is
+about its own subject matter. Inheriting it would mean asking a consultant
+about modelling hygiene in the pane where they are asking a client about
+sign-off.
+
+`catalogue` takes bytes, and a catalogue that does not load leaves the overlay
+absent rather than failing the mount: the overlay is a garnish on the model,
+and a model frame must not be blocked by it.
+
+`dismissed` is what the host has already dealt with. A supplied catalogue
+alone does not cover this — the editor evaluates the catalogue itself and
+cannot know that a reviewer set a question aside, with a reason, recorded
+somewhere the editor cannot see, so the pane would go on asking a question the
+host's own product had answered. Naming a `subject` dismisses the question for
+that subject alone; omitting it dismisses the question wherever it appears.
+
+Dismissal decides what the **pane draws** and nothing else. The model is
+untouched and `ask --open` still reports the question, because the interview is
+not the editor's to settle.
+
 Pass `readOnly: true` to mount a viewer over the same surface — for a frozen
 published snapshot, say ([ADR 0117](adr/0117-a-mounted-editor-can-refuse-the-pen.md)).
 The reviewer still selects, filters, navigates views and reads questions and

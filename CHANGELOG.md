@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+- **Added.** A mounted editor takes the host's questions, and what the host
+  has already dealt with (#328). `LocalHostOptions` and `MountOptions` gain
+  `catalogue` and `dismissed`. Until now a host could have the questions UI
+  only by also running yarramate's `core-enrichment`, so a product with its
+  own interview had to omit the section entirely and show its questions on a
+  separate surface, away from the model they were about. The division this
+  draws: **the engine is yarramate's and so is the UI; the questions belong
+  to whoever adopted it.** A general modelling interview is right for this
+  repository's own CLI and wrong for a product whose interview is about its
+  own subject matter. A catalogue that does not load leaves the overlay
+  absent rather than failing the mount, as before. `dismissed` covers what a
+  supplied catalogue cannot: the editor evaluates the catalogue itself and
+  cannot know a reviewer set a question aside with a reason recorded
+  somewhere the editor cannot see, so without it the pane would go on asking
+  a question the host had answered. Naming a `subject` dismisses the
+  question for that subject alone; omitting it dismisses it wherever it
+  appears. Dismissal decides what the pane draws and nothing else: the model
+  is untouched and `ask --open` still reports the question, because the
+  interview is not the editor's to settle. Neither field changes any
+  published format, and a host that passes neither behaves exactly as
+  before.
+
 - **Added.** The connect palette narrows to a pattern's ports (#268 phase
   3, ADR 0124). Between two pattern instances an editor now offers only
   the relationship kinds *both* patterns port, rather than the ten of

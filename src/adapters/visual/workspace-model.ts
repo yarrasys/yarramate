@@ -93,12 +93,25 @@ export const conceptCountOf = (
  * Subject ids come from the same compiled graph as `CanvasNode.id`, so the
  * join in the browser is a plain lookup.
  */
+export interface DismissedQuestion {
+  readonly questionId: string;
+  /** Absent dismisses the question wherever it appears. */
+  readonly subject?: string;
+}
+
 export const interrogationOverlayOf = (
   compiled: {
     readonly graph: SemanticGraph;
     readonly profileContext: ResolvedProfileContext;
   },
   catalogue: { readonly path: string; readonly source: string },
+  /**
+   * What the host has already dealt with (#328). Evaluation is unchanged and
+   * the model is untouched: this decides only what the pane draws, because a
+   * question set aside in the host's own product should not be asked again by
+   * a pane embedded in it.
+   */
+  dismissed: readonly DismissedQuestion[] = [],
 ): VisualInterrogationOverlay | undefined => {
   const loaded = loadQuestionCatalogue(catalogue);
   if (!loaded.ok) return undefined;
@@ -107,11 +120,22 @@ export const interrogationOverlayOf = (
     compiled.graph,
     compiled.profileContext,
   );
+  const dismissedEverywhere = new Set(
+    dismissed
+      .filter(({ subject }) => subject === undefined)
+      .map(({ questionId }) => questionId),
+  );
+  const dismissedForSubject = new Set(
+    dismissed
+      .filter(({ subject }) => subject !== undefined)
+      .map(({ questionId, subject }) => `${questionId}\u0000${subject}`),
+  );
   const workspace: VisualQuestionEntry[] = [];
   const subjects: Record<string, VisualQuestionEntry[]> = {};
   for (const wave of report.waves) {
     for (const question of wave.questions) {
       if (!question.open) continue;
+      if (dismissedEverywhere.has(question.id)) continue;
       const base = {
         questionId: question.id,
         authority: question.authority,
@@ -122,6 +146,9 @@ export const interrogationOverlayOf = (
         continue;
       }
       for (const subject of question.subjects) {
+        if (dismissedForSubject.has(`${question.id}\u0000${subject.id}`)) {
+          continue;
+        }
         (subjects[subject.id] ??= []).push({
           ...base,
           question: subject.question,
@@ -154,6 +181,7 @@ export const renderedWorkspaceOf = (
   views: readonly VisualViewSummary[],
   metadata: Omit<VisualRenderedModel, "graph" | "vocabulary" | "interrogation">,
   catalogue?: { readonly path: string; readonly source: string },
+  dismissed?: readonly DismissedQuestion[],
 ): {
   readonly model: VisualRenderedModel;
   readonly views: readonly VisualViewSummary[];
@@ -169,7 +197,7 @@ export const renderedWorkspaceOf = (
   const interrogation =
     catalogue === undefined
       ? undefined
-      : interrogationOverlayOf(compiled, catalogue);
+      : interrogationOverlayOf(compiled, catalogue, dismissed);
   return {
     model: {
       ...metadata,
