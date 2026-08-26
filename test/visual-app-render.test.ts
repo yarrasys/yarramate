@@ -784,6 +784,37 @@ describe('an empty filter result says so on the canvas (#307)', () => {
   })
 })
 
+/**
+ * On-canvas zoom and fit (#308): the canvas's only zoom affordance was wheel
+ * zoom at a tenth sensitivity, so a mouse-only reviewer over a register-scale
+ * fit had no discoverable way in. The cluster sits bottom-right - the free
+ * corner - and travels with the canvas: any mount that draws the diagram
+ * draws it, read-only included, because looking is exactly the work there.
+ */
+describe('zoom and fit controls (#308)', () => {
+  it('draws the cluster, each control named for assistive tech', () => {
+    const markup = renderSession({ model: renderedModel })
+
+    expect(markup).toContain('class="zoom-controls"')
+    expect(markup).toContain('aria-label="Zoom in"')
+    expect(markup).toContain('aria-label="Zoom out"')
+    expect(markup).toContain('aria-label="Fit diagram"')
+  })
+
+  it('keeps the cluster in a read-only mount', () => {
+    const markup = renderSession({ model: renderedModel }, { readOnly: true })
+
+    expect(markup).toContain('class="zoom-controls"')
+    expect(markup).toContain('aria-label="Fit diagram"')
+  })
+
+  it('draws no cluster while there is no canvas to zoom', () => {
+    const markup = renderSession()
+
+    expect(markup).not.toContain('zoom-controls')
+  })
+})
+
 describe('open questions section (#292)', () => {
   const overlay = {
     catalogue: 'core-enrichment@1.1',

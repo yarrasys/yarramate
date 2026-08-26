@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+- **Fixed.** Disconnected subjects pack into a readable grid, and the
+  canvas grows zoom and fit controls (#308). Layout: with 54 subjects
+  and no relationships — the natural order when transcribing a client
+  register — every subject is its own ELK component, and the packing
+  was driven by `aspectRatio: cy.width() / cy.height()`, a default
+  cytoscape-elk injects into the option bag it forwards to ELK
+  verbatim: the viewport's momentary shape, NaN on a headless
+  instance, and small enough at mount to break one component per
+  packing row — a single 172x6942 column auto-fitted to zoom ~0.10,
+  every node an unreadable sliver. `buildLayoutConfig` now pins the
+  bare `aspectRatio` key (the same spelling, so the injection is
+  replaced at cytoscape-elk's own merge rather than raced as a second
+  key) at 2.5, measured to land drawn ratios of 1.6–2.2 across
+  9/20/54/120 disconnected subjects — nine make a 3x3 grid — while a
+  connected graph's layout is untouched, since component packing never
+  reaches a single-component graph. Direction stays DOWN; #274 is
+  deliberately held. Controls: the canvas's only zoom affordance was
+  wheel zoom at a tenth sensitivity, undiscoverable and near-immobile
+  without a wheel, so it now carries a zoom in / zoom out / fit
+  cluster bottom-right — the free corner. A press steps the viewport a
+  quarter about its own centre, clamped against runaway presses and
+  left standing as the reviewer's own framing; Fit is #307's
+  `fitVisible` by hand — frame the visible set without moving a node —
+  and records as automatic framing, so a later panel resize may
+  re-frame it the way a layout's own fit is re-framed.
+
 - **Fixed.** A filter that matches nothing no longer blanks the canvas
   silently, and the survivors of one that matches come into view
   (#307). Three mechanisms, one field report. Refit: a quick-filter

@@ -110,6 +110,25 @@ const CONTAINER_LABEL_GAP = 22
 // on the same framing the layout would have produced at the new canvas size.
 const FIT_PADDING = 20
 
+// One press of the on-canvas zoom buttons (#308). Wheel zoom stands at
+// `wheelSensitivity: 0.1` - roughly ten notches per usual step, and the only
+// zoom the canvas offered at all, so a mouse-only reviewer over a
+// register-scale fit (zoom ~0.10) had no discoverable way in. A button press
+// is a deliberate act, so it takes a full step. The clamp only stops runaway
+// repeat-presses: 0.02 still frames a graph far larger than any field model,
+// and 10 is past any label-reading close-up.
+const BUTTON_ZOOM_STEP = 1.25
+const MIN_BUTTON_ZOOM = 0.02
+const MAX_BUTTON_ZOOM = 10
+
+// The zoom one button press lands on. Exported so the step and its clamp are
+// facts a test can state without a viewport to press against.
+export function steppedZoom(current: number, direction: 1 | -1): number {
+  const level =
+    direction === 1 ? current * BUTTON_ZOOM_STEP : current / BUTTON_ZOOM_STEP
+  return Math.min(MAX_BUTTON_ZOOM, Math.max(MIN_BUTTON_ZOOM, level))
+}
+
 // Spacing, shared by the root graph and every compound container.
 //
 // ELK's defaults are ~20px throughout, which is too tight for 170x50 nodes
@@ -145,6 +164,27 @@ const ELK_SPACING: Record<string, unknown> = {
   'elk.padding': `[top=${CONTAINER_PADDING + CONTAINER_LABEL_GAP},left=${CONTAINER_PADDING},bottom=${CONTAINER_PADDING},right=${CONTAINER_PADDING}]`,
 }
 
+// The proportion disconnected components pack toward (#308). `layered`
+// separates components by default; what failed at register scale was the
+// packing. cytoscape-elk hands the whole `elk` bag to ELK verbatim as the
+// root graph's `layoutOptions` (`graph['layoutOptions'] = options.elk` in
+// its `Layout.run`), but first injects `aspectRatio: cy.width() /
+// cy.height()` as a default - the viewport's momentary shape, which is NaN
+// on a headless instance and, at mount time on a canvas taller than wide,
+// small enough that ELK's row-breaking (`sqrt(total component area) x
+// aspectRatio`) fits one component per row: 54 subjects with no
+// relationships drew as one 172x6942 column fitted to zoom ~0.10. The bare
+// `aspectRatio` spelling below is load-bearing: it replaces the injected
+// key at cytoscape-elk's own `assign`, so exactly one value ever reaches
+// ELK, the same headless and mounted. The value is not the drawn
+// proportion: the packer breaks rows in the pre-rotation frame, so under
+// `DOWN` the requested ratio lands roughly inverted and quantised.
+// Measured on disconnected 170x50 subjects at 2.5: 9 -> 672x312 (a 3x3
+// grid), 20 -> 922x572, 54 -> 1672x962, 120 -> 2422x1482 - drawn ratios
+// 1.6-2.2, no overlaps - while a connected cycle's layout is untouched
+// (component packing never reaches a single-component graph).
+const COMPONENT_ASPECT_RATIO = 2.5
+
 // Shared by the full-graph layout effect and the visible-subgraph relayout
 // that runs on view switch, so both always agree on algorithm and direction.
 //
@@ -169,6 +209,9 @@ export function buildLayoutConfig(): cytoscape.LayoutOptions {
   const elk: ElkLayoutOptions['elk'] = {
     algorithm: 'layered',
     'elk.direction': 'DOWN',
+    // Bare key on purpose - replaces cytoscape-elk's injected viewport
+    // ratio; see COMPONENT_ASPECT_RATIO.
+    aspectRatio: COMPONENT_ASPECT_RATIO,
     ...ELK_SPACING,
   }
   const config: ElkLayoutOptions = {
@@ -1493,6 +1536,33 @@ export function GraphCanvas({
     if (cyRef.current !== null) relayoutVisible(cyRef.current)
   }
 
+  // The on-canvas zoom cluster (#308). A press zooms about the viewport's own
+  // centre - the wheel zooms about the pointer, but a button press carries no
+  // meaningful position. The reviewer's resulting viewport is theirs: it is
+  // deliberately not recorded as automatic framing, so a later panel resize
+  // leaves it standing, exactly as a wheel zoom is left standing.
+  const zoomStep = (direction: 1 | -1): void => {
+    const cy = cyRef.current
+    if (cy === null) return
+    cy.zoom({
+      level: steppedZoom(cy.zoom(), direction),
+      renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 },
+    })
+  }
+
+  // Fit is the same operation a quick-filter keystroke performs (#307), asked
+  // for by hand: frame what is visible without moving a node. A framing this
+  // produced is recorded as automatic - like a layout's own fit, a later
+  // panel resize may re-frame it; a fit that did not happen (nothing
+  // visible) records nothing.
+  const fitToVisible = (): void => {
+    const cy = cyRef.current
+    if (cy === null) return
+    if (fitVisible(cy)) {
+      autoViewportRef.current = { zoom: cy.zoom(), pan: { ...cy.pan() } }
+    }
+  }
+
   // The standing indicator (#273): a saved layout silently overrides every
   // relayout, so whenever one is actually in force for this view the canvas
   // says so, with the way out beside it. Distinct from the transient
@@ -1551,6 +1621,25 @@ export function GraphCanvas({
           </button>
         </div>
       ) : null}
+      {/* Zoom and fit, on the canvas they act on (#308). Bottom-right is the
+          free corner: the quick filter and the save notice hold the
+          top-right, the standing filter pill the top-left, the saved-layout
+          pill the bottom-left, and the empty-state pill the centre. */}
+      <div className="zoom-controls" role="group" aria-label="Zoom controls">
+        <button type="button" aria-label="Zoom in" onClick={() => zoomStep(1)}>
+          +
+        </button>
+        <button
+          type="button"
+          aria-label="Zoom out"
+          onClick={() => zoomStep(-1)}
+        >
+          −
+        </button>
+        <button type="button" aria-label="Fit diagram" onClick={fitToVisible}>
+          Fit
+        </button>
+      </div>
     </>
   )
 }
