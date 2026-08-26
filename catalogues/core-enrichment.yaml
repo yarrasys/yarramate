@@ -1,6 +1,6 @@
 format: yarramate/question-catalogue/v1
 id: core-enrichment
-version: "1.2"
+version: "1.3"
 profile: yarramate/core@0.1
 presentation:
   title: Core enrichment interview
@@ -25,27 +25,39 @@ waves:
       Load-bearing hops: the behavior a component is assigned to or the
       interface it composes, the serving/triggering/flow mechanism,
       payload, trust, reliability, and capacity. Hygiene waits.
+    opensWhen:
+      - condition: has-any-subject
   - id: business
     name: Business
     description: Who acts, what is served, and what information matters.
+    opensWhen:
+      - condition: has-any-subject
   - id: application
     name: Application
     description: >-
       How declared services are realized, performed, and fed with
       information.
+    opensWhen:
+      - condition: has-any-subject
   - id: technology
     name: Technology
     description: >-
       Where the declared applications actually run and what materializes
       them.
+    opensWhen:
+      - condition: has-any-subject
   - id: implementation
     name: Implementation
     description: >-
       How the planned architecture becomes real: work, deliverables, and
       the plateaus between here and there.
+    opensWhen:
+      - condition: has-any-subject
   - id: hygiene
     name: Model hygiene
     description: Cross-cutting completeness that keeps every wave honest.
+    opensWhen:
+      - condition: has-any-subject
 
 questions:
   # ---- motivation ----------------------------------------------------------

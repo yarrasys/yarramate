@@ -66,6 +66,7 @@
       "required": [
         "id",
         "name",
+        "opened",
         "questions"
       ],
       "properties": {
@@ -76,6 +77,10 @@
         "name": {
           "type": "string",
           "minLength": 1
+        },
+        "opened": {
+          "description": "Whether this wave's gate is met (#334, ADR 0125). A wave with no `opensWhen` is always true. A wave reported false asks nothing and carries no questions: they are premature rather than answered, which is the third state a progress rail needs so a closed wave is not counted as done. Its questions are excluded from `summary` for the same reason.",
+          "type": "boolean"
         },
         "questions": {
           "type": "array",
@@ -530,6 +535,19 @@
           "properties": {
             "condition": {
               "const": "unscoped-succession"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "The workspace holds at least one concept (#334, ADR 0125). The guard a late wave needs to say \"only once the model has substance\": an empty model is not an architecture at rest, it has not started, and asking it how the planned architecture becomes real greets someone ahead of question one.",
+          "required": [
+            "condition"
+          ],
+          "properties": {
+            "condition": {
+              "const": "has-any-subject"
             }
           }
         },

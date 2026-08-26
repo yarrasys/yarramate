@@ -2,6 +2,44 @@
 
 ## Unreleased
 
+- **Fixed.** A blank project is no longer greeted with six questions about
+  what it does not have (#334, ADR 0125). Measured against 1.3.0: a fresh
+  `yarramate init` opened **nine** questions, six of them of the form "you
+  have nothing of kind X" — including how the planned architecture becomes
+  real, asked before anyone had named a subject. It now opens **three**, all
+  motivation: why the system exists, who its stakeholders are, what
+  constrains it.
+
+  A wave may declare `opensWhen`, conditions that must all hold before it
+  opens, written in the same vocabulary a question's trigger uses so a
+  reviewer reads a gate the way they already read a trigger. The one new
+  condition is `has-any-subject`. The gate belongs to the **wave** rather
+  than to each question because "the implementation wave is premature" is
+  one fact, not one per question in it — a per-question guard is only as
+  good as an author's memory, and this fix exists because six questions
+  shipped here unguarded while a consuming product cut two rather than
+  guard them.
+
+  A closed wave asks nothing: its questions are not evaluated at all, rather
+  than evaluated and reported closed, so they reach neither the report nor
+  the summary, and the wave reports `opened: false` — the third state a
+  progress rail needs. `summary.questions` counts questions in opened waves
+  only, so a blank model reports 3 of 11 rather than 3 of 51, forty-eight of
+  which were never put.
+
+  ADR 0120 survives intact: the gate is about the **model** having
+  substance, never about a previous wave being answered, so a model that has
+  started and declares no work keeps the question open and goes on saying
+  nothing is changing. Wave order becomes load-bearing, which is what a wave
+  was always claiming to be.
+
+  Catalogue `core-enrichment` goes 1.2 to **1.3**, gating every wave after
+  motivation. `INTERROGATION_SEMANTICS_VERSION` stays at **1**: the engine
+  gained an optional field and a condition, and a catalogue using neither
+  evaluates exactly as before. `yarramate/interrogation-report/v1` gains a
+  **required** `opened` on a wave, so a consumer *constructing* one gains it
+  at typecheck; reading is unaffected.
+
 - **Added.** A mounted editor takes the host's questions, and what the host
   has already dealt with (#328). `LocalHostOptions` and `MountOptions` gain
   `catalogue` and `dismissed`. Until now a host could have the questions UI
