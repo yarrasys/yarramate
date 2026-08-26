@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.4.0
 
 - **Fixed.** "No open questions" no longer reads as a finished interview
   when nothing was asked (#334). A catalogue whose waves are all gated shut
