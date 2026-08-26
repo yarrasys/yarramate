@@ -738,6 +738,50 @@ export function graphToElements(
   return [...nodeElements, ...edgeElements]
 }
 
+// The one substring judgement the canvas pass and the shell's empty-state
+// honesty share, so what hides and what is reported can never drift (#307):
+// case-insensitive, against a subject's id, name, and kind label. `name` and
+// `kindLabel` are `unknown` because the canvas reads them out of cytoscape
+// data, which types nothing.
+export function subjectMatchesQuickFilter(
+  trimmedLowerFilter: string,
+  id: string,
+  name: unknown,
+  kindLabel: unknown,
+): boolean {
+  if (trimmedLowerFilter === '') return true
+  if (id.toLowerCase().includes(trimmedLowerFilter)) return true
+  if (typeof name === 'string' && name.toLowerCase().includes(trimmedLowerFilter)) {
+    return true
+  }
+  return (
+    typeof kindLabel === 'string' &&
+    kindLabel.toLowerCase().includes(trimmedLowerFilter)
+  )
+}
+
+// How many of the graph's subjects the standing filter and the quick-filter
+// text leave drawn: the same narrowing `applyFilter` performs, restated as a
+// pure function of render data so the shell can say "nothing matches" with no
+// canvas mounted (#307). Container ancestors pulled in for nesting are not
+// counted, and need not be: they are only ever added alongside at least one
+// matching subject, so zero here is exactly the blank canvas. A `matchedIds`
+// entry naming a relationship (a view's match set may) draws no subject and
+// counts none.
+export function filteredSubjectCount(
+  nodes: readonly Pick<CanvasNode, 'id' | 'name' | 'kindLabel'>[],
+  matchedIds: readonly string[] | null,
+  quickFilterText: string,
+): number {
+  const trimmed = quickFilterText.trim().toLowerCase()
+  const matched = matchedIds === null ? null : new Set(matchedIds)
+  return nodes.filter(
+    (node) =>
+      (matched === null || matched.has(node.id)) &&
+      subjectMatchesQuickFilter(trimmed, node.id, node.name, node.kindLabel),
+  ).length
+}
+
 // Recompute which elements cytoscape shows from the structural (server-matched)
 // `matchedIds` filter and the client-side `quickFilterText` narrowing, then
 // hide/show elements in one pass. `matchedIds === null` means "no structural
@@ -760,12 +804,13 @@ export function applyFilter(
   const baseNodeIds = matchedIds === null ? cy.nodes().map((node) => node.id()) : matchedIds
 
   const nodeMatchesQuickFilter = (id: string): boolean => {
-    if (id.toLowerCase().includes(trimmedQuickFilter)) return true
     const node = cy.getElementById(id)
-    const label = node.data('label')
-    if (typeof label === 'string' && label.toLowerCase().includes(trimmedQuickFilter)) return true
-    const kindLabel = node.data('kindLabel')
-    return typeof kindLabel === 'string' && kindLabel.toLowerCase().includes(trimmedQuickFilter)
+    return subjectMatchesQuickFilter(
+      trimmedQuickFilter,
+      id,
+      node.data('label'),
+      node.data('kindLabel'),
+    )
   }
 
   const visibleNodeIds = new Set(
@@ -853,6 +898,24 @@ function runLayout(eles: Core | CollectionReturnValue): void {
 // never need to guard against "the new view matched nothing".
 export function relayoutVisible(cy: Core): void {
   runLayout(cy.elements(':visible'))
+}
+
+// Re-frames the viewport around what is visible without moving a single node.
+// A quick-filter keystroke changes visibility only: the survivors keep the
+// positions the last layout (or the reviewer's own drag) gave them, but at
+// register scale those positions can sit anywhere in the old framing, off the
+// viewport or a few pixels tall, indistinguishable from an empty canvas
+// (#307). A FIT is the least destructive operation that brings them into
+// view: deliberately not `relayoutVisible`, which would repack the graph and
+// discard dragged positions on every keystroke. Returns whether it fitted, so
+// the caller records only a framing this function actually produced; nothing
+// visible means nothing to frame, and the shell's empty-state pill is what
+// explains a blank canvas.
+export function fitVisible(cy: Core): boolean {
+  const visible = cy.elements(':visible')
+  if (visible.empty()) return false
+  cy.fit(visible, FIT_PADDING)
+  return true
 }
 
 // `dragfree` fires once per drag (unlike `position`, which fires on every
@@ -1089,6 +1152,9 @@ export function GraphCanvas({
   const activeViewIdRef = useRef(activeViewId)
   const pendingViewFitRef = useRef(false)
   const matchedIdsRef = useRef(matchedIds)
+  // Seeded with the prop so the mount render never reads as "the quick filter
+  // just changed" - the mount effect's own layout frames the first paint.
+  const quickFilterTextRef = useRef(quickFilterText)
   // Keep latest onSaveLayout and savedPositions for the drag-save handler
   const onSaveLayoutRef = useRef(onSaveLayout)
   const savedPositionsRef = useRef(effectiveSaved)
@@ -1390,9 +1456,25 @@ export function GraphCanvas({
     // `filter-result` frame.
     const matchedChanged = matchedIds !== matchedIdsRef.current
     matchedIdsRef.current = matchedIds
+    const quickFilterChanged = quickFilterText !== quickFilterTextRef.current
+    quickFilterTextRef.current = quickFilterText
     if (pendingViewFitRef.current || matchedChanged) {
       pendingViewFitRef.current = false
       relayoutVisible(cyRef.current)
+    } else if (quickFilterChanged && fitVisible(cyRef.current)) {
+      // A quick-filter keystroke never relayouts - the survivors keep their
+      // positions (a reviewer's drags included) and the viewport re-frames
+      // around them (#307). Without this, a filter typed over a register-scale
+      // fit left the survivor pinned at its stack coordinate, ~17x5px at zoom
+      // 0.10: a blank-looking canvas over a filter that matched. The fitted
+      // framing is recorded as automatic, the same as a layout's own fit, so
+      // a later panel resize still knows it may reframe; a fit that did not
+      // happen (nothing visible) records nothing, leaving the reviewer's own
+      // viewport theirs.
+      autoViewportRef.current = {
+        zoom: cyRef.current.zoom(),
+        pan: { ...cyRef.current.pan() },
+      }
     }
   }, [matchedIds, quickFilterText, graph])
 

@@ -316,26 +316,37 @@ export const createLocalHost = (options: LocalHostOptions): EditorHost => {
     send: (input: VisualBrowserInput) => {
       switch (input.type) {
         case 'filter.query':
+          // A workspace that does not compile has no graph to evaluate a
+          // query against. This used to answer `matchedIds: []`, which the
+          // canvas reads as "every subject failed the query" and hides the
+          // whole model - a claim about the subjects, when the truth is the
+          // question could not be asked at all (#307). Refuse with the
+          // reason instead, the way every other unanswerable input is
+          // refused, leaving whatever filter and model were standing - the
+          // same keep-the-last-good-model posture `recompile` itself takes.
+          if (compiled === undefined) {
+            refuse(input, [
+              serverDiagnostic(
+                'YMVS318',
+                'The workspace does not compile, so a filter cannot be evaluated; the last good model stays as it is',
+              ),
+            ])
+            return
+          }
           deliver?.frame({
             kind: 'filter-result',
             result: {
               query: input.payload.query,
-              matchedIds:
-                compiled === undefined
-                  ? []
-                  : matchedIdsOf(
-                      compiled.graph,
-                      input.payload.query,
-                      compiled.profileContext,
-                    ),
-              excluded:
-                compiled === undefined
-                  ? []
-                  : exclusionsOf(
-                      compiled.graph,
-                      input.payload.query,
-                      compiled.profileContext,
-                    ),
+              matchedIds: matchedIdsOf(
+                compiled.graph,
+                input.payload.query,
+                compiled.profileContext,
+              ),
+              excluded: exclusionsOf(
+                compiled.graph,
+                input.payload.query,
+                compiled.profileContext,
+              ),
             },
           })
           return

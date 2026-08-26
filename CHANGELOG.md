@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- **Fixed.** A filter that matches nothing no longer blanks the canvas
+  silently, and the survivors of one that matches come into view
+  (#307). Three mechanisms, one field report. Refit: a quick-filter
+  keystroke changed visibility without re-framing, so a surviving node
+  kept its register-scale coordinate and drew a few pixels tall,
+  indistinguishable from an empty canvas; the canvas now fits the
+  viewport to the visible set on every quick-filter change (a fit,
+  never a re-layout: nodes keep their positions, dragged ones
+  included). Honesty: an empty result now says so where the subjects
+  would be, as a centred status pill naming the narrowing that caused
+  it, with the way out beside it: Show all for a standing query whose
+  match set draws no subject (a view-sourced one included, which the
+  top-left pill deliberately stays silent about), Clear filter for
+  quick-filter text that zeroed an otherwise drawn set. Fallback: the
+  local host answered `filter.query` with `matchedIds: []` whenever
+  the workspace did not compile, a claim that every subject failed the
+  query; it now refuses with `YMVS318` and leaves the last good model
+  standing, the same posture its own `recompile` takes.
+
 - **Fixed.** A second relationship between the same pair stays visible
   (#306). Two defects, one report. Drafting: `proposeRelationshipId`
   built its `taken` set from the landed graph alone, so with the first

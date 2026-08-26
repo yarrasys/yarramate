@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest'
 import {
   applyFilter,
   buildStylesheet,
+  filteredSubjectCount,
+  fitVisible,
   graphToElements,
   modelPositionOf,
   relayoutVisible,
@@ -155,25 +157,25 @@ describe('applyFilter', () => {
   })
 })
 
-describe('relayoutVisible', () => {
-  // Explicit positions and a `preset` initial layout (cytoscape otherwise
-  // auto-runs a `grid` layout on init, discarding them) so moved-vs-untouched
-  // is observable, not masked by every node already starting at (0, 0).
-  const buildPositionedCy = () =>
-    cytoscape({
-      styleEnabled: true,
-      layout: { name: 'preset' },
-      elements: [
-        { data: { id: 'node1' }, position: { x: 500, y: 500 }, group: 'nodes' },
-        { data: { id: 'node2' }, position: { x: 600, y: 500 }, group: 'nodes' },
-        { data: { id: 'node3' }, position: { x: 9999, y: 9999 }, group: 'nodes' },
-        {
-          data: { id: 'edge1', source: 'node1', target: 'node2', label: 'calls' },
-          group: 'edges',
-        },
-      ],
-    })
+// Explicit positions and a `preset` initial layout (cytoscape otherwise
+// auto-runs a `grid` layout on init, discarding them) so moved-vs-untouched
+// is observable, not masked by every node already starting at (0, 0).
+const buildPositionedCy = () =>
+  cytoscape({
+    styleEnabled: true,
+    layout: { name: 'preset' },
+    elements: [
+      { data: { id: 'node1' }, position: { x: 500, y: 500 }, group: 'nodes' },
+      { data: { id: 'node2' }, position: { x: 600, y: 500 }, group: 'nodes' },
+      { data: { id: 'node3' }, position: { x: 9999, y: 9999 }, group: 'nodes' },
+      {
+        data: { id: 'edge1', source: 'node1', target: 'node2', label: 'calls' },
+        group: 'edges',
+      },
+    ],
+  })
 
+describe('relayoutVisible', () => {
   it('repositions only the currently visible elements, leaving hidden ones untouched', async () => {
     const cy = buildPositionedCy()
     applyFilter(cy, ['node1', 'node2'], '')
@@ -192,6 +194,110 @@ describe('relayoutVisible', () => {
     const cy = buildPositionedCy()
     applyFilter(cy, [], '')
     expect(() => relayoutVisible(cy)).not.toThrow()
+  })
+})
+
+/**
+ * The refit a quick-filter keystroke earns (#307). A keystroke changes
+ * visibility only, so the survivors keep their layout (and dragged) positions
+ * but can sit anywhere in the old framing: off-viewport, or a few pixels tall
+ * under a register-scale fit, either way indistinguishable from an empty
+ * canvas. `fitVisible` re-frames the viewport around them without moving a
+ * single node, which is what makes it safe to run on every keystroke where
+ * `relayoutVisible` is not.
+ */
+describe('fitVisible', () => {
+  it('re-frames the viewport around the visible set without moving any node', () => {
+    const cy = buildPositionedCy()
+    applyFilter(cy, ['node1', 'node2'], '')
+    // A viewport the reviewer (or a stale fit) left standing.
+    cy.zoom(0.5)
+    cy.pan({ x: 100, y: 100 })
+    const before = cy.nodes().map((node) => ({ ...node.position() }))
+
+    expect(fitVisible(cy)).toBe(true)
+
+    const untouched =
+      cy.zoom() === 0.5 && cy.pan().x === 100 && cy.pan().y === 100
+    expect(untouched, 'the viewport was re-framed').toBe(false)
+    cy.nodes().forEach((node, at) => {
+      expect(node.position(), node.id()).toEqual(before[at])
+    })
+  })
+
+  it('declines to frame nothing, and leaves the viewport alone saying so', () => {
+    const cy = buildPositionedCy()
+    applyFilter(cy, [], '')
+    cy.zoom(0.5)
+    cy.pan({ x: 100, y: 100 })
+
+    expect(fitVisible(cy)).toBe(false)
+    expect(cy.zoom()).toBe(0.5)
+    expect(cy.pan()).toEqual({ x: 100, y: 100 })
+  })
+})
+
+/**
+ * The shell's empty-state honesty (#307): the same narrowing `applyFilter`
+ * performs, restated over render data so "nothing matches" is computable with
+ * no canvas mounted. Zero here must be exactly a blank canvas there, so the
+ * two are asserted against each other on the shared fixture.
+ */
+describe('filteredSubjectCount', () => {
+  const subjects = [
+    { id: 'node1', name: 'Checkout Service', kindLabel: 'applicationComponent' },
+    { id: 'node2', name: 'Payments Gateway', kindLabel: 'applicationComponent' },
+    { id: 'node3', name: 'Order Fulfillment', kindLabel: 'businessProcess' },
+  ]
+
+  it('counts every subject with no narrowing standing', () => {
+    expect(filteredSubjectCount(subjects, null, '')).toBe(3)
+  })
+
+  it('narrows by name, id and kind label, case-insensitively', () => {
+    expect(filteredSubjectCount(subjects, null, 'CHECKOUT')).toBe(1)
+    expect(filteredSubjectCount(subjects, null, 'node2')).toBe(1)
+    expect(filteredSubjectCount(subjects, null, 'applicationComponent')).toBe(2)
+  })
+
+  it('intersects the structural match set with the quick filter', () => {
+    expect(filteredSubjectCount(subjects, ['node1', 'node2'], 'gateway')).toBe(1)
+  })
+
+  it('counts no subject for a match set naming only relationships', () => {
+    // A view's match set may name relationships; none of them draws a node.
+    expect(filteredSubjectCount(subjects, ['checkout-serves-teller'], '')).toBe(0)
+  })
+
+  it('finds the field report subject by id, whatever the case typed', () => {
+    // The ApertureX soak typed CEP and cep over "cep-salesforce"; the
+    // predicate matched all along - the blanking came from elsewhere - and
+    // this pins that it stays true.
+    const register = [
+      { id: 'cep-salesforce', name: 'CEP (Salesforce)', kindLabel: 'applicationComponent' },
+    ]
+    expect(filteredSubjectCount(register, null, 'CEP')).toBe(1)
+    expect(filteredSubjectCount(register, null, 'cep')).toBe(1)
+  })
+
+  it('agrees with applyFilter about emptiness in every direction', () => {
+    const narrowings: readonly (readonly [readonly string[] | null, string])[] = [
+      [null, 'cep'],
+      [null, 'checkout'],
+      [['node1', 'node2'], 'fulfil'],
+      [['node1', 'node2'], 'gateway'],
+      [[], ''],
+    ]
+    for (const [matched, text] of narrowings) {
+      const cy = buildCy()
+      applyFilter(cy, matched, text)
+      const canvasBlank =
+        cy.nodes().filter((node) => node.visible()).length === 0
+      expect(
+        filteredSubjectCount(subjects, matched, text) === 0,
+        `matched=${JSON.stringify(matched)} text=${JSON.stringify(text)}`,
+      ).toBe(canvasBlank)
+    }
   })
 })
 

@@ -668,6 +668,122 @@ describe('saved layout indicator (#273)', () => {
   })
 })
 
+/**
+ * A filter that matches nothing used to leave the canvas silently blank, with
+ * every control still describing the whole model (#307). The canvas now says
+ * so where the subjects would be, names the narrowing that caused it, and
+ * offers the way out: the standing query's Show all when its own match set
+ * draws no subject, clearing the quick filter when its text zeroed an
+ * otherwise drawn set.
+ */
+describe('an empty filter result says so on the canvas (#307)', () => {
+  it('names the quick-filter text that matched nothing, with the way out', () => {
+    const markup = renderSession({
+      model: renderedModel,
+      quickFilterText: 'zzz',
+    })
+
+    expect(markup).toContain('class="filter-empty-pill" role="status"')
+    expect(markup).toContain('Nothing matches “zzz”')
+    expect(markup).toContain('>Clear filter</button>')
+  })
+
+  it('renders no pill while the quick filter still matches subjects', () => {
+    const markup = renderSession({
+      model: renderedModel,
+      quickFilterText: 'checkout',
+    })
+
+    expect(markup).not.toContain('filter-empty-pill')
+    expect(markup).not.toContain('Nothing matches')
+  })
+
+  it('names the standing query when its own match set draws no subject', () => {
+    const markup = renderSession({
+      model: renderedModel,
+      activeFilter: {
+        query: { layers: ['technology'] },
+        matchedIds: [],
+        excluded: [],
+        source: 'panel',
+      },
+    })
+
+    expect(markup).toContain('filter-empty-pill')
+    expect(markup).toContain('Nothing matches this filter:')
+    expect(markup).toContain('layers: technology')
+  })
+
+  it('treats a match set naming only relationships as drawing no subject', () => {
+    // The match set is non-empty, but nothing in it is a node: the canvas is
+    // exactly as blank as with `matchedIds: []`, and as honest about it.
+    const markup = renderSession({
+      model: renderedModel,
+      activeFilter: {
+        query: { layers: ['technology'] },
+        matchedIds: ['checkout-serves-ledger'],
+        excluded: [],
+        source: 'panel',
+      },
+    })
+
+    expect(markup).toContain('filter-empty-pill')
+    expect(markup).toContain('Nothing matches this filter:')
+  })
+
+  it('speaks even for a view-sourced filter the top pill stays silent about', () => {
+    // The tree names a view, so the top-left filter-pill deliberately does
+    // not render for it - which left a view that matches nothing with NO
+    // on-screen explanation at all.
+    const markup = renderSession({
+      model: renderedModel,
+      activeFilter: {
+        query: { layers: ['technology'] },
+        matchedIds: [],
+        excluded: [],
+        source: 'view',
+      },
+    })
+
+    expect(markup).not.toContain('class="filter-pill"')
+    expect(markup).toContain('filter-empty-pill')
+    expect(markup).toContain('>Show all</button>')
+  })
+
+  it('attributes emptiness to the standing query, not the quick filter, when both stand', () => {
+    // Clearing the quick filter would change nothing here: the match set is
+    // already empty, so the pill names the query and offers Show all.
+    const markup = renderSession({
+      model: renderedModel,
+      quickFilterText: 'zzz',
+      activeFilter: {
+        query: { layers: ['technology'] },
+        matchedIds: [],
+        excluded: [],
+        source: 'panel',
+      },
+    })
+
+    expect(markup).toContain('Nothing matches this filter:')
+    expect(markup).not.toContain('Nothing matches “zzz”')
+  })
+
+  it('stays silent over a model with no subjects, where nothing was hidden', () => {
+    const markup = renderSession({
+      model: { ...renderedModel, graph: { nodes: [], edges: [] } },
+      quickFilterText: 'zzz',
+    })
+
+    expect(markup).not.toContain('filter-empty-pill')
+  })
+
+  it('stays silent with no model at all', () => {
+    const markup = renderSession({ quickFilterText: 'zzz' })
+
+    expect(markup).not.toContain('filter-empty-pill')
+  })
+})
+
 describe('open questions section (#292)', () => {
   const overlay = {
     catalogue: 'core-enrichment@1.1',
