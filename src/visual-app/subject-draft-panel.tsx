@@ -49,18 +49,27 @@ export const SubjectDraftPanel = ({
 
   return (
     <section className="subject-draft-panel" aria-label="Add a subject">
-      <label className="subject-draft-field">
+      {/* Explicit for/id on top of the wrapping label: the wrap alone is an
+          implicit association some queries and assistive tech do not resolve
+          (#296). The ids are safe as constants because the app mounts at most
+          one of this panel, like `save-view-title` and `prompt-dialog-value`. */}
+      <label className="subject-draft-field" htmlFor="subject-draft-name">
         <span>Name</span>
         <input
+          id="subject-draft-name"
           type="text"
           value={name}
           onChange={(event) => setName(event.target.value)}
         />
       </label>
 
-      <label className="subject-draft-field">
+      <label className="subject-draft-field" htmlFor="subject-draft-kind">
         <span>Kind</span>
-        <select value={kind} onChange={(event) => setKind(event.target.value)}>
+        <select
+          id="subject-draft-kind"
+          value={kind}
+          onChange={(event) => setKind(event.target.value)}
+        >
           <option value="">Choose a kind</option>
           {kinds.map((option) => (
             // The label, not the id: a document names a kind the short way and
@@ -73,9 +82,10 @@ export const SubjectDraftPanel = ({
         </select>
       </label>
 
-      <label className="subject-draft-field">
+      <label className="subject-draft-field" htmlFor="subject-draft-document">
         <span>Document</span>
         <select
+          id="subject-draft-document"
           value={document}
           onChange={(event) => setDocument(event.target.value)}
         >

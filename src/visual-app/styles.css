@@ -976,10 +976,17 @@ body {
   color: var(--quiet);
 }
 
+/* Opens below the canvas toolbar rather than under it: `.canvas-controls`
+   sits at `top: var(--step)` with 28px-high controls and z-index 5, and this
+   panel used to open at nearly the same corner one layer down, so the toolbar
+   painted over the Name field's label (#296). The offset clears the toolbar's
+   row (step + 28px + step of breathing room), and the z-index puts an open
+   dialog above the controls that opened it should the two ever meet again —
+   still under the command strip (10) and the modal layers. */
 .subject-draft-panel {
   position: absolute;
-  z-index: 3;
-  top: calc(var(--step) * 1.5);
+  z-index: 6;
+  top: calc(var(--step) * 2 + 28px);
   right: calc(var(--step) * 1.5);
   width: min(340px, calc(100% - var(--step) * 4));
   padding: calc(var(--step) * 1.5) calc(var(--step) * 2);

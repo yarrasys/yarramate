@@ -113,4 +113,33 @@ describe('SubjectDraftPanel', () => {
   it('can always be backed out of', () => {
     expect(render()).toContain('Cancel')
   })
+
+  /**
+   * The a11y half of #296: the labels wrapped their controls but named them
+   * for nothing else — no `for`/`id`, so `getByLabel`-style queries and some
+   * assistive tech could not resolve Name, Kind or Document. Every label must
+   * point at a control that exists, and every id must be unique, or two
+   * fields would answer to one name.
+   */
+  it('associates every label with its control', () => {
+    const markup = render()
+
+    const fors = [...markup.matchAll(/<label[^>]*\bfor="([^"]*)"/g)].map(
+      (match) => match[1]!,
+    )
+    const ids = [...markup.matchAll(/\bid="([^"]*)"/g)].map(
+      (match) => match[1]!,
+    )
+
+    // One association per field: Name, Kind, Document.
+    expect(fors).toHaveLength(3)
+    expect(fors.every((target) => target !== '')).toBe(true)
+    // Each names a control that is really there…
+    for (const target of fors) {
+      expect(ids).toContain(target)
+    }
+    // …and no id is claimed twice, in the panel or by two labels.
+    expect(new Set(ids).size).toBe(ids.length)
+    expect(new Set(fors).size).toBe(fors.length)
+  })
 })
