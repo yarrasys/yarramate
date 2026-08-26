@@ -191,6 +191,8 @@ export interface ViewTreeProps {
   readonly onNewView: () => void;
   readonly onSelectSubject: (id: string) => void;
   readonly onRowMenu: TreeRowMenu;
+  /** A viewer, not an author (#298): the new-view affordance is absent. */
+  readonly readOnly?: boolean;
 }
 
 export function ViewTree({
@@ -208,6 +210,7 @@ export function ViewTree({
   onNewView,
   onSelectSubject,
   onRowMenu,
+  readOnly = false,
 }: ViewTreeProps) {
   const tree = buildViewTree({
     views,
@@ -247,22 +250,24 @@ export function ViewTree({
           value={filterText}
           onChange={(event) => onFilterChange(event.currentTarget.value)}
         />
-        <button
-          type="button"
-          className="view-tree-new"
-          title="New view"
-          aria-label="New view"
-          onClick={onNewView}
-        >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
-            <path
-              d="M7 3v8M3 7h8"
-              stroke="currentColor"
-              strokeWidth="1.3"
-              strokeLinecap="round"
-            />
-          </svg>
-        </button>
+        {readOnly ? null : (
+          <button
+            type="button"
+            className="view-tree-new"
+            title="New view"
+            aria-label="New view"
+            onClick={onNewView}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
+              <path
+                d="M7 3v8M3 7h8"
+                stroke="currentColor"
+                strokeWidth="1.3"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+        )}
       </div>
 
       <div className="view-tree-body">

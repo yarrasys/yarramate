@@ -474,3 +474,63 @@ describe("putting a subject into a view, and taking it out", () => {
     expect(groups[groups.length - 1]?.destructive).toBe(true);
   });
 });
+
+/**
+ * A read-only menu (#298, ADR 0117): the items that read or navigate survive,
+ * every item whose intent stages a change is absent - not disabled - and a
+ * group the filter empties is dropped whole, destructive groups first among
+ * them.
+ */
+describe("a read-only menu offers no way to stage", () => {
+  const readOnly = context({ readOnly: true, membership: ["api"] });
+
+  it("leaves a subject its Properties and nothing that stages", () => {
+    expect(
+      labels(contextMenuFor({ kind: "subject", id: "api" }, readOnly)),
+    ).toEqual(["Properties"]);
+  });
+
+  it("leaves a relationship its Properties: no retype, no delete", () => {
+    expect(
+      labels(
+        contextMenuFor({ kind: "relationship", id: "api-serving-ui" }, readOnly),
+      ),
+    ).toEqual(["Properties"]);
+  });
+
+  it("leaves the canvas its reads: export, and the way back to everything", () => {
+    expect(
+      labels(
+        contextMenuFor(
+          { kind: "canvas" },
+          context({ readOnly: true, filtered: true }),
+        ),
+      ),
+    ).toEqual(["Show all subjects", "Export PNG"]);
+  });
+
+  it("leaves a view row navigation and its path, nothing that writes one", () => {
+    expect(
+      labels(contextMenuFor({ kind: "view-row", id: "current" }, readOnly)),
+    ).toEqual(["Open view", "Copy projection path"]);
+  });
+
+  it("leaves a model row its Properties, with no membership edit", () => {
+    expect(
+      labels(contextMenuFor({ kind: "model-row", id: "api" }, readOnly)),
+    ).toEqual(["Properties"]);
+  });
+
+  it("drops every destructive group rather than emptying it in place", () => {
+    for (const target of [
+      { kind: "subject", id: "api" },
+      { kind: "relationship", id: "api-serving-ui" },
+      { kind: "view-row", id: "current" },
+      { kind: "model-row", id: "api" },
+    ] as const) {
+      const groups = contextMenuFor(target, readOnly);
+      expect(groups.some((group) => group.destructive)).toBe(false);
+      expect(groups.every((group) => group.items.length > 0)).toBe(true);
+    }
+  });
+});

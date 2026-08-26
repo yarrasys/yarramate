@@ -117,7 +117,29 @@ export interface ContextMenuContext {
    * than offering one that would do nothing (#255).
    */
   readonly membership: readonly string[] | null;
+  /**
+   * A viewer, not an author (#298, ADR 0117). A read-only menu keeps the items
+   * that read or navigate and drops every item whose intent stages a change -
+   * absent, never disabled.
+   */
+  readonly readOnly?: boolean;
 }
+
+/**
+ * The intents that only read or navigate. Everything outside this set stages
+ * a change - directly, or by opening a dialog whose whole purpose is to stage
+ * one - and a read-only menu (#298) is the menu filtered to this set.
+ * `subject.connect` is here in spirit only: it stages nothing itself, but the
+ * panel it opens exists to stage a relationship, so it is out.
+ */
+const READING_INTENTS: ReadonlySet<ContextMenuIntent["type"]> = new Set([
+  "subject.inspect",
+  "relationship.inspect",
+  "view.open",
+  "view.clear",
+  "view.copy-path",
+  "canvas.export-png",
+]);
 
 /**
  * Putting a subject into the active view, or taking it out — whichever the
@@ -427,18 +449,32 @@ export const contextMenuFor = (
   target: ContextMenuTarget,
   context: ContextMenuContext,
 ): readonly ContextMenuGroup[] => {
-  switch (target.kind) {
-    case "subject":
-      return subjectMenu(target.id, context);
-    case "relationship":
-      return relationshipMenu(target.id, context);
-    case "canvas":
-      return canvasMenu(context);
-    case "view-row":
-      return viewRowMenu(target.id, context);
-    case "model-row":
-      return modelRowMenu(target.id, context);
-  }
+  const groups = ((): readonly ContextMenuGroup[] => {
+    switch (target.kind) {
+      case "subject":
+        return subjectMenu(target.id, context);
+      case "relationship":
+        return relationshipMenu(target.id, context);
+      case "canvas":
+        return canvasMenu(context);
+      case "view-row":
+        return viewRowMenu(target.id, context);
+      case "model-row":
+        return modelRowMenu(target.id, context);
+    }
+  })();
+  if (context.readOnly !== true) return groups;
+  // One filter, by intent, rather than a read-only branch in every builder:
+  // the intents are the discriminated union built to be read, so "which items
+  // stage" is a question the menu can be asked once, at the end. A group
+  // emptied by the filter is dropped whole - including every destructive
+  // group, which by the rule above holds nothing but staging items.
+  return groups.flatMap((group) => {
+    const items = group.items.filter((item) =>
+      READING_INTENTS.has(item.intent.type),
+    );
+    return items.length === 0 ? [] : [{ ...group, items }];
+  });
 };
 
 export interface MenuPlacement {

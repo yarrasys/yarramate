@@ -5,7 +5,10 @@ import type { VisualAppState } from '../src/visual-app/state.js'
 import type { CanvasNode } from '../src/graph-projection.js'
 import type { VisualRenderedModel } from '../src/adapters/visual/wire.js'
 import type { EditorHost } from '../src/visual-app/editor-host.js'
-import type { RightSectionId } from '../src/visual-app/workspace-state.js'
+import type {
+  RightSectionId,
+  SelectedDiagramSubject,
+} from '../src/visual-app/workspace-state.js'
 
 const session = vi.hoisted(() => {
   const baseState: VisualAppState = {
@@ -67,8 +70,15 @@ vi.mock('../src/visual-app/session-client.js', () => ({
 // Static markup cannot click, so the workspace the shell opens with is the
 // seam: everything real is re-exported, and only the initial state is bent -
 // which is exactly what a session that had hidden the column looks like on
-// the next render (#294).
-const workspace = vi.hoisted(() => ({ hidden: false, unread: 0 }))
+// the next render (#294). `selectedSubject` and `panelOpen` bend the same
+// seam for the inspector and the query panel (#298), which otherwise only a
+// click could reach.
+const workspace = vi.hoisted(() => ({
+  hidden: false,
+  unread: 0,
+  selectedSubject: null as SelectedDiagramSubject | null,
+  panelOpen: false,
+}))
 
 vi.mock('../src/visual-app/workspace-state.js', async (importOriginal) => {
   const actual =
@@ -79,6 +89,10 @@ vi.mock('../src/visual-app/workspace-state.js', async (importOriginal) => {
       const state = actual.createVisualWorkspaceState(width, height)
       return {
         ...state,
+        selectedSubject: workspace.selectedSubject,
+        bottomPanel: workspace.panelOpen
+          ? { ...state.bottomPanel, open: true }
+          : state.bottomPanel,
         conversation: {
           ...state.conversation,
           hidden: workspace.hidden,
@@ -124,11 +138,16 @@ const idleHost: EditorHost = {
 beforeEach(() => {
   workspace.hidden = false
   workspace.unread = 0
+  workspace.selectedSubject = null
+  workspace.panelOpen = false
 })
 
 const renderSession = (
   overrides: Partial<VisualAppState> = {},
-  props: { readonly sections?: readonly RightSectionId[] } = {},
+  props: {
+    readonly sections?: readonly RightSectionId[]
+    readonly readOnly?: boolean
+  } = {},
 ): string => {
   session.state = { ...session.baseState, ...overrides }
   return renderToStaticMarkup(createElement(App, { host: idleHost, ...props }))
@@ -849,5 +868,145 @@ describe('a hidden right column (#294)', () => {
 
     expect(markup).not.toContain('--conversation-width:0px')
     expect(markup).toContain('--conversation-width:')
+  })
+})
+
+/**
+ * A read-only mount (#298, ADR 0117): the same visual language with the pen
+ * absent. Everything that reads still renders - the tree, the canvas, the
+ * facts, the questions - and every affordance that stages or commits is not
+ * drawn at all, never drawn disabled.
+ */
+describe('a read-only mount (#298)', () => {
+  const selected: SelectedDiagramSubject = {
+    type: 'element',
+    id: 'app.checkout',
+    title: 'Checkout',
+    kind: 'applicationComponent',
+    description: null,
+  }
+
+  const activeViewState: Partial<VisualAppState> = {
+    model: renderedModel,
+    activeView: 'v1',
+    views: [
+      {
+        id: 'v1',
+        title: 'View One',
+        description: '',
+        query: {},
+        presentation: {},
+        path: '.yarramate/projections/v1.yaml',
+        subjectCount: 2,
+      },
+    ],
+  }
+
+  /** The inspector's own markup: heading row and fields, before the
+   * description block that closes it. */
+  const inspectorOf = (markup: string): string =>
+    markup.slice(
+      markup.indexOf('subject-inspector'),
+      markup.indexOf('subject-description'),
+    )
+
+  it('offers no Add subject button, while the quick filter stays', () => {
+    const markup = renderSession({ model: renderedModel }, { readOnly: true })
+
+    expect(markup).not.toContain('>Add subject</button>')
+    expect(markup).toContain('class="quick-filter"')
+  })
+
+  it('strips the palette and changes sections from whatever the host names', () => {
+    const markup = renderSession(
+      { model: renderedModel },
+      { sections: ['palette', 'properties', 'changes'], readOnly: true },
+    )
+
+    expect(markup).not.toContain('stack-section-palette')
+    expect(markup).not.toContain('stack-section-changes')
+    expect(markup).toContain('stack-section-properties')
+  })
+
+  it('renders the facts of a selected subject with nothing editable', () => {
+    workspace.selectedSubject = selected
+    const markup = renderSession({ model: renderedModel }, { readOnly: true })
+    const inspector = inspectorOf(markup)
+
+    expect(markup).toContain('subject-facts')
+    expect(markup).toContain('class="subject-fact-value">Checkout</span>')
+    expect(inspector).toContain('app.checkout')
+    expect(inspector).not.toContain('<input')
+    expect(inspector).not.toContain('<select')
+  })
+
+  it('keeps Clear on the inspector and drops Connect and Delete', () => {
+    workspace.selectedSubject = selected
+    const markup = renderSession({ model: renderedModel }, { readOnly: true })
+    const inspector = inspectorOf(markup)
+
+    expect(inspector).toContain('>Clear</button>')
+    expect(inspector).not.toContain('>Connect</button>')
+    expect(inspector).not.toContain('>Delete</button>')
+  })
+
+  it('offers no New view affordance in a rail that still reads the views', () => {
+    const markup = renderSession(activeViewState, { readOnly: true })
+
+    expect(markup).toContain('aria-label="Views and model"')
+    expect(markup).toContain('View One')
+    expect(markup).toContain('Checkout')
+    expect(markup).toContain('Ledger')
+    expect(markup).not.toContain('aria-label="New view"')
+  })
+
+  it('shows the view document without the affordance to stage it', () => {
+    workspace.panelOpen = true
+    const markup = renderSession(activeViewState, { readOnly: true })
+
+    expect(markup).toContain('class="query-document"')
+    expect(markup).not.toContain('>Stage view change</button>')
+  })
+
+  it('still reads the open questions the model carries', () => {
+    const markup = renderSession(
+      {
+        model: {
+          ...renderedModel,
+          interrogation: {
+            catalogue: 'core-enrichment@1.1',
+            semantics: '1',
+            workspace: [
+              {
+                questionId: 'outcome-missing',
+                question: 'What outcome justifies this system?',
+                authority: 'human' as const,
+              },
+            ],
+            subjects: {},
+          },
+        },
+      },
+      { readOnly: true },
+    )
+
+    expect(markup).toContain('Open questions')
+    expect(markup).toContain('What outcome justifies this system?')
+  })
+
+  it('leaves the default mount the authoring surface it was', () => {
+    workspace.selectedSubject = selected
+    workspace.panelOpen = true
+    const markup = renderSession(activeViewState)
+    const inspector = inspectorOf(markup)
+
+    expect(markup).toContain('>Add subject</button>')
+    expect(markup).toContain('stack-section-palette')
+    expect(markup).toContain('stack-section-changes')
+    expect(markup).toContain('aria-label="New view"')
+    expect(markup).toContain('>Stage view change</button>')
+    expect(inspector).toContain('>Connect</button>')
+    expect(inspector).toContain('>Delete</button>')
+    expect(inspector).toContain('<select')
   })
 })

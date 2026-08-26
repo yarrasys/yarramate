@@ -37,4 +37,15 @@ describe('mountEditorWith', () => {
 
     expect(root.unmount).toHaveBeenCalledOnce()
   })
+
+  it('mounts an author unless told otherwise, and threads the read-only posture (#298)', () => {
+    mountEditorWith({} as Element, host, sections)
+    mountEditorWith({} as Element, host, sections, true)
+
+    const [authoring, reading] = root.render.mock.calls.map(
+      ([element]) => (element as { props: { readOnly: boolean } }).props,
+    )
+    expect(authoring?.readOnly).toBe(false)
+    expect(reading?.readOnly).toBe(true)
+  })
 })
