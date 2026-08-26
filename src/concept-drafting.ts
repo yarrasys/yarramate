@@ -22,10 +22,17 @@ const ID_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/
  * about a name produces worse ids than a transliteration of the name does.
  * Returning null rather than a placeholder keeps a subject called `"???"` from
  * landing as `subject-1`, which nothing could later be traced back from.
+ *
+ * `reserved` carries ids the graph does not know yet: a staged-but-uncommitted
+ * draft never enters the rendered graph, so without it a second subject whose
+ * name slugs to the same id re-proposed it and the editor's replace-by-target
+ * staging silently swallowed the first (#315) - the identical blind spot
+ * `proposeRelationshipId` had before #306's fix, and the identical way out.
  */
 export const proposeConceptId = (
   graph: CanvasGraph,
   name: string,
+  reserved: Iterable<string> = [],
 ): string | null => {
   const base = name
     .normalize('NFKD')
@@ -46,6 +53,7 @@ export const proposeConceptId = (
   const taken = new Set([
     ...graph.nodes.map((node) => node.id),
     ...graph.edges.map((edge) => edge.id),
+    ...reserved,
   ])
   if (!taken.has(base)) return base
   for (let suffix = 2; ; suffix += 1) {
@@ -62,6 +70,11 @@ export const proposeConceptId = (
  * a kind outside it here, rather than trusting the caller's palette, is the
  * same posture `draftRelationship` takes: the guarantee has to hold for any
  * caller, not only one that filtered first.
+ *
+ * A caller holding drafts the graph has not landed yet - an editor with a
+ * pending changeset - passes their ids as `reserved`, so a second subject
+ * slugging to a taken id steps to `-2` instead of colliding with the first
+ * (#315).
  */
 export const draftConcept = (
   graph: CanvasGraph,
@@ -71,12 +84,13 @@ export const draftConcept = (
     readonly document: string
   },
   kinds: readonly string[],
+  reserved: Iterable<string> = [],
 ): YarramateOperation | null => {
   if (input.document === '') return null
   if (!kinds.includes(input.kind)) return null
   const name = input.name.trim()
   if (name === '') return null
-  const id = proposeConceptId(graph, name)
+  const id = proposeConceptId(graph, name, reserved)
   if (id === null) return null
   return {
     op: 'add-concept',

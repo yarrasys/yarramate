@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- **Fixed.** A second staged subject survives beside the first when
+  their names slug to the same id (#315). `proposeConceptId` built its
+  taken set from the landed graph alone, so with the first draft still
+  staged the second proposed the identical id and the editor's
+  replace-by-target staging swallowed it: no row, no error, no toast.
+  The same blind spot #313 closed for `proposeRelationshipId`, noted
+  there as out of scope; this completes that fix for the concept path
+  with the same shape. `proposeConceptId` and `draftConcept` now take
+  the ids a pending changeset already claims (`stagedSubjectIds`
+  collects them), the Add-subject form threads them through a required
+  `reservedIds` prop the way the connection panel does, and the second
+  subject stages as `…-2`, which lands and compiles cleanly.
+
 - **Fixed.** Disconnected subjects pack into a readable grid, and the
   canvas grows zoom and fit controls (#308). Layout: with 54 subjects
   and no relationships — the natural order when transcribing a client

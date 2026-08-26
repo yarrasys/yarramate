@@ -417,6 +417,10 @@ const DiagramWorkspace = ({
             graph={state.model.graph}
             kinds={state.model.vocabulary.conceptKinds}
             documents={state.model.documents}
+            // What is staged but not landed: the graph cannot know these ids,
+            // and without them a second subject slugging to the same id
+            // collides with the first and is silently swallowed (#315).
+            reservedIds={stagedSubjectIds(state.pendingChangeset.operations)}
             defaultDocument={
               // Near what the reviewer is looking at: the selected subject's
               // document, or the first the workspace declares.

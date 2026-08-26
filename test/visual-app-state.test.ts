@@ -513,6 +513,37 @@ describe("visualAppReducer changeset management", () => {
     expect(staged.pendingChangeset.operations).toEqual([first, second]);
   });
 
+  it("queues a second staged subject rather than replacing the first (#315)", () => {
+    // Two names slugging to the same base, distinct ids - which is what
+    // `draftConcept` now produces when the first is still staged. The
+    // replace-by-target rule keys on the id, so the pair queues; only a
+    // restage of the *same* id replaces.
+    const first = {
+      op: "add-concept",
+      document: "model.yaml",
+      concept: {
+        id: "payment-service",
+        kind: "applicationComponent",
+        name: "Payment Service",
+      },
+    } as const;
+    const second = {
+      op: "add-concept",
+      document: "model.yaml",
+      concept: {
+        id: "payment-service-2",
+        kind: "businessActor",
+        name: "Payment (Service)",
+      },
+    } as const;
+    const staged = [first, second].reduce(
+      (state, operation) =>
+        visualAppReducer(state, { type: "changeset.staged", operation }),
+      activeState,
+    );
+    expect(staged.pendingChangeset.operations).toEqual([first, second]);
+  });
+
   it("keeps the changeset intact when apply fails, and sets diagnostics", () => {
     const op = {
       op: "update-concept",
