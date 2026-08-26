@@ -408,6 +408,59 @@ socket/session host.
 
 [...]
 
+## The model as an Excel workbook
+
+`yarramate export xlsx <projection.yaml> <workspace.yaml> --out <file>` writes
+a workbook an architect or FDE can work in, and `yarramate/workbook` publishes
+the writer for a host that has no Node:
+
+```ts
+import { workbookFrom } from 'yarramate/workbook'
+
+const bytes = workbookFrom(projectionResult, {
+  workspace: 'acme',
+  yarramateVersion: '1.5.0',
+  sourceDigests,
+  conceptKinds,
+  relationshipKinds,
+  statuses: ['planned', 'current', 'retired'],
+})
+```
+
+Synchronous, dependency-free and deterministic: the same input always produces
+the same bytes. The import graph is held free of Node builtins and of the
+compiler at runtime, so it fits a Cloudflare Worker or a Durable Object. A
+caller hands over an already-evaluated `ProjectionResult`, which is what keeps
+schema validation out of that graph.
+
+**It takes a projection**, so it inherits every facet a projection query has.
+That is how a caller chooses which *version* to export: a query naming
+`states` produces a workbook of that architecture state, with no separate
+flag.
+
+```yaml
+query:
+  states:
+    - target-state
+```
+
+**Reading the sheets.** Column A is always the id and is what the model is
+keyed on. A column headed `↳ … (auto)` is derived for readability and is
+ignored on the way back. Kind and status columns are drawn from the compiled
+profile, so they carry the vocabulary that workspace actually has.
+
+Sheets beginning `~` are machinery. `~Meta` records the format, the versions
+and the source digests. `~Baseline` is a hidden copy of the working rows
+exactly as exported, and exists so a later import can tell an author's edit
+from a change the repository made underneath. Neither is edited.
+
+Anything the mapping does not recognise is carried verbatim on `07 Other
+Facts` rather than dropped, so a workbook stays lossless across a compiler
+that grows new predicates.
+
+Reading a workbook back into a model is a separate change; today the workbook
+is written, not read.
+
 ## MCP server for agent harnesses
 
 Harnesses that load MCP servers can connect the bundled read-only adapter:

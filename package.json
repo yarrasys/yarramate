@@ -58,6 +58,10 @@
       "types": "./dist/interrogation-entry.d.ts",
       "import": "./dist/interrogation-entry.js"
     },
+    "./workbook": {
+      "types": "./dist/workbook-entry.d.ts",
+      "import": "./dist/workbook-entry.js"
+    },
     "./visual-app": {
       "types": "./dist/visual-app-lib/editor.d.ts",
       "import": "./dist/visual-app-lib/editor.js"
