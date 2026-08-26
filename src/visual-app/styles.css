@@ -2362,4 +2362,32 @@ body {
 
 .saved-layout-pill button:hover {
   color: var(--ink);
+
+/* A staged row is the reviewer's own uncommitted intent beside landed truth
+   (ADR 0114): the title leans and a small chip says so. Quiet on purpose —
+   staging is ordinary work, so nothing here borrows the failure palette. */
+.tree-row-staged .tree-label {
+  font-style: italic;
+}
+
+.tree-row-staged-delete .tree-label {
+  text-decoration: line-through;
+}
+
+.tree-staged {
+  flex: none;
+  padding: 0 0.3em;
+  font-family: var(--utility);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--quiet);
+  border: 1px solid var(--rule-firm);
+  border-radius: 2px;
+}
+
+.tree-row-active .tree-staged {
+  color: inherit;
+  border-color: currentColor;
+  opacity: 0.75;
 }

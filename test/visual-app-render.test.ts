@@ -288,6 +288,70 @@ describe('visual conversation rendering', () => {
     expect(markup).not.toContain('<option value="v1">')
   })
 
+  it('shows a staged view, and the folder it declares, before any commit lands it', () => {
+    // The #299 repro: "New folder…" stages the first view of a folder no
+    // landed document declares, and the rail used to show nothing at all.
+    const markup = renderSession({
+      pendingChangeset: {
+        operations: [],
+        viewOperations: [
+          {
+            op: 'write-view',
+            path: '.yarramate/projections/roadmap-first.yaml',
+            projection: {
+              format: 'yarramate/projection/v1',
+              id: 'roadmap-first',
+              version: '1.0',
+              query: {},
+              presentation: {
+                title: 'Roadmap first',
+                description: 'staged',
+                folder: 'Roadmap',
+              },
+            },
+          },
+        ],
+        sourceDigests: {},
+      },
+    })
+
+    // The folder branch and its first view, at once, visibly staged — and no
+    // count, because nothing has measured a query that has not landed.
+    expect(markup).toContain('<span class="tree-label">Roadmap</span>')
+    expect(markup).toContain('tree-row-staged')
+    expect(markup).toContain(
+      '<span class="tree-label">Roadmap first</span><span class="tree-staged">staged</span>',
+    )
+  })
+
+  it('marks a staged delete in the tree rather than dropping the row', () => {
+    const markup = renderSession({
+      views: [
+        {
+          id: 'v1',
+          title: 'View One',
+          description: '',
+          query: {},
+          presentation: {},
+          path: '.yarramate/projections/v1.yaml',
+          subjectCount: 4,
+        },
+      ],
+      pendingChangeset: {
+        operations: [],
+        viewOperations: [
+          { op: 'delete-view', path: '.yarramate/projections/v1.yaml' },
+        ],
+        sourceDigests: {},
+      },
+    })
+
+    expect(markup).toContain('tree-row-staged-delete')
+    expect(markup).toContain(
+      '<span class="tree-label">View One</span><span class="tree-staged">staged delete</span>',
+    )
+  })
+
   it('lists every declared subject under Model, marking the ones the view leaves out', () => {
     const markup = renderSession({
       model: renderedModel,

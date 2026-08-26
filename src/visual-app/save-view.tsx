@@ -125,6 +125,16 @@ export const buildPayload = ({
 
 interface SaveViewFormProps {
   readonly activeView: VisualViewSummary | null;
+  /**
+   * The folder the OPENER named — "New folder…" or "New view in this
+   * folder…" — or undefined for every other way in. Only Save As New adopts
+   * it; plain Save carries the active view's own folder, so while a folder is
+   * preset the overwrite is disabled rather than offered (#299): pressing it
+   * would silently drop the folder the reviewer just named, and adopting the
+   * folder instead would silently MOVE the active view, which is the very
+   * thing the carry rule exists to prevent.
+   */
+  readonly presetFolder: string | undefined;
   readonly onSubmit: (
     id: string | undefined,
     title: string,
@@ -142,7 +152,12 @@ interface SaveViewFormProps {
  * an overwrite of the active view with nothing retyped, and closing it
  * discard a half-typed name that was never workspace state.
  */
-function SaveViewForm({ activeView, onSubmit, onCancel }: SaveViewFormProps) {
+function SaveViewForm({
+  activeView,
+  presetFolder,
+  onSubmit,
+  onCancel,
+}: SaveViewFormProps) {
   const [title, setTitle] = useState(activeView?.title ?? "");
   const [description, setDescription] = useState(activeView?.description ?? "");
 
@@ -150,6 +165,9 @@ function SaveViewForm({ activeView, onSubmit, onCancel }: SaveViewFormProps) {
   // `viewSavePayload`, so the form refuses exactly what the server would
   // reject rather than sending a save that can only come back as a fault.
   const incomplete = title.trim() === "" || description.trim() === "";
+  // A folder preset means the opener asked for a NEW view in that folder, and
+  // an overwrite is the one action that would ignore it (see the prop).
+  const overwriteDropsFolder = presetFolder !== undefined;
 
   return (
     <div className="save-view-panel">
@@ -159,7 +177,14 @@ function SaveViewForm({ activeView, onSubmit, onCancel }: SaveViewFormProps) {
           onSubmit={(event) => {
             event.preventDefault();
             if (incomplete) return;
-            onSubmit(activeView?.id, title, description);
+            // Submission follows the one action a folder preset leaves
+            // enabled: while the overwrite is disabled below, nothing this
+            // form does may reach it.
+            onSubmit(
+              overwriteDropsFolder ? undefined : activeView?.id,
+              title,
+              description,
+            );
           }}
         >
           <div>
@@ -184,7 +209,14 @@ function SaveViewForm({ activeView, onSubmit, onCancel }: SaveViewFormProps) {
           <div className="save-view-actions">
             <button
               type="submit"
-              disabled={activeView === null || incomplete}
+              disabled={activeView === null || incomplete || overwriteDropsFolder}
+              // The reason, where the disabled button is: a control that
+              // refuses without saying why reads as broken.
+              title={
+                overwriteDropsFolder
+                  ? `Save overwrites the active view and keeps its own folder — Save As New puts the first view in "${presetFolder}".`
+                  : undefined
+              }
             >
               Save
             </button>
@@ -219,6 +251,11 @@ function SaveViewForm({ activeView, onSubmit, onCancel }: SaveViewFormProps) {
  * an overwrite was immediate and unundoable; a staged overwrite is a row the
  * reviewer can read, discard and undo before it lands, which is a better
  * answer than a dialog.
+ *
+ * Opened with a folder preset — "New folder…", "New view in this folder…" —
+ * the overwrite is disabled (#299): it carries the active view's own folder
+ * by design, so it is the one button that would silently drop the folder the
+ * reviewer just named.
  */
 export function SaveViewDialog({
   views,
@@ -278,6 +315,7 @@ export function SaveViewDialog({
         // fields describe the view the Save button would overwrite.
         key={activeViewId}
         activeView={activeView}
+        presetFolder={folder}
         onSubmit={(id, title, description) => {
           submit(id, title, description);
           onClose();

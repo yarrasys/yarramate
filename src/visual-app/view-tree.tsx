@@ -1,5 +1,8 @@
 import { LAYER_COLORS } from "../notation/archimate.js";
-import type { VisualViewSummary } from "../adapters/visual/protocol-contract.js";
+import type {
+  VisualViewOperation,
+  VisualViewSummary,
+} from "../adapters/visual/protocol-contract.js";
 import type { CanvasNode } from "../graph-projection.js";
 import {
   MODEL_ROOT_KEY,
@@ -99,23 +102,44 @@ interface ViewRowProps {
 }
 
 function ViewRow({ row, depth, onSelect, onMenu }: ViewRowProps) {
+  // A staged NEW view is not navigable: opening a view resolves its id in the
+  // landed list, where a staged one does not exist yet. The row is the
+  // reviewer's intent made visible (ADR 0114); acting on it — discard, undo,
+  // commit — belongs to the tray, so the row takes no click and no menu.
+  const navigable = row.staged !== "new";
   return (
     <li>
       <button
         type="button"
         className={`tree-row tree-view tree-depth-${depth}${
           row.active ? " tree-row-active" : ""
+        }${row.staged === null ? "" : " tree-row-staged"}${
+          row.staged === "delete" ? " tree-row-staged-delete" : ""
         }`}
         // The title is width-capped and elided, exactly as the picker it
         // replaces was, so hover still recovers the authored title.
         title={row.title}
         aria-current={row.active ? "true" : undefined}
-        onClick={() => onSelect(row.id)}
-        onContextMenu={menuHandler({ kind: "view", id: row.id }, onMenu)}
+        onClick={navigable ? () => onSelect(row.id) : undefined}
+        onContextMenu={
+          navigable
+            ? menuHandler({ kind: "view", id: row.id }, onMenu)
+            : undefined
+        }
       >
         <ViewGlyph />
         <span className="tree-label">{row.title}</span>
-        <span className="tree-count">{row.subjectCount}</span>
+        {row.staged === null ? null : (
+          <span className="tree-staged">
+            {row.staged === "delete" ? "staged delete" : "staged"}
+          </span>
+        )}
+        {/* No count for a row nothing has measured: a staged new view's query
+            needs the semantic graph, and a made-up zero would read as an
+            empty view. */}
+        {row.subjectCount === null ? null : (
+          <span className="tree-count">{row.subjectCount}</span>
+        )}
       </button>
     </li>
   );
@@ -146,6 +170,13 @@ function Branch({ label, open, count, depth, onToggle }: BranchProps) {
 
 export interface ViewTreeProps {
   readonly views: readonly VisualViewSummary[];
+  /**
+   * The pending changeset's view operations, merged over `views` by
+   * `buildViewTree` so staged intent is visible beside landed truth
+   * (ADR 0114). Derived from the changeset at the call site, never stored:
+   * discarding the operation is the revert.
+   */
+  readonly stagedViewOperations: readonly VisualViewOperation[];
   readonly activeViewId: string;
   /** Every subject the workspace declares, filtered or not. */
   readonly nodes: readonly CanvasNode[];
@@ -164,6 +195,7 @@ export interface ViewTreeProps {
 
 export function ViewTree({
   views,
+  stagedViewOperations,
   activeViewId,
   nodes,
   inViewIds,
@@ -179,6 +211,7 @@ export function ViewTree({
 }: ViewTreeProps) {
   const tree = buildViewTree({
     views,
+    stagedOperations: stagedViewOperations,
     activeViewId,
     // Nodes drawn, not entries in the match set: a match set holds the
     // relationships a view matched as well as its concepts, and the number

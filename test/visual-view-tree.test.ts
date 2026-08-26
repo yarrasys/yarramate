@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { CanvasNode } from "../src/graph-projection.js";
-import type { VisualViewSummary } from "../src/adapters/visual/protocol-contract.js";
+import type {
+  VisualViewOperation,
+  VisualViewSummary,
+} from "../src/adapters/visual/protocol-contract.js";
 import {
   buildModelTree,
   buildViewTree,
@@ -51,6 +54,7 @@ describe("view folders, which the author declares", () => {
     ];
     const tree = buildViewTree({
       views,
+      stagedOperations: [],
       activeViewId: "",
       activeSubjectCount: null,
       filterText: "",
@@ -67,6 +71,7 @@ describe("view folders, which the author declares", () => {
     ];
     const tree = buildViewTree({
       views,
+      stagedOperations: [],
       activeViewId: "",
       activeSubjectCount: null,
       filterText: "",
@@ -93,6 +98,7 @@ describe("view folders, which the author declares", () => {
     // author declares, not a consequence of where a file happens to sit.
     const tree = buildViewTree({
       views: [view({ path: "deeply/nested/only.yaml" })],
+      stagedOperations: [],
       activeViewId: "",
       activeSubjectCount: null,
       filterText: "",
@@ -109,6 +115,7 @@ describe("view rows", () => {
         view({ id: "a", title: "A", subjectCount: 7 }),
         view({ id: "b", title: "B", subjectCount: 9, path: ".yarramate/projections/b.yaml" }),
       ],
+      stagedOperations: [],
       activeViewId: "a",
       // A commit landed and this view now draws six, whatever the frame that
       // carried its summary said.
@@ -127,6 +134,7 @@ describe("view rows", () => {
     ];
     const byTitle = buildViewTree({
       views,
+      stagedOperations: [],
       activeViewId: "",
       activeSubjectCount: null,
       filterText: "the",
@@ -135,6 +143,7 @@ describe("view rows", () => {
 
     const byFolder = buildViewTree({
       views,
+      stagedOperations: [],
       activeViewId: "",
       activeSubjectCount: null,
       filterText: "target",
@@ -312,5 +321,232 @@ describe("the model root, once subjects declare folders", () => {
       ["business", "layer"],
       ["application", "layer"],
     ]);
+  });
+});
+
+/**
+ * Staged intent beside landed truth (ADR 0114, #299). The tree merges the
+ * pending changeset's view operations over the landed views, so a staged
+ * view — and the folder it declares — is visible before commit, marked.
+ */
+describe("staged view operations, merged over the landed views", () => {
+  const writeOp = (
+    id: string,
+    overrides: {
+      readonly title?: string;
+      readonly folder?: string;
+      readonly path?: string;
+    } = {},
+  ): VisualViewOperation => ({
+    op: "write-view",
+    path: overrides.path ?? `.yarramate/projections/${id}.yaml`,
+    projection: {
+      format: "yarramate/projection/v1",
+      id,
+      version: "1.0",
+      query: {},
+      presentation: {
+        title: overrides.title ?? id,
+        description: "staged",
+        ...(overrides.folder === undefined ? {} : { folder: overrides.folder }),
+      },
+    },
+  });
+
+  it("renders a staged NEW view as a row, in the folder it declares", () => {
+    // The #299 repro: "New folder…" stages the first view of a folder no
+    // landed document declares, and the rail used to show nothing at all.
+    const tree = buildViewTree({
+      views: [view()],
+      stagedOperations: [
+        writeOp("roadmap-first", { title: "Roadmap first", folder: "Roadmap" }),
+      ],
+      activeViewId: "",
+      activeSubjectCount: null,
+      filterText: "",
+    });
+
+    expect(tree.folders.map((folder) => folder.name)).toEqual(["Roadmap"]);
+    expect(tree.folders[0]?.views).toEqual([
+      {
+        id: "roadmap-first",
+        title: "Roadmap first",
+        path: ".yarramate/projections/roadmap-first.yaml",
+        // Nothing has measured a staged view: its query needs the semantic
+        // graph, which the browser does not hold.
+        subjectCount: null,
+        // Navigation resolves landed ids, so a staged new view can never be
+        // the active one.
+        active: false,
+        staged: "new",
+      },
+    ]);
+  });
+
+  it("marks the landed row a staged write overwrites, showing what WILL land", () => {
+    const tree = buildViewTree({
+      views: [view({ id: "current-engine", title: "Current engine" })],
+      stagedOperations: [
+        writeOp("current-engine", {
+          title: "Engine, renamed",
+          folder: "Current",
+          path: ".yarramate/projections/current-engine.yaml",
+        }),
+      ],
+      activeViewId: "",
+      activeSubjectCount: null,
+      filterText: "",
+    });
+
+    // Marked, not duplicated: one document, one row.
+    expect(tree.matched).toBe(1);
+    expect(tree.loose).toEqual([]);
+    expect(tree.folders[0]?.name).toBe("Current");
+    expect(tree.folders[0]?.views[0]).toMatchObject({
+      id: "current-engine",
+      title: "Engine, renamed",
+      staged: "overwrite",
+      // The landed measure stays: the staged query has not landed, and the
+      // summary's own staleness story already covers it.
+      subjectCount: 7,
+    });
+  });
+
+  it("marks a staged delete rather than hiding the row", () => {
+    const tree = buildViewTree({
+      views: [view()],
+      stagedOperations: [
+        { op: "delete-view", path: ".yarramate/projections/current-engine.yaml" },
+      ],
+      activeViewId: "",
+      activeSubjectCount: null,
+      filterText: "",
+    });
+
+    expect(tree.loose[0]).toMatchObject({
+      id: "current-engine",
+      title: "Current engine",
+      staged: "delete",
+    });
+    expect(tree.matched).toBe(1);
+  });
+
+  it("reverts to the plain tree when the operations are discarded", () => {
+    // Discarding a staged row leaves the changeset without it, and the tree
+    // derives rather than remembers — so absence of operations IS the revert.
+    const views = [view()];
+    const staged = buildViewTree({
+      views,
+      stagedOperations: [writeOp("brand-new", { folder: "Roadmap" })],
+      activeViewId: "",
+      activeSubjectCount: null,
+      filterText: "",
+    });
+    const discarded = buildViewTree({
+      views,
+      stagedOperations: [],
+      activeViewId: "",
+      activeSubjectCount: null,
+      filterText: "",
+    });
+
+    expect(staged.matched).toBe(2);
+    expect(discarded.matched).toBe(1);
+    expect(discarded.folders).toEqual([]);
+    expect(discarded.loose[0]).toMatchObject({
+      id: "current-engine",
+      staged: null,
+    });
+  });
+
+  it("counts staged rows in matched, and filters them by their staged words", () => {
+    const input = {
+      views: [view({ id: "loose-view", title: "Loose view", path: "a.yaml" })],
+      stagedOperations: [
+        writeOp("target-next", { title: "Target next", folder: "Target" }),
+      ],
+      activeViewId: "",
+      activeSubjectCount: null,
+    };
+
+    // The staged folder is searchable the way a landed one is: typing it is
+    // asking for the folder, wherever its rows come from.
+    expect(buildViewTree({ ...input, filterText: "target" }).matched).toBe(1);
+    expect(buildViewTree({ ...input, filterText: "" }).matched).toBe(2);
+    expect(
+      buildViewTree({ ...input, filterText: "nothing-says-this" }).matched,
+    ).toBe(0);
+  });
+
+  it("filters an overwritten row by what will land, not by what did", () => {
+    const input = {
+      views: [view({ id: "current-engine", title: "Current engine" })],
+      stagedOperations: [
+        writeOp("current-engine", {
+          title: "Renamed entirely",
+          path: ".yarramate/projections/current-engine.yaml",
+        }),
+      ],
+      activeViewId: "",
+      activeSubjectCount: null,
+    };
+
+    // The row SHOWS the staged title, so the filter has to match it — a row
+    // found by a word it no longer displays would look like a false hit.
+    expect(buildViewTree({ ...input, filterText: "renamed" }).matched).toBe(1);
+    expect(
+      buildViewTree({ ...input, filterText: "current engine" }).matched,
+    ).toBe(0);
+  });
+
+  it("keeps the drawn count on an overwritten row that is active", () => {
+    const tree = buildViewTree({
+      views: [view({ id: "current-engine" })],
+      stagedOperations: [
+        writeOp("current-engine", {
+          path: ".yarramate/projections/current-engine.yaml",
+        }),
+      ],
+      activeViewId: "current-engine",
+      activeSubjectCount: 3,
+      filterText: "",
+    });
+
+    expect(tree.loose[0]).toMatchObject({
+      active: true,
+      staged: "overwrite",
+      subjectCount: 3,
+    });
+  });
+
+  it("shows nothing for a staged delete of a path nothing landed", () => {
+    const tree = buildViewTree({
+      views: [],
+      stagedOperations: [{ op: "delete-view", path: "never-landed.yaml" }],
+      activeViewId: "",
+      activeSubjectCount: null,
+      filterText: "",
+    });
+
+    expect(tree.matched).toBe(0);
+  });
+
+  it("renders the last operation staged for a path, never two rows for one document", () => {
+    // The reducer already keeps one row per document; the tree reads
+    // last-wins anyway, so a malformed changeset degrades to what the
+    // reviewer last meant rather than to a duplicate.
+    const tree = buildViewTree({
+      views: [],
+      stagedOperations: [
+        writeOp("draft", { title: "First words", path: "draft.yaml" }),
+        writeOp("draft", { title: "Second thoughts", path: "draft.yaml" }),
+      ],
+      activeViewId: "",
+      activeSubjectCount: null,
+      filterText: "",
+    });
+
+    expect(tree.matched).toBe(1);
+    expect(tree.loose[0]?.title).toBe("Second thoughts");
   });
 });
