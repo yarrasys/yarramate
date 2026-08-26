@@ -6,7 +6,7 @@ import {
   readFileSync,
   writeFileSync,
 } from 'node:fs'
-import { dirname, relative, resolve } from 'node:path'
+import { basename, dirname, relative, resolve } from 'node:path'
 import { compileWorkspace } from './compiler.js'
 import {
   diagnosticJson,
@@ -34,9 +34,13 @@ const runReconciliation = (
   options: readonly string[],
   cwd: string,
 ): CliResult => {
-  const [workspacePath] = options
+  // Bare reconcile already emits JSON, so --json changes nothing — but a
+  // harness scripting "add --json to every verb" must not hit exit 2 on
+  // the one verb that treats it as unknown (#275). Accepted as a no-op.
+  const positional = options.filter((option) => option !== '--json')
+  const [workspacePath] = positional
   if (
-    options.length !== 1 ||
+    positional.length !== 1 ||
     workspacePath === undefined ||
     workspacePath.startsWith('-')
   ) {
@@ -134,6 +138,24 @@ const runReconciliation = (
   }
 }
 
+// The id grammar the document and workspace schemas share: a lowercase
+// letter first, then lowercase alphanumerics in single-hyphen segments.
+const initIdPattern = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/
+
+// The first check output should say the project's own name, not `main`
+// (#275, ADR 0112): the default id is the target directory's basename,
+// slugified to the shared id grammar. `init .` resolves before deriving,
+// so the cwd's basename is what gets named. `main` remains the fallback
+// when the basename yields nothing the schemas accept ('.', '..',
+// all-symbols, a leading digit).
+export const deriveInitId = (directory: string): string => {
+  const slug = basename(directory)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return initIdPattern.test(slug) ? slug : 'main'
+}
+
 const runInit = (options: readonly string[], cwd: string): CliResult => {
   const positional = options.filter((option) => option !== '--no-pointer')
   const writePointer = positional.length === options.length
@@ -164,11 +186,12 @@ const runInit = (options: readonly string[], cwd: string): CliResult => {
       stderr: `${existing.join(' and ')} ${existing.length === 1 ? 'already exists' : 'already exist'}; nothing was changed\n`,
     }
   }
+  const workspaceId = deriveInitId(workspaceRoot)
   mkdirSync(dirname(documentPath), { recursive: true })
   writeFileSync(
     documentPath,
     'format: yarramate/v1\n' +
-      'id: main\n' +
+      `id: ${workspaceId}\n` +
       'profile: yarramate/core@0.1\n' +
       'concepts: []\n' +
       'relationships: []\n',
@@ -177,7 +200,7 @@ const runInit = (options: readonly string[], cwd: string): CliResult => {
   writeFileSync(
     manifestPath,
     'format: yarramate/workspace/v1\n' +
-      'id: main\n' +
+      `id: ${workspaceId}\n` +
       'documents:\n' +
       '  - architecture/*.yaml\n' +
       'profiles: []\n' +

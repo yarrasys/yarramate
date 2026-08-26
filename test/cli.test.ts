@@ -11,7 +11,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import Ajv2020Module from 'ajv/dist/2020.js'
 import { describe, expect, it } from 'vitest'
-import { runCli } from '../src/cli.js'
+import { deriveInitId, runCli } from '../src/cli.js'
 import { compileWorkspace } from '../src/compiler.js'
 import { serializeSemanticGraph } from '../src/graph.js'
 
@@ -570,6 +570,40 @@ describe('YarraMate CLI', () => {
     })
   })
 
+  it('accepts --json on reconcile as a no-op with identical output', () => {
+    // Bare reconcile already emits JSON; the flag exists so a harness
+    // adding --json to every verb never hits exit 2 (#275).
+    const bare = runCli(
+      [
+        'reconcile',
+        'test/fixtures/journeys/discovery/.yarramate/workspace.yaml',
+      ],
+      repositoryRoot,
+    )
+    const flagged = runCli(
+      [
+        'reconcile',
+        'test/fixtures/journeys/discovery/.yarramate/workspace.yaml',
+        '--json',
+      ],
+      repositoryRoot,
+    )
+
+    expect(flagged.exitCode).toBe(0)
+    expect(flagged).toEqual(bare)
+
+    expect(
+      runCli(
+        [
+          'reconcile',
+          '--json',
+          'test/fixtures/journeys/discovery/.yarramate/workspace.yaml',
+        ],
+        repositoryRoot,
+      ),
+    ).toEqual(bare)
+  })
+
   it('renders the asserted relationship inside contradicted claim findings', () => {
     const schema = JSON.parse(
       readFileSync(
@@ -651,37 +685,47 @@ describe('YarraMate CLI', () => {
   it('initializes a minimal native workspace without overwriting it', () => {
     const directory = mkdtempSync(join(tmpdir(), 'yarramate-init-'))
     try {
-      const created = runCli(['init', '.'], directory)
+      const created = runCli(['init', 'my-product'], directory)
 
       expect(created).toEqual({
         exitCode: 0,
         stdout:
-          'Created .yarramate/architecture/main.yaml and .yarramate/workspace.yaml\n' +
-          'Created AGENTS.md with the YarraMate pointer\n' +
-          'Created CLAUDE.md with the YarraMate pointer\n',
+          'Created my-product/.yarramate/architecture/main.yaml and my-product/.yarramate/workspace.yaml\n' +
+          'Created my-product/AGENTS.md with the YarraMate pointer\n' +
+          'Created my-product/CLAUDE.md with the YarraMate pointer\n',
         stderr: '',
       })
-      expect(readFileSync(join(directory, 'AGENTS.md'), 'utf8')).toContain(
-        '## YarraMate architecture',
-      )
-      expect(readFileSync(join(directory, 'CLAUDE.md'), 'utf8')).toContain(
-        '## YarraMate architecture',
-      )
       expect(
-        readFileSync(join(directory, '.yarramate/architecture/main.yaml'), 'utf8'),
+        readFileSync(join(directory, 'my-product/AGENTS.md'), 'utf8'),
+      ).toContain('## YarraMate architecture')
+      expect(
+        readFileSync(join(directory, 'my-product/CLAUDE.md'), 'utf8'),
+      ).toContain('## YarraMate architecture')
+      expect(
+        readFileSync(
+          join(directory, 'my-product/.yarramate/architecture/main.yaml'),
+          'utf8',
+        ),
       ).toBe(
         'format: yarramate/v1\n' +
-          'id: main\n' +
+          'id: my-product\n' +
           'profile: yarramate/core@0.1\n' +
           'concepts: []\n' +
           'relationships: []\n',
       )
-      expect(existsSync(join(directory, '.yarramate/architecture/main.yaml'))).toBe(true)
       expect(
-        readFileSync(join(directory, '.yarramate/workspace.yaml'), 'utf8'),
+        existsSync(
+          join(directory, 'my-product/.yarramate/architecture/main.yaml'),
+        ),
+      ).toBe(true)
+      expect(
+        readFileSync(
+          join(directory, 'my-product/.yarramate/workspace.yaml'),
+          'utf8',
+        ),
       ).toBe(
         'format: yarramate/workspace/v1\n' +
-          'id: main\n' +
+          'id: my-product\n' +
           'documents:\n' +
           '  - architecture/*.yaml\n' +
           'profiles: []\n' +
@@ -690,15 +734,72 @@ describe('YarraMate CLI', () => {
           'evidence: []\n',
       )
 
-      expect(runCli(['init', '.'], directory)).toEqual({
+      expect(runCli(['init', 'my-product'], directory)).toEqual({
         exitCode: 2,
         stdout: '',
         stderr:
-          '.yarramate/architecture/main.yaml and .yarramate/workspace.yaml already exist; nothing was changed\n',
+          'my-product/.yarramate/architecture/main.yaml and my-product/.yarramate/workspace.yaml already exist; nothing was changed\n',
       })
     } finally {
       rmSync(directory, { recursive: true })
     }
+  })
+
+  it('derives the ids from the cwd basename when initializing "."', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'yarramate-init-dot-'))
+    try {
+      const cwd = join(directory, 'acme-app')
+      mkdirSync(cwd)
+      expect(runCli(['init', '.'], cwd).exitCode).toBe(0)
+      expect(
+        readFileSync(join(cwd, '.yarramate/workspace.yaml'), 'utf8'),
+      ).toContain('id: acme-app\n')
+      expect(
+        readFileSync(join(cwd, '.yarramate/architecture/main.yaml'), 'utf8'),
+      ).toContain('id: acme-app\n')
+    } finally {
+      rmSync(directory, { recursive: true })
+    }
+  })
+
+  it('slugifies an unruly directory name and falls back to main', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'yarramate-init-slug-'))
+    try {
+      expect(runCli(['init', 'My Product!'], directory).exitCode).toBe(0)
+      expect(
+        readFileSync(
+          join(directory, 'My Product!/.yarramate/workspace.yaml'),
+          'utf8',
+        ),
+      ).toContain('id: my-product\n')
+
+      expect(runCli(['init', '!!!'], directory).exitCode).toBe(0)
+      expect(
+        readFileSync(join(directory, '!!!/.yarramate/workspace.yaml'), 'utf8'),
+      ).toContain('id: main\n')
+      expect(
+        readFileSync(
+          join(directory, '!!!/.yarramate/architecture/main.yaml'),
+          'utf8',
+        ),
+      ).toContain('id: main\n')
+    } finally {
+      rmSync(directory, { recursive: true })
+    }
+  })
+
+  it('slugifies basenames to the shared id grammar or falls back', () => {
+    // Every derived id must satisfy the pattern the document and
+    // workspace schemas share: ^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$
+    expect(deriveInitId('/work/my-product')).toBe('my-product')
+    expect(deriveInitId('/work/My Product!')).toBe('my-product')
+    expect(deriveInitId('/work/My__Product--2')).toBe('my-product-2')
+    expect(deriveInitId('/work/.hidden')).toBe('hidden')
+    expect(deriveInitId('/work/YarraMate.CLI')).toBe('yarramate-cli')
+    // Nothing usable: all symbols, dots, or a digit-led slug.
+    expect(deriveInitId('/work/!!!')).toBe('main')
+    expect(deriveInitId('/')).toBe('main')
+    expect(deriveInitId('/work/2048')).toBe('main')
   })
 
   it('extends an existing AGENTS.md once and never duplicates the pointer', () => {
@@ -811,7 +912,10 @@ describe('YarraMate CLI', () => {
       )
       expect(result.exitCode).toBe(0)
       expect(JSON.parse(result.stdout).documents).toEqual([
-        { id: 'main', source: '.yarramate/architecture/main.yaml' },
+        {
+          id: deriveInitId(directory),
+          source: '.yarramate/architecture/main.yaml',
+        },
       ])
     } finally {
       rmSync(directory, { recursive: true })
