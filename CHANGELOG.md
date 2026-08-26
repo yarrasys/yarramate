@@ -2,6 +2,53 @@
 
 ## Unreleased
 
+- **Added.** The interview asks about what is not there (#272, ADR 0120).
+  Every question that fired before anchored on a declared subject, so a
+  kind with zero subjects could not be asked about and a whole absent
+  layer read exactly like a covered one: the GitLab FOSS run closed at 3
+  open items with the strategy layer empty, 559 feature-flag definitions
+  unasked, 62 domain events unmodelled and a live migration unrecorded.
+  Catalogue `core-enrichment` goes 1.1 to 1.2 (additive, every question
+  `since: "1.2"`) with five workspace-scoped presence questions:
+  `no-capability-declared`, `no-event-declared`, `no-artifact-declared`,
+  `implementation-path-missing`, and `no-contract-declared`, the last
+  gated on `exists-linkage` so a model where nothing interacts is not
+  asked what governs the exchange. An unanswered presence question is
+  information rather than noise: an architecture genuinely at rest keeps
+  `implementation-path-missing` open, and that is the model saying
+  nothing is changing. Also `capability-uncited` (a capability is the
+  layer with no code to point at, so its citation is the only thing an
+  audit can grade it against), and `states-undefined` now carries an
+  `askPlain` phrasing and points at the migration plan or target design
+  a repository already holds in-tree. `subjects-near-duplicate` names
+  succession as its third honest answer; a separate succession question
+  was assessed and not built, with the reasoning in the ADR.
+- **Added.** `unchallenged-evidence`, the one interrogation condition
+  that reads the workspace's evidence overlay rather than the compiled
+  graph (#272, ADR 0120). It holds where the overlay records
+  observations and every one is a frictionless confirmation, meaning no
+  contradicted, unknown or not-observed result and no recorded search,
+  because 39 confirmations in a row are not evidence of agreement but
+  evidence that nothing was put at risk. A recorded search closes it
+  even on a `confirmed` result: a confirmation resting on the empty
+  search ADR 0107 made auditable has tested a claim it might fail. An
+  absent or empty overlay stays quiet. `ask` and `design` now load the
+  workspace's declared evidence and pass it to `evaluateCatalogue`,
+  whose new trailing parameter is optional, so a consumer of the pure
+  engine that passes nothing gets exactly the report it got before. The
+  visual hosts read no evidence today and so omit this one question from
+  the canvas nudge overlay, recorded in the ADR as follow-up. The
+  trigger union in the three published schemas gains a branch, so a
+  consumer validating a 1.2 report against a pinned pre-1.2 schema copy
+  will reject a trigger it has never seen.
+- **Fixed.** Recorded probes survive the evidence loader (#272).
+  `loadEvidence` rebuilds each observation field by field and the
+  rebuild dropped `searched` and `measured`, so through the real load
+  path `reconcile` counted every `not-observed` as an unsupported
+  absence however carefully its author recorded the search that came
+  back empty, and the searches ADR 0107 exists to make auditable reached
+  nothing that reads them.
+
 - **Added.** The mounted viewer accepts the host's per-subject marks
   (#314, ADR 0119). `mountEditor` gains
   `decorations: Record<subjectId, 'added' | 'removed' | 'changed'>`

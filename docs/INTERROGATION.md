@@ -44,11 +44,21 @@ questions. Each question binds:
   `near-duplicate` (the subject resembles another subject of the same
   kind closely enough to be the same thing under two names, and no
   `yarramate/identity/distinct-from` claim dismisses the pair; the
-  algorithm and its thresholds are stated in ADR 0077), or
+  algorithm and its thresholds are stated in ADR 0077),
   `unconstrained-kind` (every relationship the subject participates in
   would still be permitted by the ArchiMate relationship table if the
   subject were reclassified to a kind of another aspect, so its kind is a
-  label no check can contradict; see ADR 0083 as amended by ADR 0097).
+  label no check can contradict; see ADR 0083 as amended by ADR 0097), or
+  `unchallenged-evidence` (the one condition that reads the workspace's
+  evidence overlay rather than the compiled graph: it holds where the
+  overlay records observations and every one is a frictionless
+  confirmation — no contradicted, unknown, or not-observed result and no
+  recorded search (ADR 0107) — so a discovery that never tested a claim
+  it might fail is asked whether it did. An evaluation given no overlay
+  treats the overlay's diversity as unknown, not absent, and stays
+  quiet; the CLI paths supply the workspace's declared evidence, so only
+  a consumer of the pure engine that passes none is in that position.
+  See ADR 0120).
   Relationship kinds in conditions resolve through profile lineage by
   default, the same rule as subject selectors. The trigger rides reports
   and design steps verbatim as the question's machine-readable answer

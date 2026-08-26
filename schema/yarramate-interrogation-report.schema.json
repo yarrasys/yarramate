@@ -532,6 +532,19 @@
               "const": "unscoped-succession"
             }
           }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "The workspace's evidence overlay records observations and every one is a frictionless confirmation: no contradicted, unknown, or not-observed result, and no recorded search (ADR 0107). A discovery that never records anything but success never tested a claim it might fail. The one condition that reads the evidence overlay rather than the compiled graph; where the evaluating consumer supplies no overlay it stays quiet (ADR 0120).",
+          "required": [
+            "condition"
+          ],
+          "properties": {
+            "condition": {
+              "const": "unchallenged-evidence"
+            }
+          }
         }
       ]
     },

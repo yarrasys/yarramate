@@ -817,6 +817,7 @@ export function runAskCommand(
         loadedCatalogue.catalogue,
         compilation.graph,
         compilation.profileContext,
+        evidenceDocuments.flatMap(({ observations }) => observations),
       )
 
       const result: AskResult = {
@@ -1094,11 +1095,24 @@ export function runAskCommand(
         source: readFileSync(resolvedCataloguePath, 'utf8'),
       })
       if (!loadedCatalogue.ok) return failed(loadedCatalogue.diagnostics)
+      // The evidence overlay rides along for the one condition that
+      // reads it (unchallenged-evidence); a workspace declaring no
+      // evidence passes an overlay known to be empty.
+      const evidenceObservations = []
+      for (const path of workspace.evidence) {
+        const loaded = loadEvidence({
+          path,
+          source: readFileSync(resolve(cwd, path), 'utf8'),
+        })
+        if (!loaded.ok) return failed(loaded.diagnostics)
+        evidenceObservations.push(...loaded.evidence.observations)
+      }
       const report: InterrogationReport = {
         ...evaluateCatalogue(
           loadedCatalogue.catalogue,
           graph,
           compilation.profileContext,
+          evidenceObservations,
         ),
         workspace: workspace.id,
       }
@@ -1455,10 +1469,23 @@ export function runAskCommand(
       source: readFileSync(resolvedCataloguePath, 'utf8'),
     })
     if (!loadedCatalogue.ok) return failed(loadedCatalogue.diagnostics)
+    // Loaded ahead of evaluation so the overlay feeds the one condition
+    // that reads it (unchallenged-evidence), then reused for the
+    // reconciliation summary below.
+    const evidenceDocuments: EvidenceDocument[] = []
+    for (const path of workspace.evidence) {
+      const loaded = loadEvidence({
+        path,
+        source: readFileSync(resolve(cwd, path), 'utf8'),
+      })
+      if (!loaded.ok) return failed(loaded.diagnostics)
+      evidenceDocuments.push(loaded.evidence)
+    }
     const report = evaluateCatalogue(
       loadedCatalogue.catalogue,
       graph,
       compilation.profileContext,
+      evidenceDocuments.flatMap(({ observations }) => observations),
     )
     const openQuestions: OpenQuestionRef[] = []
     for (const wave of report.waves) {
@@ -1495,15 +1522,6 @@ export function runAskCommand(
         }
       | undefined
     if (workspace.evidence.length > 0) {
-      const evidenceDocuments = []
-      for (const path of workspace.evidence) {
-        const loaded = loadEvidence({
-          path,
-          source: readFileSync(resolve(cwd, path), 'utf8'),
-        })
-        if (!loaded.ok) return failed(loaded.diagnostics)
-        evidenceDocuments.push(loaded.evidence)
-      }
       const evaluation = evaluateEvidenceWorkspace(graph, evidenceDocuments)
       if (!evaluation.ok) return failed(evaluation.diagnostics)
       const reconciled = reconcileEvidenceReports(

@@ -12,6 +12,7 @@ import {
   compileWorkspaceWithProfileContext,
   type Diagnostic,
 } from './compiler.js'
+import { loadEvidence, type EvidenceObservation } from './evidence.js'
 import {
   evaluateCatalogue,
   loadQuestionCatalogue,
@@ -286,6 +287,20 @@ export function runDesignCommand(
     )
     if (!compilation.ok) return failed(compilation.diagnostics)
 
+    // The evidence overlay rides along for the one condition that reads
+    // it (unchallenged-evidence). A workspace declaring no evidence
+    // passes an empty overlay — known to be empty, which keeps that
+    // condition quiet — rather than an absent one.
+    const evidenceObservations: EvidenceObservation[] = []
+    for (const path of workspace.evidence) {
+      const loadedEvidence = loadEvidence({
+        path,
+        source: readFileSync(resolve(cwd, path), 'utf8'),
+      })
+      if (!loadedEvidence.ok) return failed(loadedEvidence.diagnostics)
+      evidenceObservations.push(...loadedEvidence.evidence.observations)
+    }
+
     if (subjectFilter !== undefined) {
       const known = new Set(compilation.graph.subjects.map(({ id }) => id))
       if (!known.has(subjectFilter)) {
@@ -301,6 +316,7 @@ export function runDesignCommand(
       loadedCatalogue.catalogue,
       compilation.graph,
       compilation.profileContext,
+      evidenceObservations,
     )
     const askPlainById = new Map(
       loadedCatalogue.catalogue.questions.flatMap((question) =>

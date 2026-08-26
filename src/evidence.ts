@@ -150,6 +150,33 @@ export function loadEvidence(source: WorkspaceSource): EvidenceLoadResult {
         ...(observation.key === undefined || observation.value === undefined
           ? {}
           : { key: observation.key, value: observation.value }),
+        // Provenance survives normalization: reconcile counts a
+        // not-observed naming no search (ADR 0107) and interrogation's
+        // unchallenged-evidence reads recorded searches (ADR 0120), so a
+        // load path that dropped them made both read every overlay as
+        // probe-free however carefully its author recorded one.
+        ...(observation.searched === undefined
+          ? {}
+          : {
+              searched: observation.searched.map((probe) =>
+                'glob' in probe
+                  ? { glob: probe.glob }
+                  : {
+                      grep: probe.grep,
+                      ...(probe.paths === undefined
+                        ? {}
+                        : { paths: [...probe.paths] }),
+                    },
+              ),
+            }),
+        ...(observation.measured === undefined
+          ? {}
+          : {
+              measured: observation.measured.map(({ value, method }) => ({
+                value,
+                method,
+              })),
+            }),
         evidence: {
           uri: observation.evidence.uri,
           ...(observation.evidence.message === undefined

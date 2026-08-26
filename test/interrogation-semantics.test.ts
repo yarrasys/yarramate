@@ -22,7 +22,7 @@ import {
 // existing question answers.
 
 const EXPECTED_SEMANTICS = '1'
-const EXPECTED_FINGERPRINT = '86669858b84e4d8f'
+const EXPECTED_FINGERPRINT = '3f1dec3d08690ce7'
 
 const profile = 'yarramate/core@0.1'
 
@@ -108,7 +108,14 @@ const conditions: readonly (readonly [string, readonly string[]])[] = [
   ['near-duplicate', ['      - condition: near-duplicate']],
   ['unconstrained-kind', ['      - condition: unconstrained-kind']],
   ['unscoped-succession', ['      - condition: unscoped-succession']],
+  ['unchallenged-evidence', ['      - condition: unchallenged-evidence']],
 ]
+
+// The overlay the unchallenged-evidence probe reads: one confirmed
+// observation and no recorded search, so the condition fires. Every other
+// condition ignores the overlay, which is itself part of what the
+// fingerprint pins.
+const evidenceOverlay = [{ result: 'confirmed' as const }]
 
 const catalogue = [
   'format: yarramate/question-catalogue/v1',
@@ -157,6 +164,7 @@ const answers = () => {
     loaded.catalogue,
     compilation.graph,
     compilation.profileContext,
+    evidenceOverlay,
   )
   // Answers only: which questions are open, and about which subjects.
   return report.waves

@@ -1914,3 +1914,27 @@ mappings:
   - native: visual-kind-icons-tests-validate-icons
     external: visualKindIconsTestsValidateIcons
     type: relationship
+  - native: published-formats-contract
+    external: publishedFormatsContract
+    type: concept
+  - native: visual-changeset-submitted
+    external: visualChangesetSubmitted
+    type: concept
+  - native: contract-manifest-realizes-published-formats
+    external: contractManifestRealizesPublishedFormats
+    type: relationship
+  - native: contract-check-reads-published-formats
+    external: contractCheckReadsPublishedFormats
+    type: relationship
+  - native: conversation-writes-session-events
+    external: conversationWritesSessionEvents
+    type: relationship
+  - native: conversation-raises-changeset-submitted
+    external: conversationRaisesChangesetSubmitted
+    type: relationship
+  - native: changeset-submitted-triggers-commit
+    external: changesetSubmittedTriggersCommit
+    type: relationship
+  - native: changeset-submitted-writes-operations
+    external: changesetSubmittedWritesOperations
+    type: relationship

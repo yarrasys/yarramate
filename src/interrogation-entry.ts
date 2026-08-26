@@ -14,6 +14,7 @@ export {
   renderInterrogationReport,
   renderQuestion,
   type CatalogueCondition,
+  type CatalogueEvidenceObservation,
   type CatalogueLoadResult,
   type CatalogueQuestion,
   type CatalogueSelector,
