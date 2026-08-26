@@ -70,10 +70,26 @@ const profileFixture = (name: string): WorkspaceSource => ({
   ),
 })
 
+// The api-led PATTERN is a workspace source too (#268 phase 1, ADR 0123): it
+// is what mints the wiring the four `api` instances no longer author by hand.
+const patternFixture = (name: string): WorkspaceSource => ({
+  path: `patterns/${name}`,
+  source: readFileSync(
+    fileURLToPath(
+      new URL(
+        `./fixtures/journeys/contact-update/.yarramate/patterns/${name}`,
+        import.meta.url,
+      ),
+    ),
+    'utf8',
+  ),
+})
+
 const result = compileWorkspaceWithProfileContext([
   fixture('contact-update.yaml'),
   fixture('contact-update.policy.yaml'),
   profileFixture('api-led.yaml'),
+  patternFixture('api-led.yaml'),
 ])
 
 // Narrowed once, so the three tests below read the graph without each

@@ -28,6 +28,10 @@
     "projections": {
       "$ref": "#/$defs/patterns"
     },
+    "patterns": {
+      "description": "yarramate/pattern/v1 documents: the shape a concept kind promises, and the wiring the compiler mints between an instance and the parts it binds (ADR 0123). Structure, where profiles declare vocabulary. Optional, like evidence and contracts.",
+      "$ref": "#/$defs/patterns"
+    },
     "adapterMappings": {
       "$ref": "#/$defs/patterns"
     },

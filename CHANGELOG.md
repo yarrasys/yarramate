@@ -1,5 +1,37 @@
 # Changelog
 
+## Unreleased
+
+- **Added.** A pattern binds the parts it wires (#268 phase 1, ADR 0123).
+  `yarramate/pattern/v1` is a new published format declaring the shape a
+  concept kind promises: the slots an instance binds and the wiring the
+  compiler mints between them. An architect authors an API once; canonical
+  ArchiMate spells it as four elements and five relationships, and every
+  earlier attempt to get the simple picture back derived it **upward**,
+  which is lossy and has to guess. A pattern inverts it and expands
+  **downward**, which is a compiler: same input, same output, no guessing.
+  A concept gains an optional `parts` map and the workspace manifest a
+  `patterns` category. Binding, not generation: a bound part keeps its own
+  name, owner, evidence and every outside edge it already carries, and
+  what the pattern removes is the wiring, which was ceremony. On the
+  contact-update journey that is twelve hand-authored aggregations
+  replaced by four `parts` blocks. Expansion is compile-time and lands in
+  the graph; nothing is written back, so a pattern edited today re-wires
+  every instance on the next compile. A minted claim is `declared` and
+  sourced to the binding line that produced it, so `yarramate/graph/v2`
+  does not move and the expanded graph stays indistinguishable from a
+  hand-authored one, which is what lets the Archi and LikeC4 exports see
+  pure ArchiMate without learning what a pattern is. Expansion is
+  idempotent against authored wiring, so a model adopts a pattern without
+  touching a line; the pattern then owns the pairs it wires, and a
+  reversed or disagreeing relationship between such a pair is a compile
+  error while edges to anything else stay free. A pattern whose wiring the
+  relationship table forbids fails once, against the pattern, because the
+  slot kinds fix both endpoint kinds. New diagnostics `YM315`, `YM416`,
+  `YM417`, `YM418`, `YM419` and `YM420`; new guide `docs/PATTERNS.md`.
+  Ports and macro edges (phase 2) and the canvas fold (phase 3) are
+  unaffected and still to come.
+
 ## 1.3.0
 
 - **Added.** A rule can name its exception (#267, ADR 0122).

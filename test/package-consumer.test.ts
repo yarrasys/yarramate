@@ -547,6 +547,7 @@ const options: LocalHostOptions = {
     profiles: [],
     projections: [],
     adapterMappings: [],
+    patterns: [],
     evidence: [],
     contracts: [],
   },

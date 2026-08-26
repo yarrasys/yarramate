@@ -151,6 +151,20 @@
             "$ref": "#/$defs/constraint"
           }
         },
+        "parts": {
+          "description": "The subjects that fill this instance's pattern slots, by slot name (ADR 0123). Valid only on a kind that has a pattern; the compiler mints the pattern's wiring between the instance and what these name, and refuses any authored relationship that contradicts it. Binding, not generation: a part keeps its own name, owner, evidence and outside edges.",
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": false,
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+          },
+          "patternProperties": {
+            "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$": {
+              "$ref": "#/$defs/reference"
+            }
+          }
+        },
         "references": {
           "$ref": "#/$defs/identifiedReferences"
         },

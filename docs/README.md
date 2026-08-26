@@ -15,6 +15,7 @@
 
 - [Native documents](NATIVE-DOCUMENT.md)
 - [Profiles](PROFILES.md)
+- [Patterns](PATTERNS.md)
 - [Workspaces](WORKSPACES.md)
 - [Semantic graph](SEMANTIC-GRAPH.md)
 - [Projections](PROJECTIONS.md)

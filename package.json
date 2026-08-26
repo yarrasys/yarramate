@@ -65,6 +65,7 @@
     "./visual-app/styles.css": "./dist/visual-app-lib/styles.css",
     "./schema/document": "./schema/yarramate-document.schema.json",
     "./schema/profile": "./schema/yarramate-profile.schema.json",
+    "./schema/pattern": "./schema/yarramate-pattern.schema.json",
     "./schema/projection": "./schema/yarramate-projection.schema.json",
     "./schema/projection-result": "./schema/yarramate-projection-result.schema.json",
     "./schema/adapter-mapping": "./schema/yarramate-adapter-mapping.schema.json",

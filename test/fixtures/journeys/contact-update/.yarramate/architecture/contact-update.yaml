@@ -303,18 +303,34 @@ concepts:
     kind: api
     name: Experience API
     description: The experience-layer API a sales rep's client calls.
+    parts:
+      component: contact-exp-api
+      interface: contact-exp-api-interface
+      service: contact-update-service
   - id: contact-process-api
     kind: api
     name: Process API
     description: The process-layer API that orchestrates a contact update.
+    parts:
+      component: contact-prc-api
+      interface: contact-prc-api-interface
+      service: contact-orchestration-service
   - id: contact-system-api
     kind: api
     name: System API
     description: The system-layer API over Salesforce.
+    parts:
+      component: contact-sys-api
+      interface: contact-sys-api-interface
+      service: salesforce-write-service
   - id: salesforce-contact-api
     kind: api
     name: Salesforce Contact API
     description: The vendor API the system layer consumes.
+    parts:
+      component: salesforce-crm
+      interface: salesforce-contact-interface
+      service: salesforce-contact-service
 
 relationships:
   # --- components own the interfaces they expose (renders as nesting) -------
@@ -578,54 +594,6 @@ relationships:
     kind: flow
     from: contact-sys-api
     to: salesforce-crm
-  - id: contact-experience-api-aggregates-contact-exp-api
-    kind: aggregation
-    from: contact-experience-api
-    to: contact-exp-api
-  - id: contact-experience-api-aggregates-contact-exp-api-interface
-    kind: aggregation
-    from: contact-experience-api
-    to: contact-exp-api-interface
-  - id: contact-experience-api-aggregates-contact-update-service
-    kind: aggregation
-    from: contact-experience-api
-    to: contact-update-service
-  - id: contact-process-api-aggregates-contact-prc-api
-    kind: aggregation
-    from: contact-process-api
-    to: contact-prc-api
-  - id: contact-process-api-aggregates-contact-prc-api-interface
-    kind: aggregation
-    from: contact-process-api
-    to: contact-prc-api-interface
-  - id: contact-process-api-aggregates-contact-orchestration-service
-    kind: aggregation
-    from: contact-process-api
-    to: contact-orchestration-service
-  - id: contact-system-api-aggregates-contact-sys-api
-    kind: aggregation
-    from: contact-system-api
-    to: contact-sys-api
-  - id: contact-system-api-aggregates-contact-sys-api-interface
-    kind: aggregation
-    from: contact-system-api
-    to: contact-sys-api-interface
-  - id: contact-system-api-aggregates-salesforce-write-service
-    kind: aggregation
-    from: contact-system-api
-    to: salesforce-write-service
-  - id: salesforce-contact-api-aggregates-salesforce-crm
-    kind: aggregation
-    from: salesforce-contact-api
-    to: salesforce-crm
-  - id: salesforce-contact-api-aggregates-salesforce-contact-interface
-    kind: aggregation
-    from: salesforce-contact-api
-    to: salesforce-contact-interface
-  - id: salesforce-contact-api-aggregates-salesforce-contact-service
-    kind: aggregation
-    from: salesforce-contact-api
-    to: salesforce-contact-service
   # API-grain commitments (#268 phase 0 interim). Each is the macro fact the
   # pattern layer will one day expand through ports; today the member wiring
   # beneath it is authored by hand and named in the description, which is the

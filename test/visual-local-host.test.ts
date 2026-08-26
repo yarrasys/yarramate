@@ -110,7 +110,7 @@ const workspace: ResolvedWorkspace = {
   profiles: [],
   projections: ['projections/apps.yaml'],
   adapterMappings: [],
-  evidence: [],
+  patterns: [],  evidence: [],
   contracts: [],
 }
 
