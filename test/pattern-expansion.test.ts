@@ -24,7 +24,7 @@ relationshipKinds: []
 `,
 }
 
-const pattern = (wiring?: string): WorkspaceSource => ({
+const pattern = (wiring?: string, ports?: string): WorkspaceSource => ({
   path: 'patterns/api-led.yaml',
   source: `format: yarramate/pattern/v1
 id: api-led
@@ -40,7 +40,7 @@ patterns:
         required: true
       service:
         kind: yarramate/core@0.1#applicationService
-    wiring:
+${ports ?? ''}    wiring:
 ${
   wiring ??
   `      - from: self
@@ -401,5 +401,188 @@ describe('a pattern that cannot expand legally fails once, at the pattern', () =
     expect(codes([profile, pattern(), second, cluster(boundParts)])).toContain(
       'YM411',
     )
+  })
+})
+
+// ---- phase 2: macro edges through ports (#268, ADR 0124) --------------------
+//
+// "System API serves Process API" is one authored fact at the grain an
+// architect thinks in. The port says where it lands canonically, and the macro
+// edge SURVIVES the expansion, which is what gives a collapsed view edges to
+// draw - the property every upward-derivation attempt lost.
+
+const SERVING_PORT = `    ports:
+      - kind: yarramate/core@0.1#serving
+        out: service
+        in: component
+`
+
+const twoApis = (relationships: string, secondParts = `    parts:
+      component: prc-component
+      interface: prc-interface
+      service: prc-service`) =>
+  document(`concepts:
+  - id: sys-api
+    kind: api
+    name: System API
+${boundParts}
+  - id: sys-component
+    kind: applicationComponent
+    name: System component
+  - id: sys-interface
+    kind: applicationInterface
+    name: System interface
+  - id: sys-service
+    kind: applicationService
+    name: System service
+  - id: prc-api
+    kind: api
+    name: Process API
+${secondParts}
+  - id: prc-component
+    kind: applicationComponent
+    name: Process component
+  - id: prc-interface
+    kind: applicationInterface
+    name: Process interface
+  - id: prc-service
+    kind: applicationService
+    name: Process service
+relationships: ${relationships}
+`)
+
+const MACRO_SERVING = `
+  - id: sys-serves-prc
+    kind: serving
+    from: sys-api
+    to: prc-api
+`
+
+describe('a port says where a macro edge lands', () => {
+  it('expands the macro edge to the canonical pair, and keeps the macro edge', () => {
+    const wiring = wiringOf([
+      profile,
+      pattern(undefined, SERVING_PORT),
+      twoApis(MACRO_SERVING),
+    ])
+    const serving = wiring.filter(({ kind }) =>
+      kind.endsWith('#serving'),
+    )
+    expect(serving).toEqual([
+      {
+        id: 'sys-serves-prc',
+        from: 'sys-api',
+        to: 'prc-api',
+        kind: 'yarramate/core@0.1#serving',
+        source: 'architecture/main.yaml/relationships/0',
+      },
+      {
+        // Out of the provider's service, into the consumer's component.
+        id: 'sys-serves-prc-expansion',
+        from: 'sys-service',
+        to: 'prc-component',
+        kind: 'yarramate/core@0.1#serving',
+        source: 'architecture/main.yaml/relationships/0',
+      },
+    ])
+  })
+
+  // The correspondence a description used to assert. Where the member-grain
+  // edge is already authored, the macro edge and it agree and nothing is
+  // minted - which is what makes the agreement VERIFIED rather than trusted.
+  it('mints nothing where the canonical pair is already authored', () => {
+    const both = twoApis(`${MACRO_SERVING}  - id: service-serves-component
+    kind: serving
+    from: sys-service
+    to: prc-component
+`)
+    const wiring = wiringOf([profile, pattern(undefined, SERVING_PORT), both])
+    expect(
+      wiring
+        .filter(({ kind }) => kind.endsWith('#serving'))
+        .map(({ id }) => id)
+        .sort(),
+    ).toEqual(['service-serves-component', 'sys-serves-prc'])
+  })
+
+  // A pattern that says nothing about a kind has not claimed it: groupings may
+  // legally relate, and an unported kind between two instances is an ordinary
+  // relationship.
+  it('leaves an unported kind between two instances alone', () => {
+    const association = twoApis(`
+  - id: sys-associates-prc
+    kind: association
+    from: sys-api
+    to: prc-api
+`)
+    const wiring = wiringOf([
+      profile,
+      pattern(undefined, SERVING_PORT),
+      association,
+    ])
+    expect(wiring.filter(({ id }) => id.endsWith('-expansion'))).toEqual([])
+  })
+
+  it('refuses a macro edge whose landing slot is unbound (YM421)', () => {
+    const unbound = twoApis(
+      MACRO_SERVING,
+      `    parts:
+      component: prc-component
+      interface: prc-interface`,
+    )
+    // The target binds no service, but `in` is component, so this one lands.
+    expect(codes([profile, pattern(undefined, SERVING_PORT), unbound])).toEqual(
+      [],
+    )
+
+    const noService = twoApis(
+      MACRO_SERVING,
+      `    parts:
+      component: prc-component
+      interface: prc-interface
+      service: prc-service`,
+    ).source.replace(
+      `    parts:
+      component: sys-component
+      interface: sys-interface
+      service: sys-service`,
+      `    parts:
+      component: sys-component
+      interface: sys-interface`,
+    )
+    expect(
+      codes([
+        profile,
+        pattern(undefined, SERVING_PORT),
+        { path: 'architecture/main.yaml', source: noService },
+      ]),
+    ).toContain('YM421')
+  })
+
+  it('refuses a port naming a part the pattern does not declare (YM302)', () => {
+    const stray = pattern(
+      undefined,
+      `    ports:
+      - kind: yarramate/core@0.1#serving
+        out: gateway
+        in: component
+`,
+    )
+    expect(codes([profile, stray, twoApis(MACRO_SERVING)])).toContain('YM302')
+  })
+
+  it('refuses two ports for one kind (YM201)', () => {
+    const twice = pattern(
+      undefined,
+      `    ports:
+      - kind: yarramate/core@0.1#serving
+        out: service
+        in: component
+      - kind: yarramate/core@0.1#serving
+        out: interface
+        in: component
+`,
+    )
+    expect(codes([profile, twice, twoApis(MACRO_SERVING)])).toContain('YM201')
   })
 })

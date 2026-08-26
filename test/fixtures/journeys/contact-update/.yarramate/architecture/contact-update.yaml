@@ -594,10 +594,14 @@ relationships:
     kind: flow
     from: contact-sys-api
     to: salesforce-crm
-  # API-grain commitments (#268 phase 0 interim). Each is the macro fact the
-  # pattern layer will one day expand through ports; today the member wiring
-  # beneath it is authored by hand and named in the description, which is the
-  # correspondence the phase-1 checker will verify instead of trusting.
+  # API-grain commitments (#268). Each is the macro fact, authored once at the
+  # grain an architect thinks in. The `serving` port on the api pattern says
+  # where it lands - out of the provider's service, into the consumer's
+  # component - so the member wiring named in each description is now VERIFIED
+  # by construction rather than asserted in prose: the compiler expands the
+  # macro edge to exactly that pair, finds it already authored below, and mints
+  # nothing. Divergence would show up as a second edge rather than as a
+  # description nobody checks.
   - id: salesforce-api-serves-system-api
     kind: serving
     from: salesforce-contact-api

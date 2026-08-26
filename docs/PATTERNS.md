@@ -115,6 +115,44 @@ every instance on the next compile.
   is `YM404` against the pattern rather than against every instance that
   was authored correctly.
 
+## Ports: where a macro edge lands
+
+A pattern may also declare **ports** ([ADR 0124](adr/0124-a-port-says-where-a-macro-edge-lands.md)):
+
+```yaml
+    ports:
+      - kind: yarramate/core@0.1#serving
+        out: service
+        in: component
+```
+
+A relationship authored **between two instances** whose kind both patterns
+port is a macro-grain fact, and it is expanded to the canonical pair the
+ports name: out of the source instance's `out` slot, into the target
+instance's `in` slot. `sys-api serving prc-api` becomes `sys-service
+serving prc-component`.
+
+- **The macro edge survives.** It is an authored fact, and it is what a
+  collapsed view has to draw — the property upward abstraction always
+  lost, where a view that collapsed to groupings drew no edges because the
+  real ones ran between members. Both grains are in the graph and both are
+  true.
+- **Both ends must port the kind.** The `out` comes from the source's
+  pattern, the `in` from the target's. A kind only one side ports is not a
+  macro edge; anything else between two instances is an ordinary
+  relationship and is left alone.
+- **Idempotent, as wiring is.** Where the canonical pair is already
+  authored, nothing is minted — which is what makes an agreement between
+  the two grains *verified* rather than trusted. Divergence shows up as a
+  second edge rather than as prose nobody checks.
+- **A landing slot must be bound** (`YM421`): a macro edge is a promise
+  the expansion keeps, so an unbound `out` or `in` is a promise the model
+  cannot cash.
+- The expanded relationship takes the macro edge's id suffixed
+  `-expansion`, and its claim is sourced to the macro edge's line.
+- `out` is never `self` — an edge leaving the instance is the macro edge
+  again.
+
 ## Diagnostics
 
 | Code | Meaning |
@@ -124,7 +162,8 @@ every instance on the next compile.
 | `YM417` | A bound part is not of the kind its slot declares |
 | `YM418` | An authored relationship contradicts the instance's wiring |
 | `YM419` | `parts` on a kind with no pattern, or a slot the pattern does not declare |
-| `YM420` | A derived wiring id is already a declared subject |
+| `YM420` | A derived wiring or expansion id is already a declared subject |
+| `YM421` | A macro edge's landing slot is unbound on one of its instances |
 
 A pattern document's own faults reuse the existing bands: `YM201` for a
 schema violation, `YM401`/`YM402` for a kind that is not available,
@@ -134,12 +173,14 @@ declared part, `YM404` for wiring the relationship table forbids, and
 
 ## Not yet
 
-This is phase 1 of #268. **Ports and macro edges** are phase 2: a
-`ports` declaration beside `wiring` saying where a macro-grain edge lands
-canonically, so `serving` authored between two `api` instances expands to
-`…service --serving--> …component`. **Fold and unfold** on the canvas is
-phase 3. Nothing decided here forecloses either: phase 2's ports resolve
-through the same slot names bound today.
+Phases 1 and 2 of #268 have landed. **Fold and unfold** on the canvas is
+phase 3, along with the connect tool offering two instances only their
+port kinds instead of all eleven the relationship table permits between
+groupings. Both read what is declared here; neither changes it.
+
+Generating an unbound part rather than requiring it to exist is also left
+open. An instance that binds nothing is exactly the greenfield case, and
+nothing in these decisions prevents a later phase from minting one.
 
 Generating an unbound part rather than requiring it to exist is also left
 open. An instance that binds nothing is exactly the greenfield case, and
