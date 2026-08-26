@@ -384,8 +384,20 @@ export function runDesignCommand(
       }
     }
 
-    const waveSummary = result.progress.waves
-      .map(({ id, open }) => `${id} ${open} open`)
+    // Read from the REPORT rather than from `progress`, because a wave that
+    // has not opened and one with nothing outstanding both count zero (#334).
+    // "implementation 0 open" about a gated wave is the same empty-set
+    // flattery as the completion sentence below it - which was fixed while
+    // this line, directly above it, was not. `progress` keeps its shape: a
+    // consumer wanting wave state reads an interrogation report, and a third
+    // required field on a published format for a convenience summary is not
+    // worth the constructor break.
+    const waveSummary = report.waves
+      .map((wave) => {
+        const open =
+          result.progress.waves.find(({ id }) => id === wave.id)?.open ?? 0
+        return wave.opened ? `${wave.id} ${open} open` : `${wave.id} not yet`
+      })
       .join(' · ')
     const lines: string[] = [
       `Design interview — workspace ${workspace.id} · catalogue ${report.catalogue}`,
