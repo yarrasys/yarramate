@@ -182,6 +182,32 @@ describe('an editor over a store, with no server', () => {
     expect(ready.snapshot.views[0]?.subjectCount).toBe(2)
   })
 
+  it('refuses a filter over a workspace that does not compile, rather than matching nothing', () => {
+    // `matchedIds: []` is a claim about the subjects - every one of them
+    // failed the query - and the canvas honours it by hiding the whole model.
+    // A workspace that does not compile cannot answer the question at all,
+    // so the host says that instead, leaving the last good model standing
+    // the same way `recompile` itself does (#307).
+    const { frames, send } = openHost({
+      'architecture/main.yaml': `format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts:
+  - id: nope
+    kind: notAKind
+    name: Nope
+`,
+      'projections/apps.yaml': projection,
+    })
+    send(input('filter.query', { query: {} }))
+    const refused = frames.at(-1)
+
+    expect(refused?.kind).toBe('rejected')
+    if (refused?.kind !== 'rejected') return
+    expect(refused.refused).toBe('filter.query')
+    expect(refused.diagnostics[0]?.code).toBe('YMVS318')
+  })
+
   it('answers a filter with what matched and what it dropped', () => {
     const { frames, send } = openHost()
     send(

@@ -1,4 +1,4 @@
-import { GraphCanvas } from "./graph-canvas.js";
+import { filteredSubjectCount, GraphCanvas } from "./graph-canvas.js";
 import type { PresentationFlag } from "./query-fields.js";
 import { QueryPanel, type BottomPanelTabId } from "./query-panel.js";
 import { QuickFilterBox } from "./quick-filter.js";
@@ -341,6 +341,28 @@ const DiagramWorkspace = ({
     [state.model],
   );
 
+  // A filter that leaves nothing visible blanks the canvas, and a blank
+  // canvas does not say why (#307): at register scale the very same blank is
+  // what an off-viewport survivor looks like, so absence has to be stated,
+  // never inferred. Counted with the exact narrowing the canvas applies
+  // (`filteredSubjectCount` restates `applyFilter`), and attributed to what
+  // caused it: the standing query when its own match set draws no subject,
+  // the quick filter's text when subjects would otherwise be drawn. A model
+  // with no subjects earns no pill, because nothing was hidden.
+  const graphNodes = state.model?.graph.nodes ?? [];
+  const structuralMatchedIds = state.activeFilter?.matchedIds ?? null;
+  const filterEmptiedCanvas =
+    graphNodes.length > 0 &&
+    (state.activeFilter !== null || state.quickFilterText.trim() !== "") &&
+    filteredSubjectCount(
+      graphNodes,
+      structuralMatchedIds,
+      state.quickFilterText,
+    ) === 0;
+  const structuralFilterEmptied =
+    state.activeFilter !== null &&
+    filteredSubjectCount(graphNodes, structuralMatchedIds, "") === 0;
+
   return (
     <section className="diagram-workspace" aria-label="Architecture diagram">
       {/*
@@ -490,6 +512,38 @@ const DiagramWorkspace = ({
             onKindDrop={readOnly ? undefined : onKindDrop}
             onCanvasReady={onCanvasReady}
           />
+        )}
+        {/*
+         * The canvas is blank because of a filter, not because the model is
+         * empty (#307): say so where the subjects would be, and hand back the
+         * way out. Attribution decides the escape offered: a standing query
+         * that itself matches no subject gets the pill's own Show all, while
+         * a quick filter that zeroed an otherwise drawn set gets its text
+         * named and cleared, leaving the standing filter standing.
+         */}
+        {!filterEmptiedCanvas ? null : (
+          <div className="filter-empty-pill" role="status">
+            {structuralFilterEmptied && state.activeFilter !== null ? (
+              <>
+                <span>
+                  Nothing matches this filter:{" "}
+                  <code>{describeQuery(state.activeFilter.query)}</code>
+                </span>
+                <button type="button" onClick={onClearFilter}>
+                  Show all
+                </button>
+              </>
+            ) : (
+              <>
+                <span>
+                  Nothing matches “{state.quickFilterText.trim()}”
+                </span>
+                <button type="button" onClick={() => onQuickFilterChange("")}>
+                  Clear filter
+                </button>
+              </>
+            )}
+          </div>
         )}
         {state.layoutNotice === null ? null : (
           <div className="layout-notice-pill" role="status">

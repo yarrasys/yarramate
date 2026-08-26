@@ -615,6 +615,57 @@ body {
   color: var(--ink);
 }
 
+/* A filter that leaves nothing on the canvas (#307): the same pill anatomy as
+   .filter-pill, centred where the subjects would be. A corner badge is easy
+   to miss on a canvas whose whole story is that it is blank, and the centre
+   of an empty canvas collides with nothing: the standing .filter-pill keeps
+   the top-left, the saved-layout pill the bottom-left, the layout notice the
+   top-right. */
+.canvas > .filter-empty-pill {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: var(--step);
+  max-width: min(52ch, calc(100% - var(--step) * 2));
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--rule-firm);
+  border-radius: 999px;
+  background: var(--sheet);
+  font-family: var(--utility);
+  font-size: 12px;
+  color: var(--ink);
+}
+
+.filter-empty-pill span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-empty-pill code {
+  font-weight: 700;
+}
+
+.filter-empty-pill button {
+  flex: none;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--cobalt);
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.filter-empty-pill button:hover {
+  color: var(--ink);
+}
+
 .conversation-separator {
   position: relative;
   z-index: 3;
