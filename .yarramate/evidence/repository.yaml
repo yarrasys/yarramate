@@ -905,3 +905,27 @@ observations:
     result: confirmed
     evidence:
       uri: repo:test/apply-operations.test.ts
+  - subject: visual-changeset-submitted
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-visual-event.schema.json
+      message: changeset.commit is a journaled session event type; the browser raises it and the runtime's commit path answers it.
+  - subject: published-formats-contract
+    result: confirmed
+    evidence:
+      uri: repo:.yarramate/contracts/yarramate-core-0.1.yaml
+      message: The manifest declares every published format with its schema and package export, and check verifies the declaration against the implementation surface.
+  - subject: evidence-intent-separation
+    result: confirmed
+    searched:
+      - grep: writeFileSync
+        paths:
+          - src/evidence.ts
+          - src/reconciliation.ts
+      - grep: "from 'node:"
+        paths:
+          - src/evidence.ts
+          - src/reconciliation.ts
+    evidence:
+      uri: repo:src/reconciliation.ts
+      message: A negative claim held up to failure - evidence evaluation and reconciliation have no write path and no runtime imports that could reach one, so observations cannot silently author intent. The searches that would find such a path come back empty; either one matching is this observation contradicted.

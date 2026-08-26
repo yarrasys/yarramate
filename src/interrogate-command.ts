@@ -113,6 +113,25 @@ export type CatalogueCondition =
   | { readonly condition: 'near-duplicate' }
   | { readonly condition: 'unconstrained-kind' }
   | { readonly condition: 'unscoped-succession' }
+  | { readonly condition: 'unchallenged-evidence' }
+
+/**
+ * One observation from the workspace's evidence overlay, reduced to what
+ * interrogation reads: the result, and whether a search was recorded with
+ * it. The only condition that reads the overlay is `unchallenged-evidence`;
+ * every other condition reads the compiled graph alone, and the overlay
+ * never influences which subjects a selector matches.
+ *
+ * Shaped structurally rather than importing {@link EvidenceObservation} so
+ * the pure engine entry (`./interrogation-entry`) keeps owning its whole
+ * input surface: a caller passes
+ * `evidenceDocuments.flatMap(({ observations }) => observations)` and the
+ * wider evidence shape is never dragged in.
+ */
+export interface CatalogueEvidenceObservation {
+  readonly result: 'confirmed' | 'contradicted' | 'unknown' | 'not-observed'
+  readonly searched?: readonly unknown[]
+}
 
 export interface CatalogueQuestion {
   readonly id: string
@@ -485,8 +504,33 @@ const conditionHolds = (
   condition: CatalogueCondition,
   subjectId: string | undefined,
   profileContext: ResolvedProfileContext | undefined,
+  evidence: readonly CatalogueEvidenceObservation[] | undefined,
 ): boolean => {
   switch (condition.condition) {
+    case 'unchallenged-evidence':
+      // Fires where the overlay records observations and every one is a
+      // frictionless confirmation: no contradicted, unknown, or
+      // not-observed result, and no recorded search. A discovery that
+      // never records anything but success never tested a claim it might
+      // fail — 39 of 39 GitLab observations said confirmed while Praefect
+      // sat declared upstream and absent from the tree (#272). A recorded
+      // search closes it even on a confirmed result, because a
+      // confirmation of a negative claim rests on exactly the empty
+      // search ADR 0107 made auditable; so does any honest non-confirmed
+      // result. An empty overlay stays quiet: with no observations there
+      // is no inspection to interrogate. An absent overlay also stays
+      // quiet — the caller did not supply one, so its diversity is
+      // unknown, not absent, the same rule `unconstrained-kind` applies
+      // to a missing profile context.
+      return (
+        evidence !== undefined &&
+        evidence.length > 0 &&
+        evidence.every(
+          ({ result, searched }) =>
+            result === 'confirmed' &&
+            (searched === undefined || searched.length === 0),
+        )
+      )
     case 'missing-claim':
       return !(index.claimsBySubject.get(subjectId!) ?? []).some(
         ({ predicate }) => predicate === condition.predicate,
@@ -754,6 +798,7 @@ export function evaluateCatalogue(
   catalogue: QuestionCatalogue,
   graph: SemanticGraph,
   profileContext?: ResolvedProfileContext,
+  evidence?: readonly CatalogueEvidenceObservation[],
 ): Omit<InterrogationReport, 'workspace'> {
   const index = indexGraph(graph)
   let open = 0
@@ -779,7 +824,7 @@ export function evaluateCatalogue(
         }
         if (question.scope === 'workspace') {
           const isOpen = question.trigger.every((condition) =>
-            conditionHolds(index, condition, undefined, profileContext),
+            conditionHolds(index, condition, undefined, profileContext, evidence),
           )
           if (isOpen) {
             open += 1
@@ -793,7 +838,7 @@ export function evaluateCatalogue(
           profileContext,
         ).filter((id) =>
           question.trigger.every((condition) =>
-            conditionHolds(index, condition, id, profileContext),
+            conditionHolds(index, condition, id, profileContext, evidence),
           ),
         )
         if (matches.length === 0) {

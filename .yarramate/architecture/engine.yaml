@@ -521,6 +521,14 @@ concepts:
     status: current
     presentIn:
       - core-contract-foundation
+  - id: published-formats-contract
+    kind: contract
+    owner: yarramate-maintainers
+    name: Published-formats contract
+    description: The standing agreement between the engine and its consumers that every published document format keeps its schema shipped and exported from the package. The Core contract manifest embodies it; check enforces it release by release.
+    status: current
+    presentIn:
+      - core-contract-foundation
   - id: workspace-manifest
     kind: dataObject
     owner: yarramate-maintainers
@@ -785,6 +793,11 @@ concepts:
     name: Expose the CLI over MCP
     description: Advertises the read-only CLI verbs as stdio Model Context Protocol tools and forwards each call to the same command surface a human runs.
     status: current
+  - id: visual-changeset-submitted
+    kind: applicationEvent
+    name: Visual changeset submitted
+    description: The changeset.commit session event; the one journaled happening in the visual conversation that asks for a write. Raised when the reviewer submits the staged changeset from the browser, and answered by the commit path; every other session event reads or renders.
+    status: current
   - id: commit-visual-changeset
     kind: applicationFunction
     name: Commit the visual changeset
@@ -812,6 +825,17 @@ concepts:
     description: Draws a 14×14 px single-stroke SVG icon per concept kind in the repository's graph, covering 19 kinds using ArchiMate element glyphs as descriptive notation only, with no trademark or conformance claim. Unknown kinds render nothing. Active only under archimate notation mode; falls back to native rendering when notation is native.
     status: current
 relationships:
+  - id: contract-manifest-realizes-published-formats
+    kind: realization
+    from: core-contract-manifest
+    to: published-formats-contract
+    description: The versioned manifest is the written form of the agreement; editing it is how the promise changes.
+  - id: contract-check-reads-published-formats
+    kind: access
+    from: check-core-contract
+    to: published-formats-contract
+    mode: read
+    description: The checker reads the agreement and fails the release that breaks it, which is what keeps the contract a promise rather than prose.
   - id: core-contract-checker-loads-contract
     kind: assignment
     from: core-contract-checker
@@ -1741,6 +1765,27 @@ relationships:
     from: recover-visual-session
     to: visual-handoff
     mode: write
+  - id: conversation-writes-session-events
+    kind: access
+    from: present-visual-conversation
+    to: visual-session-protocol
+    mode: write
+    description: What the reviewer does with the conversation surface lands as journaled session events, which are protocol documents like everything else the browser exchanges.
+  - id: conversation-raises-changeset-submitted
+    kind: triggering
+    from: present-visual-conversation
+    to: visual-changeset-submitted
+    description: Submitting the staged changeset is the one reviewer act the conversation turns into a write request rather than a read.
+  - id: changeset-submitted-triggers-commit
+    kind: triggering
+    from: visual-changeset-submitted
+    to: commit-visual-changeset
+  - id: changeset-submitted-writes-operations
+    kind: access
+    from: visual-changeset-submitted
+    to: apply-operations
+    mode: write
+    description: The submission carries the browser-authored operations batch; the commit path reads exactly what the event delivered.
   - id: visual-runtime-commits-changeset
     kind: assignment
     from: visual-runtime

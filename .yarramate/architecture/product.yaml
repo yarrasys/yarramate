@@ -112,42 +112,63 @@ concepts:
     description: Turn declared native documents into the deterministic tool-neutral semantic graph.
     owner: yarramate-maintainers
     status: current
+    references:
+      - id: normative-output
+        ref: semantic-graph-schema
   - id: validate-native-architecture
     kind: capability
     name: Validate native architecture
     description: Check deterministic correctness of declared architecture; never completeness or taste.
     owner: yarramate-maintainers
     status: current
+    references:
+      - id: normative-input
+        ref: document-schema
   - id: provide-machine-context
     kind: capability
     name: Provide machine-readable context
     description: Serve bounded, verifiable slices of declared architecture to people, CI, and agent harnesses.
     owner: yarramate-maintainers
     status: current
+    references:
+      - id: normative-output
+        ref: projection-result-schema
   - id: evaluate-architecture-evidence
     kind: capability
     name: Evaluate architecture evidence
     description: Compare provider observations with existing semantic subjects and claims without changing canonical intent.
     owner: yarramate-maintainers
     status: current
+    references:
+      - id: normative-input
+        ref: evidence-schema
   - id: discover-project-architecture
     kind: capability
     name: Discover project architecture
     description: Guide an agent harness from existing project evidence to a reviewable native architecture proposal.
     owner: yarramate-maintainers
     status: current
+    references:
+      - id: documented-journey
+        ref: product-journeys-guide
   - id: design-solution-before-build
     kind: capability
     name: Design solution before build
     description: Guide people and an agent harness from intent and alternatives to a reviewable target solution.
     owner: yarramate-maintainers
     status: current
+    references:
+      - id: documented-journey
+        ref: product-journeys-guide
   - id: reconcile-intent-and-evidence
     kind: capability
     name: Reconcile intent and evidence
     description: Compare declared architecture with provider observations without allowing evidence to mutate intent.
     owner: yarramate-maintainers
     status: current
+    references:
+      - id: normative-output
+        ref: reconciliation-report-schema
 relationships:
   - id: repository-operation-supports-context
     kind: influence

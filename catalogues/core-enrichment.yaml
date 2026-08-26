@@ -1,6 +1,6 @@
 format: yarramate/question-catalogue/v1
 id: core-enrichment
-version: "1.1"
+version: "1.2"
 profile: yarramate/core@0.1
 presentation:
   title: Core enrichment interview
@@ -880,6 +880,67 @@ questions:
       Add the externally meaningful services and serve them to their
       consumers.
 
+  - id: no-capability-declared
+    wave: business
+    since: "1.2"
+    scope: workspace
+    trigger:
+      - condition: no-subject-of-kind
+        kinds:
+          - yarramate/core@0.1#capability
+    question: >-
+      No capability is declared. What can this system do, in its own terms?
+    askPlain: >-
+      Forget the parts list for a moment: what are the handful of things
+      this system is actually able to do for the people it serves?
+    materiality: >-
+      Capabilities name what the system can do apart from how it currently
+      does it; without them, investment and sourcing trade-offs can only be
+      argued in component names, and nothing in the model can say which
+      parts serve the same ability. A subject-driven interview never asks
+      about a layer with zero subjects, so an absent capability map reads
+      as a covered one until this question opens it.
+    authority: human
+    resolution: >-
+      Add the small set of capabilities this system provides — four to
+      seven usually carries the whole conversation — and relate each to
+      the services or components that realize it with realization.
+
+  - id: no-contract-declared
+    wave: business
+    since: "1.2"
+    scope: workspace
+    trigger:
+      - condition: exists-linkage
+        kinds:
+          - yarramate/core@0.1#serving
+          - yarramate/core@0.1#flow
+          - yarramate/core@0.1#triggering
+        direction: either
+        counterpartKinds:
+          - yarramate/core@0.1#applicationComponent
+          - yarramate/core@0.1#applicationInterface
+          - yarramate/core@0.1#applicationService
+          - yarramate/core@0.1#businessActor
+      - condition: no-subject-of-kind
+        kinds:
+          - yarramate/core@0.1#contract
+    question: >-
+      Interactions exist and no contract governs any of them. Which
+      agreements bind what this architecture exchanges?
+    askPlain: >-
+      Things here talk to each other and to the outside. Where is it
+      written down what each side may expect — the API description, the
+      published schema, the service agreement?
+    materiality: >-
+      A hop with no contract is renegotiated by every implementer who
+      touches it; compatibility and versioning obligations exist only
+      where the agreement is a subject someone can change deliberately.
+    authority: human
+    resolution: >-
+      Add a contract for each formal agreement and access it from the
+      behavior bound by it; realization from the data object or artifact
+      that embodies the agreement says where it lives.
 
   - id: service-realizes-no-motivation
     wave: business
@@ -1063,6 +1124,38 @@ questions:
       not perform application behavior: assign the actor to the business
       process that uses it and let the application service serve that
       process.
+  - id: no-event-declared
+    wave: application
+    since: "1.2"
+    scope: workspace
+    trigger:
+      - condition: no-subject-of-kind
+        kinds:
+          - yarramate/core@0.1#applicationEvent
+          - yarramate/core@0.1#businessEvent
+    question: >-
+      Nothing in this model reacts to an event. Does state change only
+      when something is called, or are there happenings the architecture
+      responds to?
+    askPlain: >-
+      Is everything here a direct request, or do things also happen on
+      their own — a message arrives, a job finishes, a threshold is
+      crossed — that the system has to react to?
+    materiality: >-
+      Whether change propagates by call or by event decides coupling,
+      ordering, and failure isolation. An event-driven seam modelled as
+      silence leaves every consumer to discover the event stream on its
+      own, and a repository full of event definitions the interview never
+      asked about reads as covered when it is absent.
+    authority: human
+    resolution: >-
+      Add the application or business events the system emits or responds
+      to and wire each with triggering from what raises it to what
+      responds. If there are genuinely none, that is a coupling decision
+      worth stating in a principle or a service description; this question
+      then stays on the agenda as the standing record that nobody has
+      declared one.
+
   - id: event-triggers-nothing
     wave: application
     since: "0.3"
@@ -1232,6 +1325,31 @@ questions:
       Add realization from the node, system software, or technology
       behavior that provides the service.
 
+  - id: no-artifact-declared
+    wave: technology
+    since: "1.2"
+    scope: workspace
+    trigger:
+      - condition: no-subject-of-kind
+        kinds:
+          - yarramate/core@0.1#artifact
+    question: >-
+      No artifact is declared. What do the declared components actually
+      ship as?
+    askPlain: >-
+      When this system is deployed, what is the thing that moves — an
+      image, a package, a bundle? What are those called?
+    materiality: >-
+      Release engineering starts where a build output becomes a subject.
+      An architecture with components but no artifacts can say what should
+      exist and nothing about what is deployed, so drift between built and
+      declared has nowhere to register.
+    authority: human
+    resolution: >-
+      Add the artifacts the build produces, assignment from the node that
+      deploys each one, and realization from the artifact to the component
+      or data object it materializes.
+
   - id: artifact-unassigned
     wave: technology
     since: "0.4"
@@ -1258,6 +1376,37 @@ questions:
       realization from the artifact to the component or data object it
       materializes.
   # ---- implementation ------------------------------------------------------
+  - id: implementation-path-missing
+    wave: implementation
+    since: "1.2"
+    scope: workspace
+    trigger:
+      - condition: no-subject-of-kind
+        kinds:
+          - yarramate/core@0.1#workPackage
+          - yarramate/core@0.1#deliverable
+          - yarramate/core@0.1#plateau
+    question: >-
+      No work package, deliverable, or plateau is declared. How does the
+      planned architecture become real?
+    askPlain: >-
+      Who is doing what to get from here to there? What are the packages
+      of work, and what does each one hand over?
+    materiality: >-
+      A model that names a target but no work reaching it is a wish with
+      an architecture diagram; committed work packages and their
+      deliverables are what make progress reviewable rather than
+      reported. A repository mid-migration that models none of the
+      migration is the sharpest form of the gap: the change is in the
+      tree and invisible in the model.
+    authority: human
+    resolution: >-
+      Add the work packages in flight, realization to the deliverables
+      each produces, and plateaus where an intermediate state needs a
+      name. An architecture genuinely at rest keeps this question open,
+      which is itself information: the model is saying nothing is
+      changing.
+
   - id: workpackage-delivers-nothing
     wave: implementation
     since: "0.4"
@@ -1426,6 +1575,36 @@ questions:
     resolution: >-
       Add a description claim stating meaning and explicit exclusions.
 
+  - id: capability-uncited
+    wave: hygiene
+    since: "1.2"
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#capability
+    trigger:
+      - condition: missing-reference
+        predicate: yarramate/reference/refers-to
+        direction: outgoing
+    question: >-
+      {subject.name} cites nothing. Where is this ability specified,
+      decided, or documented?
+    askPlain: >-
+      If someone asked where it says the system can do
+      "{subject.name}", what would you point at?
+    materiality: >-
+      A capability with no citation floats free of every record that
+      could confirm or correct it: an audit has nothing to grade the
+      claim against, and when its scope is disputed the dispute starts
+      from memory. The reference is where the model meets the
+      repository's own account of itself.
+    authority: either
+    resolution: >-
+      Add a references entry from the capability to the subject that
+      specifies it — the decision record, the published schema, the
+      guide that documents the journey. Model that record as a subject
+      first where it is not one yet.
+
   - id: status-missing
     wave: hygiene
     since: "0.1"
@@ -1479,6 +1658,12 @@ questions:
       genuinely different, say so in the model: add the counterpart's id to
       this subject's distinctFrom list. That answer is itself a claim, so it
       closes the question permanently and survives re-running the interview.
+      A third answer is ordinary in a repository mid-migration: they are
+      different subjects and one is taking over from the other. Record the
+      succession with supersedes, scoped where the takeover is partial
+      (ADR 0109), and record distinctFrom alongside it. Succession says what
+      the pair is to each other and distinctness is what this question asks,
+      so only the second closes it.
 
   - id: states-undefined
     wave: hygiene
@@ -1489,13 +1674,24 @@ questions:
     question: >-
       Does change shape matter here — should baseline, transition, or target
       states be declared?
+    askPlain: >-
+      Are we describing how things are, how they should become, or both?
+      If the repository already carries a migration plan or a target
+      design, that document is the answer.
     materiality: >-
       Without architecture states, current and target intent share one
-      undifferentiated model and comparisons are impossible.
+      undifferentiated model and comparisons are impossible. The answer is
+      often already on the record: a repository that carries its own
+      migration plan or target design in-tree has declared that change
+      shape matters, so evidence can bring this question its answer rather
+      than waiting for someone to remember it.
     authority: human
     resolution: >-
       Declare architecture states and mark presence with present-in where the
       distinction carries decisions; explicitly decline states otherwise.
+      Where in-tree documents already describe the target, model that
+      record and cite it with references from the subjects it changes, so
+      the declared states stand on evidence a reviewer can open.
 
   - id: kind-untested
     wave: hygiene
@@ -1580,3 +1776,30 @@ questions:
       which says the same thing without a qualifier. If the two subjects
       simply coexist and neither takes over from the other, the succession
       is the wrong claim; remove it.
+
+  - id: evidence-unchallenged
+    wave: hygiene
+    since: "1.2"
+    scope: workspace
+    trigger:
+      - condition: unchallenged-evidence
+    question: >-
+      Every observation this workspace records is a frictionless
+      confirmation. Did the inspection ever test a claim it might fail?
+    askPlain: >-
+      The evidence agrees with the model everywhere. Did we ever look
+      for something that might not be there — a documented piece missing
+      from the tree, a declared dependency nothing carries?
+    materiality: >-
+      An overlay that only ever says confirmed is indistinguishable from
+      one that only looked where success was guaranteed. One recorded
+      search or one honest non-confirmation is what makes the agreement
+      between model and reality worth believing; a reconcile summary of
+      pure confirmations has never put a claim at risk.
+    authority: either
+    resolution: >-
+      Probe at least one claim the sources assert that the tree might not
+      honour, and record the observation with its honest result. A
+      not-observed carries the searches that came back empty (ADR 0107);
+      a confirmed negative claim carries them too, because the empty
+      search is the confirmation. Either closes this.

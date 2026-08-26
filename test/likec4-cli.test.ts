@@ -2756,8 +2756,8 @@ mappings:
               'Semantic relationship kind "yarramate/development@1.0#implements" resolves to unsupported bundled LikeC4 kind "implements"',
             subject: 'likec4-adapter-provides-export',
             path: '.yarramate/architecture/engine.yaml',
-            pointer: '/relationships/125',
-            line: 1386,
+            pointer: '/relationships/127',
+            line: 1410,
             column: 5,
           },
           {
@@ -2767,8 +2767,8 @@ mappings:
               'Semantic relationship kind "yarramate/development@1.0#implements" resolves to unsupported bundled LikeC4 kind "implements"',
             subject: 'likec4-adapter-provides-check',
             path: '.yarramate/architecture/engine.yaml',
-            pointer: '/relationships/126',
-            line: 1390,
+            pointer: '/relationships/128',
+            line: 1414,
             column: 5,
           },
           {

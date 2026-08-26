@@ -99,6 +99,27 @@ describe('the evidence document carries recorded probes', () => {
     )
     const loaded = loadEvidence({ path: 'evidence/repository.yaml', source })
     expect(loaded.ok, JSON.stringify('diagnostics' in loaded ? loaded.diagnostics : [])).toBe(true)
+    if (!loaded.ok) return
+    // The probes survive normalization. loadEvidence rebuilds each
+    // observation explicitly, and until 1.2 the rebuild dropped searched
+    // and measured, so through the real load path reconcile counted every
+    // not-observed as an unsupported absence however carefully its author
+    // recorded the search, and interrogation's unchallenged-evidence read
+    // every overlay as probe-free (#272).
+    const praefect = loaded.evidence.observations.find(
+      (observation) => 'subject' in observation && observation.subject === 'praefect',
+    )
+    const pipeline = loaded.evidence.observations.find(
+      (observation) =>
+        'subject' in observation && observation.subject === 'pipeline-processing',
+    )
+    expect(praefect?.searched).toEqual([
+      { glob: 'PRAEFECT_*' },
+      { grep: 'Praefect', paths: ['lib/', 'app/'] },
+    ])
+    expect(pipeline?.measured).toEqual([
+      { value: '68', method: "find app/services/ci -maxdepth 1 -name '*.rb' | wc -l" },
+    ])
   })
 
   it('refuses a search probe that names neither a glob nor a grep', () => {
