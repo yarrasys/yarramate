@@ -14,7 +14,10 @@ import type {
   VisualDiagnostic,
   VisualViewSummary,
 } from '../adapters/visual/protocol-contract.js'
-import type { VisualRenderedModel } from '../adapters/visual/wire.js'
+import type {
+  VisualRenderedModel,
+  VisualServerFrame,
+} from '../adapters/visual/wire.js'
 import {
   adoptLandedViews,
   exclusionsOf,
@@ -169,22 +172,27 @@ export const createLocalHost = (options: LocalHostOptions): EditorHost => {
     )
 
   /**
-   * Recompiles and rebuilds what the canvas draws. `false` when the workspace
-   * does not compile, which leaves the previous model standing rather than
-   * blanking the canvas under the reviewer.
+   * Recompiles and rebuilds what the canvas draws. On failure it returns the
+   * compiler's own diagnostics and leaves the previous model standing rather
+   * than blanking the canvas under the reviewer. Returning them rather than
+   * `false` is what lets the caller SAY what broke: a bare failure told the
+   * reviewer nothing, and the commit path below did not even do that (#349).
    */
-  const recompile = (): boolean => {
+  const recompile = ():
+    | { readonly ok: true }
+    | { readonly ok: false; readonly diagnostics: readonly VisualDiagnostic[] } => {
     const sources = sourcesOf()
     const result = compileWorkspaceWithProfileContext(sources)
     if (!result.ok) {
       compiled = undefined
-      return false
+      return { ok: false, diagnostics: published(result.diagnostics, sources) }
     }
     const refreshed = {
       graph: result.graph,
       profileContext: result.profileContext,
     }
     compiled = refreshed
+    standingDiagnostics = []
     const workspaceModel = renderedWorkspaceOf(refreshed, views, {
       authority: 'canonical',
       initialView: views[0]?.id ?? '',
@@ -207,8 +215,35 @@ export const createLocalHost = (options: LocalHostOptions): EditorHost => {
     }, options.catalogue ?? SHIPPED_CATALOGUE, options.dismissed)
     views = workspaceModel.views
     model = workspaceModel.model
-    return true
+    return { ok: true }
   }
+
+  /**
+   * What the last recompile could not do, held for a browser that has not
+   * opened yet. `open` recompiles before `deliver` exists, so a failure there
+   * has nobody to tell until the editor arrives (#349).
+   */
+  let standingDiagnostics: readonly VisualDiagnostic[] = []
+  let responses = 0
+  const nextResponseId = (): string => {
+    responses += 1
+    return responses.toString(16).padStart(32, '0')
+  }
+
+  const diagnosticFrame = (
+    diagnostics: readonly VisualDiagnostic[],
+  ): VisualServerFrame => ({
+    kind: 'response',
+    response: {
+      format: 'yarramate/visual-response/v1',
+      sessionId: 'local',
+      responseId: nextResponseId(),
+      eventId: nextResponseId(),
+      type: 'diagnostic',
+      timestamp: new Date().toISOString(),
+      payload: { diagnostics },
+    },
+  })
 
   const refuse = (
     input: VisualBrowserInput,
@@ -296,7 +331,25 @@ export const createLocalHost = (options: LocalHostOptions): EditorHost => {
           : { ok: true, result: { ...result, documents } },
     })
     options.onCommit?.(documents)
-    if (recompile()) deliver?.frame({ kind: 'model', model, views })
+    const recompiled = recompile()
+    if (recompiled.ok) {
+      deliver?.frame({ kind: 'model', model, views })
+      return
+    }
+    // Previously this emitted NOTHING: a batch that landed and left the
+    // workspace uncompilable reported `ok: true` and then silence, so the
+    // browser went on drawing a stale graph with no word that it was stale
+    // (#349). A `diagnostic` response rather than a refusal, because the
+    // commit did land - refusing it would report the opposite of what
+    // happened.
+    standingDiagnostics = [
+      serverDiagnostic(
+        'YMVS319',
+        'The batch landed but left the workspace unable to compile; the last good model stays as it is',
+      ),
+      ...recompiled.diagnostics,
+    ]
+    deliver?.frame(diagnosticFrame(standingDiagnostics))
   }
 
   /** What a batch that changed no subject reports. */
@@ -322,7 +375,8 @@ export const createLocalHost = (options: LocalHostOptions): EditorHost => {
   return {
     open: (events: EditorHostEvents) => {
       deliver = events
-      recompile()
+      const opened = recompile()
+      if (!opened.ok) standingDiagnostics = opened.diagnostics
       events.connected(true)
       events.frame({
         kind: 'ready',
@@ -352,6 +406,11 @@ export const createLocalHost = (options: LocalHostOptions): EditorHost => {
           frozen: false,
         },
       })
+      // A recompile that failed before the editor opened has had nobody to
+      // tell until now (#349).
+      if (standingDiagnostics.length > 0) {
+        events.frame(diagnosticFrame(standingDiagnostics))
+      }
       return () => {
         deliver = undefined
       }

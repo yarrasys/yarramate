@@ -1,5 +1,44 @@
 # Changelog
 
+## Unreleased
+
+- **Fixed.** A visual session that cannot recompile the workspace says so,
+  and keeps drawing the model that did compile (#349, ADR 0126). It used to
+  say nothing at all: every view emptied while the rail kept its views, so
+  the page read as a session over an architecture that had gone blank rather
+  than one that had failed. That is what made the 1.4.1 patterns bug take ten
+  minutes to diagnose instead of ten seconds - the compiler had a `YM419`
+  naming the missing pattern, and the browser was the one surface that could
+  not see it. Three paths were silent (a startup failure, a refused apply
+  whose refresh also failed, and an unreadable source) and the fourth could
+  not name the fault: `YMVS310` is built with a hardcoded path of
+  `visual-session-server`, and the compiler's own diagnostics were discarded
+  one function earlier. The browser now gets those diagnostics, with code and
+  path and line, in the faults panel. That panel also moves out of the
+  conversation column and over the canvas, into a rule that was written for
+  it and had nothing rendering into it: a reviewer studying a diagram has no
+  reason to look at the conversation to learn that what they are looking at
+  is stale.
+
+  **An unreadable source is no longer served as an empty workspace.**
+  Compiling an empty source list *succeeds*, returning an empty graph rather
+  than a failure, so swallowing a read error made a workspace the session
+  could not read indistinguishable from one with nothing in it - reported as
+  a healthy compile, with every view at zero subjects and nothing frozen.
+
+  **Only a failure the runtime caused is fatal.** A post-commit failure still
+  freezes the session; the others do not. A source going uncompilable because
+  the reviewer edited a file or switched branches is an ordinary mid-edit
+  state, not grounds to end a session holding staged work. The mounted editor
+  gets the same treatment, where a batch that landed and left the workspace
+  uncompilable previously reported `ok: true` and then silence.
+
+- **Fixed.** The consumer docs published the wrong wire version. `docs/VISUAL-ADAPTER.md`
+  and `docs/ROADMAP.md` both named `yarramate/visual-protocol/v4`; the
+  constant and all three schemas have been at `v5`. A host embedding the
+  editor and pinning what the doc said would pin a version the runtime does
+  not speak.
+
 ## 1.4.1
 
 - **Fixed.** A pattern document declared in a workspace manifest is

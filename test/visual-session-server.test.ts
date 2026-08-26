@@ -3175,3 +3175,166 @@ it("keeps the fixture asset root free of anything the server must not serve", as
   expect(page).not.toMatch(/https?:\/\//);
   expect(page).not.toMatch(/<script(?![^>]*\ssrc=)/);
 });
+
+describe("startVisualServer says why a recompile failed (#349)", () => {
+  const document = `format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts:
+  - id: user
+    kind: businessActor
+    name: User
+relationships: []
+`;
+  const manifest = `format: yarramate/workspace/v1
+id: recompile-fixture
+documents:
+  - architecture/main.yaml
+profiles: []
+projections:
+  - projections/*.yaml
+adapterMappings: []
+evidence: []
+`;
+
+  const withWorkspace = async () => {
+    await mkdir(join(baseDir, ".yarramate/architecture"), { recursive: true });
+    await mkdir(join(baseDir, ".yarramate/projections"), { recursive: true });
+    await writeFile(
+      join(baseDir, ".yarramate/architecture/main.yaml"),
+      document,
+      "utf8",
+    );
+    await writeFile(
+      join(baseDir, ".yarramate/projections/seeded.yaml"),
+      `format: yarramate/projection/v1
+id: seeded
+version: "1.0"
+query:
+  kinds:
+    - yarramate/core@0.1#businessActor
+presentation:
+  title: Seeded
+  description: seeded
+`,
+      "utf8",
+    );
+    await writeFile(join(baseDir, ".yarramate/workspace.yaml"), manifest, "utf8");
+  };
+
+  const sendViewCommit = (socket: WebSocket) => {
+    const result = nextFrame(socket, "apply-result");
+    socket.send(
+      JSON.stringify({
+        type: "changeset.commit",
+        lastAcknowledgedSequence: 0,
+        payload: {
+          operations: [],
+          viewOperations: [
+            {
+              op: "write-view",
+              path: ".yarramate/projections/added.yaml",
+              projection: {
+                format: "yarramate/projection/v1",
+                id: "added",
+                version: "1.0",
+                query: { kinds: ["yarramate/core@0.1#businessActor"] },
+                presentation: { title: "Added", description: "staged" },
+              },
+            },
+          ],
+          sourceDigests: {},
+        },
+      }),
+    );
+    return result;
+  };
+
+  const enforcesPermissions =
+    process.platform !== "win32" && process.getuid?.() !== 0;
+
+  /** Every frame the socket has taken in, for asserting on what did NOT arrive. */
+  const settle = async (socket: WebSocket) => {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    return buffered.get(socket) ?? [];
+  };
+
+  const diagnosticsFrom = (frames: readonly VisualServerFrame[]) =>
+    frames.flatMap((frame) =>
+      frame.kind === "response" && frame.response.type === "diagnostic"
+        ? (frame.response.payload.diagnostics as readonly {
+            readonly code: string;
+            readonly message: string;
+            readonly path: string;
+          }[])
+        : [],
+    );
+
+  /**
+   * A source the manifest resolves and the process cannot read. `globSync`
+   * matches it, so the manifest loads; `workspaceSources` then swallows the
+   * read error and returns an EMPTY list, and compiling an empty list
+   * SUCCEEDS. So the session starts, reports a healthy compile, and draws a
+   * workspace holding nothing - rather than saying it could not read a file.
+   *
+   * `local-host.ts` already refuses the analogous case with YMVS318, "the
+   * last good model stays as it is". The session server is the one that
+   * degrades silently.
+   */
+  it.skipIf(!enforcesPermissions)(
+    "does not serve an unreadable source as an empty workspace",
+    async () => {
+      await withWorkspace();
+      await chmod(join(baseDir, ".yarramate/architecture/main.yaml"), 0o000);
+      const server = await start();
+      const { cookie } = await bootstrap(server);
+      const socket = await openBrowserSocket(server, cookie);
+
+      const ready = await nextFrame(socket, "ready");
+      const diagnostics = diagnosticsFrom(await settle(socket));
+
+      // Either of these alone would be enough to stop the ten-minute
+      // diagnosis: do not claim an empty model, and name the file.
+      expect(ready.snapshot.model.graph.nodes).not.toEqual([]);
+      expect(diagnostics.map((one) => one.code)).toContain("YMVS319");
+      expect(
+        diagnostics.some((one) =>
+          `${one.message} ${one.path}`.includes("architecture/main.yaml"),
+        ),
+      ).toBe(true);
+
+      await chmod(join(baseDir, ".yarramate/architecture/main.yaml"), 0o600);
+      socket.close();
+    },
+  );
+
+  /**
+   * The fault has to clear itself. A `model` frame is what clears the banner
+   * in the browser (`model.received` resets `state.diagnostics`), so a
+   * recompile that succeeds after one that failed has to broadcast one -
+   * and `standingDiagnostics` is dropped with it, so a browser connecting
+   * afterwards is not handed a fault that no longer exists.
+   */
+  it.skipIf(!enforcesPermissions)(
+    "stops reporting a fault once the source is readable again",
+    async () => {
+      await withWorkspace();
+      await chmod(join(baseDir, ".yarramate/architecture/main.yaml"), 0o000);
+      const server = await start();
+      const { cookie } = await bootstrap(server);
+      const socket = await openBrowserSocket(server, cookie);
+
+      await nextFrame(socket, "ready");
+      expect(diagnosticsFrom(await settle(socket)).length).toBeGreaterThan(0);
+
+      await chmod(join(baseDir, ".yarramate/architecture/main.yaml"), 0o600);
+      const model = nextFrame(socket, "model");
+      await sendViewCommit(socket);
+
+      expect((await model).model.graph.nodes.map((node) => node.id)).toEqual([
+        "user",
+      ]);
+      socket.close();
+    },
+  );
+});

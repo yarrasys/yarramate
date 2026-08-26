@@ -553,7 +553,7 @@ Eleven closed `yarramate/visual-*/v1` JSON documents, each with
 `additionalProperties: false`, published from `./schema`:
 session request, session started, session descriptor, event, response,
 status, handoff, model, graph, layout, and diagnostic result.
-`yarramate/visual-protocol/v4` is the version the started result, the
+`yarramate/visual-protocol/v5` is the version the started result, the
 descriptor, and status agree on. Every filesystem path any of these documents
 carries - `sessionRoot`, `descriptorPath`, `journalPath`, `transcriptPath` - is
 a canonical local `file:` URI rather than a bare path string, which is why the
@@ -582,6 +582,42 @@ back to the browser carry nine response types.
 mechanical edit is not a question. A successful commit is followed by a fresh
 `model` frame, so the browser renders what actually landed rather than an
 optimistic local guess.
+
+## A failed recompile keeps the picture and names what broke
+
+A session recompiles the workspace at start and after every landed
+changeset. When that compile fails, the session **keeps the last good model
+and says why**, rather than clearing it (ADR 0126).
+
+It used to clear it. Every view emptied, the rail kept its views, and the
+page read as a session over an architecture that had gone blank rather than
+one that had failed - which is the flattering reading of the two, and the
+wrong one. An empty canvas looks like an answer ("your model is empty")
+rather than like a failure. The browser's own fault panel has always
+promised the opposite: *the diagram still shows the model that did compile*.
+
+What a consumer sees:
+
+- a `diagnostic` response carrying **the compiler's own diagnostics**, code
+  and path and line, not a summary line. `YMVS310` when a landed changeset
+  caused it, `YMVS319` otherwise;
+- the faults panel over the canvas, cleared by the next `model` frame, so a
+  recompile that succeeds clears it without anything clearing it explicitly;
+- a failure that happened before the browser connected - a startup one, most
+  often - delivered to the first browser that connects, and dropped if a
+  later recompile succeeds first.
+
+**Only a failure the runtime caused is fatal.** A post-commit failure still
+freezes the session with `recompile-failed`: a batch the runtime landed that
+leaves the workspace uncompilable is a bug, not a reviewer's error. Nothing
+else freezes. A source going uncompilable because the reviewer edited a file
+or switched branches is an ordinary mid-edit state, and ending their session
+for it would discard whatever is staged in the changeset tray.
+
+An unreadable source is never treated as an absent one. Compiling an empty
+source list SUCCEEDS - it yields an empty graph, not a failure - so a
+swallowed read error used to be indistinguishable from a workspace with
+nothing in it.
 
 ## Boundary
 

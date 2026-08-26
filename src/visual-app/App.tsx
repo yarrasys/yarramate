@@ -199,11 +199,17 @@ const Choices = ({
   </div>
 );
 /**
- * The server's own refusals of a browser frame (`YMVS...`). These are about the
- * frame rather than about a subject, so they carry no `subjects` and there is
- * nothing on the diagram to mark. A refused COMMIT is a different thing and
- * lands in the changeset tray, where what it names is counted and marked
- * (ADR 0102).
+ * The server's own refusals of a browser frame (`YMVS...`), and the compiler's
+ * diagnostics when a recompile fails (ADR 0126). These are about the frame or
+ * the workspace rather than about a subject, so they mostly carry no
+ * `subjects` and there is nothing on the diagram to mark. A refused COMMIT is
+ * a different thing and lands in the changeset tray, where what it names is
+ * counted and marked (ADR 0102).
+ *
+ * Drawn OVER the canvas, once. It used to sit in the conversation column,
+ * which a reviewer studying the diagram has no reason to look at to learn
+ * that what they are looking at is stale - and the sentence it renders is
+ * about the diagram, not about the conversation.
  */
 const Faults = ({
   diagnostics,
@@ -213,7 +219,7 @@ const Faults = ({
   diagnostics.length === 0 ? null : (
     <div className="faults" role="alert">
       <p className="faults-title">
-        The last change did not compile. The diagram still shows the model that
+        The workspace did not compile. The diagram still shows the model that
         did.
       </p>
       <ul>
@@ -591,6 +597,15 @@ const DiagramWorkspace = ({
         onStage={onStageView}
         readOnly={readOnly}
       />
+      {/*
+       * Over the drawing, not only beside it. A failed recompile leaves the
+       * canvas showing the last model that did compile, and a reviewer looking
+       * at the diagram has no reason to glance at the conversation column to
+       * find out that what they are looking at is stale (#349). The
+       * `.diagram-workspace > .faults` rule this lands in was written for
+       * exactly this and had nothing rendering into it.
+       */}
+      <Faults diagnostics={state.diagnostics} />
     </section>
   );
 };
@@ -832,8 +847,6 @@ const ChatSection = ({
             ))
           )}
         </ol>
-
-        <Faults diagnostics={state.diagnostics} />
 
         {state.choices === null ? null : (
           <Choices
