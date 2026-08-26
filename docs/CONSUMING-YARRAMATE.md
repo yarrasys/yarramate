@@ -268,6 +268,17 @@ answer is about the model and belongs in front of a user, different means the
 engine moved and the right response is to re-baseline silently rather than
 reopen someone's queue.
 
+Every question also carries `trigger`, the catalogue conditions that opened
+it, verbatim ([ADR 0110](adr/0110-an-open-question-carries-its-answer-shape.md)).
+That is the question's machine-readable answer shape: a host building an
+answering affordance — a concept form with the kind preselected from
+`no-subject-of-kind`, a relationship editor with one endpoint fixed by
+`missing-relationship`'s `direction`, an attestation form on
+`missing-attestation`'s `topic` — maps the conditions directly instead of
+re-deriving the shape from its own catalogue copy. The field is required and
+the published report schema uses `additionalProperties: false`, so upgrade a
+separately pinned schema together with the package.
+
 ### Mount the visual editor
 
 Mount the packaged editor when the consuming product owns the sources and

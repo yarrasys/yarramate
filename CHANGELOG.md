@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.2.0
 
 - **Added.** An open question carries its machine-readable answer shape
   (#289). Every interrogation-report question and design step now carries
