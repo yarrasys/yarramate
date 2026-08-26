@@ -218,3 +218,25 @@ describe('nothing asked is not the same as everything answered', () => {
     expect(unopened.waves.some((wave) => wave.questions.length > 0)).toBe(false)
   })
 })
+
+// The sixth instance, and the second in `design`: 1.4.0 fixed the completion
+// sentence and left the wave summary line directly above it reading
+// "implementation 0 open" for a wave that had not opened.
+describe('the wave summary distinguishes closed from clear', () => {
+  it('reads "not yet" for a gated wave rather than a zero count', () => {
+    const report = reportOf(GATED, EMPTY)
+    const summary = report.waves
+      .map((wave) =>
+        wave.opened
+          ? `${wave.id} ${wave.questions.filter(({ open }) => open).length} open`
+          : `${wave.id} not yet`,
+      )
+      .join(' · ')
+    expect(summary).toBe('early 1 open · late not yet')
+  })
+
+  it('reads a count once the wave opens', () => {
+    const report = reportOf(GATED, POPULATED)
+    expect(report.waves.every(({ opened }) => opened)).toBe(true)
+  })
+})

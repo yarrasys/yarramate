@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- **Fixed.** `design`'s wave summary says which waves have not opened.
+  It read `implementation 0 open` for a gated wave — the same empty-set
+  flattery as the completion sentence directly below it, which 1.4.0
+  fixed while leaving this line alone. It now reads `implementation not
+  yet`. The sixth instance of the shape found in two days, and the second
+  in this command. `progress.waves` in the JSON keeps its shape: a
+  consumer wanting wave state reads an interrogation report, where
+  `opened` is already required, and a third required field on a published
+  format for a convenience summary is not worth the constructor break.
+
 ## 1.4.0
 
 - **Fixed.** "No open questions" no longer reads as a finished interview
