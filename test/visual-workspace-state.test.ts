@@ -835,10 +835,17 @@ describe("the right column's sections", () => {
   ): VisualWorkspaceState =>
     visualWorkspaceReducer(from, { type: "section.toggled", section });
 
-  it("stacks properties, changes and chat, with chat last", () => {
+  it("stacks properties, questions, changes and chat, with chat last", () => {
     // Chat is pinned at the foot because it owns the session's own control -
-    // the reviewer ends the conversation beside the conversation.
-    expect(RIGHT_SECTIONS).toEqual(["properties", "changes", "chat"]);
+    // the reviewer ends the conversation beside the conversation. Questions
+    // sit under properties: what is asked about a subject reads beside what
+    // is declared about it (#292).
+    expect(RIGHT_SECTIONS).toEqual([
+      "properties",
+      "questions",
+      "changes",
+      "chat",
+    ]);
   });
 
   it("shuts and reopens one section without touching the others", () => {
@@ -924,6 +931,7 @@ describe("the right column's sections", () => {
 describe("stackRows", () => {
   const bodies = {
     properties: "properties-body",
+    questions: "questions-body",
     changes: "changes-body",
     chat: "chat-body",
   } as const;
@@ -939,6 +947,7 @@ describe("stackRows", () => {
   it("draws every section and the handles between them by default", () => {
     expect(rows(RIGHT_SECTIONS)).toEqual([
       "properties",
+      "questions",
       "splitter-changes",
       "changes",
       "splitter-chat",
@@ -965,7 +974,7 @@ describe("stackRows", () => {
     // The sequence means something - properties above changes above chat, which
     // is pinned at the foot - so a host cannot reorder the shell by writing its
     // array differently.
-    expect(rows(["chat", "properties", "changes"])).toEqual(
+    expect(rows(["chat", "questions", "properties", "changes"])).toEqual(
       rows(RIGHT_SECTIONS),
     );
   });

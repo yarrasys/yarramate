@@ -156,6 +156,22 @@ describe('an editor over a store, with no server', () => {
     ])
   })
 
+  it('ships the interrogation overlay from the bundled catalogue (#292)', () => {
+    const { frames } = openHost()
+    const ready = frames[0]
+    expect(ready?.kind).toBe('ready')
+    if (ready?.kind !== 'ready') return
+    const overlay = ready.snapshot.model.interrogation
+    // Presence and shape only - counts move with every catalogue version,
+    // and pinning them here would fail each honest deepening (ADR 0063).
+    expect(overlay).toBeDefined()
+    expect(overlay!.catalogue).toMatch(/^core-enrichment@/)
+    expect(overlay!.semantics.length).toBeGreaterThan(0)
+    expect(overlay!.workspace.length).toBeGreaterThan(0)
+    // This thin fixture leaves subject-scoped questions open somewhere.
+    expect(Object.keys(overlay!.subjects).length).toBeGreaterThan(0)
+  })
+
   it('counts a view by its SUBJECTS, not by its match set', () => {
     // Concepts and relationships come back together; a view over two
     // components would read as three if the relationship were counted.

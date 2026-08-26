@@ -36,6 +36,7 @@
     "test/connection-panel.test.ts",
     "test/subject-draft-panel.test.ts",
     "test/faults.test.ts",
+    "test/open-questions.test.ts",
     "test/changeset-tray.test.ts",
     "test/subject-form.test.ts",
     "test/archimate-notation.test.ts"

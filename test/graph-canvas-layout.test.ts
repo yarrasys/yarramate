@@ -268,7 +268,7 @@ describe('buildStylesheet ArchiMate notation', () => {
   }
 
   it('renders a realization edge as a dotted line with a hollow target triangle', () => {
-    const style = edgeRule(buildStylesheet(false, false, false), 'realization')
+    const style = edgeRule(buildStylesheet(false, false, false, true), 'realization')
     expect(style['line-style']).toBe('dotted')
     expect(style['source-arrow-shape']).toBe('none')
     expect(style['target-arrow-shape']).toBe('triangle')
@@ -276,7 +276,7 @@ describe('buildStylesheet ArchiMate notation', () => {
   })
 
   it('resolves a derived development kind to its core lineage style via coreKindLabel, not kindLabel', () => {
-    const sheet = buildStylesheet(false, false, false)
+    const sheet = buildStylesheet(false, false, false, true)
     const cy = cytoscape({
       headless: true,
       styleEnabled: true,
@@ -337,7 +337,7 @@ describe('buildStylesheet ArchiMate notation', () => {
       return cytoscape({
         headless: true,
         styleEnabled: true,
-        style: buildStylesheet(true, true, true),
+        style: buildStylesheet(true, true, true, true),
         elements: [node('container'), node('child', 'container'), node('leaf')],
       })
     }
@@ -378,13 +378,13 @@ describe('buildStylesheet ArchiMate notation', () => {
   // them would draw every kind as an undifferentiated box and every
   // relationship with the same line, which is what this asserts cannot happen.
   it('always carries the ArchiMate shape and arrow rules', () => {
-    const sheet = buildStylesheet(true, true, true)
+    const sheet = buildStylesheet(true, true, true, true)
     expect(sheet.filter((block) => block.selector.startsWith('node[aspect')))
       .toHaveLength(Object.keys(ASPECT_SHAPES).length)
     expect(sheet.filter((block) => block.selector.startsWith('edge[coreKindLabel')))
       .toHaveLength(RELATIONSHIP_NOTATION.length)
 
-    const bare = buildStylesheet(false, false, false)
+    const bare = buildStylesheet(false, false, false, true)
     expect(bare.filter((block) => block.selector.startsWith('node[aspect')))
       .toHaveLength(Object.keys(ASPECT_SHAPES).length)
   })

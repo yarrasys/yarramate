@@ -17,6 +17,7 @@ import {
   EVIDENCE_BADGE_URI,
   LIFECYCLE_BADGE_URI,
   isLifecycleStatus,
+  openQuestionsBadgeUri,
   ownerBadgeUri,
   ownerInitialsOf,
 } from './badges.js'
@@ -220,11 +221,28 @@ function badgeLayersFor(
   showLifecycle: boolean,
   showEvidence: boolean,
   showOwnership: boolean,
+  showNudges: boolean,
 ): BadgeLayer[] {
   const layers: BadgeLayer[] = []
   const icon = kindIconUriOf(String(ele.data('kindLabel')))
   if (icon !== null) {
     layers.push({ image: icon, positionX: '0%', positionY: '0%', size: ICON_SIZE })
+  }
+  // Top-centre: all four corners are spent (icon, lifecycle, evidence,
+  // ownership). Gated on count > 0 - a bare node is how "nothing open" is
+  // drawn, never a zero chip (#292).
+  const openQuestions: unknown = ele.data('openQuestions')
+  if (
+    showNudges &&
+    typeof openQuestions === 'number' &&
+    openQuestions > 0
+  ) {
+    layers.push({
+      image: openQuestionsBadgeUri(openQuestions),
+      positionX: '50%',
+      positionY: '0%',
+      size: BADGE_SIZE,
+    })
   }
   const status: unknown = ele.data('status')
   if (showLifecycle && isLifecycleStatus(status)) {
@@ -268,6 +286,7 @@ export function buildStylesheet(
   showLifecycle: boolean,
   showEvidence: boolean,
   showOwnership: boolean,
+  showNudges: boolean,
 ): cytoscape.StylesheetJsonBlock[] {
   // Cytoscape re-evaluates every mapper on each style recalculation - a single
   // selection change re-runs all seven over every node - and rebuilding the
@@ -282,10 +301,10 @@ export function buildStylesheet(
     const key =
       `${String(ele.data('status'))}\u0000${String(ele.data('hasAttestations'))}` +
       `\u0000${String(ele.data('owner'))}\u0000${String(ele.data('ownerInitials'))}` +
-      `\u0000${String(ele.data('kindLabel'))}`
+      `\u0000${String(ele.data('kindLabel'))}\u0000${String(ele.data('openQuestions'))}`
     const cached = badgeStyleCache.get(key)
     if (cached !== undefined) return cached
-    const layers = badgeLayersFor(ele, showLifecycle, showEvidence, showOwnership)
+    const layers = badgeLayersFor(ele, showLifecycle, showEvidence, showOwnership, showNudges)
     const built: BadgeStyleArrays = {
       images: layers.map((layer) => layer.image),
       positionsX: layers.map((layer) => layer.positionX),
@@ -612,7 +631,8 @@ export function resolveNestingParents(
 // Convert CanvasGraph nodes and edges to cytoscape ElementDefinition format
 function graphToElements(
   graph: CanvasGraph,
-  nesting: readonly NestingKind[]
+  nesting: readonly NestingKind[],
+  openQuestionCounts: ReadonlyMap<string, number>
 ): ElementDefinition[] {
   // A node's own kind decides whether an assignment may nest it, so the lookup
   // is built once here rather than searched per edge.
@@ -640,6 +660,10 @@ function graphToElements(
         // Derived here, not drawn here - Task 6's owner-initials chip
         // consumes this same field rather than recomputing it from `owner`.
         ownerInitials: ownerInitialsOf(node.owner),
+        // From the interrogation overlay, not the node: the overlay ships
+        // beside the graph in the same model frame, so both refresh
+        // together (#292). Zero draws nothing.
+        openQuestions: openQuestionCounts.get(node.id) ?? 0,
         // `parent` is cytoscape's live nesting pointer and `applyFilter` moves
         // it as views come and go, so the model's own claim is kept alongside
         // it under a key cytoscape does not interpret. Without this the
@@ -885,6 +909,10 @@ interface GraphCanvasProps {
   readonly showLifecycle: boolean
   readonly showEvidence: boolean
   readonly showOwnership: boolean
+  readonly showNudges: boolean
+  /** Open-question count per subject id, from the model's interrogation
+   * overlay; an empty map (host shipped no overlay) draws no chips. */
+  readonly openQuestionCounts: ReadonlyMap<string, number>
   readonly activeViewId: string
   /** Saved layout for the active view, or undefined when it has none yet. */
   readonly savedPositions: VisualLayoutPositions | undefined
@@ -923,6 +951,8 @@ export function GraphCanvas({
   showLifecycle,
   showEvidence,
   showOwnership,
+  showNudges,
+  openQuestionCounts,
 }: GraphCanvasProps): React.ReactElement {
   const containerRef = useRef<HTMLDivElement>(null)
   const cyRef = useRef<Core | null>(null)
@@ -981,11 +1011,12 @@ export function GraphCanvas({
 
     const cy = cytoscape({
       container: containerRef.current,
-      elements: graphToElements(graph, nesting),
-      // `showLifecycle`/`showEvidence`/`showOwnership` seed the stylesheet the
-      // mount builds; the effect below re-applies it to the live instance on
-      // every later toggle, without remounting or re-laying-out.
-      style: buildStylesheet(showLifecycle, showEvidence, showOwnership),
+      elements: graphToElements(graph, nesting, openQuestionCounts),
+      // `showLifecycle`/`showEvidence`/`showOwnership`/`showNudges` seed the
+      // stylesheet the mount builds; the effect below re-applies it to the
+      // live instance on every later toggle, without remounting or
+      // re-laying-out.
+      style: buildStylesheet(showLifecycle, showEvidence, showOwnership, showNudges),
       wheelSensitivity: 0.1,
       layout: { name: 'null' },
     })
@@ -1128,8 +1159,8 @@ export function GraphCanvas({
       isInitialPresentationSyncRef.current = false
       return
     }
-    cyRef.current.style(buildStylesheet(showLifecycle, showEvidence, showOwnership))
-  }, [showLifecycle, showEvidence, showOwnership])
+    cyRef.current.style(buildStylesheet(showLifecycle, showEvidence, showOwnership, showNudges))
+  }, [showLifecycle, showEvidence, showOwnership, showNudges])
 
   // Update elements whenever the graph itself changes. Keyed on the graph and
   // nothing else: a full remove/re-add plus an unscoped layout over every
@@ -1143,13 +1174,16 @@ export function GraphCanvas({
     if (isInitialSyncRef.current) {
       isInitialSyncRef.current = false
     } else {
-      const elements = graphToElements(graph, nesting)
+      const elements = graphToElements(graph, nesting, openQuestionCounts)
       cyRef.current.elements().remove()
       cyRef.current.add(elements)
     }
 
     runLayout(cyRef.current)
-  }, [graph])
+    // `openQuestionCounts` is derived from the same model frame as `graph`,
+    // so its identity moves exactly when the graph's does - listed for
+    // honesty, never an extra rerun.
+  }, [graph, openQuestionCounts])
 
   // Mark every subject a diagnostic named. Runs on its own rather than with
   // selection, because a fault outlives whatever the reviewer happens to have

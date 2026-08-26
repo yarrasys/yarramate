@@ -2251,3 +2251,62 @@ body {
 .prompt-dialog-form .confirm-dialog-actions {
   margin-top: calc(var(--step) * 0.5);
 }
+
+/* Open questions (#292): the interview read beside the canvas. Quiet by
+   design - an open question is the catalogue deepening honestly, not a
+   defect, so nothing here borrows the failure palette. */
+.open-questions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--step);
+  padding: var(--step) 0;
+}
+
+.open-questions-scope,
+.open-questions-catalogue {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--quiet);
+}
+
+.question-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--step) * 0.75);
+}
+
+.question-row {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--step) * 0.25);
+}
+
+.question-text {
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+
+.question-meta {
+  display: flex;
+  gap: var(--step);
+  align-items: baseline;
+}
+
+.question-authority {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--quiet);
+  border: 1px solid var(--quiet);
+  border-radius: 999px;
+  padding: 0 calc(var(--step) * 0.75);
+}
+
+.question-since {
+  font-size: 0.72rem;
+  color: var(--quiet);
+}

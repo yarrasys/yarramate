@@ -496,3 +496,42 @@ describe('a host that asks for some of the sections', () => {
     }
   })
 })
+
+describe('open questions section (#292)', () => {
+  const overlay = {
+    catalogue: 'core-enrichment@1.1',
+    semantics: '1',
+    workspace: [
+      {
+        questionId: 'outcome-missing',
+        question: 'What outcome justifies this system?',
+        authority: 'human' as const,
+      },
+    ],
+    subjects: {
+      'app.checkout': [
+        {
+          questionId: 'component-realizes-nothing',
+          question: 'What does Checkout realize?',
+          authority: 'either' as const,
+        },
+      ],
+    },
+  }
+
+  it('draws the section, with the workspace questions, when the model carries the overlay', () => {
+    const markup = renderSession({
+      model: { ...renderedModel, interrogation: overlay },
+    })
+    expect(markup).toContain('Open questions')
+    expect(markup).toContain('What outcome justifies this system?')
+    expect(markup).toContain('1 open')
+  })
+
+  it('draws no section at all when the host shipped no overlay', () => {
+    // Absence-safe by contract: an older or embedded host that computes no
+    // overlay must see the canvas it always saw, not a section of zeros.
+    const markup = renderSession({ model: renderedModel })
+    expect(markup).not.toContain('Open questions')
+  })
+})

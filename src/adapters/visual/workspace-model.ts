@@ -22,8 +22,16 @@ import type {
   SemanticGraph,
 } from "../../compiler.js";
 import { kindLabelOf } from "../../kind-label.js";
+import {
+  evaluateCatalogue,
+  loadQuestionCatalogue,
+} from "../../interrogate-command.js";
 import type { VisualKindOption, VisualViewSummary } from "./protocol-contract.js";
-import type { VisualRenderedModel } from "./wire.js";
+import type {
+  VisualInterrogationOverlay,
+  VisualQuestionEntry,
+  VisualRenderedModel,
+} from "./wire.js";
 
 /**
  * What a workspace looks like to the editor, however the editor is being run
@@ -78,11 +86,65 @@ export const conceptCountOf = (
   ).length;
 
 /**
+ * Folds one interrogation report into what the canvas draws (#292).
+ *
+ * Undefined — never a throw — when the catalogue does not load: the overlay
+ * is a garnish on the model, and a model frame must not be blocked by it.
+ * Subject ids come from the same compiled graph as `CanvasNode.id`, so the
+ * join in the browser is a plain lookup.
+ */
+export const interrogationOverlayOf = (
+  compiled: {
+    readonly graph: SemanticGraph;
+    readonly profileContext: ResolvedProfileContext;
+  },
+  catalogue: { readonly path: string; readonly source: string },
+): VisualInterrogationOverlay | undefined => {
+  const loaded = loadQuestionCatalogue(catalogue);
+  if (!loaded.ok) return undefined;
+  const report = evaluateCatalogue(
+    loaded.catalogue,
+    compiled.graph,
+    compiled.profileContext,
+  );
+  const workspace: VisualQuestionEntry[] = [];
+  const subjects: Record<string, VisualQuestionEntry[]> = {};
+  for (const wave of report.waves) {
+    for (const question of wave.questions) {
+      if (!question.open) continue;
+      const base = {
+        questionId: question.id,
+        authority: question.authority,
+        ...(question.since === undefined ? {} : { since: question.since }),
+      };
+      if (question.subjects === undefined) {
+        workspace.push({ ...base, question: question.question });
+        continue;
+      }
+      for (const subject of question.subjects) {
+        (subjects[subject.id] ??= []).push({
+          ...base,
+          question: subject.question,
+        });
+      }
+    }
+  }
+  return {
+    catalogue: report.catalogue,
+    semantics: report.semantics,
+    workspace,
+    subjects,
+  };
+};
+
+/**
  * Rebuilds the shared editor workspace from one successful compile.
  *
  * The caller owns metadata which cannot be inferred from a graph (authority,
  * source revisions, layouts, and initial view); this helper owns all derived
- * canvas, vocabulary, and view-count arithmetic.
+ * canvas, vocabulary, view-count, and interrogation arithmetic. `catalogue`
+ * is the question catalogue's bytes — this module cannot read files, so
+ * whoever can hands them over; omitting it ships a model with no overlay.
  */
 export const renderedWorkspaceOf = (
   compiled: {
@@ -90,7 +152,8 @@ export const renderedWorkspaceOf = (
     readonly profileContext: ResolvedProfileContext;
   },
   views: readonly VisualViewSummary[],
-  metadata: Omit<VisualRenderedModel, "graph" | "vocabulary">,
+  metadata: Omit<VisualRenderedModel, "graph" | "vocabulary" | "interrogation">,
+  catalogue?: { readonly path: string; readonly source: string },
 ): {
   readonly model: VisualRenderedModel;
   readonly views: readonly VisualViewSummary[];
@@ -103,6 +166,10 @@ export const renderedWorkspaceOf = (
       compiled.profileContext,
     ),
   }));
+  const interrogation =
+    catalogue === undefined
+      ? undefined
+      : interrogationOverlayOf(compiled, catalogue);
   return {
     model: {
       ...metadata,
@@ -113,6 +180,7 @@ export const renderedWorkspaceOf = (
           compiled.profileContext.relationshipKindLineages,
         ),
       },
+      ...(interrogation === undefined ? {} : { interrogation }),
     },
     views: refreshedViews,
   };

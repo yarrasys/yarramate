@@ -315,6 +315,7 @@ describe('QueryPanel', () => {
         showLifecycle: true,
         showEvidence: true,
         showOwnership: false,
+        showNudges: true,
         onTogglePresentation: vi.fn(),
         onToggleOpen: vi.fn(),
         onSelectTab: vi.fn(),

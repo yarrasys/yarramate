@@ -7,6 +7,7 @@ import { SaveViewDialog } from "./save-view.js";
 import { describeQuery } from "./describe-query.js";
 import { ChangesetTray } from "./changeset-tray.js";
 import { ConceptForm, RelationshipForm } from "./subject-form.js";
+import { OpenQuestions } from "./open-questions.js";
 import {
   useEffect,
   useLayoutEffect,
@@ -222,6 +223,8 @@ const DiagramWorkspace = ({
   showLifecycle,
   showEvidence,
   showOwnership,
+  showNudges,
+  openQuestionCounts,
   connection,
   onConnectTarget,
   onConnectCancel,
@@ -254,6 +257,8 @@ const DiagramWorkspace = ({
   readonly showLifecycle: boolean;
   readonly showEvidence: boolean;
   readonly showOwnership: boolean;
+  readonly showNudges: boolean;
+  readonly openQuestionCounts: ReadonlyMap<string, number>;
   readonly connection: ConnectionDraft | null;
   readonly onConnectTarget: (id: string) => void;
   readonly onConnectCancel: () => void;
@@ -432,6 +437,8 @@ const DiagramWorkspace = ({
             showLifecycle={showLifecycle}
             showEvidence={showEvidence}
             showOwnership={showOwnership}
+            showNudges={showNudges}
+            openQuestionCounts={openQuestionCounts}
             activeViewId={state.activeView}
             savedPositions={state.model.layouts[state.activeView]}
             onSaveLayout={onSaveLayout}
@@ -459,6 +466,7 @@ const DiagramWorkspace = ({
         showLifecycle={showLifecycle}
         showEvidence={showEvidence}
         showOwnership={showOwnership}
+        showNudges={showNudges}
         onTogglePresentation={onTogglePresentation}
         onToggleOpen={onToggleBottomPanel}
         onSelectTab={onSelectBottomTab}
@@ -1014,6 +1022,35 @@ export const App = ({
     state.pendingChangeset.viewOperations.length;
   const sectionOpen = (section: RightSectionId) =>
     !workspace.conversation.collapsed.includes(section);
+  // The interrogation overlay rides the model frame (#292); both change
+  // identity together, which is what keeps the chips and the graph telling
+  // one story. A host that ships no overlay hides the whole surface -
+  // chips, section, and all - rather than drawing zeros it cannot stand
+  // behind.
+  const interrogation = state.model?.interrogation;
+  const openQuestionCounts = useMemo(
+    () =>
+      new Map(
+        Object.entries(interrogation?.subjects ?? {}).map(
+          ([id, questions]) => [id, questions.length] as const,
+        ),
+      ),
+    [interrogation],
+  );
+  const visibleSections =
+    interrogation === undefined
+      ? sections.filter((section) => section !== "questions")
+      : sections;
+  const selectedElementId =
+    workspace.selectedSubject?.type === "element"
+      ? workspace.selectedSubject.id
+      : null;
+  const openQuestionMeta =
+    interrogation === undefined
+      ? undefined
+      : selectedElementId === null
+        ? interrogation.workspace.length
+        : (openQuestionCounts.get(selectedElementId) ?? 0);
   const treeCollapsed = useMemo(
     () => new Set(workspace.tree.collapsed),
     [workspace.tree.collapsed],
@@ -1313,6 +1350,8 @@ export const App = ({
           showLifecycle={workspace.showLifecycle}
           showEvidence={workspace.showEvidence}
           showOwnership={workspace.showOwnership}
+          showNudges={workspace.showNudges}
+          openQuestionCounts={openQuestionCounts}
           onSelect={(subject) =>
             dispatchWorkspace({ type: "subject.selected", subject })
           }
@@ -1360,7 +1399,7 @@ export const App = ({
         />
         <aside className="section-stack" aria-label="Session">
           {stackRows(
-            sections,
+            visibleSections,
             {
               properties: (
                 <Section
@@ -1393,6 +1432,30 @@ export const App = ({
                         dispatchWorkspace({ type: "deletion.asked", id })
                       }
                       onStageChange={stageChange}
+                    />
+                  )}
+                </Section>
+              ),
+              questions: (
+                <Section
+                  id="questions"
+                  label="Open questions"
+                  meta={
+                    openQuestionMeta === undefined
+                      ? undefined
+                      : openQuestionMeta === 0
+                        ? "nothing open"
+                        : `${openQuestionMeta} open`
+                  }
+                  open={sectionOpen("questions")}
+                  onToggle={() =>
+                    dispatchWorkspace({ type: "section.toggled", section: "questions" })
+                  }
+                >
+                  {interrogation === undefined ? null : (
+                    <OpenQuestions
+                      overlay={interrogation}
+                      selectedId={selectedElementId}
                     />
                   )}
                 </Section>

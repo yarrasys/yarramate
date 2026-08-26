@@ -296,6 +296,7 @@ export interface QueryPanelProps {
   readonly showLifecycle: boolean;
   readonly showEvidence: boolean;
   readonly showOwnership: boolean;
+  readonly showNudges: boolean;
   readonly onTogglePresentation: (
     flag: PresentationFlag,
     value: boolean,
@@ -317,6 +318,7 @@ export function QueryPanel({
   showLifecycle,
   showEvidence,
   showOwnership,
+  showNudges,
   onTogglePresentation,
   onToggleOpen,
   onSelectTab,
@@ -443,6 +445,7 @@ export function QueryPanel({
                 showLifecycle={showLifecycle}
                 showEvidence={showEvidence}
                 showOwnership={showOwnership}
+                showNudges={showNudges}
                 onTogglePresentation={onTogglePresentation}
               />
             </div>

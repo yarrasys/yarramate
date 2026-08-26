@@ -388,6 +388,14 @@ Three presentation state fields ride alongside layout in `presentation`, staged 
 
 The three checkboxes live in the query panel's **View query** tab, beside the facets and above the document they are written into. None of them toggles a projection query or composes a `filter.query` event; toggling a checkbox dispatches `onTogglePresentation` and updates local state only. They are presentation, not semantic queries, so they save without consulting the model, reload without validating against the model, and appear in no changeset. Switching views triggers a relayout; toggling a badge does not, since badges are derived from existing node data.
 
+A fourth toggle, `showNudges`, sits beside them but is workspace presentation only — never written into a view's `presentation`, because a saved view does not decide whether a reviewer sees the interview.
+
+### Open questions (ADR 0111)
+
+Each host evaluates the shipped question catalogue against the compile the graph came from and ships the result beside it as `VisualRenderedModel.interrogation`: workspace-scoped question entries, per-subject entries (phrasings already interpolated), the catalogue `id@version`, and the engine `semantics` stamp (ADR 0106). The app draws a quiet top-centre count chip on each node with open questions (zero draws nothing; the chip never borrows the failure palette — an open question is the catalogue deepening honestly, not a defect) and an **Open questions** section that scopes to the selected subject, showing the workspace-scoped list when nothing is selected. The panel is read-only: answers land through the changeset, or through an agent running the interview.
+
+The overlay is recomputed per landed commit and never stored, so a drafted-but-uncommitted edit moves no badge — the stateless-interview rule as the canvas sees it. The field is optional: a host that computes no overlay ships none, and the app hides the chips, the section, and nothing else changes. Embedded hosts get the same overlay from the catalogue bundled into the browser build; `mountEditorWith` hosts that speak the protocol themselves may simply omit it.
+
 ### ArchiMate notation
 
 The canvas draws ArchiMate. The stylesheet shapes nodes by aspect (resolved

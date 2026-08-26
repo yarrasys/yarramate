@@ -267,6 +267,11 @@ request
   -> End or failure: recover, optionally read the transcript, stop, resume
 ```
 
+The canvas itself carries the interview: subjects with open questions wear
+a count chip, and the Open questions panel scopes to the selected subject
+(workspace-scoped questions show when nothing is selected). Landing answers
+through the editor's changeset closes them on the next model frame.
+
 Read [references/visual-conversations.md](references/visual-conversations.md)
 before starting a session. It owns the request builder and its refusals, the
 capability test, the exact commands and documents, the delegated child's prompt

@@ -224,6 +224,23 @@ const DEFAULT_ASSET_ROOT = fileURLToPath(
   new URL("../../visual-app/", import.meta.url),
 );
 
+/**
+ * The shipped question catalogue, read once per process for the model's
+ * interrogation overlay (#292). The same package-relative hop `design`
+ * makes; `undefined` when unreadable, which ships models with no overlay
+ * rather than failing the session over a garnish.
+ */
+const shippedCatalogue = ((): { path: string; source: string } | undefined => {
+  const path = fileURLToPath(
+    new URL("../../../catalogues/core-enrichment.yaml", import.meta.url),
+  );
+  try {
+    return { path, source: readFileSync(path, "utf8") };
+  } catch {
+    return undefined;
+  }
+})();
+
 export type VisualEventDelivery =
   | {
       readonly waiting: false;
@@ -835,7 +852,7 @@ export const startVisualServer = async (
         // that. A staged view operation pins against these (ADR 0103), and a
         // projection missing from the map is one the commit will create.
         projectionDigests: projectionDigestsNow(),
-      });
+      }, shippedCatalogue);
       // Closures below retain this array, so refresh its contents without
       // replacing the identity the session started with.
       views.splice(0, views.length, ...workspaceModel.views);

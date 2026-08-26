@@ -129,6 +129,26 @@ export function ownerBadgeUri(owner: string, initials: string): string {
   return toDataUri(ownerBadgeSvg(owner, initials))
 }
 
+// The open-questions chip: a quiet circle carrying the subject's open count
+// (#292). Deliberately `--quiet`, never `--failure`: an open question is the
+// catalogue deepening honestly (ADR 0063), not a defect, and a freshly drawn
+// subject legitimately sprouts several. Counts past nine render as "9+" so
+// the glyph stays legible at BADGE_SIZE; the caller never invokes this at
+// zero (badgeLayersFor gates on count > 0 - no chip is how "nothing open"
+// is drawn).
+function openQuestionsBadgeSvg(count: number): string {
+  const glyph = count > 9 ? '9+' : String(count)
+  const fontSize = glyph.length > 1 ? 6.5 : 8
+  return svg(
+    `<circle cx="6" cy="6" r="5" fill="${QUIET}"/>` +
+      `<text x="6" y="7.5" font-size="${fontSize}" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">${glyph}</text>`,
+  )
+}
+
+export function openQuestionsBadgeUri(count: number): string {
+  return toDataUri(openQuestionsBadgeSvg(count))
+}
+
 // `owner` is a qualified ref (`document#localId`, e.g.
 // "yarramate-product#yarramate-maintainers" - the one owner this repo's own
 // graph declares, per the plan's Task 6 grounding). Initials come from the
