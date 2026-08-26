@@ -1,5 +1,27 @@
 # Changelog
 
+## Unreleased
+
+- **Added.** The canvas carries the interview's nudges (#292). Every visual
+  host now evaluates the shipped question catalogue per successful recompile
+  and ships the result beside the graph; the editor draws a quiet count chip
+  on each subject with open questions, and an **Open questions** section
+  that scopes to the selected subject — with the workspace-scoped questions
+  (`outcome-missing` and kin, which name no subject) shown when nothing is
+  selected. A fourth presentation toggle, "Open-question badges", sits
+  beside lifecycle/evidence/ownership; zero draws nothing, and the chip
+  never borrows the failure palette — an open question is the catalogue
+  deepening honestly (ADR 0063), not a defect.
+  [ADR 0111](docs/adr/0111-the-canvas-carries-the-interviews-nudges.md).
+
+  The overlay rides the internal rendered-model wire contract, never
+  `CanvasNode`, so the published canvas-graph schema and every direct
+  consumer of `projectGraphForCanvas` are untouched, and a host that ships
+  no overlay (an older or embedded `mountEditorWith` host) produces a
+  canvas identical to before. Derived per landed commit and never stored;
+  the overlay carries the catalogue `id@version` and the engine `semantics`
+  stamp (ADR 0106).
+
 ## 1.2.0
 
 - **Added.** An open question carries its machine-readable answer shape

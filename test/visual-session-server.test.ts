@@ -2431,6 +2431,49 @@ evidence: []
     expect(ready.snapshot.views[0]?.subjectCount).toBe(2);
     socket.close();
   });
+
+  it("ships the interrogation overlay from the shipped catalogue (#292)", async () => {
+    await mkdir(join(baseDir, ".yarramate/architecture"), { recursive: true });
+    await writeFile(
+      join(baseDir, ".yarramate/architecture/main.yaml"),
+      `format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts:
+  - id: checkout
+    kind: applicationComponent
+    name: Checkout
+relationships: []
+`,
+      "utf8",
+    );
+    await writeFile(
+      join(baseDir, ".yarramate/workspace.yaml"),
+      `format: yarramate/workspace/v1
+id: overlay-fixture
+documents:
+  - architecture/main.yaml
+profiles: []
+projections: []
+adapterMappings: []
+evidence: []
+`,
+      "utf8",
+    );
+
+    const server = await start();
+    const { cookie } = await bootstrap(server);
+    const socket = await openBrowserSocket(server, cookie);
+    const ready = await nextFrame(socket, "ready");
+
+    // Presence and shape, never counts: those move with the catalogue
+    // version, and pinning them fails every honest deepening (ADR 0063).
+    const overlay = ready.snapshot.model.interrogation;
+    expect(overlay).toBeDefined();
+    expect(overlay!.catalogue).toMatch(/^core-enrichment@/);
+    expect(overlay!.workspace.length).toBeGreaterThan(0);
+    socket.close();
+  });
 });
 
 describe("startVisualServer filter.query", () => {

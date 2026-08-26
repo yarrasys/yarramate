@@ -4,6 +4,7 @@ import {
   EVIDENCE_BADGE_URI,
   LIFECYCLE_BADGE_URI,
   isLifecycleStatus,
+  openQuestionsBadgeUri,
   ownerBadgeUri,
   ownerColorOf,
   ownerInitialsOf,
@@ -66,7 +67,7 @@ describe('buildStylesheet badge layers', () => {
     showEvidence: boolean,
     showOwnership: boolean,
   ): cytoscape.StylesheetStyle =>
-    buildStylesheet(showLifecycle, showEvidence, showOwnership).find(
+    buildStylesheet(showLifecycle, showEvidence, showOwnership, true).find(
       (block): block is cytoscape.StylesheetStyle =>
         'style' in block && block.selector === 'node' && 'background-image' in block.style,
     )!
@@ -104,7 +105,7 @@ describe('buildStylesheet badge layers', () => {
     mapperFor<number[]>('background-width', showLifecycle, showEvidence, showOwnership, data)
 
   it('draws a background-color rule for every LAYER_COLORS key', () => {
-    const sheet = buildStylesheet(false, false, false)
+    const sheet = buildStylesheet(false, false, false, true)
     for (const layer of Object.keys(LAYER_COLORS)) {
       const rule = sheet.find(
         (block): block is cytoscape.StylesheetStyle =>
@@ -272,5 +273,102 @@ describe('ownerColorOf hash function', () => {
       expect(color).not.toBeNull()
       expect(palette).toContain(color)
     }
+  })
+})
+
+describe('openQuestionsBadgeUri (#292)', () => {
+  it('generates a distinct data URI per count', () => {
+    const uris = [1, 2, 5, 9].map((count) => openQuestionsBadgeUri(count))
+    expect(new Set(uris).size).toBe(uris.length)
+    for (const uri of uris) expect(uri).toMatch(/^data:image\/svg\+xml/)
+  })
+
+  it('caps the glyph at "9+" so the chip stays legible', () => {
+    expect(openQuestionsBadgeUri(10)).toBe(openQuestionsBadgeUri(99))
+    expect(openQuestionsBadgeUri(9)).not.toBe(openQuestionsBadgeUri(10))
+    expect(decodeURIComponent(openQuestionsBadgeUri(37))).toContain('9+')
+  })
+
+  it('never borrows the failure palette - an open question is not a defect', () => {
+    expect(decodeURIComponent(openQuestionsBadgeUri(3))).not.toContain('#A3403A')
+  })
+})
+
+describe('open-question badge layer (#292)', () => {
+  // Mirrors `layersFor` above but with the nudges flag under test control.
+  const nudgeLayersFor = (
+    showNudges: boolean,
+    data: Record<string, unknown>,
+  ): string[] => {
+    const rule = buildStylesheet(false, false, false, showNudges).find(
+      (block): block is cytoscape.StylesheetStyle =>
+        'style' in block &&
+        block.selector === 'node' &&
+        'background-image' in block.style,
+    )!
+    const style = rule.style as cytoscape.Css.Node
+    const mapper = style['background-image'] as (ele: {
+      data: (key: string) => unknown
+    }) => string[]
+    return mapper({ data: (key) => data[key] })
+  }
+
+  it('draws the count chip only when the flag is on and the count is non-zero', () => {
+    expect(nudgeLayersFor(true, { openQuestions: 3 })).toEqual([
+      openQuestionsBadgeUri(3),
+    ])
+    // Zero draws nothing: a bare node is how "nothing open" is said.
+    expect(nudgeLayersFor(true, { openQuestions: 0 })).toEqual([])
+    expect(nudgeLayersFor(false, { openQuestions: 3 })).toEqual([])
+    // A host that shipped no overlay leaves the field undefined - no chip.
+    expect(nudgeLayersFor(true, {})).toEqual([])
+  })
+
+  it('sits inset from the bottom-right corner, and steps aside for the owner chip', () => {
+    const positions = (
+      showOwnership: boolean,
+      data: Record<string, unknown>,
+    ): { x: string[]; y: string[] } => {
+      const rule = buildStylesheet(false, false, showOwnership, true).find(
+        (block): block is cytoscape.StylesheetStyle =>
+          'style' in block &&
+          block.selector === 'node' &&
+          'background-image' in block.style,
+      )!
+      const style = rule.style as cytoscape.Css.Node
+      const read = (property: 'background-position-x' | 'background-position-y') =>
+        (style[property] as (ele: { data: (key: string) => unknown }) => string[])({
+          data: (key) => data[key],
+        })
+      return { x: read('background-position-x'), y: read('background-position-y') }
+    }
+    // Alone: the padded corner, never flush on it.
+    expect(positions(false, { openQuestions: 3 })).toEqual({
+      x: ['96%'],
+      y: ['88%'],
+    })
+    // Beside the owner chip, which keeps the corner itself.
+    expect(
+      positions(true, { openQuestions: 3, owner: 'main#team', ownerInitials: 'T' }),
+    ).toEqual({ x: ['100%', '84%'], y: ['100%', '100%'] })
+  })
+
+  it('keeps distinct counts in distinct cache entries', () => {
+    // One stylesheet instance serves both nodes; a cache keyed without the
+    // count would hand the second node the first node's chip.
+    const rule = buildStylesheet(false, false, false, true).find(
+      (block): block is cytoscape.StylesheetStyle =>
+        'style' in block &&
+        block.selector === 'node' &&
+        'background-image' in block.style,
+    )!
+    const style = rule.style as cytoscape.Css.Node
+    const mapper = style['background-image'] as (ele: {
+      data: (key: string) => unknown
+    }) => string[]
+    const first = mapper({ data: (key) => ({ openQuestions: 2 })[key as 'openQuestions'] })
+    const second = mapper({ data: (key) => ({ openQuestions: 7 })[key as 'openQuestions'] })
+    expect(first).toEqual([openQuestionsBadgeUri(2)])
+    expect(second).toEqual([openQuestionsBadgeUri(7)])
   })
 })

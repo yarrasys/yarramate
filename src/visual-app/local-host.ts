@@ -26,6 +26,7 @@ import {
   viewSummaryOf,
 } from '../adapters/visual/workspace-model.js'
 import { stringify } from 'yaml'
+import { SHIPPED_CATALOGUE } from './shipped-catalogue.js'
 import type { EditorHost, EditorHostEvents } from './editor-host.js'
 
 /**
@@ -159,7 +160,7 @@ export const createLocalHost = (options: LocalHostOptions): EditorHost => {
       // live list so a view created or removed during this editor session is
       // represented exactly as it is in the rail.
       projectionDigests: revisionsOf(views.map(({ path }) => path)),
-    })
+    }, SHIPPED_CATALOGUE)
     views = workspaceModel.views
     model = workspaceModel.model
     return true

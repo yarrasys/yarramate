@@ -107,7 +107,12 @@ const nextRelationship = (
  * control - the reviewer ends the conversation beside the conversation, not
  * from a strip that carries identity and nothing else.
  */
-export const RIGHT_SECTIONS = ["properties", "changes", "chat"] as const;
+export const RIGHT_SECTIONS = [
+  "properties",
+  "questions",
+  "changes",
+  "chat",
+] as const;
 
 export type RightSectionId = (typeof RIGHT_SECTIONS)[number];
 
@@ -238,6 +243,7 @@ export interface VisualWorkspaceState {
   readonly showLifecycle: boolean;
   readonly showEvidence: boolean;
   readonly showOwnership: boolean;
+  readonly showNudges: boolean;
 }
 
 export type VisualWorkspaceAction =
@@ -305,7 +311,11 @@ export type VisualWorkspaceAction =
     }
   | {
       readonly type: "presentation.toggled";
-      readonly flag: "showLifecycle" | "showEvidence" | "showOwnership";
+      readonly flag:
+        | "showLifecycle"
+        | "showEvidence"
+        | "showOwnership"
+        | "showNudges";
       readonly value: boolean;
     }
   | {
@@ -467,6 +477,9 @@ export const createVisualWorkspaceState = (
   // `yarramate/ownership/owner` claims, so every chip would render
   // identically - uniform noise until real ownership diversity exists.
   showOwnership: false,
+  // On by default: the chip is the canvas half of the interview (#292), and
+  // it only draws where a count is non-zero, so a finished model stays calm.
+  showNudges: true,
 });
 
 export const visualWorkspaceReducer = (

@@ -231,7 +231,11 @@ const ChoiceField = <Value extends string>({
   </div>
 )
 
-export type PresentationFlag = 'showLifecycle' | 'showEvidence' | 'showOwnership'
+export type PresentationFlag =
+  | 'showLifecycle'
+  | 'showEvidence'
+  | 'showOwnership'
+  | 'showNudges'
 
 /** The checkbox's onChange handler, extracted so it is directly testable in
  * isolation from rendering: it calls `onTogglePresentation` and nothing
@@ -353,11 +357,13 @@ export function PresentationToggles({
   showLifecycle,
   showEvidence,
   showOwnership,
+  showNudges,
   onTogglePresentation,
 }: {
   readonly showLifecycle: boolean
   readonly showEvidence: boolean
   readonly showOwnership: boolean
+  readonly showNudges: boolean
   readonly onTogglePresentation: (flag: PresentationFlag, value: boolean) => void
 }) {
   return (
@@ -398,6 +404,21 @@ export function PresentationToggles({
           }
         />
         Ownership badges
+      </label>
+      {/* Workspace presentation only: unlike the three above, this flag is
+          never written into a view document's `presentation` - a saved view
+          does not decide whether a reviewer sees the interview's nudges. */}
+      <label className="filter-checkbox-option">
+        <input
+          type="checkbox"
+          checked={showNudges}
+          onChange={(event) =>
+            presentationToggleHandler(onTogglePresentation, 'showNudges')(
+              event.currentTarget.checked,
+            )
+          }
+        />
+        Open-question badges
       </label>
     </fieldset>
   )

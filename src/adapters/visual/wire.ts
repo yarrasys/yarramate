@@ -28,11 +28,43 @@ import type {
  * the protocol is type-only too.
  */
 
+/** One open question, as the question panel and a node's chip read it. */
+export interface VisualQuestionEntry {
+  readonly questionId: string
+  /** Rendered phrasing — per-subject questions arrive already interpolated. */
+  readonly question: string
+  readonly authority: 'human' | 'agent' | 'either'
+  readonly since?: string
+}
+
+/**
+ * The interrogation report, folded for drawing (#292).
+ *
+ * Derived per successful recompile from the same compile the graph came
+ * from, and never stored — the stateless-interview rule as the canvas sees
+ * it. Optional on the model: a host that computes no overlay ships none,
+ * and the app draws no chips rather than zeros.
+ */
+export interface VisualInterrogationOverlay {
+  /** `id@version` of the catalogue that asked. */
+  readonly catalogue: string
+  /** Engine condition-semantics version (ADR 0106), carried so a consumer
+   * can tell "the model moved" from "the engine moved". */
+  readonly semantics: string
+  /** Workspace-scoped open questions — they name no subject, so they are
+   * shown when nothing is selected rather than pinned to a node. */
+  readonly workspace: readonly VisualQuestionEntry[]
+  /** Open questions per qualified subject id — `CanvasNode.id`'s space. */
+  readonly subjects: Readonly<Record<string, readonly VisualQuestionEntry[]>>
+}
+
 /** The resolved graph a session renders, as the browser receives it. */
 export interface VisualRenderedModel {
   readonly authority: VisualAuthority
   readonly initialView: string
   readonly graph: CanvasGraph
+  /** Present only when the host evaluated the catalogue for this compile. */
+  readonly interrogation?: VisualInterrogationOverlay
   /** Manifest-relative document paths — the add-concept target dropdown. */
   readonly documents: readonly string[]
   readonly vocabulary: {
