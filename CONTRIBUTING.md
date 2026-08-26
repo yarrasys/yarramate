@@ -138,6 +138,29 @@ consuming product, all of them fixtures, none of them readers. In the same
 release `ResolvedWorkspace` gained a required `patterns` and broke that
 product's manifest module, which is production code.
 
+### If production assembles the input, test the assembly
+
+A test that constructs the input a production caller assembles is not testing
+the assembly. It tests the constructor, and the assembly goes uncovered no
+matter how many such tests there are.
+
+The `patterns` manifest category shipped in 1.4.0 non-functional. The workspace
+loader resolved it and **no caller passed it to the compiler** — ten source
+lists said `[...profiles, ...documents]`. A workspace that declared a pattern
+compiled without it, every commit against one was refused, and a visual session
+drew every view empty. **1800 tests passed**, because every one of them handed
+the compiler an explicit source list and so not one exercised the path a real
+workspace takes. It was found by opening the editor.
+
+So: when a verb reads a manifest, at least one test should read that manifest
+rather than hand over a list. The repair here was to compile the journey
+fixture *through* its own manifest, which is the right shape precisely because
+it stops constructing the thing under test.
+
+The general form is the same family as readers-and-constructors above, seen
+from the other end: **know whether your fixture is standing in for the caller
+or for the caller's input.** Only the second is safe to fake.
+
 ### An empty set is not a finished one
 
 A surface that reports progress must not infer completion from emptiness.
