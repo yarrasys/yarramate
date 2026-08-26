@@ -50,6 +50,14 @@
             }
           }
         },
+        "ports": {
+          "description": "Where a macro-grain edge lands canonically (#268 phase 2, ADR 0124). A relationship authored between two instances whose patterns both declare a port for its kind is expanded: `out` names the slot it leaves from on the source instance, `in` the slot it arrives at on the target. The macro edge itself survives - it is an authored fact, which is what gives a collapsed view edges to draw.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/port"
+          }
+        },
         "wiring": {
           "description": "The relationships the compiler mints between an instance and its bound parts. Where an authored relationship already says exactly this, nothing is minted. Any other authored relationship between the same pair contradicts the pattern and fails compilation.",
           "type": "array",
@@ -71,6 +79,24 @@
         "required": {
           "description": "An instance that leaves a required slot unbound fails compilation (YM416). Absent means optional.",
           "type": "boolean"
+        }
+      }
+    },
+    "port": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "out", "in"],
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/qualifiedKind"
+        },
+        "out": {
+          "description": "The slot a macro edge of this kind leaves from, on the SOURCE instance. Never `self`: an edge that left from the instance would be the macro edge again.",
+          "$ref": "#/$defs/slotName"
+        },
+        "in": {
+          "description": "The slot a macro edge of this kind arrives at, on the TARGET instance.",
+          "$ref": "#/$defs/slotName"
         }
       }
     },

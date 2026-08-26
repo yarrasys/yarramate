@@ -20,6 +20,15 @@ patterns:
       # compiler does not refuse it.
       service:
         kind: yarramate/core@0.1#applicationService
+    ports:
+      # Where an API-grain serving lands canonically (#268 phase 2, ADR 0124).
+      # The consumer calls the provider's SERVICE and the provider serves the
+      # consumer's COMPONENT, which is the answer the three macro commitments
+      # below used to assert in prose. Declared once here, it is kept by
+      # construction rather than trusted.
+      - kind: yarramate/core@0.1#serving
+        out: service
+        in: component
     wiring:
       - from: self
         kind: yarramate/core@0.1#aggregation

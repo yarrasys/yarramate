@@ -217,9 +217,16 @@ interface NativePatternWire {
   readonly to: string
 }
 
+interface NativePatternPort {
+  readonly kind: string
+  readonly out: string
+  readonly in: string
+}
+
 interface NativePatternShape {
   readonly kind: string
   readonly parts: Readonly<Record<string, NativePatternPart>>
+  readonly ports?: readonly NativePatternPort[]
   readonly wiring: readonly NativePatternWire[]
 }
 
@@ -244,12 +251,25 @@ interface ResolvedWire {
   readonly coreKind: RelationshipKind
 }
 
+/**
+ * Where a macro-grain edge of one relationship kind lands (#268 phase 2, ADR
+ * 0124): the slot it leaves from on the source instance, and the slot it
+ * arrives at on the target.
+ */
+interface ResolvedPort {
+  readonly out: string
+  readonly in: string
+  readonly coreKind: RelationshipKind
+}
+
 interface ResolvedPattern {
   readonly kindIdentity: string
   /** The document that declared it, named when a second one tries to. */
   readonly declaredBy: string
   readonly slots: ReadonlyMap<string, ResolvedSlot>
   readonly wiring: readonly ResolvedWire[]
+  /** Keyed by the relationship kind's resolved identity. */
+  readonly ports: ReadonlyMap<string, ResolvedPort>
 }
 
 /**
@@ -1350,11 +1370,60 @@ function compileWorkspaceResolved(
         })
       }
       if (!wiringOk) continue
+      const ports = new Map<string, ResolvedPort>()
+      let portsOk = true
+      for (const [portIndex, port] of (pattern.ports ?? []).entries()) {
+        const portAt = at(
+          ['patterns', index, 'ports', portIndex],
+          `/patterns/${index}/ports/${portIndex}`,
+        )
+        const policy = relationshipKindByIdentity.get(port.kind)
+        if (policy === undefined) {
+          patternDiagnostics.push({
+            severity: 'error',
+            code: 'YM402',
+            message: `Relationship kind "${port.kind}" is not available to this pattern`,
+            ...portAt,
+          })
+          portsOk = false
+          continue
+        }
+        for (const [end, slot] of [
+          ['out', port.out],
+          ['in', port.in],
+        ] as const) {
+          if (slots.has(slot)) continue
+          patternDiagnostics.push({
+            severity: 'error',
+            code: 'YM302',
+            message: `Port "${policy.coreKind}" names "${slot}" as its ${end}, which is not a declared part`,
+            ...portAt,
+          })
+          portsOk = false
+        }
+        if (ports.has(port.kind)) {
+          patternDiagnostics.push({
+            severity: 'error',
+            code: 'YM201',
+            message: `Port "${policy.coreKind}" is declared twice; a kind lands one way`,
+            ...portAt,
+          })
+          portsOk = false
+          continue
+        }
+        ports.set(port.kind, {
+          out: port.out,
+          in: port.in,
+          coreKind: policy.coreKind,
+        })
+      }
+      if (!portsOk) continue
       patternsByKind.set(pattern.kind, {
         kindIdentity: pattern.kind,
         declaredBy: input.path,
         slots,
         wiring,
+        ports,
       })
     }
   }
@@ -3082,6 +3151,105 @@ function compileWorkspaceResolved(
           source: where,
         })
       }
+    }
+  }
+
+  // ---- macro edges through ports (#268 phase 2, ADR 0124) ------------------
+  //
+  // A relationship authored BETWEEN two pattern instances is a macro-grain
+  // fact: "System API serves Process API", one line. Where both patterns
+  // declare a port for its kind, it is expanded to the canonical pair the
+  // ports name - the source's `out` slot to the target's `in` slot - and the
+  // macro edge itself SURVIVES, because it is what a collapsed view has to
+  // draw. That is the whole inversion: the simple picture is authored and the
+  // detailed one derived, rather than the other way about.
+  if (patternInstances.length > 0) {
+    const instanceByIdForPorts = new Map(
+      patternInstances.map((entry) => [entry.instance, entry] as const),
+    )
+    const declaredIdsForPorts = new Set(subjects.map(({ id }) => id))
+    const relationshipIdsForPorts = new Set(
+      subjects.filter(({ type }) => type === 'relationship').map(({ id }) => id),
+    )
+    const authoredPairs = new Set<string>()
+    const macroEdges: GraphClaim[] = []
+    for (const claim of claims) {
+      if (!relationshipIdsForPorts.has(claim.id) || !('ref' in claim.object)) {
+        continue
+      }
+      authoredPairs.add(`${claim.subject}\u0000${claim.predicate}\u0000${claim.object.ref}`)
+      if (
+        instanceByIdForPorts.has(claim.subject) &&
+        instanceByIdForPorts.has(claim.object.ref)
+      ) {
+        macroEdges.push(claim)
+      }
+    }
+    for (const edge of macroEdges) {
+      if (!('ref' in edge.object)) continue
+      const source = instanceByIdForPorts.get(edge.subject)
+      const target = instanceByIdForPorts.get(edge.object.ref)
+      if (source === undefined || target === undefined) continue
+      const outPort = source.pattern.ports.get(edge.predicate)
+      const inPort = target.pattern.ports.get(edge.predicate)
+      // Only a kind BOTH patterns give a port is a macro edge. Anything else
+      // between two instances is an ordinary relationship and is left alone:
+      // groupings may legally relate, and a pattern that says nothing about a
+      // kind has not claimed it.
+      if (outPort === undefined || inPort === undefined) continue
+      const from = source.bindings.get(outPort.out)
+      const to = target.bindings.get(inPort.in)
+      if (from === undefined || to === undefined) {
+        // The macro edge is a promise the expansion keeps, so an unbound
+        // landing slot is a promise the model cannot cash. Reported against
+        // the macro edge, which is the line someone would have to change.
+        diagnostics.push({
+          severity: 'error',
+          code: 'YM421',
+          message:
+            `"${edge.id}" is a ${outPort.coreKind} between pattern instances, but ` +
+            `${from === undefined ? `"${edge.subject}" binds no "${outPort.out}"` : `"${'ref' in edge.object ? edge.object.ref : ''}" binds no "${inPort.in}"`}` +
+            `, so it has nowhere to land`,
+          path: edge.source.path,
+          pointer: edge.source.pointer,
+          line: edge.source.line,
+          column: edge.source.column,
+        })
+        continue
+      }
+      if (
+        authoredPairs.has(`${from}\u0000${edge.predicate}\u0000${to}`)
+      ) {
+        // Already said at the member grain. The macro edge and the authored
+        // pair agree, which is exactly the correspondence a description used
+        // to assert; nothing is minted and nothing is reported.
+        continue
+      }
+      const expandedId = `${edge.id}-expansion`
+      if (declaredIdsForPorts.has(expandedId)) {
+        diagnostics.push({
+          severity: 'error',
+          code: 'YM420',
+          message:
+            `Expanding "${edge.id}" derives the id "${expandedId}", which is ` +
+            `already a declared subject`,
+          path: edge.source.path,
+          pointer: edge.source.pointer,
+          line: edge.source.line,
+          column: edge.source.column,
+        })
+        continue
+      }
+      declaredIdsForPorts.add(expandedId)
+      subjects.push({ id: expandedId, type: 'relationship' })
+      claims.push({
+        id: expandedId,
+        subject: from,
+        predicate: edge.predicate,
+        object: { ref: to },
+        origin: 'declared',
+        source: edge.source,
+      })
     }
   }
 

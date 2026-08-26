@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+- **Added.** A port says where a macro edge lands (#268 phase 2, ADR
+  0124). A pattern may declare `ports`, and a relationship authored
+  between two pattern instances whose kind both patterns port is expanded
+  to the canonical pair the ports name: out of the source instance's
+  `out` slot, into the target instance's `in` slot. "System API serves
+  Process API" is one authored line at the grain an architect thinks in;
+  `sys-service serving prc-component` is what ArchiMate wants, and the
+  compiler writes it. **The macro edge survives the expansion**, because
+  it is an authored fact and it is what a collapsed view has to draw -
+  the property every upward-abstraction attempt lost, where a view that
+  collapsed to groupings drew no edges at all because the real ones ran
+  between members. Expansion is idempotent as wiring is, so where the
+  canonical pair is already authored nothing is minted: that is what
+  turns the contact-update fixture's three prose assertions ("Met by
+  salesforce-write-service serving contact-prc-api") into guarantees
+  without changing a line of it, and divergence would now show up as a
+  second edge rather than as a description nobody checks. Both ends must
+  port the kind, so an unported kind between two instances stays an
+  ordinary relationship. New diagnostic `YM421` for a macro edge whose
+  landing slot is unbound. A pattern with no ports behaves exactly as it
+  did after phase 1.
+
 - **Added.** A pattern binds the parts it wires (#268 phase 1, ADR 0123).
   `yarramate/pattern/v1` is a new published format declaring the shape a
   concept kind promises: the slots an instance binds and the wiring the
