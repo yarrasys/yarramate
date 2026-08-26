@@ -480,6 +480,39 @@ describe("visualAppReducer changeset management", () => {
     expect(staged2.pendingChangeset.operations[0]).toBe(op2);
   });
 
+  it("queues a second parallel relationship rather than replacing the first (#306)", () => {
+    // Same (from, kind, to) triple, distinct ids - which is what
+    // `draftRelationship` now produces when the first is still staged. The
+    // replace-by-target rule keys on the id, so the pair queues; only a
+    // restage of the *same* id replaces.
+    const first = {
+      op: "add-relationship",
+      document: "model.yaml",
+      relationship: {
+        id: "orders-flow-billing",
+        kind: "flow",
+        from: "orders",
+        to: "billing",
+      },
+    } as const;
+    const second = {
+      op: "add-relationship",
+      document: "model.yaml",
+      relationship: {
+        id: "orders-flow-billing-2",
+        kind: "flow",
+        from: "orders",
+        to: "billing",
+      },
+    } as const;
+    const staged = [first, second].reduce(
+      (state, operation) =>
+        visualAppReducer(state, { type: "changeset.staged", operation }),
+      activeState,
+    );
+    expect(staged.pendingChangeset.operations).toEqual([first, second]);
+  });
+
   it("keeps the changeset intact when apply fails, and sets diagnostics", () => {
     const op = {
       op: "update-concept",

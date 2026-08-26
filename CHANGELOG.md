@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- **Fixed.** A second relationship between the same pair stays visible
+  (#306). Two defects, one report. Drafting: `proposeRelationshipId`
+  built its `taken` set from the landed graph alone, so with the first
+  draft still staged the second proposed the identical id and the
+  editor's replace-by-target staging swallowed it — no row, no error,
+  no toast. `proposeRelationshipId` and `draftRelationship` now take
+  the ids a pending changeset already claims (`stagedSubjectIds`
+  collects them), so the second parallel edge stages as `…-2`, which
+  the schema — no uniqueness on the (from, kind, to) triple — lands and
+  compiles cleanly. Rendering: taxi routing is deterministic from the
+  endpoints alone, so parallel edges, once landed, drew exactly on top
+  of each other and read as one line. Members of a parallel pair (in
+  either direction) now carry a `parallel` class whose `bezier` curve
+  style cytoscape separates automatically; single edges keep
+  `round-taxi` untouched, and an edge consumed into nesting never
+  counts toward a pair.
+
 - **Added.** The host can point at the canvas (#297). The handle
   `mountEditor` and `mountEditorWith` return grows three methods beside
   `unmount` — `select(subjectId)`, `openDraft({ kind? })` and

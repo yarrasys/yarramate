@@ -77,6 +77,7 @@ import {
 } from "./context-menu-model.js";
 import { stageRelationshipScalarChange } from "./subject-form.js";
 import { describeDeletion, draftDeletion } from "../deletion-drafting.js";
+import { stagedSubjectIds } from "../relationship-drafting.js";
 
 /**
  * A drawing board, not a document: the diagram holds the workspace, one compact
@@ -436,6 +437,10 @@ const DiagramWorkspace = ({
           <ConnectionPanel
             draft={connection}
             graph={state.model.graph}
+            // What is staged but not landed: the graph cannot know these ids,
+            // and without them a second relationship between the same pair
+            // collides with the first and is silently swallowed (#306).
+            reservedIds={stagedSubjectIds(state.pendingChangeset.operations)}
             onStage={onConnectStage}
             onCancel={onConnectCancel}
           />
