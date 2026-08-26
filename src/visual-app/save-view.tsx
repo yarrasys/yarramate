@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { LayoutDirection } from "../layout-direction.js";
 import type { ProjectionQuery } from "../projection.js";
 import type {
   VisualViewOperation,
@@ -63,12 +64,12 @@ export interface BuildPayloadParams {
   readonly showOwnership: boolean;
   /**
    * Whatever the view being overwritten already declared, carried through
-   * rather than restated. The canvas has no direction control - it draws
-   * ArchiMate, which is top-down by construction - but the LikeC4 export reads
-   * `presentation.direction`, so a save that simply omitted it would quietly
-   * drop a value the reviewer never saw and cannot have meant to discard.
+   * rather than restated. The canvas draws the direction now (#274, ADR 0121)
+   * and the LikeC4 export has always read it, but there is still no control
+   * that sets one: the view declares it, so a save that simply omitted it
+   * would drop a value the reviewer never asked to discard.
    */
-  readonly carriedDirection: "top-down" | "left-right" | undefined;
+  readonly carriedDirection: LayoutDirection | undefined;
 }
 
 /**

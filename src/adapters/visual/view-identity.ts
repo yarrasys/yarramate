@@ -86,7 +86,7 @@ export const declaredFolder = (view: {
  *
  * Every other presentation field the view declared is carried through by
  * `composeProjection`, so a rename cannot quietly drop a nesting vocabulary or
- * a direction the canvas never showed.
+ * the direction the view runs.
  */
 export const renameView = (
   view: SavedView,

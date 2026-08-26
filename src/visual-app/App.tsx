@@ -30,6 +30,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import type { NestingKind } from "../nesting.js";
+import type { LayoutDirection } from "../layout-direction.js";
 import type { ProjectionQuery } from "../projection.js";
 import type { VisualRenderedModel } from "../adapters/visual/wire.js";
 import type { YarramateOperation } from "../operations.js";
@@ -234,6 +235,7 @@ const DiagramWorkspace = ({
   waiting,
   layout,
   nesting,
+  direction,
   showLifecycle,
   showEvidence,
   showOwnership,
@@ -272,6 +274,8 @@ const DiagramWorkspace = ({
   readonly waiting: string | null;
   readonly layout: "layered";
   readonly nesting: readonly NestingKind[];
+  /** Which way the active view runs its layers (#274, ADR 0121). */
+  readonly direction: LayoutDirection;
   readonly showLifecycle: boolean;
   readonly showEvidence: boolean;
   readonly showOwnership: boolean;
@@ -513,6 +517,7 @@ const DiagramWorkspace = ({
             showNudges={showNudges}
             openQuestionCounts={openQuestionCounts}
             activeViewId={state.activeView}
+            direction={direction}
             savedPositions={state.model.layouts[state.activeView]}
             // A read-only drag still moves the node - arranging what is on
             // screen is reading - but the debounced save it would queue goes
@@ -1556,6 +1561,7 @@ export const App = ({
           waiting={waiting}
           layout={workspace.layout}
           nesting={workspace.nesting}
+          direction={workspace.direction}
           decorations={decorations}
           connection={workspace.connection}
           onConnectTarget={(id) =>

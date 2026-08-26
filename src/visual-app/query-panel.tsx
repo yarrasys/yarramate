@@ -224,8 +224,8 @@ const badgePresentation = (
       ? { [key]: badges[key] }
       : {};
   return {
-    // Every field the view declared, carried rather than restated: a direction
-    // the canvas never shows and a nesting vocabulary it does are both dropped
+    // Every field the view declared, carried rather than restated: the
+    // direction it runs and the nesting vocabulary it draws are both dropped
     // by a document that composes only what this tab can edit.
     ...declared,
     ...write("showLifecycle"),

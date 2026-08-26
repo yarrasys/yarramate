@@ -13,6 +13,10 @@ import {
   steppedZoom,
 } from '../src/visual-app/graph-canvas.js'
 import { ASPECT_SHAPES, RELATIONSHIP_NOTATION } from '../src/notation/archimate.js'
+import {
+  DEFAULT_DIRECTION,
+  type LayoutDirection,
+} from '../src/layout-direction.js'
 import type {
   VisualLayoutPositions,
   VisualLayoutSavePayload,
@@ -306,18 +310,38 @@ const countOverlappingPairs = (cy: cytoscape.Core): number => {
 describe('buildLayoutConfig', () => {
   it('lays out with zero overlapping node bounding boxes', async () => {
     const cy = buildLayoutFixture()
-    await runLayout(cy, buildLayoutConfig())
+    await runLayout(cy, buildLayoutConfig('top-down'))
     expect(countOverlappingPairs(cy)).toBe(0)
   })
 
-  // ArchiMate's layer bands only read top-down, so the canvas lays out DOWN
-  // and takes no direction to be told otherwise. `presentation.direction`
-  // survives in the projection format for the LikeC4 export, which draws no
-  // bands, and this config is deliberately blind to it.
-  it('lays out DOWN, and takes nothing that could say otherwise', () => {
-    const config = buildLayoutConfig() as unknown as { elk: Record<string, unknown> }
-    expect(config.elk['elk.direction']).toBe('DOWN')
-    expect(buildLayoutConfig.length).toBe(0)
+  // The view says which way it runs (#274, ADR 0121). The DOWN pin was right
+  // for a layer-band view and wrong for the others, and the format has
+  // declared `presentation.direction` all along - honoured by the LikeC4
+  // export and, until now, by nothing on the canvas.
+  const elkOf = (direction: LayoutDirection): Record<string, unknown> =>
+    (buildLayoutConfig(direction) as unknown as { elk: Record<string, unknown> })
+      .elk
+
+  it('runs the direction the view declares', () => {
+    expect(elkOf('top-down')['elk.direction']).toBe('DOWN')
+    expect(elkOf('left-right')['elk.direction']).toBe('RIGHT')
+    // The default is the format's, not a second opinion held here: a view that
+    // declares nothing is handed DEFAULT_DIRECTION by the caller and lands on
+    // the top-down the layer bands earned.
+    expect(elkOf(DEFAULT_DIRECTION)['elk.direction']).toBe('DOWN')
+  })
+
+  // Adopted on a sweep of every authored view in this repository rather than
+  // on the single 8-subject view #274 opened with: holding direction DOWN,
+  // NETWORK_SIMPLEX cut total edge length across the 28 views by a third and
+  // moved crossings 1888 to 1821. Direction-independent, so it is stated once
+  // for both.
+  it('places with NETWORK_SIMPLEX whichever way the view runs (#274)', () => {
+    for (const direction of ['top-down', 'left-right'] as const) {
+      expect(elkOf(direction)['elk.layered.nodePlacement.strategy']).toBe(
+        'NETWORK_SIMPLEX',
+      )
+    }
   })
 
   // Nine subjects, no relationships (#308). Before the packing ratio was
@@ -325,28 +349,35 @@ describe('buildLayoutConfig', () => {
   // shape - NaN headless) let ELK's component packing emit one 172x1092
   // column: w/h 0.16, every node in the same 250px-wide lane. A grid has
   // several lanes in both axes and bounded elongation either way.
-  it('packs disconnected subjects into a grid, never one column (#308)', async () => {
-    const cy = buildDisconnectedFixture(9)
-    await runLayout(cy, buildLayoutConfig())
-    const bb = cy.nodes().boundingBox()
-    expect(bb.w / bb.h).toBeGreaterThan(0.5)
-    expect(bb.w / bb.h).toBeLessThan(4)
-    // Grid-ish, stated structurally as well as proportionally: more than one
-    // distinct column of node centres, and more than one distinct row.
-    const xs = new Set(cy.nodes().map((node) => Math.round(node.position().x)))
-    const ys = new Set(cy.nodes().map((node) => Math.round(node.position().y)))
-    expect(xs.size).toBeGreaterThan(1)
-    expect(ys.size).toBeGreaterThan(1)
-    expect(countOverlappingPairs(cy)).toBe(0)
-  })
+  //
+  // Asserted for BOTH directions since #274: the packer breaks rows in the
+  // pre-rotation frame, so the same requested ratio lands differently under
+  // DOWN and RIGHT, and a left-right view must not be the one that gets the
+  // column back.
+  it.each(['top-down', 'left-right'] as const)(
+    'packs disconnected subjects into a grid, never one column, running %s (#308)',
+    async (direction) => {
+      const cy = buildDisconnectedFixture(9)
+      await runLayout(cy, buildLayoutConfig(direction))
+      const bb = cy.nodes().boundingBox()
+      expect(bb.w / bb.h).toBeGreaterThan(0.5)
+      expect(bb.w / bb.h).toBeLessThan(4)
+      // Grid-ish, stated structurally as well as proportionally: more than one
+      // distinct column of node centres, and more than one distinct row.
+      const xs = new Set(cy.nodes().map((node) => Math.round(node.position().x)))
+      const ys = new Set(cy.nodes().map((node) => Math.round(node.position().y)))
+      expect(xs.size).toBeGreaterThan(1)
+      expect(ys.size).toBeGreaterThan(1)
+      expect(countOverlappingPairs(cy)).toBe(0)
+    },
+  )
 
   // The packing ratio is this config's own, stated on the bare `aspectRatio`
   // key on purpose: cytoscape-elk injects `aspectRatio: cy.width() /
   // cy.height()` into the very bag it forwards to ELK, and only the same
   // spelling replaces that injection instead of racing it as a second key.
   it('pins the component packing ratio, replacing the injected viewport shape (#308)', () => {
-    const config = buildLayoutConfig() as unknown as { elk: Record<string, unknown> }
-    expect(config.elk['aspectRatio']).toBe(2.5)
+    expect(elkOf('top-down')['aspectRatio']).toBe(2.5)
   })
 
   // `layered` is the only backend, so a layout run is one synchronous elk
@@ -355,7 +386,7 @@ describe('buildLayoutConfig', () => {
   // guard that `force` needed.
   it('relayouts the visible subgraph in one synchronous pass', () => {
     const cy = buildHubFixture()
-    relayoutVisible(cy)
+    relayoutVisible(cy, 'top-down')
     expect(buildPositionMap(cy.nodes()).size ?? Object.keys(buildPositionMap(cy.nodes())).length)
       .toBeGreaterThan(0)
   })

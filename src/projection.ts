@@ -59,12 +59,12 @@ export interface ProjectionDefinition {
     readonly description?: string
     readonly layout?: 'layered'
     /**
-     * Read by the LikeC4 export for its `autoLayout`, and by nothing else. The
-     * canvas draws ArchiMate, whose layer bands only read top-down, so it
-     * ignores this rather than offering a control that would tilt the bands
-     * away from what they mean.
+     * Which way this view runs its layers. Read by the LikeC4 export for its
+     * `autoLayout` and by the canvas for ELK's `elk.direction` (ADR 0121); a
+     * view that says nothing runs `top-down`, which is what ArchiMate's layer
+     * bands read as.
      */
-    readonly direction?: 'top-down' | 'left-right'
+    readonly direction?: LayoutDirection
     /**
      * The relationship kinds that draw as nesting in this view, in precedence
      * order (ADR 0101). Absent means `['composition']`, which is the behaviour
@@ -100,6 +100,13 @@ export interface ProjectionDefinition {
  */
 export { DEFAULT_NESTING, type NestingKind } from './nesting.js'
 import type { NestingKind } from './nesting.js'
+
+/**
+ * Which way a view runs, and the default. Split out for the same reason as the
+ * nesting vocabulary above, and re-exported here on the same terms (ADR 0121).
+ */
+export { DEFAULT_DIRECTION, type LayoutDirection } from './layout-direction.js'
+import type { LayoutDirection } from './layout-direction.js'
 
 export type ProjectionQuery = ProjectionDefinition['query']
 

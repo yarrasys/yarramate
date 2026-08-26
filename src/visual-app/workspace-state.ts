@@ -4,6 +4,10 @@ import type {
   CanvasNode,
 } from "../graph-projection.js";
 import { DEFAULT_NESTING, type NestingKind } from "../nesting.js";
+import {
+  DEFAULT_DIRECTION,
+  type LayoutDirection,
+} from "../layout-direction.js";
 import type { DecorationMap } from "./graph-canvas.js";
 import type { ContextMenuTarget } from "./context-menu-model.js";
 import type { BottomPanelTabId } from "./query-panel.js";
@@ -345,6 +349,13 @@ export interface VisualWorkspaceState {
    * alone - the behaviour that shipped before a view could say.
    */
   readonly nesting: readonly NestingKind[];
+  /**
+   * Which way the active view runs its layers (#274, ADR 0121). A view that
+   * says nothing runs `DEFAULT_DIRECTION`, the same rule `nesting` follows:
+   * silence restores the default rather than carrying the previous view's
+   * answer across.
+   */
+  readonly direction: LayoutDirection;
   readonly layout: "layered";
   readonly showLifecycle: boolean;
   readonly showEvidence: boolean;
@@ -413,6 +424,10 @@ export type VisualWorkspaceAction =
       readonly nesting: readonly NestingKind[];
     }
   | {
+      readonly type: "direction.set";
+      readonly direction: LayoutDirection;
+    }
+  | {
       readonly type: "layout.set";
       readonly layout: "layered";
     }
@@ -449,6 +464,7 @@ export const presentationActionsFor = (
     | {
         readonly layout?: "layered";
         readonly nesting?: readonly NestingKind[];
+        readonly direction?: LayoutDirection;
         readonly showLifecycle?: boolean;
         readonly showEvidence?: boolean;
         readonly showOwnership?: boolean;
@@ -465,6 +481,13 @@ export const presentationActionsFor = (
   actions.push({
     type: "nesting.set",
     nesting: presentation?.nesting ?? DEFAULT_NESTING,
+  });
+  // Unconditional for the same reason as nesting above: a view that omits
+  // `direction` runs top-down, and must not inherit the left-right run of the
+  // view the reviewer came from.
+  actions.push({
+    type: "direction.set",
+    direction: presentation?.direction ?? DEFAULT_DIRECTION,
   });
   if (presentation?.showLifecycle !== undefined) {
     actions.push({
@@ -580,6 +603,7 @@ export const createVisualWorkspaceState = (
   pendingViewRename: null,
   contextMenu: null,
   nesting: DEFAULT_NESTING,
+  direction: DEFAULT_DIRECTION,
   layout: "layered",
   showLifecycle: true,
   showEvidence: true,
@@ -828,6 +852,14 @@ export const visualWorkspaceReducer = (
       return sameNesting(state.nesting, action.nesting)
         ? state
         : { ...state, nesting: action.nesting };
+    case "direction.set":
+      // Restating the same direction is not a change, the rule `nesting.set`
+      // states above: every view declares one, so without this a view switch
+      // would mint a new state object and every identity memo downstream would
+      // miss.
+      return state.direction === action.direction
+        ? state
+        : { ...state, direction: action.direction };
     case "layout.set":
       return { ...state, layout: action.layout };
     case "presentation.toggled":

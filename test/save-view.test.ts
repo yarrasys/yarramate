@@ -128,9 +128,9 @@ describe('buildPayload', () => {
     expect(projectionOf(build()).presentation?.notation).toBeUndefined()
   })
 
-  // The canvas has no direction control, so a save must carry through what the
-  // view already declared. Dropping it would discard a value the LikeC4 export
-  // reads and the reviewer never saw.
+  // There is no direction control on screen - the view declares one (#274,
+  // ADR 0121) - so a save must carry through what it already said. Dropping it
+  // would discard a value the canvas and the LikeC4 export both read.
   it('omits direction entirely when there is none to carry', () => {
     expect(
       projectionOf(build({ carriedDirection: undefined })).presentation,
