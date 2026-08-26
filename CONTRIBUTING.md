@@ -127,6 +127,29 @@ This is recorded because it was learned the hard way: `portKinds` (#268 phase
 point. Adding it required edits in eighteen files here and three in a
 consuming product, all of them fixtures, none of them readers.
 
+### An empty set is not a finished one
+
+A surface that reports progress must not infer completion from emptiness.
+The arithmetic that looks right is wrong at zero:
+
+- `done = answered === questions` ticks when a wave carries no questions;
+- "no open questions" reads as complete when nothing was asked;
+- a fallback group like `quiet` claims calm about a project nobody has begun.
+
+In each case the empty reading is the **flattering** one, and the honest
+question is not "is the count zero" but "was anything asked". Read the state
+that says so — `opened` on a wave, whether any wave carries a question —
+rather than a count that happens to be zero.
+
+This is recorded because it recurs. Five instances were found in a single day
+across this repository and one consuming product: a wave rail, this
+repository's report renderer, a project dashboard, this repository's `design`
+completion claim, and the same claim in that product's own interview surface.
+**Four of the five predated the release that made the shape visible.** Adding
+a legitimately-empty state is therefore a good moment to go looking for who
+infers completion from emptiness — the state is new, the fault usually is not.
+`docs/INTERROGATION.md` carries the interrogation-specific form.
+
 A change a user would notice belongs in `CHANGELOG.md`, under the version
 being prepared, in the same pull request that makes it. A change nobody outside
 the repository can see does not. When a `feat`, `fix` or `perf` commit
