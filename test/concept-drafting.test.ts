@@ -3,6 +3,7 @@ import { stringify } from 'yaml'
 import { compileWorkspaceWithProfileContext } from '../src/compiler.js'
 import { projectGraphForCanvas } from '../src/graph-projection.js'
 import { draftConcept, proposeConceptId } from '../src/concept-drafting.js'
+import { stagedSubjectIds } from '../src/relationship-drafting.js'
 import { applyOperations } from '../src/apply-command.js'
 import type { CanvasGraph } from '../src/graph-projection.js'
 
@@ -80,6 +81,23 @@ describe('proposeConceptId', () => {
     // made of, and the caller is told rather than handed a mangled one.
     expect(proposeConceptId(graph, '2FA Gateway')).toBeNull()
     expect(proposeConceptId(graph, '123')).toBeNull()
+  })
+
+  it('steps past a reserved id the graph does not know yet (#315)', () => {
+    // A staged-but-uncommitted subject is not in the rendered graph, so its
+    // id arrives as `reserved` rather than as a node. Without this a second
+    // subject slugging to the same id re-proposed it and the editor's
+    // replace-by-target staging swallowed the first - the same blind spot
+    // `proposeRelationshipId` had before #306's fix.
+    expect(
+      proposeConceptId(graph, 'Payment Service', ['payment-service']),
+    ).toBe('payment-service-2')
+    expect(
+      proposeConceptId(graph, 'Payment Service', [
+        'payment-service',
+        'payment-service-2',
+      ]),
+    ).toBe('payment-service-3')
   })
 
   it('always produces something the document schema accepts', () => {
@@ -196,6 +214,63 @@ describe('draftConcept', () => {
       ).toEqual([])
     }
     expect(drafted).toBe(KINDS.length)
+  })
+
+  /**
+   * The repro from #315: stage 'Payment Service', rename nothing, stage
+   * another subject that slugs to `payment-service` before committing. The
+   * first is staged, not landed, so the graph alone cannot warn the second
+   * off its id - only `stagedSubjectIds` can. Both must survive: distinct
+   * ids, applied together, compiled cleanly.
+   */
+  it('drafts a second subject that lands beside the first when their names slug identically (#315)', () => {
+    const first = draftConcept(
+      graph,
+      {
+        name: 'Payment Service',
+        kind: 'applicationComponent',
+        document: 'architecture/main.yaml',
+      },
+      KINDS,
+    )
+    expect(first?.op).toBe('add-concept')
+    if (first?.op !== 'add-concept') return
+
+    const second = draftConcept(
+      graph,
+      {
+        // A different name that slugs to the same id, which is exactly how
+        // the collision arrives in practice - nobody types the same name
+        // twice on purpose.
+        name: 'Payment (Service)',
+        kind: 'businessActor',
+        document: 'architecture/main.yaml',
+      },
+      KINDS,
+      stagedSubjectIds([first]),
+    )
+    expect(second?.op).toBe('add-concept')
+    if (second?.op !== 'add-concept') return
+
+    expect(first.concept.id).toBe('payment-service')
+    expect(second.concept.id).toBe('payment-service-2')
+
+    const outcome = apply([first, second])
+    expect(
+      outcome.ok ? [] : outcome.diagnostics.map((d) => d.code),
+    ).toEqual([])
+    if (!outcome.ok) return
+
+    const landed = graphOf(
+      outcome.sources.find(
+        (document) => document.path === 'architecture/main.yaml',
+      )!.source,
+    )
+    expect(landed.nodes.map((node) => node.id).sort()).toEqual([
+      'orders',
+      'payment-service',
+      'payment-service-2',
+    ])
   })
 
   it('lands a subject the connection tool can then reach', () => {

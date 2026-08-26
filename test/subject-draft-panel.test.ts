@@ -1,10 +1,11 @@
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { compileWorkspaceWithProfileContext } from '../src/compiler.js'
 import { projectGraphForCanvas } from '../src/graph-projection.js'
 import { SubjectDraftPanel } from '../src/visual-app/subject-draft-panel.js'
 import type { CanvasGraph } from '../src/graph-projection.js'
+import type { YarramateOperation } from '../src/operations.js'
 
 /**
  * What the form puts on screen. What it produces when submitted is
@@ -29,27 +30,30 @@ concepts:
 relationships: []
 `)
 
+const KINDS = [
+  // id is the full identity the wire carries; label is the short name a
+  // document names. The two differ, which is the whole point.
+  {
+    id: 'yarramate/core@0.1#applicationComponent',
+    label: 'applicationComponent',
+    coreLabel: 'applicationComponent',
+  },
+  {
+    id: 'yarramate/core@0.1#businessActor',
+    label: 'businessActor',
+    coreLabel: 'businessActor',
+  },
+]
+
 const render = (overrides: { readonly initialKind?: string } = {}) =>
   renderToStaticMarkup(
     createElement(SubjectDraftPanel, {
       ...overrides,
       graph,
-      kinds: [
-        // id is the full identity the wire carries; label is the short name a
-        // document names. The two differ, which is the whole point.
-        {
-          id: 'yarramate/core@0.1#applicationComponent',
-          label: 'applicationComponent',
-          coreLabel: 'applicationComponent',
-        },
-        {
-          id: 'yarramate/core@0.1#businessActor',
-          label: 'businessActor',
-          coreLabel: 'businessActor',
-        },
-      ],
+      kinds: KINDS,
       documents: ['architecture/main.yaml', 'architecture/other.yaml'],
       defaultDocument: 'architecture/main.yaml',
+      reservedIds: [],
       onStage: () => undefined,
       onCancel: () => undefined,
     }),
@@ -135,6 +139,83 @@ describe('SubjectDraftPanel', () => {
 
   it('can always be backed out of', () => {
     expect(render()).toContain('Cancel')
+  })
+
+  /**
+   * The concept half of #315, threaded through the form: the reserved id
+   * plays a first subject that is staged but not landed, so submitting a
+   * name that slugs to the same id must stage `-2`, not silently collide.
+   *
+   * The form holds its fields in `useState`, which `renderToStaticMarkup`
+   * cannot be typed into, so `useState` is answered with a filled form and
+   * the panel runs as a plain function - the ConnectionPanel threading
+   * test's shape (#306), adapted for a panel with hooks.
+   */
+  it('threads reserved ids into the draft it stages (#315)', async () => {
+    vi.resetModules()
+    vi.doMock('react', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('react')>()
+      // The panel's three fields, in declaration order: name, kind, document.
+      const answers: unknown[] = [
+        'Payment Service',
+        'applicationComponent',
+        'architecture/main.yaml',
+      ]
+      return {
+        ...actual,
+        useState: (initial: unknown) => [
+          answers.shift() ?? initial,
+          () => undefined,
+        ],
+      }
+    })
+    try {
+      const { SubjectDraftPanel: Panel } = await import(
+        '../src/visual-app/subject-draft-panel.js'
+      )
+      const staged: YarramateOperation[] = []
+      const buttonsOf = (
+        node: unknown,
+        found: Array<{ children?: unknown; onClick?: () => void }> = [],
+      ): Array<{ children?: unknown; onClick?: () => void }> => {
+        if (Array.isArray(node)) {
+          for (const child of node) buttonsOf(child, found)
+          return found
+        }
+        if (node === null || typeof node !== 'object') return found
+        const element = node as {
+          type?: unknown
+          props?: { children?: unknown; onClick?: () => void }
+        }
+        if (element.type === 'button' && element.props !== undefined) {
+          found.push(element.props)
+        }
+        buttonsOf(element.props?.children, found)
+        return found
+      }
+
+      const tree = Panel({
+        graph,
+        kinds: KINDS,
+        documents: ['architecture/main.yaml'],
+        defaultDocument: 'architecture/main.yaml',
+        reservedIds: ['payment-service'],
+        onStage: (operation) => staged.push(operation),
+        onCancel: () => undefined,
+      })
+      const add = buttonsOf(tree).find((button) => button.children === 'Add')
+      expect(add).toBeDefined()
+      add!.onClick!()
+
+      expect(staged).toHaveLength(1)
+      expect(staged[0]).toMatchObject({
+        op: 'add-concept',
+        concept: { id: 'payment-service-2', name: 'Payment Service' },
+      })
+    } finally {
+      vi.doUnmock('react')
+      vi.resetModules()
+    }
   })
 
   /**

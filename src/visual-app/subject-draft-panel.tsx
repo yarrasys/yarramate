@@ -21,6 +21,7 @@ export const SubjectDraftPanel = ({
   documents,
   defaultDocument,
   initialKind,
+  reservedIds,
   onStage,
   onCancel,
 }: {
@@ -32,6 +33,14 @@ export const SubjectDraftPanel = ({
    * or clicked there (#295). Their own choice arriving with the gesture, not
    * a default this form chose for them, so the no-default rule below stands. */
   readonly initialKind?: string
+  /**
+   * Ids the pending changeset already claims. The graph only knows what has
+   * landed, so without these a second subject slugging to the same id
+   * proposed it again and replace-by-target staging swallowed the first
+   * silently (#315). Required rather than defaulted: a caller has to say
+   * what is staged, even when the answer is nothing.
+   */
+  readonly reservedIds: readonly string[]
   readonly onStage: (operation: YarramateOperation) => void
   readonly onCancel: () => void
 }): React.ReactElement => {
@@ -42,7 +51,8 @@ export const SubjectDraftPanel = ({
   const [kind, setKind] = useState(initialKind ?? '')
   const [document, setDocument] = useState(defaultDocument)
 
-  const proposed = name.trim() === '' ? null : proposeConceptId(graph, name)
+  const proposed =
+    name.trim() === '' ? null : proposeConceptId(graph, name, reservedIds)
   const operation =
     proposed === null
       ? null
@@ -50,6 +60,7 @@ export const SubjectDraftPanel = ({
           graph,
           { name, kind, document },
           kinds.map((option) => option.label),
+          reservedIds,
         )
 
   return (
