@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.3.0
 
 - **Added.** A rule can name its exception (#267, ADR 0122).
   `yarramate/projection/v1` gains `query.exclude`, a list of subjects the
