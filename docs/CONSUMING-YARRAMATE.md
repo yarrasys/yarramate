@@ -309,6 +309,21 @@ defaults to `['properties', 'questions']`. This is a UI posture only — pair it
 with a store that refuses writes; the two defenses are independent.
 `mountEditorWith` takes the same flag as its trailing parameter.
 
+The returned handle can also point at the canvas
+([ADR 0118](adr/0118-the-host-can-point-at-the-canvas.md)):
+`select(subjectId)` selects a concept or relationship exactly as a canvas tap
+would, which also scopes the Open questions section to it;
+`openDraft({ kind })` opens the Add-subject dialog with the kind preselected
+the way a palette pick seeds it (omit `kind` for the plain no-default form);
+and `startConnection(fromSubjectId)` arms the Connect flow from that subject —
+the relationship-with-one-endpoint-fixed affordance an interrogation trigger
+describes. Each returns `false`, rather than throwing, when it moved nothing:
+an id the current model does not name, a model that has not arrived yet, or —
+for `openDraft` and `startConnection` — a read-only mount. These are the
+programmatic twins of tap, palette and Connect, never a second write path:
+anything they lead to still stages through the changeset and commits through
+the same validated batch.
+
 `store` is the caller's synchronous `SourceStore`; `workspace` is the caller's
 pre-resolved `ResolvedWorkspace`. The local host compiles, projects, filters,
 commits and saves layouts over that store. A changeset's model and view writes

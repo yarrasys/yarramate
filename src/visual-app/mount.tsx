@@ -2,7 +2,11 @@ import { createRoot } from 'react-dom/client'
 import { App } from './App.js'
 import { createLocalHost, type LocalHostOptions } from './local-host.js'
 import type { EditorHost } from './editor-host.js'
-import { RIGHT_SECTIONS, type RightSectionId } from './workspace-state.js'
+import {
+  RIGHT_SECTIONS,
+  type EditorPointer,
+  type RightSectionId,
+} from './workspace-state.js'
 import './styles.css'
 
 /**
@@ -22,6 +26,8 @@ import './styles.css'
  *   workspace,                          // a resolved manifest
  *   sections: ['properties', 'changes'],
  * })
+ * editor.select('app.checkout')       // as a canvas tap would (#297)
+ * editor.openDraft({ kind: 'goal' })  // as a palette pick would
  * // later
  * editor.unmount()
  * ```
@@ -51,9 +57,39 @@ export interface MountOptions extends LocalHostOptions {
   readonly readOnly?: boolean
 }
 
+/**
+ * The handle a mount returns (#297, ADR 0118): the disposal it always had,
+ * and three ways for the host to point at the canvas. Each method is the
+ * programmatic twin of a gesture the surface already has - never a second
+ * write path: nothing here commits, and anything the opened affordances stage
+ * still goes through the changeset like every reviewer gesture.
+ *
+ * Every method answers with whether it acted. False means nothing moved: the
+ * id named nothing in the current model, the model has not arrived yet - the
+ * editor renders before its host's first frame lands - or the mount is a
+ * viewer (`readOnly`, #298) and the gesture would have reached for the pen.
+ */
 export interface MountedEditor {
   /** Releases the host and takes the editor out of the element. */
   readonly unmount: () => void
+  /**
+   * Selects the subject - concept or relationship - on the canvas and in the
+   * inspector, exactly as a tap on it would, which also scopes the Open
+   * questions section to it.
+   */
+  readonly select: (subjectId: string) => boolean
+  /**
+   * Opens the Add-subject dialog, with the kind preselected when one is
+   * given - the same seed a palette pick rides (#295). Without a kind, the
+   * plain no-default form.
+   */
+  readonly openDraft: (options?: { readonly kind?: string }) => boolean
+  /**
+   * Arms the connection tool from the named subject, exactly as the
+   * inspector's Connect does: the next selection becomes the target and the
+   * kinds on offer are derived from the two endpoints.
+   */
+  readonly startConnection: (fromSubjectId: string) => boolean
 }
 
 /**
@@ -95,9 +131,31 @@ export const mountEditorWith = (
   // No StrictMode: its double mount would open the host twice, and a host with
   // a socket behind it would open two.
   const root = createRoot(element)
-  root.render(<App host={host} sections={sections} readOnly={readOnly} />)
+  // The bridge the imperative methods delegate through (#297, ADR 0118). The
+  // shell hands its pointer up after its first render; until then - and after
+  // disposal - every method answers false rather than throwing, because "not
+  // ready" and "that id names nothing" are the same fact to a caller: nothing
+  // moved.
+  const bridge: { current: EditorPointer | null } = { current: null }
+  root.render(
+    <App
+      host={host}
+      sections={sections}
+      readOnly={readOnly}
+      onReady={(pointer) => {
+        bridge.current = pointer
+      }}
+    />,
+  )
   return {
-    unmount: () => root.unmount(),
+    unmount: () => {
+      root.unmount()
+      bridge.current = null
+    },
+    select: (subjectId) => bridge.current?.select(subjectId) ?? false,
+    openDraft: (options) => bridge.current?.openDraft(options) ?? false,
+    startConnection: (fromSubjectId) =>
+      bridge.current?.startConnection(fromSubjectId) ?? false,
   }
 }
 

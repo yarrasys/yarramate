@@ -12,6 +12,19 @@ import {
   type EditorHost,
   type RightSectionId,
 } from '../src/visual-app/mount.js'
+import {
+  editorPointerFor,
+  normalizeSelectedElement,
+  normalizeSelectedRelationship,
+  type EditorPointer,
+  type EditorPointerContext,
+  type VisualWorkspaceAction,
+} from '../src/visual-app/workspace-state.js'
+import type {
+  CanvasEdge,
+  CanvasGraph,
+  CanvasNode,
+} from '../src/graph-projection.js'
 
 const host: EditorHost = {
   open: () => () => undefined,
@@ -19,6 +32,13 @@ const host: EditorHost = {
 }
 
 const sections: readonly RightSectionId[] = ['properties', 'changes']
+
+/** The `onReady` seam the mounted `App` element carries (#297). */
+const onReadyOf = (
+  call: readonly unknown[],
+): ((pointer: EditorPointer) => void) =>
+  (call[0] as { props: { onReady: (pointer: EditorPointer) => void } }).props
+    .onReady
 
 describe('mountEditorWith', () => {
   beforeEach(() => {
@@ -47,5 +67,234 @@ describe('mountEditorWith', () => {
     )
     expect(authoring?.readOnly).toBe(false)
     expect(reading?.readOnly).toBe(true)
+  })
+
+  it('answers false, without throwing, before the shell hands its pointer up (#297)', () => {
+    // The mocked render never runs `App`, so `onReady` never fires: exactly
+    // the window between mounting and the shell's first render.
+    const editor = mountEditorWith({} as Element, host, sections)
+
+    expect(editor.select('app.checkout')).toBe(false)
+    expect(editor.openDraft({ kind: 'goal' })).toBe(false)
+    expect(editor.startConnection('app.checkout')).toBe(false)
+  })
+
+  it('delegates each method to the pointer the shell hands up (#297)', () => {
+    const editor = mountEditorWith({} as Element, host, sections)
+    const pointer = {
+      select: vi.fn(() => true),
+      openDraft: vi.fn(() => true),
+      startConnection: vi.fn(() => false),
+    }
+    onReadyOf(root.render.mock.calls[0]!)(pointer)
+
+    expect(editor.select('app.checkout')).toBe(true)
+    expect(pointer.select).toHaveBeenCalledWith('app.checkout')
+    expect(editor.openDraft({ kind: 'goal' })).toBe(true)
+    expect(pointer.openDraft).toHaveBeenCalledWith({ kind: 'goal' })
+    // The pointer's own refusal travels back unchanged.
+    expect(editor.startConnection('app.ledger')).toBe(false)
+    expect(pointer.startConnection).toHaveBeenCalledWith('app.ledger')
+  })
+
+  it('still unmounts, and a disposed handle answers false again (#297)', () => {
+    const editor = mountEditorWith({} as Element, host, sections)
+    const pointer = {
+      select: vi.fn(() => true),
+      openDraft: vi.fn(() => true),
+      startConnection: vi.fn(() => true),
+    }
+    onReadyOf(root.render.mock.calls[0]!)(pointer)
+
+    editor.unmount()
+
+    expect(root.unmount).toHaveBeenCalledOnce()
+    expect(editor.select('app.checkout')).toBe(false)
+    expect(pointer.select).not.toHaveBeenCalled()
+  })
+})
+
+const node = (id: string, name: string): CanvasNode => ({
+  id,
+  localId: id.split('.').at(-1) ?? id,
+  document: 'architecture/main.yaml',
+  kind: 'yarramate/core@0.1#applicationComponent',
+  kindLabel: 'applicationComponent',
+  coreKindLabel: 'applicationComponent',
+  layer: 'application',
+  aspect: 'active-structure',
+  name,
+  description: null,
+  aka: [],
+  status: null,
+  owner: null,
+  folder: null,
+  distinctFrom: [],
+  supersedes: [],
+  constraints: [],
+  references: [],
+  presentIn: [],
+  attestations: [],
+})
+
+const edge = (id: string, from: string, to: string): CanvasEdge => ({
+  id,
+  localId: id,
+  document: 'architecture/main.yaml',
+  kind: 'yarramate/core@0.1#serving',
+  kindLabel: 'serving',
+  coreKindLabel: 'serving',
+  from,
+  to,
+  name: null,
+  description: null,
+  mode: null,
+  content: null,
+  status: null,
+  references: [],
+  presentIn: [],
+})
+
+const graph: CanvasGraph = {
+  nodes: [node('app.checkout', 'Checkout'), node('app.ledger', 'Ledger')],
+  edges: [edge('checkout-serves-ledger', 'app.checkout', 'app.ledger')],
+}
+
+/**
+ * The pointer itself (#297, ADR 0118): the pure factory the shell binds to
+ * its reducer. Each method dispatches the same action its on-screen twin
+ * dispatches - asserted against the same normalizers the tap handlers run -
+ * and answers false where nothing moved.
+ */
+describe('editorPointerFor', () => {
+  const pointerOver = (context: EditorPointerContext) => {
+    const dispatched: VisualWorkspaceAction[] = []
+    const seeded: (string | undefined)[] = []
+    const pointer = editorPointerFor(
+      () => context,
+      (action) => dispatched.push(action),
+      (kind) => seeded.push(kind),
+    )
+    return { pointer, dispatched, seeded }
+  }
+
+  it('selects a concept exactly as a canvas tap would', () => {
+    const { pointer, dispatched } = pointerOver({ graph, readOnly: false })
+
+    expect(pointer.select('app.checkout')).toBe(true)
+    expect(dispatched).toEqual([
+      {
+        type: 'subject.selected',
+        subject: normalizeSelectedElement(graph.nodes[0]!),
+      },
+    ])
+  })
+
+  it('selects a relationship with its endpoint titles resolved', () => {
+    const { pointer, dispatched } = pointerOver({ graph, readOnly: false })
+
+    expect(pointer.select('checkout-serves-ledger')).toBe(true)
+    expect(dispatched).toEqual([
+      {
+        type: 'subject.selected',
+        subject: normalizeSelectedRelationship(
+          graph.edges[0]!,
+          new Map([
+            ['app.checkout', 'Checkout'],
+            ['app.ledger', 'Ledger'],
+          ]),
+        ),
+      },
+    ])
+  })
+
+  it('still selects under a read-only mount, because selecting is reading', () => {
+    const { pointer, dispatched } = pointerOver({ graph, readOnly: true })
+
+    expect(pointer.select('app.checkout')).toBe(true)
+    expect(dispatched).toHaveLength(1)
+  })
+
+  it('moves nothing for an id the model does not name', () => {
+    const { pointer, dispatched } = pointerOver({ graph, readOnly: false })
+
+    expect(pointer.select('app.gone')).toBe(false)
+    expect(dispatched).toEqual([])
+  })
+
+  it('opens the draft with the kind seeded, the same seed a palette pick rides (#295)', () => {
+    const { pointer, dispatched, seeded } = pointerOver({
+      graph,
+      readOnly: false,
+    })
+
+    expect(pointer.openDraft({ kind: 'goal' })).toBe(true)
+    expect(seeded).toEqual(['goal'])
+    expect(dispatched).toEqual([{ type: 'subject.draft.opened' }])
+  })
+
+  it('opens a plain draft with no kind, clearing any earlier seed (ADR 0116)', () => {
+    const { pointer, seeded } = pointerOver({ graph, readOnly: false })
+
+    expect(pointer.openDraft()).toBe(true)
+    expect(seeded).toEqual([undefined])
+  })
+
+  it('refuses the draft in a viewer, where creation is withdrawn (#298)', () => {
+    const { pointer, dispatched, seeded } = pointerOver({
+      graph,
+      readOnly: true,
+    })
+
+    expect(pointer.openDraft({ kind: 'goal' })).toBe(false)
+    expect(seeded).toEqual([])
+    expect(dispatched).toEqual([])
+  })
+
+  it('arms the connection tool from a subject, as Connect does', () => {
+    const { pointer, dispatched } = pointerOver({ graph, readOnly: false })
+
+    expect(pointer.startConnection('app.checkout')).toBe(true)
+    expect(dispatched).toEqual([
+      { type: 'connection.started', from: 'app.checkout' },
+    ])
+  })
+
+  it('refuses a source that is unknown, or not a concept at all', () => {
+    const { pointer, dispatched } = pointerOver({ graph, readOnly: false })
+
+    expect(pointer.startConnection('app.gone')).toBe(false)
+    // A relationship has no endpoint to draw from.
+    expect(pointer.startConnection('checkout-serves-ledger')).toBe(false)
+    expect(dispatched).toEqual([])
+  })
+
+  it('refuses to arm the connection tool in a viewer (#298)', () => {
+    const { pointer, dispatched } = pointerOver({ graph, readOnly: true })
+
+    expect(pointer.startConnection('app.checkout')).toBe(false)
+    expect(dispatched).toEqual([])
+  })
+
+  it('reads the model at call time, so the methods answer for the graph on screen', () => {
+    // Before the host's first frame there is nothing to point at; the same
+    // pointer starts answering true once the model arrives, with no re-bind.
+    let context: EditorPointerContext = { graph: null, readOnly: false }
+    const dispatched: VisualWorkspaceAction[] = []
+    const pointer = editorPointerFor(
+      () => context,
+      (action) => dispatched.push(action),
+      () => undefined,
+    )
+
+    expect(pointer.select('app.checkout')).toBe(false)
+    expect(pointer.openDraft()).toBe(false)
+    expect(pointer.startConnection('app.checkout')).toBe(false)
+    expect(dispatched).toEqual([])
+
+    context = { graph, readOnly: false }
+    expect(pointer.select('app.checkout')).toBe(true)
+    expect(pointer.openDraft()).toBe(true)
+    expect(pointer.startConnection('app.checkout')).toBe(true)
   })
 })

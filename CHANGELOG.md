@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+- **Added.** The host can point at the canvas (#297). The handle
+  `mountEditor` and `mountEditorWith` return grows three methods beside
+  `unmount` — `select(subjectId)`, `openDraft({ kind? })` and
+  `startConnection(fromSubjectId)` — each the programmatic twin of a
+  gesture the surface already has: a canvas tap (the same action and
+  normalization, which also scopes Open questions to the subject), a
+  palette pick (the kind seeds the same Add-subject dialog, #295), and
+  the inspector's Connect (the relationship-with-one-endpoint-fixed
+  affordance a question card's trigger describes, ADR 0110). Every
+  method returns whether it acted: false, never a throw, for an id the
+  model does not name, a model that has not arrived — the handle before
+  the shell's first render or after disposal included — and, for the
+  two that reach for the pen, a read-only mount (#298); selecting stays
+  allowed in a viewer, because selecting is reading. Never a second
+  write path: anything the opened affordances stage still lands through
+  the changeset, and the `EditorHost` seam is untouched — selection is
+  client state, so the bridge is an `onReady` prop on `App`, not a
+  protocol input. The released `{ unmount }` shape is extended
+  additively, so existing embedders stand unchanged.
+  [ADR 0118](docs/adr/0118-the-host-can-point-at-the-canvas.md).
+
 - **Added.** A mounted editor can refuse the pen (#298). `mountEditor`
   gains `readOnly?: boolean` (default `false`) and `mountEditorWith` a
   trailing `readOnly` parameter, so a host can render a frozen snapshot

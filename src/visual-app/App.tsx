@@ -44,6 +44,7 @@ import type { VisualAppRecord, VisualAppState } from "./state.js";
 import {
   conversationWidthBounds,
   createVisualWorkspaceState,
+  editorPointerFor,
   formatContextualQuestion,
   normalizeSelectedElement,
   normalizeSelectedRelationship,
@@ -51,6 +52,8 @@ import {
   viewNeedingApplication,
   visualWorkspaceReducer,
   type ConnectionDraft,
+  type EditorPointer,
+  type EditorPointerContext,
   RIGHT_SECTIONS,
   type RightSectionId,
   type SelectedDiagramSubject,
@@ -932,10 +935,20 @@ export const App = ({
   host,
   sections = RIGHT_SECTIONS,
   readOnly = false,
+  onReady,
 }: {
   readonly host: EditorHost;
   readonly sections?: readonly RightSectionId[];
   readonly readOnly?: boolean;
+  /**
+   * How the mount layer's handle reaches this shell's reducer (#297,
+   * ADR 0118). Called once, after the first render, with the pointer the
+   * handle delegates to - which is what makes the handle's pre-ready
+   * false-return window real. Selection and dialog state are client state,
+   * so this rides a prop rather than the `EditorHost` seam: the protocol
+   * carries documents, not gestures.
+   */
+  readonly onReady?: (pointer: EditorPointer) => void;
 }) => {
   const {
     state,
@@ -991,6 +1004,27 @@ export const App = ({
   // exists. A ref rather than state: nothing renders differently because of
   // it, and a menu item reads it at the moment it is chosen.
   const canvasPngRef = useRef<(() => string) | null>(null);
+
+  // What the host's pointer reads at call time (#297, ADR 0118). Refreshed
+  // every render rather than captured when the pointer was handed up, so a
+  // method called after a commit answers for the graph that is on screen.
+  const pointerContext = useRef<EditorPointerContext>({
+    graph: null,
+    readOnly,
+  });
+  pointerContext.current = {
+    graph: state.model?.graph ?? null,
+    readOnly,
+  };
+  useEffect(() => {
+    onReady?.(
+      editorPointerFor(
+        () => pointerContext.current,
+        dispatchWorkspace,
+        setDraftKind,
+      ),
+    );
+  }, [onReady]);
 
   useEffect(() => {
     const resized = () =>
