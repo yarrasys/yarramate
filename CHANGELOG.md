@@ -2,6 +2,34 @@
 
 ## Unreleased
 
+- **Fixed.** A catalogue naming a kind its profile does not have is refused,
+  rather than loading clean and asking a question that can never fire (#351).
+  `loadQuestionCatalogue` validated the schema and the undeclared-wave check
+  and nothing else, and it did not receive a profile at all, so a mistyped
+  kind produced a question that read perfectly in the source and was dead on
+  arrival. This is the first of the empty-set family found in three days
+  where nothing visible was wrong anywhere: the others all produced a zero
+  someone could look at, and this one produces a well-formed report with
+  consistent counts and a question that is simply never asked.
+
+  All three kind-bearing fields are checked, and two of them are easy to
+  forget. A **trigger** kind that does not resolve never matches. A **subject
+  selector** kind scopes the question to an empty set. A **wave gate** kind
+  never holds, and since a closed wave carries no questions at all, one typo
+  silently retires an entire wave and reads exactly like a wave legitimately
+  waiting on the model.
+
+  **The check is deliberately narrow, and the narrowness is the point.** A
+  kind is refused only when its profile is loaded and the kind is absent from
+  it, which is unambiguously a typo. A kind whose profile is not loaded at
+  all is left alone: `core-enrichment` names four `yarramate/policy@0.1`
+  constraint kinds, and that profile loads only when a document selects it,
+  so those questions are dormant by design rather than broken. Reporting them
+  would put four false positives on the catalogue this repository ships, and
+  a check that cries wolf on its own catalogue gets turned off. Resolution is
+  tested against the kind maps rather than a declared-kinds list, so a kind
+  inherited through `extends` counts.
+
 - **Fixed.** A visual session that cannot recompile the workspace says so,
   and keeps drawing the model that did compile (#349, ADR 0126). It used to
   say nothing at all: every view emptied while the rail kept its views, so

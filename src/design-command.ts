@@ -273,12 +273,10 @@ export function runDesignCommand(
       cataloguePath === undefined
         ? shippedCataloguePath
         : resolve(cwd, cataloguePath)
-    const loadedCatalogue = loadQuestionCatalogue({
-      path: cataloguePath ?? resolvedCataloguePath,
-      source: readFileSync(resolvedCataloguePath, 'utf8'),
-    })
-    if (!loadedCatalogue.ok) return failed(loadedCatalogue.diagnostics)
-
+    // Compiled BEFORE the catalogue loads, so the catalogue can be checked
+    // against the vocabulary its kinds are written against (#351). A
+    // catalogue naming a kind its own profile does not have loads clean
+    // otherwise, and the question it names is dead on arrival.
     const compilation = compileWorkspaceWithProfileContext(
       [
         ...workspace.profiles,
@@ -290,6 +288,15 @@ export function runDesignCommand(
       })),
     )
     if (!compilation.ok) return failed(compilation.diagnostics)
+
+    const loadedCatalogue = loadQuestionCatalogue(
+      {
+        path: cataloguePath ?? resolvedCataloguePath,
+        source: readFileSync(resolvedCataloguePath, 'utf8'),
+      },
+      compilation.profileContext,
+    )
+    if (!loadedCatalogue.ok) return failed(loadedCatalogue.diagnostics)
 
     // The evidence overlay rides along for the one condition that reads
     // it (unchallenged-evidence). A workspace declaring no evidence

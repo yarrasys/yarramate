@@ -297,6 +297,94 @@ describe('ask --open interrogation', () => {
     expect(result.stdout).toContain('Platform team?')
   })
 
+  it('locates a trigger kind the loaded profile does not declare (#351)', () => {
+    writeFileSync(
+      join(workspace, 'catalogue.yaml'),
+      catalogue.replace(
+        'kinds: ["yarramate/core@0.1#goal"]',
+        'kinds: ["yarramate/core@0.1#goul"]',
+      ),
+      'utf8',
+    )
+    const result = runCli(
+      ['ask', 'workspace.yaml', '--open', '--catalogue', 'catalogue.yaml'],
+      workspace,
+    )
+    // Nothing was visibly wrong before this: the question read perfectly and
+    // simply never fired, which is indistinguishable from a condition that
+    // is not met.
+    expect(result.exitCode).toBe(1)
+    expect(result.stdout).toContain('error YM914')
+    expect(result.stdout).toContain('yarramate/core@0.1#goul')
+    expect(result.stdout).toMatch(/^catalogue\.yaml:\d+:\d+ /)
+  })
+
+  it('locates a subject selector kind, not only a trigger kind (#351)', () => {
+    writeFileSync(
+      join(workspace, 'catalogue.yaml'),
+      catalogue.replace(
+        'kinds: ["yarramate/core@0.1#businessActor"]',
+        'kinds: ["yarramate/core@0.1#businessActer"]',
+      ),
+      'utf8',
+    )
+    const result = runCli(
+      ['ask', 'workspace.yaml', '--open', '--catalogue', 'catalogue.yaml'],
+      workspace,
+    )
+    // A selector naming an absent kind scopes the question to an empty set,
+    // which is the same death as a trigger that never matches.
+    expect(result.exitCode).toBe(1)
+    expect(result.stdout).toContain('error YM914')
+    expect(result.stdout).toContain('yarramate/core@0.1#businessActer')
+  })
+
+  it('locates a wave gate kind, which would retire a whole wave (#351)', () => {
+    writeFileSync(
+      join(workspace, 'catalogue.yaml'),
+      catalogue.replace(
+        '  - id: hygiene\n    name: Hygiene\n',
+        '  - id: hygiene\n' +
+          '    name: Hygiene\n' +
+          '    opensWhen:\n' +
+          '      - condition: no-subject-of-kind\n' +
+          '        kinds: ["yarramate/core@0.1#businessActer"]\n',
+      ),
+      'utf8',
+    )
+    const result = runCli(
+      ['ask', 'workspace.yaml', '--open', '--catalogue', 'catalogue.yaml'],
+      workspace,
+    )
+    // The worst of the three: after #334 a closed wave carries no questions
+    // at all, so one typo in a gate silently retires the whole wave and reads
+    // exactly like a wave legitimately waiting on the model.
+    expect(result.exitCode).toBe(1)
+    expect(result.stdout).toContain('error YM914')
+  })
+
+  it('stays quiet about a kind whose profile is simply not loaded (#351)', () => {
+    writeFileSync(
+      join(workspace, 'catalogue.yaml'),
+      catalogue.replace(
+        'kinds: ["yarramate/core@0.1#goal"]',
+        'kinds: ["yarramate/policy@0.1#rate-limit-constraint"]',
+      ),
+      'utf8',
+    )
+    const result = runCli(
+      ['ask', 'workspace.yaml', '--open', '--catalogue', 'catalogue.yaml'],
+      workspace,
+    )
+    // The check that decides whether this check survives. `policy@0.1` is a
+    // real shipped profile that loads only when a document selects it, and
+    // `core-enrichment` names four of its kinds. Reporting those would put
+    // four false positives on the catalogue this repository ships, and a
+    // check that cries wolf on its own catalogue gets turned off.
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).not.toContain('YM914')
+  })
+
   it('locates a question referencing an undeclared wave', () => {
     writeFileSync(
       join(workspace, 'catalogue.yaml'),
