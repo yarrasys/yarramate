@@ -1,6 +1,7 @@
 import { createRoot } from 'react-dom/client'
 import { App } from './App.js'
 import { createLocalHost, type LocalHostOptions } from './local-host.js'
+import type { DecorationMap } from './graph-canvas.js'
 import type { EditorHost } from './editor-host.js'
 import {
   RIGHT_SECTIONS,
@@ -55,6 +56,17 @@ export interface MountOptions extends LocalHostOptions {
    * defenses, and this option is not the one that guards the data.
    */
   readonly readOnly?: boolean
+  /**
+   * The host's per-subject marks at mount time (#314, ADR 0119): subject id -
+   * concept or relationship - to `'added' | 'removed' | 'changed'`, rendered
+   * as class-based visual treatments the way faults are. This is the seam
+   * that lets a host with its own comparison model use the one viewer for
+   * decorated comparison: the SEMANTICS stay host-side - the viewer never
+   * diffs, it renders the marks it is handed. An id the model does not name
+   * is silently inert. This option is the initial map; a live comparison
+   * replaces it wholesale through the handle's `setDecorations`.
+   */
+  readonly decorations?: DecorationMap
 }
 
 /**
@@ -90,6 +102,17 @@ export interface MountedEditor {
    * kinds on offer are derived from the two endpoints.
    */
   readonly startConnection: (fromSubjectId: string) => boolean
+  /**
+   * Replaces the per-subject marks wholesale (#314, ADR 0119) - never a
+   * merge: the map handed here is the map drawn, and `{}` clears every mark.
+   * The one handle method that is not a gesture's twin, because no gesture
+   * decorates: it is the live half of the `decorations` mount option, for a
+   * comparison that moves under an open viewer. Decorating is reading, so it
+   * works under `readOnly`, and unknown ids are silently inert - false is
+   * only the shared not-there window: before the shell's first render, or
+   * after unmount.
+   */
+  readonly setDecorations: (decorations: DecorationMap) => boolean
 }
 
 /**
@@ -110,6 +133,7 @@ export const mountEditor = (
     options.sections ??
       (options.readOnly === true ? READ_SECTIONS : RIGHT_SECTIONS),
     options.readOnly,
+    options.decorations,
   )
 
 /**
@@ -127,6 +151,7 @@ export const mountEditorWith = (
   host: EditorHost,
   sections: readonly RightSectionId[] = RIGHT_SECTIONS,
   readOnly = false,
+  decorations?: DecorationMap,
 ): MountedEditor => {
   // No StrictMode: its double mount would open the host twice, and a host with
   // a socket behind it would open two.
@@ -142,6 +167,7 @@ export const mountEditorWith = (
       host={host}
       sections={sections}
       readOnly={readOnly}
+      decorations={decorations}
       onReady={(pointer) => {
         bridge.current = pointer
       }}
@@ -156,10 +182,13 @@ export const mountEditorWith = (
     openDraft: (options) => bridge.current?.openDraft(options) ?? false,
     startConnection: (fromSubjectId) =>
       bridge.current?.startConnection(fromSubjectId) ?? false,
+    setDecorations: (decorations) =>
+      bridge.current?.setDecorations(decorations) ?? false,
   }
 }
 
 export type { EditorHost, EditorHostEvents } from './editor-host.js'
+export type { DecorationMap, DecorationMark } from './graph-canvas.js'
 export type { LocalHostOptions } from './local-host.js'
 export { createLocalHost } from './local-host.js'
 export { RIGHT_SECTIONS, type RightSectionId } from './workspace-state.js'

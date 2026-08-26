@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+- **Added.** The mounted viewer accepts the host's per-subject marks
+  (#314, ADR 0119). `mountEditor` gains
+  `decorations: Record<subjectId, 'added' | 'removed' | 'changed'>`
+  (concepts and relationships alike) and the returned handle gains
+  `setDecorations(decorations)` on the #297 pointer bridge, so a live
+  comparison replaces the map wholesale — never a merge, `{}` clears.
+  Comparison SEMANTICS stay host-side by design: the viewer renders
+  marks and never diffs, which is what lets a host with its own
+  comparison model (ApertureX's published-snapshot diffs) delete its
+  parallel renderer and use the one viewer for authoring, read-only
+  viewing (#298) and decorated comparison. Rendering is the faults
+  mechanism — `deco-*` classes, stylesheet rules — with added in the
+  eucalyptus token, removed in the quiet ink-grey with a dash, changed
+  in the ochre, and never the failure red, which faults own. Unknown
+  ids are silently inert; decorating is reading, so `setDecorations`
+  works under `readOnly` and before the first model frame. Precedence
+  is declared once: a fault outranks a decoration outranks selection —
+  and ordering the fault rule last makes the failure red real on
+  faulted edges, whose line colour the base edge rule had silently won
+  back (cytoscape resolves style by declaration order alone). The
+  vocabulary is closed at three and the viewer draws no legend — the
+  host owns what a mark means — both recorded as excluded options in
+  the ADR, alongside a session-server equivalent as follow-up.
+
 - **Fixed.** The rail's filter judges a subject the way the canvas
   quick filter does, and its counts say what survives (#317,
   completing the two asks #307 deferred out of #316). Parity: the

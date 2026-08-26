@@ -1,6 +1,7 @@
 import cytoscape from 'cytoscape'
 import { describe, expect, it } from 'vitest'
 import {
+  applyDecorations,
   applyFilter,
   buildStylesheet,
   filteredSubjectCount,
@@ -493,5 +494,125 @@ describe('parallel relationships between the same pair', () => {
     expect(
       drawn.find((element) => element.data.id === 'e1')?.classes,
     ).toBeUndefined()
+  })
+})
+
+/**
+ * The host's marks (#314, ADR 0119): the viewer renders per-subject
+ * decorations it is handed and never computes them - comparison semantics
+ * stay on the host's side of the seam. The mechanism is the faults
+ * mechanism: classes toggled by id, styled by the stylesheet, where a fault
+ * outranks a decoration by declaration order.
+ */
+describe('applyDecorations', () => {
+  it("marks the named node and the named edge with their mark's class", () => {
+    const cy = buildCy()
+    applyDecorations(cy, {
+      node1: 'added',
+      node3: 'removed',
+      edge1: 'changed',
+    })
+
+    expect(cy.$id('node1').hasClass('deco-added')).toBe(true)
+    expect(cy.$id('node3').hasClass('deco-removed')).toBe(true)
+    expect(cy.$id('edge1').hasClass('deco-changed')).toBe(true)
+    // Marks name subjects, never neighbours.
+    expect(cy.$id('node2').classes()).toEqual([])
+    expect(cy.$id('edge2').classes()).toEqual([])
+  })
+
+  it('replaces the marks wholesale on the next map, the empty one included', () => {
+    const cy = buildCy()
+    applyDecorations(cy, { node1: 'added', edge1: 'changed' })
+    applyDecorations(cy, { node1: 'changed' })
+
+    // The second map is the whole picture: node1 carries only its new mark,
+    // and edge1's - absent from the map - is gone rather than remembered.
+    expect(cy.$id('node1').hasClass('deco-changed')).toBe(true)
+    expect(cy.$id('node1').hasClass('deco-added')).toBe(false)
+    expect(cy.$id('edge1').classes()).toEqual([])
+
+    applyDecorations(cy, {})
+    expect(cy.$id('node1').classes()).toEqual([])
+  })
+
+  it('leaves an unknown id silently inert', () => {
+    // The host may be describing subjects this model has not gained yet (or
+    // has already lost) - a mark with nothing to land on marks nothing and
+    // raises nothing.
+    const cy = buildCy()
+    expect(() =>
+      applyDecorations(cy, { 'app.gone': 'added', node1: 'changed' }),
+    ).not.toThrow()
+
+    expect(cy.$id('node1').hasClass('deco-changed')).toBe(true)
+    expect(cy.elements('.deco-added').length).toBe(0)
+  })
+
+  it('never disturbs the fault mark, which outranks it', () => {
+    // The real stylesheet against real elements, headless. Cytoscape
+    // resolves style by declaration order alone, and the fault rule is
+    // declared after the decoration rules: a subject both decorated and
+    // refused reads as refused - the failure red stays faults' own.
+    const cy = cytoscape({
+      styleEnabled: true,
+      elements: [
+        { data: { id: 'a' }, group: 'nodes' },
+        { data: { id: 'b' }, group: 'nodes' },
+        { data: { id: 'c', source: 'a', target: 'b' }, group: 'edges' },
+        { data: { id: 'd' }, group: 'nodes' },
+      ],
+      style: buildStylesheet(false, false, false, false),
+    })
+    cy.$id('a').addClass('faulted')
+    cy.$id('b').addClass('faulted')
+    cy.$id('c').addClass('faulted')
+    applyDecorations(cy, { b: 'added', c: 'changed', d: 'added' })
+
+    // applyDecorations left every faulted class standing...
+    expect(cy.$id('b').hasClass('faulted')).toBe(true)
+    expect(cy.$id('c').hasClass('faulted')).toBe(true)
+    // ...and the fault's colour wins wherever both marks land: the
+    // decorated-and-faulted node and edge render exactly as purely faulted
+    // ones do, while a purely decorated node renders differently.
+    expect(cy.$id('b').style('border-color')).toBe(
+      cy.$id('a').style('border-color'),
+    )
+    expect(cy.$id('d').style('border-color')).not.toBe(
+      cy.$id('a').style('border-color'),
+    )
+    expect(cy.$id('c').style('line-color')).toBe('rgb(163,64,58)')
+  })
+
+  it("renders each mark's own treatment: eucalyptus, quiet dash, ochre", () => {
+    const cy = cytoscape({
+      styleEnabled: true,
+      elements: [
+        { data: { id: 'a' }, group: 'nodes' },
+        { data: { id: 'b' }, group: 'nodes' },
+        { data: { id: 'c' }, group: 'nodes' },
+        { data: { id: 'ab', source: 'a', target: 'b' }, group: 'edges' },
+        { data: { id: 'bc', source: 'b', target: 'c' }, group: 'edges' },
+      ],
+      style: buildStylesheet(false, false, false, false),
+    })
+    applyDecorations(cy, {
+      a: 'added',
+      b: 'removed',
+      c: 'changed',
+      ab: 'removed',
+      bc: 'added',
+    })
+
+    expect(cy.$id('a').style('border-color')).toBe('rgb(65,111,101)')
+    expect(cy.$id('b').style('border-color')).toBe('rgb(103,112,116)')
+    // Removed is the one mark that dashes: an outline of an absence.
+    expect(cy.$id('b').style('border-style')).toBe('dashed')
+    expect(cy.$id('c').style('border-color')).toBe('rgb(140,77,24)')
+    expect(cy.$id('ab').style('line-color')).toBe('rgb(103,112,116)')
+    expect(cy.$id('ab').style('line-style')).toBe('dashed')
+    expect(cy.$id('bc').style('line-color')).toBe('rgb(65,111,101)')
+    // A mark never repaints what it did not name.
+    expect(cy.$id('a').style('border-style')).toBe('solid')
   })
 })

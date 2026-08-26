@@ -1,4 +1,8 @@
-import { filteredSubjectCount, GraphCanvas } from "./graph-canvas.js";
+import {
+  filteredSubjectCount,
+  GraphCanvas,
+  type DecorationMap,
+} from "./graph-canvas.js";
 import type { PresentationFlag } from "./query-fields.js";
 import { QueryPanel, type BottomPanelTabId } from "./query-panel.js";
 import { QuickFilterBox } from "./quick-filter.js";
@@ -235,6 +239,7 @@ const DiagramWorkspace = ({
   showOwnership,
   showNudges,
   openQuestionCounts,
+  decorations,
   connection,
   onConnectTarget,
   onConnectCancel,
@@ -272,6 +277,8 @@ const DiagramWorkspace = ({
   readonly showOwnership: boolean;
   readonly showNudges: boolean;
   readonly openQuestionCounts: ReadonlyMap<string, number>;
+  /** The host's per-subject marks (#314, ADR 0119), for the canvas. */
+  readonly decorations: DecorationMap;
   readonly connection: ConnectionDraft | null;
   readonly onConnectTarget: (id: string) => void;
   readonly onConnectCancel: () => void;
@@ -499,6 +506,7 @@ const DiagramWorkspace = ({
             quickFilterText={state.quickFilterText}
             nesting={nesting}
             faultedIds={faultedSubjects(state.commitDiagnostics ?? [])}
+            decorations={decorations}
             showLifecycle={showLifecycle}
             showEvidence={showEvidence}
             showOwnership={showOwnership}
@@ -998,11 +1006,20 @@ export const App = ({
   host,
   sections = RIGHT_SECTIONS,
   readOnly = false,
+  decorations: initialDecorations,
   onReady,
 }: {
   readonly host: EditorHost;
   readonly sections?: readonly RightSectionId[];
   readonly readOnly?: boolean;
+  /**
+   * The host's per-subject marks at mount time (#314, ADR 0119) - the
+   * initial value only, the way React means an initial value: later
+   * hand-overs travel through the pointer's `setDecorations`, each one
+   * replacing the map wholesale. Client state like selection, so it rides a
+   * prop rather than the `EditorHost` seam.
+   */
+  readonly decorations?: DecorationMap;
   /**
    * How the mount layer's handle reaches this shell's reducer (#297,
    * ADR 0118). Called once, after the first render, with the pointer the
@@ -1063,6 +1080,13 @@ export const App = ({
   // workspace - the reducer keeps only that the draft is open. A plain opener
   // clears it, so "Add subject" still starts with no kind chosen (ADR 0116).
   const [draftKind, setDraftKind] = useState<string | undefined>(undefined);
+  // The host's marks (#314, ADR 0119). Shell state seeded from the mount
+  // option and thereafter owned by the pointer's `setDecorations`, which
+  // replaces the whole map: rendering is the canvas's job, the comparison
+  // that produced the marks stays on the host's side of the seam.
+  const [decorations, setDecorations] = useState<DecorationMap>(
+    initialDecorations ?? {},
+  );
   // A way to photograph the canvas, handed up by `GraphCanvas` while one
   // exists. A ref rather than state: nothing renders differently because of
   // it, and a menu item reads it at the moment it is chosen.
@@ -1085,6 +1109,7 @@ export const App = ({
         () => pointerContext.current,
         dispatchWorkspace,
         setDraftKind,
+        setDecorations,
       ),
     );
   }, [onReady]);
@@ -1531,6 +1556,7 @@ export const App = ({
           waiting={waiting}
           layout={workspace.layout}
           nesting={workspace.nesting}
+          decorations={decorations}
           connection={workspace.connection}
           onConnectTarget={(id) =>
             dispatchWorkspace({ type: "connection.targeted", to: id })

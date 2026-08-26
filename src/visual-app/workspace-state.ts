@@ -4,6 +4,7 @@ import type {
   CanvasNode,
 } from "../graph-projection.js";
 import { DEFAULT_NESTING, type NestingKind } from "../nesting.js";
+import type { DecorationMap } from "./graph-canvas.js";
 import type { ContextMenuTarget } from "./context-menu-model.js";
 import type { BottomPanelTabId } from "./query-panel.js";
 
@@ -123,6 +124,15 @@ export interface EditorPointer {
   readonly select: (subjectId: string) => boolean;
   readonly openDraft: (options?: { readonly kind?: string }) => boolean;
   readonly startConnection: (fromSubjectId: string) => boolean;
+  /**
+   * Replaces the host's per-subject marks wholesale (#314, ADR 0119) - the
+   * map is the unit of exchange, never merged into what stood. Unlike its
+   * siblings this one needs no model and no pen: the marks are client state
+   * drawn when the graph (or its successor) is on screen, and decorating is
+   * reading, so a viewer accepts them too. It answers false only where every
+   * method does - a handle before the shell's first render or after disposal.
+   */
+  readonly setDecorations: (decorations: DecorationMap) => boolean;
 }
 
 /**
@@ -135,6 +145,7 @@ export const editorPointerFor = (
   context: () => EditorPointerContext,
   dispatch: (action: VisualWorkspaceAction) => void,
   seedDraftKind: (kind: string | undefined) => void,
+  replaceDecorations: (decorations: DecorationMap) => void,
 ): EditorPointer => ({
   select: (subjectId) => {
     const { graph } = context();
@@ -167,6 +178,16 @@ export const editorPointerFor = (
     // and an edge or an unknown id has no endpoint to draw from.
     if (!graph.nodes.some((node) => node.id === fromSubjectId)) return false;
     dispatch({ type: "connection.started", from: fromSubjectId });
+    return true;
+  },
+  setDecorations: (decorations) => {
+    // No graph gate and no read-only gate, deliberately (#314, ADR 0119):
+    // the marks are held client-side and rendered when a model is on screen,
+    // so handing them before the host's first frame is not "nothing moved" -
+    // the map landed, and the canvas draws it the moment there is one. And
+    // decorating is reading: the primary consumer decorates frozen snapshots
+    // under a read-only mount (#298).
+    replaceDecorations(decorations);
     return true;
   },
 });
