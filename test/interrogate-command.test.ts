@@ -262,6 +262,12 @@ describe('ask --open interrogation', () => {
     // The delta annotation (ADR 0063) rides the report so consumers can
     // tell 'the catalogue deepened' from 'the model regressed'.
     expect((owners as { since?: string }).since).toBe('1.1')
+    // The verbatim catalogue trigger rides every question (#289): the
+    // machine-readable answer shape a host builds its affordance from,
+    // instead of re-deriving it from its own catalogue copy.
+    expect((owners as { trigger?: unknown }).trigger).toEqual([
+      { condition: 'missing-claim', predicate: 'yarramate/ownership/owner' },
+    ])
     const validate = new Ajv2020({ allErrors: true }).compile(reportSchema)
     expect(validate(payload), JSON.stringify(validate.errors)).toBe(true)
   })

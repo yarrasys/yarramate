@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+- **Added.** An open question carries its machine-readable answer shape
+  (#289). Every interrogation-report question and design step now carries
+  `trigger`, the catalogue conditions that opened it, verbatim — so a
+  consumer builds its answering affordance (a prefilled form, an
+  operations stub) from the report instead of re-deriving the shape from
+  its own catalogue copy and drifting from engine semantics. The human
+  `yarramate design` output prints a prefilled `yarramate/operations/v1`
+  skeleton when the trigger maps unambiguously onto one operation
+  (`no-subject-of-kind` → `add-concept`; `missing-relationship` →
+  `add-relationship` with the direction-fixed endpoint prefilled).
+  [ADR 0110](docs/adr/0110-an-open-question-carries-its-answer-shape.md).
+
+  Compatibility: `trigger` is required and the report and design-step
+  schemas use `additionalProperties: false`, so output from this version
+  fails validation against pinned pre-change schemas. Consumers that
+  upgrade the package and its published schemas together are unaffected.
+  No semantics bump: no answer changes (ADR 0106's rule).
+
 ## 1.1.0
 
 - **Added.** A succession can be partial. `supersedes` accepts

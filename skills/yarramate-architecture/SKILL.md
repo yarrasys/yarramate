@@ -137,7 +137,11 @@ yarramate design .yarramate/workspace.yaml
 
    Each invocation serves exactly the top open question with its subject
    slice, materiality, and progress — the catalogue is internal; never pass
-   or read catalogue files. Answer one question at a time: questions the
+   or read catalogue files. The step carries the question's `trigger`
+   (its machine-readable answer shape), and the human output includes a
+   prefilled operations skeleton when the trigger maps onto one
+   operation — start from that skeleton instead of authoring the batch
+   from memory. Answer one question at a time: questions the
    model or evidence can answer, answer from your authority; questions
    marked `human`, relay verbatim with their materiality. Land each answer
    as subjects and relationships in one atomic batch (`yarramate apply

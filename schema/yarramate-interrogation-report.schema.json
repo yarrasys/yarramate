@@ -4,7 +4,14 @@
   "title": "YarraMate interrogation report",
   "type": "object",
   "additionalProperties": false,
-  "required": ["format", "workspace", "catalogue", "semantics", "summary", "waves"],
+  "required": [
+    "format",
+    "workspace",
+    "catalogue",
+    "semantics",
+    "summary",
+    "waves"
+  ],
   "properties": {
     "format": {
       "const": "yarramate/interrogation-report/v1"
@@ -25,11 +32,24 @@
     "summary": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["questions", "openQuestions", "open"],
+      "required": [
+        "questions",
+        "openQuestions",
+        "open"
+      ],
       "properties": {
-        "questions": { "type": "integer", "minimum": 0 },
-        "openQuestions": { "type": "integer", "minimum": 0 },
-        "open": { "type": "integer", "minimum": 0 }
+        "questions": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "openQuestions": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "open": {
+          "type": "integer",
+          "minimum": 0
+        }
       }
     },
     "waves": {
@@ -43,13 +63,25 @@
     "wave": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "questions"],
+      "required": [
+        "id",
+        "name",
+        "questions"
+      ],
       "properties": {
-        "id": { "type": "string", "minLength": 1 },
-        "name": { "type": "string", "minLength": 1 },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
         "questions": {
           "type": "array",
-          "items": { "$ref": "#/$defs/question" }
+          "items": {
+            "$ref": "#/$defs/question"
+          }
         }
       }
     },
@@ -63,33 +95,453 @@
         "open",
         "question",
         "materiality",
-        "resolution"
+        "resolution",
+        "trigger"
       ],
       "properties": {
-        "id": { "type": "string", "minLength": 1 },
-        "scope": { "enum": ["workspace", "subject"] },
-        "authority": { "enum": ["human", "agent", "either"] },
-        "open": { "type": "boolean" },
-        "question": { "type": "string", "minLength": 1 },
-        "materiality": { "type": "string", "minLength": 1 },
-        "resolution": { "type": "string", "minLength": 1 },
-        "since": { "type": "string" },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scope": {
+          "enum": [
+            "workspace",
+            "subject"
+          ]
+        },
+        "authority": {
+          "enum": [
+            "human",
+            "agent",
+            "either"
+          ]
+        },
+        "open": {
+          "type": "boolean"
+        },
+        "question": {
+          "type": "string",
+          "minLength": 1
+        },
+        "materiality": {
+          "type": "string",
+          "minLength": 1
+        },
+        "resolution": {
+          "type": "string",
+          "minLength": 1
+        },
+        "trigger": {
+          "description": "The catalogue trigger, verbatim: the conditions that opened this question, i.e. its machine-readable answer shape.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/condition"
+          }
+        },
+        "since": {
+          "type": "string"
+        },
         "subjects": {
           "type": "array",
           "minItems": 1,
-          "items": { "$ref": "#/$defs/openSubject" }
+          "items": {
+            "$ref": "#/$defs/openSubject"
+          }
         }
       }
     },
     "openSubject": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "question"],
+      "required": [
+        "id",
+        "question"
+      ],
       "properties": {
-        "id": { "type": "string", "minLength": 1 },
-        "name": { "type": "string", "minLength": 1 },
-        "question": { "type": "string", "minLength": 1 }
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "question": {
+          "type": "string",
+          "minLength": 1
+        }
       }
+    },
+    "condition": {
+      "description": "One deterministic trigger condition. All conditions in a trigger must hold (AND) for the question to be open.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "condition",
+            "predicate"
+          ],
+          "properties": {
+            "condition": {
+              "const": "missing-claim"
+            },
+            "predicate": {
+              "$ref": "#/$defs/claimPredicate"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "condition",
+            "kinds",
+            "direction"
+          ],
+          "properties": {
+            "condition": {
+              "const": "missing-relationship"
+            },
+            "kinds": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/qualifiedKind"
+              }
+            },
+            "direction": {
+              "enum": [
+                "incoming",
+                "outgoing",
+                "any"
+              ]
+            },
+            "kindMatching": {
+              "enum": [
+                "exact",
+                "descendants"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "condition"
+          ],
+          "properties": {
+            "condition": {
+              "const": "isolated"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "condition",
+            "kinds"
+          ],
+          "properties": {
+            "condition": {
+              "const": "no-subject-of-kind"
+            },
+            "kinds": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/qualifiedKind"
+              }
+            },
+            "kindMatching": {
+              "enum": [
+                "exact",
+                "descendants"
+              ],
+              "default": "descendants"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "condition"
+          ],
+          "properties": {
+            "condition": {
+              "const": "no-state-defined"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "condition",
+            "kinds",
+            "direction",
+            "counterpartKinds"
+          ],
+          "properties": {
+            "condition": {
+              "const": "missing-linkage"
+            },
+            "kinds": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/qualifiedKind"
+              }
+            },
+            "direction": {
+              "enum": [
+                "outgoing",
+                "incoming"
+              ]
+            },
+            "counterpartKinds": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/qualifiedKind"
+              }
+            },
+            "kindMatching": {
+              "enum": [
+                "exact",
+                "descendants"
+              ],
+              "default": "descendants"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "condition",
+            "kinds",
+            "direction",
+            "counterpartKinds"
+          ],
+          "properties": {
+            "condition": {
+              "const": "has-linkage"
+            },
+            "kinds": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/qualifiedKind"
+              }
+            },
+            "direction": {
+              "enum": [
+                "outgoing",
+                "incoming",
+                "either"
+              ]
+            },
+            "counterpartKinds": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/qualifiedKind"
+              }
+            },
+            "kindMatching": {
+              "enum": [
+                "exact",
+                "descendants"
+              ],
+              "default": "descendants"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "condition",
+            "kinds",
+            "direction",
+            "counterpartKinds"
+          ],
+          "properties": {
+            "condition": {
+              "const": "exists-linkage"
+            },
+            "kinds": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/qualifiedKind"
+              }
+            },
+            "direction": {
+              "enum": [
+                "outgoing",
+                "incoming",
+                "either"
+              ]
+            },
+            "counterpartKinds": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/qualifiedKind"
+              }
+            },
+            "kindMatching": {
+              "enum": [
+                "exact",
+                "descendants"
+              ],
+              "default": "descendants"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "condition",
+            "kinds"
+          ],
+          "properties": {
+            "condition": {
+              "const": "missing-constraint"
+            },
+            "kinds": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/qualifiedKind"
+              }
+            },
+            "kindMatching": {
+              "enum": [
+                "exact",
+                "descendants"
+              ],
+              "default": "descendants"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "The subject is an endpoint of at least one flow relationship that has no yarramate/flow/content claim.",
+          "required": [
+            "condition"
+          ],
+          "properties": {
+            "condition": {
+              "const": "missing-flow-content"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "condition",
+            "predicate",
+            "direction"
+          ],
+          "properties": {
+            "condition": {
+              "const": "missing-reference"
+            },
+            "predicate": {
+              "$ref": "#/$defs/claimPredicate"
+            },
+            "direction": {
+              "enum": [
+                "outgoing",
+                "incoming"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "condition",
+            "topic"
+          ],
+          "properties": {
+            "condition": {
+              "const": "missing-attestation"
+            },
+            "topic": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "The subject resembles another subject of the same kind closely enough to be the same thing under two names, and no yarramate/identity/distinct-from claim dismisses the pair. Deterministic and lexical; the algorithm and thresholds are stated in ADR 0077. Questions using it may interpolate {counterparts}.",
+          "required": [
+            "condition"
+          ],
+          "properties": {
+            "condition": {
+              "const": "near-duplicate"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "The subject's kind is never tested by anything the compiler can check: it participates in no relationship whose kind pins the aspect at the subject's end, so reclassifying it to any other kind of any other aspect would still compile. The kind is a label rather than a constraint (ADR 0083).",
+          "required": [
+            "condition"
+          ],
+          "properties": {
+            "condition": {
+              "const": "unconstrained-kind"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "The subject supersedes a predecessor that is still current, and does not say in what respect. A succession that replaced its predecessor outright says so by the predecessor being gone; one where both remain is usually partial, and the respect is the part a reader needs (ADR 0109).",
+          "required": [
+            "condition"
+          ],
+          "properties": {
+            "condition": {
+              "const": "unscoped-succession"
+            }
+          }
+        }
+      ]
+    },
+    "claimPredicate": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9/@.#-]*$"
+    },
+    "qualifiedKind": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9/-]*@[0-9][0-9A-Za-z.-]*#[A-Za-z][A-Za-z0-9-]*$"
     }
   }
 }

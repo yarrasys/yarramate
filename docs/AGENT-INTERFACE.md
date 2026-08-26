@@ -54,6 +54,12 @@ translates it into `apply` operations → re-invoke `design`.
   none, never blocking. Same step, same slice, same envelope: the JSON
   step carries `askPlain` additively whenever the catalogue provides
   one, so `--json` output is identical with or without the flag.
+- **The step carries its answer shape** (ADR 0110). `trigger` holds the
+  catalogue conditions that opened the question, verbatim, on the JSON
+  step and on every report question; the human output prints a prefilled
+  `yarramate/operations/v1` skeleton when the trigger maps unambiguously
+  onto one operation, so the first answer lands without the author
+  reverse-engineering the operations format.
 - Today's `interrogate` demotes to internal machinery; the full
   open-questions report remains reachable as a read (see `ask`).
 - Harness use: greenfield conception from a one-line idea; enrichment
