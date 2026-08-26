@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.4.1
 
 - **Fixed.** A pattern document declared in a workspace manifest is
   actually loaded (#268). 1.4.0 added the `patterns` manifest category and
