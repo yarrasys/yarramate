@@ -160,6 +160,40 @@ serving prc-component`.
   macro edge itself can be perfectly legal — two groupings permit almost
   everything — while the pair it lands on is not.
 
+## The folded view, and the narrowed palette
+
+Two things fall out of ports rather than needing a mode of their own.
+
+**A view over the pattern kind is the fold.** Because a macro edge survives
+its expansion and stays an ordinary subject, a projection selecting the
+pattern kind with `relationships: between` draws one box per instance with
+the macro edges between them — no canvas mode, no second renderer:
+
+```yaml
+query:
+  kinds:
+    - yarrasys/api-led@1.0#api
+  relationships: between
+```
+
+Unfolding is the same query without the kind filter, or any view that
+includes the parts. This is the property upward abstraction could never
+give: a view that collapsed to groupings drew no edges, because the real
+ones ran between members and nothing had authored the macro fact.
+
+**The connect palette narrows to the ported kinds.** Between two pattern
+instances an editor offers only the kinds *both* patterns port, rather
+than the ten of eleven the relationship table permits between two
+groupings. That restores the guidance the table gives everywhere else,
+and it matches what phase 2 will actually expand: an offer wider than the
+intersection would propose edges that expand into nothing. Where either
+end has no ports there is no macro grain to speak of and the table's own
+answer stands, and a narrowing that came out empty falls back to the
+table rather than making the edge undrawable.
+
+A `CanvasNode` carries `portKinds` for this, and the resolved profile
+context carries `patternPortKinds` keyed by concept kind.
+
 ## Diagnostics
 
 | Code | Meaning |
@@ -180,10 +214,11 @@ declared part, `YM404` for wiring the relationship table forbids, and
 
 ## Not yet
 
-Phases 1 and 2 of #268 have landed. **Fold and unfold** on the canvas is
-phase 3, along with the connect tool offering two instances only their
-port kinds instead of all eleven the relationship table permits between
-groupings. Both read what is declared here; neither changes it.
+Phases 1, 2 and 3 of #268 have landed. What remains open is a canvas
+**toggle** for folding — collapsing clusters on whatever view is on
+screen, rather than switching to a view authored as folded. That is a
+convenience over what a projection already does, not a missing
+capability.
 
 Generating an unbound part rather than requiring it to exist is also left
 open. An instance that binds nothing is exactly the greenfield case, and

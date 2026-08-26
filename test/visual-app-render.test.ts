@@ -164,6 +164,7 @@ const subject = (
   kind: 'yarramate/core@0.1#applicationComponent',
   kindLabel: 'applicationComponent',
   coreKindLabel: 'applicationComponent',
+  portKinds: [],
   layer: 'application',
   aspect: 'active-structure',
   name,

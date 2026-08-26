@@ -24,6 +24,16 @@ export interface CanvasNode {
    * profile kind it was authored as.
    */
   readonly coreKindLabel: string
+  /**
+   * The core relationship kinds this node's PATTERN ports, or `[]` where its
+   * kind has no pattern with ports (#268 phase 3, ADR 0124).
+   *
+   * A macro edge needs both ends to port its kind, so an editor offering a
+   * palette between two instances intersects the two lists. Two raw groupings
+   * permit ten of the eleven kinds, which is no guidance at all; this is what
+   * restores the narrowing the relationship table gives everywhere else.
+   */
+  readonly portKinds: readonly string[]
   readonly layer: Layer | null // from profileContext.conceptKindLayers, null if unresolved
   readonly aspect: Aspect | null // from profileContext.conceptKindAspects, null if unresolved
   readonly name: string
@@ -240,6 +250,7 @@ const projectConcept = (
     coreKindLabel: kindLabelOf(
       profileContext.conceptKindLineages.get(kind)?.[0] ?? kind,
     ),
+    portKinds: profileContext.patternPortKinds.get(kind) ?? [],
     layer: (profileContext.conceptKindLayers.get(kind) as Layer | undefined) ?? null,
     aspect: (profileContext.conceptKindAspects.get(kind) as Aspect | undefined) ?? null,
     name: claimValue(nameClaim),

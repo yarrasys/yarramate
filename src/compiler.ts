@@ -373,6 +373,18 @@ export interface ResolvedProfileContext {
   readonly conceptKindCoreAncestors: ReadonlyMap<string, CoreConceptKindId>
   readonly relationshipKindCoreAncestors: ReadonlyMap<string, RelationshipKind>
   /**
+   * The core relationship kinds a pattern PORTS for a concept kind (#268
+   * phase 3, ADR 0124), keyed by kind identity. Only kinds that have a
+   * pattern with ports appear.
+   *
+   * A macro edge needs both ends to port its kind, so a consumer offering a
+   * palette between two instances intersects the two sets. Two raw groupings
+   * permit ten of the eleven kinds, which is no narrowing at all; the ports
+   * are what restore the guidance the relationship table gives everywhere
+   * else.
+   */
+  readonly patternPortKinds: ReadonlyMap<string, readonly RelationshipKind[]>
+  /**
    * The core relationship kinds the ArchiMate table permits between two
    * concept kind identities, resolved through lineage; undefined when either
    * identity is unknown. An extension relationship kind's own narrowing is
@@ -3357,6 +3369,24 @@ function compileWorkspaceResolved(
         [...relationshipKindByIdentity]
           .sort(([left], [right]) => left.localeCompare(right))
           .map(([identity, kind]) => [identity, kind.coreKind] as const),
+      ),
+      patternPortKinds: immutableMap(
+        [...patternsByKind]
+          .sort(([left], [right]) => left.localeCompare(right))
+          .flatMap(([identity, pattern]) =>
+            pattern.ports.size === 0
+              ? []
+              : [
+                  [
+                    identity,
+                    Object.freeze(
+                      [...pattern.ports.values()]
+                        .map(({ coreKind }) => coreKind)
+                        .sort(),
+                    ) as readonly RelationshipKind[],
+                  ] as const,
+                ],
+          ),
       ),
       permittedRelationshipKinds: (fromKindIdentity, toKindIdentity) => {
         const from = conceptKindByIdentity.get(fromKindIdentity)

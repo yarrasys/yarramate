@@ -33,6 +33,7 @@ const node = (overrides: Partial<CanvasNode> = {}): CanvasNode => ({
   kind: "yarramate/core@0.1#applicationComponent",
   kindLabel: "applicationComponent",
   coreKindLabel: "applicationComponent",
+  portKinds: [],
   document: "main.yaml",
   layer: "application",
   aspect: null,

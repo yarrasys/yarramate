@@ -19,6 +19,7 @@ const edge = (
     kind,
     kindLabel: kind.split('#')[1]!,
     coreKindLabel: kind.split('#')[1]!,
+    portKinds: [],
     from,
     to,
     name: null,

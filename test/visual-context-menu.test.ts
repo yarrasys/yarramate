@@ -18,6 +18,7 @@ const node = (overrides: Partial<CanvasNode> = {}): CanvasNode => ({
   kind: "yarramate/core@0.1#applicationComponent",
   kindLabel: "applicationComponent",
   coreKindLabel: "applicationComponent",
+  portKinds: [],
   document: "main.yaml",
   layer: "application",
   aspect: null,
@@ -68,6 +69,7 @@ const reviewer = node({
   kind: "yarramate/core@0.1#businessActor",
   kindLabel: "businessActor",
   coreKindLabel: "businessActor",
+  portKinds: [],
   layer: "business",
 });
 

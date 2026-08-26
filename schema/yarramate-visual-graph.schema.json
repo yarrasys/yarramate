@@ -31,6 +31,7 @@
         "kind",
         "kindLabel",
         "coreKindLabel",
+        "portKinds",
         "layer",
         "aspect",
         "name",
@@ -63,6 +64,14 @@
         },
         "kindLabel": {
           "type": "string"
+        },
+        "portKinds": {
+          "description": "The core relationship kinds this node's pattern ports, or [] where its kind has no pattern with ports (#268 phase 3, ADR 0124). A macro edge needs both ends to port its kind, so an editor offering a palette between two instances intersects the two lists.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
         },
         "coreKindLabel": {
           "type": "string"

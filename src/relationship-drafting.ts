@@ -46,9 +46,25 @@ export const connectableKinds = (
   ) {
     return []
   }
-  return [
+  const permitted = [
     ...permittedRelationshipKinds(from.coreKindLabel, to.coreKindLabel),
   ].sort()
+  // Between two PATTERN INSTANCES the ports are the narrowing (#268 phase 3,
+  // ADR 0124). Two raw groupings permit ten of the eleven kinds, which is no
+  // guidance at all, and an edge between two instances is a macro edge -
+  // which phase 2 expands only where BOTH patterns port its kind, so an
+  // offer wider than the intersection would propose edges that expand into
+  // nothing. Where either end has no ports there is no macro grain to speak
+  // of, and the table's own answer stands.
+  if (from.portKinds.length === 0 || to.portKinds.length === 0) return permitted
+  const ported = new Set(to.portKinds)
+  const narrowed = permitted.filter(
+    (kind) => from.portKinds.includes(kind) && ported.has(kind),
+  )
+  // A pattern whose ports the table forbids between these two would narrow to
+  // nothing, and an empty palette makes the edge undrawable rather than
+  // guided. The table's answer is the honest fallback.
+  return narrowed.length === 0 ? permitted : narrowed
 }
 
 /**

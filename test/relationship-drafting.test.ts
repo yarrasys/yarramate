@@ -53,6 +53,103 @@ describe('connectableKinds', () => {
     expect([...kinds]).toEqual([...kinds].sort())
   })
 
+  // Between two PATTERN INSTANCES the ports narrow the palette (#268 phase 3,
+  // ADR 0124). Two raw groupings permit ten of the eleven kinds, which is no
+  // guidance at all, and phase 2 expands a macro edge only where BOTH patterns
+  // port its kind - so an offer wider than the intersection proposes edges
+  // that expand into nothing.
+  describe('between two pattern instances', () => {
+    const PATTERNED = `format: yarramate/profile/v1
+id: yarrasys/api-led
+version: "1.0"
+extends: yarramate/core@0.1
+conceptKinds:
+  - id: api
+    name: API
+    parent: yarramate/core@0.1#grouping
+relationshipKinds: []
+`
+    const PATTERN = `format: yarramate/pattern/v1
+id: api-led
+version: "1.0"
+patterns:
+  - kind: yarrasys/api-led@1.0#api
+    parts:
+      component:
+        kind: yarramate/core@0.1#applicationComponent
+        required: true
+      service:
+        kind: yarramate/core@0.1#applicationService
+    ports:
+      - kind: yarramate/core@0.1#serving
+        out: service
+        in: component
+    wiring:
+      - from: self
+        kind: yarramate/core@0.1#aggregation
+        to: component
+`
+    const INSTANCES = `format: yarramate/v1
+id: main
+profile: yarrasys/api-led@1.0
+concepts:
+  - id: sys-api
+    kind: api
+    name: System API
+    parts:
+      component: sys-component
+      service: sys-service
+  - id: sys-component
+    kind: applicationComponent
+    name: System component
+  - id: sys-service
+    kind: applicationService
+    name: System service
+  - id: prc-api
+    kind: api
+    name: Process API
+    parts:
+      component: prc-component
+      service: prc-service
+  - id: prc-component
+    kind: applicationComponent
+    name: Process component
+  - id: prc-service
+    kind: applicationService
+    name: Process service
+relationships: []
+`
+    const patterned = (() => {
+      const result = compileWorkspaceWithProfileContext([
+        { path: 'profiles/api-led.yaml', source: PATTERNED },
+        { path: 'patterns/api-led.yaml', source: PATTERN },
+        { path: 'architecture/main.yaml', source: INSTANCES },
+      ])
+      if (!result.ok) throw new Error(JSON.stringify(result.diagnostics))
+      return projectGraphForCanvas(result.graph, result.profileContext)
+    })()
+
+    it('offers only the ported kinds, not everything two groupings permit', () => {
+      expect(connectableKinds(patterned, 'sys-api', 'prc-api')).toEqual([
+        'serving',
+      ])
+    })
+
+    it('leaves an edge to a plain subject to the table', () => {
+      // Only one end is an instance, so there is no macro grain to speak of.
+      const toPart = connectableKinds(patterned, 'sys-api', 'prc-component')
+      expect(toPart.length).toBeGreaterThan(1)
+      expect(toPart).toContain('serving')
+    })
+
+    it('carries the ports onto the node so the browser can read them', () => {
+      const instance = patterned.nodes.find(({ id }) => id === 'sys-api')
+      const part = patterned.nodes.find(({ id }) => id === 'sys-component')
+      expect(instance?.portKinds).toEqual(['serving'])
+      expect(part?.portKinds).toEqual([])
+    })
+  })
+
   it('is empty for an endpoint the graph does not hold', () => {
     expect(connectableKinds(graph, 'orders', 'absent')).toEqual([])
     expect(connectableKinds(graph, 'absent', 'orders')).toEqual([])

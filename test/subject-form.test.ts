@@ -20,6 +20,7 @@ const node: CanvasNode = {
   kind: 'yarramate/concept/application',
   kindLabel: 'Application',
   coreKindLabel: 'Application',
+  portKinds: [],
   layer: null,
   aspect: null,
   name: 'Checkout Service',
