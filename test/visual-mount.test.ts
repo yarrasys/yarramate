@@ -9,6 +9,7 @@ const createRoot = vi.hoisted(() => vi.fn(() => root))
 vi.mock('react-dom/client', () => ({ createRoot }))
 import {
   mountEditorWith,
+  type DecorationMap,
   type EditorHost,
   type RightSectionId,
 } from '../src/visual-app/mount.js'
@@ -69,6 +70,25 @@ describe('mountEditorWith', () => {
     expect(reading?.readOnly).toBe(true)
   })
 
+  it('threads the initial decorations to the shell (#314)', () => {
+    // The static option is the mount-time map; everything after it travels
+    // through the handle's setDecorations instead.
+    mountEditorWith({} as Element, host, sections, false, {
+      'app.checkout': 'added',
+      'checkout-serves-ledger': 'changed',
+    })
+
+    const rendered = (
+      root.render.mock.calls[0]![0] as {
+        props: { decorations: Record<string, string> }
+      }
+    ).props
+    expect(rendered.decorations).toEqual({
+      'app.checkout': 'added',
+      'checkout-serves-ledger': 'changed',
+    })
+  })
+
   it('answers false, without throwing, before the shell hands its pointer up (#297)', () => {
     // The mocked render never runs `App`, so `onReady` never fires: exactly
     // the window between mounting and the shell's first render.
@@ -77,6 +97,7 @@ describe('mountEditorWith', () => {
     expect(editor.select('app.checkout')).toBe(false)
     expect(editor.openDraft({ kind: 'goal' })).toBe(false)
     expect(editor.startConnection('app.checkout')).toBe(false)
+    expect(editor.setDecorations({ 'app.checkout': 'added' })).toBe(false)
   })
 
   it('delegates each method to the pointer the shell hands up (#297)', () => {
@@ -85,6 +106,7 @@ describe('mountEditorWith', () => {
       select: vi.fn(() => true),
       openDraft: vi.fn(() => true),
       startConnection: vi.fn(() => false),
+      setDecorations: vi.fn(() => true),
     }
     onReadyOf(root.render.mock.calls[0]!)(pointer)
 
@@ -95,6 +117,11 @@ describe('mountEditorWith', () => {
     // The pointer's own refusal travels back unchanged.
     expect(editor.startConnection('app.ledger')).toBe(false)
     expect(pointer.startConnection).toHaveBeenCalledWith('app.ledger')
+    // The whole map travels, replacement being the map's own contract (#314).
+    expect(editor.setDecorations({ 'app.ledger': 'removed' })).toBe(true)
+    expect(pointer.setDecorations).toHaveBeenCalledWith({
+      'app.ledger': 'removed',
+    })
   })
 
   it('still unmounts, and a disposed handle answers false again (#297)', () => {
@@ -103,6 +130,7 @@ describe('mountEditorWith', () => {
       select: vi.fn(() => true),
       openDraft: vi.fn(() => true),
       startConnection: vi.fn(() => true),
+      setDecorations: vi.fn(() => true),
     }
     onReadyOf(root.render.mock.calls[0]!)(pointer)
 
@@ -111,6 +139,8 @@ describe('mountEditorWith', () => {
     expect(root.unmount).toHaveBeenCalledOnce()
     expect(editor.select('app.checkout')).toBe(false)
     expect(pointer.select).not.toHaveBeenCalled()
+    expect(editor.setDecorations({})).toBe(false)
+    expect(pointer.setDecorations).not.toHaveBeenCalled()
   })
 })
 
@@ -170,12 +200,14 @@ describe('editorPointerFor', () => {
   const pointerOver = (context: EditorPointerContext) => {
     const dispatched: VisualWorkspaceAction[] = []
     const seeded: (string | undefined)[] = []
+    const decorated: DecorationMap[] = []
     const pointer = editorPointerFor(
       () => context,
       (action) => dispatched.push(action),
       (kind) => seeded.push(kind),
+      (decorations) => decorated.push(decorations),
     )
-    return { pointer, dispatched, seeded }
+    return { pointer, dispatched, seeded, decorated }
   }
 
   it('selects a concept exactly as a canvas tap would', () => {
@@ -276,6 +308,40 @@ describe('editorPointerFor', () => {
     expect(dispatched).toEqual([])
   })
 
+  it('replaces the marks wholesale, dispatching nothing (#314)', () => {
+    // The map is the unit of exchange: each hand-over is the whole picture,
+    // never a merge into the last one - and no workspace action moves,
+    // because a mark is rendering state, not a gesture.
+    const { pointer, dispatched, decorated } = pointerOver({
+      graph,
+      readOnly: false,
+    })
+
+    expect(pointer.setDecorations({ 'app.checkout': 'added' })).toBe(true)
+    expect(pointer.setDecorations({ 'app.ledger': 'changed' })).toBe(true)
+    expect(decorated).toEqual([
+      { 'app.checkout': 'added' },
+      { 'app.ledger': 'changed' },
+    ])
+    expect(dispatched).toEqual([])
+  })
+
+  it('accepts marks before the model arrives and in a viewer (#314)', () => {
+    // Unlike its siblings, no graph gate: the marks are client state, drawn
+    // the moment a model is on screen - a host hands the map with the mount,
+    // not after the first frame. And decorating is reading (#298), so the
+    // read-only posture refuses nothing here.
+    const early = pointerOver({ graph: null, readOnly: false })
+    expect(early.pointer.setDecorations({ 'app.checkout': 'removed' })).toBe(
+      true,
+    )
+    expect(early.decorated).toEqual([{ 'app.checkout': 'removed' }])
+
+    const viewer = pointerOver({ graph, readOnly: true })
+    expect(viewer.pointer.setDecorations({})).toBe(true)
+    expect(viewer.decorated).toEqual([{}])
+  })
+
   it('reads the model at call time, so the methods answer for the graph on screen', () => {
     // Before the host's first frame there is nothing to point at; the same
     // pointer starts answering true once the model arrives, with no re-bind.
@@ -284,6 +350,7 @@ describe('editorPointerFor', () => {
     const pointer = editorPointerFor(
       () => context,
       (action) => dispatched.push(action),
+      () => undefined,
       () => undefined,
     )
 

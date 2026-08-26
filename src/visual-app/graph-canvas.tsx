@@ -336,6 +336,65 @@ function badgeLayersFor(
 // future toggle effect (Task 7 wires the checkboxes to `GraphCanvasProps`)
 // both call this with whatever is current instead of racing a shared mutable
 // stylesheet.
+/**
+ * The closed mark vocabulary a host may hand the mounted viewer (#314,
+ * ADR 0119). Three marks, because three is what comparison against another
+ * model needs and a fourth waits for the demand that names it. What a mark
+ * MEANS - added relative to what, changed since when - lives entirely on the
+ * host's side of the seam: this canvas renders marks, it never diffs.
+ */
+export type DecorationMark = 'added' | 'removed' | 'changed'
+
+/**
+ * Subject id (concepts and relationships alike) to mark. The whole map is the
+ * unit of exchange: each hand-over REPLACES the previous marks wholesale,
+ * never merges into them, and an id the current model does not name marks
+ * nothing, silently - the host may be describing subjects this model has not
+ * gained (or has already lost).
+ */
+export type DecorationMap = Readonly<Record<string, DecorationMark>>
+
+const DECORATION_MARKS: readonly DecorationMark[] = [
+  'added',
+  'removed',
+  'changed',
+]
+
+const decorationClass = (mark: DecorationMark): string => `deco-${mark}`
+
+const ALL_DECORATION_CLASSES = DECORATION_MARKS.map(decorationClass).join(' ')
+
+// The decoration lane's colours (#314, ADR 0119), restated from styles.css as
+// hex because cytoscape styles are not CSS and cannot read tokens - the same
+// restatement the fault rule makes of the failure red. Never that red: faults
+// own it (ADR 0102), and a comparison mark that borrowed it would report a
+// difference as a defect.
+const DECORATION_COLORS: Readonly<Record<DecorationMark, string>> = {
+  /** `--eucalyptus`: present in this model, not in the host's other one. */
+  added: '#416F65',
+  /** `--quiet` (its oklab color-mix resolved): an outline of an absence. */
+  removed: '#677074',
+  /** `--ochre`: the same subject, not the same content. */
+  changed: '#8C4D18',
+}
+
+/**
+ * Marks every subject the host's decoration map names, the exact class
+ * mechanism faults use: previous `deco-*` classes come off every element
+ * first (replacement is wholesale, the map is the unit), then each id that
+ * names a drawn node or edge gains its mark's class. Unknown ids are
+ * silently inert. The `faulted` class is never touched here, and the
+ * stylesheet orders the fault rule after the decoration rules, so a subject
+ * both decorated and refused reads as refused.
+ */
+export function applyDecorations(cy: Core, decorations: DecorationMap): void {
+  cy.elements().removeClass(ALL_DECORATION_CLASSES)
+  for (const [id, mark] of Object.entries(decorations)) {
+    const element = cy.getElementById(id)
+    if (element.nonempty()) element.addClass(decorationClass(mark))
+  }
+}
+
 export function buildStylesheet(
   showLifecycle: boolean,
   showEvidence: boolean,
@@ -457,19 +516,6 @@ export function buildStylesheet(
       },
     },
     {
-      // A subject a diagnostic named. Declared after selection so a selected
-      // element that is also refused still reads as refused: the reviewer can
-      // move the selection, and the fault is the thing that has to stay
-      // visible (ADR 0102).
-      selector: 'node.faulted, edge.faulted',
-      style: {
-        'border-color': '#A3403A',
-        'border-width': 4,
-        'line-color': '#A3403A',
-        'target-arrow-color': '#A3403A',
-      },
-    },
-    {
       selector: 'edge',
       style: {
         'line-color': '#999999',
@@ -571,7 +617,75 @@ export function buildStylesheet(
     },
   )
 
-  return [...baseStylesheet, ...archimateNodeShapes, ...archimateEdgeStyles]
+  // The marking lanes, last on purpose. Cytoscape resolves its stylesheet by
+  // order alone - no CSS-style specificity, later rules win per property - so
+  // a mark's colour only holds if its rule lands after the base `node`/`edge`
+  // rules AND after the notation's per-kind edge treatments above. Precedence
+  // within the lanes, made by declaration order and stated once (ADR 0119):
+  // a fault outranks a decoration outranks selection - the reviewer can move
+  // the selection, and a mark is the thing that has to stay visible, with a
+  // refusal the loudest fact of all.
+  const markStylesheet: cytoscape.StylesheetJsonBlock[] = [
+    {
+      // The host's marks (#314, ADR 0119): a comparison the HOST computed,
+      // rendered here and never derived here. Cytoscape styles are not CSS,
+      // so the styles.css tokens are restated as hex the way the failure red
+      // is below. Added wears the eucalyptus token: present here, not there.
+      selector: 'node.deco-added, edge.deco-added',
+      style: {
+        'border-color': DECORATION_COLORS.added,
+        'border-width': 3,
+        'line-color': DECORATION_COLORS.added,
+        'target-arrow-color': DECORATION_COLORS.added,
+      },
+    },
+    {
+      // Removed is the quiet ink-grey with a dash: an outline of what is not
+      // in this model, deliberately nothing like the failure red - absence in
+      // a comparison is a fact, not a defect. The dash overrides the
+      // notation's per-kind line style for exactly this mark and no other.
+      selector: 'node.deco-removed, edge.deco-removed',
+      style: {
+        'border-color': DECORATION_COLORS.removed,
+        'border-width': 3,
+        'border-style': 'dashed',
+        'line-color': DECORATION_COLORS.removed,
+        'target-arrow-color': DECORATION_COLORS.removed,
+        'line-style': 'dashed',
+      },
+    },
+    {
+      // Changed wears the ochre: the same subject, not the same content.
+      selector: 'node.deco-changed, edge.deco-changed',
+      style: {
+        'border-color': DECORATION_COLORS.changed,
+        'border-width': 3,
+        'line-color': DECORATION_COLORS.changed,
+        'target-arrow-color': DECORATION_COLORS.changed,
+      },
+    },
+    {
+      // A subject a diagnostic named. Declared after every other mark so an
+      // element that is also refused still reads as refused (ADR 0102): the
+      // reviewer can move the selection, the host can hand a decoration, and
+      // the fault outranks both. Landing after the base `edge` rule is what
+      // makes the line colour real for edges - order is the whole cascade.
+      selector: 'node.faulted, edge.faulted',
+      style: {
+        'border-color': '#A3403A',
+        'border-width': 4,
+        'line-color': '#A3403A',
+        'target-arrow-color': '#A3403A',
+      },
+    },
+  ]
+
+  return [
+    ...baseStylesheet,
+    ...archimateNodeShapes,
+    ...archimateEdgeStyles,
+    ...markStylesheet,
+  ]
 }
 
 // Composition expresses exclusive whole-part structure (ADR 0004: a workspace
@@ -1091,6 +1205,13 @@ interface GraphCanvasProps {
   readonly nesting: readonly NestingKind[]
   /** Subjects a diagnostic named, marked so a failure is visible where it is. */
   readonly faultedIds: ReadonlySet<string>
+  /**
+   * The host's per-subject marks (#314, ADR 0119), rendered as `deco-*`
+   * classes the way faults are rendered. The map replaces wholesale on every
+   * change; an empty map draws nothing, an unknown id marks nothing, and a
+   * subject that is also faulted reads as faulted.
+   */
+  readonly decorations: DecorationMap
   readonly showLifecycle: boolean
   readonly showEvidence: boolean
   readonly showOwnership: boolean
@@ -1140,6 +1261,7 @@ export function GraphCanvas({
   quickFilterText,
   nesting,
   faultedIds,
+  decorations,
   activeViewId,
   savedPositions,
   onSaveLayout,
@@ -1424,6 +1546,16 @@ export function GraphCanvas({
       if (element.nonempty()) element.addClass('faulted')
     }
   }, [faultedIds, graph])
+
+  // Render the host's marks (#314, ADR 0119). Its own effect for the same
+  // reason faults get one: a decoration outlives whatever the reviewer has
+  // selected or filtered, and must be re-marked after a graph replacement
+  // wipes every class. `applyDecorations` clears the old marks first, so a
+  // new map - the empty one included - replaces rather than accumulates.
+  useEffect(() => {
+    if (!cyRef.current) return
+    applyDecorations(cyRef.current, decorations)
+  }, [decorations, graph])
 
   // Update selection highlight when selectedId or graph changes
   useEffect(() => {

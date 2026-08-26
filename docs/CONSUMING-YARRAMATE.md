@@ -324,6 +324,20 @@ programmatic twins of tap, palette and Connect, never a second write path:
 anything they lead to still stages through the changeset and commits through
 the same validated batch.
 
+The viewer also accepts per-subject marks
+([ADR 0119](adr/0119-the-viewer-accepts-the-hosts-marks.md)): pass
+`decorations: { [subjectId]: 'added' | 'removed' | 'changed' }` — concepts and
+relationships alike — and the canvas renders them as visual treatments (added
+an eucalyptus border, removed a quiet dashed one, changed ochre; a fault still
+outranks any mark). Comparison semantics stay on your side of the seam: the
+viewer never diffs, it draws the map it is handed, so what a mark means — and
+any legend saying so — is yours. The option is the initial map; the handle's
+`setDecorations(decorations)` replaces it wholesale (never a merge, `{}`
+clears) for a live comparison, works under `readOnly` and before the first
+model frame, and ids the model does not name are silently inert. It shares the
+pointer methods' one false window: before the shell's first render, or after
+unmount.
+
 `store` is the caller's synchronous `SourceStore`; `workspace` is the caller's
 pre-resolved `ResolvedWorkspace`. The local host compiles, projects, filters,
 commits and saves layouts over that store. A changeset's model and view writes
