@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **Fixed.** A staged view is visible in the rail, marked (#299). The view
+  tree now merges the pending changeset's view operations over the landed
+  views: a staged new view — and the folder it declares, which is how "New
+  folder…" becomes visible at all — renders at once with a quiet `staged`
+  chip; a staged overwrite marks the existing row and shows what will land;
+  a staged delete marks its row rather than hiding it. Nothing is stored:
+  the tree derives from `pendingChangeset`, so discarding the operation is
+  the revert and committing converts staged rows to ordinary ones. In the
+  same flow, a save dialog opened with a folder preset ("New folder…", "New
+  view in this folder…") disables plain Save — the overwrite carries the
+  active view's own folder by design, so it was the one button that could
+  silently drop the folder just named; Save As New, which adopts it, is the
+  action left standing.
+  [ADR 0114](docs/adr/0114-the-rail-shows-staged-intent-beside-landed-truth.md).
+
 - **Changed.** A saved layout is visible, view-scoped, and discardable
   (#273). A per-view layout sidecar silently re-pinned every relayout — an
   experimental relayout moved 0 of 16 nodes with no hint why — and a stale

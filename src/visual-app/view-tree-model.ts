@@ -2,7 +2,8 @@
  * What the left rail shows, as data.
  *
  * The rail is two trees over things the session already has — the saved views
- * and the subjects the model declares — so everything it decides is a pure
+ * with the reviewer's staged view operations merged over them (ADR 0114), and
+ * the subjects the model declares — so everything it decides is a pure
  * function of those plus what the reviewer typed. It lives outside the
  * component for the reason `filterToReresolve` does: this repo renders React
  * with `renderToStaticMarkup` and has no DOM test environment, so logic that
@@ -14,7 +15,10 @@
 import type { CanvasNode } from "../graph-projection.js";
 import type { Layer } from "../profile.js";
 import { layers } from "../profile.js";
-import type { VisualViewSummary } from "../adapters/visual/protocol-contract.js";
+import type {
+  VisualViewOperation,
+  VisualViewSummary,
+} from "../adapters/visual/protocol-contract.js";
 
 export const VIEWS_ROOT_KEY = "views";
 export const MODEL_ROOT_KEY = "model";
@@ -30,12 +34,28 @@ export const modelFolderKey = (folder: string): string =>
 /** Where a subject with no resolved layer is grouped, last. */
 export const UNLAYERED = "unlayered";
 
+/**
+ * How a row relates to the pending changeset (ADR 0114). `"new"` is a staged
+ * `write-view` at a path nothing has landed; `"overwrite"` is one at a path a
+ * landed view occupies; `"delete"` is a staged `delete-view`. A landed row
+ * nothing pending touches carries `null`.
+ */
+export type ViewRowStaging = "new" | "overwrite" | "delete";
+
 export interface ViewTreeRow {
   readonly id: string;
   readonly title: string;
   readonly path: string;
-  readonly subjectCount: number;
+  /**
+   * `null` when nothing has measured it: a staged NEW view has no landed
+   * document, and resolving its query needs the semantic graph the browser
+   * does not hold. A number here is always the server's measure of what
+   * LANDED — a staged overwrite keeps the landed count, the same staleness
+   * story `VisualViewSummary.subjectCount` already tells.
+   */
+  readonly subjectCount: number | null;
   readonly active: boolean;
+  readonly staged: ViewRowStaging | null;
 }
 
 export interface ViewTreeFolder {
@@ -119,6 +139,15 @@ export const folderOf = (view: VisualViewSummary): string =>
 
 export interface ViewTreeInput {
   readonly views: readonly VisualViewSummary[];
+  /**
+   * The pending changeset's view operations, merged over `views` so the rail
+   * shows the reviewer's own staged intent beside landed truth (ADR 0114).
+   * A staged `write-view` at a new path becomes a row; one at a landed path
+   * marks that row and shows what WILL land; a staged `delete-view` marks the
+   * row rather than hiding it. Discarding an operation removes it from this
+   * list, which is the whole revert — the tree derives, it never remembers.
+   */
+  readonly stagedOperations: readonly VisualViewOperation[];
   readonly activeViewId: string;
   /**
    * How many subjects the active view is drawing right now, from the standing
@@ -132,6 +161,7 @@ export interface ViewTreeInput {
 
 export const buildViewTree = ({
   views,
+  stagedOperations,
   activeViewId,
   activeSubjectCount,
   filterText,
@@ -139,26 +169,79 @@ export const buildViewTree = ({
   const needle = normalize(filterText);
   const rowsByFolder = new Map<string, ViewTreeRow[]>();
 
+  const place = (folder: string, row: ViewTreeRow): void => {
+    const existing = rowsByFolder.get(folder);
+    if (existing === undefined) rowsByFolder.set(folder, [row]);
+    else existing.push(row);
+  };
+
+  // The reducer keeps one operation per path; read last-wins anyway, so a
+  // changeset that somehow says a document twice still renders what the
+  // reviewer last meant rather than a duplicate row.
+  const stagedByPath = new Map<string, VisualViewOperation>();
+  for (const operation of stagedOperations) {
+    stagedByPath.set(operation.path, operation);
+  }
+
   for (const view of views) {
+    const operation = stagedByPath.get(view.path);
+    stagedByPath.delete(view.path);
+    // A staged write over a landed path MARKS the landed row rather than
+    // duplicating it, and the row says what will land — the staged title, the
+    // staged folder — because a rail showing the state a discard would return
+    // to, unmarked, is a rail claiming the save did not happen (#299). The id
+    // stays the landed one: it is what navigation resolves.
+    const projection =
+      operation?.op === "write-view" ? operation.projection : null;
+    const staged: ViewRowStaging | null =
+      operation === undefined
+        ? null
+        : projection === null
+          ? "delete"
+          : "overwrite";
+    const title =
+      projection === null
+        ? view.title
+        : (projection.presentation?.title ?? projection.id);
+    const folder =
+      projection === null ? folderOf(view) : (projection.presentation?.folder ?? "");
     const active = view.id === activeViewId;
-    const folder = folderOf(view);
     // A folder that matches shows everything it holds: the reviewer typing
     // `target` is asking for that folder, not for views whose titles happen
     // to say so.
-    if (!matches(view.title, needle) && !matches(folder, needle)) continue;
-    const row: ViewTreeRow = {
+    if (!matches(title, needle) && !matches(folder, needle)) continue;
+    place(folder, {
       id: view.id,
-      title: view.title,
+      title,
       path: view.path,
       subjectCount:
         active && activeSubjectCount !== null
           ? activeSubjectCount
           : view.subjectCount,
       active,
-    };
-    const existing = rowsByFolder.get(folder);
-    if (existing === undefined) rowsByFolder.set(folder, [row]);
-    else existing.push(row);
+      staged,
+    });
+  }
+
+  // What remains is staged against paths nothing landed: each `write-view` is
+  // a NEW view, drawn from its own projection document — which is what makes
+  // "New folder…" visible the moment its first view is staged. It cannot be
+  // the active view (navigation resolves landed ids only), and a `delete-view`
+  // of a path that never landed has nothing to show.
+  for (const operation of stagedByPath.values()) {
+    if (operation.op !== "write-view") continue;
+    const { projection } = operation;
+    const title = projection.presentation?.title ?? projection.id;
+    const folder = projection.presentation?.folder ?? "";
+    if (!matches(title, needle) && !matches(folder, needle)) continue;
+    place(folder, {
+      id: projection.id,
+      title,
+      path: operation.path,
+      subjectCount: null,
+      active: false,
+      staged: "new",
+    });
   }
 
   const byTitle = (a: ViewTreeRow, b: ViewTreeRow): number =>

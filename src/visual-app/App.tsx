@@ -1260,6 +1260,11 @@ export const App = ({
       <div className="workspace">
         <ViewTree
           views={state.views}
+          // Landed truth plus the reviewer's own staged intent (#299): the
+          // tree merges these over `state.views`, so a staged view — and the
+          // folder it declares — is visible, marked, before commit. Read off
+          // the changeset, never stored: discarding the row is the revert.
+          stagedViewOperations={state.pendingChangeset.viewOperations}
           activeViewId={state.activeView}
           nodes={state.model?.graph.nodes ?? []}
           // What the canvas is drawing, which is the graph narrowed by the

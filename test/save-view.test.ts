@@ -1,5 +1,11 @@
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import { buildPayload } from '../src/visual-app/save-view.js'
+import {
+  buildPayload,
+  SaveViewDialog,
+  type SaveViewDialogProps,
+} from '../src/visual-app/save-view.js'
 import type {
   ProjectionDefinition,
   ProjectionQuery,
@@ -309,5 +315,72 @@ describe('view membership', () => {
     // so by other means.
     expect(membershipDelta(listed.query, listed.query)).toEqual([])
     expect(membershipDelta(described.query, described.query)).toEqual([])
+  })
+})
+
+/**
+ * The folder-preset rule (#299, ADR 0114). Plain Save carries the active
+ * view's own folder by design; opened by "New folder…" or "New view in this
+ * folder…", it is therefore the one button that would silently drop the
+ * folder the reviewer just named — so it is disabled, and Save As New (which
+ * adopts the preset) is the action left standing.
+ */
+describe('the save dialog, opened with a folder preset', () => {
+  const activeView = {
+    id: 'existing-view',
+    title: 'Existing view',
+    description: 'What it shows',
+    query: {},
+    presentation: { folder: 'Elsewhere' },
+    path: '.yarramate/projections/existing-view.yaml',
+    subjectCount: 3,
+  }
+
+  const renderDialog = (overrides: Partial<SaveViewDialogProps> = {}) =>
+    renderToStaticMarkup(
+      createElement(SaveViewDialog, {
+        views: [activeView],
+        activeViewId: 'existing-view',
+        query: null,
+        layout: 'layered',
+        showLifecycle: true,
+        showEvidence: true,
+        showOwnership: false,
+        open: true,
+        folder: undefined,
+        onClose: () => {},
+        onStage: () => {},
+        ...overrides,
+      }),
+    )
+
+  /** The overwrite button's own markup, so `disabled` cannot be read off a
+   * neighbour. */
+  const saveButton = (markup: string): string => {
+    const at = markup.indexOf('<button type="submit"')
+    if (at === -1) throw new Error('expected a Save button')
+    return markup.slice(at, markup.indexOf('</button>', at))
+  }
+
+  it('offers the overwrite as usual when no folder was preset', () => {
+    // The ordinary flows are untouched: an overwrite still carries the
+    // active view's own folder, and nothing here disables it.
+    expect(saveButton(renderDialog())).not.toContain('disabled')
+  })
+
+  it('disables the overwrite, which is the one button that would drop the folder', () => {
+    const markup = renderDialog({ folder: 'Roadmap' })
+
+    expect(saveButton(markup)).toContain('disabled')
+    // Save As New stays available: it is the action the opener asked for,
+    // and the one that adopts the folder.
+    expect(markup).toContain('<button type="button">Save As New</button>')
+  })
+
+  it('says why, on the disabled button itself', () => {
+    // A control that refuses without saying why reads as broken.
+    expect(saveButton(renderDialog({ folder: 'Roadmap' }))).toContain(
+      'Save As New puts the first view in &quot;Roadmap&quot;',
+    )
   })
 })
