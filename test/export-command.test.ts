@@ -86,6 +86,39 @@ describe('export command', () => {
     )
   })
 
+  it('exports a workbook, and refuses without a destination', () => {
+    // Bytes have nowhere sensible to go on stdout, so `--out` is required
+    // rather than optional as it is for markdown.
+    const missing = runCli(
+      ['export', 'xlsx', 'everything.yaml', 'workspace.yaml'],
+      workspace,
+    )
+    expect(missing.exitCode).toBe(2)
+
+    const result = runCli(
+      [
+        'export',
+        'xlsx',
+        'everything.yaml',
+        'workspace.yaml',
+        '--out',
+        'out/model.xlsx',
+      ],
+      workspace,
+    )
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toBe('Wrote workbook to out/model.xlsx\n')
+
+    const bytes = readFileSync(join(workspace, 'out/model.xlsx'))
+    // A zip, and one an unzip implementation would accept: the local file
+    // header signature, then a central directory at the end.
+    expect(bytes.subarray(0, 2)).toEqual(Buffer.from([0x50, 0x4b]))
+    expect(bytes.includes(Buffer.from('xl/workbook.xml'))).toBe(true)
+    expect(bytes.includes(Buffer.from('~Baseline'))).toBe(true)
+    // The workbook is the model, so a subject's name is in there verbatim.
+    expect(bytes.includes(Buffer.from('Todo service'))).toBe(true)
+  })
+
   it('exports projection markdown', () => {
     const result = runCli(
       ['export', 'markdown', 'everything.yaml', 'workspace.yaml'],

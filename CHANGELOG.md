@@ -1,5 +1,42 @@
 # Changelog
 
+## Unreleased
+
+- **Added.** `yarramate export xlsx <projection.yaml> <workspace.yaml> --out
+  <file>` writes the model as an Excel workbook an architect can work in
+  (#355, ADR 0127), and `yarramate/workbook` publishes the writer for a host
+  with no Node. **No new dependency**: an `.xlsx` is a zip of XML, and the
+  writer that produces one is smaller than any library that would.
+
+  It is a working document rather than a report. Column A is always the id,
+  foreign keys sit inline, and each is followed by a `↳ … (auto)` column
+  carrying the referenced subject's name, so a sheet can be understood without
+  jumping between tabs. Kinds and statuses come from the compiled profile.
+
+  **Version selection needs no flag.** The workbook takes a projection, so it
+  inherits the `states` facet a projection query already has, along with
+  kinds, layers, owners, statuses and exclusions.
+
+  **Unrecognised claims land in an overflow sheet rather than being dropped**,
+  so a predicate added to the compiler after this was written still survives.
+  That is what losslessness rests on: a mapping that enumerates predicates
+  loses the one it forgot, and the loss has no symptom.
+
+  The workbook also carries `~Baseline`, a hidden copy of its own rows as
+  exported. It is the ancestor a later import needs to tell an author's edit
+  from a change the repository made underneath. Reading a workbook back is a
+  separate change.
+
+- **Added.** A test refuses a raw NUL byte in any source file, reading every
+  byte of every tracked **and uncommitted** file under `src`, `test`, `schema`,
+  `catalogues`, `docs` and `scripts`. This fault has bitten the repository
+  three times and is invisible in every ordinary reading of a file. The two
+  obvious detectors are each blind to a case the other catches: `git diff`
+  renders an early NUL as `Bin … bytes` and a late one as ordinary text, and
+  `git grep -lI` shares the same head sniff. Listing uncommitted files matters
+  because `git ls-files` cannot see the file being written right now, which is
+  the one most likely to have a NUL typed into it.
+
 ## 1.5.0
 
 - **Fixed.** The cytoscape container declares `position: relative`, so

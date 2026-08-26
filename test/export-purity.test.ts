@@ -60,6 +60,17 @@ describe('package export purity', () => {
     expect(hits).toEqual([])
   })
 
+  it('workbook import graph stays free of Node, ws, session, and compiler runtime', () => {
+    // ApertureX generates workbooks inside a Cloudflare Worker (#355), where
+    // `fs` does not exist and bundle size is a budget. The xlsx container is
+    // written by hand for the same reason: every library on npm is larger than
+    // the file that replaces it and built for Node. The compiler is reached
+    // for types only, so Ajv and YAML stay out of a Worker that only wants to
+    // write a spreadsheet.
+    const { hits } = runtimeImportGraph('workbook-entry.ts')
+    expect(hits).toEqual([])
+  })
+
   it('interrogation import graph stays free of Node, ws, session, and compiler runtime', () => {
     // The engine is the one piece a Durable Object runs on every model write,
     // so the compiler's Ajv/YAML weight and every Node builtin have to stay

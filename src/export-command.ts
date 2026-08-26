@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import {
   existsSync,
   mkdirSync,
@@ -10,7 +11,12 @@ import { fileURLToPath } from 'node:url'
 import { parseDocument } from 'yaml'
 import { renderBrief } from './brief.js'
 import { deriveChangedSubjects } from './changed.js'
-import { humanDiagnostics, usage, type CliResult } from './cli-support.js'
+import {
+  humanDiagnostics,
+  packageVersion,
+  usage,
+  type CliResult,
+} from './cli-support.js'
 import {
   compileWorkspaceWithProfileContext,
   type Diagnostic,
@@ -29,6 +35,7 @@ import {
   type ProjectionResult,
 } from './projection.js'
 import { buildRtm, renderRtmMarkdown } from './rtm.js'
+import { workbookFrom } from './workbook.js'
 import { loadWorkspaceManifest } from './workspace.js'
 
 // The adapter stays a separate process behind the verb: the core never
@@ -114,7 +121,7 @@ export function runExportCommand(
   const [kind, ...rest] = options
   if (
     kind === undefined ||
-    !['graph', 'markdown', 'briefs', 'rtm', 'likec4'].includes(kind)
+    !['graph', 'markdown', 'briefs', 'rtm', 'likec4', 'xlsx'].includes(kind)
   ) {
     return { exitCode: 2, stdout: '', stderr: usage }
   }
@@ -183,7 +190,8 @@ export function runExportCommand(
     parsed.json ||
     (usesChanged && (kind === 'graph' || kind === 'rtm')) ||
     (parsed.budget !== undefined && kind !== 'briefs') ||
-    ((kind === 'briefs' || kind === 'rtm') && parsed.out === undefined)
+    ((kind === 'briefs' || kind === 'rtm' || kind === 'xlsx') &&
+      parsed.out === undefined)
   ) {
     return { exitCode: 2, stdout: '', stderr: usage }
   }
@@ -212,16 +220,17 @@ export function runExportCommand(
     if (!loadedWorkspace.ok) return failed(loadedWorkspace.diagnostics)
     const workspace = loadedWorkspace.workspace
 
-    const compilation = compileWorkspaceWithProfileContext(
-      [
-        ...workspace.profiles,
-        ...workspace.patterns,
-        ...workspace.documents,
-      ].map((path) => ({
-        path,
-        source: readFileSync(resolve(cwd, path), 'utf8'),
-      })),
-    )
+    // Named rather than inlined so the workbook can pin its digests against
+    // exactly the bytes that compiled, the way a visual commit does (#355).
+    const sources = [
+      ...workspace.profiles,
+      ...workspace.patterns,
+      ...workspace.documents,
+    ].map((path) => ({
+      path,
+      source: readFileSync(resolve(cwd, path), 'utf8'),
+    }))
+    const compilation = compileWorkspaceWithProfileContext(sources)
     if (!compilation.ok) return failed(compilation.diagnostics)
 
     if (kind === 'rtm') {
@@ -347,6 +356,39 @@ export function runExportCommand(
         loadedProjection.projection,
         compilation.profileContext,
       )
+    }
+
+    if (kind === 'xlsx') {
+      // A workbook an architect can work in (#355). It takes a PROJECTION,
+      // like markdown and briefs do, which is what gives it version selection
+      // for free: a projection query already has a `states` facet, so
+      // "export the target state" is an existing capability rather than a
+      // flag competing with it.
+      const bytes = workbookFrom(result, {
+        workspace: workspace.id,
+        yarramateVersion: packageVersion,
+        sourceDigests: Object.fromEntries(
+          sources.map(({ path, source }) => [
+            path,
+            createHash('sha256').update(source, 'utf8').digest('hex'),
+          ]),
+        ),
+        conceptKinds: [
+          ...compilation.profileContext.conceptKindLineages.keys(),
+        ].sort(),
+        relationshipKinds: [
+          ...compilation.profileContext.relationshipKindLineages.keys(),
+        ].sort(),
+        statuses: ['planned', 'current', 'retired'],
+      })
+      const outPath = resolve(cwd, parsed.out!)
+      mkdirSync(dirname(outPath), { recursive: true })
+      writeFileSync(outPath, bytes)
+      return {
+        exitCode: 0,
+        stdout: `Wrote workbook to ${parsed.out}\n`,
+        stderr: '',
+      }
     }
 
     if (kind === 'markdown') {
