@@ -2317,3 +2317,49 @@ body {
   font-size: 0.72rem;
   color: var(--quiet);
 }
+
+/* A saved layout in force is invisible by nature - every relayout ends with
+   the sidecar re-pinning what it names (#273) - so the fact gets a standing
+   pill while the pin stands. Bottom-left: the top-right corner already holds
+   the canvas controls and the transient save notice, and the two pills would
+   otherwise co-occur on every save. Same anatomy as .filter-pill, with the
+   one-click way out beside the statement, and the discard is session-local -
+   the sidecar document stays on disk. */
+.saved-layout-pill {
+  position: absolute;
+  inset: auto auto var(--step) var(--step);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: var(--step);
+  max-width: calc(100% - var(--step) * 2);
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--rule-firm);
+  border-radius: 999px;
+  background: var(--sheet);
+  font-family: var(--utility);
+  font-size: 12px;
+  color: var(--ink);
+}
+
+.saved-layout-pill span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.saved-layout-pill button {
+  flex: none;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--cobalt);
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.saved-layout-pill button:hover {
+  color: var(--ink);
+}

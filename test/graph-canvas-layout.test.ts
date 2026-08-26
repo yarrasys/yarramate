@@ -6,8 +6,10 @@ import {
   buildPositionMap,
   buildStylesheet,
   DRAG_SAVE_DEBOUNCE_MS,
+  effectiveSavedPositions,
   registerDragSave,
   relayoutVisible,
+  savedLayoutInForce,
 } from '../src/visual-app/graph-canvas.js'
 import { ASPECT_SHAPES, RELATIONSHIP_NOTATION } from '../src/notation/archimate.js'
 import type {
@@ -59,6 +61,38 @@ describe('layout drag-save and position pinning', () => {
     applySavedPositions(cy, undefined)
 
     expect(cy.getElementById('node1').position()).toEqual({ x: 1, y: 1 })
+  })
+
+  it('leaves a hidden node alone: a sidecar entry for an undrawn subject is inert (#273)', () => {
+    const cy = canvasWith([
+      ['drawn', 1, 1],
+      ['hidden', 2, 2],
+    ])
+    // What `applyFilter` does to a node the active view does not draw.
+    cy.getElementById('hidden').style('display', 'none')
+    const saved: VisualLayoutPositions = {
+      drawn: { x: 100, y: 100 },
+      hidden: { x: 900, y: 2900 },
+    }
+
+    applySavedPositions(cy, saved)
+
+    expect(cy.getElementById('drawn').position()).toEqual({ x: 100, y: 100 })
+    // Not planted at the sidecar's whole-model coordinate.
+    expect(cy.getElementById('hidden').position()).toEqual({ x: 2, y: 2 })
+  })
+
+  it('discard unpins: a discarded view yields nothing to pin, so a fresh layout stands (#273)', () => {
+    const cy = canvasWith([['node1', 1, 1]])
+    const saved: VisualLayoutPositions = { node1: { x: 100, y: 100 } }
+    const discarded = new Set(['view1'])
+
+    applySavedPositions(cy, effectiveSavedPositions(saved, 'view1', discarded))
+    expect(cy.getElementById('node1').position()).toEqual({ x: 1, y: 1 })
+
+    // Another view's discard does not reach this one.
+    applySavedPositions(cy, effectiveSavedPositions(saved, 'view2', discarded))
+    expect(cy.getElementById('node1').position()).toEqual({ x: 100, y: 100 })
   })
 
   it('coalesces a burst of drags into one save carrying every node position', () => {
@@ -142,6 +176,38 @@ describe('layout drag-save and position pinning', () => {
     expect(onSaveLayout).not.toHaveBeenCalled()
 
     vi.useRealTimers()
+  })
+})
+
+// The standing indicator's one question (#273): does the active view's
+// sidecar pin anything the view draws? Derived from the view's match set,
+// the same base `applyFilter` starts from, so it is answerable with no
+// canvas mounted.
+describe('savedLayoutInForce', () => {
+  const graphNodeIds = ['a', 'b', 'c']
+
+  it('is false when the view has no sidecar', () => {
+    expect(savedLayoutInForce(undefined, graphNodeIds, ['a'])).toBe(false)
+  })
+
+  it('is true when the sidecar names a subject the view draws', () => {
+    expect(
+      savedLayoutInForce({ a: { x: 0, y: 0 } }, graphNodeIds, ['a', 'b']),
+    ).toBe(true)
+  })
+
+  it('is false when the sidecar names only subjects the view does not draw', () => {
+    // The stale-sidecar case: positions survive for subjects the view no
+    // longer selects, and every one of them is inert - nothing is in force.
+    expect(
+      savedLayoutInForce({ c: { x: 0, y: 0 } }, graphNodeIds, ['a', 'b']),
+    ).toBe(false)
+  })
+
+  it('measures against the whole graph when no structural filter stands', () => {
+    expect(
+      savedLayoutInForce({ c: { x: 0, y: 0 } }, graphNodeIds, null),
+    ).toBe(true)
   })
 })
 

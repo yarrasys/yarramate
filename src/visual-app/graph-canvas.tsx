@@ -1,5 +1,5 @@
 import type React from 'react'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import cytoscape from 'cytoscape'
 import type { Core, CollectionReturnValue, ElementDefinition, NodeCollection, NodeSingular } from 'cytoscape'
 import elk from 'cytoscape-elk'
@@ -835,17 +835,57 @@ export function buildPositionMap(nodes: NodeCollection): VisualLayoutPositions {
   return positions
 }
 
-// Pins every node the sidecar names to its saved position; a node the
+// Pins every drawn node the sidecar names to its saved position; a node the
 // sidecar doesn't mention keeps wherever the layout run that just finished
 // placed it. Runs after layout completes - there is no per-node "leave this
 // one alone" hook in `nodeLayoutOptions`, so overriding the finished result
 // is the only way to keep a subset fixed while ELK freely places the rest.
+//
+// Only drawn nodes: a sidecar entry for a subject the active view does not
+// currently draw is inert (#273). A hidden node keeps coordinates from
+// whatever full-graph layout last placed it, so re-pinning it to a sidecar
+// written against a canvas sized for the whole model plants stale positions
+// that the next whole-canvas drag-save would immortalise. `visible()` is the
+// same judgement `relayoutVisible` scopes by (and returns true wholesale on a
+// style-disabled instance, where nothing is ever hidden).
 export function applySavedPositions(cy: Core, saved: VisualLayoutPositions | undefined): void {
   if (saved === undefined) return
   cy.nodes().forEach((node) => {
+    if (!node.visible()) return
     const position = saved[node.id()]
     if (position !== undefined) node.position(position)
   })
+}
+
+// The sidecar the canvas actually honours: a view the reviewer discarded this
+// session yields nothing to pin, every other view passes its sidecar through
+// untouched. Session-local by design - the sidecar document stays on disk
+// (deleting it is a staged, committed write this canvas does not own), so the
+// discard lives beside the canvas instead of pretending to be a file change.
+export function effectiveSavedPositions(
+  saved: VisualLayoutPositions | undefined,
+  viewId: string,
+  discardedViews: ReadonlySet<string>,
+): VisualLayoutPositions | undefined {
+  return discardedViews.has(viewId) ? undefined : saved
+}
+
+// Whether a saved layout is actually in force for what is on screen: the
+// sidecar names at least one subject the active view draws. Derived from the
+// view's own match set (`matchedIds ?? every node` - the same base
+// `applyFilter` starts from) rather than from cytoscape's live visibility, so
+// the indicator is a pure function of rendered state: computable with no
+// canvas mounted, and never a stale flag some effect forgot to clear. The
+// match set may also name relationships; the sidecar only ever names
+// subjects, so those entries simply never intersect.
+export function savedLayoutInForce(
+  saved: VisualLayoutPositions | undefined,
+  graphNodeIds: readonly string[],
+  matchedIds: readonly string[] | null,
+): boolean {
+  if (saved === undefined) return false
+  const drawn = matchedIds ?? graphNodeIds
+  return drawn.some((id) => saved[id] !== undefined)
 }
 
 export interface DragSaveHandle {
@@ -962,6 +1002,19 @@ export function GraphCanvas({
 }: GraphCanvasProps): React.ReactElement {
   const containerRef = useRef<HTMLDivElement>(null)
   const cyRef = useRef<Core | null>(null)
+  // Views whose saved layout the reviewer discarded this session. Per view id,
+  // not one flag: discarding view A's pin says nothing about view B's, and
+  // returning to A later must not resurrect what was discarded. A drag-save
+  // re-arms its view (see `registerDragSave` below): the reviewer's own fresh
+  // sidecar supersedes the discard that cleared the old one.
+  const [discardedViews, setDiscardedViews] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  )
+  const effectiveSaved = effectiveSavedPositions(
+    savedPositions,
+    activeViewId,
+    discardedViews,
+  )
   const onSelectRef = useRef(onSelect)
   const onCanvasReadyRef = useRef(onCanvasReady)
   onCanvasReadyRef.current = onCanvasReady
@@ -973,7 +1026,7 @@ export function GraphCanvas({
   const matchedIdsRef = useRef(matchedIds)
   // Keep latest onSaveLayout and savedPositions for the drag-save handler
   const onSaveLayoutRef = useRef(onSaveLayout)
-  const savedPositionsRef = useRef(savedPositions)
+  const savedPositionsRef = useRef(effectiveSaved)
   const dragSaveHandleRef = useRef<DragSaveHandle | null>(null)
   // The force backend's in-flight layout (see `runLayout`), shared by the
   // graph-change effect and the view-switch relayout so either can supersede
@@ -999,10 +1052,12 @@ export function GraphCanvas({
     onSaveLayoutRef.current = onSaveLayout
   }, [onSaveLayout])
 
-  // Keep savedPositionsRef up-to-date for the layoutstop handler
+  // Keep savedPositionsRef up-to-date for the layoutstop handler. The ref
+  // holds the *effective* sidecar - a discarded view's pin is already gone
+  // here, so the layoutstop handler never has to know discards exist.
   useEffect(() => {
-    savedPositionsRef.current = savedPositions
-  }, [savedPositions])
+    savedPositionsRef.current = effectiveSaved
+  }, [effectiveSaved])
 
   // Cancel pending drag-save when the active view changes, so a queued save
   // never lands against a different view's sidecar. Also cleared on unmount.
@@ -1096,7 +1151,18 @@ export function GraphCanvas({
     dragSaveHandleRef.current = registerDragSave(
       cy,
       () => activeViewIdRef.current,
-      (payload) => onSaveLayoutRef.current(payload),
+      (payload) => {
+        // A drag-save writes a fresh sidecar for this view, superseding
+        // whatever the reviewer discarded - the new pin is their own work,
+        // so it re-arms (#273). Untouched views keep their discards.
+        setDiscardedViews((prev) => {
+          if (!prev.has(payload.projectionId)) return prev
+          const next = new Set(prev)
+          next.delete(payload.projectionId)
+          return next
+        })
+        onSaveLayoutRef.current(payload)
+      },
     )
 
     const rememberFraming = (): void => {
@@ -1265,14 +1331,51 @@ export function GraphCanvas({
     }
   }, [matchedIds, quickFilterText, graph])
 
+  // Session-local discard of the active view's saved layout: record the
+  // discard, drop the pin the layoutstop handler would re-apply, and run a
+  // fresh layout over what is drawn. The ref is cleared synchronously rather
+  // than left to the sync effect above, because `relayoutVisible`'s
+  // `layoutstop` can land before React commits the state change - and a
+  // discard whose own relayout re-pins the sidecar has discarded nothing.
+  // A queued drag-save is cancelled too: it would snapshot the very
+  // positions the reviewer just asked to be rid of.
+  const discardSavedLayout = (): void => {
+    setDiscardedViews((prev) => new Set(prev).add(activeViewId))
+    savedPositionsRef.current = undefined
+    dragSaveHandleRef.current?.cancelPending()
+    if (cyRef.current !== null) relayoutVisible(cyRef.current)
+  }
+
+  // The standing indicator (#273): a saved layout silently overrides every
+  // relayout, so whenever one is actually in force for this view the canvas
+  // says so, with the way out beside it. Distinct from the transient
+  // `layoutNotice` pill (a save receipt that happens to appear top-right):
+  // this one is state, not an event, and lives bottom-left for as long as
+  // the pin does.
+  const savedLayoutShown = savedLayoutInForce(
+    effectiveSaved,
+    graph.nodes.map((node) => node.id),
+    matchedIds,
+  )
+
   // The browser's own menu is suppressed here rather than on `window`: every
   // other surface in this application should keep the one the platform gives
   // it, and only the canvas has a menu of its own to put in its place.
   return (
-    <div
-      ref={containerRef}
-      style={{ width: '100%', height: '100%' }}
-      onContextMenu={(event) => event.preventDefault()}
-    />
+    <>
+      <div
+        ref={containerRef}
+        style={{ width: '100%', height: '100%' }}
+        onContextMenu={(event) => event.preventDefault()}
+      />
+      {savedLayoutShown ? (
+        <div className="saved-layout-pill" role="status">
+          <span>Saved layout in force</span>
+          <button type="button" onClick={discardSavedLayout}>
+            Discard
+          </button>
+        </div>
+      ) : null}
+    </>
   )
 }

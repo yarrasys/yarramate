@@ -497,6 +497,63 @@ describe('a host that asks for some of the sections', () => {
   })
 })
 
+/**
+ * A saved layout silently re-pins every relayout, so when one is actually in
+ * force for the active view the canvas says so and offers the way out (#273).
+ * "In force" means the view's sidecar names at least one subject the view
+ * draws - a stale sidecar naming only undrawn subjects is inert and earns no
+ * pill.
+ */
+describe('saved layout indicator (#273)', () => {
+  const viewFilter = {
+    query: {},
+    matchedIds: ['app.checkout'],
+    excluded: [],
+    source: 'view' as const,
+  }
+
+  it('shows the pill, with a discard affordance, when the sidecar pins a drawn subject', () => {
+    const markup = renderSession({
+      model: {
+        ...renderedModel,
+        layouts: { v1: { 'app.checkout': { x: 10, y: 20 } } },
+      },
+      activeView: 'v1',
+      activeFilter: viewFilter,
+    })
+
+    expect(markup).toContain('class="saved-layout-pill" role="status"')
+    expect(markup).toContain('Saved layout in force')
+    expect(markup).toContain('>Discard</button>')
+  })
+
+  it('shows nothing when the view has no sidecar', () => {
+    const markup = renderSession({
+      model: renderedModel,
+      activeView: 'v1',
+      activeFilter: viewFilter,
+    })
+
+    expect(markup).not.toContain('saved-layout-pill')
+    expect(markup).not.toContain('Saved layout in force')
+  })
+
+  it('shows nothing when the sidecar names only subjects the view does not draw', () => {
+    // The stale-sidecar case: `app.ledger` has a position but the view draws
+    // only `app.checkout`, so the entry is inert and no layout is in force.
+    const markup = renderSession({
+      model: {
+        ...renderedModel,
+        layouts: { v1: { 'app.ledger': { x: 10, y: 20 } } },
+      },
+      activeView: 'v1',
+      activeFilter: viewFilter,
+    })
+
+    expect(markup).not.toContain('saved-layout-pill')
+  })
+})
+
 describe('open questions section (#292)', () => {
   const overlay = {
     catalogue: 'core-enrichment@1.1',
