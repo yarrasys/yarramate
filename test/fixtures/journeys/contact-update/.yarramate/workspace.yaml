@@ -4,6 +4,8 @@ documents:
   - architecture/*.yaml
 profiles:
   - profiles/*.yaml
+patterns:
+  - patterns/*.yaml
 projections:
   - projections/*.yaml
 adapterMappings: []

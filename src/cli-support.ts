@@ -114,6 +114,8 @@ export const resolveCliWorkspaceSources = (
       readonly projections: readonly string[]
       readonly evidence: readonly string[]
       readonly contracts: readonly string[]
+      /** Pattern documents, which ride in `paths` and are not documents. */
+      readonly patterns: readonly string[]
     }
   | {
       readonly ok: false
@@ -126,6 +128,7 @@ export const resolveCliWorkspaceSources = (
       projections: [],
       evidence: [],
       contracts: [],
+      patterns: [],
     }
   }
   const manifestPath = paths[0]
@@ -136,6 +139,7 @@ export const resolveCliWorkspaceSources = (
       projections: [],
       evidence: [],
       contracts: [],
+      patterns: [],
     }
   }
   const source = readFileSync(resolve(cwd, manifestPath), 'utf8')
@@ -148,6 +152,7 @@ export const resolveCliWorkspaceSources = (
       projections: [],
       evidence: [],
       contracts: [],
+      patterns: [],
     }
   }
   const loaded = loadWorkspaceManifest(
@@ -159,6 +164,15 @@ export const resolveCliWorkspaceSources = (
         ok: true,
         paths: [
           ...loaded.workspace.profiles,
+          // Patterns are compiler input like profiles, and were resolved from
+          // the manifest without ever being handed over (#268): a pattern
+          // document a workspace declared was silently ignored by every verb,
+          // and an instance binding parts then failed YM419 for a pattern that
+          // was sitting right there in the manifest. Every test passed because
+          // each hands the compiler an explicit source list rather than
+          // resolving a workspace - the check that passes was not the check
+          // that mattered.
+          ...loaded.workspace.patterns,
           ...loaded.workspace.documents,
           ...(options.includeAdapterMappings === true
             ? loaded.workspace.adapterMappings
@@ -167,6 +181,7 @@ export const resolveCliWorkspaceSources = (
         projections: loaded.workspace.projections,
         evidence: loaded.workspace.evidence,
         contracts: loaded.workspace.contracts,
+        patterns: loaded.workspace.patterns,
       }
     : { ok: false, diagnostics: loaded.diagnostics }
 }

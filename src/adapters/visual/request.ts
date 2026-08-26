@@ -93,7 +93,14 @@ export const buildVisualSessionRequest = (
 
   // Same order the session's own recompile uses, so the request's graph and
   // every graph the session rebuilds after a commit come from one input list.
-  const sourcePaths = [...workspace.profiles, ...workspace.documents]
+  // Patterns are compiler input like profiles (#268). Omitting them compiled a
+  // different workspace than the manifest describes, and an instance binding
+  // parts then failed YM419 for a pattern the manifest declared.
+  const sourcePaths = [
+    ...workspace.profiles,
+    ...workspace.patterns,
+    ...workspace.documents,
+  ]
   const sources: { readonly path: string; readonly source: string }[] = []
   for (const path of sourcePaths) {
     try {

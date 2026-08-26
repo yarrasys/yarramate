@@ -409,7 +409,11 @@ export function runCheckCommand(
     if (ok && result.ok) {
       const successfulCounts = counted!
       const documentCount = result.graph.documents.length
-      const profileCount = coreSources.length - documentCount
+      const patternCount = resolved.patterns.length
+      // Everything in `coreSources` that is not a document was a profile until
+      // patterns joined the source list (#268), and counting them as profiles
+      // said "2 profiles" about a workspace with one.
+      const profileCount = coreSources.length - documentCount - patternCount
       const mappingCount = mappingSources.length
       const projectionCount = resolved.projections.length
       const evidenceCount = resolved.evidence.length
@@ -419,6 +423,11 @@ export function runCheckCommand(
         ...(profileCount > 0
           ? [
               `${profileCount} ${profileCount === 1 ? 'profile' : 'profiles'}`,
+            ]
+          : []),
+        ...(patternCount > 0
+          ? [
+              `${patternCount} ${patternCount === 1 ? 'pattern' : 'patterns'}`,
             ]
           : []),
         ...(mappingCount > 0

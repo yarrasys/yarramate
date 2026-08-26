@@ -63,6 +63,7 @@ const runReconciliation = (
     }
     const sourcePaths = [
       ...loadedWorkspace.workspace.profiles,
+      ...loadedWorkspace.workspace.patterns,
       ...loadedWorkspace.workspace.documents,
     ]
     const compilation = compileWorkspace(
