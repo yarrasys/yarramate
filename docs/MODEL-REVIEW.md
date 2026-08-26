@@ -158,6 +158,37 @@ kinds inherit their deployable parent's hosting rather than answering
 separately. A kind whose inherited questions are mostly nonsense is evidence
 that the declared parent is wrong, not that the questions are.
 
+## An additional test for a catalogue question
+
+### 7. Does its trigger tell a UI what would answer it?
+
+Every question's trigger rides its report verbatim
+([ADR 0110](adr/0110-an-open-question-carries-its-answer-shape.md)), so a
+consumer builds its answering affordance from the condition rather than from
+prose. How much affordance it can build depends entirely on which condition
+was chosen, and two conditions that fire on the same subjects are not
+therefore equal.
+
+`missing-linkage` and `has-linkage` name their `counterpartKinds`, so a host
+can offer exactly the endpoints that would answer the question instead of
+everything the relationship table tolerates. `missing-relationship`,
+`no-subject-of-kind` and `missing-constraint` name their `kinds`.
+`missing-claim` names its predicate. Against those, `isolated`,
+`near-duplicate` and `missing-flow-content` say only *that* something is
+absent, and a consumer holding one has nothing to build with: the question
+degrades to prose, and a reviewer answers it by leaving the pane.
+
+The first external catalogue author reports exactly this, having written
+fourteen questions: ten use conditions that carry enough for their endpoint
+picker, and the ones that do not "degrade to prose and it shows."
+
+So when a question could be expressed by more than one condition, prefer the
+one that names what would answer it. This is not a rule that a vaguer
+condition is wrong — `isolated` says something no narrower condition can —
+but a question phrased against a condition that carries kinds is worth more
+to every consumer than the same question phrased against one that does not,
+and the choice is usually free at authoring time.
+
 ## Using this in review
 
 Ask the questions in the pull request. Record the answers where they will be
@@ -168,7 +199,7 @@ and an ADR when the decision governs future modelling rather than this model.
 An author may reasonably run the same questions against their own proposal
 before opening the pull request. That does not change what the document is.
 The questions are worth asking because someone independent asks them, and a
-self-review that answers all six is a well-prepared proposal, not an approved
+self-review that answers all seven is a well-prepared proposal, not an approved
 one.
 
 Approve growth that carries its rationale. The deliverable of this review is
