@@ -14,6 +14,8 @@ projections:
   - projections/*.yaml
 adapterMappings:
   - adapters/*.mapping.yaml
+patterns:
+  - patterns/*.yaml
 evidence:
   - evidence/*.yaml
 contracts:

@@ -12,6 +12,9 @@ formats:
   - id: yarramate/profile/v1
     schema: schema/yarramate-profile.schema.json
     packageExport: ./schema/profile
+  - id: yarramate/pattern/v1
+    schema: schema/yarramate-pattern.schema.json
+    packageExport: ./schema/pattern
   - id: yarramate/workspace/v1
     schema: schema/yarramate-workspace.schema.json
     packageExport: ./schema/workspace

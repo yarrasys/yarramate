@@ -1,0 +1,38 @@
+format: yarramate/pattern/v1
+id: api-led
+version: "1.0"
+patterns:
+  # What the `api` kind promises, made normative (#268 phase 1, ADR 0123).
+  # Phase 0 could give the cluster an identity and ask about its shape; only
+  # this can mint it. An instance BINDS the subjects that fill these slots -
+  # they keep their own names, owners, evidence and outside edges - and the
+  # compiler wires them, which is the part that was pure ceremony.
+  - kind: yarrasys/api-led@1.0#api
+    parts:
+      component:
+        kind: yarramate/core@0.1#applicationComponent
+        required: true
+      interface:
+        kind: yarramate/core@0.1#applicationInterface
+        required: true
+      # Optional because an API the model has not yet traced to a service is
+      # still an API. The shape catalogue beside this asks about it; the
+      # compiler does not refuse it.
+      service:
+        kind: yarramate/core@0.1#applicationService
+    wiring:
+      - from: self
+        kind: yarramate/core@0.1#aggregation
+        to: component
+      - from: self
+        kind: yarramate/core@0.1#aggregation
+        to: interface
+      - from: self
+        kind: yarramate/core@0.1#aggregation
+        to: service
+      - from: component
+        kind: yarramate/core@0.1#composition
+        to: interface
+      - from: interface
+        kind: yarramate/core@0.1#assignment
+        to: service

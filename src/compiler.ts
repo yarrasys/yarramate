@@ -25,6 +25,9 @@ import documentSchema from '../schema/yarramate-document.schema.json' with {
 import profileSchema from '../schema/yarramate-profile.schema.json' with {
   type: 'json',
 }
+import patternSchema from '../schema/yarramate-pattern.schema.json' with {
+  type: 'json',
+}
 import { ATTESTATION_PREDICATE_PREFIX, attestationClaimValue } from './graph-claims.js'
 import {
   shippedPolicyIdentity,
@@ -50,6 +53,7 @@ const ajv2020Module = Ajv2020Import as unknown as {
 const Ajv2020 = ajv2020Module.default ?? ajv2020Module
 const validateDocument = new Ajv2020({ allErrors: true }).compile(documentSchema)
 const validateProfile = new Ajv2020({ allErrors: true }).compile(profileSchema)
+const validatePattern = new Ajv2020({ allErrors: true }).compile(patternSchema)
 
 export interface WorkspaceSource {
   readonly path: string
@@ -91,6 +95,12 @@ interface NativeConcept {
   readonly status?: 'planned' | 'current' | 'retired'
   readonly owner?: string
   readonly folder?: string
+  /**
+   * The subjects that fill this instance's pattern slots (#268, ADR 0123).
+   * Only a kind with a pattern may carry it; the compiler mints the pattern's
+   * wiring between the instance and what these name.
+   */
+  readonly parts?: Readonly<Record<string, string>>
   readonly distinctFrom?: readonly string[]
   readonly supersedes?: readonly NativeSuccession[]
   readonly constraints?: ReadonlyArray<{
@@ -190,6 +200,71 @@ interface NativeProfile {
   readonly extends: string
   readonly conceptKinds: readonly NativeProfileConceptKind[]
   readonly relationshipKinds: readonly NativeProfileRelationshipKind[]
+}
+
+/**
+ * A structural pattern document, `yarramate/pattern/v1` (#268, ADR 0123): the
+ * shape a concept kind promises. Ajv-validated before any of this is read.
+ */
+interface NativePatternPart {
+  readonly kind: string
+  readonly required?: boolean
+}
+
+interface NativePatternWire {
+  readonly from: string
+  readonly kind: string
+  readonly to: string
+}
+
+interface NativePatternShape {
+  readonly kind: string
+  readonly parts: Readonly<Record<string, NativePatternPart>>
+  readonly wiring: readonly NativePatternWire[]
+}
+
+interface NativePattern {
+  readonly format: 'yarramate/pattern/v1'
+  readonly id: string
+  readonly version: string
+  readonly patterns: readonly NativePatternShape[]
+}
+
+interface ResolvedSlot {
+  readonly name: string
+  readonly kindIdentity: string
+  readonly required: boolean
+}
+
+interface ResolvedWire {
+  /** A slot name, or `self` for the instance. */
+  readonly from: string
+  readonly to: string
+  readonly kindIdentity: string
+  readonly coreKind: RelationshipKind
+}
+
+interface ResolvedPattern {
+  readonly kindIdentity: string
+  /** The document that declared it, named when a second one tries to. */
+  readonly declaredBy: string
+  readonly slots: ReadonlyMap<string, ResolvedSlot>
+  readonly wiring: readonly ResolvedWire[]
+}
+
+/**
+ * One instance of a pattern, collected while its document is read and expanded
+ * once every document has been, because expansion has to see the whole
+ * workspace: what a slot binds may be declared anywhere, and whether an
+ * authored relationship already says what the wiring says is a question about
+ * every document at once.
+ */
+interface PatternInstance {
+  readonly instance: string
+  readonly pattern: ResolvedPattern
+  readonly bindings: ReadonlyMap<string, string>
+  /** Where each binding was written, so a minted claim points at a real line. */
+  readonly sourceOf: ReadonlyMap<string, GraphSource>
 }
 
 interface ResolvedConceptKind {
@@ -309,7 +384,7 @@ export type ContextualCompilationResult =
  */
 export interface ParsedWorkspaceSource {
   readonly source: string
-  readonly kind: 'profile' | 'document'
+  readonly kind: 'profile' | 'document' | 'pattern'
   readonly value: unknown
   readonly schemaDiagnostics: readonly Diagnostic[]
   /**
@@ -550,6 +625,19 @@ const parseWorkspaceSource = (
   // Classification reads the composed mapping through the YAML document, which
   // types the lookup as `unknown` - the same key the old probe pass read.
   const fresh: FreshParse = { yaml, lineCounter }
+  if (yaml.get('format') === 'yarramate/pattern/v1') {
+    return {
+      entry: {
+        source: input.source,
+        kind: 'pattern',
+        value,
+        schemaDiagnostics: parseDiagnostics,
+        positions: new Map(),
+      },
+      fresh,
+    }
+  }
+
   if (yaml.get('format') === 'yarramate/profile/v1') {
     return {
       entry: {
@@ -709,10 +797,13 @@ function compileWorkspaceResolved(
   parsed: readonly ParsedSource[],
 ): ContextualCompilationResult {
   const profileInputs: ParsedSource[] = []
+  const patternInputs: ParsedSource[] = []
   const documentInputs: ParsedSource[] = []
   for (const source of parsed) {
     if (source.entry.kind === 'profile') {
       profileInputs.push(source)
+    } else if (source.entry.kind === 'pattern') {
+      patternInputs.push(source)
     } else {
       documentInputs.push(source)
     }
@@ -1044,6 +1135,235 @@ function compileWorkspaceResolved(
   if (profileDiagnostics.length > 0) {
     return diagnosticFailure(profileDiagnostics)
   }
+
+  /**
+   * Which core relationship kinds the vendored 3.2 table permits between two
+   * resolved concept kinds, or `undefined` where either side is an extension
+   * whose core ancestor is not a core kind. The same rule `profileContext`
+   * publishes below; needed here because a pattern's legality is decided
+   * before any document is read.
+   */
+  const permittedBetween = (
+    fromKindIdentity: string,
+    toKindIdentity: string,
+  ): ReadonlySet<RelationshipKind> | undefined => {
+    const from = conceptKindByIdentity.get(fromKindIdentity)
+    const to = conceptKindByIdentity.get(toKindIdentity)
+    if (from === undefined || to === undefined) return undefined
+    const fromCore = localKindId(from.lineage[0] ?? from.identity)
+    const toCore = localKindId(to.lineage[0] ?? to.identity)
+    return isCoreConceptKindId(fromCore) && isCoreConceptKindId(toCore)
+      ? new Set(tablePermittedKinds(fromCore, toCore))
+      : undefined
+  }
+
+  // ---- structural patterns (#268, ADR 0123) --------------------------------
+  //
+  // Resolved here, after the profiles they name and before the documents that
+  // instantiate them. A pattern declares the shape a kind promises: the slots
+  // an instance binds and the wiring the compiler mints between them. Faults
+  // in the pattern itself are reported ONCE, against the pattern, rather than
+  // once per instance - including whether the wiring it describes is legal
+  // ArchiMate at all, which is a property of the slot kinds and so knowable
+  // without any instance.
+  const patternDiagnostics: Diagnostic[] = []
+  const patternsByKind = new Map<string, ResolvedPattern>()
+  for (const { input, entry, fresh } of patternInputs) {
+    const value = entry.value as NativePattern
+    const positionFor = positionReader(input.source, entry.positions, fresh)
+    const at = (
+      yamlPath: readonly (string | number)[],
+      pointer: string,
+    ): Pick<Diagnostic, 'path' | 'pointer' | 'line' | 'column'> => {
+      const position = positionFor(yamlPath)
+      return {
+        path: input.path,
+        pointer,
+        line: position.line,
+        column: position.col,
+      }
+    }
+    if (entry.schemaDiagnostics.length > 0) {
+      patternDiagnostics.push(...entry.schemaDiagnostics)
+      continue
+    }
+    if (!validatePattern(value)) {
+      for (const error of validatePattern.errors ?? []) {
+        const property =
+          error.keyword === 'additionalProperties'
+            ? String(error.params.additionalProperty)
+            : undefined
+        const pointer = property
+          ? `${error.instancePath}/${property}`
+          : error.instancePath || '/'
+        const yamlPath = pointer
+          .split('/')
+          .slice(1)
+          .map((segment) => (/^\d+$/.test(segment) ? Number(segment) : segment))
+        patternDiagnostics.push({
+          severity: 'error',
+          code: 'YM201',
+          message: describeSchemaViolation(error),
+          ...at(yamlPath, pointer),
+        })
+      }
+      continue
+    }
+    for (const [index, pattern] of value.patterns.entries()) {
+      const anchor = conceptKindByIdentity.get(pattern.kind)
+      if (anchor === undefined) {
+        patternDiagnostics.push({
+          severity: 'error',
+          code: 'YM401',
+          message: `Concept kind "${pattern.kind}" is not available to this pattern`,
+          ...at(['patterns', index, 'kind'], `/patterns/${index}/kind`),
+        })
+        continue
+      }
+      const existing = patternsByKind.get(pattern.kind)
+      if (existing !== undefined) {
+        patternDiagnostics.push({
+          severity: 'error',
+          code: 'YM411',
+          message: `Concept kind "${pattern.kind}" already has a pattern, declared by "${existing.declaredBy}"; a kind has at most one shape`,
+          ...at(['patterns', index, 'kind'], `/patterns/${index}/kind`),
+        })
+        continue
+      }
+      const slots = new Map<string, ResolvedSlot>()
+      let slotsOk = true
+      for (const [slot, part] of Object.entries(pattern.parts)) {
+        const kind = conceptKindByIdentity.get(part.kind)
+        if (kind === undefined) {
+          patternDiagnostics.push({
+            severity: 'error',
+            code: 'YM401',
+            message: `Concept kind "${part.kind}" is not available to the "${slot}" part`,
+            ...at(
+              ['patterns', index, 'parts', slot, 'kind'],
+              `/patterns/${index}/parts/${slot}/kind`,
+            ),
+          })
+          slotsOk = false
+          continue
+        }
+        slots.set(slot, {
+          name: slot,
+          kindIdentity: kind.identity,
+          required: part.required === true,
+        })
+      }
+      if (!slotsOk) continue
+      // `self` is the instance, so it is spelled apart from the slots and can
+      // never be one: a slot named `self` would make the wiring ambiguous
+      // about which end it meant.
+      if (slots.has('self')) {
+        patternDiagnostics.push({
+          severity: 'error',
+          code: 'YM201',
+          message: `A part cannot be named "self"; "self" names the instance itself in wiring`,
+          ...at(['patterns', index, 'parts'], `/patterns/${index}/parts`),
+        })
+        continue
+      }
+      const kindOfEndpoint = (endpoint: string): string | undefined =>
+        endpoint === 'self' ? anchor.identity : slots.get(endpoint)?.kindIdentity
+      const wiring: ResolvedWire[] = []
+      let wiringOk = true
+      const seenWires = new Set<string>()
+      for (const [wireIndex, wire] of pattern.wiring.entries()) {
+        const wireAt = at(
+          ['patterns', index, 'wiring', wireIndex],
+          `/patterns/${index}/wiring/${wireIndex}`,
+        )
+        const fromKind = kindOfEndpoint(wire.from)
+        const toKind = kindOfEndpoint(wire.to)
+        for (const [end, endpoint, kind] of [
+          ['from', wire.from, fromKind],
+          ['to', wire.to, toKind],
+        ] as const) {
+          if (kind !== undefined) continue
+          patternDiagnostics.push({
+            severity: 'error',
+            code: 'YM302',
+            message: `Wiring names "${endpoint}" as its ${end}, which is neither "self" nor a declared part`,
+            ...wireAt,
+          })
+          wiringOk = false
+        }
+        if (wire.from === wire.to) {
+          patternDiagnostics.push({
+            severity: 'error',
+            code: 'YM201',
+            message: `Wiring joins "${wire.from}" to itself`,
+            ...wireAt,
+          })
+          wiringOk = false
+        }
+        const policy = relationshipKindByIdentity.get(wire.kind)
+        if (policy === undefined) {
+          patternDiagnostics.push({
+            severity: 'error',
+            code: 'YM402',
+            message: `Relationship kind "${wire.kind}" is not available to this pattern`,
+            ...wireAt,
+          })
+          wiringOk = false
+        }
+        if (fromKind === undefined || toKind === undefined || policy === undefined) {
+          continue
+        }
+        const duplicate = `${wire.from}\u0000${wire.kind}\u0000${wire.to}`
+        if (seenWires.has(duplicate)) {
+          patternDiagnostics.push({
+            severity: 'error',
+            code: 'YM201',
+            message: `Wiring repeats "${wire.from}" ${policy.coreKind} "${wire.to}"`,
+            ...wireAt,
+          })
+          wiringOk = false
+          continue
+        }
+        seenWires.add(duplicate)
+        // Legality is a property of the PATTERN, because the slot kinds fix
+        // both endpoint kinds: a pattern whose wiring the relationship table
+        // forbids can never expand legally, and saying so once here beats
+        // saying it against every instance that was authored correctly.
+        const permitted = permittedBetween(fromKind, toKind)
+        if (permitted !== undefined && !permitted.has(policy.coreKind)) {
+          patternDiagnostics.push({
+            severity: 'error',
+            code: 'YM404',
+            message:
+              `Wiring "${wire.from}" ${policy.coreKind} "${wire.to}" is not permitted between ` +
+              `"${fromKind}" and "${toKind}"`,
+            ...wireAt,
+          })
+          wiringOk = false
+          continue
+        }
+        wiring.push({
+          from: wire.from,
+          to: wire.to,
+          kindIdentity: policy.identity,
+          coreKind: policy.coreKind,
+        })
+      }
+      if (!wiringOk) continue
+      patternsByKind.set(pattern.kind, {
+        kindIdentity: pattern.kind,
+        declaredBy: input.path,
+        slots,
+        wiring,
+      })
+    }
+  }
+
+  if (patternDiagnostics.length > 0) {
+    return diagnosticFailure(patternDiagnostics)
+  }
+
+  const patternInstances: PatternInstance[] = []
 
   const documents = documentInputs.map(({ input, entry, fresh }) => {
     // Schema-checked by `parseWorkspaceSource`; the faults it found are the
@@ -1964,6 +2284,62 @@ function compileWorkspaceResolved(
     for (const [index, concept] of value.concepts.entries()) {
       const subject = concept.id
       subjects.push({ id: subject, type: 'concept' })
+      // A pattern instance is only COLLECTED here. What its slots bind may be
+      // declared in any document, so the bindings cannot be checked until
+      // every document has been read (#268, ADR 0123).
+      if (concept.parts !== undefined) {
+        const kindIdentity =
+          selectedProfile.conceptKinds.get(concept.kind)?.identity ??
+          concept.kind
+        const pattern = patternsByKind.get(kindIdentity)
+        if (pattern === undefined) {
+          const where = location(
+            ['concepts', index, 'parts'],
+            `/concepts/${index}/parts`,
+          )
+          diagnostics.push({
+            severity: 'error',
+            code: 'YM419',
+            message: `Concept "${subject}" declares parts, but kind "${kindIdentity}" has no pattern to bind them to`,
+            path: where.path,
+            pointer: where.pointer,
+            line: where.line,
+            column: where.column,
+          })
+        } else {
+          const bindings = new Map<string, string>()
+          const sourceOf = new Map<string, GraphSource>()
+          for (const [slot, target] of Object.entries(concept.parts)) {
+            const where = location(
+              ['concepts', index, 'parts', slot],
+              `/concepts/${index}/parts/${slot}`,
+            )
+            if (!pattern.slots.has(slot)) {
+              diagnostics.push({
+                severity: 'error',
+                code: 'YM419',
+                message:
+                  `Concept "${subject}" binds "${slot}", which the pattern for ` +
+                  `"${kindIdentity}" does not declare; its parts are ` +
+                  `${[...pattern.slots.keys()].map((name) => `"${name}"`).join(', ')}`,
+                path: where.path,
+                pointer: where.pointer,
+                line: where.line,
+                column: where.column,
+              })
+              continue
+            }
+            bindings.set(slot, qualifyReference(value.id, target))
+            sourceOf.set(slot, where)
+          }
+          patternInstances.push({
+            instance: subject,
+            pattern,
+            bindings,
+            sourceOf,
+          })
+        }
+      }
       claims.push(
         {
           id: `${subject}~kind`,
@@ -2515,6 +2891,197 @@ function compileWorkspaceResolved(
         line: entry.source.line,
         column: entry.source.column,
       })
+    }
+  }
+
+  // ---- pattern expansion (#268, ADR 0123) ----------------------------------
+  //
+  // Every document has been read, so this can see the whole workspace: what a
+  // slot binds, what kind that subject is, and whether an authored
+  // relationship already says what a wiring edge says. Minted claims are
+  // `declared` and sourced to the binding line that produced them, because
+  // that is where the author said it - the pattern only says which KIND of
+  // edge a bound pair gets.
+  if (patternInstances.length > 0) {
+    const kindOfSubject = new Map<string, string>()
+    for (const claim of claims) {
+      if (
+        claim.predicate === 'yarramate/concept/kind' &&
+        'value' in claim.object
+      ) {
+        kindOfSubject.set(claim.subject, claim.object.value)
+      }
+    }
+    const declaredIds = new Set(subjects.map(({ id }) => id))
+    // Authored relationships indexed by the UNORDERED pair they join, which is
+    // the granularity the ownership rule is stated at: the pattern speaks for
+    // a pair, so a reversed edge is a contradiction rather than a new fact.
+    const pairKey = (left: string, right: string): string =>
+      left < right ? `${left}\u0000${right}` : `${right}\u0000${left}`
+    const authoredByPair = new Map<
+      string,
+      Array<{
+        readonly id: string
+        readonly from: string
+        readonly to: string
+        readonly predicate: string
+        readonly source: GraphSource
+      }>
+    >()
+    const relationshipIds = new Set(
+      subjects.filter(({ type }) => type === 'relationship').map(({ id }) => id),
+    )
+    for (const claim of claims) {
+      if (!relationshipIds.has(claim.id) || !('ref' in claim.object)) continue
+      const entry = {
+        id: claim.id,
+        from: claim.subject,
+        to: claim.object.ref,
+        predicate: claim.predicate,
+        source: claim.source,
+      }
+      const key = pairKey(entry.from, entry.to)
+      const group = authoredByPair.get(key)
+      if (group === undefined) authoredByPair.set(key, [entry])
+      else group.push(entry)
+    }
+
+    for (const { instance, pattern, bindings, sourceOf } of patternInstances) {
+      const boundTo = new Map<string, string>()
+      for (const [slot, target] of bindings) {
+        const where = sourceOf.get(slot)
+        if (where === undefined) continue
+        const slotShape = pattern.slots.get(slot)
+        if (slotShape === undefined) continue
+        if (!declaredIds.has(target)) {
+          diagnostics.push({
+            severity: 'error',
+            code: 'YM315',
+            message: `Part "${slot}" of "${instance}" names "${target}", which is not a declared subject`,
+            path: where.path,
+            pointer: where.pointer,
+            line: where.line,
+            column: where.column,
+          })
+          continue
+        }
+        const already = boundTo.get(target)
+        if (already !== undefined) {
+          diagnostics.push({
+            severity: 'error',
+            code: 'YM315',
+            message: `"${instance}" binds "${target}" as both "${already}" and "${slot}"; one subject fills one slot`,
+            path: where.path,
+            pointer: where.pointer,
+            line: where.line,
+            column: where.column,
+          })
+          continue
+        }
+        boundTo.set(target, slot)
+        const actual = kindOfSubject.get(target)
+        if (actual !== slotShape.kindIdentity) {
+          diagnostics.push({
+            severity: 'error',
+            code: 'YM417',
+            message:
+              `Part "${slot}" of "${instance}" binds "${target}", which is ` +
+              `"${actual ?? 'not a concept'}"; the pattern declares this part ` +
+              `"${slotShape.kindIdentity}"`,
+            path: where.path,
+            pointer: where.pointer,
+            line: where.line,
+            column: where.column,
+          })
+        }
+      }
+      const instanceSource = [...sourceOf.values()][0]
+      for (const slot of pattern.slots.values()) {
+        if (!slot.required || bindings.has(slot.name)) continue
+        if (instanceSource === undefined) continue
+        diagnostics.push({
+          severity: 'error',
+          code: 'YM416',
+          message: `"${instance}" leaves the required part "${slot.name}" unbound`,
+          path: instanceSource.path,
+          pointer: instanceSource.pointer,
+          line: instanceSource.line,
+          column: instanceSource.column,
+        })
+      }
+
+      const subjectOf = (endpoint: string): string | undefined =>
+        endpoint === 'self' ? instance : bindings.get(endpoint)
+      for (const wire of pattern.wiring) {
+        const from = subjectOf(wire.from)
+        const to = subjectOf(wire.to)
+        // An optional part nobody bound wires nothing. The required ones have
+        // already been reported above, so this is silence by design.
+        if (from === undefined || to === undefined) continue
+        if (!declaredIds.has(from) || !declaredIds.has(to)) continue
+        const where =
+          sourceOf.get(wire.to === 'self' ? wire.from : wire.to) ??
+          instanceSource
+        if (where === undefined) continue
+        const authored = authoredByPair.get(pairKey(from, to)) ?? []
+        let satisfied = false
+        for (const edge of authored) {
+          if (
+            edge.from === from &&
+            edge.to === to &&
+            edge.predicate === wire.kindIdentity
+          ) {
+            // Exactly what the wiring says. The authored relationship IS the
+            // wiring, so nothing is minted and nothing is reported: adoption
+            // costs no edit, and the redundant lines can go later.
+            satisfied = true
+            continue
+          }
+          diagnostics.push({
+            severity: 'error',
+            code: 'YM418',
+            message:
+              `Relationship "${edge.id}" joins "${edge.from}" to "${edge.to}", a pair ` +
+              `the pattern for "${pattern.kindIdentity}" wires as "${from}" ` +
+              `${wire.coreKind} "${to}"`,
+            path: edge.source.path,
+            pointer: edge.source.pointer,
+            line: edge.source.line,
+            column: edge.source.column,
+          })
+        }
+        if (satisfied) continue
+        const wireId = [
+          instance,
+          ...(wire.from === 'self' ? [] : [wire.from]),
+          wire.coreKind,
+          wire.to,
+        ].join('-')
+        if (declaredIds.has(wireId)) {
+          diagnostics.push({
+            severity: 'error',
+            code: 'YM420',
+            message:
+              `The pattern for "${pattern.kindIdentity}" derives the wiring id ` +
+              `"${wireId}" for "${instance}", which is already a declared subject`,
+            path: where.path,
+            pointer: where.pointer,
+            line: where.line,
+            column: where.column,
+          })
+          continue
+        }
+        declaredIds.add(wireId)
+        subjects.push({ id: wireId, type: 'relationship' })
+        claims.push({
+          id: wireId,
+          subject: from,
+          predicate: wire.kindIdentity,
+          object: { ref: to },
+          origin: 'declared',
+          source: where,
+        })
+      }
     }
   }
 

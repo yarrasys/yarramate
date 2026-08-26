@@ -48,7 +48,7 @@ const apply = (operations: readonly unknown[], source = DOCUMENT) =>
       profiles: [],
       projections: [],
       adapterMappings: [],
-      evidence: [],
+      patterns: [],      evidence: [],
       contracts: [],
     },
     sources: [{ path: 'architecture/main.yaml', source }],

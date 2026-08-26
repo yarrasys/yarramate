@@ -279,6 +279,10 @@ describe('workspace manifests', () => {
         '.yarramate/architecture/repository.yaml',
       ],
       profiles: ['.yarramate/profiles/yarramate-development.yaml'],
+      // The repository declares no pattern document yet (#268, ADR 0123); the
+      // category resolves to an empty set the way evidence did before this
+      // workspace declared any.
+      patterns: [],
       projections: [
         '.yarramate/projections/core-contract-foundation.yaml',
         '.yarramate/projections/current-engine.yaml',

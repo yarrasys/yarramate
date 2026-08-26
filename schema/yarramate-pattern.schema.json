@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yarramate.org/schema/pattern/v1",
+  "title": "YarraMate structural pattern",
+  "description": "The shape a concept kind promises: the parts an instance binds and the wiring the compiler mints between them (ADR 0123). A pattern declares structure; a profile declares vocabulary. Expansion is compile-time and lands in the semantic graph, never in a document.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "id", "version", "patterns"],
+  "properties": {
+    "format": {
+      "const": "yarramate/pattern/v1"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
+    "patterns": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/pattern"
+      }
+    }
+  },
+  "$defs": {
+    "pattern": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "parts", "wiring"],
+      "properties": {
+        "kind": {
+          "description": "The globally qualified concept kind this pattern shapes. The kind's anchor is whatever the profile says it specializes; a pattern never restates it.",
+          "$ref": "#/$defs/qualifiedKind"
+        },
+        "parts": {
+          "description": "The slots an instance binds, by name. A slot names the kind the bound subject must be, and whether an instance must bind it.",
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": false,
+          "propertyNames": {
+            "$ref": "#/$defs/slotName"
+          },
+          "patternProperties": {
+            "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$": {
+              "$ref": "#/$defs/part"
+            }
+          }
+        },
+        "wiring": {
+          "description": "The relationships the compiler mints between an instance and its bound parts. Where an authored relationship already says exactly this, nothing is minted. Any other authored relationship between the same pair contradicts the pattern and fails compilation.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/wire"
+          }
+        }
+      }
+    },
+    "part": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/qualifiedKind"
+        },
+        "required": {
+          "description": "An instance that leaves a required slot unbound fails compilation (YM416). Absent means optional.",
+          "type": "boolean"
+        }
+      }
+    },
+    "wire": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "kind", "to"],
+      "properties": {
+        "from": {
+          "$ref": "#/$defs/endpoint"
+        },
+        "kind": {
+          "$ref": "#/$defs/qualifiedKind"
+        },
+        "to": {
+          "$ref": "#/$defs/endpoint"
+        }
+      }
+    },
+    "endpoint": {
+      "description": "A slot name declared in `parts`, or `self` for the instance itself.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+    },
+    "slotName": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+    },
+    "qualifiedKind": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*(?:/[a-z][a-z0-9-]*)+@[0-9]+\\.[0-9]+#[a-z][A-Za-z0-9-]*$"
+    }
+  }
+}
