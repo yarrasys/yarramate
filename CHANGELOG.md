@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- **Changed.** A saved layout is visible, view-scoped, and discardable
+  (#273). A per-view layout sidecar silently re-pinned every relayout — an
+  experimental relayout moved 0 of 16 nodes with no hint why — and a stale
+  sidecar could scatter a 20-subject view across coordinates saved for all
+  37. Now a sidecar entry for a subject the active view does not draw is
+  inert (`applySavedPositions` pins only drawn nodes), and whenever a saved
+  layout is actually in force the canvas shows a standing "Saved layout in
+  force" pill with a **Discard** affordance. Discard is session-local: the
+  canvas stops honouring that view's sidecar and runs a fresh layout; the
+  sidecar stays on disk (deleting it is a staged write), and the reviewer's
+  next drag-save re-arms the pin with their own fresh layout. Pruning stale
+  sidecar entries on view save is deferred.
+  [ADR 0113](docs/adr/0113-a-saved-layout-is-visible-and-view-scoped.md).
+
 - **Added.** `yarramate init` names the workspace after its directory
   (#275). The seed document and workspace manifest ids derive from the
   target directory's basename, slugified to the id grammar both schemas
