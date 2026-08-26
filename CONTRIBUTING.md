@@ -103,6 +103,30 @@ Keep changes narrowly scoped and explain:
 - any compatibility or migration effect;
 - whether generated output changed.
 
+### Readers and constructors are not the same consumer
+
+When assessing the compatibility effect of a change to a **projected type** —
+anything a consumer receives from this package and may also build, such as
+`CanvasNode` on `yarramate/visual-graph/v1` — ask about both directions,
+because they do not pay the same price:
+
+- **Reading is unaffected** by a new field. Existing code goes on reading the
+  fields it already knew about.
+- **Constructing breaks** on a *required* field, at typecheck rather than at
+  runtime, in every object literal that builds one. **Test fixtures are almost
+  always constructors**, so the break lands in a consumer's test suite, which
+  is where it is most confusing and least expected.
+
+"Consumers reading the graph see no change" is a true sentence that has
+misled someone by the time they read it in a red build. Say which direction
+you mean, and say it in the changelog entry rather than leaving it to be
+rediscovered.
+
+This is recorded because it was learned the hard way: `portKinds` (#268 phase
+3) was described as costing readers nothing, which was true and beside the
+point. Adding it required edits in eighteen files here and three in a
+consuming product, all of them fixtures, none of them readers.
+
 A change a user would notice belongs in `CHANGELOG.md`, under the version
 being prepared, in the same pull request that makes it. A change nobody outside
 the repository can see does not. When a `feat`, `fix` or `perf` commit
