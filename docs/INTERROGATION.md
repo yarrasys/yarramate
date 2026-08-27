@@ -251,6 +251,41 @@ kind maps rather than a declared-kinds list, so a kind inherited through
 `extends` counts: a profile that declares none of its own and inherits every
 one is exactly the case a declared-kinds check would call entirely missing.
 
+## A question must be one some model could answer
+
+A catalogue is refused when a `missing-relationship` trigger names a
+(subject kind, relationship kind, direction) triple the ArchiMate table
+permits no counterpart for (`YM916`, ADR 0133). Seven core kinds have no
+permitted realization source in ArchiMate 3.2, so "nothing realizes this
+driver" opens on every driver, stays open forever, and asks for a
+relationship the standard forbids anyone to author.
+
+This is `YM914`'s sibling. `YM914` refuses a question that can never
+**fire**; `YM916` refuses one that can never be **closed**. Both failures
+are invisible, and this one more so: a question that never fires looks like
+a condition not met, while a question nobody can close looks exactly like a
+model with work left to do. Nothing distinguishes it from honest backlog
+except reading the relationship table by hand.
+
+The check reads the same generated table the compiler admits relationships
+against. That is the point rather than an implementation note: a second
+encoding of ArchiMate's rules is the defect this refusal exists to catch,
+and it is how the consuming product that reported the shape acquired its own
+version of the bug — one fact written down in two places, drifting within a
+day.
+
+Both narrowing rules `YM914` follows apply here unchanged. Without a
+compiled workspace nothing is reported, because an extension kind resolves
+to its core ancestor through the kind lineages and there is none to resolve
+through. A kind that resolves nowhere is `YM914`'s business. And `direction:
+any` is unclosable only when **both** directions are empty, since either one
+satisfies the trigger.
+
+Only `missing-relationship` is checked. It is the one condition naming a
+triple the relationship table can rule on; `missing-attestation` and
+`missing-claim` have no table to consult, and inventing one for them would
+be the second encoding this refusal refuses.
+
 ## Evaluation model
 
 A question is **open** iff its trigger matches, and **closed** the moment it

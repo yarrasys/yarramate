@@ -11,6 +11,12 @@ import {
   locateSourcePath,
 } from './source-document.js'
 import { nearDuplicateIndex } from './subject-identity.js'
+import {
+  sourceKindsPermitting,
+  targetKindsPermitting,
+  type CoreConceptKindId,
+} from './relationship-matrix.js'
+import type { RelationshipKind } from './profile.js'
 import catalogueSchema from '../schema/yarramate-question-catalogue.schema.json' with {
   type: 'json',
 }
@@ -1115,6 +1121,119 @@ const unresolvableKinds = (
   })
 }
 
+/** One `missing-relationship` trigger the relationship table can never satisfy. */
+interface UnclosableTrigger {
+  readonly questionId: string
+  readonly subjectKind: string
+  readonly relationshipKind: string
+  readonly direction: string
+  readonly path: readonly (string | number)[]
+}
+
+// The core kind an authored kind resolves to, or undefined when this workspace
+// cannot resolve it at all. Lineage is ancestor-first, so `lineage[0]` is the
+// core identity and an extension inherits its parent's row in the table
+// (ADR 0097); a core kind is its own lineage head.
+const coreKindOf = (
+  kind: string,
+  lineages: ReadonlyMap<string, readonly string[]>,
+): string | undefined => {
+  const lineage = lineages.get(kind)
+  if (lineage === undefined) return undefined
+  const identity = lineage[0] ?? kind
+  return identity.slice(identity.indexOf('#') + 1)
+}
+
+/**
+ * Triples a `missing-relationship` trigger names that no model could satisfy.
+ *
+ * The trigger asks its reader to add a relationship. The ArchiMate table the
+ * compiler admits relationships against decides which kinds may hold which
+ * relationship to which, and where it permits no counterpart at all for the
+ * (subject kind, relationship kind, direction) triple a trigger names, the
+ * question reports a gap the standard forbids filling. It opens on every
+ * matching subject and stays open forever, reading as the model's fault
+ * rather than the catalogue's (ADR 0133).
+ *
+ * The check reads the SAME generated table the compiler does. A second
+ * encoding of ArchiMate's rules is the defect this exists to stop, and it is
+ * how the consuming product that reported the shape got its own version of
+ * this bug: one fact written down twice, drifting within a day.
+ *
+ * Narrow in the same two ways `unresolvableKinds` is narrow. Without a
+ * profile context there is no lineage to resolve an extension kind through,
+ * so nothing is reported rather than guessed; and a kind that resolves
+ * nowhere is `YM914`'s business, not this one.
+ */
+const unclosableTriggers = (
+  catalogue: QuestionCatalogue,
+  profileContext: ResolvedProfileContext,
+): readonly UnclosableTrigger[] => {
+  const found: UnclosableTrigger[] = []
+  for (const [questionIndex, question] of catalogue.questions.entries()) {
+    const subjectKinds = question.subjects?.kinds ?? []
+    if (subjectKinds.length === 0) continue
+    for (const [conditionIndex, condition] of question.trigger.entries()) {
+      const trigger = condition as {
+        condition?: string
+        kinds?: readonly string[]
+        direction?: string
+      }
+      if (trigger.condition !== 'missing-relationship') continue
+      // `any` is satisfied by a relationship in either direction, so the
+      // trigger is unclosable only when both directions are empty.
+      const directions =
+        trigger.direction === 'any'
+          ? (['incoming', 'outgoing'] as const)
+          : ([trigger.direction ?? 'any'] as const)
+      for (const subjectKind of subjectKinds) {
+        const subjectCore = coreKindOf(
+          subjectKind,
+          profileContext.conceptKindLineages,
+        )
+        if (subjectCore === undefined) continue
+        for (const [kindIndex, relationshipKind] of (
+          trigger.kinds ?? []
+        ).entries()) {
+          const relationshipCore = coreKindOf(
+            relationshipKind,
+            profileContext.relationshipKindLineages,
+          )
+          if (relationshipCore === undefined) continue
+          const closable = directions.some((direction) =>
+            (direction === 'incoming'
+              ? sourceKindsPermitting(
+                  relationshipCore as RelationshipKind,
+                  subjectCore as CoreConceptKindId,
+                )
+              : targetKindsPermitting(
+                  relationshipCore as RelationshipKind,
+                  subjectCore as CoreConceptKindId,
+                )
+            ).size > 0,
+          )
+          if (closable) continue
+          found.push({
+            questionId: question.id,
+            subjectKind,
+            relationshipKind,
+            direction: trigger.direction ?? 'any',
+            path: [
+              'questions',
+              questionIndex,
+              'trigger',
+              conditionIndex,
+              'kinds',
+              kindIndex,
+            ],
+          })
+        }
+      }
+    }
+  }
+  return found
+}
+
 /** A catalogue parsed and located, before any cross-catalogue check. */
 interface LoadedCatalogueDocument {
   readonly source: WorkspaceSource
@@ -1198,6 +1317,28 @@ const unresolvableKindDiagnostics = (
           reference.kind.indexOf('#'),
         )}", which this workspace loads, so the question can never fire`,
         ...locate(reference.path),
+      }))
+
+// YM916, the sibling of YM914. YM914 refuses a question that can never FIRE;
+// this refuses one that can never be CLOSED. Both failures are invisible, and
+// this one more so: a question that never fires looks like a condition not
+// met, while a question that cannot be closed looks exactly like an
+// unenriched model, indefinitely (ADR 0133).
+const unclosableTriggerDiagnostics = (
+  { catalogue, locate }: LoadedCatalogueDocument,
+  profileContext?: ResolvedProfileContext,
+): readonly Diagnostic[] =>
+  profileContext === undefined
+    ? []
+    : unclosableTriggers(catalogue, profileContext).map((trigger) => ({
+        severity: 'error' as const,
+        code: 'YM916',
+        message:
+          `Question "${trigger.questionId}" asks for a ${trigger.direction} ` +
+          `"${trigger.relationshipKind}" on "${trigger.subjectKind}", which ` +
+          'the ArchiMate relationship table permits from no kind at all, so ' +
+          'no model could ever close it',
+        ...locate(trigger.path),
       }))
 
 /**
@@ -1331,6 +1472,7 @@ export function composeCatalogues(
   const crossDiagnostics = documents.flatMap((document) => [
     ...undeclaredWaveDiagnostics(document, declaredWaves),
     ...unresolvableKindDiagnostics(document, profileContext),
+    ...unclosableTriggerDiagnostics(document, profileContext),
   ])
   if (crossDiagnostics.length > 0) {
     return { ok: false, diagnostics: crossDiagnostics }
@@ -1381,6 +1523,13 @@ export function loadQuestionCatalogue(
   )
   if (kindDiagnostics.length > 0) {
     return { ok: false, diagnostics: kindDiagnostics }
+  }
+  const triggerDiagnostics = unclosableTriggerDiagnostics(
+    loaded.document,
+    profileContext,
+  )
+  if (triggerDiagnostics.length > 0) {
+    return { ok: false, diagnostics: triggerDiagnostics }
   }
   return { ok: true, catalogue: loaded.document.catalogue }
 }
