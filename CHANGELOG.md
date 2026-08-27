@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- **Added.** `MountOptions.catalogue` (and `LocalHostOptions.catalogue`)
+  accepts the composed catalogue SET the overlay beneath has taken since
+  ADR 0129 (#369, filed from ApertureX adoption): one `{ path, source }` or
+  an array, evaluated together under the composition rules with each
+  question qualified by its own catalogue. This was the last single-width
+  seam between a host's composed interview and the embedded pane — a pane
+  evaluating fewer catalogues than the host's own question surfaces is a
+  disagreement with no symptom. A single source stays source-compatible;
+  `dismissed` needed nothing, since qualified ids already match across the
+  set.
+
 ## 1.8.0
 
 - **Added.** A catalogue can ask about pattern membership (#346, ADR 0131).
