@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.6.0
 
 - **Added.** `yarramate import xlsx <workbook.xlsx> <workspace.yaml>` reads an
   edited workbook back into the model (#355, ADR 0127). **An unedited round
