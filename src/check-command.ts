@@ -14,7 +14,10 @@ import {
   usage,
   type CliResult,
 } from './cli-support.js'
-import { compileWorkspace, withDiagnosticSubjects } from './compiler.js'
+import {
+  compileWorkspaceWithProfileContext,
+  withDiagnosticSubjects,
+} from './compiler.js'
 import {
   checkCoreContract,
   loadCoreContract,
@@ -23,7 +26,10 @@ import {
   evaluateEvidenceWorkspace,
   loadEvidence,
 } from './evidence.js'
-import { loadProjection } from './projection.js'
+import {
+  loadProjection,
+  projectionReferenceDiagnostics,
+} from './projection.js'
 import {
   reconcileEvidenceReports,
   type EvidenceFinding,
@@ -198,14 +204,18 @@ export function runCheckCommand(
         : humanDiagnostics(contractDiagnostics)
       return { exitCode: 1, stdout: output, stderr: '' }
     }
+    const projectionSources = resolved.projections.map((path) => ({
+      path,
+      source: readFileSync(resolve(cwd, path), 'utf8'),
+    }))
+    const loadedProjections = projectionSources.map((source) => ({
+      source,
+      loaded: loadProjection(source),
+    }))
     const projectionDiagnostics = sortDiagnostics(
-      resolved.projections.flatMap((path) => {
-        const loaded = loadProjection({
-          path,
-          source: readFileSync(resolve(cwd, path), 'utf8'),
-        })
-        return loaded.ok ? [] : loaded.diagnostics
-      }),
+      loadedProjections.flatMap(({ loaded }) =>
+        loaded.ok ? [] : loaded.diagnostics,
+      ),
     )
     if (projectionDiagnostics.length > 0) {
       const output = json
@@ -257,7 +267,7 @@ export function runCheckCommand(
       return { exitCode: 1, stdout: output, stderr: '' }
     }
 
-    const result = compileWorkspace(coreSources)
+    const result = compileWorkspaceWithProfileContext(coreSources)
     const mappingValidation = result.ok
       ? validateAdapterMappings(
           result.graph,
@@ -282,9 +292,27 @@ export function runCheckCommand(
       evidenceEvaluation === undefined || evidenceEvaluation.ok
         ? []
         : evidenceEvaluation.diagnostics
+    // A projection is a document, and a query holds references the same way a
+    // relationship does. Checked HERE rather than with the projection's own
+    // schema load above, because a reference can only be resolved against a
+    // model that compiled: reporting dangling names out of a workspace that
+    // does not build would bury the real failure under its consequences.
+    const referenceDiagnostics = result.ok
+      ? loadedProjections.flatMap(({ source, loaded }) =>
+          loaded.ok
+            ? projectionReferenceDiagnostics(
+                source,
+                loaded.projection,
+                result.graph,
+                result.profileContext,
+              )
+            : [],
+        )
+      : []
     const optionalDiagnostics = sortDiagnostics([
       ...mappingDiagnostics,
       ...evidenceDiagnostics,
+      ...referenceDiagnostics,
     ])
     const ok = result.ok && optionalDiagnostics.length === 0
     // Published results name the subject a diagnostic is about wherever its

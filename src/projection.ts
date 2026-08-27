@@ -9,6 +9,7 @@ import type {
   WorkspaceSource,
 } from './compiler.js'
 import { loadSourceDocument } from './source-document.js'
+import { similarity } from './subject-identity.js'
 import projectionSchema from '../schema/yarramate-projection.schema.json' with {
   type: 'json',
 }
@@ -400,6 +401,170 @@ const conceptSelector = (
       return undefined
     },
   }
+}
+
+/** A query facet naming something the model does not have. */
+export interface UnmatchedSelector {
+  readonly facet: string
+  readonly value: string
+  /** The closest name the facet does offer, when one is close enough to be a likely typo. */
+  readonly nearest?: string
+}
+
+/** Below this, a suggestion is noise rather than a hint. */
+const SUGGESTION_THRESHOLD = 0.6
+
+/**
+ * Every value in a projection query that names nothing.
+ *
+ * A projection is a DOCUMENT, and a query holds references the same way a
+ * relationship does. YarraMate refuses a relationship pointing at a concept
+ * that does not exist; it did not refuse a query naming a state that does not
+ * exist, and the symptom is silent. `states: [target-stat]` selects no state,
+ * which selects no subject, which exports a clean empty artifact with exit 0.
+ * Someone hands that to a client.
+ *
+ * Checked at `check`, not at `export`, because the typo is in a file rather
+ * than in an invocation: CI catches it, and every verb over the same
+ * projection inherits the guard instead of each growing its own.
+ *
+ * ONLY FACETS WITH A CLOSED NAMESPACE ARE CHECKED. `statuses` and
+ * `excludeStatuses` are schema enums, refused upstream before this runs.
+ * Everything else names something: `owners` and `constraints` are REFS to
+ * concepts, which the compiler itself proves by refusing an unresolved owner
+ * with YM304, so their namespace is the subject list like `subjects`.
+ *
+ * Each namespace is derived the way the FILTER derives it, so the check cannot
+ * drift from what it guards: `documents` reads the same provenance the
+ * `documents` facet compares against, and `states` is the same
+ * `yarramate/state/type` scan `conceptSelector` runs.
+ *
+ * A kind whose profile is not loaded is DORMANT rather than wrong, the same
+ * distinction #351 drew for question catalogues, so the kind facets are
+ * checked only when a profile context is present.
+ *
+ * An empty RESULT is not reported here and must not be. A query whose every
+ * name resolves and which selects nothing is a real answer to a real question:
+ * a target state nobody has populated yet is empty, correctly.
+ */
+export function unmatchedSelectors(
+  graph: SemanticGraph,
+  projection: ProjectionDefinition,
+  profileContext?: ResolvedProfileContext,
+): readonly UnmatchedSelector[] {
+  const query = projection.query
+  const found: UnmatchedSelector[] = []
+
+  const check = (
+    facet: string,
+    values: readonly string[] | undefined,
+    known: ReadonlySet<string>,
+  ): void => {
+    if (values === undefined) return
+    for (const value of values) {
+      if (known.has(value)) continue
+      let nearest: string | undefined
+      let best = 0
+      for (const candidate of known) {
+        const score = similarity(value, candidate)
+        if (score > best) {
+          best = score
+          nearest = candidate
+        }
+      }
+      found.push({
+        facet,
+        value,
+        ...(nearest !== undefined && best >= SUGGESTION_THRESHOLD
+          ? { nearest }
+          : {}),
+      })
+    }
+  }
+
+  const subjectIds = new Set(graph.subjects.map(({ id }) => id))
+  check('subjects', query.subjects, subjectIds)
+  check('exclude', query.exclude, subjectIds)
+  // Against the SUBJECT list rather than against owners currently in use: a
+  // team that owns nothing yet is a real concept and selecting it is a real
+  // question with an empty answer, which is exactly what must not be refused.
+  check('owners', query.owners, subjectIds)
+  check('constraints', query.constraints, subjectIds)
+
+  // The same provenance `documents` filters on: a subject id no longer carries
+  // the document that declared it, so both read it off the kind claim.
+  const documentIds = new Set<string>()
+  for (const claim of graph.claims) {
+    if (claim.predicate !== 'yarramate/concept/kind') continue
+    const document = claim.source?.document
+    if (typeof document === 'string') documentIds.add(document)
+  }
+  check('documents', query.documents, documentIds)
+
+  check(
+    'states',
+    query.states,
+    new Set(
+      graph.claims
+        .filter(({ predicate }) => predicate === 'yarramate/state/type')
+        .map(({ subject }) => subject),
+    ),
+  )
+
+  if (profileContext !== undefined) {
+    check('kinds', query.kinds, new Set(profileContext.conceptKindLineages.keys()))
+    check(
+      'relationshipKinds',
+      query.relationshipKinds,
+      new Set(profileContext.relationshipKindLineages.keys()),
+    )
+    check('layers', query.layers, new Set(profileContext.conceptKindLayers.values()))
+  }
+
+  return found
+}
+
+/**
+ * Where a value sits in the projection source, so the diagnostic is clickable.
+ * A query value appears once in a list item, and finding it by text is enough:
+ * the alternative is threading a YAML CST through a check that only needs to
+ * point at a line.
+ */
+const locate = (source: string, value: string): { line: number; column: number } => {
+  const lines = source.split('\n')
+  for (let index = 0; index < lines.length; index += 1) {
+    const at = lines[index]!.indexOf(value)
+    if (at >= 0) return { line: index + 1, column: at + 1 }
+  }
+  return { line: 1, column: 1 }
+}
+
+/**
+ * {@link unmatchedSelectors} as diagnostics, built HERE rather than at each
+ * caller so `check`, and anything that adopts this later, refuse in identical
+ * words with an identical code.
+ */
+export function projectionReferenceDiagnostics(
+  source: WorkspaceSource,
+  projection: ProjectionDefinition,
+  graph: SemanticGraph,
+  profileContext?: ResolvedProfileContext,
+): readonly Diagnostic[] {
+  return unmatchedSelectors(graph, projection, profileContext).map(
+    ({ facet, value, nearest }) => ({
+      severity: 'error' as const,
+      code: 'YM921',
+      message:
+        `Projection query \`${facet}\` names ${JSON.stringify(value)}, ` +
+        'which this workspace does not have, so it can never match. ' +
+        (nearest === undefined
+          ? 'Check the spelling against the model.'
+          : `Did you mean ${JSON.stringify(nearest)}?`),
+      path: source.path,
+      pointer: `/query/${facet}`,
+      ...locate(source.source, value),
+    }),
+  )
 }
 
 /**
