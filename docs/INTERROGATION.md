@@ -288,14 +288,26 @@ it is how the consuming product that reported the shape acquired its own
 version of the bug — one fact written down in two places, drifting within a
 day.
 
-Both narrowing rules `YM914` follows apply here unchanged. Without a compiled
-workspace nothing is reported, because an extension kind resolves to its core
-ancestor through the kind lineages and there is none to resolve through. A
-kind that resolves nowhere is `YM914`'s business. A trigger with any
-unresolvable counterpart is skipped whole rather than partially, since a
+**Every ambiguity resolves toward silence.** A gate that accuses wrongly
+implies deleting a working question, so where this one cannot judge, it says
+nothing. That is one rule, and it covers four cases. Without a compiled
+workspace nothing is reported at all, because an extension kind resolves to
+its core ancestor through the kind lineages and there is none to resolve
+through. A kind that resolves nowhere is `YM914`'s business. A trigger with
+any unresolvable counterpart is skipped whole rather than partially, since a
 partial reading could accuse a question a dormant cross-profile kind would
 have answered. And `direction: any` or `either` is dead only when **both**
 directions are, since either one satisfies the trigger.
+
+A kind the relationship table has no row for is the fourth, and it is the one
+that had to be made explicit rather than observed. Every table query answers
+an absent kind with an empty set, which reads identically to "this is
+forbidden" — the empty-set conflation, sitting where mistaking it turns the
+gate into a false accuser on a vocabulary it simply cannot judge. Nothing
+reachable through a profile should hit it, since `parent` is required on every
+declared kind and resolves to a core ancestor; the check asks anyway, because
+that guarantee belongs to another module and a gate should not rest on one
+silently. A test pins the guarantee so the change that broke it would say so.
 
 `kindMatching: descendants` needs no special handling: a descendant shares its
 core ancestor's row and column in the table, so checking the named kind covers

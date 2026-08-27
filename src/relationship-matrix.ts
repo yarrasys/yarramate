@@ -101,6 +101,37 @@ export const matrixEndpointAspects = (
   return aspects
 }
 
+/**
+ * Whether the table has a row and column for this kind at all.
+ *
+ * Every query below answers an ABSENT kind with an empty set, which reads
+ * identically to "the table forbids this" - the empty-set conflation, in the
+ * one place where mistaking it turns a gate into a false accuser. A caller
+ * deciding whether something is forbidden must therefore ask this first, so
+ * that "not in the table" resolves toward silence rather than toward blame.
+ *
+ * Nothing reachable through a profile should fail it: `parent` is required on
+ * every declared kind and resolves to a core ancestor, so a lineage head is
+ * always a table kind. The predicates exist because that guarantee is another
+ * module's to keep, and a gate should not rest on one silently.
+ *
+ * They are type guards rather than booleans so that a caller holding a bare
+ * string reaches the typed queries through the check instead of around it by
+ * a cast. The cast is where the hole actually opens: the signatures already
+ * refuse an unknown kind, and asserting past them is what lets an absent kind
+ * arrive and be read as a forbidden one.
+ */
+const CORE_CONCEPT_KINDS = new Set<string>(CORE_CONCEPT_KIND_ORDER)
+const CORE_RELATIONSHIP_KIND_SET = new Set<string>(relationshipKinds)
+
+export const tableKnowsConceptKind = (
+  kind: string,
+): kind is CoreConceptKindId => CORE_CONCEPT_KINDS.has(kind)
+
+export const tableKnowsRelationshipKind = (
+  kind: string,
+): kind is RelationshipKind => CORE_RELATIONSHIP_KIND_SET.has(kind)
+
 /** Kinds that may stand as the source of `kind` into `to`. */
 export const sourceKindsPermitting = (
   kind: RelationshipKind,

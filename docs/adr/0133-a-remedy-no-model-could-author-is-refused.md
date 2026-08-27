@@ -82,11 +82,17 @@ Decided:
    on is lost. A warning was rejected on the reporter's own argument: a
    warning for an invisible defect is a warning nobody reads, and the
    check-result contract has no warning severity to give it.
-4. **No `profileContext`, no check** — `YM914`'s rule, inherited
-   unchanged. An extension kind resolves to its core ancestor through the
-   kind lineages, and without a compiled workspace there is no lineage to
-   resolve it through. Guessing would be the false positive the narrowness
-   exists to avoid.
+4. **Every ambiguity resolves toward silence.** `YM914`'s narrowness,
+   generalised: a gate that accuses wrongly implies deleting a working
+   question, so a miss is cheaper than a false positive here. No
+   `profileContext`, no check, because an extension kind resolves to its
+   core ancestor through the kind lineages and without a compiled workspace
+   there is none. A kind the table has no row for is passed over too, and
+   that one is asked explicitly rather than assumed: every table query
+   answers an absent kind with an empty set, indistinguishable from
+   "forbidden", and nothing reachable through a profile should hit it
+   because `parent` is required and resolves to a core ancestor. The check
+   asks because that guarantee is another module's to keep.
 5. **`any` and `either` close if either direction admits a counterpart.**
    The trigger is satisfied by a relationship in either direction, so an
    offer is dead only when both are.
