@@ -32,6 +32,13 @@
   base with its existing value shape, and a new **optional** `catalogues` array
   lists every contributor.
 
+- **Added.** `composeCatalogues` and `qualifiedQuestionId` are published, from
+  both the barrel and `yarramate/interrogation`. **Compose even when there is
+  only one catalogue**, which every CLI verb now does: qualification happens
+  when catalogues compose, not when they evaluate, so composing unconditionally
+  means question ids are qualified from the start and do not change the day a
+  workspace first carries a question of its own.
+
 - **Changed.** A consumer matching on question ids in an interrogation report,
   a design step, or a host-supplied dismissal migrates once: `outcome-missing`
   becomes `core-enrichment#outcome-missing`. A value change rather than a new
