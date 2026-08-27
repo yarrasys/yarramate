@@ -1,0 +1,304 @@
+# Frozen benchmark task suite: gitlab (yarramate/benchmark-suite/v1).
+# Authored before any condition run (DESIGN.md "Task suite"); ground truth was
+# verified by reading the source at the pinned commit in a fresh shallow clone
+# — the code, not the gallery model, is the authority. Comprehension and
+# change prompts are condition-neutral; model-maintenance prompts necessarily
+# reference the committed workspace and only run under model-present
+# conditions.
+#
+# First version for this repository (no prior sweep, so no errata to correct).
+# Authored under the #288 small-N pooling decision: the corpus is kafka +
+# gitlab, and pooled numbers at N=2 are published as such rather than waiting
+# on a broader corpus. Informed by issue #56's lesson (single-hop
+# comprehension saturates): two of the four comprehension tasks each require
+# chaining 3+ hops across different files/modules:
+# - gl-comp-workhorse-gitaly-handoff: the git-over-HTTP controller action ->
+#   the class that builds Workhorse's authorization payload -> the Gitaly
+#   connection block inside it, and what that block means for which process
+#   actually streams the pack data (the "all git I/O through Gitaly"
+#   constraint made concrete).
+# - gl-comp-pipeline-chain: the pipeline-creation service's declared step
+#   sequence -> the step that evaluates CI YAML -> the processor class it
+#   instantiates -> the step that seeds stages/builds -> the seed class it
+#   constructs.
+# The other two comprehension tasks are foundational (still real, but
+# effectively single-hop) so the family deliberately mixes both difficulties.
+# gl-comp-praefect-replicas deliberately covers the surface the 2026-08-25
+# gallery audit proved the model had recorded wrongly (Praefect "not
+# observed" while present in the tree): the ground truth here is the same
+# evidence chain, re-verified in the fresh clone.
+#
+# The clone is GitLab FOSS (gitlabhq): no ee/ directory, every claim
+# checkable against MIT-licensed source.
+type: yarramate/benchmark-suite/v1
+suite: gitlab
+headline: true
+repository:
+  name: gitlab
+  source: https://github.com/gitlabhq/gitlabhq
+  commit: 2c30df7828b86f8ac1fca26e96385fe712b0669f
+  gallery: https://github.com/yarrasys/yarramate-gallery
+  model: showcases/gitlab
+
+tasks:
+  # --- Comprehension (foundational) -----------------------------------------
+  - id: gl-comp-praefect-replicas
+    family: comprehension
+    prompt: >-
+      This Rails codebase can sit behind a Gitaly cluster whose router keeps
+      per-repository replicas. For the read path that reports those replicas:
+      (1) name the dedicated client class (under the Gitaly client namespace)
+      that issues the replica-listing RPC, the method on it that does so, and
+      the RPC name it invokes; (2) name the method on the low-level git
+      repository class that memoizes an instance of that client, and the
+      public method on the same class that exposes the replica listing to
+      callers; (3) state what error-handling wrapper that public method runs
+      the call inside (name the wrapper method).
+    groundTruth:
+      answer: >-
+        (1) Gitlab::GitalyClient::PraefectInfoService
+        (lib/gitlab/gitaly_client/praefect_info_service.rb, class at line 5);
+        its replicas method (line 16) issues the :repository_replicas RPC via
+        gitaly_client_call(@storage, :praefect_info_service,
+        :repository_replicas, request, ...) at line 19, building a
+        Gitaly::RepositoryReplicasRequest at line 17. (2) On
+        Gitlab::Git::Repository (lib/gitlab/git/repository.rb):
+        praefect_info_client (lines 1114-1115) memoizes
+        "@praefect_info_client ||=
+        Gitlab::GitalyClient::PraefectInfoService.new(self)"; the public
+        method is replicas (lines 1233-1237). (3) replicas runs the call
+        inside wrapped_gitaly_errors (line 1234).
+      verifiedAgainst:
+        - lib/gitlab/gitaly_client/praefect_info_service.rb:5
+        - lib/gitlab/gitaly_client/praefect_info_service.rb:16-20
+        - lib/gitlab/git/repository.rb:1114-1115
+        - lib/gitlab/git/repository.rb:1233-1237
+    scoring:
+      method: ground-truth
+
+  - id: gl-comp-sidekiq-routing
+    family: comprehension
+    prompt: >-
+      For background jobs in this codebase: (1) name the concern a worker
+      class includes to become a Sidekiq worker, the file it lives in, and
+      the upstream Sidekiq module it includes on the worker's behalf; (2)
+      name the class that decides the actual queue name a given worker class
+      is routed to, and the method on the concern that consults it when a
+      worker's routing is (re)computed.
+    groundTruth:
+      answer: >-
+        (1) ApplicationWorker
+        (app/workers/concerns/application_worker.rb, module at line 7),
+        which includes Sidekiq::Worker at line 10. (2)
+        Gitlab::SidekiqConfig::WorkerRouter
+        (lib/gitlab/sidekiq_config/worker_router.rb, class at line 5, global
+        singleton accessor at line 19, route(worker_klass) at line 62); the
+        concern consults it at
+        app/workers/concerns/application_worker.rb:142 — "queue_name =
+        ::Gitlab::SidekiqConfig::WorkerRouter.global.route(self)".
+      verifiedAgainst:
+        - app/workers/concerns/application_worker.rb:7
+        - app/workers/concerns/application_worker.rb:10
+        - app/workers/concerns/application_worker.rb:142
+        - lib/gitlab/sidekiq_config/worker_router.rb:5
+        - lib/gitlab/sidekiq_config/worker_router.rb:19
+        - lib/gitlab/sidekiq_config/worker_router.rb:62
+    scoring:
+      method: ground-truth
+
+  # --- Comprehension (multi-hop, 3+ hops) -----------------------------------
+  - id: gl-comp-workhorse-gitaly-handoff
+    family: comprehension
+    prompt: >-
+      Trace what happens when a git client fetches over HTTP and Rails
+      authorizes the request: (1) in the controller that serves git-over-HTTP
+      (info/refs and upload-pack), name the private method both actions call
+      to produce the authorization response, and the class method it
+      delegates to for the response body; (2) inside that class method, name
+      the key of the attribute block that carries the connection details a
+      downstream reverse proxy needs, and the two calls that populate its
+      address and token; (3) explain which process actually opens the
+      connection those details describe and streams the pack data — is it
+      the Rails process, or another component — and what that implies about
+      where git I/O happens in this architecture.
+    groundTruth:
+      answer: >-
+        (1) In app/controllers/repositories/git_http_controller.rb, info_refs
+        (line 28) and git_upload_pack (line 35) both end in render_ok (defined
+        at lines 144-150), which renders "json:
+        Gitlab::Workhorse.git_http_ok(repository, repo_type, user,
+        action_name, **params)". (2) git_http_ok
+        (lib/gitlab/workhorse.rb:43) builds a GitalyServer block whose
+        address comes from Gitlab::GitalyClient.address(repository.storage)
+        and whose token comes from
+        Gitlab::GitalyClient.token(repository.storage) (lines 56-58). (3)
+        Rails never streams the pack: the JSON response is instructions to
+        GitLab Workhorse, which dials Gitaly itself at that address/token and
+        streams the data. Git I/O happens in Workhorse-to-Gitaly traffic, not
+        in the Rails process — Rails only authorizes and hands over
+        connection details.
+      verifiedAgainst:
+        - app/controllers/repositories/git_http_controller.rb:28
+        - app/controllers/repositories/git_http_controller.rb:35
+        - app/controllers/repositories/git_http_controller.rb:144-150
+        - lib/gitlab/workhorse.rb:43
+        - lib/gitlab/workhorse.rb:56-58
+    scoring:
+      method: ground-truth
+
+  - id: gl-comp-pipeline-chain
+    family: comprehension
+    prompt: >-
+      For CI pipeline creation: (1) name the service class that creates a
+      pipeline and the constant on it that declares the ordered steps a
+      creation runs through; (2) within that sequence, name the step class
+      that evaluates the CI YAML configuration and the processor class it
+      instantiates to do so (with the file each lives in); (3) name the step
+      class later in the sequence that turns the processed configuration
+      into stage/build seeds, the memoized method on it that constructs the
+      seed, and the seed class that method instantiates.
+    groundTruth:
+      answer: >-
+        (1) Ci::CreatePipelineService
+        (app/services/ci/create_pipeline_service.rb) with SEQUENCE declared
+        from line 10. (2) Gitlab::Ci::Pipeline::Chain::Config::Process
+        (listed in SEQUENCE at line 22; defined in
+        lib/gitlab/ci/pipeline/chain/config/process.rb) instantiates
+        ::Gitlab::Ci::YamlProcessor at line 15 of that file;
+        YamlProcessor is defined in lib/gitlab/ci/yaml_processor.rb (class
+        at line 10). (3) Gitlab::Ci::Pipeline::Chain::Seed (listed in
+        SEQUENCE at line 28; defined in
+        lib/gitlab/ci/pipeline/chain/seed.rb), whose memoized pipeline_seed
+        method (lines 43-52) constructs
+        Gitlab::Ci::Pipeline::Seed::Pipeline.new(context, stages_attributes)
+        at line 49; the seed class is defined in
+        lib/gitlab/ci/pipeline/seed/pipeline.rb (class at line 7).
+      verifiedAgainst:
+        - app/services/ci/create_pipeline_service.rb:10
+        - app/services/ci/create_pipeline_service.rb:22
+        - app/services/ci/create_pipeline_service.rb:28
+        - lib/gitlab/ci/pipeline/chain/config/process.rb:15
+        - lib/gitlab/ci/yaml_processor.rb:10
+        - lib/gitlab/ci/pipeline/chain/seed.rb:43-52
+        - lib/gitlab/ci/pipeline/seed/pipeline.rb:7
+    scoring:
+      method: ground-truth
+
+  # --- Change ----------------------------------------------------------------
+  - id: gl-change-workhorse-action-guard
+    family: change
+    prompt: >-
+      The class that builds Workhorse's git-over-HTTP authorization payload
+      raises with "Unsupported action" when handed an action outside its
+      allowed set. Add a pure class-level predicate to that class that
+      reports whether a given action is an allowed git HTTP action, such
+      that callers can pre-check without rescuing. It must stay
+      single-sourced: the predicate consults the existing frozen list of
+      allowed actions rather than introducing a second list or pattern, it
+      must accept the action as either a symbol or a string exactly as the
+      existing guard's coercion does, and the payload builder's guard must
+      go through the new predicate so there is exactly one membership test
+      in the file. Behavior for unsupported actions is unchanged: the
+      builder still raises.
+    scoring:
+      method: rubric
+      rubric:
+        - The new predicate is a pure class-level query on the Workhorse
+          payload class that consults the existing frozen allowed-actions
+          constant; no second list, regexp, or duplicated action names are
+          introduced anywhere.
+        - The predicate accepts symbols and strings, matching the existing
+          guard's to_s coercion, and has no side effects.
+        - The payload builder's unsupported-action guard is routed through
+          the new predicate, leaving exactly one membership test against the
+          constant in the file, and it still raises for unsupported actions
+          with unchanged behavior for all currently allowed ones.
+        - No other Workhorse payload methods (send-data paths, JWT
+          verification) change behavior.
+    touches:
+      - lib/gitlab/workhorse.rb
+      - git-http
+
+  - id: gl-change-workhorse-jwt-freshness
+    family: change
+    prompt: >-
+      The class that verifies the JWT a reverse proxy prepends to internal
+      API requests exposes a verifying method that raises on a bad or stale
+      token. Add a companion Boolean query on the same class that reports
+      whether the request headers carry a currently valid token of that
+      kind: it must reuse the same decoding path and the same issuer and
+      freshness policy the raising method uses (same issuer string, same
+      validity window constant — no second constant and no separately
+      constructed decoder), return true exactly when the raising method
+      would have succeeded, and return false instead of raising for a
+      missing, malformed, expired, or wrongly issued token. The raising
+      method itself must remain unchanged.
+    scoring:
+      method: rubric
+      rubric:
+        - The new method is a Boolean query on the Workhorse class that
+          reuses the existing decode path with the same issuer
+          ('gitlab-workhorse') and the same validity-window constant already
+          used by the raising verification method; no second freshness
+          constant or independently built decoder appears.
+        - It returns true exactly when the existing raising method would
+          succeed, and false (never an exception) for missing, malformed,
+          expired, or wrongly issued tokens — rescue scope is limited to
+          token decoding/validation errors, not blanket exception swallowing.
+        - The existing raising verification method is byte-for-byte
+          behavior-unchanged, and nothing else in the file changes behavior.
+        - The method takes the request headers (as the raising method does)
+          rather than a pre-extracted token, so the header-name knowledge
+          stays in one place.
+    touches:
+      - lib/gitlab/workhorse.rb
+      - internal-api-auth
+
+  # --- Model maintenance ------------------------------------------------------
+  - id: gl-model-object-storage
+    family: model-maintenance
+    prompt: >-
+      The committed .yarramate workspace models several stores whose content
+      can live in object storage (job artifacts and traces, container
+      images) but does not model object storage at all — there is no concept
+      for the uploader framework that decides whether an upload lives on
+      local disk or in a remote object store, nor for the remote store
+      itself. Add the missing concept(s), grounded in the actual source
+      (there is a dedicated module under the uploaders directory that
+      carries the local/remote store decision, store accessors, and
+      per-uploader object-store options), and add the relationship(s)
+      needed to connect them to the existing store concepts already in the
+      workspace (at minimum the job artifacts). Scope it to what the FOSS
+      source shows; do not invent provider-specific backends. Cite the real
+      files/modules you used. The workspace must still pass check, and the
+      generated LikeC4 export must remain valid.
+    scoring:
+      method: deterministic
+      deterministic:
+        expect:
+          - check-pass
+          - likec4-check-pass
+          - catalogue-density-not-worse
+
+  - id: gl-model-outbound-email
+    family: model-maintenance
+    prompt: >-
+      The committed .yarramate workspace models inbound email (a mail
+      ingestion component feeding the application) but nothing models
+      outbound email: there is no concept for the notification-mail surface
+      the application uses to send email to users, even though the source
+      carries a dedicated mailer class hierarchy for it. Add a concept for
+      the outbound notification-mail function or service, grounded in the
+      actual mailer source (there is a central notification mailer class,
+      and a base application mailer it inherits from), and connect it into
+      the existing model (it is behavior the Rails application performs;
+      delivery is deferred through the background-job system already
+      modelled). Cite the real files/classes you used. The workspace must
+      still pass check, and the generated LikeC4 export must remain valid.
+    scoring:
+      method: deterministic
+      deterministic:
+        expect:
+          - check-pass
+          - likec4-check-pass
+          - catalogue-density-not-worse
