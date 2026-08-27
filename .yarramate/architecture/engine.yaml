@@ -655,6 +655,8 @@ concepts:
     supersedes:
       - compile-command
       - view-command
+    distinctFrom:
+      - import-command
   - id: consumer-host
     kind: node
     name: Consumer host
@@ -823,6 +825,56 @@ concepts:
     kind: applicationFunction
     name: Render ArchiMate kind icons
     description: Draws a 14×14 px single-stroke SVG icon per concept kind in the repository's graph, covering 19 kinds using ArchiMate element glyphs as descriptive notation only, with no trademark or conformance claim. Unknown kinds render nothing. Active only under archimate notation mode; falls back to native rendering when notation is native.
+    status: current
+  - id: import-command
+    kind: applicationService
+    name: Import command
+    description: Merges an edited architecture workbook back into the model as an operations batch through the existing apply write path. It adds no write surface of its own, so a workbook edit passes the same atomic compile gate every other write does and a workbook that would produce an uncompilable model is refused whole rather than half written.
+    owner: yarramate-maintainers
+    status: current
+    distinctFrom:
+      - export-command
+  - id: derive-architecture-workbook
+    kind: applicationFunction
+    name: Derive the architecture workbook
+    description: Derives the spreadsheet an architect or FDE actually works in - identity in column A, foreign keys inline with a derived name beside them, and dropdowns drawn from the compiled profile. It takes a projection, so choosing which version to export is an existing query facet rather than a competing flag, and it writes a hidden ancestor so a later import can tell an author's edit from repository drift.
+    owner: yarramate-maintainers
+    status: current
+  - id: architecture-workbook
+    kind: dataObject
+    name: Architecture workbook
+    description: The yarramate/workbook/v1 spreadsheet a reviewer edits and sends back. It is a slice rather than the model - every fact about a subject it carries is present, including anything the named columns do not model, and a subject the projection did not select has no row and cannot be changed by importing the file.
+    owner: yarramate-maintainers
+    status: current
+  - id: merge-edited-workbook
+    kind: applicationFunction
+    name: Merge an edited workbook
+    description: Decides for every changed cell whether it merges or is refused. The workbook's own hidden ancestor is the common baseline, so a field the workspace did not touch merges even after the repository moved on, and only a field moved on both sides is a conflict. A missing row is reported and never actioned, because a row deleted by accident in a spreadsheet has no symptom.
+    owner: yarramate-maintainers
+    status: current
+  - id: workspace-question-catalogue
+    kind: dataObject
+    name: Workspace question catalogue
+    description: Question catalogues a workspace declares in its manifest, additive to the shipped one. It decides who may author a question and when - a consultant adds one true of a single engagement at any point, versioned with the model and reviewed as an ordinary diff, instead of editing a product-wide catalogue that is not true of every engagement or keeping the question outside the interview loop entirely.
+    owner: yarramate-maintainers
+    status: current
+  - id: compose-question-catalogues
+    kind: applicationFunction
+    name: Compose question catalogues
+    description: Composes the shipped catalogue with the ones a workspace carries into the single catalogue evaluation sees. A wave is declared exactly once and any catalogue may contribute questions to it, and a question id is qualified as catalogue#question carrying no version, so a routine catalogue version bump strands no judgment an adopter has stored against one.
+    owner: yarramate-maintainers
+    status: current
+  - id: workbook-engine
+    kind: compiler-module
+    name: Workbook engine
+    description: Writes and reads the xlsx container by hand, with no dependency. It is held to runtime neutrality - no Node builtins and no compiler at runtime - which is what lets a host generate a workbook inside a Cloudflare Worker. Writing is synchronous so it cannot infect a synchronous store; reading is asynchronous because a workbook a person saved from Excel comes back deflated and inflation is only offered as a stream.
+    owner: yarramate-maintainers
+    status: current
+  - id: interrogation-engine
+    kind: compiler-module
+    name: Interrogation engine
+    description: Evaluates a question catalogue against the compiled graph and reports what is still open, recomputed statelessly on every run. It is the half an adopter embeds rather than authors - the engine is ours and the questions are theirs - which is why it is published as its own runtime-neutral entry and runs inside a consumer's Durable Object on every model write.
+    owner: yarramate-maintainers
     status: current
 relationships:
   - id: contract-manifest-realizes-published-formats
@@ -1881,3 +1933,83 @@ relationships:
     kind: realization
     from: relationship-table
     to: relationship-policy-catalogue
+  - id: cli-provides-import
+    kind: implements
+    from: cli
+    to: import-command
+    status: current
+  - id: export-command-serves-workbook-derivation
+    kind: serving
+    from: export-command
+    to: derive-architecture-workbook
+    description: export xlsx is a derivation mode of the one export verb, not a verb of its own.
+    status: current
+  - id: workbook-derivation-reads-graph
+    kind: access
+    from: derive-architecture-workbook
+    to: semantic-graph
+    mode: read
+    status: current
+  - id: workbook-derivation-produces-workbook
+    kind: access
+    from: derive-architecture-workbook
+    to: architecture-workbook
+    mode: write
+    status: current
+  - id: import-command-serves-workbook-merge
+    kind: serving
+    from: import-command
+    to: merge-edited-workbook
+    status: current
+  - id: workbook-merge-reads-workbook
+    kind: access
+    from: merge-edited-workbook
+    to: architecture-workbook
+    mode: read
+    status: current
+  - id: workbook-merge-produces-operations
+    kind: access
+    from: merge-edited-workbook
+    to: apply-operations
+    mode: write
+    description: The merge emits operations rather than writing YAML, so an import inherits the atomic gate and leaves untouched documents byte-identical.
+    status: current
+  - id: design-command-serves-catalogue-composition
+    kind: serving
+    from: design-command
+    to: compose-question-catalogues
+    status: current
+  - id: catalogue-composition-reads-shipped-catalogue
+    kind: access
+    from: compose-question-catalogues
+    to: question-catalogue
+    mode: read
+    status: current
+  - id: catalogue-composition-reads-workspace-catalogue
+    kind: access
+    from: compose-question-catalogues
+    to: workspace-question-catalogue
+    mode: read
+    status: current
+  - id: workbook-engine-derives-workbook
+    kind: assignment
+    from: workbook-engine
+    to: derive-architecture-workbook
+    status: current
+  - id: workbook-engine-merges-workbook
+    kind: assignment
+    from: workbook-engine
+    to: merge-edited-workbook
+    status: current
+  - id: interrogation-engine-composes-catalogues
+    kind: assignment
+    from: interrogation-engine
+    to: compose-question-catalogues
+    status: current
+  - id: import-command-reads-workbook
+    kind: access
+    from: import-command
+    to: architecture-workbook
+    mode: read
+    description: The command reads the file a reviewer sends back; the merge reads the sheets inside it.
+    status: current

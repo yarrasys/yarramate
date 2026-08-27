@@ -929,3 +929,35 @@ observations:
     evidence:
       uri: repo:src/reconciliation.ts
       message: A negative claim held up to failure - evidence evaluation and reconciliation have no write path and no runtime imports that could reach one, so observations cannot silently author intent. The searches that would find such a path come back empty; either one matching is this observation contradicted.
+  - subject: import-command
+    result: confirmed
+    evidence:
+      uri: repo:src/import-command.ts
+  - subject: derive-architecture-workbook
+    result: confirmed
+    evidence:
+      uri: repo:src/workbook.ts
+  - subject: architecture-workbook
+    result: confirmed
+    evidence:
+      uri: repo:src/workbook-xlsx.ts
+  - subject: merge-edited-workbook
+    result: confirmed
+    evidence:
+      uri: repo:src/workbook-merge.ts
+  - subject: workspace-question-catalogue
+    result: confirmed
+    evidence:
+      uri: repo:src/catalogue-sources.ts
+  - subject: compose-question-catalogues
+    result: confirmed
+    evidence:
+      uri: repo:src/interrogate-command.ts
+  - subject: workbook-engine
+    result: confirmed
+    evidence:
+      uri: repo:src/workbook-xlsx.ts
+  - subject: interrogation-engine
+    result: confirmed
+    evidence:
+      uri: repo:src/interrogate-command.ts
