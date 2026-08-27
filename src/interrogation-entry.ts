@@ -19,6 +19,7 @@ export {
   type ComposedCatalogue,
   type CatalogueCondition,
   type CatalogueEvidenceObservation,
+  type CataloguePatternMembership,
   type CatalogueLoadResult,
   type CatalogueQuestion,
   type CatalogueSelector,

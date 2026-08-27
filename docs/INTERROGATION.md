@@ -66,6 +66,22 @@ questions. Each question binds:
   instead of re-deriving the shape from a catalogue copy (ADR 0110);
   `has-any-subject` (the workspace holds at least one concept — the guard a
   late wave needs to say "only once the model has substance"; see ADR 0125),
+  `fills-pattern-slot` (the subject is bound into a slot of a pattern
+  instance — the membership half of pattern interrogation, ADR 0131. A
+  GUARD in the #334 sense: it says a question applies here, and an
+  ordinary condition beside it says what would answer it. Bare, it means
+  bound into any slot of any instance; optional `patternKinds` narrows by
+  the pattern's kind identity — never a document path, the ADR 0129
+  naming — and optional `slots` by part name. Instance-level questions
+  need no condition at all: a pattern is a kind, and an ordinary
+  kind-scoped question already sees every instance. Membership is compile
+  CONTEXT rather than graph content, because `parts` binds subjects and
+  the expansion stays indistinguishable from a hand-authored graph
+  (#268); evaluation reads it from the compilation's
+  `patternMemberships`, and a caller of the pure engine that passes none
+  gets a condition that never holds — participation unknown, not absent,
+  the same rule `unchallenged-evidence` applies to a missing overlay. The
+  CLI verbs, the design interview, and the embedded pane all thread it),
 - a **scope** — `workspace` (asked once) or `subject` (asked per matching
   subject, selected by kinds, statuses, and documents, with `descendants`
   kind matching by default so profile-derived kinds satisfy a catalogue

@@ -290,6 +290,11 @@ observations:
     evidence:
       uri: repo:src/artifact-coverage.ts
       message: deriveArtifactCoverage enumerates the declared scope from the manifest's git toplevel; the set difference itself is assessArtifactCoverage in src/reconciliation.ts
+  - subject: bind-pattern-parts
+    result: confirmed
+    evidence:
+      uri: repo:src/compiler.ts
+      message: patternInstances binds parts and mints wiring; the memberships it emits as compile context are read by fills-pattern-slot in src/interrogate-command.ts (ADR 0131)
   - subject: diagnostic-result
     result: confirmed
     evidence:

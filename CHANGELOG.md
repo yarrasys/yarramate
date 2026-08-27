@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+- **Added.** A catalogue can ask about pattern membership (#346, ADR 0131).
+  The new `fills-pattern-slot` trigger condition holds where a subject is
+  bound into a slot of a pattern instance, narrowed by optional
+  `patternKinds` (the pattern's kind identity, never a document path) and
+  `slots` (part names). It is a guard in the #334 sense: it says a question
+  applies, and an ordinary condition beside it says what would answer it.
+  Instance-level pattern questions need no condition at all — a pattern is
+  a kind, and kind-scoped questions already see every instance.
+
+  Membership survives the compile as CONTEXT, not graph content: a
+  successful compilation now carries `patternMemberships` (one entry per
+  bound slot: member, slot, instance, pattern kind), and the serialized
+  graph is unchanged by a byte — expansion stays indistinguishable from a
+  hand-authored graph (#268). `evaluateCatalogue` takes the memberships as
+  a sixth optional parameter; every CLI verb, the design interview, and
+  the embedded pane thread it. A direct consumer of the pure engine that
+  passes none gets a condition that never holds — participation unknown,
+  not absent, the same rule `unchallenged-evidence` applies to a missing
+  overlay. A mistyped `patternKinds` entry is refused with the existing
+  `YM914`.
+
 - **Added.** Reconcile reports the artifacts no observation claims (#175,
   ADR 0130). A workspace manifest may declare an optional `coverage` list of
   glob patterns; `reconcile` resolves them against the root of the git

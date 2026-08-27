@@ -396,8 +396,34 @@ export interface ResolvedProfileContext {
   ) => ReadonlySet<RelationshipKind> | undefined
 }
 
+/**
+ * One slot of one pattern instance, and the subject bound into it
+ * (ADR 0131). Compile CONTEXT, not graph content: `parts` binds existing
+ * subjects (#268), the binding is consumed during expansion, and the graph
+ * stays indistinguishable from a hand-authored one — so the compile result
+ * is the only place this fact survives. `pattern` is the kind identity
+ * (`yarrasys/api-led@1.0#api`), the naming ADR 0129 chose: identity that
+ * travels, never a document path.
+ */
+export interface PatternMembership {
+  readonly member: string
+  readonly slot: string
+  readonly instance: string
+  readonly pattern: string
+}
+
 export type CompilationResult =
-  | { readonly ok: true; readonly graph: SemanticGraph }
+  | {
+      readonly ok: true
+      readonly graph: SemanticGraph
+      /**
+       * Optional in the type although the compiler always emits it: this
+       * shape is published, and a required addition is free for readers
+       * and a break for constructors. Read it as `?? []` — and thread it
+       * to `evaluateCatalogue`, or `fills-pattern-slot` never fires.
+       */
+      readonly patternMemberships?: readonly PatternMembership[]
+    }
   | { readonly ok: false; readonly diagnostics: readonly Diagnostic[] }
 
 export type ContextualCompilationResult =
@@ -405,6 +431,7 @@ export type ContextualCompilationResult =
       readonly ok: true
       readonly graph: SemanticGraph
       readonly profileContext: ResolvedProfileContext
+      readonly patternMemberships?: readonly PatternMembership[]
     }
 
   | { readonly ok: false; readonly diagnostics: readonly Diagnostic[] }
@@ -3309,8 +3336,30 @@ function compileWorkspaceResolved(
     return diagnosticFailure(diagnostics)
   }
 
+  // Membership survives the compile as context (ADR 0131): one entry per
+  // bound slot, sorted so the emission is deterministic. Always emitted,
+  // possibly empty — an empty array is a workspace with no bindings, while
+  // an evaluation missing the array is a caller that never looked.
+  const patternMemberships: PatternMembership[] = patternInstances
+    .flatMap(({ instance, pattern, bindings }) =>
+      [...bindings].map(([slot, member]) => ({
+        member,
+        slot,
+        instance,
+        pattern: pattern.kindIdentity,
+      })),
+    )
+    .sort(
+      (left, right) =>
+        left.member.localeCompare(right.member) ||
+        left.pattern.localeCompare(right.pattern) ||
+        left.instance.localeCompare(right.instance) ||
+        left.slot.localeCompare(right.slot),
+    )
+
   return {
     ok: true,
+    patternMemberships,
     profileContext: {
       conceptKindLineages: immutableMap(
         [...conceptKindByIdentity]
@@ -3421,7 +3470,13 @@ export function compileWorkspace(
   sources: readonly WorkspaceSource[],
 ): CompilationResult {
   const result = compileWorkspaceResolved(parseSources(sources).parsed)
-  return result.ok ? { ok: true, graph: result.graph } : result
+  return result.ok
+    ? {
+        ok: true,
+        graph: result.graph,
+        patternMemberships: result.patternMemberships,
+      }
+    : result
 }
 
 export const compileWorkspaceWithProfileContext = (

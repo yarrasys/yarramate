@@ -860,7 +860,13 @@ concepts:
   - id: pattern-document
     kind: dataObject
     name: Pattern document
-    description: "The yarramate/pattern/v1 document: the shape a concept kind promises, and the wiring the compiler mints between an instance and the parts it binds (ADR 0123). Parts BIND existing subjects rather than minting them. Declared here by the coverage work-down; the behavior that loads and expands it is not yet modelled, which #346's slot-visibility question will force."
+    description: "The yarramate/pattern/v1 document: the shape a concept kind promises, and the wiring the compiler mints between an instance and the parts it binds (ADR 0123). Parts BIND existing subjects rather than minting them, and the expanded graph stays indistinguishable from a hand-authored one."
+    owner: yarramate-maintainers
+    status: current
+  - id: bind-pattern-parts
+    kind: applicationFunction
+    name: Bind pattern parts
+    description: "Binds each instance's parts to the declared subjects its slots name, mints the pattern's wiring between them, and emits the membership as compile context (ADR 0131) - which slot of which instance a subject fills. Membership never becomes a graph claim, because an author cannot write one and the expansion stays indistinguishable from a hand-authored graph; the interview's fills-pattern-slot guard is what reads it."
     owner: yarramate-maintainers
     status: current
   - id: workspace-question-catalogue
@@ -1061,6 +1067,20 @@ relationships:
     kind: assignment
     from: compiler
     to: validate-semantic-claims
+  - id: compiler-binds-pattern-parts
+    kind: assignment
+    from: compiler
+    to: bind-pattern-parts
+  - id: pattern-binding-reads-pattern-document
+    kind: access
+    from: bind-pattern-parts
+    to: pattern-document
+    mode: read
+  - id: pattern-binding-writes-graph
+    kind: access
+    from: bind-pattern-parts
+    to: semantic-graph
+    mode: write
   - id: cli-validates-adapter-mapping
     kind: assignment
     from: cli

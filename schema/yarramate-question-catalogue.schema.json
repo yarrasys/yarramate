@@ -526,6 +526,36 @@
         {
           "type": "object",
           "additionalProperties": false,
+          "description": "The subject fills a slot of a pattern instance (ADR 0131). A guard, per the #334 split: it says a question applies here, and an ordinary condition beside it says what would answer it. Bare, it means bound into any slot of any instance; patternKinds narrows by the pattern's kind identity (never a document path, ADR 0129) and slots by part name. Evaluation reads pattern memberships from the compilation; a caller that does not supply them gets a condition that never holds.",
+          "required": [
+            "condition"
+          ],
+          "properties": {
+            "condition": {
+              "const": "fills-pattern-slot"
+            },
+            "patternKinds": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/qualifiedKind"
+              }
+            },
+            "slots": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
           "description": "The workspace's evidence overlay records observations and every one is a frictionless confirmation: no contradicted, unknown, or not-observed result, and no recorded search (ADR 0107). A discovery that never records anything but success never tested a claim it might fail. The one condition that reads the evidence overlay rather than the compiled graph; where the evaluating consumer supplies no overlay it stays quiet (ADR 0120).",
           "required": [
             "condition"

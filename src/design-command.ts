@@ -340,6 +340,7 @@ export function runDesignCommand(
       compilation.profileContext,
       evidenceObservations,
       composed.composed.catalogues,
+      compilation.patternMemberships,
     )
     // Keyed by the QUALIFIED id, matching what the report now carries.
     const askPlainById = new Map(

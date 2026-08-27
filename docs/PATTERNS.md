@@ -224,6 +224,18 @@ Generating an unbound part rather than requiring it to exist is also left
 open. An instance that binds nothing is exactly the greenfield case, and
 nothing in these decisions prevents a later phase from minting one.
 
-Generating an unbound part rather than requiring it to exist is also left
-open. An instance that binds nothing is exactly the greenfield case, and
-nothing in this decision prevents a later phase from minting one.
+## The interview half
+
+A pattern's questions are the most reusable questions there are — most of
+what a pattern IS, expressed as knowledge rather than structure (#346).
+Both halves are expressible:
+
+- **Instance-level** needs no special condition: a pattern is a kind, so
+  an ordinary question scoped to `yarrasys/api-led@1.0#api` asks every
+  instance.
+- **Member-level** uses the `fills-pattern-slot` trigger condition
+  (ADR 0131): a guard that holds where a subject is bound into a slot,
+  narrowed by `patternKinds` and `slots`. Membership survives the compile
+  as context (`patternMemberships` on the compilation result), never as
+  graph claims — the expansion stays indistinguishable from a
+  hand-authored graph. See [docs/INTERROGATION.md](INTERROGATION.md).
