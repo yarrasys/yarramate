@@ -328,6 +328,20 @@ sign-off.
 absent rather than failing the mount: the overlay is a garnish on the model,
 and a model frame must not be blocked by it.
 
+`catalogue` also takes the composed SET a workspace carries (#369) — an array
+of `{ path, source }` — evaluated together under the ADR 0129 composition
+rules, each question qualified by its own catalogue. A host attaching
+per-project catalogue packs beside its base interview hands the mount the
+same set its other question surfaces derive from, so the pane and the host's
+own Open-items view ask the same interview over the same files:
+
+```ts
+catalogue: [
+  { path: 'catalogues/consulting.yaml', source: baseText },
+  { path: 'questions/mulesoft-pack.yaml', source: packText },
+],
+```
+
 `dismissed` is what the host has already dealt with. A supplied catalogue
 alone does not cover this — the editor evaluates the catalogue itself and
 cannot know that a reviewer set a question aside, with a reason, recorded

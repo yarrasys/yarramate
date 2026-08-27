@@ -83,8 +83,17 @@ export interface LocalHostOptions {
    * already takes: a catalogue that does not load leaves the overlay absent
    * rather than failing the mount, because the overlay is a garnish on the
    * model and a model frame must not be blocked by it.
+   *
+   * One catalogue, or the composed SET a workspace carries (#369). The
+   * overlay beneath has taken the array since ADR 0129 made composition the
+   * qualification point; this option was the last single-width seam between
+   * a host's composed interview and the pane, and a pane evaluating fewer
+   * catalogues than the host's own question surfaces is a disagreement with
+   * no symptom. A single source stays source-compatible.
    */
-  readonly catalogue?: { readonly path: string; readonly source: string }
+  readonly catalogue?:
+    | { readonly path: string; readonly source: string }
+    | readonly { readonly path: string; readonly source: string }[]
   /**
    * Questions this host has already dealt with and does not want asked again
    * (#328).

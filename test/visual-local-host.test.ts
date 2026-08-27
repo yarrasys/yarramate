@@ -119,9 +119,14 @@ const openHost = (
     'architecture/main.yaml': document,
     'projections/apps.yaml': projection,
   },
+  extra: {
+    readonly catalogue?:
+      | { readonly path: string; readonly source: string }
+      | readonly { readonly path: string; readonly source: string }[]
+  } = {},
 ) => {
   const store = memoryStore(files)
-  const host = createLocalHost({ store, workspace })
+  const host = createLocalHost({ store, workspace, ...extra })
   const frames: VisualServerFrame[] = []
   const stop = host.open({
     frame: (frame) => frames.push(frame),
@@ -170,6 +175,49 @@ describe('an editor over a store, with no server', () => {
     expect(overlay!.workspace.length).toBeGreaterThan(0)
     // This thin fixture leaves subject-scoped questions open somewhere.
     expect(Object.keys(overlay!.subjects).length).toBeGreaterThan(0)
+  })
+
+  it('evaluates the composed catalogue SET a host hands the mount (#369)', () => {
+    // The overlay beneath took the array since ADR 0129; the option was the
+    // last single-width seam, and a pane evaluating fewer catalogues than
+    // the host's Open-items surface is a disagreement with no symptom.
+    const pack = (id: string) =>
+      `format: yarramate/question-catalogue/v1
+id: ${id}
+version: "0.1"
+profile: yarramate/core@0.1
+waves:
+  - id: ${id}-wave
+    name: ${id}
+questions:
+  - id: goal-missing
+    wave: ${id}-wave
+    scope: workspace
+    trigger:
+      - condition: no-subject-of-kind
+        kinds:
+          - yarramate/core@0.1#goal
+    question: Where is the goal, per ${id}?
+    materiality: M
+    resolution: R
+    authority: human
+`
+    const { frames } = openHost(undefined, {
+      catalogue: [
+        { path: 'questions/alpha.yaml', source: pack('alpha') },
+        { path: 'questions/beta.yaml', source: pack('beta') },
+      ],
+    })
+    const ready = frames[0]
+    expect(ready?.kind).toBe('ready')
+    if (ready?.kind !== 'ready') return
+    const overlay = ready.snapshot.model.interrogation
+    expect(overlay).toBeDefined()
+    // Both packs ask, under their own qualified identities: two catalogues
+    // may carry the same local id and remain two questions (ADR 0129).
+    expect(
+      overlay!.workspace.map(({ questionId }) => questionId).sort(),
+    ).toEqual(['alpha#goal-missing', 'beta#goal-missing'])
   })
 
   it('counts a view by its SUBJECTS, not by its match set', () => {
