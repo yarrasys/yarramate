@@ -231,6 +231,10 @@ describe('the workbook carries every claim', () => {
       '',
       '',
       'current',
+      // Where it lives. An `apply` operation targets a document path, so
+      // without this a workbook could say what a subject is and not where to
+      // write it back.
+      'main.yaml',
     ])
   })
 
@@ -240,7 +244,7 @@ describe('the workbook carries every claim', () => {
     const tomorrow = rows.find((row) => row[0] === 'tomorrow')
     expect(tomorrow?.[1]).toBe('yarramate/core@0.1#plateau')
     expect(tomorrow?.[2]).toBe('target')
-    expect(tomorrow?.slice(5)).toEqual(['today', 'Today'])
+    expect(tomorrow?.slice(5)).toEqual(['today', 'Today', 'main.yaml'])
     // A state is a concept, and would otherwise appear twice.
     expect(
       named(sheets, '01 Concepts')
