@@ -13,8 +13,11 @@ import {
   permittedRelationshipKinds,
   relationshipPermitted,
   sourceKindsPermitting,
+  tableKnowsConceptKind,
+  tableKnowsRelationshipKind,
   targetKindsPermitting,
 } from '../src/relationship-matrix.js'
+import { compileWorkspaceWithProfileContext } from '../src/compiler.js'
 // The generator is plain ESM with no build step; importing it here is what
 // lets the test re-run it against the vendored XML.
 import { generate } from '../scripts/generate-archimate-relationships.mjs'
@@ -185,5 +188,89 @@ describe('the aspect shadow the table casts', () => {
     )
     expect(targetKindsPermitting('realization', 'gap').size).toBeGreaterThan(0)
     expect(targetKindsPermitting('realization', 'gap').has('plateau')).toBe(false)
+  })
+
+  it('keeps "the table forbids this" apart from "the table has never heard of it"', () => {
+    // Both answer with an empty set, and a caller that reads empty as
+    // forbidden turns a gate into a false accuser on a vocabulary it simply
+    // cannot judge. The predicates are what let a caller tell them apart.
+    //
+    // The cast below is the whole point rather than test convenience: the
+    // signature already refuses an unknown kind, so this can only be reached
+    // by asserting past it, which is exactly how a caller holding a bare
+    // string from a lineage map used to reach it. The predicates are type
+    // guards so that route is closed at the type level too.
+    expect(sourceKindsPermitting('realization', 'driver').size).toBe(0)
+    expect(
+      sourceKindsPermitting(
+        'realization',
+        'notAnArchiMateKind' as unknown as Parameters<
+          typeof sourceKindsPermitting
+        >[1],
+      ).size,
+    ).toBe(0)
+    expect(tableKnowsConceptKind('driver')).toBe(true)
+    expect(tableKnowsConceptKind('notAnArchiMateKind')).toBe(false)
+    expect(tableKnowsRelationshipKind('realization')).toBe(true)
+    expect(tableKnowsRelationshipKind('hosting')).toBe(false)
+  })
+
+  it('gives every kind an extension profile can declare a row in the table', () => {
+    // YM916 resolves an authored kind to its core ancestor and then asks the
+    // table about it, so it rests on a guarantee this module does not own:
+    // `parent` is required on every declared kind and resolves to a core
+    // ancestor, making a lineage head always a table kind. If that ever
+    // stopped holding, the gate would start reporting unjudgeable kinds as
+    // forbidden rather than passing over them. Pinned here so the change
+    // that broke it would say so.
+    const compiled = compileWorkspaceWithProfileContext([
+      {
+        path: 'profiles/development.yaml',
+        source: readFileSync(
+          new URL(
+            '../.yarramate/profiles/yarramate-development.yaml',
+            import.meta.url,
+          ),
+          'utf8',
+        ),
+      },
+      {
+        path: 'architecture/main.yaml',
+        source:
+          'format: yarramate/v1\n' +
+          'id: main\n' +
+          'profile: yarramate/development@1.0\n' +
+          'concepts:\n' +
+          '  - id: engine\n' +
+          '    kind: compiler-module\n' +
+          '    name: Engine\n' +
+          '  - id: source\n' +
+          '    kind: repository-file\n' +
+          '    name: src/engine.ts\n' +
+          'relationships:\n' +
+          '  - id: source-implements-engine\n' +
+          '    kind: implements\n' +
+          '    from: source\n' +
+          '    to: engine\n',
+      },
+    ])
+    if (!compiled.ok) throw new Error('self-model profile fixture does not compile')
+    const headOf = (lineage: readonly string[], identity: string): string => {
+      const head = lineage[0] ?? identity
+      return head.slice(head.indexOf('#') + 1)
+    }
+    const strays: string[] = []
+    for (const [identity, lineage] of compiled.profileContext.conceptKindLineages) {
+      if (!tableKnowsConceptKind(headOf(lineage, identity))) strays.push(identity)
+    }
+    for (const [identity, lineage] of compiled.profileContext
+      .relationshipKindLineages) {
+      if (!tableKnowsRelationshipKind(headOf(lineage, identity))) strays.push(identity)
+    }
+    expect(strays).toEqual([])
+    // Not vacuous: the fixture really does load kinds beyond the core set.
+    expect(compiled.profileContext.conceptKindLineages.size).toBeGreaterThan(
+      CORE_CONCEPT_KIND_ORDER.length,
+    )
   })
 })

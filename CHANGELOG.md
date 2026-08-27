@@ -20,7 +20,15 @@
   editor, which no test in any repository can reach. **Breaking for a
   catalogue carrying the defect**, which will now be refused where it
   previously loaded; the remedies refused were never authorable. Nothing is
-  reported without a compiled workspace, matching `YM914`'s narrowness.
+  reported without a compiled workspace, matching `YM914`'s narrowness, and
+  every ambiguity resolves toward silence rather than toward blame: an
+  unresolvable kind, a partially unresolvable counterpart list, a
+  both-directions trigger, and a kind the relationship table has no row for
+  are all passed over. That last one is asked explicitly rather than
+  assumed, because every table query answers an absent kind with an empty
+  set, which is indistinguishable from "forbidden" — the empty-set
+  conflation, in the one place where mistaking it turns a gate into a false
+  accuser.
 
 - **Fixed.** A catalogue question that no model could ever answer is now
   refused by the test suite. A `missing-relationship` trigger asks its

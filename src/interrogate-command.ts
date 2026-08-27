@@ -13,6 +13,8 @@ import {
 import { nearDuplicateIndex } from './subject-identity.js'
 import {
   sourceKindsPermitting,
+  tableKnowsConceptKind,
+  tableKnowsRelationshipKind,
   targetKindsPermitting,
   type CoreConceptKindId,
 } from './relationship-matrix.js'
@@ -1137,7 +1139,13 @@ interface UnauthorableOffer {
 // (ADR 0097); a core kind is its own lineage head. This is also why
 // `kindMatching: descendants` needs no special handling: a descendant shares
 // its ancestor's row and column, so checking the named kind covers them all.
-const coreKindOf = (
+// A kind the table has no row for answers every query with an empty set,
+// which reads exactly like "forbidden". The guards keep the two apart, so a
+// vocabulary the table cannot judge is passed over in silence rather than
+// accused - the direction every ambiguity here resolves in. They are the
+// reason nothing below casts: the typed queries are reached through the
+// check rather than around it.
+const localKindOf = (
   kind: string,
   lineages: ReadonlyMap<string, readonly string[]>,
 ): string | undefined => {
@@ -1145,6 +1153,24 @@ const coreKindOf = (
   if (lineage === undefined) return undefined
   const identity = lineage[0] ?? kind
   return identity.slice(identity.indexOf('#') + 1)
+}
+
+const coreConceptKindOf = (
+  kind: string,
+  lineages: ReadonlyMap<string, readonly string[]>,
+): CoreConceptKindId | undefined => {
+  const local = localKindOf(kind, lineages)
+  return local !== undefined && tableKnowsConceptKind(local) ? local : undefined
+}
+
+const coreRelationshipKindOf = (
+  kind: string,
+  lineages: ReadonlyMap<string, readonly string[]>,
+): RelationshipKind | undefined => {
+  const local = localKindOf(kind, lineages)
+  return local !== undefined && tableKnowsRelationshipKind(local)
+    ? local
+    : undefined
 }
 
 /**
@@ -1185,7 +1211,7 @@ const unauthorableOffers = (
 ): readonly UnauthorableOffer[] => {
   const found: UnauthorableOffer[] = []
   const conceptCore = (kind: string) =>
-    coreKindOf(kind, profileContext.conceptKindLineages)
+    coreConceptKindOf(kind, profileContext.conceptKindLineages)
   for (const [questionIndex, question] of catalogue.questions.entries()) {
     const subjectKinds = question.subjects?.kinds ?? []
     if (subjectKinds.length === 0) continue
@@ -1217,7 +1243,7 @@ const unauthorableOffers = (
         for (const [kindIndex, relationshipKind] of (
           trigger.kinds ?? []
         ).entries()) {
-          const relationship = coreKindOf(
+          const relationship = coreRelationshipKindOf(
             relationshipKind,
             profileContext.relationshipKindLineages,
           )
@@ -1225,18 +1251,12 @@ const unauthorableOffers = (
           const authorable = directions.some((direction) => {
             const opposite =
               direction === 'incoming'
-                ? sourceKindsPermitting(
-                    relationship as RelationshipKind,
-                    subject as CoreConceptKindId,
-                  )
-                : targetKindsPermitting(
-                    relationship as RelationshipKind,
-                    subject as CoreConceptKindId,
-                  )
+                ? sourceKindsPermitting(relationship, subject)
+                : targetKindsPermitting(relationship, subject)
             return counterparts === undefined
               ? opposite.size > 0
-              : counterparts.some((kind) =>
-                  opposite.has(kind as CoreConceptKindId),
+              : counterparts.some(
+                  (kind) => kind !== undefined && opposite.has(kind),
                 )
           })
           if (authorable) continue
