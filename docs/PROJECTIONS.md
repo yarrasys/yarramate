@@ -98,10 +98,27 @@ query into a transitive reference closure.
 
 Selectors are portable by default. A well-formed subject, document, kind,
 owner, or constraint identity that is absent from the current graph
-contributes no matches and is not a validation error. This supports partial
+contributes no matches and is not an evaluation error. This supports partial
 models and reuse across repositories without weakening schema validation.
 Explicit subjects are useful for deliberately bounded contexts that should
 not expand merely because their source document gains another concept.
+
+**Portability is about evaluation, and it is not a licence for a typo in your
+own repository.** `check` resolves the selectors of every projection the
+workspace manifest DECLARES, and refuses one naming something the model does
+not have (YM921, ADR 0128). A mistyped state selects no state, which selects
+no subject, which writes a clean empty artifact and exits 0; the failure is
+silent and the artifact reaches whoever asked for it.
+
+The two hold together because they are about different documents. A projection
+in this workspace's manifest is this repository's own document and is checked
+against this repository's model. A projection handed to `ask` or `export` as a
+path, including one written for another repository, is evaluated and never
+reference-checked, so it still degrades to no matches rather than to an error.
+
+The check is referential, not emptiness. A query whose every name resolves and
+which selects nothing is not refused: an architecture state nobody has
+populated yet is empty, correctly.
 
 `title` and `description` are presentation hints. They do not affect selection
 or carry semantic authority.

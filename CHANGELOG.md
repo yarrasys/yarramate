@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- **Added.** `check` resolves the references in a projection query (ADR 0128,
+  YM921). A query naming a state, subject, document, kind, owner or constraint
+  the workspace does not have is refused, and the diagnostic suggests the near
+  miss: `Projection query \`states\` names "target-stat" ... Did you mean
+  "target-state"?`
+
+  **Referential, not emptiness.** A query whose every name resolves and which
+  selects nothing is NOT refused. An architecture state nobody has populated
+  yet is empty, correctly, and asking about it is a real question. The
+  mechanism is a dangling reference, so the check is for a dangling reference;
+  the symptom was an empty file, and a detector shaped like the symptom would
+  have refused honest queries too.
+
+  Previously a mistyped selector produced a clean empty artifact and exit 0
+  from every export kind, because `check` validated a projection against its
+  schema and never against the model. `owners` and `constraints` are included:
+  they look like free text and are refs to concepts, which the compiler proves
+  by refusing an unresolved owner with YM304.
+
 - **Added.** `yarramate/workbook/import`, a published subpath carrying the half
   that READS a workbook back: `readWorkbook`, `baselineSheets`, `mergeWorkbook`,
   `operationsFrom` and `operationsDocument`. 1.6.0 published the writer only, so
