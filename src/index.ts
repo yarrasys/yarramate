@@ -69,6 +69,11 @@ export {
 } from './reconciliation.js'
 export { deriveAttestationStaleness } from './attestation-staleness.js'
 export {
+  deriveArtifactCoverage,
+  type ArtifactCoverage,
+  type CoverageScopePattern,
+} from './artifact-coverage.js'
+export {
   buildRtm,
   renderRtmMarkdown,
   type RequirementsTraceabilityMatrix,

@@ -34,7 +34,10 @@ not by itself fail Core validation, and confirmation is not approval.
 
 The `evidence.uri` value is opaque to YarraMate Core. Its provider owns URI
 resolution and external validity. An optional non-empty message may explain
-the observation; arbitrary provider metadata is not accepted.
+the observation; arbitrary provider metadata is not accepted. One syntactic
+reading is the exception (ADR 0130): artifact coverage, below, compares
+`repo:<path>` locators against a declared scope as strings — still without
+resolving, opening, or validating anything a locator points at.
 
 ## Value observations
 
@@ -208,6 +211,39 @@ the report says so instead of letting the gap pass as verified.
 
 A finding is advisory evidence, not a proposed replacement claim, validation
 error, CI verdict, or authorization to modify the native model.
+
+## Artifact coverage
+
+Unobserved subjects answer only half of the coverage question: they report
+declared intent no observation supports, and nothing reported code the model
+never mentions at all (#175, ADR 0130). A workspace manifest may therefore
+declare a `coverage` list of glob patterns naming the artifacts the model
+intends to cover:
+
+```yaml
+coverage:
+  - src/**/*.ts
+  - schema/*.json
+```
+
+`reconcile` — only `reconcile` — resolves the patterns against the root of
+the git repository the manifest lives in. An artifact is any selected file
+git can see there: tracked, or untracked and not ignored. An observation
+claims an artifact when its locator is `repo:<path>`, with any `#fragment`
+stripped; a locator naming a directory claims everything beneath it; a
+locator in any other scheme claims nothing. The summary counts
+`artifactsInScope` and `unclaimedArtifacts` exactly when coverage was
+assessed, and a positive count lists the paths in a top-level
+`unclaimedArtifacts` array, sorted, beside a `coverageScope` echo of the
+declared patterns.
+
+When coverage was not assessed — no scope declared, or no git repository —
+the report says why in `notes` rather than staying silent, and a declared
+pattern that selects no artifact gets a note naming it: a dead glob is
+indistinguishable from a typo. An unclaimed artifact is absence, never
+accusation: no finding is fabricated, and `check --strict` does not read
+the list — the same line unobserved subjects and unobserved expectations
+hold.
 
 ## Stale attestations
 

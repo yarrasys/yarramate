@@ -44,6 +44,10 @@
     },
     "contracts": {
       "$ref": "#/$defs/patterns"
+    },
+    "coverage": {
+      "description": "Glob patterns naming the artifacts the model intends to cover (#175, ADR 0130). NOT a document category: nothing here is loaded or compiled. reconcile resolves the patterns against the root of the git repository the manifest lives in and reports every selected file no evidence observation claims. Opt-in; absent means coverage is not assessed and the reconciliation report says so.",
+      "$ref": "#/$defs/patterns"
     }
   },
   "$defs": {

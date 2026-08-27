@@ -336,11 +336,10 @@ evidence:
         { id: 'delivery-api', type: 'concept' },
         { id: 'delivery-data', type: 'concept' },
       ])
-      expect(
-        JSON.parse(
-          run(['reconcile', '.yarramate/workspace.yaml']),
-        ),
-      ).toMatchObject({
+      const reconciliationReport = JSON.parse(
+        run(['reconcile', '.yarramate/workspace.yaml']),
+      )
+      expect(reconciliationReport).toMatchObject({
         format: 'yarramate/reconciliation-report/v1',
         workspace: 'consumer',
         summary: {
@@ -351,6 +350,11 @@ evidence:
         },
         findings: [],
       })
+      // A report that never assessed artifact coverage says so (ADR 0130),
+      // and this asserts it through the packed CLI, not the source tree.
+      expect(reconciliationReport.notes).toContain(
+        'Artifact coverage was not assessed: the workspace manifest declares no coverage scope.',
+      )
       expect(
         JSON.parse(
           run([

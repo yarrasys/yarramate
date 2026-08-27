@@ -713,6 +713,11 @@ concepts:
     name: Detect stale attestations
     description: "Reports a sign-off as stale when the attested subject's name or description changed in a commit dated after the attestation, so a reviewer learns which sign-offs no longer cover the wording they read. It is a reconcile finding only: it never reopens an evaluator verdict and never gates check --strict, because gating would reward backdating. Outside a git checkout it emits a note rather than silence, keeping \"not assessed\" distinguishable from \"clean\"."
     status: current
+  - id: assess-artifact-coverage
+    kind: applicationFunction
+    name: Assess artifact coverage
+    description: "Reports every artifact a declared coverage scope selects that no observation's repository locator claims, as a set difference over paths. The scope is opt-in in the workspace manifest and resolves against the git repository the manifest lives in, so the report is honest about what it was asked to look at; the counters appear exactly when coverage was assessed, keeping \"never looked\" distinguishable from \"everything claimed\". An unclaimed artifact is absence and never a finding, because no provider looked and disagreed, and it never gates check --strict."
+    status: current
   - id: subject-identity
     kind: compiler-module
     name: Subject identity resolver
@@ -1663,10 +1668,28 @@ relationships:
     kind: assignment
     from: evidence-evaluator
     to: detect-stale-attestations
+  - id: evidence-evaluator-assesses-artifact-coverage
+    kind: assignment
+    from: evidence-evaluator
+    to: assess-artifact-coverage
   - id: reconcile-command-serves-stale-attestations
     kind: serving
     from: reconcile-command
     to: detect-stale-attestations
+  - id: reconcile-command-serves-artifact-coverage
+    kind: serving
+    from: reconcile-command
+    to: assess-artifact-coverage
+  - id: artifact-coverage-reads-workspace-manifest
+    kind: access
+    from: assess-artifact-coverage
+    to: workspace-manifest
+    mode: read
+  - id: artifact-coverage-writes-report
+    kind: access
+    from: assess-artifact-coverage
+    to: reconciliation-report
+    mode: write
   - id: stale-attestation-detection-reads-graph
     kind: access
     from: detect-stale-attestations

@@ -12,3 +12,10 @@ evidence:
   - evidence/*.yaml
 contracts:
   - contracts/*.yaml
+# The artifacts this model intends to cover (#175, ADR 0130). reconcile
+# reports every file here that no evidence observation claims; the number
+# is expected to be nonzero and to shrink as the model catches up.
+coverage:
+  - src/**/*.ts
+  - src/**/*.tsx
+  - schema/*.json

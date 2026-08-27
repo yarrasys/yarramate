@@ -1533,9 +1533,21 @@ mappings:
   - native: detect-near-duplicate-subjects
     external: detectNearDuplicateSubjects
     type: concept
+  - native: artifact-coverage-reads-workspace-manifest
+    external: artifactCoverageReadsWorkspaceManifest
+    type: relationship
+  - native: artifact-coverage-writes-report
+    external: artifactCoverageWritesReport
+    type: relationship
+  - native: assess-artifact-coverage
+    external: assessArtifactCoverage
+    type: concept
   - native: detect-stale-attestations
     external: detectStaleAttestations
     type: concept
+  - native: evidence-evaluator-assesses-artifact-coverage
+    external: evidenceEvaluatorAssessesArtifactCoverage
+    type: relationship
   - native: evidence-evaluator-detects-stale-attestations
     external: evidenceEvaluatorDetectsStaleAttestations
     type: relationship
@@ -1553,6 +1565,9 @@ mappings:
     type: relationship
   - native: near-duplicate-detection-reads-graph
     external: nearDuplicateDetectionReadsGraph
+    type: relationship
+  - native: reconcile-command-serves-artifact-coverage
+    external: reconcileCommandServesArtifactCoverage
     type: relationship
   - native: reconcile-command-serves-stale-attestations
     external: reconcileCommandServesStaleAttestations

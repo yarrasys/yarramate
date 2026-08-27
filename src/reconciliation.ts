@@ -9,6 +9,7 @@ import type {
   EvidenceReport,
   EvidenceResult,
 } from './evidence.js'
+import type { ArtifactCoverage } from './artifact-coverage.js'
 
 export interface AssertedRelationship {
   readonly from: string
@@ -128,10 +129,29 @@ export interface ReconciliationReport {
     readonly unconfirmedAttestations?: number
     readonly expectationsCompared: number
     readonly expectationsWithoutObservation: number
+    /**
+     * Files the declared coverage scope selected, and the ones no
+     * observation's `repo:` locator claims (ADR 0130). Both appear exactly
+     * when coverage was assessed, so a report without them is one that
+     * never looked, not one that found nothing.
+     */
+    readonly artifactsInScope?: number
+    readonly unclaimedArtifacts?: number
   }
   readonly findings: readonly ReconciliationFinding[]
   readonly unobservedSubjects?: readonly string[]
   readonly unobservedExpectations?: readonly UnobservedExpectation[]
+  /**
+   * The coverage patterns as the manifest declared them, echoed so the
+   * report is honest about what it was asked to look at (ADR 0130).
+   */
+  readonly coverageScope?: readonly string[]
+  /**
+   * In-scope artifacts no observation claims, sorted. Absence, never
+   * accusation: no finding is fabricated and `check --strict` never reads
+   * this (ADR 0130), the line ADR 0049 drew for unobserved subjects.
+   */
+  readonly unclaimedArtifacts?: readonly string[]
   readonly notes?: readonly string[]
 }
 
@@ -320,6 +340,87 @@ const unobservedCurrentConcepts = (
     .sort((left, right) => left.localeCompare(right))
 }
 
+// An observation claims an artifact when its locator is `repo:<path>`,
+// read syntactically: any `#fragment` stripped, a directory claiming
+// everything beneath it, any other scheme claiming nothing. Resolution
+// and external validity stay with the provider (ADR 0130) — nothing here
+// opens a file or checks one exists.
+const claimedArtifactPaths = (
+  reports: readonly EvidenceReport[],
+): ReadonlySet<string> => {
+  const claimed = new Set<string>()
+  for (const report of reports) {
+    for (const observation of report.observations) {
+      const uri = observation.evidence.uri
+      if (!uri.startsWith('repo:')) continue
+      const located = uri.slice('repo:'.length)
+      const fragment = located.indexOf('#')
+      const path = (fragment === -1 ? located : located.slice(0, fragment))
+        .replace(/\/+$/, '')
+      if (path.length > 0) claimed.add(path)
+    }
+  }
+  return claimed
+}
+
+const isClaimed = (
+  claimed: ReadonlySet<string>,
+  artifact: string,
+): boolean => {
+  if (claimed.has(artifact)) return true
+  for (const path of claimed) {
+    if (artifact.startsWith(`${path}/`)) return true
+  }
+  return false
+}
+
+interface CoverageOutcome {
+  readonly scope?: readonly string[]
+  readonly artifacts?: number
+  readonly unclaimed?: readonly string[]
+  readonly notes: readonly string[]
+}
+
+const assessArtifactCoverage = (
+  coverage: ArtifactCoverage | undefined,
+  reports: readonly EvidenceReport[],
+): CoverageOutcome => {
+  // An absent argument is a caller that never looked (the strict gate);
+  // an unassessed derivation is a reconcile that looked and could not,
+  // and says why (ADR 0130, the ADR 0074 parallel).
+  if (coverage === undefined) return { notes: [] }
+  if (!coverage.assessed) {
+    return {
+      notes: [`Artifact coverage was not assessed: ${coverage.reason}.`],
+    }
+  }
+  const notes: string[] = []
+  if (coverage.scope.length === 0) {
+    notes.push(
+      'The workspace manifest declares an empty coverage scope, so no artifacts were assessed.',
+    )
+  }
+  // A dead glob is indistinguishable from a typo, and silently
+  // contributing nothing is how a mistyped pattern would report full
+  // coverage. A note, not a refusal: a coverage scope is a lens, not
+  // load-bearing input (ADR 0130).
+  for (const { pattern, artifacts } of coverage.scope) {
+    if (artifacts.length === 0) {
+      notes.push(`Coverage pattern "${pattern}" matched no artifacts.`)
+    }
+  }
+  const artifacts = [
+    ...new Set(coverage.scope.flatMap(({ artifacts }) => artifacts)),
+  ].sort((left, right) => left.localeCompare(right))
+  const claimed = claimedArtifactPaths(reports)
+  return {
+    scope: coverage.scope.map(({ pattern }) => pattern),
+    artifacts: artifacts.length,
+    unclaimed: artifacts.filter((artifact) => !isClaimed(claimed, artifact)),
+    notes,
+  }
+}
+
 // A judgment a machine transcribed is not the act the authority
 // performed. The recorder is in the model, so the difference is
 // derivable here: an authority who wrote the record in their own hand
@@ -360,11 +461,13 @@ export function reconcileEvidenceReports(
   reports: readonly EvidenceReport[],
   graph?: SemanticGraph,
   staleness?: AttestationStaleness,
+  coverage?: ArtifactCoverage,
 ): ReconciliationReport {
   const assertedByClaim = assertedRelationshipsByClaim(graph)
   const unobservedSubjects = unobservedCurrentConcepts(graph, reports)
   const expectations = compareExpectations(graph, reports)
   const unconfirmed = unconfirmedAttestations(graph)
+  const assessedCoverage = assessArtifactCoverage(coverage, reports)
   const summary = {
     evidenceDocuments: reports.length,
     observations: 0,
@@ -389,6 +492,15 @@ export function reconcileEvidenceReports(
       : { unconfirmedAttestations: unconfirmed.length }),
     expectationsCompared: expectations.compared,
     expectationsWithoutObservation: expectations.unobserved.length,
+    // Coverage counters appear exactly when the scope was assessed
+    // (ADR 0130): a report without them never looked; a report carrying
+    // zero looked and found everything claimed.
+    ...(assessedCoverage.artifacts === undefined
+      ? {}
+      : {
+          artifactsInScope: assessedCoverage.artifacts,
+          unclaimedArtifacts: assessedCoverage.unclaimed?.length ?? 0,
+        }),
   }
   const findings: ReconciliationFinding[] = [
     ...(staleness?.findings ?? []),
@@ -462,7 +574,11 @@ export function reconcileEvidenceReports(
     ),
   )
   summary.findings = findings.length
-  const notes = [...(staleness?.notes ?? []), ...absenceNotes]
+  const notes = [
+    ...(staleness?.notes ?? []),
+    ...absenceNotes,
+    ...assessedCoverage.notes,
+  ]
   return {
     format: 'yarramate/reconciliation-report/v1',
     workspace,
@@ -472,6 +588,13 @@ export function reconcileEvidenceReports(
     ...(expectations.unobserved.length === 0
       ? {}
       : { unobservedExpectations: expectations.unobserved }),
+    ...(assessedCoverage.scope === undefined
+      ? {}
+      : { coverageScope: assessedCoverage.scope }),
+    ...(assessedCoverage.unclaimed === undefined ||
+    assessedCoverage.unclaimed.length === 0
+      ? {}
+      : { unclaimedArtifacts: assessedCoverage.unclaimed }),
     ...(notes.length === 0 ? {} : { notes }),
   }
 }

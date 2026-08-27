@@ -552,6 +552,9 @@ describe('YarraMate CLI', () => {
         expectationsWithoutObservation: 0,
       },
       unobservedSubjects: ['order-service'],
+      notes: [
+        'Artifact coverage was not assessed: the workspace manifest declares no coverage scope.',
+      ],
       findings: [
         {
           target: {
@@ -645,6 +648,9 @@ describe('YarraMate CLI', () => {
         expectationsCompared: 0,
         expectationsWithoutObservation: 0,
       },
+      notes: [
+        'Artifact coverage was not assessed: the workspace manifest declares no coverage scope.',
+      ],
       findings: [
         {
           target: {

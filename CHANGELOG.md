@@ -1,6 +1,28 @@
 # Changelog
 
-## 1.7.0
+## Unreleased
+
+- **Added.** Reconcile reports the artifacts no observation claims (#175,
+  ADR 0130). A workspace manifest may declare an optional `coverage` list of
+  glob patterns; `reconcile` resolves them against the root of the git
+  repository the manifest lives in — tracked files plus untracked files git
+  does not ignore — and reports every selected file no observation's
+  `repo:<path>` locator claims (fragments stripped, a directory claiming
+  everything beneath it). `summary.artifactsInScope` and
+  `summary.unclaimedArtifacts` appear exactly when coverage was assessed, a
+  positive count lists paths in a top-level `unclaimedArtifacts` array beside
+  a `coverageScope` echo, and a report that never looked says why in `notes`
+  instead of staying silent. Never a finding, never `check --strict`: the
+  same line ADR 0049 drew for unobserved subjects. This closes the
+  recurrence the issue measured three times — a day of shipped features and
+  a model that acquired nothing, with every gate green, because nothing
+  asked.
+
+  The typed API gains `deriveArtifactCoverage` and the `ArtifactCoverage`
+  input `reconcileEvidenceReports` now optionally takes, so a host that
+  enumerates its own tree can assess coverage without a filesystem.
+
+
 
 - **Added.** A workspace can carry its own questions (#345, ADR 0129). A
   `questions:` manifest category resolves like `patterns` and `evidence`, and

@@ -40,6 +40,14 @@ export interface WorkspaceManifest {
   readonly questions?: readonly string[]
   readonly evidence?: readonly string[]
   readonly contracts?: readonly string[]
+  /**
+   * Glob patterns naming the artifacts the model intends to cover (#175,
+   * ADR 0130). Not a document category: nothing here is loaded or compiled,
+   * so it never joins ResolvedWorkspace. reconcile resolves the patterns
+   * against the root of the git repository the manifest lives in and reports
+   * every selected file no evidence observation claims.
+   */
+  readonly coverage?: readonly string[]
 }
 
 export interface ResolvedWorkspace {
@@ -91,6 +99,22 @@ export function loadWorkspaceManifest(
   const realBase = realpathSync(base)
   const resolutionDiagnostics: Diagnostic[] = []
   const categoryByPath = new Map<string, string>()
+  const positionOf = (field: string, index: number) => {
+    const node = yaml.getIn([field, index], true)
+    const offset =
+      typeof node === 'object' &&
+      node !== null &&
+      'range' in node &&
+      Array.isArray(node.range)
+        ? node.range[0]
+        : 0
+    return lineCounter.linePos(offset)
+  }
+  const unsafePattern = (pattern: string): boolean =>
+    isAbsolute(pattern) ||
+    /^[A-Za-z]:[\\/]/.test(pattern) ||
+    pattern.includes('\\') ||
+    pattern.split('/').includes('..')
   const expand = (
     field:
       | 'documents'
@@ -107,21 +131,8 @@ export function loadWorkspaceManifest(
     [
       ...new Set(
         patterns.flatMap((pattern, index) => {
-          const node = yaml.getIn([field, index], true)
-          const offset =
-            typeof node === 'object' &&
-            node !== null &&
-            'range' in node &&
-            Array.isArray(node.range)
-              ? node.range[0]
-              : 0
-          const position = lineCounter.linePos(offset)
-          const unsafe =
-            isAbsolute(pattern) ||
-            /^[A-Za-z]:[\\/]/.test(pattern) ||
-            pattern.includes('\\') ||
-            pattern.split('/').includes('..')
-          if (unsafe) {
+          const position = positionOf(field, index)
+          if (unsafePattern(pattern)) {
             resolutionDiagnostics.push({
               severity: 'error',
               code: 'YM701',
@@ -207,6 +218,24 @@ export function loadWorkspaceManifest(
       'Core contract',
       value.contracts ?? [],
     ),
+  }
+  // Coverage patterns resolve to nothing here: they are not a document
+  // category, and reconcile interprets them against the repository root
+  // (ADR 0130). Load-time validation covers only pattern safety, with the
+  // same guard every resolving category gets — but relative to the
+  // repository, so escaping it is what YM701 refuses.
+  for (const [index, pattern] of (value.coverage ?? []).entries()) {
+    if (!unsafePattern(pattern)) continue
+    const position = positionOf('coverage', index)
+    resolutionDiagnostics.push({
+      severity: 'error',
+      code: 'YM701',
+      message: `Workspace coverage pattern "${pattern}" must be a relative path beneath the repository root`,
+      path: source.path,
+      pointer: `/coverage/${index}`,
+      line: position.line,
+      column: position.col,
+    })
   }
   if (resolutionDiagnostics.length > 0) {
     return {

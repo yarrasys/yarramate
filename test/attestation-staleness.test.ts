@@ -196,7 +196,10 @@ describe('stale attestations', () => {
     )
     expect(finding.evidence.message).toContain('the description changed in commit')
     expect(report.summary.staleAttestations).toBe(1)
-    expect(report.notes).toBeUndefined()
+    // The only note is coverage's: staleness itself was assessed cleanly.
+    expect(report.notes).toEqual([
+      'Artifact coverage was not assessed: the workspace manifest declares no coverage scope.',
+    ])
   })
 
   it('stays silent when the sign-off came after the change', () => {
@@ -325,6 +328,8 @@ describe('stale attestations', () => {
     expect(report.summary.staleAttestations).toBe(0)
     expect(report.notes).toEqual([
       'Attestation staleness was not assessed: the workspace is not inside a git repository.',
+    
+      'Artifact coverage was not assessed: the workspace manifest declares no coverage scope.',
     ])
   })
 
@@ -355,6 +360,8 @@ describe('stale attestations', () => {
     expect(staleFindings(report)).toEqual([])
     expect(report.notes).toEqual([
       'Attestation staleness was not assessed for architecture/extra.yaml: the file has no committed history.',
+    
+      'Artifact coverage was not assessed: the workspace manifest declares no coverage scope.',
     ])
   })
 
@@ -369,6 +376,8 @@ describe('stale attestations', () => {
     expect(staleFindings(report)).toEqual([])
     expect(report.notes).toEqual([
       'Attestation "signed-off" on refund-rule predates the earliest committed history of architecture/policy.yaml; staleness was not assessed.',
+    
+      'Artifact coverage was not assessed: the workspace manifest declares no coverage scope.',
     ])
   })
 
