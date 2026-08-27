@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **Changed.** The canvas strip's Add-subject button stands down when the
+  kind palette is offered. The palette is the authoring entry (pick or drag
+  a kind, the same dialog opens with the kind chosen); the button was its
+  predecessor, and the two side by side were a duplicate. It remains as the
+  fallback on a mount whose `sections` omit the palette, so a section-less
+  embed keeps an authoring entry.
+- **Changed.** The kind palette's layer bands are collapsible. Each band
+  header is a real button with `aria-expanded`, every band starts open, and
+  collapsed state is per mount — 62 kinds is a lot of scroll for a reviewer
+  working in one band.
+
 - **Added.** The connect banner takes a typed target (#309). While a
   connection's target is unchosen, the panel carries a labelled search
   field: type a name or id, pick a match, and the draft advances exactly as

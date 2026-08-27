@@ -1,4 +1,5 @@
 import type React from 'react'
+import { useState } from 'react'
 import type { VisualKindOption } from '../adapters/visual/protocol-contract.js'
 import { conceptKinds, layers } from '../profile.js'
 import { ICON_SIZE, kindIconUriOf } from './kind-icons.js'
@@ -73,13 +74,38 @@ export const KindPalette = ({
   /** A kind chosen without the drag - a click, a keyboard - which opens the
    * same dialog a drop does. */
   readonly onPick: (kindLabel: string) => void
-}): React.ReactElement => (
-  <div className="kind-palette">
-    {paletteGroups(kinds).map((group) => (
-      <div className="kind-palette-layer" key={group.layer}>
-        <p className="kind-palette-layer-name">{group.layer}</p>
-        <ul className="kind-palette-rows">
-          {group.kinds.map((option) => {
+}): React.ReactElement => {
+  // Collapsed layer bands, per mount. 62 kinds is a lot of scroll for a
+  // reviewer working in one band; every band starts open so nothing is
+  // hidden until the reviewer hides it, matching the section headers above.
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set())
+  const toggleLayer = (layer: string) =>
+    setCollapsed((current) => {
+      const next = new Set(current)
+      if (next.has(layer)) next.delete(layer)
+      else next.add(layer)
+      return next
+    })
+  return (
+    <div className="kind-palette">
+      {paletteGroups(kinds).map((group) => {
+        const isCollapsed = collapsed.has(group.layer)
+        return (
+          <div className="kind-palette-layer" key={group.layer}>
+            <button
+              type="button"
+              className="kind-palette-layer-name"
+              aria-expanded={!isCollapsed}
+              onClick={() => toggleLayer(group.layer)}
+            >
+              <span className="kind-palette-caret" aria-hidden="true">
+                {isCollapsed ? '▸' : '▾'}
+              </span>
+              {group.layer}
+            </button>
+            {isCollapsed ? null : (
+              <ul className="kind-palette-rows">
+                {group.kinds.map((option) => {
             // The glyph the canvas already draws on a node of this kind; an
             // extension kind borrows its core parent's. No glyph, no image -
             // the label alone still names the kind.
@@ -110,9 +136,12 @@ export const KindPalette = ({
                 </button>
               </li>
             )
-          })}
-        </ul>
-      </div>
-    ))}
-  </div>
-)
+                })}
+              </ul>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}

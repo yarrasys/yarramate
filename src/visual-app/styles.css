@@ -832,13 +832,24 @@ body {
 /* The layer bands, in the profile's order - the same grouping the model tree
    reads in, so the palette and the rail are one organisation. */
 .kind-palette-layer-name {
+  display: block;
+  width: 100%;
   margin: 0;
   padding: calc(var(--step) * 0.75) calc(var(--step) * 1.5)
     calc(var(--step) * 0.25);
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
   font-family: var(--utility);
   font-size: 11px;
   letter-spacing: 0.08em;
   color: var(--quiet);
+}
+
+.kind-palette-caret {
+  display: inline-block;
+  width: 1em;
 }
 
 .kind-palette-rows {
