@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.10.0
 
 - **Added.** A question the model never asked says so (#375, ADR 0132).
   A subject-scoped question whose selector matches no subject now reports
