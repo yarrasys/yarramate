@@ -135,6 +135,17 @@ export const buildWorkbookSheets = (
     const claim = bySubject.get(id)?.find((held) => held.predicate === predicate)
     return claim === undefined ? '' : valueOf(claim)
   }
+  /**
+   * The document a subject is declared in, as a PATH.
+   *
+   * Carried because an `apply` operation targets a document path, so without
+   * it a workbook can say what a subject is and not where it lives, and
+   * nothing can be written back. Every claim knows its own source, so this is
+   * recovered rather than guessed.
+   */
+  const documentOf = (id: string): string =>
+    bySubject.get(id)?.[0]?.source.path ?? ''
+  const documentOfClaim = (claim: GraphClaim): string => claim.source.path
 
   // A state is an ordinary concept carrying state predicates, so it is lifted
   // onto its own sheet rather than being a second kind of thing.
@@ -155,13 +166,14 @@ export const buildWorkbookSheets = (
   }
 
   const conceptRows: string[][] = [
-    ['Concept ID', ...CONCEPT_COLUMNS.map(([, label]) => label)],
+    ['Concept ID', ...CONCEPT_COLUMNS.map(([, label]) => label), 'Document'],
   ]
   for (const id of [...conceptIds].filter((one) => !stateIds.has(one)).sort()) {
     for (const [predicate] of CONCEPT_COLUMNS) consume(id, predicate)
     conceptRows.push([
       id,
       ...CONCEPT_COLUMNS.map(([predicate]) => first(id, predicate)),
+      documentOf(id),
     ])
   }
 
@@ -174,6 +186,7 @@ export const buildWorkbookSheets = (
       'To',
       '↳ To name (auto)',
       ...RELATIONSHIP_COLUMNS.map(([, label]) => label),
+      'Document',
     ],
   ]
   for (const claim of [...relationshipClaims(result)].sort((left, right) =>
@@ -190,6 +203,7 @@ export const buildWorkbookSheets = (
       target,
       nameOf(target),
       ...RELATIONSHIP_COLUMNS.map(([predicate]) => first(claim.id, predicate)),
+      documentOfClaim(claim),
     ])
   }
 
@@ -199,6 +213,7 @@ export const buildWorkbookSheets = (
       ...STATE_COLUMNS.map(([, label]) => label),
       'After',
       '↳ After name (auto)',
+      'Document',
     ],
   ]
   for (const id of [...stateIds].sort()) {
@@ -210,6 +225,7 @@ export const buildWorkbookSheets = (
       ...STATE_COLUMNS.map(([predicate]) => first(id, predicate)),
       after,
       nameOf(after),
+      documentOf(id),
     ])
   }
 
@@ -265,7 +281,7 @@ export const buildWorkbookSheets = (
     ['How to use this'],
     ['1.', 'Edit the numbered sheets. Column A is the identity of the row and is what the model is keyed on.'],
     ['2.', 'A column marked (auto) is derived for readability. Edits to it are ignored.'],
-    ['3.', 'Add a row with a new ID to add a subject. Kind and Status are dropdowns.'],
+    ['3.', 'Add a row with a new ID to add a subject. Kind and Status are dropdowns, and Document says which file it belongs to.'],
     ['4.', 'Deleting a row does NOT delete anything. Removals are reported, never applied.'],
     ['5.', 'Send the file back and import it. Your edits are merged; only a field changed on both sides is refused.'],
     [],

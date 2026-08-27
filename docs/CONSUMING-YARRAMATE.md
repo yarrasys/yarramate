@@ -458,8 +458,19 @@ Anything the mapping does not recognise is carried verbatim on `07 Other
 Facts` rather than dropped, so a workbook stays lossless across a compiler
 that grows new predicates.
 
-Reading a workbook back into a model is a separate change; today the workbook
-is written, not read.
+**Reading one back.** `yarramate import xlsx <workbook.xlsx> <workspace.yaml>`
+merges an edited workbook into the model. An unedited round trip changes
+nothing, byte for byte.
+
+Edits land as `yarramate/operations/v1` through `apply`, so untouched YAML
+keeps its comments, key order and formatting, and the import passes the same
+atomic gate every other write does.
+
+It is a three-way merge. `~Baseline` is the ancestor, so an edit the workspace
+did not touch merges even if the repository moved on; only a field changed on
+**both** sides is refused, and a refusal writes nothing anywhere. A missing row
+is reported and never treated as a deletion, and a new row needs its `Document`
+column filled in.
 
 ## MCP server for agent harnesses
 

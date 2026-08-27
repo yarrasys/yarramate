@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+- **Added.** `yarramate import xlsx <workbook.xlsx> <workspace.yaml>` reads an
+  edited workbook back into the model (#355, ADR 0127). **An unedited round
+  trip changes nothing**, byte for byte, which is the bar "no information lost"
+  has to clear.
+
+  Edits land as `yarramate/operations/v1` through `apply`, so untouched YAML
+  keeps its comments, key order and formatting, and the whole import passes the
+  atomic compile gate. A workbook that would produce an uncompilable model is
+  refused whole rather than half written.
+
+  **A three-way merge, not an overwrite.** The workbook carries `~Baseline`, a
+  copy of its own rows as exported, and that ancestor is what distinguishes
+  *the author changed this* from *the repository moved underneath since the
+  workbook was made*. An edit the workspace did not touch merges even after
+  drift; only a field that moved on **both** sides is refused, naming both
+  values. A workbook with no `~Baseline` is refused rather than guessed at.
+
+  **A missing row is never a deletion.** It is reported. A row deleted by
+  accident in a spreadsheet has no symptom, and a new row needs a `Document`
+  saying which file it belongs to.
+
+- **Added.** The workbook carries a `Document` column, so a row says which file
+  its subject lives in. An `apply` operation targets a document path, so
+  without it a workbook could say what a subject is and not where to write it
+  back.
+
 - **Added.** `yarramate export xlsx <projection.yaml> <workspace.yaml> --out
   <file>` writes the model as an Excel workbook an architect can work in
   (#355, ADR 0127), and `yarramate/workbook` publishes the writer for a host

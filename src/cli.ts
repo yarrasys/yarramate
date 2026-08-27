@@ -17,6 +17,7 @@ import {
 } from './cli-support.js'
 import { runAskCommand } from './ask-command.js'
 import { runCheckCommand } from './check-command.js'
+import { runImportCommand } from './import-command.js'
 import { runExportCommand } from './export-command.js'
 import { runApplyCommand } from './apply-cli.js'
 import { runDesignCommand } from './design-command.js'
@@ -302,8 +303,26 @@ export function runCli(
   return { exitCode: 2, stdout: '', stderr: usage }
 }
 
+/**
+ * Every verb, including the one that cannot be synchronous.
+ *
+ * `import xlsx` has to inflate a workbook, and the only inflater available
+ * everywhere this runs is `DecompressionStream`, which is async. Widening
+ * `runCli` to return a promise would change the type every one of its callers
+ * reads - the readers half of the rule in CONTRIBUTING.md - so the async verb
+ * gets its own entry and `runCli` keeps its signature.
+ */
+export async function runCliAsync(
+  args: readonly string[],
+  cwd: string = process.cwd(),
+): Promise<CliResult> {
+  const [command, ...options] = args
+  if (command === 'import') return runImportCommand(options, cwd)
+  return runCli(args, cwd)
+}
+
 if (isMainModule(import.meta.url, process.argv[1])) {
-  const result = runCli(process.argv.slice(2))
+  const result = await runCliAsync(process.argv.slice(2))
   process.stdout.write(result.stdout)
   process.stderr.write(result.stderr)
   process.exitCode = result.exitCode
