@@ -212,6 +212,38 @@ describe('interrogation engine as public API', () => {
     expect(loaded.diagnostics[0]!.message).toContain('component-serves-nothing')
   })
 
+  it('refuses a dead linkage offer through the published entry too', () => {
+    // Both call sites must read `missing-linkage`, not just
+    // `missing-relationship`: it is the condition both real defects lived in,
+    // and it reaches this entry the same way. An unthreaded condition here
+    // fails silently, exactly as an unthreaded call site does.
+    const compilation = compileWorkspaceWithProfileContext([
+      { path: 'architecture/main.yaml', source: document },
+    ])
+    if (!compilation.ok) throw new Error('fixture did not compile')
+    const loaded = loadQuestionCatalogue(
+      {
+        path: 'catalogue.yaml',
+        source: catalogue.replace(
+          '      - condition: missing-relationship\n' +
+            '        kinds: ["yarramate/core@0.1#serving"]\n' +
+            '        direction: outgoing\n',
+          '      - condition: missing-linkage\n' +
+            '        kinds: ["yarramate/core@0.1#assignment"]\n' +
+            '        direction: incoming\n' +
+            '        counterpartKinds: ["yarramate/core@0.1#node"]\n',
+        ),
+      },
+      compilation.profileContext,
+    )
+    expect(loaded.ok).toBe(false)
+    if (loaded.ok) return
+    expect(loaded.diagnostics.map(({ code }) => code)).toEqual(['YM916'])
+    expect(loaded.diagnostics[0]!.message).toContain(
+      'none of the counterpart kinds it names',
+    )
+  })
+
   it('stays silent on the same catalogue when no profile context is given', () => {
     // Every existing consumer of this entry passes no context, including the
     // fixture above. The check must be inert for them rather than a refusal
