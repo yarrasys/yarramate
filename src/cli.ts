@@ -25,6 +25,7 @@ import {
   evaluateEvidenceWorkspace,
   loadEvidence,
 } from './evidence.js'
+import { deriveArtifactCoverage } from './artifact-coverage.js'
 import { deriveAttestationStaleness } from './attestation-staleness.js'
 import { reconcileEvidenceReports } from './reconciliation.js'
 import { loadWorkspaceManifest } from './workspace.js'
@@ -120,6 +121,13 @@ const runReconciliation = (
         documentId: documentIdByPath.get(path) ?? path,
       })),
     )
+    // Coverage anchors on the manifest's own directory, not the process
+    // cwd, so the same command reports the same coverage wherever it was
+    // invoked (ADR 0130).
+    const coverage = deriveArtifactCoverage(
+      dirname(resolve(cwd, workspacePath)),
+      loadedWorkspace.manifest.coverage,
+    )
     return {
       exitCode: 0,
       stdout: `${JSON.stringify(
@@ -128,6 +136,7 @@ const runReconciliation = (
           evaluation.reports,
           compilation.graph,
           staleness,
+          coverage,
         ),
         null,
         2,

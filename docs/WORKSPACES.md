@@ -22,6 +22,8 @@ evidence:
   - evidence/*.yaml
 contracts:
   - contracts/*.yaml
+coverage:
+  - src/**/*.ts
 ```
 
 `questions` carries question catalogues the workspace itself declares, ADDITIVE
@@ -29,6 +31,15 @@ to the shipped catalogue (#345, ADR 0129). It is how a question true of one
 engagement and nowhere else gets versioned with the model, reviewed as a diff,
 and asked by the same interview loop as everything else. See
 [docs/INTERROGATION.md](INTERROGATION.md).
+
+`coverage` is not a document category: nothing it names is loaded or
+compiled, and it is the one field that does not resolve relative to the
+manifest directory. It declares the artifacts the model intends to cover,
+and `reconcile` — only `reconcile` — resolves the patterns against the root
+of the git repository the manifest lives in and reports every selected file
+no evidence observation claims (#175, ADR 0130). Load-time validation covers
+pattern safety alone, with the same `YM701` every other category uses. See
+[docs/EVIDENCE.md](EVIDENCE.md).
 
 Patterns are relative to the directory containing the manifest and use
 forward-slash paths. Resolution:
@@ -42,7 +53,10 @@ forward-slash paths. Resolution:
 
 Empty categories are written as `[]`. A manifest never searches parent
 directories, reads an environment override, contacts a registry, or infers a
-source category from a filename.
+source category from a filename. Manifest resolution keeps that rule even
+now that `coverage` exists: the coverage patterns resolve to nothing at
+load, and `reconcile` alone interprets them against the repository root
+(ADR 0130).
 
 ## CLI use
 

@@ -285,6 +285,11 @@ observations:
     result: confirmed
     evidence:
       uri: repo:src/attestation-staleness.ts
+  - subject: assess-artifact-coverage
+    result: confirmed
+    evidence:
+      uri: repo:src/artifact-coverage.ts
+      message: deriveArtifactCoverage enumerates the declared scope from the manifest's git toplevel; the set difference itself is assessArtifactCoverage in src/reconciliation.ts
   - subject: diagnostic-result
     result: confirmed
     evidence:
