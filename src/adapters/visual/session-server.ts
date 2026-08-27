@@ -17,7 +17,7 @@ import type { Duplex } from "node:stream";
 import { fileURLToPath } from "node:url";
 import Ajv2020Module from "ajv/dist/2020.js";
 import { WebSocketServer, type RawData, type WebSocket } from "ws";
-import { parse, stringify } from "yaml";
+import { parse } from "yaml";
 import {
   VISUAL_LIMITS,
   VISUAL_PROTOCOL_VERSION,
@@ -96,6 +96,7 @@ import type { PendingWrite, SourceStore } from "../../source-store.js";
 import type { YarramateApplyResult } from "../../operations.js";
 import { DEFAULT_PROJECTION_DIRECTORY } from "./view-identity.js";
 import { createFileSystemStore } from "../../source-store.js";
+import { emitYaml } from "../../yaml-emission.js";
 import {
   loadWorkspaceManifest,
   type ResolvedWorkspace,
@@ -1717,7 +1718,7 @@ export const startVisualServer = async (
           }
           return;
         }
-        const operationsSource = stringify({
+        const operationsSource = emitYaml({
           format: "yarramate/operations/v1",
           operations: event.payload.operations,
         });
@@ -1863,7 +1864,7 @@ export const startVisualServer = async (
         mkdirSync(layoutDir, { recursive: true });
         writeFileSync(
           resolve(options.cwd, path),
-          stringify({
+          emitYaml({
             format: "yarramate/visual-layout/v1",
             projectionId,
             positions,

@@ -29,7 +29,7 @@ import {
   serverDiagnostic,
   viewSummaryOf,
 } from '../adapters/visual/workspace-model.js'
-import { stringify } from 'yaml'
+import { emitYaml } from '../yaml-emission.js'
 import { SHIPPED_CATALOGUE } from './shipped-catalogue.js'
 import type { EditorHost, EditorHostEvents } from './editor-host.js'
 
@@ -285,7 +285,7 @@ export const createLocalHost = (options: LocalHostOptions): EditorHost => {
             workspace,
             operations: {
               path: 'changeset.yaml',
-              source: stringify({
+              source: emitYaml({
                 format: 'yarramate/operations/v1',
                 operations,
               }),
@@ -485,7 +485,7 @@ export const createLocalHost = (options: LocalHostOptions): EditorHost => {
           const written = store.writeAll([
             {
               path,
-              source: stringify({
+              source: emitYaml({
                 format: 'yarramate/visual-layout/v1',
                 projectionId,
                 positions,

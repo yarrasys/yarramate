@@ -2205,6 +2205,9 @@ mappings:
   - native: workbook-read-source
     external: workbookReadSource
     type: concept
+  - native: yaml-emission-source
+    external: yamlEmissionSource
+    type: concept
   - native: pattern-document
     external: patternDocument
     type: concept
@@ -2423,4 +2426,7 @@ mappings:
     type: relationship
   - native: workbook-read-realizes-engine
     external: workbookReadRealizesEngine
+    type: relationship
+  - native: yaml-emission-realizes-apply
+    external: yamlEmissionRealizesApply
     type: relationship

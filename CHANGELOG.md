@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+- **Fixed.** Documents YarraMate writes read the same under every YAML
+  version (#378). An attestation's `on` key was emitted unquoted, and a
+  YAML 1.1 loader (PyYAML's default, and most non-JS loaders') resolves a
+  plain `on` to the boolean `true` and a plain `2026-08-27` to a date, so
+  an attestation this toolchain wrote came back to an ApertureX audit
+  script as `{True: date(2026, 8, 27)}`. Nothing in the toolchain misread
+  it: YarraMate reads YAML 1.2, and the surprise landed entirely on
+  whoever read the document with something that was not YarraMate. Rather
+  than quote `on` and wait for its siblings, every string a write emits is
+  now measured against both versions' emitters and double-quoted wherever
+  they disagree, which also covers `y`, `no`, `off`, bare dates,
+  sexagesimals, and (in the other direction, where 1.1 alone would have
+  handed YarraMate's own reader a number) `0o17`. Authored bytes are
+  untouched; only text a write produces changes.
+
 ## 1.10.0
 
 - **Added.** A question the model never asked says so (#375, ADR 0132).

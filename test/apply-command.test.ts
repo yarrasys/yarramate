@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import Ajv2020Module from 'ajv/dist/2020.js'
+import { parse } from 'yaml'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { runCli } from '../src/cli.js'
 
@@ -121,6 +122,27 @@ describe('apply command', () => {
     expect(written).toContain('id: todo-service')
     expect(written).toContain('description: The person managing todo tasks.')
     expect(written).toContain('topic: adequacy')
+    // The document YarraMate writes is read by things that are not YarraMate
+    // (#378). Under a YAML 1.1 loader - PyYAML's default - a plain `on` key
+    // is the boolean true and a plain date is a date, so the attestation an
+    // author wrote comes back as `{True: date(2026, 8, 1)}` in anyone's audit
+    // script. The written key must survive both loaders as the string it is.
+    expect(written).toContain('"on": "2026-08-01"')
+    expect(
+      (parse(written, { version: '1.1' }) as {
+        concepts: readonly {
+          id: string
+          attestations?: readonly Record<string, unknown>[]
+        }[]
+      }).concepts.find((concept) => concept.id === 'user')?.attestations,
+    ).toEqual([
+      {
+        topic: 'adequacy',
+        by: 'reviewer',
+        recordedBy: 'agent-under-test',
+        on: '2026-08-01',
+      },
+    ])
 
     const check = runCli(['check', 'workspace.yaml'], workspace)
     expect(check.exitCode).toBe(0)
