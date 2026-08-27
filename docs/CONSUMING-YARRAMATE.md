@@ -444,6 +444,18 @@ query:
     - target-state
 ```
 
+**Which makes a workbook a SLICE, and it is worth being plain about that.** An
+omitted facet imposes no constraint, so `query: {}` exports the whole model,
+and every facet you name narrows it. For a subject the query selected, nothing
+is dropped: the projection filters claims by subject membership rather than by
+predicate, so every fact about an included subject arrives, and `07 Other
+Facts` catches whatever the named columns do not model. For a subject it did
+not select, there is simply no row, and a missing row is never a deletion, so
+**a narrow workbook cannot damage a wide model on the way back in**. The
+`00 Read Me` sheet says all of this and reports the counts the slice actually
+has, because an FDE handed a filtered workbook with no note will read it as
+the model.
+
 **Reading the sheets.** Column A is always the id and is what the model is
 keyed on. A column headed `↳ … (auto)` is derived for readability and is
 ignored on the way back. Kind and status columns are drawn from the compiled
@@ -471,6 +483,57 @@ did not touch merges even if the repository moved on; only a field changed on
 **both** sides is refused, and a refusal writes nothing anywhere. A missing row
 is reported and never treated as a deletion, and a new row needs its `Document`
 column filled in.
+
+**On a host with no Node**, `yarramate/workbook/import` publishes the same
+three steps the CLI runs, so ingesting a workbook is not CLI-only:
+
+```ts
+import {
+  readWorkbook,
+  baselineSheets,
+  mergeWorkbook,
+  operationsFrom,
+  operationsDocument,
+} from 'yarramate/workbook/import'
+
+const read = await readWorkbook(bytes)
+if (!read.ok) return refuse(read.reason)
+
+const ancestor = read.sheets.get('~Baseline')
+if (ancestor === undefined) return refuse('not produced by yarramate export xlsx')
+
+const report = mergeWorkbook(
+  read.sheets,
+  baselineSheets(ancestor),
+  buildWorkbookSheets(currentResult, provenance),
+)
+if (report.conflicts.length > 0) return refuse(report.conflicts)
+
+const { operations, refusals } = operationsFrom(report, read.sheets)
+await apply(operationsDocument(operations))
+```
+
+`readWorkbook` is **async** while the writer is synchronous, and deliberately
+so: a workbook this package wrote has stored entries and inline strings, but
+one a person saved from Excel comes back deflated and shared-stringed, and
+inflation is only offered as a stream (`DecompressionStream('deflate-raw')`,
+present on Workers, in browsers and in Node 18+). Keeping the writer
+synchronous is what stops it infecting a synchronous store on the host side.
+
+It is a **separate subpath** from `yarramate/workbook` on purpose. The package
+declares no `sideEffects` field, so a bundler must assume every module might
+have one and cannot shake an unused re-export away; a host that only generates
+workbooks would otherwise carry the reader, the merge and the operations
+emitter it never calls. `test/export-purity.test.ts` holds the two entries
+disjoint as well as pure.
+
+The host keeps three jobs: reading the bytes, evaluating the projection that
+says what the model holds **now** (the third argument to `mergeWorkbook`, which
+is what measures repo drift in the same terms the author edited in), and
+applying the operations. Refusal wording is the host's too. The `Conflict`
+values name the sheet, row, column, what the author wrote, what the workspace
+now holds and their common ancestor, which reads like a merge tool rather than
+like something you hand a consultant.
 
 ## MCP server for agent harnesses
 

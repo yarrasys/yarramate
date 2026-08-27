@@ -285,6 +285,23 @@ export const buildWorkbookSheets = (
     ['4.', 'Deleting a row does NOT delete anything. Removals are reported, never applied.'],
     ['5.', 'Send the file back and import it. Your edits are merged; only a field changed on both sides is refused.'],
     [],
+    [],
+    ['What this holds, and what it does not'],
+    [
+      '',
+      `A projection is a QUERY, so this workbook is the slice it names: ${
+        conceptRows.length - 1
+      } concepts and ${relationshipRows.length - 1} relationships.`,
+    ],
+    [
+      '',
+      'Everything the model knows about a subject that IS here is here, including anything these columns do not model, on 07 Other Facts.',
+    ],
+    [
+      '',
+      'A subject outside the slice has no row, and importing this file cannot change it. A narrow workbook is safe against a wide model.',
+    ],
+    [],
     ['Sheets beginning ~ are machinery. Do not edit them.'],
   ]
 

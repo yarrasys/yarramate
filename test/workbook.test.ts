@@ -287,6 +287,28 @@ describe('the baseline is the merge ancestor', () => {
     expect(mirrored).toEqual(concepts)
   })
 
+  it('tells the reader the workbook is a SLICE, and counts the slice it got', () => {
+    // A projection is a query, so a workbook is whatever it selected. An FDE
+    // handed a narrow one and told nothing will read it as the model, and
+    // everything outside the filter is then invisible to the person being
+    // asked to confirm the model is right.
+    const whole = named(sheetsFor({}).sheets, '00 Read Me')
+      .map((row) => row.join(' '))
+      .join('\n')
+    const slice = named(sheetsFor({ subjects: ['user'] }).sheets, '00 Read Me')
+      .map((row) => row.join(' '))
+      .join('\n')
+
+    expect(whole).toContain('this workbook is the slice it names')
+    // The counts must come from the RESULT, not from the model, or the
+    // sentence is worse than saying nothing: it would state a size the file
+    // does not have.
+    expect(slice).toContain('1 concepts')
+    expect(whole).not.toContain('1 concepts')
+    // And the reassurance that makes a narrow workbook usable at all.
+    expect(slice).toContain('cannot change it')
+  })
+
   it('keeps the Read Me out of the ancestor, since nothing imports prose', () => {
     const { sheets } = sheetsFor({})
     const sheetNames = named(sheets, '~Baseline')

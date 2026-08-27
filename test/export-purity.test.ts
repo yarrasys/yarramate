@@ -71,6 +71,37 @@ describe('package export purity', () => {
     expect(hits).toEqual([])
   })
 
+  it('workbook/import graph stays free of Node, ws, session, and compiler runtime', () => {
+    // The half that INGESTS a workbook, published separately from the half
+    // that writes one so a Worker that only generates never carries it.
+    const { files, hits } = runtimeImportGraph('workbook-import-entry.ts')
+    expect(hits).toEqual([])
+    // Asserted on the FILES, not only on the hits. A purity check that walks
+    // an entry reaching nothing passes for the wrong reason, and would keep
+    // passing if an export were dropped from the entry - the emptiness would
+    // read as cleanliness. Naming the three files makes the graph prove it
+    // actually visited the code the claim is about.
+    expect(files).toEqual(
+      expect.arrayContaining([
+        'workbook-read.ts',
+        'workbook-merge.ts',
+        'workbook-operations.ts',
+      ]),
+    )
+  })
+
+  it('the two workbook entries stay disjoint, so generating never pulls in reading', () => {
+    // The reason `workbook/import` is its own subpath: the package declares no
+    // `sideEffects`, so a bundler must assume every module might have one and
+    // cannot shake an unused re-export away. If the writer entry ever reaches
+    // the reader, ApertureX's generate-only Worker silently grows by the whole
+    // import half.
+    const writer = runtimeImportGraph('workbook-entry.ts').files
+    expect(writer).not.toContain('workbook-read.ts')
+    expect(writer).not.toContain('workbook-merge.ts')
+    expect(writer).not.toContain('workbook-operations.ts')
+  })
+
   it('interrogation import graph stays free of Node, ws, session, and compiler runtime', () => {
     // The engine is the one piece a Durable Object runs on every model write,
     // so the compiler's Ajv/YAML weight and every Node builtin have to stay
@@ -86,5 +117,26 @@ describe('adapter/visual-graph barrel', () => {
     // for the published subpath entry point.
     const mod = await import('../src/adapters/visual-graph-entry.js')
     expect(typeof mod.projectGraphForCanvas).toBe('function')
+  })
+})
+
+describe('workbook barrels', () => {
+  it('yarramate/workbook hands a host everything it needs to WRITE one', async () => {
+    const mod = await import('../src/workbook-entry.js')
+    expect(typeof mod.workbookFrom).toBe('function')
+    expect(typeof mod.buildWorkbookSheets).toBe('function')
+    expect(typeof mod.writeXlsx).toBe('function')
+  })
+
+  it('yarramate/workbook/import hands a host the whole way back to operations', async () => {
+    // Read -> merge -> operations. A host missing any one of the three has no
+    // route from an edited file to something `apply` can take, which is the
+    // state this entry exists to end.
+    const mod = await import('../src/workbook-import-entry.js')
+    expect(typeof mod.readWorkbook).toBe('function')
+    expect(typeof mod.baselineSheets).toBe('function')
+    expect(typeof mod.mergeWorkbook).toBe('function')
+    expect(typeof mod.operationsFrom).toBe('function')
+    expect(typeof mod.operationsDocument).toBe('function')
   })
 })
