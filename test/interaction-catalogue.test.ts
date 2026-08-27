@@ -11,6 +11,15 @@ import { parse as parseYaml } from 'yaml'
 import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { runCli } from '../src/cli.js'
+import {
+  CORE_CONCEPT_KIND_ORDER,
+  type CoreConceptKindId,
+} from '../src/archimate-relationships.generated.js'
+import {
+  sourceKindsPermitting,
+  targetKindsPermitting,
+} from '../src/relationship-matrix.js'
+import type { RelationshipKind } from '../src/profile.js'
 
 const repositoryRoot = resolve(
   fileURLToPath(new URL('.', import.meta.url)),
@@ -47,6 +56,129 @@ projections: []
 adapterMappings: []
 evidence: []
 `
+
+// A `missing-relationship` trigger asks its reader to add a relationship. If
+// the ArchiMate table permits no counterpart for the (subject kind,
+// relationship kind, direction) triple the trigger names, no legitimate model
+// can close it: the question reports a gap the standard forbids filling, and
+// it stays open forever while reading as the model's fault rather than the
+// catalogue's.
+//
+// Nothing else catches this. YM914 already refuses a question whose kind no
+// loaded profile declares, so a question that can never FIRE is a check error;
+// a question that can never be CLOSED is invisible to every gate, because an
+// open question is exactly what an unenriched model looks like. The check here
+// is derived from the same generated table the compiler admits relationships
+// against, so the catalogue cannot drift away from it.
+//
+// Field evidence for the shape: an ApertureX session retired a finding of this
+// exact kind on 2026-08-28. It fired on `driver`, one of the seven core kinds
+// ArchiMate 3.2 permits nothing to realize, and it had drifted from their own
+// catalogue within a day of that fact being written down in two places.
+interface RelationshipTrigger {
+  readonly condition: string
+  readonly kinds?: readonly string[]
+  readonly direction?: string
+}
+
+interface CatalogueQuestion {
+  readonly id: string
+  readonly subjects?: { readonly kinds?: readonly string[] }
+  readonly trigger?: readonly RelationshipTrigger[]
+}
+
+const localKind = (qualified: string): string => qualified.split('#').at(-1) ?? qualified
+
+const unclosableTriples = (
+  questions: readonly CatalogueQuestion[],
+): readonly string[] => {
+  const coreKinds = new Set<string>(CORE_CONCEPT_KIND_ORDER)
+  const unclosable: string[] = []
+  for (const question of questions) {
+    for (const trigger of question.trigger ?? []) {
+      if (trigger.condition !== 'missing-relationship') continue
+      // `any` closes if either direction admits a counterpart.
+      const directions =
+        trigger.direction === 'any' ? ['incoming', 'outgoing'] : [trigger.direction]
+      for (const subject of (question.subjects?.kinds ?? []).map(localKind)) {
+        // An extension kind inherits its core ancestor's row, so a subject
+        // kind outside the core table is not a catalogue defect - it is a
+        // lookup this check cannot make, and it says so by skipping.
+        if (!coreKinds.has(subject)) continue
+        for (const relationship of (trigger.kinds ?? []).map(localKind)) {
+          const closable = directions.some((direction) =>
+            (direction === 'incoming'
+              ? sourceKindsPermitting(
+                  relationship as RelationshipKind,
+                  subject as CoreConceptKindId,
+                )
+              : targetKindsPermitting(
+                  relationship as RelationshipKind,
+                  subject as CoreConceptKindId,
+                )
+            ).size > 0,
+          )
+          if (!closable) {
+            unclosable.push(
+              `${question.id}: nothing may hold ${relationship} ` +
+                `${trigger.direction} ${subject}`,
+            )
+          }
+        }
+      }
+    }
+  }
+  return unclosable
+}
+
+describe('a catalogue question against the ArchiMate relationship table', () => {
+  it('asks nothing of the shipped catalogue that no model could answer', () => {
+    const catalogue = parseYaml(readFileSync(cataloguePath, 'utf8')) as {
+      questions: readonly CatalogueQuestion[]
+    }
+    expect(unclosableTriples(catalogue.questions)).toEqual([])
+  })
+
+  it('names the question when a triple has no permitted counterpart', () => {
+    // The bug this guards, in the shape ApertureX shipped it: a driver is one
+    // of seven core kinds nothing may realize, so "nothing realizes this
+    // driver" is a gap no author can close. Without the negative case the
+    // assertion above passes just as well against a check that finds nothing.
+    expect(
+      unclosableTriples([
+        {
+          id: 'driver-unrealized',
+          subjects: { kinds: ['yarramate/core@0.1#driver'] },
+          trigger: [
+            {
+              condition: 'missing-relationship',
+              kinds: ['yarramate/core@0.1#realization'],
+              direction: 'incoming',
+            },
+          ],
+        },
+      ]),
+    ).toEqual(['driver-unrealized: nothing may hold realization incoming driver'])
+  })
+
+  it('agrees with the table on which kinds nothing may realize', () => {
+    // Pinned so a regenerated table that changed this set is visible as a
+    // change to this list rather than as a silently weakened check.
+    expect(
+      CORE_CONCEPT_KIND_ORDER.filter(
+        (kind) => sourceKindsPermitting('realization', kind).size === 0,
+      ),
+    ).toEqual([
+      'assessment',
+      'driver',
+      'gap',
+      'implementationEvent',
+      'meaning',
+      'value',
+      'workPackage',
+    ])
+  })
+})
 
 describe('core-enrichment 1.0 interaction wave', () => {
   let workspace: string

@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- **Fixed.** A catalogue question that no model could ever answer is now
+  refused by the test suite. A `missing-relationship` trigger asks its
+  reader to add a relationship; where the ArchiMate table permits no
+  counterpart for the (subject kind, relationship kind, direction) triple
+  the trigger names, no legitimate model can close it, and the question
+  stays open forever while reading as the model's fault rather than the
+  catalogue's. `YM914` already refuses a question that can never *fire*;
+  a question that can never be *closed* was invisible to every gate,
+  because an open question is exactly what an unenriched model looks
+  like. The check is derived from the same generated table the compiler
+  admits relationships against, so the shipped catalogue cannot drift
+  from it. The catalogue was already clean (40 triples, all closable);
+  this pins it. Reported as a shape rather than a defect by an ApertureX
+  session that had retired a finding of exactly this kind, which fired on
+  `driver` (one of seven core kinds nothing may realize) and had drifted
+  from their own catalogue within a day.
+
 - **Fixed.** Documents YarraMate writes read the same under every YAML
   version (#378). An attestation's `on` key was emitted unquoted, and a
   YAML 1.1 loader (PyYAML's default, and most non-JS loaders') resolves a
