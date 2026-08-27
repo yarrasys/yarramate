@@ -1121,19 +1121,22 @@ const unresolvableKinds = (
   })
 }
 
-/** One `missing-relationship` trigger the relationship table can never satisfy. */
-interface UnclosableTrigger {
+/** One remedy a trigger offers that the relationship table forbids. */
+interface UnauthorableOffer {
   readonly questionId: string
   readonly subjectKind: string
   readonly relationshipKind: string
   readonly direction: string
+  readonly counterpartKinds: readonly string[] | undefined
   readonly path: readonly (string | number)[]
 }
 
 // The core kind an authored kind resolves to, or undefined when this workspace
 // cannot resolve it at all. Lineage is ancestor-first, so `lineage[0]` is the
 // core identity and an extension inherits its parent's row in the table
-// (ADR 0097); a core kind is its own lineage head.
+// (ADR 0097); a core kind is its own lineage head. This is also why
+// `kindMatching: descendants` needs no special handling: a descendant shares
+// its ancestor's row and column, so checking the named kind covers them all.
 const coreKindOf = (
   kind: string,
   lineages: ReadonlyMap<string, readonly string[]>,
@@ -1145,31 +1148,44 @@ const coreKindOf = (
 }
 
 /**
- * Triples a `missing-relationship` trigger names that no model could satisfy.
+ * Remedies a trigger offers that no model could author.
  *
- * The trigger asks its reader to add a relationship. The ArchiMate table the
- * compiler admits relationships against decides which kinds may hold which
- * relationship to which, and where it permits no counterpart at all for the
- * (subject kind, relationship kind, direction) triple a trigger names, the
- * question reports a gap the standard forbids filling. It opens on every
- * matching subject and stays open forever, reading as the model's fault
- * rather than the catalogue's (ADR 0133).
+ * A trigger names the ways its question can be satisfied, and each one is an
+ * OFFER: add this relationship, in this direction, from one of these kinds.
+ * The ArchiMate table the compiler admits relationships against decides which
+ * of those are authorable. An offer it forbids is a lie the catalogue tells,
+ * and the unit is the offer rather than the question, because a question with
+ * three offers and one dead one still reads as answerable: a reader takes the
+ * dead option, authors it, and the compiler refuses the write (ADR 0133).
  *
- * The check reads the SAME generated table the compiler does. A second
- * encoding of ArchiMate's rules is the defect this exists to stop, and it is
- * how the consuming product that reported the shape got its own version of
- * this bug: one fact written down twice, drifting within a day.
+ * Both conditions naming a relationship are checked, and `missing-linkage` is
+ * the MORE checkable of the two. `missing-relationship` asks whether any of
+ * the 62 core kinds may stand opposite, which only the seven kinds nothing may
+ * realize can fail. `missing-linkage` names its own counterpart kinds, so the
+ * question narrows to those, a dead offer is far likelier, and the diagnostic
+ * can point at the exact list that admits nothing. Both of the defects that
+ * prompted this check in the reporting consumer's catalogue were linkage
+ * offers, not relationship ones.
  *
- * Narrow in the same two ways `unresolvableKinds` is narrow. Without a
- * profile context there is no lineage to resolve an extension kind through,
- * so nothing is reported rather than guessed; and a kind that resolves
- * nowhere is `YM914`'s business, not this one.
+ * `missing-attestation` and `missing-claim` are not checked: they name no
+ * relationship, so there is no table to consult, and inventing one for them
+ * would be the second encoding of ArchiMate's rules this check exists to
+ * prevent.
+ *
+ * Narrow in the same two ways `unresolvableKinds` is narrow. Without a profile
+ * context there is no lineage to resolve an extension kind through, so nothing
+ * is reported rather than guessed; and a kind that resolves nowhere is
+ * `YM914`'s business, not this one. A trigger with any unresolvable counterpart
+ * is skipped whole, because a partial reading could accuse a question that a
+ * dormant cross-profile kind would have answered.
  */
-const unclosableTriggers = (
+const unauthorableOffers = (
   catalogue: QuestionCatalogue,
   profileContext: ResolvedProfileContext,
-): readonly UnclosableTrigger[] => {
-  const found: UnclosableTrigger[] = []
+): readonly UnauthorableOffer[] => {
+  const found: UnauthorableOffer[] = []
+  const conceptCore = (kind: string) =>
+    coreKindOf(kind, profileContext.conceptKindLineages)
   for (const [questionIndex, question] of catalogue.questions.entries()) {
     const subjectKinds = question.subjects?.kinds ?? []
     if (subjectKinds.length === 0) continue
@@ -1178,46 +1194,58 @@ const unclosableTriggers = (
         condition?: string
         kinds?: readonly string[]
         direction?: string
+        counterpartKinds?: readonly string[]
       }
-      if (trigger.condition !== 'missing-relationship') continue
-      // `any` is satisfied by a relationship in either direction, so the
-      // trigger is unclosable only when both directions are empty.
+      if (
+        trigger.condition !== 'missing-relationship' &&
+        trigger.condition !== 'missing-linkage'
+      ) {
+        continue
+      }
+      // `any` and `either` are satisfied by a relationship in either
+      // direction, so an offer is dead only when both directions are.
       const directions =
-        trigger.direction === 'any'
+        trigger.direction === 'any' || trigger.direction === 'either'
           ? (['incoming', 'outgoing'] as const)
           : ([trigger.direction ?? 'any'] as const)
+      const named = trigger.counterpartKinds
+      const counterparts = named?.map(conceptCore)
+      if (counterparts?.some((kind) => kind === undefined) === true) continue
       for (const subjectKind of subjectKinds) {
-        const subjectCore = coreKindOf(
-          subjectKind,
-          profileContext.conceptKindLineages,
-        )
-        if (subjectCore === undefined) continue
+        const subject = conceptCore(subjectKind)
+        if (subject === undefined) continue
         for (const [kindIndex, relationshipKind] of (
           trigger.kinds ?? []
         ).entries()) {
-          const relationshipCore = coreKindOf(
+          const relationship = coreKindOf(
             relationshipKind,
             profileContext.relationshipKindLineages,
           )
-          if (relationshipCore === undefined) continue
-          const closable = directions.some((direction) =>
-            (direction === 'incoming'
-              ? sourceKindsPermitting(
-                  relationshipCore as RelationshipKind,
-                  subjectCore as CoreConceptKindId,
+          if (relationship === undefined) continue
+          const authorable = directions.some((direction) => {
+            const opposite =
+              direction === 'incoming'
+                ? sourceKindsPermitting(
+                    relationship as RelationshipKind,
+                    subject as CoreConceptKindId,
+                  )
+                : targetKindsPermitting(
+                    relationship as RelationshipKind,
+                    subject as CoreConceptKindId,
+                  )
+            return counterparts === undefined
+              ? opposite.size > 0
+              : counterparts.some((kind) =>
+                  opposite.has(kind as CoreConceptKindId),
                 )
-              : targetKindsPermitting(
-                  relationshipCore as RelationshipKind,
-                  subjectCore as CoreConceptKindId,
-                )
-            ).size > 0,
-          )
-          if (closable) continue
+          })
+          if (authorable) continue
           found.push({
             questionId: question.id,
             subjectKind,
             relationshipKind,
             direction: trigger.direction ?? 'any',
+            counterpartKinds: named,
             path: [
               'questions',
               questionIndex,
@@ -1320,25 +1348,28 @@ const unresolvableKindDiagnostics = (
       }))
 
 // YM916, the sibling of YM914. YM914 refuses a question that can never FIRE;
-// this refuses one that can never be CLOSED. Both failures are invisible, and
-// this one more so: a question that never fires looks like a condition not
-// met, while a question that cannot be closed looks exactly like an
-// unenriched model, indefinitely (ADR 0133).
-const unclosableTriggerDiagnostics = (
+// this refuses one that offers a remedy nobody could author. Both failures are
+// invisible, and this one twice over: the question reads as ordinary
+// unfinished work, and a reader who takes the dead offer learns only when the
+// compiler refuses the write it led them to (ADR 0133).
+const unauthorableOfferDiagnostics = (
   { catalogue, locate }: LoadedCatalogueDocument,
   profileContext?: ResolvedProfileContext,
 ): readonly Diagnostic[] =>
   profileContext === undefined
     ? []
-    : unclosableTriggers(catalogue, profileContext).map((trigger) => ({
+    : unauthorableOffers(catalogue, profileContext).map((offer) => ({
         severity: 'error' as const,
         code: 'YM916',
         message:
-          `Question "${trigger.questionId}" asks for a ${trigger.direction} ` +
-          `"${trigger.relationshipKind}" on "${trigger.subjectKind}", which ` +
-          'the ArchiMate relationship table permits from no kind at all, so ' +
-          'no model could ever close it',
-        ...locate(trigger.path),
+          `Question "${offer.questionId}" offers "${offer.relationshipKind}" ` +
+          `${offer.direction} on "${offer.subjectKind}", which the ` +
+          'ArchiMate relationship table permits from ' +
+          (offer.counterpartKinds === undefined
+            ? 'no kind at all'
+            : `none of the counterpart kinds it names (${offer.counterpartKinds.join(', ')})`) +
+          ', so no model could author it',
+        ...locate(offer.path),
       }))
 
 /**
@@ -1472,7 +1503,7 @@ export function composeCatalogues(
   const crossDiagnostics = documents.flatMap((document) => [
     ...undeclaredWaveDiagnostics(document, declaredWaves),
     ...unresolvableKindDiagnostics(document, profileContext),
-    ...unclosableTriggerDiagnostics(document, profileContext),
+    ...unauthorableOfferDiagnostics(document, profileContext),
   ])
   if (crossDiagnostics.length > 0) {
     return { ok: false, diagnostics: crossDiagnostics }
@@ -1524,12 +1555,12 @@ export function loadQuestionCatalogue(
   if (kindDiagnostics.length > 0) {
     return { ok: false, diagnostics: kindDiagnostics }
   }
-  const triggerDiagnostics = unclosableTriggerDiagnostics(
+  const offerDiagnostics = unauthorableOfferDiagnostics(
     loaded.document,
     profileContext,
   )
-  if (triggerDiagnostics.length > 0) {
-    return { ok: false, diagnostics: triggerDiagnostics }
+  if (offerDiagnostics.length > 0) {
+    return { ok: false, diagnostics: offerDiagnostics }
   }
   return { ok: true, catalogue: loaded.document.catalogue }
 }

@@ -251,40 +251,59 @@ kind maps rather than a declared-kinds list, so a kind inherited through
 `extends` counts: a profile that declares none of its own and inherits every
 one is exactly the case a declared-kinds check would call entirely missing.
 
-## A question must be one some model could answer
+## A remedy a question offers must be one some model could author
 
-A catalogue is refused when a `missing-relationship` trigger names a
-(subject kind, relationship kind, direction) triple the ArchiMate table
-permits no counterpart for (`YM916`, ADR 0133). Seven core kinds have no
-permitted realization source in ArchiMate 3.2, so "nothing realizes this
-driver" opens on every driver, stays open forever, and asks for a
-relationship the standard forbids anyone to author.
+A catalogue is refused when a trigger offers a relationship the ArchiMate
+table forbids (`YM916`, ADR 0133). Both conditions that name a relationship
+are checked, each on its own terms: `missing-relationship` against the whole
+table, `missing-linkage` against the counterpart kinds it names.
 
-This is `YM914`'s sibling. `YM914` refuses a question that can never
-**fire**; `YM916` refuses one that can never be **closed**. Both failures
-are invisible, and this one more so: a question that never fires looks like
-a condition not met, while a question nobody can close looks exactly like a
-model with work left to do. Nothing distinguishes it from honest backlog
-except reading the relationship table by hand.
+**The unit is the offer, not the question.** A trigger names the ways its
+question can be satisfied, and each is an offer: add this relationship, in
+this direction, from one of these kinds. A question with three offers and one
+dead one still reads as answerable, and is — two of its remedies work. What
+happens is that a reader takes the third, authors it, and the compiler refuses
+the write. Where every offer is dead the question is also unclosable, which is
+the same defect at its limit rather than a separate one.
+
+This is `YM914`'s sibling. `YM914` refuses a question that can never **fire**;
+`YM916` refuses one that asks for something nobody could **author**. Both
+failures are invisible, and this one twice over: an open question is exactly
+what an unenriched model looks like, and a dead offer inside an answerable
+question is not visible even then. It surfaces when someone follows it and the
+write is refused, at which point the catalogue is the last place anyone looks.
+
+`missing-linkage` is the more checkable of the two conditions, not the less.
+`missing-relationship` asks whether any of the 62 core kinds may stand
+opposite, a net wide enough that only the seven kinds nothing may realize fall
+through it. `missing-linkage` names its own counterpart kinds, so the question
+narrows to those: `serving` into an application component is permitted from 37
+kinds and from no motivation kind, so an offer naming `[goal, driver]` as
+counterparts is dead while the wide check sees nothing wrong.
 
 The check reads the same generated table the compiler admits relationships
 against. That is the point rather than an implementation note: a second
-encoding of ArchiMate's rules is the defect this refusal exists to catch,
-and it is how the consuming product that reported the shape acquired its own
+encoding of ArchiMate's rules is the defect this refusal exists to catch, and
+it is how the consuming product that reported the shape acquired its own
 version of the bug — one fact written down in two places, drifting within a
 day.
 
-Both narrowing rules `YM914` follows apply here unchanged. Without a
-compiled workspace nothing is reported, because an extension kind resolves
-to its core ancestor through the kind lineages and there is none to resolve
-through. A kind that resolves nowhere is `YM914`'s business. And `direction:
-any` is unclosable only when **both** directions are empty, since either one
-satisfies the trigger.
+Both narrowing rules `YM914` follows apply here unchanged. Without a compiled
+workspace nothing is reported, because an extension kind resolves to its core
+ancestor through the kind lineages and there is none to resolve through. A
+kind that resolves nowhere is `YM914`'s business. A trigger with any
+unresolvable counterpart is skipped whole rather than partially, since a
+partial reading could accuse a question a dormant cross-profile kind would
+have answered. And `direction: any` or `either` is dead only when **both**
+directions are, since either one satisfies the trigger.
 
-Only `missing-relationship` is checked. It is the one condition naming a
-triple the relationship table can rule on; `missing-attestation` and
-`missing-claim` have no table to consult, and inventing one for them would
-be the second encoding this refusal refuses.
+`kindMatching: descendants` needs no special handling: a descendant shares its
+core ancestor's row and column in the table, so checking the named kind covers
+every kind it matches.
+
+`missing-attestation` and `missing-claim` are not checked. They name no
+relationship, so there is no table to consult, and inventing one for them
+would be the second encoding this refusal refuses.
 
 ## Evaluation model
 

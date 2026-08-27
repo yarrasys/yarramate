@@ -2,24 +2,25 @@
 
 ## Unreleased
 
-- **Added.** `YM916`: a catalogue question no model could ever close is
-  refused (#382, ADR 0133). A `missing-relationship` trigger naming a
-  (subject kind, relationship kind, direction) triple the ArchiMate table
-  permits no counterpart for asks for a relationship the standard forbids
-  anyone to author — it opens on every matching subject and stays open
-  forever. This is `YM914`'s sibling: `YM914` refuses a question that can
-  never *fire*, `YM916` one that can never be *closed*, and the second is
-  the more invisible of the two, because an open question looks exactly
-  like a model with work left to do. Raised in `composeCatalogues` and
-  `loadQuestionCatalogue`, so `check`, `design`, `ask --open` and any host
-  composing catalogues at runtime all receive it — the defect was reported
-  from a registry consultants edit through a web editor, which no test in
-  any repository can reach. The check reads the same generated relationship
-  table the compiler admits relationships against; a second encoding is the
-  defect it exists to catch. **Breaking for a catalogue carrying this
-  defect**, which will now be refused where it previously loaded; the
-  questions refused were never answerable. Nothing is reported without a
-  compiled workspace, matching `YM914`'s narrowness.
+- **Added.** `YM916`: a catalogue question that offers a remedy no model
+  could author is refused (#382, #384, ADR 0133). A trigger names the ways
+  its question can be satisfied, and each is an offer: add this
+  relationship, in this direction, from one of these kinds. Both conditions
+  that name a relationship are checked against the ArchiMate table the
+  compiler admits relationships against — `missing-relationship` against
+  the whole table, `missing-linkage` against the counterpart kinds it
+  names. **The unit is the offer, not the question**: a question with three
+  offers and one dead one still reads as answerable and is, so the dead one
+  surfaces only when a reader follows it and the compiler refuses the write.
+  This is `YM914`'s sibling — `YM914` refuses a question that can never
+  *fire*, `YM916` one that asks for something nobody could *author*. Raised
+  in `composeCatalogues` and `loadQuestionCatalogue`, so `check`, `design`,
+  `ask --open` and any host composing catalogues at runtime all receive it;
+  the defect was reported from a registry consultants edit through a web
+  editor, which no test in any repository can reach. **Breaking for a
+  catalogue carrying the defect**, which will now be refused where it
+  previously loaded; the remedies refused were never authorable. Nothing is
+  reported without a compiled workspace, matching `YM914`'s narrowness.
 
 - **Fixed.** A catalogue question that no model could ever answer is now
   refused by the test suite. A `missing-relationship` trigger asks its

@@ -266,6 +266,47 @@ questions:
     authority: human
 `
 
+/**
+ * A closable question with ONE dead offer, which is the shape both defects in
+ * the reporting consumer's catalogue had. Into an `applicationComponent`, the
+ * table permits `realization` and `serving` from a `node`, and `assignment`
+ * from none of the four counterpart kinds named. The question is answerable
+ * two ways out of three, so it reads perfectly; a reader who takes the third
+ * authors a relationship the compiler then refuses (they lost a 54-operation
+ * batch to exactly that).
+ */
+const deadOffer = `format: yarramate/question-catalogue/v1
+id: dead-offer
+version: "1.0"
+profile: yarramate/core@0.1
+waves:
+  - id: structure
+    name: Structure
+questions:
+  - id: component-unhosted
+    wave: structure
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#applicationComponent
+    trigger:
+      - condition: missing-linkage
+        kinds:
+          - yarramate/core@0.1#realization
+          - yarramate/core@0.1#serving
+          - yarramate/core@0.1#assignment
+        direction: incoming
+        counterpartKinds:
+          - yarramate/core@0.1#node
+          - yarramate/core@0.1#device
+          - yarramate/core@0.1#systemSoftware
+          - yarramate/core@0.1#technologyService
+    question: What hosts {subject.name}?
+    materiality: An unhosted component runs nowhere.
+    resolution: Add a realization from the node.
+    authority: agent
+`
+
 const profileContextOf = () => {
   const compiled = compileWorkspaceWithProfileContext([
     { path: 'main.yaml', source: document },
@@ -288,7 +329,8 @@ describe('a question no model could close', () => {
     expect(composed.diagnostics.map(({ code }) => code)).toEqual(['YM916'])
     const [diagnostic] = composed.diagnostics
     expect(diagnostic!.message).toContain('driver-unrealized')
-    expect(diagnostic!.message).toContain('no model could ever close it')
+    expect(diagnostic!.message).toContain('no model could author it')
+    expect(diagnostic!.message).toContain('permits from no kind at all')
     // Located on the offending kind, not on the catalogue as a whole.
     expect(diagnostic!.path).toBe('unclosable.yaml')
     expect(diagnostic!.pointer).toBe('/questions/0/trigger/0/kinds/0')
@@ -328,6 +370,75 @@ describe('a question no model could close', () => {
       profileContextOf(),
     )
     expect(composed.ok).toBe(true)
+  })
+
+  it('refuses a dead offer inside an otherwise answerable question', () => {
+    // The unit is the OFFER, not the question. Two of the three kinds here are
+    // authorable, so a question-level check would call this clean and leave
+    // the third to be discovered by a reader whose write gets refused.
+    const composed = composeCatalogues(
+      [sourceOf('dead-offer.yaml', deadOffer)],
+      profileContextOf(),
+    )
+    expect(composed.ok).toBe(false)
+    if (composed.ok) return
+    expect(composed.diagnostics.map(({ code }) => code)).toEqual(['YM916'])
+    const [diagnostic] = composed.diagnostics
+    expect(diagnostic!.message).toContain('"yarramate/core@0.1#assignment"')
+    expect(diagnostic!.message).toContain('none of the counterpart kinds it names')
+    // Located on the dead kind itself - the third of three - so an editor can
+    // point at the offer rather than at the question.
+    expect(diagnostic!.pointer).toBe('/questions/0/trigger/0/kinds/2')
+  })
+
+  it('leaves the same linkage alone once the dead offer is dropped', () => {
+    // The no-false-positive half: `realization` and `serving` from those four
+    // counterparts are permitted, so the question composes clean without
+    // `assignment`.
+    const composed = composeCatalogues(
+      [
+        sourceOf(
+          'live-offer.yaml',
+          deadOffer.replace('          - yarramate/core@0.1#assignment\n', ''),
+        ),
+      ],
+      profileContextOf(),
+    )
+    expect(composed.ok).toBe(true)
+  })
+
+  it('reads the counterpart kinds, not only the relationship kind', () => {
+    // The offer a wide check cannot see. `serving` INTO an applicationComponent
+    // is permitted from 37 kinds, so asking "does the table allow this at all"
+    // says yes; it is permitted from no motivation kind, so this particular
+    // offer is dead. This is why `missing-linkage` is the MORE checkable
+    // condition rather than the less, and it is the half a relationship-only
+    // check misses entirely.
+    const composed = composeCatalogues(
+      [
+        sourceOf(
+          'motivation.yaml',
+          deadOffer
+            .replace('          - yarramate/core@0.1#realization\n', '')
+            .replace('          - yarramate/core@0.1#assignment\n', '')
+            .replace(
+              '          - yarramate/core@0.1#node\n' +
+                '          - yarramate/core@0.1#device\n' +
+                '          - yarramate/core@0.1#systemSoftware\n' +
+                '          - yarramate/core@0.1#technologyService\n',
+              '          - yarramate/core@0.1#goal\n' +
+                '          - yarramate/core@0.1#driver\n',
+            ),
+        ),
+      ],
+      profileContextOf(),
+    )
+    expect(composed.ok).toBe(false)
+    if (composed.ok) return
+    expect(composed.diagnostics.map(({ code }) => code)).toEqual(['YM916'])
+    expect(composed.diagnostics[0]!.message).toContain(
+      '"yarramate/core@0.1#serving"',
+    )
   })
 
   it('closes on either direction when the trigger says any', () => {
