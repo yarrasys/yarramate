@@ -916,7 +916,7 @@ describe('kind palette (#295)', () => {
     const markup = renderSession({ model: kindsModel })
 
     const bands = ['motivation', 'business', 'application'].map((layer) =>
-      markup.indexOf(`class="kind-palette-layer-name">${layer}<`),
+      markup.indexOf(`</span>${layer}</button>`),
     )
     expect(bands.every((at) => at !== -1)).toBe(true)
     expect(bands).toEqual([...bands].sort((a, b) => a - b))
@@ -938,6 +938,24 @@ describe('kind palette (#295)', () => {
 
     expect(markup).not.toContain('stack-section-palette')
     expect(markup).not.toContain('kind-palette-row')
+    // And exactly then the canvas strip keeps its Add-subject button: the
+    // fallback authoring entry for a mount with no palette to pick from.
+    expect(markup).toContain('>Add subject</button>')
+  })
+
+  it('opens every layer band, as a collapsible the keyboard can reach', () => {
+    // Collapsed state is per mount and starts open: nothing is hidden until
+    // the reviewer hides it. Static markup shows the default; the band
+    // header is a real button with aria-expanded, so assistive tech both
+    // reaches it and hears its state.
+    const markup = renderSession({ model: kindsModel })
+
+    const headers = [
+      ...markup.matchAll(/class="kind-palette-layer-name"[^>]*aria-expanded="(\w+)"/g),
+    ]
+    expect(headers).toHaveLength(3)
+    expect(headers.every((header) => header[1] === 'true')).toBe(true)
+    expect(markup).toContain('kind-palette-row')
   })
 
   it('names the drag payload type hosts and tests can rely on', () => {
@@ -1148,7 +1166,10 @@ describe('a read-only mount (#298)', () => {
     const markup = renderSession(activeViewState)
     const inspector = inspectorOf(markup)
 
-    expect(markup).toContain('>Add subject</button>')
+    // The palette is the authoring entry; the canvas strip's Add-subject
+    // button is the fallback for a mount WITHOUT the palette section, so on
+    // the default mount it stands down rather than duplicating the entry.
+    expect(markup).not.toContain('>Add subject</button>')
     expect(markup).toContain('stack-section-palette')
     expect(markup).toContain('stack-section-changes')
     expect(markup).toContain('aria-label="New view"')

@@ -274,6 +274,7 @@ const DiagramWorkspace = ({
   onApplyFilter,
   onStageView,
   readOnly,
+  paletteReachable,
 }: {
   readonly state: VisualAppState;
   readonly selectedId: string | null;
@@ -344,6 +345,9 @@ const DiagramWorkspace = ({
    * drag still moves a node transiently but writes no layout.
    */
   readonly readOnly: boolean;
+  /** Whether the kind palette section is offered on this mount: when it is,
+   * the canvas strip's Add-subject button stands down. */
+  readonly paletteReachable: boolean;
 }) => {
   // An edge names its endpoints by node id; the reviewer reads titles. The
   // rendering model the renderer itself draws answers that, so nothing here
@@ -413,7 +417,11 @@ const DiagramWorkspace = ({
               value={state.quickFilterText}
               onChange={onQuickFilterChange}
             />
-            {readOnly ? null : (
+            {/* The palette is the authoring entry when it is reachable; this
+              * button is the FALLBACK for a host that mounts without the
+              * palette section (#295's sections opt-in), not a duplicate
+              * beside it. */}
+            {readOnly || paletteReachable ? null : (
               <button
                 type="button"
                 className="subject-draft-open"
@@ -1662,6 +1670,7 @@ export const App = ({
           onApplyFilter={(query) => filter(query, "editor")}
           onStageView={stageViewChange}
           readOnly={readOnly}
+          paletteReachable={offeredSections.includes("palette")}
         />
         {conversationHidden ? (
           // The way back stands where the column stood: a thin strip, not a
