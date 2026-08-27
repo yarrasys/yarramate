@@ -84,6 +84,35 @@ describe('composing catalogues', () => {
     ])
   })
 
+  it('accepts a catalogue that declares NO wave and only contributes', () => {
+    // The ordinary shape of a project catalogue, and the schema forbade it
+    // until this feature: `waves` had `minItems: 1`, so a catalogue wanting
+    // only to add "one more Assurance question for this client" had to declare
+    // a wave it did not want - which is then refused as a duplicate the moment
+    // a second catalogue does the same. Found by a barrel test, not by design.
+    const contributor = project
+      .replace('waves:\n  - id: engagement\n    name: Engagement\n', 'waves: []\n')
+    const composed = composeCatalogues([
+      sourceOf('domain.yaml', domain),
+      sourceOf('contributor.yaml', contributor),
+    ])
+    if (!composed.ok) throw new Error(JSON.stringify(composed.diagnostics))
+    expect(composed.composed.catalogue.waves.map(({ id }) => id)).toEqual(['assurance'])
+    expect(composed.composed.catalogue.questions.map(({ id }) => id)).toEqual([
+      'domain#shared-id',
+      'project#shared-id',
+    ])
+  })
+
+  it('still refuses a wave-less catalogue evaluated ALONE, since nothing declares it', () => {
+    const contributor = project
+      .replace('waves:\n  - id: engagement\n    name: Engagement\n', 'waves: []\n')
+    const composed = composeCatalogues([sourceOf('contributor.yaml', contributor)])
+    expect(composed.ok).toBe(false)
+    if (composed.ok) return
+    expect(composed.diagnostics[0]).toMatchObject({ code: 'YM911' })
+  })
+
   it('lets a catalogue contribute to a wave it did not declare', () => {
     // The case the whole feature exists for: "one more Assurance question for
     // this client". Checking each file against only its own waves would have

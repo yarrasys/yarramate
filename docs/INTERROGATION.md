@@ -130,11 +130,16 @@ waves:
 ```
 
 ```yaml
-# the project catalogue just joins it
+# the project catalogue just joins it, declaring no wave of its own
+waves: []
 questions:
   - id: regulator-signoff
     wave: assurance
 ```
+
+`waves: []` is legal, and is the ordinary shape of a project catalogue. A
+catalogue evaluated ALONE with no waves and a question naming one is still
+YM911, correctly: nothing declares it.
 
 Declaring the same wave twice is refused (**YM915**). Only a declaration places
 a wave in the interview order, so the base's order is untouched and new waves

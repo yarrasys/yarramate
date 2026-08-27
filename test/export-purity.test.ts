@@ -120,6 +120,64 @@ describe('adapter/visual-graph barrel', () => {
   })
 })
 
+describe('the interrogation barrel', () => {
+  it('publishes composition, not only evaluation', async () => {
+    // A host is told to compose UNCONDITIONALLY, even with one catalogue, so
+    // its question ids never change later (#345, ADR 0129). Advice it cannot
+    // follow is worse than no advice: `yarramate/workbook` shipped a writer
+    // with no reader the same week, and this is the same defect one import
+    // away.
+    const entry = await import('../src/interrogation-entry.js')
+    expect(typeof entry.composeCatalogues).toBe('function')
+    expect(typeof entry.qualifiedQuestionId).toBe('function')
+    expect(typeof entry.evaluateCatalogue).toBe('function')
+
+    const barrel = await import('../src/index.js')
+    expect(typeof barrel.composeCatalogues).toBe('function')
+    expect(typeof barrel.qualifiedQuestionId).toBe('function')
+  })
+
+  it('composes end to end from the published entry alone', async () => {
+    // Through the entry, not through the module: an export that resolves but
+    // does not work is what a barrel test is for.
+    const { composeCatalogues } = await import('../src/interrogation-entry.js')
+    // Only the BASE declares the wave; the second joins it, which is the rule
+    // and is what a project catalogue actually does. Written the other way
+    // first, and YM915 refused it, which is the check earning its keep on its
+    // own test.
+    const catalogue = (id: string, declaresWave: boolean) => ({
+      path: `${id}.yaml`,
+      source: `format: yarramate/question-catalogue/v1
+id: ${id}
+version: "1.0"
+profile: yarramate/core@0.1
+${declaresWave ? 'waves:\n  - id: only\n    name: Only\n' : 'waves: []\n'}questions:
+  - id: same-name
+    wave: only
+    scope: workspace
+    trigger:
+      - condition: no-subject-of-kind
+        kinds:
+          - yarramate/core@0.1#goal
+    question: Why?
+    materiality: Because.
+    resolution: Answer it.
+    authority: human
+`,
+    })
+    const composed = composeCatalogues([
+      catalogue('base', true),
+      catalogue('extra', false),
+    ])
+    if (!composed.ok) throw new Error(JSON.stringify(composed.diagnostics.map(({ code, message }) => `${code} ${message}`)))
+    expect(composed.composed.catalogue.questions.map(({ id }) => id)).toEqual([
+      'base#same-name',
+      'extra#same-name',
+    ])
+    expect(composed.composed.catalogues).toEqual(['base@1.0', 'extra@1.0'])
+  })
+})
+
 describe('workbook barrels', () => {
   it('yarramate/workbook hands a host everything it needs to WRITE one', async () => {
     const mod = await import('../src/workbook-entry.js')

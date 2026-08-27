@@ -14,6 +14,11 @@
   precedence question ADR 0125 raised rather than answering it: there is only
   ever one declarer. A second declaration is refused with **YM915**.
 
+  `waves` may now be **empty**. A catalogue that only contributes questions to
+  waves another declared is the ordinary shape of a project catalogue, and
+  `minItems: 1` forced it to declare a wave it did not want, which a second
+  such catalogue would then collide with.
+
   **Question ids are now qualified as `catalogue#question`.** Authors keep
   writing local ids; the engine qualifies when it composes, and every CLI verb
   composes even when only the shipped catalogue is in play. Two catalogues may
