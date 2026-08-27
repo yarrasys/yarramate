@@ -1977,3 +1977,438 @@ mappings:
   - native: workspace-question-catalogue
     external: workspaceQuestionCatalogue
     type: concept
+  - native: apply-result-schema-source
+    external: applyResultSchemaSource
+    type: concept
+  - native: ask-result-schema-source
+    external: askResultSchemaSource
+    type: concept
+  - native: design-step-schema-source
+    external: designStepSchemaSource
+    type: concept
+  - native: interrogation-report-schema-source
+    external: interrogationReportSchemaSource
+    type: concept
+  - native: operations-schema-source
+    external: operationsSchemaSource
+    type: concept
+  - native: pattern-schema-source
+    external: patternSchemaSource
+    type: concept
+  - native: question-catalogue-schema-source
+    external: questionCatalogueSchemaSource
+    type: concept
+  - native: visual-diagnostic-result-schema-source
+    external: visualDiagnosticResultSchemaSource
+    type: concept
+  - native: visual-graph-schema-source
+    external: visualGraphSchemaSource
+    type: concept
+  - native: visual-model-schema-source
+    external: visualModelSchemaSource
+    type: concept
+  - native: visual-response-schema-source
+    external: visualResponseSchemaSource
+    type: concept
+  - native: visual-session-descriptor-schema-source
+    external: visualSessionDescriptorSchemaSource
+    type: concept
+  - native: visual-session-request-schema-source
+    external: visualSessionRequestSchemaSource
+    type: concept
+  - native: visual-session-started-schema-source
+    external: visualSessionStartedSchemaSource
+    type: concept
+  - native: visual-status-schema-source
+    external: visualStatusSchemaSource
+    type: concept
+  - native: graphify-entry-source
+    external: graphifyEntrySource
+    type: concept
+  - native: likec4-adapter-entry-source
+    external: likec4AdapterEntrySource
+    type: concept
+  - native: visual-graph-entry-source
+    external: visualGraphEntrySource
+    type: concept
+  - native: visual-protocol-client-source
+    external: visualProtocolClientSource
+    type: concept
+  - native: visual-protocol-contract-source
+    external: visualProtocolContractSource
+    type: concept
+  - native: visual-view-identity-source
+    external: visualViewIdentitySource
+    type: concept
+  - native: visual-wire-source
+    external: visualWireSource
+    type: concept
+  - native: visual-workspace-model-source
+    external: visualWorkspaceModelSource
+    type: concept
+  - native: apply-cli-source
+    external: applyCliSource
+    type: concept
+  - native: concept-drafting-source
+    external: conceptDraftingSource
+    type: concept
+  - native: deletion-drafting-source
+    external: deletionDraftingSource
+    type: concept
+  - native: graph-claims-source
+    external: graphClaimsSource
+    type: concept
+  - native: package-barrel-source
+    external: packageBarrelSource
+    type: concept
+  - native: interrogation-entry-source
+    external: interrogationEntrySource
+    type: concept
+  - native: kind-label-source
+    external: kindLabelSource
+    type: concept
+  - native: layout-direction-source
+    external: layoutDirectionSource
+    type: concept
+  - native: nesting-source
+    external: nestingSource
+    type: concept
+  - native: archimate-notation-source
+    external: archimateNotationSource
+    type: concept
+  - native: operations-source
+    external: operationsSource
+    type: concept
+  - native: relationship-drafting-source
+    external: relationshipDraftingSource
+    type: concept
+  - native: shipped-profile-source
+    external: shippedProfileSource
+    type: concept
+  - native: source-store-source
+    external: sourceStoreSource
+    type: concept
+  - native: subject-references-source
+    external: subjectReferencesSource
+    type: concept
+  - native: visual-confirm-dialog-source
+    external: visualConfirmDialogSource
+    type: concept
+  - native: visual-connection-panel-source
+    external: visualConnectionPanelSource
+    type: concept
+  - native: visual-context-menu-model-source
+    external: visualContextMenuModelSource
+    type: concept
+  - native: visual-context-menu-source
+    external: visualContextMenuSource
+    type: concept
+  - native: visual-cytoscape-elk-types-source
+    external: visualCytoscapeElkTypesSource
+    type: concept
+  - native: visual-describe-query-source
+    external: visualDescribeQuerySource
+    type: concept
+  - native: visual-editor-host-source
+    external: visualEditorHostSource
+    type: concept
+  - native: visual-faults-source
+    external: visualFaultsSource
+    type: concept
+  - native: visual-kind-palette-source
+    external: visualKindPaletteSource
+    type: concept
+  - native: visual-local-host-source
+    external: visualLocalHostSource
+    type: concept
+  - native: visual-main-source
+    external: visualMainSource
+    type: concept
+  - native: visual-mount-source
+    external: visualMountSource
+    type: concept
+  - native: visual-open-questions-source
+    external: visualOpenQuestionsSource
+    type: concept
+  - native: visual-prompt-dialog-source
+    external: visualPromptDialogSource
+    type: concept
+  - native: visual-query-fields-source
+    external: visualQueryFieldsSource
+    type: concept
+  - native: visual-query-panel-source
+    external: visualQueryPanelSource
+    type: concept
+  - native: visual-quick-filter-source
+    external: visualQuickFilterSource
+    type: concept
+  - native: visual-raw-imports-types-source
+    external: visualRawImportsTypesSource
+    type: concept
+  - native: visual-relationship-kind-options-source
+    external: visualRelationshipKindOptionsSource
+    type: concept
+  - native: visual-save-view-source
+    external: visualSaveViewSource
+    type: concept
+  - native: visual-section-stack-source
+    external: visualSectionStackSource
+    type: concept
+  - native: visual-session-client-source
+    external: visualSessionClientSource
+    type: concept
+  - native: visual-shipped-catalogue-source
+    external: visualShippedCatalogueSource
+    type: concept
+  - native: visual-socket-host-source
+    external: visualSocketHostSource
+    type: concept
+  - native: visual-state-source
+    external: visualStateSource
+    type: concept
+  - native: visual-subject-draft-panel-source
+    external: visualSubjectDraftPanelSource
+    type: concept
+  - native: visual-subject-filter-source
+    external: visualSubjectFilterSource
+    type: concept
+  - native: visual-view-tree-model-source
+    external: visualViewTreeModelSource
+    type: concept
+  - native: visual-view-tree-source
+    external: visualViewTreeSource
+    type: concept
+  - native: visual-workspace-state-source
+    external: visualWorkspaceStateSource
+    type: concept
+  - native: workbook-entry-source
+    external: workbookEntrySource
+    type: concept
+  - native: workbook-import-entry-source
+    external: workbookImportEntrySource
+    type: concept
+  - native: workbook-operations-source
+    external: workbookOperationsSource
+    type: concept
+  - native: workbook-read-source
+    external: workbookReadSource
+    type: concept
+  - native: pattern-document
+    external: patternDocument
+    type: concept
+  - native: apply-result-schema-realizes-schema
+    external: applyResultSchemaRealizesSchema
+    type: relationship
+  - native: ask-result-schema-realizes-schema
+    external: askResultSchemaRealizesSchema
+    type: relationship
+  - native: design-step-schema-realizes-schema
+    external: designStepSchemaRealizesSchema
+    type: relationship
+  - native: interrogation-report-schema-realizes-engine
+    external: interrogationReportSchemaRealizesEngine
+    type: relationship
+  - native: operations-schema-realizes-schema
+    external: operationsSchemaRealizesSchema
+    type: relationship
+  - native: pattern-schema-realizes-pattern-document
+    external: patternSchemaRealizesPatternDocument
+    type: relationship
+  - native: question-catalogue-schema-realizes-catalogue
+    external: questionCatalogueSchemaRealizesCatalogue
+    type: relationship
+  - native: visual-diagnostic-result-schema-realizes-protocol
+    external: visualDiagnosticResultSchemaRealizesProtocol
+    type: relationship
+  - native: visual-graph-schema-realizes-visual-model
+    external: visualGraphSchemaRealizesVisualModel
+    type: relationship
+  - native: visual-model-schema-realizes-visual-model
+    external: visualModelSchemaRealizesVisualModel
+    type: relationship
+  - native: visual-response-schema-realizes-protocol
+    external: visualResponseSchemaRealizesProtocol
+    type: relationship
+  - native: visual-session-descriptor-schema-realizes-protocol
+    external: visualSessionDescriptorSchemaRealizesProtocol
+    type: relationship
+  - native: visual-session-request-schema-realizes-protocol
+    external: visualSessionRequestSchemaRealizesProtocol
+    type: relationship
+  - native: visual-session-started-schema-realizes-protocol
+    external: visualSessionStartedSchemaRealizesProtocol
+    type: relationship
+  - native: visual-status-schema-realizes-protocol
+    external: visualStatusSchemaRealizesProtocol
+    type: relationship
+  - native: graphify-entry-realizes-adapter
+    external: graphifyEntryRealizesAdapter
+    type: relationship
+  - native: likec4-adapter-entry-realizes-export
+    external: likec4AdapterEntryRealizesExport
+    type: relationship
+  - native: visual-graph-entry-realizes-visual-model
+    external: visualGraphEntryRealizesVisualModel
+    type: relationship
+  - native: visual-protocol-client-realizes-protocol
+    external: visualProtocolClientRealizesProtocol
+    type: relationship
+  - native: visual-protocol-contract-realizes-protocol
+    external: visualProtocolContractRealizesProtocol
+    type: relationship
+  - native: visual-view-identity-realizes-runtime
+    external: visualViewIdentityRealizesRuntime
+    type: relationship
+  - native: visual-wire-realizes-protocol
+    external: visualWireRealizesProtocol
+    type: relationship
+  - native: visual-workspace-model-realizes-runtime
+    external: visualWorkspaceModelRealizesRuntime
+    type: relationship
+  - native: apply-cli-realizes-apply
+    external: applyCliRealizesApply
+    type: relationship
+  - native: concept-drafting-realizes-operations
+    external: conceptDraftingRealizesOperations
+    type: relationship
+  - native: deletion-drafting-realizes-operations
+    external: deletionDraftingRealizesOperations
+    type: relationship
+  - native: graph-claims-realizes-graph
+    external: graphClaimsRealizesGraph
+    type: relationship
+  - native: package-barrel-realizes-package
+    external: packageBarrelRealizesPackage
+    type: relationship
+  - native: interrogation-entry-realizes-engine
+    external: interrogationEntryRealizesEngine
+    type: relationship
+  - native: kind-label-realizes-catalogue
+    external: kindLabelRealizesCatalogue
+    type: relationship
+  - native: layout-direction-realizes-visual-model
+    external: layoutDirectionRealizesVisualModel
+    type: relationship
+  - native: nesting-realizes-visual-model
+    external: nestingRealizesVisualModel
+    type: relationship
+  - native: archimate-notation-realizes-kind-icons
+    external: archimateNotationRealizesKindIcons
+    type: relationship
+  - native: operations-realizes-operations
+    external: operationsRealizesOperations
+    type: relationship
+  - native: relationship-drafting-realizes-operations
+    external: relationshipDraftingRealizesOperations
+    type: relationship
+  - native: shipped-profile-realizes-catalogue
+    external: shippedProfileRealizesCatalogue
+    type: relationship
+  - native: source-store-realizes-apply
+    external: sourceStoreRealizesApply
+    type: relationship
+  - native: subject-references-realizes-identity
+    external: subjectReferencesRealizesIdentity
+    type: relationship
+  - native: visual-confirm-dialog-realizes-browser
+    external: visualConfirmDialogRealizesBrowser
+    type: relationship
+  - native: visual-connection-panel-realizes-browser
+    external: visualConnectionPanelRealizesBrowser
+    type: relationship
+  - native: visual-context-menu-model-realizes-browser
+    external: visualContextMenuModelRealizesBrowser
+    type: relationship
+  - native: visual-context-menu-realizes-browser
+    external: visualContextMenuRealizesBrowser
+    type: relationship
+  - native: visual-cytoscape-elk-types-realizes-browser
+    external: visualCytoscapeElkTypesRealizesBrowser
+    type: relationship
+  - native: visual-describe-query-realizes-browser
+    external: visualDescribeQueryRealizesBrowser
+    type: relationship
+  - native: visual-editor-host-realizes-browser
+    external: visualEditorHostRealizesBrowser
+    type: relationship
+  - native: visual-faults-realizes-browser
+    external: visualFaultsRealizesBrowser
+    type: relationship
+  - native: visual-kind-palette-realizes-browser
+    external: visualKindPaletteRealizesBrowser
+    type: relationship
+  - native: visual-local-host-realizes-browser
+    external: visualLocalHostRealizesBrowser
+    type: relationship
+  - native: visual-main-realizes-browser
+    external: visualMainRealizesBrowser
+    type: relationship
+  - native: visual-mount-realizes-browser
+    external: visualMountRealizesBrowser
+    type: relationship
+  - native: visual-open-questions-realizes-browser
+    external: visualOpenQuestionsRealizesBrowser
+    type: relationship
+  - native: visual-prompt-dialog-realizes-browser
+    external: visualPromptDialogRealizesBrowser
+    type: relationship
+  - native: visual-query-fields-realizes-browser
+    external: visualQueryFieldsRealizesBrowser
+    type: relationship
+  - native: visual-query-panel-realizes-browser
+    external: visualQueryPanelRealizesBrowser
+    type: relationship
+  - native: visual-quick-filter-realizes-browser
+    external: visualQuickFilterRealizesBrowser
+    type: relationship
+  - native: visual-raw-imports-types-realizes-browser
+    external: visualRawImportsTypesRealizesBrowser
+    type: relationship
+  - native: visual-relationship-kind-options-realizes-browser
+    external: visualRelationshipKindOptionsRealizesBrowser
+    type: relationship
+  - native: visual-save-view-realizes-browser
+    external: visualSaveViewRealizesBrowser
+    type: relationship
+  - native: visual-section-stack-realizes-browser
+    external: visualSectionStackRealizesBrowser
+    type: relationship
+  - native: visual-session-client-realizes-browser
+    external: visualSessionClientRealizesBrowser
+    type: relationship
+  - native: visual-shipped-catalogue-realizes-catalogue
+    external: visualShippedCatalogueRealizesCatalogue
+    type: relationship
+  - native: visual-socket-host-realizes-protocol
+    external: visualSocketHostRealizesProtocol
+    type: relationship
+  - native: visual-state-realizes-browser
+    external: visualStateRealizesBrowser
+    type: relationship
+  - native: visual-subject-draft-panel-realizes-browser
+    external: visualSubjectDraftPanelRealizesBrowser
+    type: relationship
+  - native: visual-subject-filter-realizes-browser
+    external: visualSubjectFilterRealizesBrowser
+    type: relationship
+  - native: visual-view-tree-model-realizes-browser
+    external: visualViewTreeModelRealizesBrowser
+    type: relationship
+  - native: visual-view-tree-realizes-browser
+    external: visualViewTreeRealizesBrowser
+    type: relationship
+  - native: visual-workspace-state-realizes-browser
+    external: visualWorkspaceStateRealizesBrowser
+    type: relationship
+  - native: workbook-entry-realizes-derivation
+    external: workbookEntryRealizesDerivation
+    type: relationship
+  - native: workbook-import-entry-realizes-merge
+    external: workbookImportEntryRealizesMerge
+    type: relationship
+  - native: workbook-operations-realizes-import
+    external: workbookOperationsRealizesImport
+    type: relationship
+  - native: workbook-read-realizes-engine
+    external: workbookReadRealizesEngine
+    type: relationship

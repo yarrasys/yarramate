@@ -966,3 +966,296 @@ observations:
     result: confirmed
     evidence:
       uri: repo:src/interrogate-command.ts
+  - subject: apply-result-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-apply-result.schema.json
+  - subject: ask-result-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-ask-result.schema.json
+  - subject: design-step-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-design-step.schema.json
+  - subject: interrogation-report-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-interrogation-report.schema.json
+  - subject: operations-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-operations.schema.json
+  - subject: pattern-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-pattern.schema.json
+  - subject: question-catalogue-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-question-catalogue.schema.json
+  - subject: visual-diagnostic-result-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-visual-diagnostic-result.schema.json
+  - subject: visual-graph-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-visual-graph.schema.json
+  - subject: visual-model-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-visual-model.schema.json
+  - subject: visual-response-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-visual-response.schema.json
+  - subject: visual-session-descriptor-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-visual-session-descriptor.schema.json
+  - subject: visual-session-request-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-visual-session-request.schema.json
+  - subject: visual-session-started-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-visual-session-started.schema.json
+  - subject: visual-status-schema-source
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-visual-status.schema.json
+  - subject: graphify-entry-source
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/graphify-entry.ts
+  - subject: likec4-adapter-entry-source
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/likec4.ts
+  - subject: visual-graph-entry-source
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/visual-graph-entry.ts
+  - subject: visual-protocol-client-source
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/visual/client.ts
+  - subject: visual-protocol-contract-source
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/visual/protocol-contract.ts
+  - subject: visual-view-identity-source
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/visual/view-identity.ts
+  - subject: visual-wire-source
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/visual/wire.ts
+  - subject: visual-workspace-model-source
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/visual/workspace-model.ts
+  - subject: apply-cli-source
+    result: confirmed
+    evidence:
+      uri: repo:src/apply-cli.ts
+  - subject: concept-drafting-source
+    result: confirmed
+    evidence:
+      uri: repo:src/concept-drafting.ts
+  - subject: deletion-drafting-source
+    result: confirmed
+    evidence:
+      uri: repo:src/deletion-drafting.ts
+  - subject: graph-claims-source
+    result: confirmed
+    evidence:
+      uri: repo:src/graph-claims.ts
+  - subject: package-barrel-source
+    result: confirmed
+    evidence:
+      uri: repo:src/index.ts
+  - subject: interrogation-entry-source
+    result: confirmed
+    evidence:
+      uri: repo:src/interrogation-entry.ts
+  - subject: kind-label-source
+    result: confirmed
+    evidence:
+      uri: repo:src/kind-label.ts
+  - subject: layout-direction-source
+    result: confirmed
+    evidence:
+      uri: repo:src/layout-direction.ts
+  - subject: nesting-source
+    result: confirmed
+    evidence:
+      uri: repo:src/nesting.ts
+  - subject: archimate-notation-source
+    result: confirmed
+    evidence:
+      uri: repo:src/notation/archimate.ts
+  - subject: operations-source
+    result: confirmed
+    evidence:
+      uri: repo:src/operations.ts
+  - subject: relationship-drafting-source
+    result: confirmed
+    evidence:
+      uri: repo:src/relationship-drafting.ts
+  - subject: shipped-profile-source
+    result: confirmed
+    evidence:
+      uri: repo:src/shipped-profile.ts
+  - subject: source-store-source
+    result: confirmed
+    evidence:
+      uri: repo:src/source-store.ts
+  - subject: subject-references-source
+    result: confirmed
+    evidence:
+      uri: repo:src/subject-references.ts
+  - subject: visual-confirm-dialog-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/confirm-dialog.tsx
+  - subject: visual-connection-panel-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/connection-panel.tsx
+  - subject: visual-context-menu-model-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/context-menu-model.ts
+  - subject: visual-context-menu-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/context-menu.tsx
+  - subject: visual-cytoscape-elk-types-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/cytoscape-elk.d.ts
+  - subject: visual-describe-query-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/describe-query.ts
+  - subject: visual-editor-host-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/editor-host.ts
+  - subject: visual-faults-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/faults.ts
+  - subject: visual-kind-palette-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/kind-palette.tsx
+  - subject: visual-local-host-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/local-host.ts
+  - subject: visual-main-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/main.tsx
+  - subject: visual-mount-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/mount.tsx
+  - subject: visual-open-questions-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/open-questions.tsx
+  - subject: visual-prompt-dialog-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/prompt-dialog.tsx
+  - subject: visual-query-fields-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/query-fields.tsx
+  - subject: visual-query-panel-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/query-panel.tsx
+  - subject: visual-quick-filter-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/quick-filter.tsx
+  - subject: visual-raw-imports-types-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/raw-imports.d.ts
+  - subject: visual-relationship-kind-options-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/relationship-kind-options.ts
+  - subject: visual-save-view-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/save-view.tsx
+  - subject: visual-section-stack-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/section-stack.tsx
+  - subject: visual-session-client-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/session-client.tsx
+  - subject: visual-shipped-catalogue-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/shipped-catalogue.ts
+  - subject: visual-socket-host-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/socket-host.ts
+  - subject: visual-state-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/state.ts
+  - subject: visual-subject-draft-panel-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/subject-draft-panel.tsx
+  - subject: visual-subject-filter-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/subject-filter.ts
+  - subject: visual-view-tree-model-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/view-tree-model.ts
+  - subject: visual-view-tree-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/view-tree.tsx
+  - subject: visual-workspace-state-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/workspace-state.ts
+  - subject: workbook-entry-source
+    result: confirmed
+    evidence:
+      uri: repo:src/workbook-entry.ts
+  - subject: workbook-import-entry-source
+    result: confirmed
+    evidence:
+      uri: repo:src/workbook-import-entry.ts
+  - subject: workbook-operations-source
+    result: confirmed
+    evidence:
+      uri: repo:src/workbook-operations.ts
+  - subject: workbook-read-source
+    result: confirmed
+    evidence:
+      uri: repo:src/workbook-read.ts
+  - subject: pattern-document
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-pattern.schema.json
+      message: the yarramate/pattern/v1 shape is published here; the behavior that expands it is not yet modelled

@@ -484,6 +484,296 @@ concepts:
     kind: repository-file
     name: test/kind-icons.test.ts
     status: current
+  # Files the artifact-coverage sweep bound into the model (#175 work-down):
+  # each realizes the concept its code is witnessed to serve.
+  - id: apply-result-schema-source
+    kind: repository-file
+    name: schema/yarramate-apply-result.schema.json
+    status: current
+  - id: ask-result-schema-source
+    kind: repository-file
+    name: schema/yarramate-ask-result.schema.json
+    status: current
+  - id: design-step-schema-source
+    kind: repository-file
+    name: schema/yarramate-design-step.schema.json
+    status: current
+  - id: interrogation-report-schema-source
+    kind: repository-file
+    name: schema/yarramate-interrogation-report.schema.json
+    status: current
+  - id: operations-schema-source
+    kind: repository-file
+    name: schema/yarramate-operations.schema.json
+    status: current
+  - id: pattern-schema-source
+    kind: repository-file
+    name: schema/yarramate-pattern.schema.json
+    status: current
+  - id: question-catalogue-schema-source
+    kind: repository-file
+    name: schema/yarramate-question-catalogue.schema.json
+    status: current
+  - id: visual-diagnostic-result-schema-source
+    kind: repository-file
+    name: schema/yarramate-visual-diagnostic-result.schema.json
+    status: current
+  - id: visual-graph-schema-source
+    kind: repository-file
+    name: schema/yarramate-visual-graph.schema.json
+    status: current
+  - id: visual-model-schema-source
+    kind: repository-file
+    name: schema/yarramate-visual-model.schema.json
+    status: current
+  - id: visual-response-schema-source
+    kind: repository-file
+    name: schema/yarramate-visual-response.schema.json
+    status: current
+  - id: visual-session-descriptor-schema-source
+    kind: repository-file
+    name: schema/yarramate-visual-session-descriptor.schema.json
+    status: current
+  - id: visual-session-request-schema-source
+    kind: repository-file
+    name: schema/yarramate-visual-session-request.schema.json
+    status: current
+  - id: visual-session-started-schema-source
+    kind: repository-file
+    name: schema/yarramate-visual-session-started.schema.json
+    status: current
+  - id: visual-status-schema-source
+    kind: repository-file
+    name: schema/yarramate-visual-status.schema.json
+    status: current
+  - id: graphify-entry-source
+    kind: repository-file
+    name: src/adapters/graphify-entry.ts
+    status: current
+  - id: likec4-adapter-entry-source
+    kind: repository-file
+    name: src/adapters/likec4.ts
+    status: current
+  - id: visual-graph-entry-source
+    kind: repository-file
+    name: src/adapters/visual-graph-entry.ts
+    status: current
+  - id: visual-protocol-client-source
+    kind: repository-file
+    name: src/adapters/visual/client.ts
+    status: current
+  - id: visual-protocol-contract-source
+    kind: repository-file
+    name: src/adapters/visual/protocol-contract.ts
+    status: current
+  - id: visual-view-identity-source
+    kind: repository-file
+    name: src/adapters/visual/view-identity.ts
+    status: current
+  - id: visual-wire-source
+    kind: repository-file
+    name: src/adapters/visual/wire.ts
+    status: current
+  - id: visual-workspace-model-source
+    kind: repository-file
+    name: src/adapters/visual/workspace-model.ts
+    status: current
+  - id: apply-cli-source
+    kind: repository-file
+    name: src/apply-cli.ts
+    status: current
+  - id: concept-drafting-source
+    kind: repository-file
+    name: src/concept-drafting.ts
+    status: current
+  - id: deletion-drafting-source
+    kind: repository-file
+    name: src/deletion-drafting.ts
+    status: current
+  - id: graph-claims-source
+    kind: repository-file
+    name: src/graph-claims.ts
+    status: current
+  - id: package-barrel-source
+    kind: repository-file
+    name: src/index.ts
+    status: current
+  - id: interrogation-entry-source
+    kind: repository-file
+    name: src/interrogation-entry.ts
+    status: current
+  - id: kind-label-source
+    kind: repository-file
+    name: src/kind-label.ts
+    status: current
+  - id: layout-direction-source
+    kind: repository-file
+    name: src/layout-direction.ts
+    status: current
+  - id: nesting-source
+    kind: repository-file
+    name: src/nesting.ts
+    status: current
+  - id: archimate-notation-source
+    kind: repository-file
+    name: src/notation/archimate.ts
+    status: current
+  - id: operations-source
+    kind: repository-file
+    name: src/operations.ts
+    status: current
+  - id: relationship-drafting-source
+    kind: repository-file
+    name: src/relationship-drafting.ts
+    status: current
+  - id: shipped-profile-source
+    kind: repository-file
+    name: src/shipped-profile.ts
+    status: current
+  - id: source-store-source
+    kind: repository-file
+    name: src/source-store.ts
+    status: current
+  - id: subject-references-source
+    kind: repository-file
+    name: src/subject-references.ts
+    status: current
+  - id: visual-confirm-dialog-source
+    kind: repository-file
+    name: src/visual-app/confirm-dialog.tsx
+    status: current
+  - id: visual-connection-panel-source
+    kind: repository-file
+    name: src/visual-app/connection-panel.tsx
+    status: current
+  - id: visual-context-menu-model-source
+    kind: repository-file
+    name: src/visual-app/context-menu-model.ts
+    status: current
+  - id: visual-context-menu-source
+    kind: repository-file
+    name: src/visual-app/context-menu.tsx
+    status: current
+  - id: visual-cytoscape-elk-types-source
+    kind: repository-file
+    name: src/visual-app/cytoscape-elk.d.ts
+    status: current
+  - id: visual-describe-query-source
+    kind: repository-file
+    name: src/visual-app/describe-query.ts
+    status: current
+  - id: visual-editor-host-source
+    kind: repository-file
+    name: src/visual-app/editor-host.ts
+    status: current
+  - id: visual-faults-source
+    kind: repository-file
+    name: src/visual-app/faults.ts
+    status: current
+  - id: visual-kind-palette-source
+    kind: repository-file
+    name: src/visual-app/kind-palette.tsx
+    status: current
+  - id: visual-local-host-source
+    kind: repository-file
+    name: src/visual-app/local-host.ts
+    status: current
+  - id: visual-main-source
+    kind: repository-file
+    name: src/visual-app/main.tsx
+    status: current
+  - id: visual-mount-source
+    kind: repository-file
+    name: src/visual-app/mount.tsx
+    status: current
+  - id: visual-open-questions-source
+    kind: repository-file
+    name: src/visual-app/open-questions.tsx
+    status: current
+  - id: visual-prompt-dialog-source
+    kind: repository-file
+    name: src/visual-app/prompt-dialog.tsx
+    status: current
+  - id: visual-query-fields-source
+    kind: repository-file
+    name: src/visual-app/query-fields.tsx
+    status: current
+  - id: visual-query-panel-source
+    kind: repository-file
+    name: src/visual-app/query-panel.tsx
+    status: current
+  - id: visual-quick-filter-source
+    kind: repository-file
+    name: src/visual-app/quick-filter.tsx
+    status: current
+  - id: visual-raw-imports-types-source
+    kind: repository-file
+    name: src/visual-app/raw-imports.d.ts
+    status: current
+  - id: visual-relationship-kind-options-source
+    kind: repository-file
+    name: src/visual-app/relationship-kind-options.ts
+    status: current
+  - id: visual-save-view-source
+    kind: repository-file
+    name: src/visual-app/save-view.tsx
+    status: current
+  - id: visual-section-stack-source
+    kind: repository-file
+    name: src/visual-app/section-stack.tsx
+    status: current
+  - id: visual-session-client-source
+    kind: repository-file
+    name: src/visual-app/session-client.tsx
+    status: current
+  - id: visual-shipped-catalogue-source
+    kind: repository-file
+    name: src/visual-app/shipped-catalogue.ts
+    status: current
+  - id: visual-socket-host-source
+    kind: repository-file
+    name: src/visual-app/socket-host.ts
+    status: current
+  - id: visual-state-source
+    kind: repository-file
+    name: src/visual-app/state.ts
+    status: current
+  - id: visual-subject-draft-panel-source
+    kind: repository-file
+    name: src/visual-app/subject-draft-panel.tsx
+    status: current
+  - id: visual-subject-filter-source
+    kind: repository-file
+    name: src/visual-app/subject-filter.ts
+    status: current
+  - id: visual-view-tree-model-source
+    kind: repository-file
+    name: src/visual-app/view-tree-model.ts
+    status: current
+  - id: visual-view-tree-source
+    kind: repository-file
+    name: src/visual-app/view-tree.tsx
+    status: current
+  - id: visual-workspace-state-source
+    kind: repository-file
+    name: src/visual-app/workspace-state.ts
+    status: current
+  - id: workbook-entry-source
+    kind: repository-file
+    name: src/workbook-entry.ts
+    status: current
+  - id: workbook-import-entry-source
+    kind: repository-file
+    name: src/workbook-import-entry.ts
+    status: current
+  - id: workbook-operations-source
+    kind: repository-file
+    name: src/workbook-operations.ts
+    status: current
+  - id: workbook-read-source
+    kind: repository-file
+    name: src/workbook-read.ts
+    status: current
 relationships:
   - id: backlog-disposition-qualifies-roadmap
     kind: association
@@ -997,3 +1287,291 @@ relationships:
     kind: association
     from: visual-kind-icons-tests
     to: render-archimate-kind-icons
+  - id: apply-result-schema-realizes-schema
+    kind: realization
+    from: apply-result-schema-source
+    to: apply-result-schema
+  - id: ask-result-schema-realizes-schema
+    kind: realization
+    from: ask-result-schema-source
+    to: ask-result-schema
+  - id: design-step-schema-realizes-schema
+    kind: realization
+    from: design-step-schema-source
+    to: design-step-schema
+  - id: interrogation-report-schema-realizes-engine
+    kind: realization
+    from: interrogation-report-schema-source
+    to: interrogation-engine
+  - id: operations-schema-realizes-schema
+    kind: realization
+    from: operations-schema-source
+    to: apply-operations-schema
+  - id: pattern-schema-realizes-pattern-document
+    kind: realization
+    from: pattern-schema-source
+    to: pattern-document
+  - id: question-catalogue-schema-realizes-catalogue
+    kind: realization
+    from: question-catalogue-schema-source
+    to: question-catalogue
+  - id: visual-diagnostic-result-schema-realizes-protocol
+    kind: realization
+    from: visual-diagnostic-result-schema-source
+    to: visual-session-protocol
+  - id: visual-graph-schema-realizes-visual-model
+    kind: realization
+    from: visual-graph-schema-source
+    to: render-visual-model
+  - id: visual-model-schema-realizes-visual-model
+    kind: realization
+    from: visual-model-schema-source
+    to: render-visual-model
+  - id: visual-response-schema-realizes-protocol
+    kind: realization
+    from: visual-response-schema-source
+    to: visual-session-protocol
+  - id: visual-session-descriptor-schema-realizes-protocol
+    kind: realization
+    from: visual-session-descriptor-schema-source
+    to: visual-session-protocol
+  - id: visual-session-request-schema-realizes-protocol
+    kind: realization
+    from: visual-session-request-schema-source
+    to: visual-session-protocol
+  - id: visual-session-started-schema-realizes-protocol
+    kind: realization
+    from: visual-session-started-schema-source
+    to: visual-session-protocol
+  - id: visual-status-schema-realizes-protocol
+    kind: realization
+    from: visual-status-schema-source
+    to: visual-session-protocol
+  - id: graphify-entry-realizes-adapter
+    kind: realization
+    from: graphify-entry-source
+    to: graphify-evidence-adapter
+  - id: likec4-adapter-entry-realizes-export
+    kind: realization
+    from: likec4-adapter-entry-source
+    to: export-likec4
+  - id: visual-graph-entry-realizes-visual-model
+    kind: realization
+    from: visual-graph-entry-source
+    to: render-visual-model
+  - id: visual-protocol-client-realizes-protocol
+    kind: realization
+    from: visual-protocol-client-source
+    to: visual-session-protocol
+  - id: visual-protocol-contract-realizes-protocol
+    kind: realization
+    from: visual-protocol-contract-source
+    to: visual-session-protocol
+  - id: visual-view-identity-realizes-runtime
+    kind: realization
+    from: visual-view-identity-source
+    to: visual-runtime
+  - id: visual-wire-realizes-protocol
+    kind: realization
+    from: visual-wire-source
+    to: visual-session-protocol
+  - id: visual-workspace-model-realizes-runtime
+    kind: realization
+    from: visual-workspace-model-source
+    to: visual-runtime
+  - id: apply-cli-realizes-apply
+    kind: realization
+    from: apply-cli-source
+    to: apply-command
+  - id: concept-drafting-realizes-operations
+    kind: realization
+    from: concept-drafting-source
+    to: apply-operations
+  - id: deletion-drafting-realizes-operations
+    kind: realization
+    from: deletion-drafting-source
+    to: apply-operations
+  - id: graph-claims-realizes-graph
+    kind: realization
+    from: graph-claims-source
+    to: semantic-graph
+  - id: package-barrel-realizes-package
+    kind: realization
+    from: package-barrel-source
+    to: npm-package
+  - id: interrogation-entry-realizes-engine
+    kind: realization
+    from: interrogation-entry-source
+    to: interrogation-engine
+  - id: kind-label-realizes-catalogue
+    kind: realization
+    from: kind-label-source
+    to: kind-catalogue
+  - id: layout-direction-realizes-visual-model
+    kind: realization
+    from: layout-direction-source
+    to: render-visual-model
+  - id: nesting-realizes-visual-model
+    kind: realization
+    from: nesting-source
+    to: render-visual-model
+  - id: archimate-notation-realizes-kind-icons
+    kind: realization
+    from: archimate-notation-source
+    to: render-archimate-kind-icons
+  - id: operations-realizes-operations
+    kind: realization
+    from: operations-source
+    to: apply-operations
+  - id: relationship-drafting-realizes-operations
+    kind: realization
+    from: relationship-drafting-source
+    to: apply-operations
+  - id: shipped-profile-realizes-catalogue
+    kind: realization
+    from: shipped-profile-source
+    to: profile-catalogue
+  - id: source-store-realizes-apply
+    kind: realization
+    from: source-store-source
+    to: apply-command
+  - id: subject-references-realizes-identity
+    kind: realization
+    from: subject-references-source
+    to: subject-identity
+  - id: visual-confirm-dialog-realizes-browser
+    kind: realization
+    from: visual-confirm-dialog-source
+    to: visual-browser
+  - id: visual-connection-panel-realizes-browser
+    kind: realization
+    from: visual-connection-panel-source
+    to: visual-browser
+  - id: visual-context-menu-model-realizes-browser
+    kind: realization
+    from: visual-context-menu-model-source
+    to: visual-browser
+  - id: visual-context-menu-realizes-browser
+    kind: realization
+    from: visual-context-menu-source
+    to: visual-browser
+  - id: visual-cytoscape-elk-types-realizes-browser
+    kind: realization
+    from: visual-cytoscape-elk-types-source
+    to: visual-browser
+  - id: visual-describe-query-realizes-browser
+    kind: realization
+    from: visual-describe-query-source
+    to: visual-browser
+  - id: visual-editor-host-realizes-browser
+    kind: realization
+    from: visual-editor-host-source
+    to: visual-browser
+  - id: visual-faults-realizes-browser
+    kind: realization
+    from: visual-faults-source
+    to: visual-browser
+  - id: visual-kind-palette-realizes-browser
+    kind: realization
+    from: visual-kind-palette-source
+    to: visual-browser
+  - id: visual-local-host-realizes-browser
+    kind: realization
+    from: visual-local-host-source
+    to: visual-browser
+  - id: visual-main-realizes-browser
+    kind: realization
+    from: visual-main-source
+    to: visual-browser
+  - id: visual-mount-realizes-browser
+    kind: realization
+    from: visual-mount-source
+    to: visual-browser
+  - id: visual-open-questions-realizes-browser
+    kind: realization
+    from: visual-open-questions-source
+    to: visual-browser
+  - id: visual-prompt-dialog-realizes-browser
+    kind: realization
+    from: visual-prompt-dialog-source
+    to: visual-browser
+  - id: visual-query-fields-realizes-browser
+    kind: realization
+    from: visual-query-fields-source
+    to: visual-browser
+  - id: visual-query-panel-realizes-browser
+    kind: realization
+    from: visual-query-panel-source
+    to: visual-browser
+  - id: visual-quick-filter-realizes-browser
+    kind: realization
+    from: visual-quick-filter-source
+    to: visual-browser
+  - id: visual-raw-imports-types-realizes-browser
+    kind: realization
+    from: visual-raw-imports-types-source
+    to: visual-browser
+  - id: visual-relationship-kind-options-realizes-browser
+    kind: realization
+    from: visual-relationship-kind-options-source
+    to: visual-browser
+  - id: visual-save-view-realizes-browser
+    kind: realization
+    from: visual-save-view-source
+    to: visual-browser
+  - id: visual-section-stack-realizes-browser
+    kind: realization
+    from: visual-section-stack-source
+    to: visual-browser
+  - id: visual-session-client-realizes-browser
+    kind: realization
+    from: visual-session-client-source
+    to: visual-browser
+  - id: visual-shipped-catalogue-realizes-catalogue
+    kind: realization
+    from: visual-shipped-catalogue-source
+    to: question-catalogue
+  - id: visual-socket-host-realizes-protocol
+    kind: realization
+    from: visual-socket-host-source
+    to: visual-session-protocol
+  - id: visual-state-realizes-browser
+    kind: realization
+    from: visual-state-source
+    to: visual-browser
+  - id: visual-subject-draft-panel-realizes-browser
+    kind: realization
+    from: visual-subject-draft-panel-source
+    to: visual-browser
+  - id: visual-subject-filter-realizes-browser
+    kind: realization
+    from: visual-subject-filter-source
+    to: visual-browser
+  - id: visual-view-tree-model-realizes-browser
+    kind: realization
+    from: visual-view-tree-model-source
+    to: visual-browser
+  - id: visual-view-tree-realizes-browser
+    kind: realization
+    from: visual-view-tree-source
+    to: visual-browser
+  - id: visual-workspace-state-realizes-browser
+    kind: realization
+    from: visual-workspace-state-source
+    to: visual-browser
+  - id: workbook-entry-realizes-derivation
+    kind: realization
+    from: workbook-entry-source
+    to: derive-architecture-workbook
+  - id: workbook-import-entry-realizes-merge
+    kind: realization
+    from: workbook-import-entry-source
+    to: merge-edited-workbook
+  - id: workbook-operations-realizes-import
+    kind: realization
+    from: workbook-operations-source
+    to: import-command
+  - id: workbook-read-realizes-engine
+    kind: realization
+    from: workbook-read-source
+    to: workbook-engine
