@@ -1,6 +1,12 @@
 # Changelog
 
-## Unreleased
+## 1.9.0
+
+- **Added.** The gitlab benchmark suite (#288, #372):
+  `docs/research/context-benchmark/tasks/gitlab.yaml`, 8 tasks frozen at
+  authoring, every ground-truth fact verified in a fresh clone at the
+  gallery showcase's pinned commit. Authored under the recorded small-N
+  pooling decision (kafka + gitlab published as N=2).
 
 - **Changed.** The canvas strip's Add-subject button stands down when the
   kind palette is offered. The palette is the authoring entry (pick or drag
