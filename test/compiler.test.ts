@@ -753,6 +753,10 @@ relationships:
 
     expect(result).toEqual({
       ok: true,
+      // Always emitted, possibly empty (ADR 0131): an empty array is a
+      // workspace with no bindings, while an evaluation missing the array
+      // is a caller that never looked.
+      patternMemberships: [],
       graph: {
         format: 'yarramate/graph/v2',
         profiles: ['yarramate/core@0.1'],

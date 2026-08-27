@@ -1542,6 +1542,18 @@ mappings:
   - native: assess-artifact-coverage
     external: assessArtifactCoverage
     type: concept
+  - native: bind-pattern-parts
+    external: bindPatternParts
+    type: concept
+  - native: compiler-binds-pattern-parts
+    external: compilerBindsPatternParts
+    type: relationship
+  - native: pattern-binding-reads-pattern-document
+    external: patternBindingReadsPatternDocument
+    type: relationship
+  - native: pattern-binding-writes-graph
+    external: patternBindingWritesGraph
+    type: relationship
   - native: detect-stale-attestations
     external: detectStaleAttestations
     type: concept

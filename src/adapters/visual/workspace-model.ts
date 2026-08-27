@@ -25,6 +25,7 @@ import { kindLabelOf } from "../../kind-label.js";
 import {
   evaluateCatalogue,
   composeCatalogues,
+  type CataloguePatternMembership,
 } from "../../interrogate-command.js";
 import type { VisualKindOption, VisualViewSummary } from "./protocol-contract.js";
 import type {
@@ -103,6 +104,8 @@ export const interrogationOverlayOf = (
   compiled: {
     readonly graph: SemanticGraph;
     readonly profileContext: ResolvedProfileContext;
+    /** From the compilation (ADR 0131); absent, slot questions stay quiet. */
+    readonly patternMemberships?: readonly CataloguePatternMembership[];
   },
   /**
    * The catalogue, or the composed SET a workspace carries (#345, ADR 0129).
@@ -131,6 +134,7 @@ export const interrogationOverlayOf = (
     compiled.profileContext,
     undefined,
     composed.composed.catalogues,
+    compiled.patternMemberships,
   );
   const dismissedEverywhere = new Set(
     dismissed
@@ -189,6 +193,7 @@ export const renderedWorkspaceOf = (
   compiled: {
     readonly graph: SemanticGraph;
     readonly profileContext: ResolvedProfileContext;
+    readonly patternMemberships?: readonly CataloguePatternMembership[];
   },
   views: readonly VisualViewSummary[],
   metadata: Omit<VisualRenderedModel, "graph" | "vocabulary" | "interrogation">,

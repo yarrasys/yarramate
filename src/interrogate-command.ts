@@ -115,6 +115,19 @@ export type CatalogueCondition =
   | { readonly condition: 'unscoped-succession' }
   | { readonly condition: 'unchallenged-evidence' }
   | { readonly condition: 'has-any-subject' }
+  | {
+      /**
+       * The subject fills a slot of a pattern instance (ADR 0131). A GUARD,
+       * per the #334 split: it says a question applies here, and an
+       * ordinary condition beside it says what would answer it. Bare, it
+       * means bound into any slot of any instance; `patternKinds` narrows
+       * by the pattern's kind identity (never a document path, ADR 0129)
+       * and `slots` by part name.
+       */
+      readonly condition: 'fills-pattern-slot'
+      readonly patternKinds?: readonly string[]
+      readonly slots?: readonly string[]
+    }
 
 /**
  * One observation from the workspace's evidence overlay, reduced to what
@@ -132,6 +145,22 @@ export type CatalogueCondition =
 export interface CatalogueEvidenceObservation {
   readonly result: 'confirmed' | 'contradicted' | 'unknown' | 'not-observed'
   readonly searched?: readonly unknown[]
+}
+
+/**
+ * One slot of one pattern instance and the subject bound into it, as
+ * interrogation reads it. Shaped structurally rather than importing the
+ * compiler's {@link PatternMembership} for the same reason
+ * {@link CatalogueEvidenceObservation} is: the pure engine entry keeps
+ * owning its whole input surface, and a host passes
+ * `compilation.patternMemberships` without the compiler's types. Only
+ * `fills-pattern-slot` reads it (ADR 0131).
+ */
+export interface CataloguePatternMembership {
+  readonly member: string
+  readonly slot: string
+  readonly instance: string
+  readonly pattern: string
 }
 
 export interface CatalogueQuestion {
@@ -528,8 +557,26 @@ const conditionHolds = (
   subjectId: string | undefined,
   profileContext: ResolvedProfileContext | undefined,
   evidence: readonly CatalogueEvidenceObservation[] | undefined,
+  memberships: readonly CataloguePatternMembership[] | undefined,
 ): boolean => {
   switch (condition.condition) {
+    case 'fills-pattern-slot':
+      // Absent memberships stay quiet: the caller did not derive them, so
+      // participation is unknown, not absent — the same rule
+      // `unchallenged-evidence` applies to a missing overlay and
+      // `unconstrained-kind` to a missing profile context (ADR 0131).
+      return (
+        memberships !== undefined &&
+        subjectId !== undefined &&
+        memberships.some(
+          (membership) =>
+            membership.member === subjectId &&
+            (condition.patternKinds === undefined ||
+              condition.patternKinds.includes(membership.pattern)) &&
+            (condition.slots === undefined ||
+              condition.slots.includes(membership.slot)),
+        )
+      )
     case 'has-any-subject':
       // The guard a late wave needs to say "only once the model has
       // substance" (#334). An empty model is not an architecture at rest -
@@ -837,6 +884,14 @@ export function evaluateCatalogue(
    * because this signature is published and a consumer already calls it.
    */
   catalogues?: readonly string[],
+  /**
+   * Pattern memberships from the compilation (ADR 0131) — pass
+   * `compilation.patternMemberships`, or `fills-pattern-slot` conditions
+   * never fire. A sixth optional parameter for the same reason
+   * `catalogues` is a fifth: this signature is published and a consumer
+   * already calls it.
+   */
+  patternMemberships?: readonly CataloguePatternMembership[],
 ): Omit<InterrogationReport, 'workspace'> {
   const index = indexGraph(graph)
   let open = 0
@@ -847,7 +902,7 @@ export function evaluateCatalogue(
   const waveOpens = (wave: QuestionCatalogue['waves'][number]): boolean =>
     wave.opensWhen === undefined ||
     wave.opensWhen.every((condition) =>
-      conditionHolds(index, condition, undefined, profileContext, evidence),
+      conditionHolds(index, condition, undefined, profileContext, evidence, patternMemberships),
     )
   const waves = catalogue.waves.map((wave) => ({
     id: wave.id,
@@ -874,7 +929,7 @@ export function evaluateCatalogue(
         }
         if (question.scope === 'workspace') {
           const isOpen = question.trigger.every((condition) =>
-            conditionHolds(index, condition, undefined, profileContext, evidence),
+            conditionHolds(index, condition, undefined, profileContext, evidence, patternMemberships),
           )
           if (isOpen) {
             open += 1
@@ -888,7 +943,7 @@ export function evaluateCatalogue(
           profileContext,
         ).filter((id) =>
           question.trigger.every((condition) =>
-            conditionHolds(index, condition, id, profileContext, evidence),
+            conditionHolds(index, condition, id, profileContext, evidence, patternMemberships),
           ),
         )
         if (matches.length === 0) {
@@ -969,7 +1024,7 @@ const kindReferencesOf = (
     path: readonly (string | number)[],
   ) => {
     if (typeof condition !== 'object' || condition === null) return
-    for (const field of ['kinds', 'counterpartKinds'] as const) {
+    for (const field of ['kinds', 'counterpartKinds', 'patternKinds'] as const) {
       const value = (condition as Record<string, unknown>)[field]
       if (!Array.isArray(value)) continue
       value.forEach((kind, index) => {

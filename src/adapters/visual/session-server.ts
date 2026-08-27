@@ -81,6 +81,7 @@ import {
   compileWorkspaceWithProfileContext,
   withDiagnosticSubjects,
   type Diagnostic,
+  type PatternMembership,
   type ResolvedProfileContext,
   type SemanticGraph,
 } from "../../compiler.js";
@@ -784,6 +785,7 @@ export const startVisualServer = async (
     | {
         readonly graph: SemanticGraph;
         readonly profileContext: ResolvedProfileContext;
+        readonly patternMemberships?: readonly PatternMembership[];
       }
     | undefined;
 
@@ -933,6 +935,9 @@ export const startVisualServer = async (
       compiledWorkspace = {
         graph: compiled.graph,
         profileContext: compiled.profileContext,
+        // Threaded whole (ADR 0131): a narrow copy here is how a slot
+        // question would silently never fire in the embedded pane.
+        patternMemberships: compiled.patternMemberships,
       };
       const workspaceModel = renderedWorkspaceOf(compiledWorkspace, views, {
         authority: rendered.authority,
