@@ -149,6 +149,8 @@ export {
 } from './deletion-drafting.js'
 export {
   INTERROGATION_SEMANTICS_VERSION,
+  composeCatalogues,
+  qualifiedQuestionId,
   evaluateCatalogue,
   loadQuestionCatalogue,
   renderInterrogationReport,

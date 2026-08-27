@@ -24,7 +24,7 @@ import type {
 import { kindLabelOf } from "../../kind-label.js";
 import {
   evaluateCatalogue,
-  loadQuestionCatalogue,
+  composeCatalogues,
 } from "../../interrogate-command.js";
 import type { VisualKindOption, VisualViewSummary } from "./protocol-contract.js";
 import type {
@@ -104,7 +104,15 @@ export const interrogationOverlayOf = (
     readonly graph: SemanticGraph;
     readonly profileContext: ResolvedProfileContext;
   },
-  catalogue: { readonly path: string; readonly source: string },
+  /**
+   * The catalogue, or the composed SET a workspace carries (#345, ADR 0129).
+   * A set rather than one document so the pane asks the same interview the
+   * CLI does over the same workspace: an editor showing fewer questions than
+   * `design` does over the same files is a disagreement with no symptom.
+   */
+  catalogue:
+    | { readonly path: string; readonly source: string }
+    | readonly { readonly path: string; readonly source: string }[],
   /**
    * What the host has already dealt with (#328). Evaluation is unchanged and
    * the model is untouched: this decides only what the pane draws, because a
@@ -113,12 +121,16 @@ export const interrogationOverlayOf = (
    */
   dismissed: readonly DismissedQuestion[] = [],
 ): VisualInterrogationOverlay | undefined => {
-  const loaded = loadQuestionCatalogue(catalogue);
-  if (!loaded.ok) return undefined;
+  const composed = composeCatalogues(
+    Array.isArray(catalogue) ? catalogue : [catalogue as { path: string; source: string }],
+  );
+  if (!composed.ok) return undefined;
   const report = evaluateCatalogue(
-    loaded.catalogue,
+    composed.composed.catalogue,
     compiled.graph,
     compiled.profileContext,
+    undefined,
+    composed.composed.catalogues,
   );
   const dismissedEverywhere = new Set(
     dismissed
@@ -180,7 +192,9 @@ export const renderedWorkspaceOf = (
   },
   views: readonly VisualViewSummary[],
   metadata: Omit<VisualRenderedModel, "graph" | "vocabulary" | "interrogation">,
-  catalogue?: { readonly path: string; readonly source: string },
+  catalogue?:
+    | { readonly path: string; readonly source: string }
+    | readonly { readonly path: string; readonly source: string }[],
   dismissed?: readonly DismissedQuestion[],
 ): {
   readonly model: VisualRenderedModel;

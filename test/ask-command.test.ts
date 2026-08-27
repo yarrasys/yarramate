@@ -490,7 +490,7 @@ observations:
     expect(result.stdout).toContain('== Model slice ==')
     expect(result.stdout).toContain('Todo service')
     expect(result.stdout).toContain('== Open questions touching this slice ==')
-    expect(result.stdout).toContain('outcome-missing')
+    expect(result.stdout).toContain('core-enrichment#outcome-missing')
     expect(result.stdout).toContain('== Evidence drift ==')
     expect(result.stdout).toContain('no evidence declared')
 
@@ -506,7 +506,7 @@ observations:
     expect(payload.mode).toBe('advice')
     expect(payload.topic).toBe('todo')
     expect(
-      payload.openQuestions.some(({ id }) => id === 'outcome-missing'),
+      payload.openQuestions.some(({ id }) => id === 'core-enrichment#outcome-missing'),
     ).toBe(true)
     expect(validateAsk(payload), JSON.stringify(validateAsk.errors)).toBe(true)
   })

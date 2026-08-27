@@ -283,6 +283,7 @@ describe('workspace manifests', () => {
       // category resolves to an empty set the way evidence did before this
       // workspace declared any.
       patterns: [],
+      questions: [],
       projections: [
         '.yarramate/projections/core-contract-foundation.yaml',
         '.yarramate/projections/current-engine.yaml',

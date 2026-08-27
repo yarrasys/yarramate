@@ -445,7 +445,7 @@ describe('the near-duplicate question end to end', () => {
     const report = JSON.parse(result.stdout).report
     const question = report.waves
       .flatMap((wave: { questions: unknown[] }) => wave.questions)
-      .find((entry: { id: string }) => entry.id === 'subjects-near-duplicate')
+      .find((entry: { id: string }) => entry.id === 'core-enrichment#subjects-near-duplicate')
     expect(question.open).toBe(true)
     expect(question.subjects).toHaveLength(2)
     expect(question.subjects[0].question).toContain('orders-service')
@@ -458,7 +458,7 @@ describe('the near-duplicate question end to end', () => {
     const report = JSON.parse(result.stdout).report
     const question = report.waves
       .flatMap((wave: { questions: unknown[] }) => wave.questions)
-      .find((entry: { id: string }) => entry.id === 'subjects-near-duplicate')
+      .find((entry: { id: string }) => entry.id === 'core-enrichment#subjects-near-duplicate')
     expect(question.open).toBe(false)
     expect(question.subjects).toBeUndefined()
   })

@@ -1,4 +1,9 @@
 import { existsSync, readFileSync } from 'node:fs'
+import {
+  catalogueSources,
+  shippedCatalogueSource,
+} from './catalogue-sources.js'
+import { composeCatalogues } from './interrogate-command.js'
 import { resolve } from 'node:path'
 import Ajv2020Module from 'ajv/dist/2020.js'
 import { parseDocument } from 'yaml'
@@ -292,6 +297,24 @@ export function runCheckCommand(
       evidenceEvaluation === undefined || evidenceEvaluation.ok
         ? []
         : evidenceEvaluation.diagnostics
+    // A catalogue the manifest declares is workspace content, so `check`
+    // refuses a broken one (#345, ADR 0129). Composed rather than checked one
+    // by one, because the refusals that matter are CROSS-catalogue: a wave
+    // declared twice, and a question naming a wave nothing in the set
+    // declares. Checking each file alone would miss both and would refuse the
+    // one thing the feature exists to allow, a question joining a wave another
+    // catalogue declared.
+    const catalogueDiagnostics =
+      result.ok && resolved.questions.length > 0
+        ? (() => {
+            const composed = composeCatalogues(
+              catalogueSources(shippedCatalogueSource(), resolved, cwd),
+              result.profileContext,
+            )
+            return composed.ok ? [] : composed.diagnostics
+          })()
+        : []
+
     // A projection is a document, and a query holds references the same way a
     // relationship does. Checked HERE rather than with the projection's own
     // schema load above, because a reference can only be resolved against a
@@ -313,6 +336,7 @@ export function runCheckCommand(
       ...mappingDiagnostics,
       ...evidenceDiagnostics,
       ...referenceDiagnostics,
+      ...catalogueDiagnostics,
     ])
     const ok = result.ok && optionalDiagnostics.length === 0
     // Published results name the subject a diagnostic is about wherever its

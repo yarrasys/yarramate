@@ -32,6 +32,10 @@
       "description": "yarramate/pattern/v1 documents: the shape a concept kind promises, and the wiring the compiler mints between an instance and the parts it binds (ADR 0123). Structure, where profiles declare vocabulary. Optional, like evidence and contracts.",
       "$ref": "#/$defs/patterns"
     },
+    "questions": {
+      "description": "yarramate/question-catalogue/v1 documents the WORKSPACE carries: questions true of this engagement and nowhere else (#345, ADR 0129). ADDITIVE to the shipped catalogue rather than replacing it, which is what --catalogue and MountOptions.catalogue do. Question ids are qualified as catalogue#question on the way out, so two catalogues may carry the same local id. A wave is declared exactly once across the resolved set, and any catalogue may contribute questions to a wave it did not declare. Optional, like patterns, evidence and contracts.",
+      "$ref": "#/$defs/patterns"
+    },
     "adapterMappings": {
       "$ref": "#/$defs/patterns"
     },

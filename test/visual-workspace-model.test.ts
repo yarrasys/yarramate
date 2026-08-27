@@ -83,12 +83,19 @@ const metadata = {
   projectionDigests: {},
 } as const
 
+/**
+ * Dismissal ids are QUALIFIED now (#345, ADR 0129). A host matching a stored
+ * dismissal against a report question matches on `catalogue#question`, which
+ * is the migration every adopter makes once: two key fields collapse into one.
+ * Accepting a bare id as well would put the two identifiers back that
+ * qualification exists to remove.
+ */
 describe('interrogationOverlayOf', () => {
   it('splits workspace-scoped questions from per-subject ones', () => {
     const overlay = interrogationOverlayOf(compiled(), catalogue)
     expect(overlay).toBeDefined()
     expect(overlay!.workspace.map(({ questionId }) => questionId)).toEqual([
-      'goal-missing',
+      'fixture#goal-missing',
     ])
     expect(Object.keys(overlay!.subjects)).toEqual(['teller'])
     // The per-subject phrasing arrives already interpolated - the browser
@@ -122,31 +129,31 @@ describe('interrogationOverlayOf', () => {
   describe('a host that has already dealt with a question', () => {
     it('drops it from every subject when no subject is named', () => {
       const overlay = interrogationOverlayOf(compiled(), catalogue, [
-        { questionId: 'actor-owner-missing' },
+        { questionId: 'fixture#actor-owner-missing' },
       ])!
       expect(Object.keys(overlay.subjects)).toEqual([])
       // The workspace-scoped question is untouched: dismissing one says
       // nothing about the others.
       expect(overlay.workspace.map(({ questionId }) => questionId)).toEqual([
-        'goal-missing',
+        'fixture#goal-missing',
       ])
     })
 
     it('drops a workspace-scoped question by id alone', () => {
       const overlay = interrogationOverlayOf(compiled(), catalogue, [
-        { questionId: 'goal-missing' },
+        { questionId: 'fixture#goal-missing' },
       ])!
       expect(overlay.workspace).toEqual([])
     })
 
     it('drops it for the named subject only', () => {
       const kept = interrogationOverlayOf(compiled(), catalogue, [
-        { questionId: 'actor-owner-missing', subject: 'somebody-else' },
+        { questionId: 'fixture#actor-owner-missing', subject: 'somebody-else' },
       ])!
       expect(Object.keys(kept.subjects)).toEqual(['teller'])
 
       const dropped = interrogationOverlayOf(compiled(), catalogue, [
-        { questionId: 'actor-owner-missing', subject: 'teller' },
+        { questionId: 'fixture#actor-owner-missing', subject: 'teller' },
       ])!
       expect(Object.keys(dropped.subjects)).toEqual([])
     })
@@ -156,8 +163,8 @@ describe('interrogationOverlayOf', () => {
     // interview is not the editor's to settle.
     it('changes nothing about the catalogue the overlay names', () => {
       const overlay = interrogationOverlayOf(compiled(), catalogue, [
-        { questionId: 'goal-missing' },
-        { questionId: 'actor-owner-missing' },
+        { questionId: 'fixture#goal-missing' },
+        { questionId: 'fixture#actor-owner-missing' },
       ])!
       expect(overlay.catalogue).toBe('fixture@1.0')
       expect(overlay.semantics.length).toBeGreaterThan(0)

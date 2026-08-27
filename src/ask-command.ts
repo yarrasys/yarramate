@@ -28,9 +28,10 @@ import {
   type EvidenceObservation,
   type EvidenceResult,
 } from './evidence.js'
+import { catalogueSources } from './catalogue-sources.js'
 import {
   evaluateCatalogue,
-  loadQuestionCatalogue,
+  composeCatalogues,
   renderInterrogationReport,
   type InterrogationReport,
 } from './interrogate-command.js'
@@ -812,19 +813,24 @@ export function runAskCommand(
       const current = entries.filter(({ status }) => status === 'current')
       const retired = entries.filter(({ status }) => status === 'retired')
 
-      const loadedCatalogue = loadQuestionCatalogue(
-        {
-          path: shippedCataloguePath,
-          source: readFileSync(shippedCataloguePath, 'utf8'),
-        },
+      const composed = composeCatalogues(
+        catalogueSources(
+          {
+            path: shippedCataloguePath,
+            source: readFileSync(shippedCataloguePath, 'utf8'),
+          },
+          workspace,
+          cwd,
+        ),
         compilation.profileContext,
       )
-      if (!loadedCatalogue.ok) return failed(loadedCatalogue.diagnostics)
+      if (!composed.ok) return failed(composed.diagnostics)
       const report = evaluateCatalogue(
-        loadedCatalogue.catalogue,
+        composed.composed.catalogue,
         compilation.graph,
         compilation.profileContext,
         evidenceDocuments.flatMap(({ observations }) => observations),
+        composed.composed.catalogues,
       )
 
       const result: AskResult = {
@@ -1110,14 +1116,18 @@ export function runAskCommand(
         cataloguePath === undefined
           ? shippedCataloguePath
           : resolve(cwd, cataloguePath)
-      const loadedCatalogue = loadQuestionCatalogue(
-        {
-          path: cataloguePath ?? resolvedCataloguePath,
-          source: readFileSync(resolvedCataloguePath, 'utf8'),
-        },
+      const composed = composeCatalogues(
+        catalogueSources(
+          {
+            path: cataloguePath ?? resolvedCataloguePath,
+            source: readFileSync(resolvedCataloguePath, 'utf8'),
+          },
+          workspace,
+          cwd,
+        ),
         compilation.profileContext,
       )
-      if (!loadedCatalogue.ok) return failed(loadedCatalogue.diagnostics)
+      if (!composed.ok) return failed(composed.diagnostics)
       // The evidence overlay rides along for the one condition that
       // reads it (unchallenged-evidence); a workspace declaring no
       // evidence passes an overlay known to be empty.
@@ -1132,17 +1142,26 @@ export function runAskCommand(
       }
       const report: InterrogationReport = {
         ...evaluateCatalogue(
-          loadedCatalogue.catalogue,
+          composed.composed.catalogue,
           graph,
           compilation.profileContext,
           evidenceObservations,
+          composed.composed.catalogues,
         ),
         workspace: workspace.id,
       }
+      // Field by field, to fix key ORDER in the emitted JSON. Every optional
+      // field has to be threaded through explicitly, which is why `catalogues`
+      // is here: a copier like this drops a new field silently and the only
+      // symptom is an absent one, which reads as "did not apply" rather than
+      // as "was lost".
       const ordered: InterrogationReport = {
         format: report.format,
         workspace: report.workspace,
         catalogue: report.catalogue,
+        ...(report.catalogues === undefined
+          ? {}
+          : { catalogues: report.catalogues }),
         semantics: report.semantics,
         summary: report.summary,
         waves: report.waves,
@@ -1487,14 +1506,18 @@ export function runAskCommand(
       cataloguePath === undefined
         ? shippedCataloguePath
         : resolve(cwd, cataloguePath)
-    const loadedCatalogue = loadQuestionCatalogue(
-      {
-        path: cataloguePath ?? resolvedCataloguePath,
-        source: readFileSync(resolvedCataloguePath, 'utf8'),
-      },
+    const composed = composeCatalogues(
+      catalogueSources(
+        {
+          path: cataloguePath ?? resolvedCataloguePath,
+          source: readFileSync(resolvedCataloguePath, 'utf8'),
+        },
+        workspace,
+        cwd,
+      ),
       compilation.profileContext,
     )
-    if (!loadedCatalogue.ok) return failed(loadedCatalogue.diagnostics)
+    if (!composed.ok) return failed(composed.diagnostics)
     // Loaded ahead of evaluation so the overlay feeds the one condition
     // that reads it (unchallenged-evidence), then reused for the
     // reconciliation summary below.
@@ -1508,10 +1531,11 @@ export function runAskCommand(
       evidenceDocuments.push(loaded.evidence)
     }
     const report = evaluateCatalogue(
-      loadedCatalogue.catalogue,
+      composed.composed.catalogue,
       graph,
       compilation.profileContext,
       evidenceDocuments.flatMap(({ observations }) => observations),
+      composed.composed.catalogues,
     )
     const openQuestions: OpenQuestionRef[] = []
     for (const wave of report.waves) {

@@ -97,6 +97,75 @@ Catalogues are ordinary versioned data: extend the shipped one under a new
 identity or write one per organisation, then pass it with `--catalogue`.
 Composition via `extends` is deferred from v1 (ADR 0053).
 
+## A workspace can carry its own questions
+
+A consultancy has a domain catalogue: the questions it asks on every
+engagement. An individual engagement raises questions true of that client and
+nowhere else, discovered mid-engagement rather than at product-design time.
+Those live in the workspace (#345, ADR 0129):
+
+```yaml
+format: yarramate/workspace/v1
+id: icwa-web
+documents: ['documents/**/*.yaml']
+questions: ['questions/*.yaml']
+```
+
+**Additive.** `questions:` adds to the shipped catalogue; `--catalogue`
+replaces the base. Different powers on purpose: a host controls the catalogue
+that is not in the workspace, and a consultant adds to it without a release.
+
+**A wave is declared exactly once across the resolved set**, and any catalogue
+may contribute questions to a wave it did not declare. So a project catalogue
+adds "one more Assurance question for this client" by naming the wave, without
+redeclaring it:
+
+```yaml
+# the domain catalogue declares the wave, with its gate
+waves:
+  - id: assurance
+    name: Assurance
+    opensWhen:
+      - condition: has-any-subject
+```
+
+```yaml
+# the project catalogue just joins it, declaring no wave of its own
+waves: []
+questions:
+  - id: regulator-signoff
+    wave: assurance
+```
+
+`waves: []` is legal, and is the ordinary shape of a project catalogue. A
+catalogue evaluated ALONE with no waves and a question naming one is still
+YM911, correctly: nothing declares it.
+
+Declaring the same wave twice is refused (**YM915**). Only a declaration places
+a wave in the interview order, so the base's order is untouched and new waves
+append. And because there is exactly one declarer, there is never a question
+about whose `opensWhen` governs.
+
+**Question ids are qualified as `catalogue#question` in the report.** Authors
+write local ids, and the engine qualifies when it composes. Two catalogues may
+carry the same local id and stay two distinct questions, so composition needs
+no collision rule.
+
+**The identity carries no version**, deliberately. A catalogue version bump
+must not strand a judgment someone stored against a question:
+`core-enrichment` had three version bumps in a single day, renaming nothing.
+Versioned identity is safe for things that are **authored**, because a document
+keeps naming the version it was written against and an author updates it
+deliberately; it is unsafe for things that are **stored**, because a row in a
+database has no author to update it. Versions live beside the identity instead:
+the report's `catalogue` names the base, and an optional `catalogues` array
+lists every contributor with its version.
+
+Qualification happens when catalogues COMPOSE, not when they evaluate. Every
+CLI verb composes even with one catalogue, so ids are qualified from the start
+and do not change when a workspace first carries a question of its own. A host
+calling `evaluateCatalogue` directly should compose first for the same reason.
+
 ## Waves open when the model has substance
 
 A wave may declare `opensWhen`, conditions that must all hold before it opens

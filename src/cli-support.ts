@@ -116,6 +116,13 @@ export const resolveCliWorkspaceSources = (
       readonly contracts: readonly string[]
       /** Pattern documents, which ride in `paths` and are not documents. */
       readonly patterns: readonly string[]
+      /**
+       * Question catalogues the workspace carries (#345). Handed over rather
+       * than resolved-and-dropped, which is the #268 failure recorded below:
+       * a category a manifest declares and no verb receives is ignored with
+       * no symptom.
+       */
+      readonly questions: readonly string[]
     }
   | {
       readonly ok: false
@@ -129,6 +136,7 @@ export const resolveCliWorkspaceSources = (
       evidence: [],
       contracts: [],
       patterns: [],
+      questions: [],
     }
   }
   const manifestPath = paths[0]
@@ -140,6 +148,7 @@ export const resolveCliWorkspaceSources = (
       evidence: [],
       contracts: [],
       patterns: [],
+      questions: [],
     }
   }
   const source = readFileSync(resolve(cwd, manifestPath), 'utf8')
@@ -153,6 +162,7 @@ export const resolveCliWorkspaceSources = (
       evidence: [],
       contracts: [],
       patterns: [],
+      questions: [],
     }
   }
   const loaded = loadWorkspaceManifest(
@@ -182,6 +192,7 @@ export const resolveCliWorkspaceSources = (
         evidence: loaded.workspace.evidence,
         contracts: loaded.workspace.contracts,
         patterns: loaded.workspace.patterns,
+        questions: loaded.workspace.questions ?? [],
       }
     : { ok: false, diagnostics: loaded.diagnostics }
 }

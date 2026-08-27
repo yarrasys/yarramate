@@ -9,10 +9,14 @@
 // The same shape the visual-graph projector uses (`./adapter/visual-graph`).
 export {
   INTERROGATION_SEMANTICS_VERSION,
+  composeCatalogues,
+  qualifiedQuestionId,
   evaluateCatalogue,
   loadQuestionCatalogue,
   renderInterrogationReport,
   renderQuestion,
+  type CatalogueCompositionResult,
+  type ComposedCatalogue,
   type CatalogueCondition,
   type CatalogueEvidenceObservation,
   type CatalogueLoadResult,
