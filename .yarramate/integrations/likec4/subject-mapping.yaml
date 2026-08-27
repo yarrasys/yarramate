@@ -1938,3 +1938,27 @@ mappings:
   - native: changeset-submitted-writes-operations
     external: changesetSubmittedWritesOperations
     type: relationship
+  - native: import-command
+    external: importCommand
+    type: concept
+  - native: derive-architecture-workbook
+    external: deriveArchitectureWorkbook
+    type: concept
+  - native: merge-edited-workbook
+    external: mergeEditedWorkbook
+    type: concept
+  - native: compose-question-catalogues
+    external: composeQuestionCatalogues
+    type: concept
+  - native: workbook-engine
+    external: workbookEngine
+    type: concept
+  - native: interrogation-engine
+    external: interrogationEngine
+    type: concept
+  - native: architecture-workbook
+    external: architectureWorkbook
+    type: concept
+  - native: workspace-question-catalogue
+    external: workspaceQuestionCatalogue
+    type: concept

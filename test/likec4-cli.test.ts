@@ -2746,99 +2746,109 @@ mappings:
 
       expect(result.exitCode).toBe(1)
       expect(result.stderr).toBe('')
-      expect(JSON.parse(result.stdout)).toEqual({
-        format: 'yarramate/likec4-diagnostic-result/v1',
-        diagnostics: [
-          {
-            severity: 'error',
-            code: 'YMLC104',
-            message:
-              'Semantic relationship kind "yarramate/development@1.0#implements" resolves to unsupported bundled LikeC4 kind "implements"',
-            subject: 'likec4-adapter-provides-export',
-            path: '.yarramate/architecture/engine.yaml',
-            pointer: '/relationships/127',
-            line: 1410,
-            column: 5,
-          },
-          {
-            severity: 'error',
-            code: 'YMLC104',
-            message:
-              'Semantic relationship kind "yarramate/development@1.0#implements" resolves to unsupported bundled LikeC4 kind "implements"',
-            subject: 'likec4-adapter-provides-check',
-            path: '.yarramate/architecture/engine.yaml',
-            pointer: '/relationships/128',
-            line: 1414,
-            column: 5,
-          },
-          {
-            severity: 'error',
-            code: 'YMLC104',
-            message:
-              'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
-            subject: 'likec4-export-source',
-            path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/25/kind',
-            line: 113,
-            column: 11,
-          },
-          {
-            severity: 'error',
-            code: 'YMLC104',
-            message:
-              'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
-            subject: 'likec4-prepare-source',
-            path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/28/kind',
-            line: 125,
-            column: 11,
-          },
-          {
-            severity: 'error',
-            code: 'YMLC104',
-            message:
-              'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
-            subject: 'likec4-project-source',
-            path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/29/kind',
-            line: 129,
-            column: 11,
-          },
-          {
-            severity: 'error',
-            code: 'YMLC104',
-            message:
-              'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
-            subject: 'likec4-project-definition-source',
-            path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/30/kind',
-            line: 133,
-            column: 11,
-          },
-          {
-            severity: 'error',
-            code: 'YMLC104',
-            message:
-              'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
-            subject: 'likec4-project-schema-source',
-            path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/57/kind',
-            line: 246,
-            column: 11,
-          },
-          {
-            severity: 'error',
-            code: 'YMLC104',
-            message:
-              'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
-            subject: 'likec4-generated-project-v2-schema-source',
-            path: '.yarramate/architecture/repository.yaml',
-            pointer: '/concepts/58/kind',
-            line: 250,
-            column: 11,
-          },
-        ],
-      })
+      const payload = JSON.parse(result.stdout) as {
+        format: string
+        diagnostics: {
+          severity: string
+          code: string
+          message: string
+          subject: string
+          path: string
+          pointer: string
+          line: number
+          column: number
+        }[]
+      }
+      expect(payload.format).toBe('yarramate/likec4-diagnostic-result/v1')
+
+      // Asserted on WHICH subject was refused and WHY, not on where it
+      // happens to sit today. This literal used to pin exact line numbers and
+      // relationship indices inside the repository's own self-model, so every
+      // model-maintenance pass broke a LikeC4 test that had not changed
+      // behaviour - the test was measuring the model's layout rather than the
+      // adapter's refusal. Location is still asserted, as the guarantee that
+      // every refusal is locatable at all.
+      expect(
+        payload.diagnostics.map(({ severity, code, message, subject, path }) => ({
+          severity,
+          code,
+          message,
+          subject,
+          path,
+        })),
+      ).toEqual([
+        {
+          severity: 'error',
+          code: 'YMLC104',
+          message:
+            'Semantic relationship kind "yarramate/development@1.0#implements" resolves to unsupported bundled LikeC4 kind "implements"',
+          subject: 'likec4-adapter-provides-export',
+          path: '.yarramate/architecture/engine.yaml',
+        },
+        {
+          severity: 'error',
+          code: 'YMLC104',
+          message:
+            'Semantic relationship kind "yarramate/development@1.0#implements" resolves to unsupported bundled LikeC4 kind "implements"',
+          subject: 'likec4-adapter-provides-check',
+          path: '.yarramate/architecture/engine.yaml',
+        },
+        {
+          severity: 'error',
+          code: 'YMLC104',
+          message:
+            'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
+          subject: 'likec4-export-source',
+          path: '.yarramate/architecture/repository.yaml',
+        },
+        {
+          severity: 'error',
+          code: 'YMLC104',
+          message:
+            'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
+          subject: 'likec4-prepare-source',
+          path: '.yarramate/architecture/repository.yaml',
+        },
+        {
+          severity: 'error',
+          code: 'YMLC104',
+          message:
+            'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
+          subject: 'likec4-project-source',
+          path: '.yarramate/architecture/repository.yaml',
+        },
+        {
+          severity: 'error',
+          code: 'YMLC104',
+          message:
+            'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
+          subject: 'likec4-project-definition-source',
+          path: '.yarramate/architecture/repository.yaml',
+        },
+        {
+          severity: 'error',
+          code: 'YMLC104',
+          message:
+            'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
+          subject: 'likec4-project-schema-source',
+          path: '.yarramate/architecture/repository.yaml',
+        },
+        {
+          severity: 'error',
+          code: 'YMLC104',
+          message:
+            'Semantic concept kind "yarramate/development@1.0#repository-file" resolves to unsupported bundled LikeC4 kind "repository-file"',
+          subject: 'likec4-generated-project-v2-schema-source',
+          path: '.yarramate/architecture/repository.yaml',
+        },
+      ])
+
+      // Every refusal is located, which is the part that must not regress.
+      for (const diagnostic of payload.diagnostics) {
+        expect(diagnostic.line).toBeGreaterThan(0)
+        expect(diagnostic.column).toBeGreaterThan(0)
+        expect(diagnostic.pointer).toMatch(/^\/(concepts|relationships)\/\d+/)
+      }
       expect(existsSync(project)).toBe(false)
     } finally {
       rmSync(parent, { recursive: true, force: true })
