@@ -4,7 +4,10 @@ import { describe, expect, it } from 'vitest'
 import { compileWorkspaceWithProfileContext } from '../src/compiler.js'
 import { projectGraphForCanvas } from '../src/graph-projection.js'
 import { connectableKinds } from '../src/relationship-drafting.js'
-import { ConnectionPanel } from '../src/visual-app/connection-panel.js'
+import {
+  ConnectionPanel,
+  searchTargets,
+} from '../src/visual-app/connection-panel.js'
 import type { CanvasGraph } from '../src/graph-projection.js'
 import type { YarramateOperation } from '../src/operations.js'
 
@@ -42,6 +45,7 @@ const render = (draft: { from: string; to: string | null }) =>
       draft,
       graph,
       reservedIds: [],
+      onTarget: () => undefined,
       onStage: () => undefined,
       onCancel: () => undefined,
     }),
@@ -107,6 +111,7 @@ describe('ConnectionPanel', () => {
         draft: { from: 'orders', to: 'settle' },
         graph: outside,
         reservedIds: [],
+        onTarget: () => undefined,
         onStage: () => undefined,
         onCancel: () => undefined,
       }),
@@ -151,6 +156,7 @@ describe('ConnectionPanel', () => {
       draft: { from: 'orders', to: 'settle' },
       graph,
       reservedIds: ['orders-assignment-settle'],
+      onTarget: () => undefined,
       onStage: (operation) => staged.push(operation),
       onCancel: () => undefined,
     })
@@ -165,5 +171,71 @@ describe('ConnectionPanel', () => {
       op: 'add-relationship',
       relationship: { id: 'orders-assignment-settle-2' },
     })
+  })
+
+  it('renders a labelled search field while the target is unchosen (#309)', () => {
+    // The keyboard/AT way in: the one mandatory canvas interaction was
+    // pointer-only. The label/id pair is part of the finding, not garnish.
+    const markup = render({ from: 'orders', to: null })
+    expect(markup).toContain('id="connection-target-search"')
+    expect(markup).toContain('for="connection-target-search"')
+    expect(markup).toContain('Search targets')
+    // Once the target is chosen the search has done its work.
+    expect(render({ from: 'orders', to: 'settle' })).not.toContain(
+      'connection-target-search',
+    )
+  })
+})
+
+describe('searchTargets', () => {
+  it('matches name and id, case-insensitively, excluding the source', () => {
+    expect(searchTargets(graph, 'orders', 'SET')).toEqual({
+      matches: [{ id: 'settle', name: 'Settle' }],
+      more: 0,
+    })
+    // "orders" matches the source's own name and id; the source is never a
+    // target, so the honest answer is nothing.
+    expect(searchTargets(graph, 'orders', 'orders')).toEqual({
+      matches: [],
+      more: 0,
+    })
+  })
+
+  it('matches nothing on an empty query rather than everything', () => {
+    expect(searchTargets(graph, 'orders', '')).toEqual({
+      matches: [],
+      more: 0,
+    })
+    expect(searchTargets(graph, 'orders', '   ')).toEqual({
+      matches: [],
+      more: 0,
+    })
+  })
+
+  it('caps the list and says how many more match', () => {
+    const wide = graphOf(`format: yarramate/v1
+id: main
+profile: yarramate/core@0.1
+concepts:
+  - id: hub
+    kind: applicationComponent
+    name: Hub
+  - id: spoke-a
+    kind: applicationComponent
+    name: Spoke A
+  - id: spoke-b
+    kind: applicationComponent
+    name: Spoke B
+  - id: spoke-c
+    kind: applicationComponent
+    name: Spoke C
+relationships: []
+`)
+    const { matches, more } = searchTargets(wide, 'hub', 'spoke', 2)
+    expect(matches).toEqual([
+      { id: 'spoke-a', name: 'Spoke A' },
+      { id: 'spoke-b', name: 'Spoke B' },
+    ])
+    expect(more).toBe(1)
   })
 })

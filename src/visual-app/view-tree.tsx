@@ -247,6 +247,7 @@ export function ViewTree({
       <div className="view-tree-head">
         <input
           type="search"
+          name="view-tree-filter"
           className="view-tree-filter"
           placeholder="Filter tree"
           aria-label="Filter views and subjects"

@@ -1202,6 +1202,49 @@ body {
   list-style: none;
 }
 
+.connection-search-label {
+  display: block;
+  margin: 0 0 calc(var(--step) * 0.5);
+  font-family: var(--utility);
+  font-size: 12px;
+  color: var(--quiet);
+}
+
+.connection-search {
+  display: block;
+  width: 100%;
+  margin: 0 0 calc(var(--step) * 1);
+  padding: calc(var(--step) * 0.5) calc(var(--step) * 0.75);
+  border: 1px solid var(--rule-firm);
+  border-radius: 0;
+  background: var(--sheet);
+  color: var(--ink);
+  font-family: var(--utility);
+}
+
+.connection-targets {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--step) * 0.5);
+  margin: 0 0 calc(var(--step) * 1.5);
+  padding: 0;
+  list-style: none;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.connection-target-id {
+  color: var(--quiet);
+  font-family: var(--utility);
+  font-size: 12px;
+}
+
+.connection-targets-more {
+  color: var(--quiet);
+  font-family: var(--utility);
+  font-size: 12px;
+}
+
 .ledger {
   margin: 0;
   padding: calc(var(--step) * 2) calc(var(--step) * 2.5);

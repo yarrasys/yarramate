@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Added.** The connect banner takes a typed target (#309). While a
+  connection's target is unchosen, the panel carries a labelled search
+  field: type a name or id, pick a match, and the draft advances exactly as
+  a canvas tap would — same reducer action, same kind list. This restores a
+  keyboard and assistive-technology authoring path for the one mandatory
+  interaction that was canvas-only, and it is also the fast path on a large
+  diagram where finding the target box is pixel hunting. Every form field
+  in the visual app now carries a `name` (Chrome's audit reports zero
+  unnamed fields, from seven).
+
 - **Added.** `MountOptions.catalogue` (and `LocalHostOptions.catalogue`)
   accepts the composed catalogue SET the overlay beneath has taken since
   ADR 0129 (#369, filed from ApertureX adoption): one `{ path, source }` or

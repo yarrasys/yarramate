@@ -1,4 +1,5 @@
 import type React from 'react'
+import { useState } from 'react'
 import type { CanvasGraph } from '../graph-projection.js'
 import type { YarramateOperation } from '../operations.js'
 import type { RelationshipKind } from '../profile.js'
@@ -7,6 +8,98 @@ import {
   draftRelationship,
 } from '../relationship-drafting.js'
 import type { ConnectionDraft } from './workspace-state.js'
+
+export interface TargetMatch {
+  readonly id: string
+  readonly name: string
+}
+
+/**
+ * Subjects a typed query names as connection targets (#309). The canvas tap
+ * stays the fast path; this is the KEYBOARD path — the one mandatory canvas
+ * interaction was pointer-only, so a screen-reader or keyboard-only reviewer
+ * could not author a relationship at all. Name and id both match,
+ * case-insensitively, because the reviewer knows whichever the rail showed
+ * them; the source is excluded because a self-edge is never what a typed
+ * query means. An empty query matches nothing rather than everything: the
+ * list is an answer to a question, not a roster.
+ */
+export const searchTargets = (
+  graph: CanvasGraph,
+  from: string,
+  query: string,
+  cap = 8,
+): { readonly matches: readonly TargetMatch[]; readonly more: number } => {
+  const needle = query.trim().toLowerCase()
+  if (needle === '') return { matches: [], more: 0 }
+  const all = graph.nodes
+    .filter((node) => node.id !== from)
+    .filter(
+      (node) =>
+        node.name.toLowerCase().includes(needle) ||
+        node.id.toLowerCase().includes(needle),
+    )
+    .map((node) => ({ id: node.id, name: node.name }))
+    .sort(
+      (left, right) =>
+        left.name.localeCompare(right.name) || left.id.localeCompare(right.id),
+    )
+  return { matches: all.slice(0, cap), more: Math.max(0, all.length - cap) }
+}
+
+/**
+ * The typed way to name a target (#309). A child component so the hook
+ * lives only where the search exists: `ConnectionPanel` itself stays a
+ * plain function of its props, which is also how its tests call it.
+ */
+const TargetSearch = ({
+  graph,
+  from,
+  onTarget,
+}: {
+  readonly graph: CanvasGraph
+  readonly from: string
+  readonly onTarget: (id: string) => void
+}): React.ReactElement => {
+  const [query, setQuery] = useState('')
+  const { matches, more } = searchTargets(graph, from, query)
+  return (
+    <>
+      <label
+        className="connection-search-label"
+        htmlFor="connection-target-search"
+      >
+        Search targets
+      </label>
+      <input
+        id="connection-target-search"
+        className="connection-search"
+        type="search"
+        autoComplete="off"
+        placeholder="Target name or id"
+        value={query}
+        onChange={(event) => setQuery(event.currentTarget.value)}
+      />
+      {query.trim() === '' ? null : matches.length === 0 ? (
+        <p className="connection-empty">No subject matches.</p>
+      ) : (
+        <ul className="connection-targets">
+          {matches.map((match) => (
+            <li key={match.id}>
+              <button type="button" onClick={() => onTarget(match.id)}>
+                {match.name}
+                <span className="connection-target-id"> {match.id}</span>
+              </button>
+            </li>
+          ))}
+          {more === 0 ? null : (
+            <li className="connection-targets-more">{more} more match</li>
+          )}
+        </ul>
+      )}
+    </>
+  )
+}
 
 /**
  * The connection tool: pick a source, pick a target, pick a kind.
@@ -25,6 +118,7 @@ export const ConnectionPanel = ({
   draft,
   graph,
   reservedIds,
+  onTarget,
   onStage,
   onCancel,
 }: {
@@ -38,6 +132,12 @@ export const ConnectionPanel = ({
    * what is staged, even when the answer is nothing.
    */
   readonly reservedIds: readonly string[]
+  /**
+   * Names the target, exactly as a canvas tap would (#309): same reducer
+   * action, same draft transition. The panel adds the keyboard way in, not
+   * a second connect flow.
+   */
+  readonly onTarget: (id: string) => void
   readonly onStage: (operation: YarramateOperation) => void
   readonly onCancel: () => void
 }): React.ReactElement => {
@@ -49,8 +149,9 @@ export const ConnectionPanel = ({
       <section className="connection-panel" aria-label="Connect subjects">
         <p className="connection-prompt">
           Connecting from <strong>{titleOf(draft.from)}</strong>. Choose a
-          target on the diagram.
+          target on the diagram, or search for one.
         </p>
+        <TargetSearch graph={graph} from={draft.from} onTarget={onTarget} />
         <button type="button" onClick={onCancel}>
           Cancel
         </button>
