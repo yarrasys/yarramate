@@ -16,11 +16,19 @@ adapterMappings:
   - adapters/*.mapping.yaml
 patterns:
   - patterns/*.yaml
+questions:
+  - questions/*.yaml
 evidence:
   - evidence/*.yaml
 contracts:
   - contracts/*.yaml
 ```
+
+`questions` carries question catalogues the workspace itself declares, ADDITIVE
+to the shipped catalogue (#345, ADR 0129). It is how a question true of one
+engagement and nowhere else gets versioned with the model, reviewed as a diff,
+and asked by the same interview loop as everything else. See
+[docs/INTERROGATION.md](INTERROGATION.md).
 
 Patterns are relative to the directory containing the manifest and use
 forward-slash paths. Resolution:

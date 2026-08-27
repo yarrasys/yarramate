@@ -221,7 +221,14 @@ export interface InterrogationSummary {
 export interface InterrogationReport {
   readonly format: 'yarramate/interrogation-report/v1'
   readonly workspace: string
+  /** The BASE catalogue, `id@version`. Unchanged in shape by composition. */
   readonly catalogue: string
+  /**
+   * Every contributing catalogue as `id@version`, base first, when more than
+   * one contributed (#345, ADR 0129). Optional so that adding it breaks no
+   * constructor, and `catalogue` keeps its value shape so it breaks no reader.
+   */
+  readonly catalogues?: readonly string[]
   /** {@link INTERROGATION_SEMANTICS_VERSION} at the time of evaluation. */
   readonly semantics: string
   readonly summary: InterrogationSummary
@@ -822,6 +829,14 @@ export function evaluateCatalogue(
   graph: SemanticGraph,
   profileContext?: ResolvedProfileContext,
   evidence?: readonly CatalogueEvidenceObservation[],
+  /**
+   * Contributing catalogues, from {@link composeCatalogues}. Composition
+   * happens BEFORE evaluation and hands this function an ordinary catalogue,
+   * so the only thing evaluation learns about composition is what to name in
+   * the report. A fifth optional parameter rather than an options object,
+   * because this signature is published and a consumer already calls it.
+   */
+  catalogues?: readonly string[],
 ): Omit<InterrogationReport, 'workspace'> {
   const index = indexGraph(graph)
   let open = 0
@@ -903,6 +918,11 @@ export function evaluateCatalogue(
   return {
     format: 'yarramate/interrogation-report/v1',
     catalogue: `${catalogue.id}@${catalogue.version}`,
+    // Only when composition actually happened. A single-catalogue report is
+    // byte-identical to what it was before this existed.
+    ...(catalogues === undefined || catalogues.length < 2
+      ? {}
+      : { catalogues }),
     semantics: INTERROGATION_SEMANTICS_VERSION,
     summary: {
       // Questions in OPENED waves only (#334, ADR 0125). A closed wave's
@@ -1021,71 +1041,274 @@ const unresolvableKinds = (
   })
 }
 
+/** A catalogue parsed and located, before any cross-catalogue check. */
+interface LoadedCatalogueDocument {
+  readonly source: WorkspaceSource
+  readonly catalogue: QuestionCatalogue
+  readonly locate: (
+    path: readonly (string | number)[],
+  ) => Pick<Diagnostic, 'path' | 'pointer' | 'line' | 'column'>
+}
+
+type CatalogueDocumentResult =
+  | { readonly ok: true; readonly document: LoadedCatalogueDocument }
+  | { readonly ok: false; readonly diagnostics: readonly Diagnostic[] }
+
+const loadCatalogueDocument = (
+  catalogueSource: WorkspaceSource,
+): CatalogueDocumentResult => {
+  const loaded = loadSourceDocument<QuestionCatalogue>(
+    catalogueSource,
+    validateCatalogue,
+    'Question catalogue',
+  )
+  if (!loaded.ok) return { ok: false, diagnostics: loaded.diagnostics }
+  return {
+    ok: true,
+    document: {
+      source: catalogueSource,
+      catalogue: loaded.document.value,
+      locate: (path) =>
+        locateSourcePath(
+          catalogueSource.path,
+          loaded.document.yaml,
+          loaded.document.lineCounter,
+          path,
+          `/${path.join('/')}`,
+        ),
+    },
+  }
+}
+
+/**
+ * The YM911 undeclared-wave check, against a set of wave ids that may be
+ * WIDER than the catalogue's own.
+ *
+ * That width is the whole of #345. A project catalogue's reason to exist is
+ * adding "one more Assurance question for this client" to a wave the domain
+ * catalogue declared, so checking each file against only its own waves would
+ * refuse precisely the case the feature enables. Composed, the set is the
+ * union; alone, it is the catalogue's own and the check is what it always was.
+ */
+const undeclaredWaveDiagnostics = (
+  { catalogue, locate }: LoadedCatalogueDocument,
+  declaredWaves: ReadonlySet<string>,
+): readonly Diagnostic[] =>
+  catalogue.questions.flatMap((question, questionIndex) =>
+    declaredWaves.has(question.wave)
+      ? []
+      : [
+          {
+            severity: 'error' as const,
+            code: 'YM911',
+            message: `Question "${question.id}" references undeclared wave "${question.wave}"`,
+            ...locate(['questions', questionIndex, 'wave']),
+          },
+        ],
+  )
+
+const unresolvableKindDiagnostics = (
+  { catalogue, locate }: LoadedCatalogueDocument,
+  profileContext?: ResolvedProfileContext,
+): readonly Diagnostic[] =>
+  // Only when a caller has a compiled workspace to check against. Without one
+  // there is no way to tell a typo from a kind whose profile simply is not
+  // here, and guessing would be the false positive this check exists to avoid.
+  profileContext === undefined
+    ? []
+    : unresolvableKinds(catalogue, profileContext).map((reference) => ({
+        severity: 'error' as const,
+        code: 'YM914',
+        message: `Kind "${reference.kind}" is not declared by profile "${reference.kind.slice(
+          0,
+          reference.kind.indexOf('#'),
+        )}", which this workspace loads, so the question can never fire`,
+        ...locate(reference.path),
+      }))
+
+/**
+ * A catalogue is qualified on the way OUT, never in what an author writes.
+ *
+ * The authored schema keeps ids local (`^[a-z][a-z0-9-]*$`) and that does not
+ * change; a consultant writes `regulator-signoff`, not
+ * `consulting#regulator-signoff`. The engine qualifies when it composes, which
+ * is the only moment two catalogues can be confused for each other.
+ *
+ * NO VERSION, and that is the decision rather than an omission (ADR 0129).
+ * `core-enrichment` went 1.0 to 1.3 in a single day renaming nothing; a
+ * versioned identity would have stranded every stored dismissal in every
+ * adopter's database three times that day, for changes that removed no
+ * question. Versioned identity is safe for things that are AUTHORED - a
+ * document keeps naming the version it was written against and an author
+ * updates it deliberately - and unsafe for things that are STORED, because a
+ * row in someone's database has no author to update it.
+ */
+export const qualifiedQuestionId = (
+  catalogueId: string,
+  questionId: string,
+): string => `${catalogueId}#${questionId}`
+
+export interface ComposedCatalogue {
+  /**
+   * The composed catalogue, ready for `evaluateCatalogue`. Structurally a
+   * `QuestionCatalogue`, but its question ids are QUALIFIED, so it is a
+   * composition result rather than something an author could have written and
+   * must never be validated against the authored schema again.
+   */
+  readonly catalogue: QuestionCatalogue
+  /** Every contributing catalogue as `id@version`, base first. */
+  readonly catalogues: readonly string[]
+}
+
+export type CatalogueCompositionResult =
+  | { readonly ok: true; readonly composed: ComposedCatalogue }
+  | { readonly ok: false; readonly diagnostics: readonly Diagnostic[] }
+
+/**
+ * Compose a base catalogue with the ones a workspace carries (#345, ADR 0129).
+ *
+ * ADDITIVE. `--catalogue` and `MountOptions.catalogue` replace the base; this
+ * adds to it, which is what lets a consultant author a question at any point
+ * in an engagement with no product release.
+ *
+ * A WAVE IS DECLARED EXACTLY ONCE across the resolved set, and any catalogue
+ * may contribute questions to a wave it did not declare. That one rule settles
+ * three questions composition would otherwise raise. Wave identity: a project
+ * catalogue joins a declared wave rather than colliding with it. Ordering:
+ * only a declaration places a wave, so the base's order is untouched and new
+ * waves append. And the `opensWhen` precedence ADR 0125 made load-bearing does
+ * not arise at all, because there is only ever one declarer to ask.
+ *
+ * QUALIFICATION IS A PROPERTY OF COMPOSITION, NOT OF EVALUATION. A caller
+ * that hands `evaluateCatalogue` a catalogue directly still gets local ids,
+ * exactly as before this existed. Route through here even for ONE catalogue -
+ * which is what every CLI verb does - and ids are qualified from the start, so
+ * they do not change later when a workspace first carries a question of its
+ * own. That transition is the one thing an adopter keying stored judgments on
+ * a question id must not experience, and composing unconditionally is how it
+ * is avoided.
+ *
+ * ID COLLISIONS DISSOLVE rather than being resolved. Two catalogues may both
+ * carry `outcome-missing`; qualified, they are two different questions. There
+ * is no merge rule, no last-wins and no refusal, because there is nothing to
+ * merge.
+ */
+export function composeCatalogues(
+  sources: readonly WorkspaceSource[],
+  profileContext?: ResolvedProfileContext,
+): CatalogueCompositionResult {
+  const documents: LoadedCatalogueDocument[] = []
+  const loadDiagnostics: Diagnostic[] = []
+  for (const source of sources) {
+    const loaded = loadCatalogueDocument(source)
+    if (loaded.ok) documents.push(loaded.document)
+    else loadDiagnostics.push(...loaded.diagnostics)
+  }
+  if (loadDiagnostics.length > 0) {
+    return { ok: false, diagnostics: loadDiagnostics }
+  }
+  const base = documents[0]
+  if (base === undefined) {
+    // Never reached through the CLI, which always has the shipped catalogue,
+    // but an empty set must not compose into an empty catalogue that reports
+    // a finished interview.
+    return {
+      ok: false,
+      diagnostics: [
+        {
+          severity: 'error',
+          code: 'YM915',
+          message: 'No question catalogue to compose',
+          path: '',
+          pointer: '',
+          line: 1,
+          column: 1,
+        },
+      ],
+    }
+  }
+
+  // Declared exactly once. A second declaration is refused rather than merged,
+  // because the two carry independent `opensWhen` gates and silently picking
+  // one would decide when a wave opens by file order.
+  const declaredBy = new Map<string, LoadedCatalogueDocument>()
+  const duplicates: Diagnostic[] = []
+  for (const document of documents) {
+    document.catalogue.waves.forEach((wave, waveIndex) => {
+      const first = declaredBy.get(wave.id)
+      if (first === undefined) {
+        declaredBy.set(wave.id, document)
+        return
+      }
+      duplicates.push({
+        severity: 'error',
+        code: 'YM915',
+        message:
+          `Wave "${wave.id}" is already declared by catalogue "${first.catalogue.id}" ` +
+          `(${first.source.path}). A wave is declared once and contributed to freely: ` +
+          'drop the declaration here and questions in this catalogue will join it.',
+        ...document.locate(['waves', waveIndex, 'id']),
+      })
+    })
+  }
+  if (duplicates.length > 0) return { ok: false, diagnostics: duplicates }
+
+  const declaredWaves = new Set(declaredBy.keys())
+  const crossDiagnostics = documents.flatMap((document) => [
+    ...undeclaredWaveDiagnostics(document, declaredWaves),
+    ...unresolvableKindDiagnostics(document, profileContext),
+  ])
+  if (crossDiagnostics.length > 0) {
+    return { ok: false, diagnostics: crossDiagnostics }
+  }
+
+  return {
+    ok: true,
+    composed: {
+      catalogue: {
+        ...base.catalogue,
+        // The base names the composition, which is why the report's
+        // `catalogue` field keeps its value shape while `catalogues` lists
+        // every contributor.
+        waves: documents.flatMap(({ catalogue }) => catalogue.waves),
+        questions: documents.flatMap(({ catalogue }) =>
+          catalogue.questions.map((question) => ({
+            ...question,
+            id: qualifiedQuestionId(catalogue.id, question.id),
+          })),
+        ),
+      },
+      catalogues: documents.map(
+        ({ catalogue }) => `${catalogue.id}@${catalogue.version}`,
+      ),
+    },
+  }
+}
+
 // Shared by interrogate and design: schema validation plus the YM911
 // undeclared-wave check, both source-located against the catalogue file.
 export function loadQuestionCatalogue(
   catalogueSource: WorkspaceSource,
   profileContext?: ResolvedProfileContext,
 ): CatalogueLoadResult {
-  const loadedCatalogue = loadSourceDocument<QuestionCatalogue>(
-    catalogueSource,
-    validateCatalogue,
-    'Question catalogue',
-  )
-  if (!loadedCatalogue.ok) {
-    return { ok: false, diagnostics: loadedCatalogue.diagnostics }
-  }
-  const catalogue = loadedCatalogue.document.value
-  const waveIds = new Set(catalogue.waves.map(({ id }) => id))
-  const waveDiagnostics = catalogue.questions.flatMap(
-    (question, questionIndex): readonly Diagnostic[] =>
-      waveIds.has(question.wave)
-        ? []
-        : [
-            {
-              severity: 'error',
-              code: 'YM911',
-              message: `Question "${question.id}" references undeclared wave "${question.wave}"`,
-              ...locateSourcePath(
-                catalogueSource.path,
-                loadedCatalogue.document.yaml,
-                loadedCatalogue.document.lineCounter,
-                ['questions', questionIndex, 'wave'],
-                `/questions/${questionIndex}/wave`,
-              ),
-            },
-          ],
+  const loaded = loadCatalogueDocument(catalogueSource)
+  if (!loaded.ok) return { ok: false, diagnostics: loaded.diagnostics }
+
+  const waveDiagnostics = undeclaredWaveDiagnostics(
+    loaded.document,
+    new Set(loaded.document.catalogue.waves.map(({ id }) => id)),
   )
   if (waveDiagnostics.length > 0) {
     return { ok: false, diagnostics: waveDiagnostics }
   }
-  // Only when a caller has a compiled workspace to check against. Without one
-  // there is no way to tell a typo from a kind whose profile simply is not
-  // here, and guessing would be the false positive this check exists to avoid.
-  const kindDiagnostics =
-    profileContext === undefined
-      ? []
-      : unresolvableKinds(catalogue, profileContext).map(
-          ({ kind, path }): Diagnostic => ({
-            severity: 'error',
-            code: 'YM914',
-            message: `Kind "${kind}" is not declared by profile "${kind.slice(
-              0,
-              kind.indexOf('#'),
-            )}", which this workspace loads, so the question can never fire`,
-            ...locateSourcePath(
-              catalogueSource.path,
-              loadedCatalogue.document.yaml,
-              loadedCatalogue.document.lineCounter,
-              path,
-              `/${path.join('/')}`,
-            ),
-          }),
-        )
+  const kindDiagnostics = unresolvableKindDiagnostics(
+    loaded.document,
+    profileContext,
+  )
   if (kindDiagnostics.length > 0) {
     return { ok: false, diagnostics: kindDiagnostics }
   }
-  return { ok: true, catalogue }
+  return { ok: true, catalogue: loaded.document.catalogue }
 }
 
 // Shared by interrogate and `ask --open`: the wave-by-wave human report.

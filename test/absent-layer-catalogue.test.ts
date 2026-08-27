@@ -72,11 +72,11 @@ describe('core-enrichment 1.2 asks about absent layers', () => {
 
   it('opens every absent front on a model with none of the layers', () => {
     const ids = openIds(workspace)
-    expect(ids).toContain('no-capability-declared')
-    expect(ids).toContain('no-event-declared')
-    expect(ids).toContain('no-contract-declared')
-    expect(ids).toContain('no-artifact-declared')
-    expect(ids).toContain('implementation-path-missing')
+    expect(ids).toContain('core-enrichment#no-capability-declared')
+    expect(ids).toContain('core-enrichment#no-event-declared')
+    expect(ids).toContain('core-enrichment#no-contract-declared')
+    expect(ids).toContain('core-enrichment#no-artifact-declared')
+    expect(ids).toContain('core-enrichment#implementation-path-missing')
   })
 
   it('closes a presence question the moment the layer has a subject', () => {
@@ -107,10 +107,10 @@ relationships:
       'utf8',
     )
     const ids = openIds(workspace)
-    expect(ids).not.toContain('no-capability-declared')
+    expect(ids).not.toContain('core-enrichment#no-capability-declared')
     // The citation question is satisfied by the reference; a capability
     // declared without one opens capability-uncited instead.
-    expect(ids).not.toContain('capability-uncited')
+    expect(ids).not.toContain('core-enrichment#capability-uncited')
   })
 
   it('asks a bare capability for its citation', () => {
@@ -128,7 +128,7 @@ relationships: []
       'utf8',
     )
     const ids = openIds(workspace)
-    expect(ids).toContain('capability-uncited')
+    expect(ids).toContain('core-enrichment#capability-uncited')
   })
 
   it('keeps no-contract-declared quiet where nothing interacts', () => {
@@ -146,7 +146,7 @@ relationships: []
       'utf8',
     )
     const ids = openIds(workspace)
-    expect(ids).not.toContain('no-contract-declared')
+    expect(ids).not.toContain('core-enrichment#no-contract-declared')
   })
 })
 
@@ -189,12 +189,12 @@ ${observation}`
   })
 
   it('opens where every observation is a frictionless confirmation', () => {
-    expect(openIds(workspace)).toContain('evidence-unchallenged')
+    expect(openIds(workspace)).toContain('core-enrichment#evidence-unchallenged')
   })
 
   it('stays quiet where the workspace declares no evidence at all', () => {
     writeFileSync(join(workspace, 'workspace.yaml'), manifest([]), 'utf8')
-    expect(openIds(workspace)).not.toContain('evidence-unchallenged')
+    expect(openIds(workspace)).not.toContain('core-enrichment#evidence-unchallenged')
   })
 
   it('closes on an honest non-confirmation', () => {
@@ -214,7 +214,7 @@ ${observation}`
       ),
       'utf8',
     )
-    expect(openIds(workspace)).not.toContain('evidence-unchallenged')
+    expect(openIds(workspace)).not.toContain('core-enrichment#evidence-unchallenged')
   })
 
   it('closes on a confirmed negative claim that records its empty search', () => {
@@ -237,7 +237,7 @@ ${observation}`
       ),
       'utf8',
     )
-    expect(openIds(workspace)).not.toContain('evidence-unchallenged')
+    expect(openIds(workspace)).not.toContain('core-enrichment#evidence-unchallenged')
   })
 
   it('serves the question through design with its trigger attached', () => {
@@ -265,7 +265,7 @@ relationships: []
     const open = runCli(['ask', 'workspace.yaml', '--open', '--json'], workspace)
     const question = JSON.parse(open.stdout)
       .report.waves.flatMap((wave: { questions: { id: string }[] }) => wave.questions)
-      .find((candidate: { id: string }) => candidate.id === 'evidence-unchallenged') as {
+      .find((candidate: { id: string }) => candidate.id === 'core-enrichment#evidence-unchallenged') as {
       open: boolean
       trigger: readonly { condition: string }[]
     }

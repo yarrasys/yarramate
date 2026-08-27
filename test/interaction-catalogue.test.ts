@@ -89,7 +89,7 @@ describe('core-enrichment 1.0 interaction wave', () => {
       step: { questionId: string; wave: string }
     }
     expect(payload.step.wave).toBe('interaction')
-    expect(payload.step.questionId).toBe('hop-unrealised')
+    expect(payload.step.questionId).toBe('core-enrichment#hop-unrealised')
   })
 
   it('omits policy questions when yarramate/policy@0.1 is not selected', () => {
@@ -103,10 +103,10 @@ describe('core-enrichment 1.0 interaction wave', () => {
         (wave: { questions: { id: string }[] }) => wave.questions,
       )
       .map((question: { id: string }) => question.id)
-    expect(ids).toContain('hop-unrealised')
-    expect(ids).not.toContain('authn-standard-missing')
-    expect(ids).not.toContain('interaction-trust-unbound')
-    expect(ids).not.toContain('interaction-protocol-unbound')
+    expect(ids).toContain('core-enrichment#hop-unrealised')
+    expect(ids).not.toContain('core-enrichment#authn-standard-missing')
+    expect(ids).not.toContain('core-enrichment#interaction-trust-unbound')
+    expect(ids).not.toContain('core-enrichment#interaction-protocol-unbound')
   })
 
   it('keeps trust open when only a rate-limit constraint is bound', () => {
@@ -173,8 +173,8 @@ evidence: []
       )
       .filter((question: { open: boolean }) => question.open)
       .map((question: { id: string }) => question.id)
-    expect(ids).toContain('interaction-trust-unbound')
-    expect(ids).not.toContain('interaction-capacity-unbound')
+    expect(ids).toContain('core-enrichment#interaction-trust-unbound')
+    expect(ids).not.toContain('core-enrichment#interaction-capacity-unbound')
   })
 })
 
@@ -269,7 +269,7 @@ evidence: []
           (wave: { questions: { id: string; open: boolean }[] }) =>
             wave.questions,
         )
-        .find((question: { id: string }) => question.id === 'authn-standard-missing')
+        .find((question: { id: string }) => question.id === 'core-enrichment#authn-standard-missing')
       expect(authn?.open).toBe(false)
     } finally {
       rmSync(workspaceDir, { recursive: true, force: true })

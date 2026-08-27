@@ -2,6 +2,40 @@
 
 ## Unreleased
 
+- **Added.** A workspace can carry its own questions (#345, ADR 0129). A
+  `questions:` manifest category resolves like `patterns` and `evidence`, and
+  is **additive** to the shipped catalogue, so a consultant can author a
+  question mid-engagement with no product release. `--catalogue` and
+  `MountOptions.catalogue` are unchanged: they replace the base.
+
+  **A wave is declared exactly once across the resolved set**, and any
+  catalogue may contribute questions to a wave it did not declare. That one
+  rule settles wave identity and ordering, and removes the `opensWhen`
+  precedence question ADR 0125 raised rather than answering it: there is only
+  ever one declarer. A second declaration is refused with **YM915**.
+
+  **Question ids are now qualified as `catalogue#question`.** Authors keep
+  writing local ids; the engine qualifies when it composes, and every CLI verb
+  composes even when only the shipped catalogue is in play. Two catalogues may
+  carry the same local id and remain two distinct questions.
+
+  **No version in the identity.** `core-enrichment` went 1.0 to 1.3 in a single
+  day renaming nothing, and a versioned identity would have stranded every
+  stored dismissal in every adopter's database three times that day. Versioned
+  identity is safe for things that are authored and unsafe for things that are
+  stored. Versions live in the report instead: `catalogue` keeps naming the
+  base with its existing value shape, and a new **optional** `catalogues` array
+  lists every contributor.
+
+- **Changed.** A consumer matching on question ids in an interrogation report,
+  a design step, or a host-supplied dismissal migrates once: `outcome-missing`
+  becomes `core-enrichment#outcome-missing`. A value change rather than a new
+  required field, so nothing that constructs these documents breaks.
+
+- **Fixed.** `check` now validates the question catalogues a workspace
+  declares, composed, so a broken one is refused and the cross-catalogue rules
+  are enforced where CI sees them.
+
 - **Added.** `check` resolves the references in a projection query (ADR 0128,
   YM921). A query naming a state, subject, document, kind, owner or constraint
   the workspace does not have is refused, and the diagnostic suggests the near

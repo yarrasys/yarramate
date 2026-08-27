@@ -68,7 +68,7 @@ describe('design command', () => {
     const result = runCli(['design', 'workspace.yaml'], workspace)
     expect(result.exitCode).toBe(0)
     expect(result.stdout).toContain('catalogue core-enrichment@')
-    expect(result.stdout).toContain('Q [motivation · outcome-missing]')
+    expect(result.stdout).toContain('Q [motivation · core-enrichment#outcome-missing]')
     expect(result.stdout).toContain('yarramate apply')
   })
 
@@ -81,7 +81,7 @@ describe('design command', () => {
     expect(result.stdout).toContain('Todo service')
     expect(result.stdout).toContain('Subject slice:')
     expect(result.stdout).toContain('You are building "Todo service"')
-    expect(result.stdout).not.toContain('outcome-missing')
+    expect(result.stdout).not.toContain('core-enrichment#outcome-missing')
   })
 
   it('fails loudly on an unknown subject', () => {
@@ -125,7 +125,7 @@ describe('design command', () => {
       workspace,
     )
     expect(result.exitCode).toBe(0)
-    expect(result.stdout).toContain('Q [motivation · goal-unrealized]')
+    expect(result.stdout).toContain('Q [motivation · core-enrichment#goal-unrealized]')
     expect(result.stdout).toContain('- op: add-relationship')
     expect(result.stdout).toContain('kind: realization')
     // goal-unrealized wants an incoming realization: the goal is the
@@ -154,7 +154,13 @@ describe('design command', () => {
       progress: { waves: readonly { id: string; open: number }[] }
     }
     expect(payload.format).toBe('yarramate/design-step/v1')
-    expect(payload.step?.questionId).toBe('outcome-missing')
+    // Qualified even though ONE catalogue is in play (#345, ADR 0129).
+    // Qualifying only when composed would mean a consultant adding a single
+    // project question silently changes the id of every question in the
+    // shipped catalogue, stranding every stored dismissal keyed on them -
+    // which is the exact failure the unversioned qualified id exists to
+    // prevent, triggered by adding a file.
+    expect(payload.step?.questionId).toBe('core-enrichment#outcome-missing')
     expect(payload.step?.wave).toBe('motivation')
     expect(payload.progress.waves.map(({ id }) => id)).toEqual([
       'motivation',
@@ -212,7 +218,7 @@ questions:
     )
     expect(result.exitCode).toBe(0)
     expect(result.stdout).toContain('catalogue tiny@1.0')
-    expect(result.stdout).toContain('states-question')
+    expect(result.stdout).toContain('tiny#states-question')
   })
 
   it('carries the full open-subject roster for shared questions', () => {
@@ -276,7 +282,7 @@ questions:
       workspace,
     )
     expect(result.exitCode).toBe(0)
-    expect(result.stdout).toContain('Q [motivation · outcome-missing]')
+    expect(result.stdout).toContain('Q [motivation · core-enrichment#outcome-missing]')
     // The shipped catalogue authors askPlain for the motivation wave.
     expect(result.stdout).toContain(
       'What would success look like for this system?',

@@ -117,7 +117,7 @@ describe('ask --open interrogation', () => {
     )
     expect(before.exitCode).toBe(0)
     expect(before.stdout).toContain(
-      'OPEN   goal-missing — What outcome justifies this system?',
+      'OPEN   fixture#goal-missing — What outcome justifies this system?',
     )
 
     writeFileSync(
@@ -136,7 +136,7 @@ describe('ask --open interrogation', () => {
       workspace,
     )
     expect(after.exitCode).toBe(0)
-    expect(after.stdout).toContain('closed goal-missing')
+    expect(after.stdout).toContain('closed fixture#goal-missing')
   })
 
   it.each(catalogueSchema.$defs.question.properties.authority.enum)(
@@ -254,7 +254,7 @@ describe('ask --open interrogation', () => {
     expect(payload.summary).toEqual({ questions: 2, openQuestions: 2, open: 3 })
     const owners = payload.waves
       .find(({ id }) => id === 'hygiene')!
-      .questions.find(({ id }) => id === 'actor-owner-missing')!
+      .questions.find(({ id }) => id === 'fixture#actor-owner-missing')!
     expect(owners.subjects!.map(({ id }) => id)).toEqual([
       'customer',
       'platform',
@@ -834,7 +834,7 @@ describe('ask --open interrogation', () => {
     const loadedReport = JSON.parse(loadedUnselected.stdout).report
     expect(loadedReport.summary.questions).toBe(1)
     expect(loadedReport.waves[0].questions.map((q: { id: string }) => q.id)).toEqual(
-      ['outcome-missing'],
+      ['policy-fixture#outcome-missing'],
     )
 
     writeFileSync(
@@ -897,7 +897,7 @@ describe('ask --open interrogation', () => {
       .flatMap((wave: { questions: { id: string; open: boolean }[] }) =>
         wave.questions,
       )
-      .find((question: { id: string }) => question.id === 'goal-missing')
+      .find((question: { id: string }) => question.id === 'fixture#goal-missing')
     expect(goalMissing.open).toBe(false)
   })
 

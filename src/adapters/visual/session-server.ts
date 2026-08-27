@@ -241,6 +241,29 @@ const shippedCatalogue = ((): { path: string; source: string } | undefined => {
   }
 })();
 
+/**
+ * The shipped catalogue plus the ones the workspace carries (#345, ADR 0129).
+ *
+ * A catalogue that cannot be read is SKIPPED rather than failing the session,
+ * which is what the shipped one already did: an interrogation overlay is a
+ * garnish on a model, and losing a session over it would be worse than losing
+ * the questions. `check` is where a broken catalogue is refused.
+ */
+const catalogueSetFor = (
+  workspace: ResolvedWorkspace,
+): readonly { path: string; source: string }[] => {
+  if (shippedCatalogue === undefined) return [];
+  const carried: { path: string; source: string }[] = [];
+  for (const path of workspace.questions ?? []) {
+    try {
+      carried.push({ path, source: readFileSync(path, "utf8") });
+    } catch {
+      // Skipped, as above.
+    }
+  }
+  return [shippedCatalogue, ...carried];
+};
+
 export type VisualEventDelivery =
   | {
       readonly waiting: false;
@@ -926,7 +949,11 @@ export const startVisualServer = async (
         // that. A staged view operation pins against these (ADR 0103), and a
         // projection missing from the map is one the commit will create.
         projectionDigests: projectionDigestsNow(),
-      }, shippedCatalogue);
+        // The shipped catalogue plus whatever this workspace carries (#345),
+        // so the pane asks the interview `design` asks over the same files.
+        // Read on each recompile rather than once per process, because a
+        // consultant authoring a question mid-session is the whole point.
+      }, catalogueSetFor(resolvedWorkspace));
       // Closures below retain this array, so refresh its contents without
       // replacing the identity the session started with.
       views.splice(0, views.length, ...workspaceModel.views);

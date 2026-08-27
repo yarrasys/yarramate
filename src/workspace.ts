@@ -37,6 +37,7 @@ export interface WorkspaceManifest {
   readonly projections: readonly string[]
   readonly adapterMappings: readonly string[]
   readonly patterns?: readonly string[]
+  readonly questions?: readonly string[]
   readonly evidence?: readonly string[]
   readonly contracts?: readonly string[]
 }
@@ -48,6 +49,20 @@ export interface ResolvedWorkspace {
   readonly projections: readonly string[]
   readonly adapterMappings: readonly string[]
   readonly patterns: readonly string[]
+  /**
+   * Question catalogues the workspace itself carries (#345, ADR 0129).
+   * ADDITIVE to the shipped catalogue: `--catalogue` replaces the base, this
+   * adds to it, which is what lets a consultant author a question mid
+   * engagement without a product release.
+   *
+   * OPTIONAL in the type although `loadWorkspaceManifest` always populates it,
+   * and that is deliberate. `ResolvedWorkspace` is published, and adding
+   * `patterns` to it as a required field broke a consumer's production module:
+   * a required field is free for readers and a break for CONSTRUCTORS. Six
+   * fixtures in this repository construct one, which is the same signal from
+   * inside. Read it as `workspace.questions ?? []`.
+   */
+  readonly questions?: readonly string[]
   readonly evidence: readonly string[]
   readonly contracts: readonly string[]
 }
@@ -83,6 +98,7 @@ export function loadWorkspaceManifest(
       | 'projections'
       | 'adapterMappings'
       | 'patterns'
+      | 'questions'
       | 'evidence'
       | 'contracts',
     label: string,
@@ -184,6 +200,7 @@ export function loadWorkspaceManifest(
       value.adapterMappings,
     ),
     patterns: expand('patterns', 'pattern', value.patterns ?? []),
+    questions: expand('questions', 'question catalogue', value.questions ?? []),
     evidence: expand('evidence', 'evidence', value.evidence ?? []),
     contracts: expand(
       'contracts',

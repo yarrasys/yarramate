@@ -14,8 +14,8 @@ import {
 } from './compiler.js'
 import { loadEvidence, type EvidenceObservation } from './evidence.js'
 import {
+  composeCatalogues,
   evaluateCatalogue,
-  loadQuestionCatalogue,
   renderQuestion,
   type CatalogueCondition,
   type InterrogationReport,
@@ -289,14 +289,25 @@ export function runDesignCommand(
     )
     if (!compilation.ok) return failed(compilation.diagnostics)
 
-    const loadedCatalogue = loadQuestionCatalogue(
-      {
-        path: cataloguePath ?? resolvedCataloguePath,
-        source: readFileSync(resolvedCataloguePath, 'utf8'),
-      },
+    // The base, then whatever the workspace carries (#345, ADR 0129). The
+    // base is REPLACED by `--catalogue` and ADDED TO by `questions:`, which is
+    // what lets a consultant author a question mid-engagement with no product
+    // release while a host still controls the catalogue that is not in the
+    // workspace.
+    const composed = composeCatalogues(
+      [
+        {
+          path: cataloguePath ?? resolvedCataloguePath,
+          source: readFileSync(resolvedCataloguePath, 'utf8'),
+        },
+        ...(workspace.questions ?? []).map((path) => ({
+          path,
+          source: readFileSync(resolve(cwd, path), 'utf8'),
+        })),
+      ],
       compilation.profileContext,
     )
-    if (!loadedCatalogue.ok) return failed(loadedCatalogue.diagnostics)
+    if (!composed.ok) return failed(composed.diagnostics)
 
     // The evidence overlay rides along for the one condition that reads
     // it (unchallenged-evidence). A workspace declaring no evidence
@@ -324,13 +335,15 @@ export function runDesignCommand(
     }
 
     const report = evaluateCatalogue(
-      loadedCatalogue.catalogue,
+      composed.composed.catalogue,
       compilation.graph,
       compilation.profileContext,
       evidenceObservations,
+      composed.composed.catalogues,
     )
+    // Keyed by the QUALIFIED id, matching what the report now carries.
     const askPlainById = new Map(
-      loadedCatalogue.catalogue.questions.flatMap((question) =>
+      composed.composed.catalogue.questions.flatMap((question) =>
         question.askPlain === undefined
           ? []
           : [[question.id, question.askPlain] as const],

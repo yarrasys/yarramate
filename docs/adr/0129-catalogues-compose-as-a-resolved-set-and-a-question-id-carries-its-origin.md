@@ -104,6 +104,20 @@ version. Optional and additive is safe for readers, which ignore it, and does
 not force constructors, which is the break that hit a consumer's production
 code this month.
 
+## Found while building it
+
+**Qualification is a property of composition, not of evaluation.** A caller
+handing `evaluateCatalogue` a catalogue directly still gets local ids, exactly
+as before. Only `composeCatalogues` qualifies.
+
+That is deliberate — it leaves every existing direct caller untouched — but it
+means the guidance matters: **compose even when there is only one catalogue**,
+which is what every CLI verb now does. Then ids are qualified from the start
+and do not change later when a workspace first carries a question of its own.
+An adopter that evaluated directly, keyed stored judgments on local ids and
+then adopted composition would experience exactly the mass-orphan transition
+this design exists to prevent, one file at a time.
+
 ## Consequences
 
 **One migration, and it is a value change rather than a required-field

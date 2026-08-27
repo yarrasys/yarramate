@@ -24,6 +24,15 @@
       "type": "string",
       "minLength": 1
     },
+    "catalogues": {
+      "description": "Every catalogue that contributed, as id@version, base first (#345, ADR 0129). Present only when more than one did. OPTIONAL, and `catalogue` keeps naming the base with its existing value shape, because turning that field into an array would break every reader: an optional additive field is free for readers and does not force constructors. Question ids in this report are qualified as catalogue#question and carry NO version, so a catalogue version bump strands no stored judgment keyed on them; the versions live here instead.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
     "semantics": {
       "type": "string",
       "minLength": 1,
