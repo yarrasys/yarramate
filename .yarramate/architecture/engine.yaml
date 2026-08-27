@@ -857,6 +857,12 @@ concepts:
     description: Decides for every changed cell whether it merges or is refused. The workbook's own hidden ancestor is the common baseline, so a field the workspace did not touch merges even after the repository moved on, and only a field moved on both sides is a conflict. A missing row is reported and never actioned, because a row deleted by accident in a spreadsheet has no symptom.
     owner: yarramate-maintainers
     status: current
+  - id: pattern-document
+    kind: dataObject
+    name: Pattern document
+    description: "The yarramate/pattern/v1 document: the shape a concept kind promises, and the wiring the compiler mints between an instance and the parts it binds (ADR 0123). Parts BIND existing subjects rather than minting them. Declared here by the coverage work-down; the behavior that loads and expands it is not yet modelled, which #346's slot-visibility question will force."
+    owner: yarramate-maintainers
+    status: current
   - id: workspace-question-catalogue
     kind: dataObject
     name: Workspace question catalogue
