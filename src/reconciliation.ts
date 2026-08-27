@@ -355,8 +355,11 @@ const claimedArtifactPaths = (
       if (!uri.startsWith('repo:')) continue
       const located = uri.slice('repo:'.length)
       const fragment = located.indexOf('#')
-      const path = (fragment === -1 ? located : located.slice(0, fragment))
-        .replace(/\/+$/, '')
+      // Trailing slashes are stripped with a loop, not a regex: an
+      // anchored /\/+$/ is polynomial on a locator of many slashes, and
+      // locators are library input.
+      let path = fragment === -1 ? located : located.slice(0, fragment)
+      while (path.endsWith('/')) path = path.slice(0, -1)
       if (path.length > 0) claimed.add(path)
     }
   }
