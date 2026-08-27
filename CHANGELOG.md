@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.8.0
 
 - **Added.** A catalogue can ask about pattern membership (#346, ADR 0131).
   The new `fills-pattern-slot` trigger condition holds where a subject is
@@ -42,6 +42,11 @@
   The typed API gains `deriveArtifactCoverage` and the `ArtifactCoverage`
   input `reconcileEvidenceReports` now optionally takes, so a host that
   enumerates its own tree can assess coverage without a filesystem.
+
+  Dogfooded in the same release: the self-model's first honest report said
+  72 of 149 in-scope files were unclaimed, and the backlog was worked to
+  zero (#366) — every file bound in by a repository-file concept, a
+  realization to what its code serves, and a confirmed observation.
 
 
 
