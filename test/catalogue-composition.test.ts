@@ -235,6 +235,121 @@ describe('composing catalogues', () => {
   })
 })
 
+/**
+ * A driver is one of seven core kinds ArchiMate 3.2 permits NOTHING to
+ * realize, so "nothing realizes this driver" is a question no model could
+ * ever close (ADR 0133). It reads perfectly and opens on every driver
+ * forever.
+ */
+const unclosable = `format: yarramate/question-catalogue/v1
+id: unclosable
+version: "1.0"
+profile: yarramate/core@0.1
+waves:
+  - id: motivation
+    name: Motivation
+questions:
+  - id: driver-unrealized
+    wave: motivation
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#driver
+    trigger:
+      - condition: missing-relationship
+        kinds:
+          - yarramate/core@0.1#realization
+        direction: incoming
+    question: What realizes {subject.name}?
+    materiality: Unrealized drivers steer nothing.
+    resolution: Add a realization.
+    authority: human
+`
+
+const profileContextOf = () => {
+  const compiled = compileWorkspaceWithProfileContext([
+    { path: 'main.yaml', source: document },
+  ])
+  if (!compiled.ok) throw new Error('fixture does not compile')
+  return compiled.profileContext
+}
+
+describe('a question no model could close', () => {
+  // Two call sites evaluate this, and an unthreaded one fails SILENTLY: the
+  // catalogue composes clean and the question opens forever, which is exactly
+  // the defect. One test per call site, therefore, not one per feature.
+  it('refuses it while composing a set', () => {
+    const composed = composeCatalogues(
+      [sourceOf('domain.yaml', domain), sourceOf('unclosable.yaml', unclosable)],
+      profileContextOf(),
+    )
+    expect(composed.ok).toBe(false)
+    if (composed.ok) return
+    expect(composed.diagnostics.map(({ code }) => code)).toEqual(['YM916'])
+    const [diagnostic] = composed.diagnostics
+    expect(diagnostic!.message).toContain('driver-unrealized')
+    expect(diagnostic!.message).toContain('no model could ever close it')
+    // Located on the offending kind, not on the catalogue as a whole.
+    expect(diagnostic!.path).toBe('unclosable.yaml')
+    expect(diagnostic!.pointer).toBe('/questions/0/trigger/0/kinds/0')
+  })
+
+  it('refuses it when the catalogue stands alone', () => {
+    const composed = composeCatalogues(
+      [sourceOf('unclosable.yaml', unclosable)],
+      profileContextOf(),
+    )
+    expect(composed.ok).toBe(false)
+    if (composed.ok) return
+    expect(composed.diagnostics.map(({ code }) => code)).toEqual(['YM916'])
+  })
+
+  it('says nothing without a profile context, as YM914 does not', () => {
+    // No compiled workspace means no lineage to resolve an extension kind
+    // through, and guessing is the false positive the narrowness avoids.
+    expect(composeCatalogues([sourceOf('unclosable.yaml', unclosable)]).ok).toBe(
+      true,
+    )
+  })
+
+  it('leaves a triple the table permits alone', () => {
+    // The check that decides whether this check survives. A goal CAN be
+    // realized, so the same question shape on a goal is ordinary content and
+    // must compose clean.
+    const composed = composeCatalogues(
+      [
+        sourceOf(
+          'closable.yaml',
+          unclosable
+            .replace('yarramate/core@0.1#driver', 'yarramate/core@0.1#goal')
+            .replace('id: driver-unrealized', 'id: goal-unrealized'),
+        ),
+      ],
+      profileContextOf(),
+    )
+    expect(composed.ok).toBe(true)
+  })
+
+  it('closes on either direction when the trigger says any', () => {
+    // A driver may be the SOURCE of an association even though nothing may
+    // associate into... in fact both directions are permitted for
+    // association, so `any` must not fire. The rule is that `any` is
+    // unclosable only when both directions are empty.
+    const composed = composeCatalogues(
+      [
+        sourceOf(
+          'any.yaml',
+          unclosable
+            .replace('yarramate/core@0.1#realization', 'yarramate/core@0.1#association')
+            .replace('direction: incoming', 'direction: any'),
+        ),
+      ],
+      profileContextOf(),
+    )
+    expect(composed.ok).toBe(true)
+  })
+})
+
 describe('a workspace that carries its own questions', () => {
   let workspace = ''
   const write = (relative: string, source: string) =>

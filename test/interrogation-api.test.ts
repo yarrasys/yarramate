@@ -178,6 +178,63 @@ describe('interrogation engine as public API', () => {
     expect(questionById(report, 'component-unattested').authority).toBe('human')
   })
 
+  it('refuses a question no model could close, when given a profile context', () => {
+    // `loadQuestionCatalogue` is a published entry on the interrogation
+    // subpath, so it is its own call site: a host embedding the engine reaches
+    // it without going near `composeCatalogues`, and an unthreaded check here
+    // fails SILENTLY - the catalogue loads clean and the question opens on
+    // every driver forever (ADR 0133). Nothing a per-feature test can see.
+    const compilation = compileWorkspaceWithProfileContext([
+      { path: 'architecture/main.yaml', source: document },
+    ])
+    if (!compilation.ok) throw new Error('fixture did not compile')
+    const loaded = loadQuestionCatalogue(
+      {
+        path: 'catalogue.yaml',
+        source: catalogue.replace(
+          '      kinds: ["yarramate/core@0.1#applicationComponent"]\n' +
+            '    trigger:\n' +
+            '      - condition: missing-relationship\n' +
+            '        kinds: ["yarramate/core@0.1#serving"]\n' +
+            '        direction: outgoing\n',
+          '      kinds: ["yarramate/core@0.1#driver"]\n' +
+            '    trigger:\n' +
+            '      - condition: missing-relationship\n' +
+            '        kinds: ["yarramate/core@0.1#realization"]\n' +
+            '        direction: incoming\n',
+        ),
+      },
+      compilation.profileContext,
+    )
+    expect(loaded.ok).toBe(false)
+    if (loaded.ok) return
+    expect(loaded.diagnostics.map(({ code }) => code)).toEqual(['YM916'])
+    expect(loaded.diagnostics[0]!.message).toContain('component-serves-nothing')
+  })
+
+  it('stays silent on the same catalogue when no profile context is given', () => {
+    // Every existing consumer of this entry passes no context, including the
+    // fixture above. The check must be inert for them rather than a refusal
+    // they never asked for.
+    expect(
+      loadQuestionCatalogue({
+        path: 'catalogue.yaml',
+        source: catalogue.replace(
+          'kinds: ["yarramate/core@0.1#applicationComponent"]\n' +
+            '    trigger:\n' +
+            '      - condition: missing-relationship\n' +
+            '        kinds: ["yarramate/core@0.1#serving"]\n' +
+            '        direction: outgoing\n',
+          'kinds: ["yarramate/core@0.1#driver"]\n' +
+            '    trigger:\n' +
+            '      - condition: missing-relationship\n' +
+            '        kinds: ["yarramate/core@0.1#realization"]\n' +
+            '        direction: incoming\n',
+        ),
+      }).ok,
+    ).toBe(true)
+  })
+
   it('renders the report and a single question through the exported renderers', () => {
     expect(renderInterrogationReport(evaluate())).toContain('== Structure ==')
     expect(renderQuestion('Who owns {subject.name}?', 'billing', 'Billing')).toBe(

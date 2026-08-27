@@ -385,6 +385,45 @@ describe('ask --open interrogation', () => {
     expect(result.stdout).not.toContain('YM914')
   })
 
+  it('refuses a question no model could ever close (#382, ADR 0133)', () => {
+    writeFileSync(
+      join(workspace, 'catalogue.yaml'),
+      catalogue.replace(
+        '  - id: actor-owner-missing\n' +
+          '    wave: hygiene\n' +
+          '    since: "1.1"\n' +
+          '    scope: subject\n' +
+          '    subjects:\n' +
+          '      kinds: ["yarramate/core@0.1#businessActor"]\n' +
+          '    trigger:\n' +
+          '      - condition: missing-claim\n' +
+          '        predicate: yarramate/ownership/owner\n',
+        '  - id: driver-unrealized\n' +
+          '    wave: hygiene\n' +
+          '    scope: subject\n' +
+          '    subjects:\n' +
+          '      kinds: ["yarramate/core@0.1#driver"]\n' +
+          '    trigger:\n' +
+          '      - condition: missing-relationship\n' +
+          '        kinds: ["yarramate/core@0.1#realization"]\n' +
+          '        direction: incoming\n',
+      ),
+      'utf8',
+    )
+    const result = runCli(
+      ['ask', 'workspace.yaml', '--open', '--catalogue', 'catalogue.yaml'],
+      workspace,
+    )
+    // `--catalogue` reaches loadQuestionCatalogue rather than the composition
+    // path, and an unthreaded call site there fails SILENTLY: the catalogue
+    // loads clean and the question opens on every driver forever, which is
+    // indistinguishable from a model with work left to do.
+    expect(result.exitCode).toBe(1)
+    expect(result.stdout).toContain('error YM916')
+    expect(result.stdout).toContain('driver-unrealized')
+    expect(result.stdout).toMatch(/^catalogue\.yaml:\d+:\d+ /)
+  })
+
   it('locates a question referencing an undeclared wave', () => {
     writeFileSync(
       join(workspace, 'catalogue.yaml'),
