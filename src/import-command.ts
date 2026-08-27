@@ -9,10 +9,10 @@ import { buildWorkbookSheets } from './workbook.js'
 import { baselineSheets, mergeWorkbook } from './workbook-merge.js'
 import { operationsFrom, operationsDocument } from './workbook-operations.js'
 import { readWorkbook } from './workbook-read.js'
+import { emitYaml } from './yaml-emission.js'
 import { writeFileSync, mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { stringify } from 'yaml'
 
 /**
  * `yarramate import xlsx <file> <workspace.yaml>` (#355, ADR 0127).
@@ -170,7 +170,7 @@ export async function runImportCommand(
   const operationsPath = join(scratch, 'operations.yaml')
   writeFileSync(
     operationsPath,
-    stringify(operationsDocument(planned.operations)),
+    emitYaml(operationsDocument(planned.operations)),
     'utf8',
   )
   const applied = runApplyCommand([operationsPath, workspacePath], cwd)

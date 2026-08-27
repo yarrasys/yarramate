@@ -1,5 +1,5 @@
+import { emitYaml } from "../yaml-emission.js";
 import { useRef, useState } from "react";
-import { stringify } from "yaml";
 import type { CanvasNode } from "../graph-projection.js";
 import type {
   ConceptFacet,
@@ -526,7 +526,7 @@ export function QueryPanel({
               ) : (
                 <>
                   <pre className="query-document">
-                    {stringify(viewDocument(documentInput))}
+                    {emitYaml(viewDocument(documentInput))}
                   </pre>
                   {readOnly ? null : (
                     <div className="query-tab-actions">

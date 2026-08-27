@@ -774,6 +774,10 @@ concepts:
     kind: repository-file
     name: src/workbook-read.ts
     status: current
+  - id: yaml-emission-source
+    kind: repository-file
+    name: src/yaml-emission.ts
+    status: current
 relationships:
   - id: backlog-disposition-qualifies-roadmap
     kind: association
@@ -1575,3 +1579,7 @@ relationships:
     kind: realization
     from: workbook-read-source
     to: workbook-engine
+  - id: yaml-emission-realizes-apply
+    kind: realization
+    from: yaml-emission-source
+    to: apply-command

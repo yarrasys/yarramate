@@ -515,6 +515,19 @@ referring relationships can leave in one batch (ADR 0069). Retirement
 (`status: retired`) remains the descoping path; delete only when the
 history itself is noise.
 
+Text a write emits is quoted so that it reads the same under every YAML
+version. YarraMate reads YAML 1.2, where a plain `on` is the string `on`.
+YAML 1.1, still PyYAML's default and most non-JS loaders', resolves that
+same plain `on` to the boolean `true` and a plain `2026-08-27` to a date, so
+an attestation written as `on: 2026-08-27` reaches someone's audit script as
+`{True: date(2026, 8, 27)}` rather than the record its author wrote (#378).
+Every string a write produces is therefore measured against both versions
+and double-quoted wherever they disagree (`"on": "2026-08-27"`, `"no"`,
+`"0o17"`), a form both versions read back as the string that was authored.
+Authored bytes are untouched by this, as they are by every other write: the
+rule applies to text YarraMate produces, and a hand-written plain `on:` is
+still read as the string it is.
+
 Two operations — `rename-concept` and `rename-relationship` — move a
 subject's local id. A rename is an identity edit, not a succession: it
 writes no `supersedes` entry and retires nothing, because one subject kept

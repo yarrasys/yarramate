@@ -1,5 +1,5 @@
-import { stringify } from "yaml";
 import { loadProjection } from "../../projection.js";
+import { emitYaml } from "../../yaml-emission.js";
 import { withDiagnosticSubjects } from "../../compiler.js";
 import type { Diagnostic } from "../../compiler.js";
 import { posixDirectoryOf } from "../../apply-command.js";
@@ -411,7 +411,7 @@ export const planViewWrites = (
       );
       continue;
     }
-    const source = stringify(operation.projection);
+    const source = emitYaml(operation.projection);
     const loaded = loadProjection({ path: operation.path, source });
     if (!loaded.ok) {
       // The composed document is the only source these are about, so they are

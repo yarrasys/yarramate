@@ -3,7 +3,6 @@ import {
   isScalar,
   isSeq,
   parseDocument,
-  stringify,
   type Pair,
   type YAMLMap,
   type YAMLSeq,
@@ -17,6 +16,7 @@ import {
   type WorkspaceSource,
 } from './compiler.js'
 import { evaluateEvidence, loadEvidence } from './evidence.js'
+import { emitYaml } from './yaml-emission.js'
 import { loadProjection } from './projection.js'
 import {
   loadSourceDocument,
@@ -116,7 +116,7 @@ const reindent = (text: string, indent: number): string =>
 // line; genuinely multi-line strings become block scalars and are re-indented
 // by the caller.
 const valueText = (value: unknown): string =>
-  stringify(value, { lineWidth: 0 }).trimEnd()
+  emitYaml(value, { lineWidth: 0 }).trimEnd()
 
 const pairFor = (
   map: YAMLMap,
@@ -139,7 +139,7 @@ const sequenceEntries = (
   items: readonly unknown[],
   markerIndent: number,
 ): string => {
-  const rendered = stringify(items, { lineWidth: 0 }).trimEnd()
+  const rendered = emitYaml(items, { lineWidth: 0 }).trimEnd()
   return `${' '.repeat(markerIndent)}${reindent(rendered, markerIndent)}`
 }
 
@@ -327,7 +327,7 @@ const rewriteFlowItem = (
   const [start, valueEnd] = nodeRange(map)
   const fieldIndent = indentAt(source, start)
   const rendered = reindent(
-    stringify(mutated, { lineWidth: 0 }).trimEnd(),
+    emitYaml(mutated, { lineWidth: 0 }).trimEnd(),
     fieldIndent,
   )
   return splice(source, start, valueEnd, rendered)
@@ -403,7 +403,7 @@ const appendListField = (
     ? nodeRange(sequence)
     : nodeRange(pair.value)
   if (isSeq(sequence) && sequence.flow) {
-    const flow = stringify(merged, {
+    const flow = emitYaml(merged, {
       collectionStyle: 'flow',
       lineWidth: 0,
     }).trimEnd()
@@ -467,7 +467,7 @@ const removeCollectionItem = (
       valueEnd,
       remaining.length === 0
         ? '[]'
-        : stringify(remaining, {
+        : emitYaml(remaining, {
             collectionStyle: 'flow',
             lineWidth: 0,
           }).trimEnd(),

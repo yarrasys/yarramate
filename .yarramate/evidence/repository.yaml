@@ -1259,6 +1259,10 @@ observations:
     result: confirmed
     evidence:
       uri: repo:src/workbook-read.ts
+  - subject: yaml-emission-source
+    result: confirmed
+    evidence:
+      uri: repo:src/yaml-emission.ts
   - subject: pattern-document
     result: confirmed
     evidence:
