@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.7.0
 
 - **Added.** A workspace can carry its own questions (#345, ADR 0129). A
   `questions:` manifest category resolves like `patterns` and `evidence`, and
