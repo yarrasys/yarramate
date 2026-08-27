@@ -210,6 +210,16 @@ export interface ReportQuestion {
   readonly scope: 'workspace' | 'subject'
   readonly authority: 'human' | 'agent' | 'either'
   readonly open: boolean
+  /**
+   * Whether the question was asked at all (#375, ADR 0132). Absent means
+   * true; only a subject-scoped question whose selector matched NO subject
+   * carries `asked: false`. Without it, never-asked and answered were
+   * byte-identical (`open: false`), and a host summing closed questions
+   * read an empty model as a satisfied interview — completion inferred
+   * from an empty set, the exact reading ADR 0125 refuses one level up by
+   * not evaluating a closed wave's questions at all.
+   */
+  readonly asked?: boolean
   readonly question: string
   readonly materiality: string
   readonly resolution: string
@@ -937,11 +947,20 @@ export function evaluateCatalogue(
           }
           return { ...base, open: isOpen }
         }
-        const matches = selectSubjects(
+        // Selection and trigger filtering are separate reads on purpose
+        // (#375, ADR 0132): a selector matching nobody means the question
+        // was never asked, and reporting that as a closed question said it
+        // had been asked and answered — completion inferred from an empty
+        // set, the reading ADR 0125 refuses one level up.
+        const selected = selectSubjects(
           index,
           question.subjects!,
           profileContext,
-        ).filter((id) =>
+        )
+        if (selected.length === 0) {
+          return { ...base, open: false, asked: false }
+        }
+        const matches = selected.filter((id) =>
           question.trigger.every((condition) =>
             conditionHolds(index, condition, id, profileContext, evidence, patternMemberships),
           ),
@@ -1388,6 +1407,15 @@ export function renderInterrogationReport(
       continue
     }
     for (const question of wave.questions) {
+      if (question.asked === false) {
+        // Never asked is not closed (#375): `closed` says answered, and a
+        // selector that matched nobody asked nothing — the question-level
+        // twin of the wave's own "not yet" line above.
+        lines.push(
+          `  unasked ${question.id} — nothing it selects exists yet`,
+        )
+        continue
+      }
       if (!question.open) {
         lines.push(`  closed ${question.id}`)
         continue

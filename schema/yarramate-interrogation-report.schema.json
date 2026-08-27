@@ -133,6 +133,10 @@
         "open": {
           "type": "boolean"
         },
+        "asked": {
+          "type": "boolean",
+          "description": "Whether the question was asked at all (#375, ADR 0132). Absent means true; only a subject-scoped question whose selector matched no subject carries asked: false. Without it, never-asked and answered were byte-identical (open: false), and a host summing closed questions read an empty model as a satisfied interview."
+        },
         "question": {
           "type": "string",
           "minLength": 1

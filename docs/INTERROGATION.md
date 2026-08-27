@@ -254,10 +254,16 @@ one is exactly the case a declared-kinds check would call entirely missing.
 ## Evaluation model
 
 A question is **open** iff its trigger matches, and **closed** the moment it
-no longer does. A question is **not applicable** when any kind it names
-belongs to a profile that no document in the workspace has selected
-(`graph.profiles`). Inapplicable questions are omitted from the report and
-from `summary.questions`; they are not `open: false`. Interview state is
+no longer does. A subject-scoped question whose selector matches no subject
+was **never asked** (#375, ADR 0132): it reports `open: false` with
+`asked: false`, and renders as `unasked`, never as `closed` — a host
+splitting its answered tally must not count it, because completion inferred
+from an empty set is the reading the wave-level "not yet" line already
+refuses. `asked` is absent everywhere else and absent means true, so
+existing readers keep their meaning. A question is **not applicable** when
+any kind it names belongs to a profile that no document in the workspace
+has selected (`graph.profiles`). Inapplicable questions are omitted from
+the report and from `summary.questions`; they are not `open: false`. Interview state is
 recomputed from model plus catalogue on every run and never stored: no
 session files, no second canonical store, nothing to resume. Editing the
 model and re-running yields exactly the still-open questions.
