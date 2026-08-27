@@ -361,6 +361,13 @@ export const overlayRelationshipFields = (
 // ---------------------------------------------------------------------------
 // Shared controls.
 
+
+// Chrome's audit wants every form field to carry an id or name (#309); the
+// name is derived from the visible label so autofill and the a11y tooling
+// see a stable identity without inventing a second vocabulary.
+const fieldNameOf = (label: string): string =>
+  `subject-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+
 const SelectRow = ({
   label,
   value,
@@ -374,7 +381,11 @@ const SelectRow = ({
 }) => (
   <label className="subject-form-field">
     <span className="subject-form-label">{label}</span>
-    <select value={value} onChange={(event) => onCommit(event.target.value)}>
+    <select
+      name={fieldNameOf(label)}
+      value={value}
+      onChange={(event) => onCommit(event.target.value)}
+    >
       {options.map((option) => (
         <option key={option.value} value={option.value}>
           {option.label}
@@ -400,6 +411,7 @@ const TextRow = ({
       <span className="subject-form-label">{label}</span>
       <input
         type="text"
+        name={fieldNameOf(label)}
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
         onBlur={() => onCommit(draft)}

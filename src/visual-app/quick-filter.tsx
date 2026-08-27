@@ -12,6 +12,7 @@ export function QuickFilterBox({ value, onChange }: QuickFilterBoxProps) {
   return (
     <input
       type="search"
+      name="quick-filter"
       className="quick-filter"
       value={value}
       onChange={(e) => onChange(e.currentTarget.value)}

@@ -484,6 +484,7 @@ const DiagramWorkspace = ({
             // and without them a second relationship between the same pair
             // collides with the first and is silently swallowed (#306).
             reservedIds={stagedSubjectIds(state.pendingChangeset.operations)}
+            onTarget={onConnectTarget}
             onStage={onConnectStage}
             onCancel={onConnectCancel}
           />
