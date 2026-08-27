@@ -62,6 +62,10 @@
       "types": "./dist/workbook-entry.d.ts",
       "import": "./dist/workbook-entry.js"
     },
+    "./workbook/import": {
+      "types": "./dist/workbook-import-entry.d.ts",
+      "import": "./dist/workbook-import-entry.js"
+    },
     "./visual-app": {
       "types": "./dist/visual-app-lib/editor.d.ts",
       "import": "./dist/visual-app-lib/editor.js"

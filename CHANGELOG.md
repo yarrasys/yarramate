@@ -1,5 +1,29 @@
 # Changelog
 
+## Unreleased
+
+- **Added.** `yarramate/workbook/import`, a published subpath carrying the half
+  that READS a workbook back: `readWorkbook`, `baselineSheets`, `mergeWorkbook`,
+  `operationsFrom` and `operationsDocument`. 1.6.0 published the writer only, so
+  a host without Node could generate a workbook and had no route back from an
+  edited one. The feature was scoped as fully reversible and only half of that
+  was reachable.
+
+  **A separate subpath, not more exports on `yarramate/workbook`.** The package
+  declares no `sideEffects` field, so a bundler must assume every module might
+  have one and cannot shake an unused re-export away. Adding the reader to the
+  writer entry would have grown every generate-only Worker by the whole import
+  half. `test/export-purity.test.ts` now holds the two entries **disjoint** as
+  well as pure, and asserts on the files the walk reaches rather than only on
+  what it fails to find, so a purity check cannot pass by visiting nothing.
+
+- **Changed.** The workbook's `00 Read Me` says what the file is: a projection
+  is a query, so the workbook is the slice it names, and the sheet now reports
+  the concept and relationship counts of **that slice**. It also states the two
+  things that make a narrow workbook safe to work in: every fact about a
+  subject that IS present is present, and a subject outside the slice has no
+  row and cannot be changed by importing the file.
+
 ## 1.6.0
 
 - **Added.** `yarramate import xlsx <workbook.xlsx> <workspace.yaml>` reads an
