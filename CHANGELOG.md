@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+- **Added.** A question the model never asked says so (#375, ADR 0132).
+  A subject-scoped question whose selector matches no subject now reports
+  `asked: false` beside `open: false`, and renders as `unasked`, never as
+  `closed` — previously never-asked and answered were byte-identical, and
+  a host summing closed questions read an empty model as a satisfied
+  interview (field evidence: a fresh ApertureX project ticked three waves
+  complete with nothing authored). `asked` is absent everywhere else and
+  absent means true, the same additive discipline as `catalogues`: no
+  constructor breaks, existing readers keep their meaning. The
+  interrogation semantics version does not bump — no question's answer
+  changes for an unchanged model; a new distinction is reported where it
+  exists.
+
 ## 1.9.0
 
 - **Added.** The gitlab benchmark suite (#288, #372):
