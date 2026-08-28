@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.11.0
 
 - **Docs.** `docs/MODEL-FLOOR.md` gained the home for a classification and
   split a committed threshold from a tuning number, both corrections earned
