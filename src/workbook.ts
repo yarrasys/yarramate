@@ -56,16 +56,6 @@ const STATE_COLUMNS = [
   ['yarramate/concept/description', 'Description'],
 ] as const
 
-/** Ref-valued predicates that get their own sheet rather than the overflow. */
-const REFERENCE_PREDICATES = new Set([
-  'yarramate/reference/refers-to',
-  'yarramate/lineage/supersedes',
-  'yarramate/lineage/supersedes-respect',
-  'yarramate/identity/distinct-from',
-  'yarramate/constraint/requires',
-  'yarramate/constraint/expects',
-])
-
 const ALIAS_PREDICATE = 'yarramate/concept/alias'
 const PRESENT_IN_PREDICATE = 'yarramate/state/present-in'
 const STATE_TYPE_PREDICATE = 'yarramate/state/type'
@@ -250,7 +240,18 @@ export const buildWorkbookSheets = (
       aliasRows.push([claim.subject, nameOf(claim.subject), valueOf(claim)])
       continue
     }
-    if (REFERENCE_PREDICATES.has(claim.predicate)) {
+    // A rule, not a list. This was six named predicates, and the list was
+    // right on the day it was written and could only go stale: a predicate
+    // the compiler grows later lands in the overflow, round-trips correctly,
+    // and reads as though the mapping had not recognised it. That already
+    // happened once in this file, to `concept/kind` on a state - see the
+    // note on STATE_COLUMNS.
+    //
+    // By here the column-consumed claims, the relationships, presence and
+    // aliases have all gone, so anything left pointing at a subject IS a
+    // reference in the sense this sheet means. `relationshipClaims` above
+    // draws the same distinction the same way.
+    if (isRef(claim)) {
       const target = valueOf(claim)
       referenceRows.push([
         claim.subject,

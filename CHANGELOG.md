@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **Fixed.** The workbook routes a ref-valued claim to `05 References` by
+  a rule rather than by a list. Six predicates were named in a closed set
+  that decided sheet placement; the set was correct the day it was written
+  and could only go stale, because a predicate the compiler grows later
+  lands in `07 Other Facts`, round-trips correctly, and reads as though the
+  mapping had not recognised it. That failure already happened once in this
+  file, to a state's `concept/kind`. By the point the routing runs, the
+  column-consumed claims, the relationships, presence and aliases have all
+  gone, so anything still pointing at a subject is a reference in the sense
+  that sheet means. **No data moves**: measured across all 22 projections of
+  the self-model, the rule places exactly what the list placed. A new test
+  guards *placement* rather than losslessness, which is the gap the existing
+  completeness assertion passes through by design, since it counts the
+  overflow sheet as a valid carrier.
+
 - **Docs.** `docs/PROFILES.md` names which ArchiMate customization
   mechanism a YarraMate profile document implements (#386). ArchiMate
   defines two, orthogonally: Specialization derives a type from another and

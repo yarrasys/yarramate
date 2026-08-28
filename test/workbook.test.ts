@@ -208,6 +208,34 @@ describe('the workbook carries every claim', () => {
     expect(result.claims.length).toBeGreaterThan(20)
   })
 
+  it('routes every ref-valued claim to the references sheet, not the overflow', () => {
+    // The assertion above guards LOSSLESSNESS: every claim is carried
+    // somewhere, and `07 Other Facts` counts as somewhere. It therefore
+    // passes while a fact sits on the wrong sheet, which is exactly how
+    // `concept/kind` on a state was lost to the overflow once already
+    // (see the note on STATE_COLUMNS). This guards PLACEMENT instead.
+    //
+    // Derived from the mechanism rather than from a list of predicates: any
+    // claim whose object points at a subject belongs on the references
+    // sheet, so a predicate the compiler grows later is routed by the rule
+    // rather than by whoever remembers to extend an allowlist.
+    const { result, sheets } = sheetsFor({})
+    const overflow = named(sheets, '07 Other Facts').slice(1)
+    const refValued = new Map(
+      result.claims
+        .filter((claim) => 'ref' in claim.object)
+        .map((claim) => [`${claim.subject} | ${claim.predicate}`, claim]),
+    )
+    const misplaced = overflow
+      .map((row) => `${row[0] ?? ''} | ${row[1] ?? ''}`)
+      .filter((key) => refValued.has(key))
+    expect(misplaced).toEqual([])
+    // Not vacuous: the fixture really does produce ref-valued claims and a
+    // non-empty overflow, so both sides of the assertion have work to do.
+    expect(refValued.size).toBeGreaterThan(0)
+    expect(overflow.length).toBeGreaterThan(0)
+  })
+
   it('gives every relationship a row, with both endpoints named', () => {
     const { result, sheets } = sheetsFor({})
     const rows = named(sheets, '02 Relationships')
