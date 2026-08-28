@@ -12,6 +12,36 @@ other documents may keep an existing org profile and bind with qualified
 `constraints[].ref`. Re-basing an org profile onto policy is allowed and
 not required.
 
+## What "profile" means here, and what it does not
+
+ArchiMate defines two language customization mechanisms, and they are
+orthogonal. **Specialization** derives a new concept or relationship type
+from an existing one, which inherits the parent's permitted relationships.
+**Profiles** attach a set of typed attributes to concepts and relationships.
+
+A YarraMate profile document implements the first. `parent:` is
+specialization, and everything below follows from it: inherited aspect and
+layer, the inherited row and column in the relationship table, endpoint
+narrowing, and the rigidity rule.
+
+YarraMate does not implement the second. There is no way for a profile to
+declare attributes on a kind, and no way for a concept to carry a value the
+profile defines: `conceptKind` is closed over `{id, name, parent, rigidity,
+layer}` and a concept is closed over its sixteen fields. Declaring a kind
+buys an identity, a table row, and a selector. It does not buy anywhere to
+say what makes instances of that kind different. `rigidity` is not a
+counter-example: it is checked when the profile resolves and then
+discarded, reaching no graph, no claim, and no projection.
+
+This is a missing capability rather than a conformance defect: attributes
+are a customization mechanism, and a model that passes `check` is
+semantically valid ArchiMate either way (ADR 0097). It is called out here
+because the name collides. A reader who knows ArchiMate reads "profiles"
+and reasonably expects attributes, and the word being taken is part of why
+the absence went unrecorded for so long. Whether the mechanism should exist
+is open: see issue #386, which carries the analysis and has decided
+nothing.
+
 ## Smallest profile
 
 ```yaml
