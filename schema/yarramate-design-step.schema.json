@@ -272,6 +272,34 @@
           "type": "object",
           "additionalProperties": false,
           "required": [
+            "condition",
+            "kinds"
+          ],
+          "properties": {
+            "condition": {
+              "const": "has-subject-of-kind"
+            },
+            "kinds": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/qualifiedKind"
+              }
+            },
+            "kindMatching": {
+              "enum": [
+                "exact",
+                "descendants"
+              ],
+              "default": "descendants"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
             "condition"
           ],
           "properties": {

@@ -84,6 +84,23 @@ export type CatalogueCondition =
       readonly kinds: readonly string[]
       readonly kindMatching?: 'exact' | 'descendants'
     }
+  | {
+      /**
+       * The positive twin of `no-subject-of-kind`, and workspace-scope like it
+       * (#398). A gate wants the opposite polarity from a question: a question
+       * exists to be closed by an absence ending, while a gate opens once the
+       * thing is there. `opensWhen` requires every condition to hold and has no
+       * `not`, so inverting was not available and the phase-ordered interview
+       * an adopter was authoring could say "the model still lacks X" but never
+       * "the model now has X".
+       *
+       * ADR 0125 anticipated arrivals in this position: a further condition
+       * "can join later without changing the mechanism".
+       */
+      readonly condition: 'has-subject-of-kind'
+      readonly kinds: readonly string[]
+      readonly kindMatching?: 'exact' | 'descendants'
+    }
   | { readonly condition: 'no-state-defined' }
   | {
       readonly condition: 'missing-linkage'
@@ -494,6 +511,7 @@ const namedKinds = (question: CatalogueQuestion): readonly string[] => {
     switch (condition.condition) {
       case 'missing-relationship':
       case 'no-subject-of-kind':
+      case 'has-subject-of-kind':
       case 'missing-constraint':
         kinds.push(...condition.kinds)
         break
@@ -568,6 +586,56 @@ const linkageHits = (
     )
   })
 }
+
+/**
+ * What a condition needs in order to mean anything: a subject, or only the
+ * workspace (#400).
+ *
+ * A wave gate evaluates with NO subject, and the catalogue schema offered the
+ * whole vocabulary in that position, so a subject-scope condition in
+ * `opensWhen` produced a wave that silently never opened (`has-linkage`,
+ * `near-duplicate`, `fills-pattern-slot`) or a gate that was silently inert
+ * (`missing-linkage`, `isolated`, `missing-claim`, `missing-constraint`) —
+ * measured, both halves. Neither was refused. That is the same failure
+ * `YM914` already refuses from a different cause: a gate nothing can satisfy
+ * is indistinguishable from a gate that is merely unmet.
+ *
+ * This is a `Record` over the union's discriminant rather than a list of the
+ * workspace-scope names, and that is the point. An allowlist cannot fail for
+ * the author who wrote it (CONTRIBUTING.md's ninth rule), so a new condition
+ * must not be able to arrive and be quietly absent from a gate check. Here it
+ * cannot: adding a member to `CatalogueCondition` is a TYPECHECK ERROR until
+ * its scope is declared, so the compiler asks the question rather than this
+ * table remembering the answer.
+ */
+const CONDITION_SCOPE: Record<
+  CatalogueCondition['condition'],
+  'workspace' | 'subject'
+> = {
+  'has-any-subject': 'workspace',
+  'no-subject-of-kind': 'workspace',
+  'has-subject-of-kind': 'workspace',
+  'no-state-defined': 'workspace',
+  'exists-linkage': 'workspace',
+  'missing-claim': 'subject',
+  'missing-relationship': 'subject',
+  isolated: 'subject',
+  'missing-linkage': 'subject',
+  'has-linkage': 'subject',
+  'missing-constraint': 'subject',
+  'missing-flow-content': 'subject',
+  'missing-reference': 'subject',
+  'missing-attestation': 'subject',
+  'near-duplicate': 'subject',
+  'unconstrained-kind': 'subject',
+  'unscoped-succession': 'subject',
+  'unchallenged-evidence': 'workspace',
+  'fills-pattern-slot': 'subject',
+}
+
+export const conditionScope = (
+  condition: CatalogueCondition,
+): 'workspace' | 'subject' => CONDITION_SCOPE[condition.condition]
 
 const conditionHolds = (
   index: GraphIndex,
@@ -689,6 +757,21 @@ const conditionHolds = (
     case 'no-subject-of-kind': {
       const matching = condition.kindMatching ?? 'descendants'
       return ![...index.concepts].some((id) =>
+        kindMatches(
+          index.kindOf.get(id),
+          condition.kinds,
+          matching,
+          profileContext,
+        ),
+      )
+    }
+    case 'has-subject-of-kind': {
+      // Deliberately not `!no-subject-of-kind`: written as its own existence
+      // check so the empty workspace falls out right rather than by double
+      // negative. No subjects of any kind means every gate using it stays
+      // shut, which is the #334 posture.
+      const matching = condition.kindMatching ?? 'descendants'
+      return [...index.concepts].some((id) =>
         kindMatches(
           index.kindOf.get(id),
           condition.kinds,
@@ -1348,6 +1431,51 @@ const undeclaredWaveDiagnostics = (
         ],
   )
 
+/**
+ * `YM917`: a wave gate may only ask about the workspace (#400).
+ *
+ * `opensWhen` is evaluated with no subject, so a subject-scope condition here
+ * cannot mean what it reads as. Half of them then leave the wave permanently
+ * shut and half leave the gate inert, and an author reviewing the YAML sees a
+ * gate either way — the same invisible failure `YM914` refuses when a gate
+ * names a kind that resolves nowhere.
+ *
+ * Refused at load rather than narrowed in the schema on purpose. The schema
+ * could express it as a second `oneOf`, but a `oneOf` miss reports "must match
+ * exactly one schema", which names neither the offending condition nor the
+ * ones that would work — and this diagnostic exists precisely because the
+ * author cannot see the problem.
+ */
+const gateScopeDiagnostics = ({
+  catalogue,
+  locate,
+}: LoadedCatalogueDocument): readonly Diagnostic[] =>
+  catalogue.waves.flatMap((wave, waveIndex) =>
+    (wave.opensWhen ?? []).flatMap((condition, conditionIndex) =>
+      conditionScope(condition) === 'subject'
+        ? [
+            {
+              severity: 'error' as const,
+              code: 'YM917',
+              message:
+                `Condition "${condition.condition}" gates wave "${wave.id}" but asks about a subject, ` +
+                'and a gate is evaluated with none, so the wave would never open or the gate would do ' +
+                `nothing. Gate on the workspace instead: ${workspaceScopeConditions().join(', ')}.`,
+              ...locate(['waves', waveIndex, 'opensWhen', conditionIndex]),
+            },
+          ]
+        : [],
+    ),
+  )
+
+// Read off the scope table rather than restated, so the remedy a diagnostic
+// offers cannot drift from the set the engine actually accepts.
+const workspaceScopeConditions = (): readonly string[] =>
+  Object.entries(CONDITION_SCOPE)
+    .filter(([, scope]) => scope === 'workspace')
+    .map(([condition]) => condition)
+    .sort()
+
 const unresolvableKindDiagnostics = (
   { catalogue, locate }: LoadedCatalogueDocument,
   profileContext?: ResolvedProfileContext,
@@ -1522,6 +1650,7 @@ export function composeCatalogues(
   const declaredWaves = new Set(declaredBy.keys())
   const crossDiagnostics = documents.flatMap((document) => [
     ...undeclaredWaveDiagnostics(document, declaredWaves),
+    ...gateScopeDiagnostics(document),
     ...unresolvableKindDiagnostics(document, profileContext),
     ...unauthorableOfferDiagnostics(document, profileContext),
   ])
@@ -1567,6 +1696,13 @@ export function loadQuestionCatalogue(
   )
   if (waveDiagnostics.length > 0) {
     return { ok: false, diagnostics: waveDiagnostics }
+  }
+  // Before the kind checks, and unlike them it needs no profile context: a
+  // gate that asks about a subject is wrong on its own terms, whether or not
+  // a caller brought a compiled workspace to resolve kinds against.
+  const scopeDiagnostics = gateScopeDiagnostics(loaded.document)
+  if (scopeDiagnostics.length > 0) {
+    return { ok: false, diagnostics: scopeDiagnostics }
   }
   const kindDiagnostics = unresolvableKindDiagnostics(
     loaded.document,

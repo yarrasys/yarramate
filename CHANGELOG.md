@@ -1,5 +1,33 @@
 # Changelog
 
+## Unreleased
+
+- **Added.** `has-subject-of-kind`, a workspace-scope condition that holds
+  when the model contains at least one subject of the named kinds. It is the
+  positive twin of `no-subject-of-kind`, with the same `kinds` and the same
+  `kindMatching` default of `descendants`. A wave gate could say "the model
+  has started" and "the model still lacks X" but never "the model now has
+  X", so a phase-ordered interview had every wave open the moment the first
+  concept landed: a consultant with three components modelled was asked who
+  is paged for interfaces that do not exist yet. `opensWhen` requires all
+  conditions to hold and has no `not`, so inverting the negative was not
+  available. ADR 0125 anticipated this shape of arrival; ADR 0134 records
+  it. Requested by an adopter authoring lifecycle waves (#398).
+
+- **Fixed.** A wave gate is refused when it asks about a subject (`YM917`).
+  `opensWhen` is evaluated with no subject, but the schema offered the whole
+  condition vocabulary in that position, and the result split two ways with
+  no diagnostic either way: `has-linkage`, `near-duplicate` and
+  `fills-pattern-slot` left the wave **permanently shut**, while
+  `missing-linkage`, `isolated`, `missing-claim` and `missing-constraint`
+  left the gate **inert**. Both read as a working gate to anyone reviewing
+  the YAML. This is the same invisible failure `YM914` already refuses from
+  a different cause, and only one cause was guarded. The classification is a
+  total map over the condition union rather than a list of names, so a new
+  condition cannot compile until its scope is declared — an allowlist cannot
+  fail for the author who wrote it, and a gate is where a missing entry is
+  silent. Found while verifying #398 against the code (#400, ADR 0134).
+
 ## 1.11.1
 
 - **Fixed.** A profile-declared kind is drawn on the canvas as what it
