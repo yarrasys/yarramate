@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **Docs.** `docs/PROFILES.md` names which ArchiMate customization
+  mechanism a YarraMate profile document implements (#386). ArchiMate
+  defines two, orthogonally: Specialization derives a type from another and
+  inherits its permitted relationships, and Profiles attach typed
+  attributes to concepts and relationships. YarraMate implements the first
+  and calls it a profile. It does not implement the second, so declaring a
+  kind buys an identity, a table row, and a selector, and nowhere to say
+  what makes instances of that kind different. A missing capability rather
+  than a conformance defect, recorded because the name collides and a
+  reader who knows ArchiMate reasonably expects attributes. Whether the
+  mechanism should exist is open in #386 and nothing is decided.
+
 - **Added.** `YM916`: a catalogue question that offers a remedy no model
   could author is refused (#382, #384, ADR 0133). A trigger names the ways
   its question can be satisfied, and each is an offer: add this
