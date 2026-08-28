@@ -572,3 +572,11 @@ This foundation does not define arbitrary properties, automatic profile or
 repository discovery, remote registries, inferred claims, adapter execution
 or round-tripping, constraint-policy execution, or governance workflow. These
 require separate semantic decisions or later adapter and conformance work.
+
+`docs/MODEL-FLOOR.md` states the whole of it as a contract: which facts a
+model holds and how, which it declines, and where a declined fact belongs
+instead. Read it before concluding that something has no home, because the
+homes are not all obvious. A value that carries architectural weight, for
+instance, is modelled as a subject other subjects point at rather than as a
+property repeated on each of them, and the shipped policy profile is the
+worked example.

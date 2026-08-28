@@ -4,6 +4,7 @@
 
 - [Case study: the model is the handover](CASE-STUDY-CROSS-HARNESS.md)
 - [Product contract](PRODUCT-CONTRACT.md)
+- [What a model states, and what it does not](MODEL-FLOOR.md)
 - [Product journeys](PRODUCT-JOURNEYS.md)
 - [Reviewing model and profile growth](MODEL-REVIEW.md)
 - [Consuming YarraMate](CONSUMING-YARRAMATE.md)

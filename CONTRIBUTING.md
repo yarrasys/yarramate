@@ -40,6 +40,7 @@ When an Issue already exists, link it from the pull request.
 Read these sources before changing semantics:
 
 - `docs/PRODUCT-CONTRACT.md`
+- `docs/MODEL-FLOOR.md`
 - `docs/GLOSSARY.md`
 - `docs/ROADMAP.md`
 - the relevant decision records under `docs/adr/`

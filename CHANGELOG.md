@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- **Docs.** `docs/MODEL-FLOOR.md` states, as a contract, which facts a
+  model holds and how, which it declines, and where a declined fact belongs
+  instead (#386). The floor was never drawn: the foundational extension
+  records consider arbitrary properties nowhere, and an adopter therefore
+  found the edges one at a time by building something that did not fit,
+  filing three issues in a week that a written floor would have turned into
+  one question or none. It names the homes, including the one adopters
+  miss (**a value that carries architectural weight becomes a subject other
+  subjects point at**, with the shipped policy profile as the worked
+  example); the refusals, each with where the fact goes instead; and the
+  rule a catalogue must obey, that **whatever the interrogation asks about
+  must be recordable as an answer**. That last one has a sharp case:
+  `missing-attestation` closes on a claim recording who vouched and when,
+  and carries no value by construction, so it is right for "has this been
+  reviewed?" and wrong for "what is the deployment model?", where closing
+  it discards what was confirmed and the card reads worked. The three
+  refusals still under discussion are marked as such.
+
 - **Fixed.** The workbook routes a ref-valued claim to `05 References` by
   a rule rather than by a list. Six predicates were named in a closed set
   that decided sheet placement; the set was correct the day it was written
