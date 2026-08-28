@@ -20,11 +20,9 @@ describe('kind icon URIs', () => {
     'requirement',
     'systemSoftware',
     'technologyFunction',
-    'compiler-module',
-    'repository-file',
   ]
 
-  it('resolves every one of the 19 labels to a non-empty data:image/svg+xml URI', () => {
+  it('resolves every one of the 17 core labels to a non-empty data:image/svg+xml URI', () => {
     for (const label of labels) {
       const uri = kindIconUriOf(label)
       expect(uri).not.toBeNull()
@@ -48,15 +46,15 @@ describe('kind icon URIs', () => {
     expect(kindIconUriOf('notAKind')).toBeNull()
   })
 
-  it('compiler-module returns the same URI as applicationComponent', () => {
-    const comp = kindIconUriOf('applicationComponent')
-    const mod = kindIconUriOf('compiler-module')
-    expect(mod).toEqual(comp)
-  })
-
-  it('repository-file returns the same URI as artifact', () => {
-    const art = kindIconUriOf('artifact')
-    const file = kindIconUriOf('repository-file')
-    expect(file).toEqual(art)
+  it('has no glyph of its own for a profile-declared kind', () => {
+    // This is a label-to-glyph lookup and nothing more. A profile-declared
+    // kind has no glyph, and it is not this function's business to find one:
+    // resolving through the core ancestor needs lineage, which the callers
+    // hold and this does not. It used to carry a two-entry alias map naming
+    // this repository's OWN extension kinds, which meant the dogfood path
+    // had icons and every adopter's did not.
+    expect(kindIconUriOf('compiler-module')).toBeNull()
+    expect(kindIconUriOf('rest-api')).toBeNull()
+    expect(kindIconUriOf('applicationComponent')).not.toBeNull()
   })
 })

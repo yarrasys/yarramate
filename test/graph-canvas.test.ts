@@ -449,6 +449,54 @@ describe('parallel relationships between the same pair', () => {
     elements.map((element) => [element.data.id, element]),
   )
 
+  it('draws a profile-declared kind with its core ancestor\'s glyph', () => {
+    // The fallback itself, not its input. `badgeLayersFor` is private, so
+    // this reaches it the way the canvas does: through the `node` selector's
+    // `background-image`, which is a function of the element.
+    const stub = (data: Record<string, unknown>) =>
+      ({ data: (key: string) => data[key] }) as never
+    const styleOf = (block: unknown): Record<string, unknown> =>
+      ((block as { style?: Record<string, unknown> }).style ?? {})
+    const styleBlock = buildStylesheet(false, false, false, false).find(
+      (block) => typeof styleOf(block)['background-image'] === 'function',
+    )
+    const backgroundImage = styleOf(styleBlock) [
+      'background-image'
+    ] as (ele: never) => readonly string[]
+
+    const core = backgroundImage(
+      stub({ kindLabel: 'applicationComponent', coreKindLabel: 'applicationComponent' }),
+    )
+    const extension = backgroundImage(
+      stub({ kindLabel: 'rest-api', coreKindLabel: 'applicationComponent' }),
+    )
+    // The extension kind is drawn as what it descends from. (The empty-slot
+    // case for a label nothing resolves is covered in kind-icons.test.ts.)
+    expect(core[0]).toMatch(/^data:image\/svg\+xml;utf8,/)
+    expect(extension[0]).toBe(core[0])
+  })
+
+  it('carries a node\'s core kind, so an extension kind can be drawn as what it is', () => {
+    // A profile-declared kind has no glyph of its own, and the icon falls
+    // back to its core ancestor's - the same two-step the palette takes.
+    // The fallback needs `coreKindLabel` on the element, and until it was
+    // carried here the node had only `kindLabel`, so a `rest-api` rendered
+    // with an empty icon slot. Edges already carried it; nodes did not.
+    const extension = {
+      ...node('mapper'),
+      kind: 'acme/mule@1.0#rest-api',
+      kindLabel: 'rest-api',
+      coreKindLabel: 'applicationComponent',
+    } as unknown as CanvasNode
+    const drawn = graphToElements(
+      { nodes: [extension], edges: [] },
+      [],
+      new Map(),
+    )
+    expect(drawn[0]?.data.kindLabel).toBe('rest-api')
+    expect(drawn[0]?.data.coreKindLabel).toBe('applicationComponent')
+  })
+
   it('keeps every parallel edge as its own element', () => {
     for (const id of ['e1', 'e2', 'e3', 'e4', 'e5']) {
       expect(elementById.get(id), id).toBeDefined()
