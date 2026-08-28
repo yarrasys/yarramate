@@ -162,6 +162,42 @@ The general form is the same family as readers-and-constructors above, seen
 from the other end: **know whether your fixture is standing in for the caller
 or for the caller's input.** Only the second is safe to fake.
 
+### An allowlist cannot fail for the author who wrote it
+
+A closed enumeration standing in for a rule is a latent defect wherever the
+entries happen to cover the author's own case. The author is then structurally
+the last person able to notice: their case works, and the list is only wrong
+for someone whose case is not in it.
+
+Three instances in one week, two here and one in a consuming product:
+
+- `REFERENCE_PREDICATES`, six named predicates deciding which sheet a workbook
+  value lands on. Correct on the day it was written, and stale the moment the
+  compiler grows a ref-valued predicate, which then round-trips into the
+  overflow sheet and reads as though the mapping had not recognised it. The
+  same file records that happening once already, to a state's `concept/kind`.
+- `PROFILE_ALIAS_GLYPH`, a two-entry map giving a canvas icon to
+  `compiler-module` and `repository-file`. **Both are this repository's own
+  extension kinds.** The self-model rendered correctly across 189 concepts
+  while every adopter's profile-declared kind drew a blank icon slot.
+- A consuming product's `COMPILABLE_FORMATS`, which dropped `patterns`.
+
+In each case the rule was available and cheaper than the list: *is this claim
+ref-valued*, *what core kind does this descend from*, *is this format one the
+loader resolves*. And in each case a rule cannot go stale, because it asks the
+question rather than remembering the answers.
+
+**The distinction that matters is what the list governs.** A curated summary
+may name what it chooses to show: `renderBudgetedContext` lists five detail
+predicates because a budgeted brief is editorial, and omitting a sixth is a
+choice rather than a fault. A **router or a gate** may not, because there the
+omission is silent and reads as absence. Ask which one you are writing.
+
+The prompt to go looking: whenever a list decides where something goes or
+whether something passes, check whether every entry is one you authored. If
+so, you cannot be the one who finds the gap, and the test that would catch it
+has to come from outside your own case.
+
 ### An empty set is not a finished one
 
 A surface that reports progress must not infer completion from emptiness.
