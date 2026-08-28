@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- **Docs.** `docs/MODEL-FLOOR.md` gained the home for a classification and
+  split a committed threshold from a tuning number, both corrections earned
+  by running the document against a live adopter model of 348 open cards
+  (#386). A classification is a **`grouping` that aggregates its members**,
+  not a constraint subject, which reads as "this thing is restricted this
+  way" and is what the first draft wrongly recommended. Nor is it a
+  specialization to a same-type classifier: that is canonical ArchiMate and
+  the table permits it, but **a same-type classifier is itself an
+  interrogation subject**, and the shipped catalogue names
+  `applicationService` in eighteen selector positions against `grouping` in
+  none, so the change that closes forty-seven cards can open sixty. The
+  refusal of configuration also drew its line in the wrong place: a
+  committed threshold ("must sustain 200 TPS") is a restriction the design
+  must satisfy and survives every capacity change made to meet it, so it is
+  a constraint subject; the vCores chosen to meet it are tuning. The test
+  was always "does it change without the architecture changing", and the
+  examples now defer to the test rather than implying the category.
+
 - **Docs.** `docs/MODEL-FLOOR.md` states, as a contract, which facts a
   model holds and how, which it declines, and where a declined fact belongs
   instead (#386). The floor was never drawn: the foundational extension
