@@ -28,6 +28,7 @@ and everything below is a consequence of it.
 | These two things relate | a relationship | admissible pairs come from the ArchiMate table (ADR 0097) |
 | This thing is *a kind of* thing | the concept's `kind` | specialize a profile kind with `parent:` |
 | This thing is restricted this way | a **constraint subject**, referenced | one subject, referenced by many concepts |
+| This thing belongs to that set | a **`grouping`** that aggregates it | the home for a classification the `kind` cannot carry |
 | This thing cites that thing | `references[].ref` | resolves to a subject |
 | Someone vouched for this | an `attestation` | records **who** and **when**, never **what** |
 | Someone observed this | an evidence overlay | provider-owned, `evidence.uri` opaque to Core |
@@ -64,6 +65,50 @@ one. The value is checkable (the reference must resolve), queryable (the
 A closed vocabulary of five values becomes five subjects, not a string
 repeated on twenty-seven interfaces.
 
+### A classification is a grouping, not a constraint
+
+The paragraph above is the home for a **restriction**: a rule the subject must
+satisfy. A **classification** is a different fact and takes a different home,
+and confusing the two is the first mistake an adopter makes here.
+
+A subject's own classification is its `kind`. A second axis, which `kind`
+cannot carry because a concept has exactly one, is a `grouping` that
+aggregates its members:
+
+```yaml
+concepts:
+  - id: experience-layer
+    kind: grouping
+    name: Experience layer
+relationships:
+  - id: experience-layer-holds-ocrf
+    kind: aggregation
+    from: experience-layer
+    to: ocrf-experience-api
+```
+
+Aggregation from a `grouping` is permitted to every element kind, so this
+works wherever the classification applies.
+
+Two alternatives look right and are not:
+
+- **A constraint subject.** It reads as "this thing is restricted this way",
+  and an API layer or an integration style restricts nothing. An ArchiMate
+  reader will notice.
+- **Specializing a same-type classifier**, so that twenty-seven services
+  specialize an `applicationService` named "Experience API". This is
+  canonical ArchiMate and the relationship table permits it, but **a
+  same-type classifier is itself an interrogation subject.** The shipped
+  catalogue names `applicationService` in eighteen selector positions and
+  `applicationInterface` in seventeen, so each classifier attracts the whole
+  question set for its type, and a change that closes forty-seven cards can
+  open sixty. `grouping` is named in **no** selector in the shipped
+  catalogue, so a grouping attracts none.
+
+A question about a classification therefore closes on `missing-linkage`,
+asking for an incoming aggregation from a grouping, which records the answer
+rather than the fact that someone answered.
+
 ## What the model does not hold
 
 These are refusals, not gaps awaiting a feature. Each names where the fact
@@ -74,8 +119,9 @@ belongs instead.
 A concept has exactly one `kind`. One classification axis is therefore free,
 and a second is not: an interface classified by both interaction style and
 trigger category cannot express both as kinds without declaring their cross
-product. Where a second axis carries weight, model it as a constraint subject
-the concept references. Where it does not, it belongs in an annex.
+product. Where a second axis carries weight, model it as a `grouping` that
+aggregates its members, per "a classification is a grouping" above. Where it
+does not, it belongs in an annex.
 
 ### A per-instance free value
 
@@ -102,8 +148,16 @@ not mean.
 
 ### Configuration and tuning
 
-Timeouts, retry counts, replica counts, secret store names, host and port.
-These change without the architecture changing, which is the test.
+Replica counts, heap and vCore sizes, secret store names, host and port.
+**These change without the architecture changing, which is the test**, and
+the test rather than the list is what decides.
+
+A committed threshold is on the other side of it. "This interface must
+sustain 200 transactions per second, bursting to 500" is not tuning: it is a
+restriction the design has to satisfy, it survives every capacity change made
+to meet it, and it belongs as a constraint subject. The capacity settings
+chosen to meet it do not. The same register commonly carries both, one column
+apart, and they are different facts.
 
 ## The rule a catalogue must obey
 
