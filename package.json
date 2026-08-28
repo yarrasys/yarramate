@@ -28,7 +28,8 @@
     "catalogues",
     "profiles",
     "skills/yarramate-architecture",
-    "docs/CONSUMING-YARRAMATE.md"
+    "docs/CONSUMING-YARRAMATE.md",
+    "docs/MODEL-FLOOR.md"
   ],
   "type": "module",
   "main": "./dist/index.js",

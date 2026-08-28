@@ -55,6 +55,11 @@ describe('consumer package contract', () => {
       'profiles',
       'skills/yarramate-architecture',
       'docs/CONSUMING-YARRAMATE.md',
+      // The floor belongs in the package for the same reason the consumer
+      // guide does: it is written for an adopter, and an adopter arrives
+      // through npm. Left in the repository it sat exactly where the people
+      // it is for would not find it, which is the condition it exists to end.
+      'docs/MODEL-FLOOR.md',
     ])
     expect(packageJson.scripts.prepack).toBe('pnpm build')
     expect(

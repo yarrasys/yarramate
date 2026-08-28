@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- **Fixed.** `docs/MODEL-FLOOR.md` ships in the package. It was written for
+  adopters, and an adopter arrives through npm, so leaving it in the
+  repository put it exactly where the people it is for would not find it.
+  The one adopter who has read it read it off a working tree that happened
+  to be on the same machine, which is the condition the document exists to
+  end. Additive: one file, 10 kB on a 2.0 MB package.
+
 ## 1.11.0
 
 - **Docs.** `docs/MODEL-FLOOR.md` gained the home for a classification and
