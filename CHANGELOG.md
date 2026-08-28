@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.11.1
 
 - **Fixed.** A profile-declared kind is drawn on the canvas as what it
   descends from. The node's icon resolved through its own label only, and
