@@ -291,7 +291,12 @@ function badgeLayersFor(
   showNudges: boolean,
 ): BadgeLayer[] {
   const layers: BadgeLayer[] = []
-  const icon = kindIconUriOf(String(ele.data('kindLabel')))
+  // Label first, then the core kind it descends from - the same two-step
+  // the palette takes. A profile-declared kind is named by its author and
+  // drawn as what it IS.
+  const icon =
+    kindIconUriOf(String(ele.data('kindLabel'))) ??
+    kindIconUriOf(String(ele.data('coreKindLabel')))
   if (icon !== null) {
     layers.push({ image: icon, positionX: '0%', positionY: '0%', size: ICON_SIZE })
   }
@@ -853,6 +858,11 @@ export function graphToElements(
         wrapLabel: withWrapPoints(node.name),
         kind: node.kind,
         kindLabel: node.kindLabel,
+        // The node's resolved core-vocabulary kind, carried for the same
+        // reason an edge already carries it: an extension kind has no glyph
+        // of its own, and the honest fallback is its ancestor's. Without it
+        // the icon slot for `rest-api` is simply empty.
+        coreKindLabel: node.coreKindLabel,
         aspect: node.aspect,
         layer: node.layer,
         status: node.status,

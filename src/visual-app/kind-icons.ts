@@ -14,16 +14,9 @@ export { ICON_SIZE }
 // each aliases to the parent kind's id rather than duplicating its glyph
 // body - this alias map is local because the notation module has no notion
 // of profile-specific kinds, only the core vocabulary.
-const PROFILE_ALIAS_GLYPH: Record<string, string> = {
-  'compiler-module': 'applicationComponent',
-  'repository-file': 'artifact',
-}
-
 // `kindLabel` is a kind's local id (`kindLabelOf` in `src/kind-label.ts`),
 // not the qualified `<profile>#<id>` identity. Unknown label -> no icon, no
 // crash: the top-right slot simply stays empty.
 export function kindIconUriOf(kindLabel: string): string | null {
-  const aliased = PROFILE_ALIAS_GLYPH[kindLabel]
-  if (aliased !== undefined) return coreKindGlyphDataUriOf(aliased)
   return coreKindGlyphDataUriOf(kindLabel)
 }

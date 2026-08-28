@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **Fixed.** A profile-declared kind is drawn on the canvas as what it
+  descends from. The node's icon resolved through its own label only, and
+  a label with no glyph fell back to nothing, so an adopter's `rest-api`
+  rendered with an empty icon slot. The palette had the two-step already
+  (`label ?? coreLabel`) and edges already carried `coreKindLabel`; the
+  node did not, so the fallback had nothing to reach for.
+  `PROFILE_ALIAS_GLYPH`, a hardcoded map naming **this repository's own
+  two extension kinds**, went with it: it meant the dogfood path had icons
+  and every adopter's did not, which is the shape of defect a rule
+  replaces. Found by an adopter asking, before declaring kinds, whether
+  the mounted editor handles them.
+
 - **Fixed.** `docs/MODEL-FLOOR.md` ships in the package. It was written for
   adopters, and an adopter arrives through npm, so leaving it in the
   repository put it exactly where the people it is for would not find it.
