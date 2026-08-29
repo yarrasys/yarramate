@@ -29,6 +29,7 @@ const session = vi.hoisted(() => {
     ],
     views: [],
     activeFilter: null,
+  focusReturn: null,
     quickFilterText: '',
     choices: null,
     agentStatus: null,

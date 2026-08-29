@@ -119,6 +119,14 @@ export interface ContextMenuContext {
   /** Whether anything at all is narrowing the canvas right now. */
   readonly filtered: boolean;
   /**
+   * Where clearing a focus will return to, named for the menu, or absent when
+   * clearing goes to everything (#407). Optional so that every existing
+   * constructor of this context keeps compiling: a required field here would
+   * be free for readers and a typecheck break for constructors, which is the
+   * first rule in CONTRIBUTING.md.
+   */
+  readonly focusReturnLabel?: string;
+  /**
    * How the active view can be told what it holds, or `null` when no view is
    * active and there is nothing to tell.
    *
@@ -218,6 +226,22 @@ const SHOW_ALL: ContextMenuItem = {
   intent: { type: "view.clear" },
 };
 
+/**
+ * The same escape, named for where it actually goes (#407).
+ *
+ * Clearing a focus returns to what the focus narrowed, so an item still
+ * reading "Show all subjects" would be describing something it no longer
+ * does. One item, one intent, and a label that stays true.
+ */
+const clearItem = (context: ContextMenuContext): ContextMenuItem =>
+  context.focusReturnLabel === undefined
+    ? SHOW_ALL
+    : {
+        key: "view.clear",
+        label: `Back to ${context.focusReturnLabel}`,
+        intent: { type: "view.clear" },
+      };
+
 const deleteGroup = (
   intent: ContextMenuIntent,
   label: string,
@@ -258,7 +282,7 @@ const focusAndMembershipGroups = (
     items: [
       { key: "focus", label: "Focus on this", intent: focus },
       ...membership.flatMap((group) => group.items),
-      ...(context.filtered ? [SHOW_ALL] : []),
+      ...(context.filtered ? [clearItem(context)] : []),
     ],
   },
 ];

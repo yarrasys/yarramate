@@ -4,6 +4,11 @@ import {
   focusRelationshipNeighbourhood,
 } from '../src/visual-app/focus-neighbourhood.js'
 import { contextMenuFor } from '../src/visual-app/context-menu-model.js'
+import {
+  visualAppReducer,
+  initialVisualAppState,
+  focusReturnLabelOf,
+} from '../src/visual-app/state.js'
 import type { CanvasGraph } from '../src/graph-projection.js'
 
 // "Focus on this" (#407): narrow the canvas to a subject and everything one
@@ -177,3 +182,101 @@ describe('focus is offered as a view operation', () => {
     ).toContain('subject.focus')
   })
 })
+
+// Clearing a focus returns to what the focus narrowed, not to everything
+// (#407). The request asked for one narrowing concept and one escape, AND for
+// clearing to return to the view; the first reading of it satisfied only the
+// former. This is the same single escape, restoring rather than resetting.
+describe("a focus is cleared back to what it narrowed", () => {
+  const viewFilter = {
+    type: "filter.applied" as const,
+    query: { kinds: ["yarramate/core@0.1#applicationComponent"] },
+    matchedIds: ["seed", "b", "c", "d"],
+    excluded: null,
+    source: "view" as const,
+  };
+  const focusFilter = {
+    type: "filter.applied" as const,
+    query: { subjects: ["seed", "b", "c"], relationships: "between" as const },
+    matchedIds: ["seed", "b", "c"],
+    excluded: null,
+    source: "focus" as const,
+  };
+  const onView = () =>
+    [
+      { type: "view.navigated" as const, viewId: "engine" },
+      viewFilter,
+    ].reduce(visualAppReducer, {
+      ...initialVisualAppState,
+      views: [
+        {
+          id: "engine",
+          title: "Engine components",
+          description: "",
+          query: {},
+          presentation: { title: "Engine components", description: "" },
+        },
+      ] as never,
+    });
+
+  it("returns to the view it was focused from", () => {
+    const focused = visualAppReducer(onView(), focusFilter);
+    expect(focused.activeView).toBe("");
+    const cleared = visualAppReducer(focused, { type: "filter.cleared" });
+    expect(cleared.activeView).toBe("engine");
+    expect(cleared.activeFilter?.source).toBe("view");
+    expect(cleared.activeFilter?.matchedIds).toEqual(["seed", "b", "c", "d"]);
+  });
+
+  it("still clears to everything when nothing was narrowing before", () => {
+    const focused = visualAppReducer(initialVisualAppState, focusFilter);
+    const cleared = visualAppReducer(focused, { type: "filter.cleared" });
+    expect(cleared.activeView).toBe("");
+    expect(cleared.activeFilter).toBeNull();
+  });
+
+  it("keeps the first anchor when focusing again from inside a focus", () => {
+    // One level, not a history stack: "back" means back to what I was
+    // working in, not back one step through a trail nobody was keeping.
+    const twice = [focusFilter, focusFilter].reduce(
+      visualAppReducer,
+      onView(),
+    );
+    expect(visualAppReducer(twice, { type: "filter.cleared" }).activeView).toBe(
+      "engine",
+    );
+  });
+
+  it("drops the anchor when the reviewer navigates away", () => {
+    const focused = visualAppReducer(onView(), focusFilter);
+    const moved = visualAppReducer(focused, {
+      type: "view.navigated",
+      viewId: "other",
+    });
+    expect(moved.focusReturn).toBeNull();
+  });
+
+  it("drops the anchor when another kind of filter replaces the focus", () => {
+    const focused = visualAppReducer(onView(), focusFilter);
+    const panel = visualAppReducer(focused, {
+      ...viewFilter,
+      source: "panel" as const,
+    });
+    expect(panel.focusReturn).toBeNull();
+  });
+
+  it("names the escape for where it goes, so no label is a lie", () => {
+    const focused = visualAppReducer(onView(), focusFilter);
+    expect(focusReturnLabelOf(focused)).toBe("Engine components");
+    expect(
+      contextMenuFor(
+        { kind: "subject", id: "seed" },
+        menuContext({ filtered: true, focusReturnLabel: "Engine components" }),
+      )
+        .find((group) => group.key === "view")
+        ?.items.map((item) => item.label),
+    ).toEqual(["Focus on this", "Back to Engine components"]);
+    // And stays "Show all subjects" when clearing really does show all.
+    expect(focusReturnLabelOf(visualAppReducer(initialVisualAppState, focusFilter))).toBeUndefined();
+  });
+});

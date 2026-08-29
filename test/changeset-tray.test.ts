@@ -311,6 +311,7 @@ const baseState: VisualAppState = {
   transcript: [],
   views: [],
   activeFilter: null,
+  focusReturn: null,
   quickFilterText: '',
   choices: null,
   agentStatus: null,

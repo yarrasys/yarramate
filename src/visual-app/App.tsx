@@ -48,7 +48,7 @@ import type {
 import type { EditorHost } from "./editor-host.js";
 import { Section, SectionSplitter, stackRows } from "./section-stack.js";
 import { useVisualSession } from "./session-client.js";
-import { activeViewMembership } from "./state.js";
+import { activeViewMembership, focusReturnLabelOf } from "./state.js";
 import type { VisualAppRecord, VisualAppState } from "./state.js";
 import {
   conversationWidthBounds,
@@ -375,6 +375,12 @@ const DiagramWorkspace = ({
   // the quick filter's text when subjects would otherwise be drawn. A model
   // with no subjects earns no pill, because nothing was hidden.
   const graphNodes = state.model?.graph.nodes ?? [];
+  // Where clearing a focus goes, named. `undefined` when it goes to
+  // everything, which is also what the menu reads to keep its own label
+  // honest (#407). A view the tree no longer lists falls back to the plain
+  // "Show all" rather than naming something the reviewer cannot see.
+  const focusReturnLabel = focusReturnLabelOf(state);
+
   const structuralMatchedIds = state.activeFilter?.matchedIds ?? null;
   const filterEmptiedCanvas =
     graphNodes.length > 0 &&
@@ -407,7 +413,9 @@ const DiagramWorkspace = ({
             <code>{describeQuery(state.activeFilter.query)}</code>
           </span>
           <button type="button" onClick={onClearFilter}>
-            Show all
+            {focusReturnLabel === undefined
+              ? "Show all"
+              : `Back to ${focusReturnLabel}`}
           </button>
         </div>
       ) : null}
@@ -1345,6 +1353,9 @@ export const App = ({
           activeViewId: state.activeView,
           filtered: state.activeFilter !== null,
           membership: activeViewMembership(state),
+          ...(focusReturnLabelOf(state) === undefined
+            ? {}
+            : { focusReturnLabel: focusReturnLabelOf(state)! }),
           readOnly,
         });
 
