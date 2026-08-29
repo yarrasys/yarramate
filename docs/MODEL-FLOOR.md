@@ -214,15 +214,26 @@ fetches, or interprets the URI: URI ownership is the provider's (ADR 0068,
 
 ## Deliberately open
 
-Three of the refusals above are recorded limits rather than settled doctrine,
+Two of the refusals above are recorded limits rather than settled doctrine,
 and are under discussion:
 
-- profile-declared typed values, which would give the second classification
-  axis and the per-instance value a checkable home (#386);
 - declared reference slots, so that what a citation is *for* can be checked
   and asked about (#388);
 - whether an attestation should be able to confirm a declared value rather
-  than only a topic.
+  than only a topic (#397). One of its shapes is #388's slot in another
+  position, so the two are being decided together.
+
+**A general typed-attribute mechanism was examined and declined (#386).** It
+would have given the second classification axis and the per-instance value a
+checkable home, and the measurement went against it: run against a live
+adopter engagement of 348 open cards, this document failed to resolve **one**,
+and that card asked a delivery question in an architecture question's clothes.
+Two corrections from the same measurement are worth carrying, because they
+outlive the decision. An attribute is **single-valued**, so it never rescues
+ordered detail — sixty-eight processor steps are rows, not sixty-eight
+attributes of a flow. And the useful split is **three-way**, not two:
+attribute, attestation, annex, where a fact needing a named human to vouch for
+it is an attestation and not an attribute of anything.
 
 Nothing here is a promise that they stay refused. It is a statement of what is
 true today, written so that the next adopter reads the floor instead of
