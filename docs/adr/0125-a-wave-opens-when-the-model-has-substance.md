@@ -100,6 +100,12 @@ waves:
   therefore be wrong. The author's own description is the evidence, and it is
   checkable by reading.
 
+  **The rule's limit, named by the adopter who wrote it:** it tests for a
+  CONTRADICTION between gate and description, not for whether an order
+  exists. Identically-gated waves whose descriptions claim nothing pass, and
+  their boundary is still presentational. A pass means "nothing here
+  disagrees". It never means "the sequence is real".
+
   **Why nobody saw it**, which is the part worth carrying: when
   `has-any-subject` is the only gate available, every wave after the first
   gets the same one, and a catalogue with six identically-gated waves LOOKS
@@ -117,6 +123,25 @@ waves:
   exists to elicit never opens for the model that needs it: gating
   `implementation` on a `workPackage` would silence the question asking for
   work packages. The gate belongs on what a PRIOR wave produces.
+
+  **A third trap, visible only in the compiled graph.** A gate can name a
+  fact that compilation makes identical to its wave's headline trigger.
+  Declaring a `states:` entry mints a `plateau`, and
+  `implementation-path-missing` fires on the absence of a `workPackage`,
+  `deliverable` or `plateau` — so gating `implementation` on a declared state
+  opens the wave exactly when its lead question has been closed by the same
+  act. Trap one yields a wave that never opens for the model that needs it;
+  this yields one that opens only once it has nothing left to lead with.
+
+  **The construction that avoids all three: each wave elicits the subject the
+  next wave gates on**, which is clean by construction rather than by audit
+  (the adopter's formulation, from auditing their own six-wave lifecycle).
+  Where a gate does name what its own wave elicits, the remedy is POSITIONAL
+  — move the eliciting question into the wave in front. **That remedy is
+  available to a PHASE-ordered catalogue and not to a LAYER-ordered one**,
+  whose first wave in each layer has no predecessor the question would belong
+  to. `implementation` is the case: it has no honest gate, and should stay
+  ungated and say so rather than acquire one that silences it.
 
 `core-enrichment` goes 1.2 to **1.3**, gating every wave after motivation
 on `has-any-subject`. A blank project now opens on three motivation

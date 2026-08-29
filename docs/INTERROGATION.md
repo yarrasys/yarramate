@@ -287,11 +287,37 @@ finished". ADR 0120 put the gate on model substance rather than wave
 completion, and that decision stands. `interaction`'s "Hygiene waits" is the
 case that wants the second, and it has no expression here.
 
+**What the check does not do.** It tests for a *contradiction* between a gate
+and a description, not for whether an order exists. Two identically-gated
+waves whose descriptions simply claim nothing pass it, and their boundary is
+still presentational. A pass means "nothing here disagrees", never "the
+sequence is real".
+
 **When choosing a gate, check it against the questions in its own wave.** A
 gate naming the subject its wave exists to elicit never opens for the model
 that needs it: gating `implementation` on a `workPackage` existing means the
 question asking you to declare work packages fires only once you have. The
 gate belongs on what a *prior* wave produces.
+
+**And check what the compiler does with it.** A gate can name a fact that is,
+after compilation, the same fact its wave's headline question triggers on. In
+`core-enrichment`, declaring a `states:` entry mints a `plateau` concept, and
+`implementation-path-missing` fires on there being no `workPackage`,
+`deliverable` or `plateau` — so gating `implementation` on a declared state
+would open the wave at the exact moment its lead question stopped needing to
+be asked. Neither the gate nor the description shows this; only the compiled
+graph does.
+
+**The construction that avoids all of it: each wave elicits the subject the
+next wave gates on.** A catalogue built that way is clean by construction
+rather than by audit, and where a gate does name what its own wave elicits,
+the remedy is positional — move the eliciting question into the wave in front.
+That works for a catalogue ordered by *phase*, where each phase has a
+predecessor whose subject matter can carry the question. It does not work for
+the first wave in each layer of a catalogue ordered by *layer*, which has no
+earlier wave the question would belong to. Such a wave is better left
+ungated, and described as not phase-gated, than given a gate that silences
+it.
 
 ## A kind a catalogue names must exist where it says it does
 
