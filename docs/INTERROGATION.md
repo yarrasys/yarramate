@@ -30,7 +30,9 @@ questions. Each question binds:
 
 - a **trigger** — one or more deterministic conditions over the compiled
   graph (all must hold): `missing-claim`, `missing-relationship`,
-  `isolated`, `no-subject-of-kind`, `no-state-defined`,
+  `isolated`, `no-subject-of-kind`, `has-subject-of-kind` (workspace: the
+  positive twin of `no-subject-of-kind`, for a gate that opens once the
+  model HAS something), `no-state-defined`,
   `missing-linkage` (no relationship of given kinds, in a given
   direction, whose counterpart is of a given kind — the linkage-depth
   primitive), `has-linkage` (the positive of `missing-linkage`;
@@ -217,6 +219,40 @@ zero. `ask` prints `not yet — this wave has not opened` rather than an empty
 heading, and a consumer should read `opened` rather than counting. This is
 worth stating because both this repository's own renderer and a consuming
 product's wave rail had the same fault on the day the gate shipped.
+
+### A gate asks about the workspace, never about a subject
+
+A gate is evaluated with **no subject**, so only a workspace-scope condition
+means anything in `opensWhen`. There are five: `has-any-subject`,
+`no-subject-of-kind`, `has-subject-of-kind`, `no-state-defined` and
+`exists-linkage` — the last being a positive existence check, "some concept
+would satisfy `has-linkage`", which is easy to miss and often the one a gate
+wants.
+
+Any other condition is refused (`YM917`). Before the refusal existed they
+loaded silently and split two ways: `has-linkage`, `near-duplicate` and
+`fills-pattern-slot` left the wave **permanently shut**, while
+`missing-linkage`, `isolated`, `missing-claim` and `missing-constraint` left
+the gate **inert**. Both read as a gate to anyone reviewing the YAML, which
+is why this is a refusal rather than a finding, and it is the same invisible
+failure `YM914` refuses when a gate names a kind that resolves nowhere.
+
+A gate that wants "the model now has X" uses `has-subject-of-kind`
+([ADR 0134](adr/0134-a-wave-gate-asks-about-the-workspace-and-may-ask-positively.md)):
+
+```yaml
+waves:
+  - id: design
+    name: Design
+    opensWhen:
+      - condition: has-subject-of-kind
+        kinds:
+          - yarramate/core@0.1#applicationInterface
+```
+
+`opensWhen` requires every condition to hold and has no `not`, so the
+positive and the negative are both needed: a question is closed by an
+absence ending, and a gate opens once the thing is there.
 
 Wave order is load-bearing because of this. A catalogue that sequences
 motivation before implementation is making a claim the engine now honours,
