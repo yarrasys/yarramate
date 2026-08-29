@@ -1,6 +1,14 @@
 # Changelog
 
-## Unreleased
+## 1.12.0
+
+**Breaking:** `YM917` refuses a wave gate that asks about a subject. A
+catalogue that authored one loaded before and does not now. Every such
+catalogue already had a wave that never opened or a gate that did nothing,
+so nothing that worked stops working; what changes is that the engine now
+says so instead of staying quiet. No catalogue in this repository authored
+one, and the diagnostic names both the offending condition and the
+workspace-scope conditions that would work.
 
 - **Added.** `has-subject-of-kind`, a workspace-scope condition that holds
   when the model contains at least one subject of the named kinds. It is the
