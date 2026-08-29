@@ -259,10 +259,39 @@ waves:
 positive and the negative are both needed: a question is closed by an
 absence ending, and a gate opens once the thing is there.
 
-Wave order is load-bearing because of this. A catalogue that sequences
-motivation before implementation is making a claim the engine now honours,
-where before the order was presentational and questions fired in whatever
-order the model happened to trip them.
+Wave order is load-bearing because of this, **but only to the extent that
+gates differ**. Waves carrying the same `opensWhen` open at the same instant,
+however the rail draws them: they are one phase wearing several labels, and
+the engine honours the sequence a catalogue writes only where its gates
+distinguish one wave from the next.
+
+**The check, which needs no engine support: identical gates are a defect
+exactly when a wave's own description names something a prior wave produces.**
+A description that states an *invariant the wave asserts* — "every commitment
+has a delivery mechanism" — claims no sequence, and simultaneous opening is
+correct for it. A description that states a *precondition it depends on* —
+"how declared services are realized" — claims one, and an identical gate
+contradicts it in the same file.
+
+`core-enrichment` is the worked example of getting this wrong. It gates six of
+its seven waves on `has-any-subject` while four of those waves describe a
+precondition: `application` says "how declared services are realized",
+`technology` "where the declared applications actually run", `implementation`
+"how the planned architecture becomes real", and `interaction` ends "Hygiene
+waits" — a wave stating that another is sequenced behind it, while both open
+on the same event.
+
+**One thing the vocabulary cannot express, deliberately.** A gate can say
+"there is something to work on"; it can never say "the previous phase is
+finished". ADR 0120 put the gate on model substance rather than wave
+completion, and that decision stands. `interaction`'s "Hygiene waits" is the
+case that wants the second, and it has no expression here.
+
+**When choosing a gate, check it against the questions in its own wave.** A
+gate naming the subject its wave exists to elicit never opens for the model
+that needs it: gating `implementation` on a `workPackage` existing means the
+question asking you to declare work packages fires only once you have. The
+gate belongs on what a *prior* wave produces.
 
 ## A kind a catalogue names must exist where it says it does
 
