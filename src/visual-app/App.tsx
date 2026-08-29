@@ -9,6 +9,10 @@ import { QuickFilterBox } from "./quick-filter.js";
 import { ViewTree } from "./view-tree.js";
 import { SaveViewDialog } from "./save-view.js";
 import { describeQuery } from "./describe-query.js";
+import {
+  focusNeighbourhood,
+  focusRelationshipNeighbourhood,
+} from "./focus-neighbourhood.js";
 import { ChangesetTray } from "./changeset-tray.js";
 import {
   ConceptFacts,
@@ -44,7 +48,7 @@ import type {
 import type { EditorHost } from "./editor-host.js";
 import { Section, SectionSplitter, stackRows } from "./section-stack.js";
 import { useVisualSession } from "./session-client.js";
-import { activeViewMembership } from "./state.js";
+import { activeViewMembership, focusReturnLabelOf } from "./state.js";
 import type { VisualAppRecord, VisualAppState } from "./state.js";
 import {
   conversationWidthBounds,
@@ -371,6 +375,12 @@ const DiagramWorkspace = ({
   // the quick filter's text when subjects would otherwise be drawn. A model
   // with no subjects earns no pill, because nothing was hidden.
   const graphNodes = state.model?.graph.nodes ?? [];
+  // Where clearing a focus goes, named. `undefined` when it goes to
+  // everything, which is also what the menu reads to keep its own label
+  // honest (#407). A view the tree no longer lists falls back to the plain
+  // "Show all" rather than naming something the reviewer cannot see.
+  const focusReturnLabel = focusReturnLabelOf(state);
+
   const structuralMatchedIds = state.activeFilter?.matchedIds ?? null;
   const filterEmptiedCanvas =
     graphNodes.length > 0 &&
@@ -403,7 +413,9 @@ const DiagramWorkspace = ({
             <code>{describeQuery(state.activeFilter.query)}</code>
           </span>
           <button type="button" onClick={onClearFilter}>
-            Show all
+            {focusReturnLabel === undefined
+              ? "Show all"
+              : `Back to ${focusReturnLabel}`}
           </button>
         </div>
       ) : null}
@@ -1341,6 +1353,9 @@ export const App = ({
           activeViewId: state.activeView,
           filtered: state.activeFilter !== null,
           membership: activeViewMembership(state),
+          ...(focusReturnLabelOf(state) === undefined
+            ? {}
+            : { focusReturnLabel: focusReturnLabelOf(state)! }),
           readOnly,
         });
 
@@ -1432,6 +1447,32 @@ export const App = ({
         clearFilter();
         dispatchWorkspace({ type: "menu.dismissed" });
         return;
+      // Focus narrows whatever is showing, through the same server-evaluated
+      // filter seam every other narrowing uses, so there is one notion of "the
+      // canvas is narrowed" and one way out (#407). `between` rather than
+      // `connected`: the subjects ARE the neighbourhood, and connected would
+      // expand from each of them again and make it two hops.
+      case "subject.focus":
+      case "relationship.focus": {
+        const graph = state.model?.graph ?? null;
+        if (graph === null) {
+          dispatchWorkspace({ type: "menu.dismissed" });
+          return;
+        }
+        const subjects =
+          intent.type === "subject.focus"
+            ? focusNeighbourhood(graph, intent.id)
+            : focusRelationshipNeighbourhood(graph, intent.id);
+        // A subject the canvas cannot find yields nothing, and narrowing to
+        // nothing would empty the canvas and read as a bug. Leave it alone.
+        if (subjects.length === 0) {
+          dispatchWorkspace({ type: "menu.dismissed" });
+          return;
+        }
+        filter({ subjects: [...subjects], relationships: "between" }, "focus");
+        dispatchWorkspace({ type: "menu.dismissed" });
+        return;
+      }
       case "view.new":
         // Same motion the rail's own new-view button makes, and seeded the
         // same way: from the query on the canvas, because that is what a

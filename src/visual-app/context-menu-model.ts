@@ -50,6 +50,15 @@ export type ContextMenuIntent =
   | { readonly type: "relationship.delete"; readonly id: string }
   | { readonly type: "canvas.draft-subject" }
   | { readonly type: "view.open"; readonly id: string }
+  /**
+   * Narrow the canvas to this subject and everything one hop from it (#407).
+   * A view operation, so it lives in the view group and survives `readOnly`.
+   * It sets the same narrowed state every other filter sets and is cleared by
+   * the same "Show all subjects" — one narrowing concept, one escape.
+   */
+  | { readonly type: "subject.focus"; readonly id: string }
+  /** The relationship and its two endpoints. Nothing further (#407). */
+  | { readonly type: "relationship.focus"; readonly id: string }
   | { readonly type: "view.clear" }
   | { readonly type: "view.new" }
   /**
@@ -110,6 +119,14 @@ export interface ContextMenuContext {
   /** Whether anything at all is narrowing the canvas right now. */
   readonly filtered: boolean;
   /**
+   * Where clearing a focus will return to, named for the menu, or absent when
+   * clearing goes to everything (#407). Optional so that every existing
+   * constructor of this context keeps compiling: a required field here would
+   * be free for readers and a typecheck break for constructors, which is the
+   * first rule in CONTRIBUTING.md.
+   */
+  readonly focusReturnLabel?: string;
+  /**
    * How the active view can be told what it holds, or `null` when no view is
    * active and there is nothing to tell.
    *
@@ -140,6 +157,9 @@ const READING_INTENTS: ReadonlySet<ContextMenuIntent["type"]> = new Set([
   "relationship.inspect",
   "view.open",
   "view.clear",
+  // Focus reads and narrows; it stages nothing, so a viewer keeps it.
+  "subject.focus",
+  "relationship.focus",
   "view.copy-path",
   "canvas.export-png",
 ]);
@@ -206,6 +226,22 @@ const SHOW_ALL: ContextMenuItem = {
   intent: { type: "view.clear" },
 };
 
+/**
+ * The same escape, named for where it actually goes (#407).
+ *
+ * Clearing a focus returns to what the focus narrowed, so an item still
+ * reading "Show all subjects" would be describing something it no longer
+ * does. One item, one intent, and a label that stays true.
+ */
+const clearItem = (context: ContextMenuContext): ContextMenuItem =>
+  context.focusReturnLabel === undefined
+    ? SHOW_ALL
+    : {
+        key: "view.clear",
+        label: `Back to ${context.focusReturnLabel}`,
+        intent: { type: "view.clear" },
+      };
+
 const deleteGroup = (
   intent: ContextMenuIntent,
   label: string,
@@ -217,6 +253,40 @@ const deleteGroup = (
   items: [{ key: "delete", label, intent }],
 });
 
+/**
+ * The view group for a subject or relationship: focus, whatever membership
+ * items the active view can be told, and the way out when anything is
+ * narrowing (#407).
+ *
+ * One group rather than two. Focus and membership are both view operations,
+ * and a second "View" heading three items later would read as a different
+ * kind of thing. `membershipGroup` returns its own group when a view can be
+ * told what it holds and nothing otherwise, so its items are folded in here
+ * rather than sitting beside a focus group that would sometimes be alone.
+ *
+ * "Show all subjects" appears here for the same reason it appears on the
+ * canvas menu: focus is most often cleared from the thing it focused, and
+ * making the reviewer find blank canvas to escape would be the second exit
+ * this feature exists not to add.
+ */
+const focusAndMembershipGroups = (
+  focus: ContextMenuIntent,
+  membership: readonly ContextMenuGroup[],
+  context: ContextMenuContext,
+): readonly ContextMenuGroup[] => [
+  {
+    key: "view",
+    scope: "view",
+    label: "View",
+    destructive: false,
+    items: [
+      { key: "focus", label: "Focus on this", intent: focus },
+      ...membership.flatMap((group) => group.items),
+      ...(context.filtered ? [clearItem(context)] : []),
+    ],
+  },
+];
+
 const subjectMenu = (
   id: string,
   context: ContextMenuContext,
@@ -227,7 +297,11 @@ const subjectMenu = (
     // Removing a subject from a view rewrites one projection; deleting it from
     // the model takes every relationship naming it. View first, destructive
     // last, and the two never neighbours.
-    ...membershipGroup(id, context),
+    ...focusAndMembershipGroups(
+      { type: "subject.focus", id },
+      membershipGroup(id, context),
+      context,
+    ),
     {
       key: "model",
       scope: "model",
@@ -268,6 +342,11 @@ const relationshipMenu = (
   );
 
   const groups: ContextMenuGroup[] = [
+    ...focusAndMembershipGroups(
+      { type: "relationship.focus", id },
+      [],
+      context,
+    ),
     {
       key: "model",
       scope: "model",

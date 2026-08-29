@@ -1,5 +1,38 @@
 # Changelog
 
+## Unreleased
+
+- **Added.** **Focus on this**, in the subject and relationship context menus
+  (#407, requested by an adopter mounting the editor). It narrows the canvas
+  to the subject and everything one hop from it, or for a relationship to its
+  two endpoints.
+
+  **One hop, undirected, and not configurable.** On a connected integration
+  model "everything reachable" is the whole canvas, so a transitive focus
+  would be the most inviting menu item and the one that does nothing. One hop
+  is bounded by the subject's degree and verifiable by eye.
+
+  **One narrowing, one way out, and it goes back where you were.** Focus sets
+  the same filter state every other narrowing sets and is cleared by the same
+  item, rather than being a second narrowing mode with its own exit. That item
+  now RESTORES rather than resets: focusing from a view and clearing returns
+  to that view, because returning to everything would throw away the context
+  the focus was a detour from. The escape is named for where it goes — "Back
+  to Engine components" against a view, "Show all subjects" when clearing
+  really does show all — since one label doing both jobs would be false in one
+  of them.
+
+  One level, not a history stack: focusing again from inside a focus keeps the
+  first anchor, so "back" means back to what you were working in. Navigating,
+  or any other filter, is a deliberate move away and drops it.
+
+  **It survives `readOnly`**, because it reads and stages nothing, which is
+  also what makes it worth having for a viewer.
+
+  **A referenced subject is not a neighbour** (#409): focus follows
+  relationships, so the constraint that answers a question about a subject is
+  not drawn beside it. The model tree still lists it, marked "not in view".
+
 ## 1.12.0
 
 **Breaking:** `YM917` refuses a wave gate that asks about a subject. A

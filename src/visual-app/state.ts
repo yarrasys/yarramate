@@ -49,7 +49,14 @@ import type {
  * name standing; `panel` is an ad-hoc query belonging to no view; `chat` is the
  * agent's.
  */
-export type FilterSource = "view" | "editor" | "panel" | "chat";
+/**
+ * `focus` is a fifth source rather than a reuse of `panel` (#407). Both
+ * narrow without a named view behind them, so both fall the same side of the
+ * only test anyone makes of this field — whether the view name still stands —
+ * but "who asked" is the question the field answers, and a context menu is
+ * not the filter panel.
+ */
+export type FilterSource = "view" | "editor" | "panel" | "chat" | "focus";
 
 /** The standing filter: the query, what it matched, and who asked. */
 export interface ActiveFilter {
@@ -131,6 +138,20 @@ export interface VisualAppState {
   readonly frozen: boolean;
   /** The last query the reviewer applied, and what it matched. `null` = unfiltered. */
   readonly activeFilter: ActiveFilter | null;
+  /**
+   * What the canvas was showing when a focus narrowed it, so clearing the
+   * focus returns there instead of to everything (#407).
+   *
+   * This is one level, not a history stack. Focusing again while already
+   * focused keeps the original anchor, so "back" always means "back to what I
+   * was working in" rather than back one step through a trail nobody was
+   * keeping. Navigating, or any other filter, is a deliberate move away and
+   * drops the anchor.
+   */
+  readonly focusReturn: {
+    readonly activeView: string;
+    readonly activeFilter: ActiveFilter | null;
+  } | null;
   /** Client-side substring narrowing layered on top of `activeFilter`. */
   readonly quickFilterText: string;
   readonly closedReason: string | null;
@@ -303,6 +324,7 @@ export const initialVisualAppState: VisualAppState = {
   lastSequence: 0,
   frozen: false,
   activeFilter: null,
+  focusReturn: null,
   quickFilterText: "",
   closedReason: null,
   pendingChangeset: EMPTY_CHANGESET,
@@ -565,9 +587,12 @@ const transition = (
     }
     case "view.navigated":
       // Drill-down is local: the reviewer never waits for the agent to redraw.
+      // Choosing a view is a deliberate move away from a focus, so the
+      // come-back-to anchor goes with it rather than surviving to strand the
+      // reviewer somewhere they did not leave.
       return state.activeView === action.viewId
         ? state
-        : { ...state, activeView: action.viewId };
+        : { ...state, activeView: action.viewId, focusReturn: null };
     case "handoff.received":
       return {
         ...state,
@@ -627,6 +652,15 @@ const transition = (
     case "filter.applied":
       return {
         ...state,
+        // Entering focus from anywhere else records where to come back to.
+        // Focusing again from inside a focus keeps the first anchor, and any
+        // other filter is a move away that drops it.
+        focusReturn:
+          action.source === "focus"
+            ? state.activeFilter?.source === "focus"
+              ? state.focusReturn
+              : { activeView: state.activeView, activeFilter: state.activeFilter }
+            : null,
         activeFilter: {
           query: action.query,
           matchedIds: action.matchedIds,
@@ -646,9 +680,22 @@ const transition = (
             : "",
       };
     case "filter.cleared":
-      // Clearing the filter also leaves whatever named view was active -
-      // the reviewer is back on the unfiltered "All" view, not a stale one.
-      return { ...state, activeFilter: null, activeView: "" };
+      // A focus is cleared back to what it narrowed (#407): returning to
+      // everything would throw away the view the reviewer was working in,
+      // which is the context the focus was a detour from. Still ONE escape,
+      // as the request asked - the same item, restoring rather than resetting.
+      if (state.focusReturn !== null) {
+        return {
+          ...state,
+          activeFilter: state.focusReturn.activeFilter,
+          activeView: state.focusReturn.activeView,
+          focusReturn: null,
+        };
+      }
+      // Otherwise unchanged: clearing any other filter leaves whatever named
+      // view was active - the reviewer is back on the unfiltered "All" view,
+      // not a stale one.
+      return { ...state, activeFilter: null, activeView: "", focusReturn: null };
     case "quickFilter.changed":
       return state.quickFilterText === action.text
         ? state
@@ -974,6 +1021,22 @@ export const visualBrowserInputFor = (
 export type ActiveViewMembership =
   | { readonly kind: "enumerated"; readonly subjects: readonly string[] }
   | { readonly kind: "faceted"; readonly excluded: readonly string[] };
+
+/**
+ * Where clearing a focus will return to, named for a label, or `undefined`
+ * when clearing goes to everything (#407).
+ *
+ * Derived rather than stored, so the label cannot drift from the anchor. A
+ * view the tree no longer lists falls back to `undefined` and the affordance
+ * says "Show all" rather than naming something the reviewer cannot get to.
+ */
+export const focusReturnLabelOf = (
+  state: VisualAppState,
+): string | undefined => {
+  if (state.focusReturn === null) return undefined;
+  const target = state.focusReturn.activeView;
+  return state.views.find(({ id }) => id === target)?.title;
+};
 
 export const activeViewMembership = (
   state: VisualAppState,
