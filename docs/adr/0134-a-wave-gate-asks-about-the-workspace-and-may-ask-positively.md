@@ -2,6 +2,15 @@
 
 Status: accepted
 
+Amended immediately after release (1.12.0). This ADR argued that a list of
+names goes stale and that the classification must therefore be a total map the
+typechecker enforces — and then restated the list in prose and got it wrong,
+saying **five** workspace-scope conditions and omitting `unchallenged-evidence`.
+The code was right throughout, because `YM917`'s message is read off the map;
+only the prose was wrong, and `docs/INTERROGATION.md` carried the same error.
+Corrected to six. The rule earned another instance the day it was written,
+which is rule 8: writing about a silent failure mode is when you produce it.
+
 ADR 0125 gave a wave an `opensWhen` gate and wrote it in the condition
 vocabulary, so that "a reviewer reads a gate exactly as they read a
 trigger". Two things followed from reusing the vocabulary that the ADR did
@@ -55,9 +64,9 @@ scope is declared: the typechecker asks the question rather than the table
 remembering the answer. The remedy the diagnostic offers is read off the
 same map, so the advice cannot drift from what the engine accepts.
 
-There are **five** workspace-scope conditions, and it is worth writing the
+There are **six** workspace-scope conditions, and it is worth writing the
 number down because the adopter who hit this counted three. `exists-linkage`
-is the fifth, and it is a positive existence check that already reads the
+is one of them, and it is a positive existence check that already reads the
 whole workspace — the existential lift of `has-linkage`, added by hand in
 #206 and easy to miss in a dense list.
 

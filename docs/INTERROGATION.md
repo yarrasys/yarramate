@@ -223,11 +223,16 @@ product's wave rail had the same fault on the day the gate shipped.
 ### A gate asks about the workspace, never about a subject
 
 A gate is evaluated with **no subject**, so only a workspace-scope condition
-means anything in `opensWhen`. There are five: `has-any-subject`,
-`no-subject-of-kind`, `has-subject-of-kind`, `no-state-defined` and
-`exists-linkage` — the last being a positive existence check, "some concept
-would satisfy `has-linkage`", which is easy to miss and often the one a gate
-wants.
+means anything in `opensWhen`. There are six: `has-any-subject`,
+`no-subject-of-kind`, `has-subject-of-kind`, `no-state-defined`,
+`exists-linkage` and `unchallenged-evidence`. `exists-linkage` is a positive
+existence check, "some concept would satisfy `has-linkage`", which is easy to
+miss and often the one a gate wants.
+
+**Do not trust this sentence over the engine.** The set is derived from the
+condition union in code, and `YM917`'s own message lists it; a count written
+in prose is the thing that goes stale, and this one did — it shipped saying
+five and omitting `unchallenged-evidence`.
 
 Any other condition is refused (`YM917`). Before the refusal existed they
 loaded silently and split two ways: `has-linkage`, `near-duplicate` and
