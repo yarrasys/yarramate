@@ -49,7 +49,14 @@ import type {
  * name standing; `panel` is an ad-hoc query belonging to no view; `chat` is the
  * agent's.
  */
-export type FilterSource = "view" | "editor" | "panel" | "chat";
+/**
+ * `focus` is a fifth source rather than a reuse of `panel` (#407). Both
+ * narrow without a named view behind them, so both fall the same side of the
+ * only test anyone makes of this field — whether the view name still stands —
+ * but "who asked" is the question the field answers, and a context menu is
+ * not the filter panel.
+ */
+export type FilterSource = "view" | "editor" | "panel" | "chat" | "focus";
 
 /** The standing filter: the query, what it matched, and who asked. */
 export interface ActiveFilter {

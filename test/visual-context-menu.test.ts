@@ -220,6 +220,9 @@ describe("what each menu offers", () => {
     const groups = contextMenuFor({ kind: "subject", id: "api" }, context());
     expect(groups.flatMap((group) => group.items.map((item) => item.intent)))
       .toEqual([
+        // Focus leads the view group even with no view active: narrowing to a
+        // subject needs no view to narrow within (#407).
+        { type: "subject.focus", id: "api" },
         { type: "subject.inspect", id: "api" },
         { type: "subject.connect", from: "api" },
         { type: "subject.delete", id: "api" },
@@ -445,7 +448,13 @@ describe("putting a subject into a view, and taking it out", () => {
 
   it("offers Remove from view for a subject the view lists", () => {
     expect(labels(contextMenuFor({ kind: "subject", id: "api" }, held))).toEqual(
-      ["Remove from view", "Properties", "Connect from here…", "Delete from model…"],
+      [
+        "Focus on this",
+        "Remove from view",
+        "Properties",
+        "Connect from here…",
+        "Delete from model…",
+      ],
     );
   });
 
@@ -463,7 +472,13 @@ describe("putting a subject into a view, and taking it out", () => {
     const groups = contextMenuFor({ kind: "subject", id: "api" }, context());
     expect(labels(groups)).not.toContain("Remove from view");
     expect(labels(groups)).not.toContain("Add to this view");
-    expect(groups.every((group) => group.scope === "model")).toBe(true);
+    // The view group survives because Focus lives in it and needs no view
+    // (#407); what must be absent is any item that would write to one.
+    expect(
+      groups
+        .filter((group) => group.scope === "view")
+        .flatMap((group) => group.items.map((item) => item.label)),
+    ).toEqual(["Focus on this"]);
   });
 
   // A facet view states a rule, and the exception it cannot state is exactly
@@ -520,18 +535,22 @@ describe("a read-only menu offers no way to stage", () => {
     membership: { kind: "enumerated", subjects: ["api"] },
   });
 
-  it("leaves a subject its Properties and nothing that stages", () => {
+  // Focus survives readOnly, and that is the point of it being here: it reads
+  // and narrows, stages nothing, and is the one thing a viewer most wants
+  // (#407). Its presence beside Properties is what the filter is FOR - the
+  // membership and delete items are gone from both menus.
+  it("leaves a subject its Properties and Focus, and nothing that stages", () => {
     expect(
       labels(contextMenuFor({ kind: "subject", id: "api" }, readOnly)),
-    ).toEqual(["Properties"]);
+    ).toEqual(["Focus on this", "Properties"]);
   });
 
-  it("leaves a relationship its Properties: no retype, no delete", () => {
+  it("leaves a relationship Focus and Properties: no retype, no delete", () => {
     expect(
       labels(
         contextMenuFor({ kind: "relationship", id: "api-serving-ui" }, readOnly),
       ),
-    ).toEqual(["Properties"]);
+    ).toEqual(["Focus on this", "Properties"]);
   });
 
   it("leaves the canvas its reads: export, and the way back to everything", () => {

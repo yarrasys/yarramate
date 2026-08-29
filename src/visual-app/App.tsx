@@ -9,6 +9,10 @@ import { QuickFilterBox } from "./quick-filter.js";
 import { ViewTree } from "./view-tree.js";
 import { SaveViewDialog } from "./save-view.js";
 import { describeQuery } from "./describe-query.js";
+import {
+  focusNeighbourhood,
+  focusRelationshipNeighbourhood,
+} from "./focus-neighbourhood.js";
 import { ChangesetTray } from "./changeset-tray.js";
 import {
   ConceptFacts,
@@ -1432,6 +1436,32 @@ export const App = ({
         clearFilter();
         dispatchWorkspace({ type: "menu.dismissed" });
         return;
+      // Focus narrows whatever is showing, through the same server-evaluated
+      // filter seam every other narrowing uses, so there is one notion of "the
+      // canvas is narrowed" and one way out (#407). `between` rather than
+      // `connected`: the subjects ARE the neighbourhood, and connected would
+      // expand from each of them again and make it two hops.
+      case "subject.focus":
+      case "relationship.focus": {
+        const graph = state.model?.graph ?? null;
+        if (graph === null) {
+          dispatchWorkspace({ type: "menu.dismissed" });
+          return;
+        }
+        const subjects =
+          intent.type === "subject.focus"
+            ? focusNeighbourhood(graph, intent.id)
+            : focusRelationshipNeighbourhood(graph, intent.id);
+        // A subject the canvas cannot find yields nothing, and narrowing to
+        // nothing would empty the canvas and read as a bug. Leave it alone.
+        if (subjects.length === 0) {
+          dispatchWorkspace({ type: "menu.dismissed" });
+          return;
+        }
+        filter({ subjects: [...subjects], relationships: "between" }, "focus");
+        dispatchWorkspace({ type: "menu.dismissed" });
+        return;
+      }
       case "view.new":
         // Same motion the rail's own new-view button makes, and seeded the
         // same way: from the query on the canvas, because that is what a
