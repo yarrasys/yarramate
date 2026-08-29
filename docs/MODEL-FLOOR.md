@@ -92,6 +92,14 @@ works wherever the classification applies.
 
 Two alternatives look right and are not:
 
+*A note on reaching them.* A referenced subject is **not** a one-hop
+neighbour: `relationships: connected` walks relationships, so `ask <subject>`
+and every projection using `connected` leave it out of the slice (#409). It is
+still named in a brief — "Constrained by …" — so it is discoverable and can be
+addressed directly by id; it is named rather than expanded. Worth knowing
+before building a view or a slice that is meant to show a subject together
+with the values restricting it.
+
 - **A constraint subject.** It reads as "this thing is restricted this way",
   and an API layer or an integration style restricts nothing. An ArchiMate
   reader will notice.

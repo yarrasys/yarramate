@@ -72,6 +72,25 @@ and its opposite endpoint is added to the result. Expansion is exactly one
 hop: newly added endpoints do not trigger further selection. `none` excludes
 all relationships.
 
+**Expansion follows relationships, and only relationships.** A subject that
+another subject *references* — through `constraints[].ref` or
+`references[].ref` — is not pulled in by `connected`, because a reference is a
+pointer to a shared subject rather than an edge the ArchiMate table governs
+and `check` validates. Widening the expansion to cover both would make the
+neighbourhood of a heavily shared constraint include every concept that
+references it, which is the unbounded result one hop exists to prevent
+(#409).
+
+This is worth knowing when choosing `connected`, because
+`docs/MODEL-FLOOR.md` recommends turning a value that restricts into a
+constraint subject referenced by many, and the shape it recommends is the
+shape this expansion does not walk. A brief still *names* such a subject —
+"Constrained by …" — so a reader learns it exists and can address it
+directly; what they do not get is its kind, description, or its own
+neighbours. A canvas has no prose in which to say the same thing, which is
+why the visual editor's focus (#407) draws structure and not the answers
+hanging off it.
+
 `relationshipKinds` applies after concept selection and before relationship
 mode evaluation. An unavailable qualified relationship kind selects no
 relationships but does not remove otherwise matching concepts or produce a
