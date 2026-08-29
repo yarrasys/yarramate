@@ -74,6 +74,50 @@ waves:
   them. The gate makes the sequencing real, which is what a wave was
   always claiming to be.
 
+  **AMENDED 2026-08-29, and the amendment is the more useful half. The
+  sentence above is true only where gates DIFFER, and it was false for the
+  catalogue this decision shipped alongside itself.** `core-enrichment`
+  gates six of its seven waves on the same `has-any-subject`, so exactly one
+  boundary was ever made real — motivation versus everything else — while
+  the rail kept drawing six. Worse, four of those six describe a
+  precondition in their own prose: `application` "how declared services are
+  realized", `technology` "where the declared applications actually run",
+  `implementation` "how the planned architecture becomes real", and
+  `interaction` closing with "Hygiene waits", a wave stating that another is
+  sequenced behind it while both open on the same event. The catalogue
+  contradicts itself three lines apart.
+
+  **The rule, which needs no engine support: identical gates are a defect
+  exactly when a wave's own description names something a prior wave
+  produces.** A description stating an INVARIANT THE WAVE ASSERTS claims no
+  sequence and should open simultaneously; one stating a PRECONDITION IT
+  DEPENDS ON claims a sequence its gate must then honour. Found by the
+  ApertureX adopter, whose own catalogue is clean under this rule for
+  precisely that reason, and whose framing this is.
+
+  **No detector is proposed.** The engine cannot know whether an order was
+  intended, identical gates can be deliberate grouping, and a refusal would
+  therefore be wrong. The author's own description is the evidence, and it is
+  checkable by reading.
+
+  **Why nobody saw it**, which is the part worth carrying: when
+  `has-any-subject` is the only gate available, every wave after the first
+  gets the same one, and a catalogue with six identically-gated waves LOOKS
+  ordered — six names, in sequence, on a rail. The author is structurally
+  last to notice, because the presentation agrees with their intent rather
+  than with the mechanism. CONTRIBUTING.md's ninth rule in a position it had
+  not been put: not an allowlist, but a claim true for nobody, its author
+  included.
+
+  **Two limits worth stating for anyone re-gating a catalogue.** A gate can
+  say "there is something to work on" and can never say "the previous phase
+  is finished" — ADR 0120 put the gate on model substance rather than wave
+  completion, deliberately, and `interaction`'s "Hygiene waits" is the case
+  that wants what does not exist. And a gate naming the subject its own wave
+  exists to elicit never opens for the model that needs it: gating
+  `implementation` on a `workPackage` would silence the question asking for
+  work packages. The gate belongs on what a PRIOR wave produces.
+
 `core-enrichment` goes 1.2 to **1.3**, gating every wave after motivation
 on `has-any-subject`. A blank project now opens on three motivation
 questions — why the system exists, who its stakeholders are, what
