@@ -1,6 +1,15 @@
 # Changelog
 
-## Unreleased
+## 1.13.0
+
+**Contains a content-loss fix that was reachable in 1.12.0.** A cell carrying a
+reference and no value — what Excel writes for a formatted empty cell — was
+read against the previous cell's column, and the empty value it wrote is a
+*cleared* value rather than an absent one. An adopter reproduced it end to end
+against the published package: importing a workbook somebody had merely opened
+and saved produced a model write clearing a component's name, presented in
+their preview as an ordinary change a reviewer would confirm. Upgrade if you
+read workbooks.
 
 - **Added.** `yarramate/workbook` takes optional named cell styles and column
   widths (#416, asked for by a workbook consumer). `CellStyle` is a closed set

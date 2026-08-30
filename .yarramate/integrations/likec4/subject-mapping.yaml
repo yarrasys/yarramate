@@ -1908,6 +1908,9 @@ mappings:
   - native: render-archimate-kind-icons
     external: renderArchimateKindIcons
     type: concept
+  - native: select-focus-neighbourhood
+    external: selectFocusNeighbourhood
+    type: concept
   - native: render-visual-model-reads-kind-catalogue
     external: renderVisualModelReadsKindCatalogue
     type: relationship
@@ -1916,6 +1919,9 @@ mappings:
     type: relationship
   - native: visual-browser-renders-kind-icons
     external: visualBrowserRendersKindIcons
+    type: relationship
+  - native: visual-browser-selects-focus-neighbourhood
+    external: visualBrowserSelectsFocusNeighbourhood
     type: relationship
   - native: visual-badges-source
     external: visualBadgesSource
