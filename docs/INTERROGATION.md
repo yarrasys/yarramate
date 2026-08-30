@@ -459,6 +459,51 @@ Any other predicate prints nothing, which is ADR 0110's rule holding: a wrong
 skeleton is never offered. Those three are every `missing-claim` the shipped
 catalogue uses, and a test keeps that true (ADR 0137).
 
+## Adopting a condition means mapping the remedy it implies
+
+The reasoning above reaches further than `missing-claim`, and it costs an
+adopter something the first time they meet it.
+
+A trigger carries the condition; **the affordance is the host's**. So adding a
+condition to a catalogue is not only a catalogue edit. A card built from a
+condition the host's mapping does not cover arrives with **nothing to press**,
+and it looks like every other card until someone tries to answer it. The card
+still fires, at the right moment, on the right subject. Only the remedy is
+missing, and nothing reports that.
+
+Measured by an adopter on `below-subject-count`: moving six vocabulary
+questions to `atLeast: 2` would have turned six one-click cards into that
+pack's first prose-only cards, silently. Their own guard caught it, and only
+because they happen to assert that no card in the pack degrades to prose. An
+adopter without such a guard ships it and does not notice.
+
+The engine does not fix this by deciding what a condition implies. "Below a
+count" does not mean "add a concept" in general: that is a reading of a
+particular catalogue, and taking it would be the same overreach the previous
+section refuses. What is worth knowing before you adopt a condition is that
+**adoption has a consumer-side half, and it is invisible until a card arrives
+shapeless.**
+
+## A fixed defect leaves persuasive prose behind
+
+When a condition's behaviour changes, the questions using it usually need one
+line edited. The prose written to work AROUND the old behaviour needs finding,
+and it does not announce itself.
+
+The same adopter, moving those six questions: five carried a resolution saying
+*"one layer closes this question, so add them all now rather than one at a
+time, because the check can only see whether any exist."* Accurate advice,
+authored to coach a consultant around the very defect `below-subject-count`
+fixed. The moment the floor became two it was **noise that still read as
+authoritative**, and a reader following it would think the check weaker than it
+is.
+
+So the rule for a catalogue author, and it generalises past catalogues:
+**when a defect is fixed, search for the prose written to work around it.** It
+was authored to be persuasive, and it keeps persuading after it stops being
+true. A resolution is the most dangerous place for it, because a resolution is
+read at exactly the moment someone has decided to act.
+
 ## A condition the engine owns defines its own peers
 
 Comparing a subject against its peers is not new here. `near-duplicate` fires

@@ -2,6 +2,34 @@
 
 ## Unreleased
 
+### Adopting a condition has a consumer-side half
+
+Two sections in `docs/INTERROGATION.md`, both earned by an adopter adopting
+`below-subject-count` (#411) and reporting what it cost.
+
+**Adopting a condition means mapping the remedy it implies.** A trigger carries
+the condition; the affordance is the host's. Moving six vocabulary questions to
+`atLeast: 2` would have turned six one-click cards into that pack's first
+prose-only cards, silently, and their own guard caught it only because they
+happen to assert that no card degrades to prose. The engine still does not
+decide what a condition implies, for the reason #430 settled: "below a count"
+does not mean "add a concept" in general. What was missing was the warning that
+adoption has a second half at all.
+
+**A fixed defect leaves persuasive prose behind.** Five of those six questions
+carried a resolution coaching the consultant around the very defect the new
+condition fixed: *"one layer closes this question, so add them all now."* True
+before, noise after, and still reading as authoritative. So: when a defect is
+fixed, search for the prose written to work around it, because it was authored
+to be persuasive and keeps persuading. A resolution is the worst place for it,
+being read exactly when someone has decided to act.
+
+Swept this repository's own catalogue and shipped documents on the same basis,
+for prose describing behaviour 1.14.x changed. Nothing found: the three
+candidate lines in `core-enrichment` are accurate for their conditions, and the
+wave-gating section describes `opened` semantics that ADR 0136 did not alter.
+
+
 ### No link a reader with the package cannot follow
 
 Nine markdown links in shipped documents pointed at `adr/` files that do not
