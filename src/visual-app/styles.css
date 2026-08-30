@@ -486,7 +486,10 @@ body {
   align-items: center;
   gap: calc(var(--step) * 0.75);
   width: 100%;
-  padding: 0.3rem calc(var(--step) * 1.5);
+  /* Tighter than it was: a list you can see beats a list you must scroll, and
+     four more rows on screen is worth more than any tint applied to the rows
+     already there. */
+  padding: 0.18rem calc(var(--step) * 1.5);
   font: inherit;
   font-size: 13px;
   text-align: left;
@@ -549,6 +552,22 @@ body {
   font-family: var(--utility);
   font-size: 10px;
   color: var(--quiet);
+  /* A column of counts is read down, not across, so the digits have to line
+     up: proportional figures set 357 and 114 at different widths and the
+     column reads ragged even when it is right-aligned. */
+  font-variant-numeric: tabular-nums;
+}
+
+/* Every row in a list of views carries the SAME icon, so at full strength it
+   is ink that repeats without saying anything and competes with the name it
+   sits beside. Dimmed, it still marks what kind of row this is. The active
+   row keeps its icon at full strength, where the mark is doing work. */
+.tree-row > svg {
+  opacity: 0.4;
+}
+
+.tree-row-active > svg {
+  opacity: 1;
 }
 
 .tree-row-active .tree-count {
@@ -2351,13 +2370,26 @@ body {
   gap: calc(var(--step) * 0.75);
 }
 
-/* The exception, and the reason this is not a blanket rule: a list field is a
-   label over N rows and an add button, so it has no single control to sit
-   beside and stays stacked. */
+/* A list field keeps the same two columns; its control area is a stack of
+   rows rather than a single control, so the label aligns to the TOP of that
+   stack instead of its middle - centring a label against six rows points it
+   at the fourth one. */
 .subject-form-field.subject-form-list {
+  align-items: start;
+}
+
+/* Nudged down by the control's own top padding so the label reads level with
+   the first row rather than with the box around it. */
+.subject-form-list > .subject-form-label {
+  padding-top: 0.35rem;
+}
+
+.subject-form-list-body {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: calc(var(--step) * 0.35);
+  min-width: 0;
 }
 
 .subject-form-label {

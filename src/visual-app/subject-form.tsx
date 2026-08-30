@@ -456,6 +456,11 @@ const RepeatableRows = <T,>({
   return (
     <div className="subject-form-field subject-form-list">
       <span className="subject-form-label">{label}</span>
+      {/* The rows and their add button are one control area, so a list field
+          is label-beside-control like every other field rather than the one
+          that stacks. Without this wrapper each row would be a grid child and
+          land in the label column. */}
+      <div className="subject-form-list-body">
       {rows.map((row, index) => (
         <div className="subject-form-row" key={index}>
           {renderRow(row, {
@@ -475,6 +480,7 @@ const RepeatableRows = <T,>({
       <button type="button" className="subject-form-row-add" onClick={() => setRows([...rows, emptyRow])}>
         Add {label}
       </button>
+      </div>
     </div>
   )
 }
