@@ -60,6 +60,23 @@ describe('consumer package contract', () => {
       // through npm. Left in the repository it sat exactly where the people
       // it is for would not find it, which is the condition it exists to end.
       'docs/MODEL-FLOOR.md',
+      // The catalogue-authoring reference, by the same test. 1.14.0 recorded
+      // an adopter's answered question here rather than only on the issue,
+      // on the grounds that a decision living on a closed issue is one the
+      // next adopter re-asks — and then did not ship the file, so it reached
+      // nobody. The release notes claimed it did.
+      'docs/INTERROGATION.md',
+      // The four these three cite BY PATH. A shipped document that names a
+      // document you do not have is worse than one that stays silent: it
+      // tells the reader where to look and the place is not there. None of
+      // these is a new commitment; each was already normative and merely
+      // unreachable. `test/shipped-docs.test.ts` holds the property that
+      // makes this list the right length — the shipped set is closed under
+      // reference — so the next document added here brings whatever it cites.
+      'docs/NATIVE-DOCUMENT.md',
+      'docs/SEMANTIC-GRAPH.md',
+      'docs/EVIDENCE.md',
+      'docs/ARCHITECTURE-STATES.md',
     ])
     expect(packageJson.scripts.prepack).toBe('pnpm build')
     expect(
