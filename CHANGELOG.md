@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+- **Docs.** `docs/CONSUMING-YARRAMATE.md` describes the optional workbook cell
+  styles and column widths, which shipped in 1.13.0 without an adopter-facing
+  note in the document adopters actually receive. It also states the hazard
+  that comes with any optional feature: **passing none of the fields produces
+  byte-identical output, and that is exactly what makes the feature's absence
+  undetectable.** If a rename or a bad merge stops the fields reaching the
+  writer, every behavioural assertion stays green while the workbook ships
+  with no roles, because a workbook with no styling is completely valid. The
+  general form reaches past this feature — assert the feature ARRIVED, not
+  only that the result is well-formed, because what degrades gracefully
+  degrades quietly.
+
 ## 1.13.0
 
 **Contains a content-loss fix that was reachable in 1.12.0.** A cell carrying a

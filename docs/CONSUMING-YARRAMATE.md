@@ -484,6 +484,42 @@ Anything the mapping does not recognise is carried verbatim on `07 Other
 Facts` rather than dropped, so a workbook stays lossless across a compiler
 that grows new predicates.
 
+**Marking up the sheets.** `WorkbookSheet` takes optional `headerStyle`,
+`columnStyles` and `columnWidths`. The styles are a closed set of **roles**
+rather than appearances — `header`, `muted`, `emphasis` — so the test for
+admitting a fourth is whether it can be named without reference to how it
+looks. A request for a colour is the one a closed set exists to refuse,
+because that is what turns a style vocabulary into a styling engine.
+
+The use worth having is not decoration. Where a workbook's columns differ in
+what they reach — some binding to the model, some carried alongside it, some
+computed and ignored on the way back — an editor cannot see which is which,
+and finds out only when an import reports that a cell could not be written
+back. A role in the file says it while they are typing.
+
+Formatting is not content in either direction. A styled workbook reads back
+exactly as an unstyled one, and an editor's own formatting is ignored on
+import — and then lost on the next export, because the workbook is
+regenerated from the model. That last part is why producer-applied styling is
+the only kind that survives.
+
+**An optional feature's absence is silent, and that is your test to write.**
+Passing none of these fields produces byte-identical output to a release
+before they existed. That property is what makes the feature safe to adopt,
+and it is exactly what makes its absence undetectable: if a rename, a bad
+merge or a refactor stops the fields reaching the writer, every test that
+asserts on *behaviour* stays green while the workbook ships with no roles at
+all, because a workbook with no styling is completely valid.
+
+The general form, which reaches past this feature to any optional thing you
+take from a library: **assert the feature arrived, not only that the result
+is well-formed.** One positive test at the consumer that fails when the
+feature stops arriving — the styles part is in the bytes, the header is
+present, the width was applied. Behavioural assertions cannot catch an
+absence-shaped regression, because the behaviour is well-defined in both
+cases. This is the same reason a `?? ''` default hides a missing column: what
+degrades gracefully degrades quietly.
+
 **Reading one back.** `yarramate import xlsx <workbook.xlsx> <workspace.yaml>`
 merges an edited workbook into the model. An unedited round trip changes
 nothing, byte for byte.
