@@ -859,6 +859,10 @@ observations:
     result: confirmed
     evidence:
       uri: repo:src/visual-app/kind-icons.ts
+  - subject: select-focus-neighbourhood
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/focus-neighbourhood.ts
   - subject: visual-request-source
     result: confirmed
     evidence:

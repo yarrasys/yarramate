@@ -831,6 +831,11 @@ concepts:
     name: Render ArchiMate kind icons
     description: Draws a 14×14 px single-stroke SVG icon per concept kind in the repository's graph, covering 19 kinds using ArchiMate element glyphs as descriptive notation only, with no trademark or conformance claim. Unknown kinds render nothing. Active only under archimate notation mode; falls back to native rendering when notation is native.
     status: current
+  - id: select-focus-neighbourhood
+    kind: applicationFunction
+    name: Select focus neighbourhood
+    description: Names the subjects a canvas focus narrows to, being the chosen subject and everything one hop from it undirected, or for a relationship its two endpoints. Returns subject ids only and leaves edge selection to the projection it is sent as, so there is one implementation of which edges belong in a slice rather than a second one in the browser. Follows relationships and never references, matching what the connected expansion already does.
+    status: current
   - id: import-command
     kind: applicationService
     name: Import command
@@ -1930,6 +1935,10 @@ relationships:
     kind: assignment
     from: visual-browser
     to: render-archimate-kind-icons
+  - id: visual-browser-selects-focus-neighbourhood
+    kind: assignment
+    from: visual-browser
+    to: select-focus-neighbourhood
   # The data each current service reads or writes. A service's footprint is
   # the consumer-facing claim, distinct from the functions behind it, and it
   # is what the interrogation asks a service in a hop to declare.
