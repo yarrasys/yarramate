@@ -1,6 +1,6 @@
 {
   "name": "yarramate",
-  "version": "1.14.0",
+  "version": "1.14.1",
   "description": "Tool-neutral semantic architecture engine and guided methodology",
   "license": "MIT",
   "repository": {
@@ -29,7 +29,12 @@
     "profiles",
     "skills/yarramate-architecture",
     "docs/CONSUMING-YARRAMATE.md",
-    "docs/MODEL-FLOOR.md"
+    "docs/MODEL-FLOOR.md",
+    "docs/INTERROGATION.md",
+    "docs/NATIVE-DOCUMENT.md",
+    "docs/SEMANTIC-GRAPH.md",
+    "docs/EVIDENCE.md",
+    "docs/ARCHITECTURE-STATES.md"
   ],
   "type": "module",
   "main": "./dist/index.js",

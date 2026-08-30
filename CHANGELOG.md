@@ -1,5 +1,39 @@
 # Changelog
 
+## 1.14.1
+
+`docs/INTERROGATION.md` now ships in the package. It did not, and 1.14.0 said
+it did.
+
+The catalogue-authoring reference is the one document an adopter writing
+questions needs most, and two things landed in it that were written
+specifically to be found: the rule that a condition the engine owns defines
+its own peers (#399, the recorded answer to an adopter's question, put in a
+document rather than only on the issue precisely so the next adopter would not
+re-ask it), and `below-subject-count`'s entry in the condition list (#411).
+Neither reached anyone arriving through npm.
+
+`package.json` `files` carried only `docs/CONSUMING-YARRAMATE.md` and
+`docs/MODEL-FLOOR.md`, the latter added in #393 for exactly this reason. The
+release notes for 1.14.0 claimed both new documents shipped; one did.
+
+Fixing it exposed the general shape, so four more documents ship with it:
+`NATIVE-DOCUMENT.md`, `SEMANTIC-GRAPH.md`, `EVIDENCE.md` and
+`ARCHITECTURE-STATES.md`. `MODEL-FLOOR.md` already cited the first three by
+path, so a reader with the package was following pointers to files they did
+not have. The shipped set is now closed under reference: following a pointer
+from a document you received never leaves the set. A test asserts that, and
+asserts the shipped list matches the tree, because the previous claim lived
+only in a release note.
+
+These four were already normative references rather than new commitments;
+they were simply unreachable.
+
+Docs-only and shipped as a patch on the same reasoning as 1.11.1 and 1.13.1:
+an adopter arrives through npm, so guidance that stays in the repository is
+guidance they do not have.
+
+
 ## 1.14.0
 
 ### The interview performs the order it draws (`core-enrichment` 2.0)
