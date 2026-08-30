@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.15.0
 
 ### An edge across a nesting boundary no longer collapses the canvas
 

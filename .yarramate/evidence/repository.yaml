@@ -1231,6 +1231,10 @@ observations:
     result: confirmed
     evidence:
       uri: repo:src/visual-app/subject-draft-panel.tsx
+  - subject: visual-nesting-span-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/nesting-span.ts
   - subject: visual-subject-filter-source
     result: confirmed
     evidence:

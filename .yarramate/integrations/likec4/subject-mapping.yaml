@@ -2436,3 +2436,78 @@ mappings:
   - native: yaml-emission-realizes-apply
     external: yamlEmissionRealizesApply
     type: relationship
+  - native: catalogue-composition-reads-shipped-catalogue
+    external: catalogueCompositionReadsShippedCatalogue
+    type: relationship
+  - native: catalogue-composition-reads-workspace-catalogue
+    external: catalogueCompositionReadsWorkspaceCatalogue
+    type: relationship
+  - native: cli-provides-import
+    external: cliProvidesImport
+    type: relationship
+  - native: deployment-view-reads-projection-result
+    external: deploymentViewReadsProjectionResult
+    type: relationship
+  - native: design-command-serves-catalogue-composition
+    external: designCommandServesCatalogueComposition
+    type: relationship
+  - native: dynamic-view-reads-projection-result
+    external: dynamicViewReadsProjectionResult
+    type: relationship
+  - native: export-command-serves-workbook-derivation
+    external: exportCommandServesWorkbookDerivation
+    type: relationship
+  - native: graphify-observe-reads-mapping
+    external: graphifyObserveReadsMapping
+    type: relationship
+  - native: graphify-observe-writes-evidence
+    external: graphifyObserveWritesEvidence
+    type: relationship
+  - native: import-command-reads-workbook
+    external: importCommandReadsWorkbook
+    type: relationship
+  - native: import-command-serves-workbook-merge
+    external: importCommandServesWorkbookMerge
+    type: relationship
+  - native: init-command-writes-native-document
+    external: initCommandWritesNativeDocument
+    type: relationship
+  - native: init-command-writes-workspace-manifest
+    external: initCommandWritesWorkspaceManifest
+    type: relationship
+  - native: interrogation-engine-composes-catalogues
+    external: interrogationEngineComposesCatalogues
+    type: relationship
+  - native: reconcile-command-reads-evidence
+    external: reconcileCommandReadsEvidence
+    type: relationship
+  - native: reconcile-command-writes-report
+    external: reconcileCommandWritesReport
+    type: relationship
+  - native: visual-nesting-span-realizes-browser
+    external: visualNestingSpanRealizesBrowser
+    type: relationship
+  - native: visual-nesting-span-source
+    external: visualNestingSpanSource
+    type: concept
+  - native: visual-session-writes-handoff
+    external: visualSessionWritesHandoff
+    type: relationship
+  - native: workbook-derivation-produces-workbook
+    external: workbookDerivationProducesWorkbook
+    type: relationship
+  - native: workbook-derivation-reads-graph
+    external: workbookDerivationReadsGraph
+    type: relationship
+  - native: workbook-engine-derives-workbook
+    external: workbookEngineDerivesWorkbook
+    type: relationship
+  - native: workbook-engine-merges-workbook
+    external: workbookEngineMergesWorkbook
+    type: relationship
+  - native: workbook-merge-produces-operations
+    external: workbookMergeProducesOperations
+    type: relationship
+  - native: workbook-merge-reads-workbook
+    external: workbookMergeReadsWorkbook
+    type: relationship
