@@ -1,5 +1,37 @@
 # Changelog
 
+## Unreleased
+
+### A missing-claim question offers the field it is missing
+
+`design` now prints an `update-concept` skeleton for a `missing-claim` trigger
+on `yarramate/ownership/owner`, `yarramate/concept/description` or
+`yarramate/lifecycle/status` (#430, ADR 0137). Every other predicate prints
+nothing, exactly as before.
+
+Filed by an adopter who **declined to use `missing-claim` because of this**.
+Their answer-shape mapping covered five conditions and this was the sixth, so a
+question using it rendered as prose, and their pack asserts no card degrades to
+prose. They left ownership unelicited rather than ship one card that behaved
+differently. The shipped catalogue had the same gap from the inside: four of
+its questions use `missing-claim` and none printed a skeleton.
+
+`missing-claim` matches a **raw predicate**, and a predicate is not an
+authoring gesture: an attestation predicate is written by adding an
+attestation, a reference predicate by adding a reference, and a profile may
+mint predicates the engine has never heard of. So it cannot map in general.
+Three predicates name a concept field that `update-concept` writes directly,
+which makes them unambiguous, and those three are every `missing-claim` the
+shipped catalogue uses. A test keeps the mapping level with the catalogue.
+
+`docs/INTERROGATION.md` now states this where a catalogue author meets it,
+including that **the engine takes no position on which predicates a host should
+render as editable** — the trigger carries the predicate and the host decides.
+That was the adopter's own hesitation about asking for a `set-field` answer
+shape, and it was right; ADR 0110 excluded a normalized remedy vocabulary for
+the same reason.
+
+
 ## 1.14.1
 
 `docs/INTERROGATION.md` now ships in the package. It did not, and 1.14.0 said
