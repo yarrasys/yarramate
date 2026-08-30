@@ -2,6 +2,40 @@
 
 ## Unreleased
 
+### A vocabulary is closed by its scheme, not its count
+
+`no-linkage-exists`, the workspace-scope negative of `exists-linkage`: it fires
+while NO concept anywhere satisfies the linkage (#436, ADR 0138). Additive, and
+the interrogation semantics version does not move.
+
+An adopter measured `below-subject-count` on a live engagement within days of
+it shipping and found the count fails in **both** directions. Two throwaway
+values close a vocabulary question dishonestly, because a count cannot tell a
+surveyed estate of two from one plus a throwaway. And a truthful single-value
+estate can **never** close it, because "one is the whole scheme" was not
+recordable, so a correct model carried a permanently open question that only a
+human could clear: 2 of that engagement's 19 open questions.
+
+No value of `atLeast` fixes both, because the count is a proxy for the thing
+the question means. The rule it breaks is `MODEL-FLOOR.md`'s own: whatever the
+interrogation asks about must be recordable as an answer.
+
+The floor also names the answer's home, so this needed no new vocabulary. A
+classification axis is a `grouping` that aggregates its members, so a **scheme**
+aggregating its classes is the statement that these are the classes. Asking for
+that needed only the negative twin of `exists-linkage`, which was the one gap
+in workspace-scope linkage — the same shape `has-subject-of-kind` filled for
+`no-subject-of-kind` in #398.
+
+**`below-subject-count` is not deprecated.** "The model holds fewer than N of
+this kind" is still a legitimate ask, and the adopter's balance stands: two is
+the smallest number that cannot be reached by accident, and it caught real
+incidental vocabulary within days. What changed is which question it is the
+right tool for, and `docs/INTERROGATION.md` now says so beside it.
+
+The shipped catalogue is unaffected: it uses `below-subject-count` zero times,
+and its thirteen workspace `no-subject-of-kind` questions are layer-presence
+questions (#272), not vocabularies.
 ### Adopting a condition has a consumer-side half
 
 Two sections in `docs/INTERROGATION.md`, both earned by an adopter adopting

@@ -498,6 +498,51 @@
           "additionalProperties": false,
           "required": [
             "condition",
+            "kinds",
+            "direction",
+            "counterpartKinds"
+          ],
+          "properties": {
+            "condition": {
+              "const": "no-linkage-exists"
+            },
+            "kinds": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/qualifiedKind"
+              }
+            },
+            "direction": {
+              "enum": [
+                "outgoing",
+                "incoming",
+                "either"
+              ]
+            },
+            "counterpartKinds": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/qualifiedKind"
+              }
+            },
+            "kindMatching": {
+              "enum": [
+                "exact",
+                "descendants"
+              ],
+              "default": "descendants"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "condition",
             "kinds"
           ],
           "properties": {

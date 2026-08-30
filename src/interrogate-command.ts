@@ -153,6 +153,36 @@ export type CatalogueCondition =
       readonly kindMatching?: 'exact' | 'descendants'
     }
   | {
+      /**
+       * The negative twin of `exists-linkage`, workspace-scope like it
+       * (#436, ADR 0138). Fires while NO concept in the workspace satisfies
+       * the linkage, so a question can ask "nothing anywhere links this way".
+       *
+       * It exists because a **vocabulary question** was asking the wrong
+       * thing. `below-subject-count` measures a population, and a vocabulary
+       * question means "did anyone survey this" — a proxy that fails in both
+       * directions, measured on a live engagement: two throwaway values close
+       * it dishonestly, while a truthful single-value estate can never close
+       * it at all.
+       *
+       * `MODEL-FLOOR.md` prescribes the answer's home: a classification axis
+       * is a `grouping` that aggregates its members, so a scheme aggregating
+       * its classes IS the statement that these are the classes. Asking "no
+       * scheme aggregates any class" needs this condition; asking how many
+       * classes exist does not reach it.
+       *
+       * Deliberately NOT `!exists-linkage` in the evaluator, for the reason
+       * `has-subject-of-kind` is not `!no-subject-of-kind`: written as its own
+       * check, an empty workspace falls out right rather than by double
+       * negative.
+       */
+      readonly condition: 'no-linkage-exists'
+      readonly kinds: readonly string[]
+      readonly direction: 'incoming' | 'outgoing' | 'either'
+      readonly counterpartKinds: readonly string[]
+      readonly kindMatching?: 'exact' | 'descendants'
+    }
+  | {
       readonly condition: 'missing-constraint'
       readonly kinds: readonly string[]
       readonly kindMatching?: 'exact' | 'descendants'
@@ -548,6 +578,7 @@ const namedKinds = (question: CatalogueQuestion): readonly string[] => {
       case 'missing-linkage':
       case 'has-linkage':
       case 'exists-linkage':
+      case 'no-linkage-exists':
         kinds.push(...condition.kinds, ...condition.counterpartKinds)
         break
       default:
@@ -648,6 +679,7 @@ const CONDITION_SCOPE: Record<
   'below-subject-count': 'workspace',
   'no-state-defined': 'workspace',
   'exists-linkage': 'workspace',
+  'no-linkage-exists': 'workspace',
   'missing-claim': 'subject',
   'missing-relationship': 'subject',
   isolated: 'subject',
@@ -858,6 +890,13 @@ const conditionHolds = (
       )
     case 'exists-linkage':
       return [...index.concepts].some((id) =>
+        linkageHits(index, condition, id, profileContext),
+      )
+    case 'no-linkage-exists':
+      // Its own check rather than `!exists-linkage`, so an empty workspace
+      // falls out right: no concepts means no linkage, which is exactly the
+      // model a vocabulary question is loudest about.
+      return ![...index.concepts].some((id) =>
         linkageHits(index, condition, id, profileContext),
       )
     case 'missing-constraint': {
