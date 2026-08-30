@@ -77,10 +77,26 @@ nothing about a claim nobody made. Each of these three gates reads a different
 absence — an artifact no observation claims, a subject no relationship reaches,
 a concept no mapping projects — and none of them is a test.
 
-The same week produced the mirror of this from the other side: a workbook
-reader mishandled a cell shape the repository's own writer never emitted, so
-no test could have produced it, and it took an adopter's file to surface it.
-Absence is the thing suites are worst at.
+The same week produced the remedy, from the other side. A workbook reader
+mishandled a cell shape this repository's own writer had never emitted — a
+cell carrying a reference and no value, which Excel writes for a formatted
+empty cell. No test could have produced it, because nothing here produced it.
+
+What surfaced it was building a feature that emitted the shape for the first
+time: styling a column means styling its empty cells, so the new writer wrote
+one, and the round-trip test failed on the cell beside it. The defect was
+years-old and reachable from any workbook a person had opened and saved.
+
+So the remedy to "a suite cannot see what nothing produces" is not to wait for
+a consumer to trip over it. It is to **build the shape you have never
+emitted.** A reader that only ever meets what its own writer produces is
+tested against half its input, and the missing half is whatever the outside
+world writes.
+
+An adopter then proved the defect live in the published release and reachable
+through a real import path, which is what turned it from a bug found in
+passing into the reason to cut a release. Producing the shape is what finds
+it; a consumer is what tells you it mattered.
 
 ## Observed and resolved semantic friction
 
