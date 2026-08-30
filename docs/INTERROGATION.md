@@ -413,6 +413,62 @@ every kind it matches.
 relationship, so there is no table to consult, and inventing one for them
 would be the second encoding this refusal refuses.
 
+## A condition the engine owns defines its own peers
+
+Comparing a subject against its peers is not new here. `near-duplicate` fires
+when a subject resembles another closely enough to be the same thing under two
+names, so **"what has been said twice" is already a question the vocabulary
+can ask.** A proposal to detect peers that have said something twice
+*differently* (#399) therefore looks like one step from a condition that
+ships, and the step is the whole distance.
+
+Look at what `near-duplicate` takes:
+
+```ts
+{ condition: 'near-duplicate' }
+```
+
+**No parameters.** Its peer relation is universal, any other subject of the
+same kind; its algorithm and thresholds are pinned in ADR 0077; and a
+`yarramate/identity/distinct-from` claim removes a dismissed pair upstream in
+the index, so the condition itself reads as a plain existence check like every
+other. Nothing about it is a catalogue's choice.
+
+A divergence condition as proposed carries a peer selector and a fact
+selector:
+
+```yaml
+- condition: divergent-binding
+  peerVia: ["yarramate/core@0.1#aggregation"]
+  kinds: ["yarramate/policy@0.1#authentication-constraint"]
+```
+
+Those parameters exist because the peer relation is **not** universal.
+Members of one grouping, endpoints of one flow, and subjects of one kind in
+one document are all defensible readings, and which one matters is a property
+of a particular catalogue's modelling style rather than of the graph. A
+condition that has to be told what a peer is is a catalogue's query, and a
+vocabulary of parameterized queries is the query language this design has
+declined every time it has been asked for.
+
+**So the rule: a cross-peer condition belongs in the engine when its peer
+relation holds for every model, and belongs to the host when a catalogue has
+to name it.**
+
+That is a measurement path rather than a refusal. A peer relation is
+discoverable, and the way to discover it is to build the detector host-side
+across more than one catalogue and see what the definition converges to. Two
+independent catalogues that turn out to need the same peer relation have found
+a universal one, which is what `near-duplicate` had before it shipped.
+
+The dismissal half inherits the same test, and it is the half that matters
+more, because a divergence detector with no way to accept a divergence is an
+unclosable question wearing a new hat. `distinct-from` works engine-side
+because distinctness is a judgment about identity, and every model has
+identity. A claim meaning "this divergence is deliberate" would have to name
+the peer relation and the fact it covers, so it cannot be specified before the
+peer relation is.
+
 ## Evaluation model
 
 A question is **open** iff its trigger matches, and **closed** the moment it
