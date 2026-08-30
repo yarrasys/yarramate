@@ -272,16 +272,49 @@ exact-match producer tuple, and `name`, `description` and `aka` are prose Core
 never queries. The opaque locator is real and it is the one on the
 observation.
 
-## Deliberately open
+## Examined and declined
 
-Two of the refusals above are recorded limits rather than settled doctrine,
-and are under discussion:
+The refusals above are recorded limits. Three of them were open questions,
+and all three closed the same way: measured against a real model rather than
+argued, costed, and found to serve too little to be worth what they cost.
 
-- declared reference slots, so that what a citation is *for* can be checked
-  and asked about (#388);
-- whether an attestation should be able to confirm a declared value rather
-  than only a topic (#397). One of its shapes is #388's slot in another
-  position, so the two are being decided together.
+**Declared reference slots (#388), so that what a citation is *for* could be
+checked and asked about. Not built.** A reference's authored id is still
+semantically discarded: `references: [{id: source-of-truth, ref: x}]` and
+`{id: schema-ref, ref: x}` compile to the same predicate and object, so a
+catalogue can ask "this subject has no references" and never "this mapping
+names no source of truth". That cost is real and it stands.
+
+What it would have cost more. A declared slot has to reach the graph one of
+two ways, and neither is free. Emitting **only** the profile predicate keeps
+one fact in one place and breaks every reader of
+`yarramate/reference/refers-to` for models that opt in — four reader sites
+across three modules here, plus any graph v2 consumer, and that contract is
+published in `docs/NATIVE-DOCUMENT.md` and `docs/SEMANTIC-GRAPH.md`, which
+ship in the package. Emitting **both** keeps every reader whole and gives one
+authored fact two addressable claim ids; evidence targets claims by id, so an
+observation can attach to the one nothing reads, validate cleanly, and mean
+nothing. That is a silent wrong answer, which is the shape this design refuses
+wherever it finds it.
+
+**Whether an attestation can confirm a declared value rather than only a topic
+(#397). Not built**, and the catalogue-author's remedy is the one this
+document already gives: ask value questions with a condition that closes on
+the value's home — `missing-constraint`, `missing-relationship`,
+`missing-linkage`, `no-subject-of-kind` — and reserve `missing-attestation`
+for who-and-when questions, where `by` and `on` are the whole answer. Its one
+shape that needed no new value types was #388's slot in another position, so
+it closed with it.
+
+The measurement is the reason, not the argument. Two of the shipped
+catalogue's 75 conditions are `missing-attestation`, and both ask whether an
+accountable reviewer accepted something, where who-and-when *is* the answer.
+An adopter whose own catalogue was 14 of 25 re-authored on this document's
+basis and found **one genuinely homeless card in 348**.
+
+Reopen either with an adopter measuring a materially larger residue against
+this document. That is the specific evidence that would change the answer, and
+it is the same test that closed #386.
 
 **A general typed-attribute mechanism was examined and declined (#386).** It
 would have given the second classification axis and the per-instance value a
