@@ -23,6 +23,28 @@
 /** How a sheet appears in Excel's tab strip. */
 export type SheetState = 'visible' | 'hidden' | 'veryHidden'
 
+/**
+ * A cell's ROLE, not its appearance (#416).
+ *
+ * The set is closed on purpose, and named for roles so that it stays closed:
+ * a caller asking for a fourth should be asking for a fourth ROLE — "this
+ * cell is stale", "this cell is derived" — and the test for admitting one is
+ * whether it can be named without reference to how it looks. A request for
+ * `blue`, or for a shade matching a client's deck, is the request that turns
+ * a style vocabulary into a styling engine, and refusing it is the closed
+ * set doing its job.
+ *
+ * Three will be wrong eventually. It should be wrong LOUDLY, by someone
+ * filing for a role, rather than quietly by callers approximating a missing
+ * role with the nearest available one — which is how `muted` would come to
+ * mean two things.
+ *
+ * Named rather than given as colours for a second reason: the styles part is
+ * then a CONSTANT, so "identical inputs produce identical bytes" stays
+ * trivially true instead of becoming something a reviewer has to re-derive.
+ */
+export type CellStyle = 'header' | 'muted' | 'emphasis'
+
 export interface WorkbookSheet {
   readonly name: string
   /** Defaults to visible. `veryHidden` cannot be unhidden from Excel's UI. */
@@ -31,7 +53,66 @@ export interface WorkbookSheet {
   readonly rows: readonly (readonly string[])[]
   /** Rows to keep on screen when scrolling, usually 1 for a header. */
   readonly frozenRows?: number
+  /**
+   * Applied to every row BELOW the first, by column index. Row 1 takes
+   * `headerStyle` instead, so a header band is not overwritten by the column
+   * role beneath it.
+   */
+  readonly columnStyles?: readonly (CellStyle | undefined)[]
+  /** Applied to row 1 only. */
+  readonly headerStyle?: CellStyle
+  /** Column widths in characters, by column index. */
+  readonly columnWidths?: readonly number[]
 }
+
+/**
+ * Index into `cellXfs` below. `0` is the default format, which is why an
+ * unstyled workbook needs no `s` attribute and no styles part at all.
+ */
+const STYLE_INDEX: Record<CellStyle, number> = {
+  header: 1,
+  emphasis: 2,
+  muted: 3,
+}
+
+/**
+ * The whole styles part, as a constant.
+ *
+ * Excel is particular about the first two fills: index 0 must be `none` and
+ * index 1 `gray125`, whether or not either is used. `cellStyleXfs` likewise
+ * has to exist before `cellXfs` can reference it.
+ */
+const STYLES_XML =
+  '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+  '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+  '<fonts count="3">' +
+  '<font><sz val="11"/><name val="Calibri"/></font>' +
+  '<font><b/><sz val="11"/><name val="Calibri"/></font>' +
+  '<font><color rgb="FF6B7280"/><sz val="11"/><name val="Calibri"/></font>' +
+  '</fonts>' +
+  '<fills count="3">' +
+  '<fill><patternFill patternType="none"/></fill>' +
+  '<fill><patternFill patternType="gray125"/></fill>' +
+  '<fill><patternFill patternType="solid"><fgColor rgb="FFEFF1F3"/>' +
+  '<bgColor indexed="64"/></patternFill></fill>' +
+  '</fills>' +
+  '<borders count="1"><border/></borders>' +
+  '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+  '<cellXfs count="4">' +
+  '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
+  '<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/>' +
+  '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>' +
+  '<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>' +
+  '</cellXfs>' +
+  '</styleSheet>'
+
+/** Whether any sheet asked for anything the styles part exists to serve. */
+const usesStyles = (sheets: readonly WorkbookSheet[]): boolean =>
+  sheets.some(
+    (sheet) =>
+      sheet.headerStyle !== undefined ||
+      (sheet.columnStyles ?? []).some((style) => style !== undefined),
+  )
 
 const FIXED_DOS_TIME = 0
 /** 1980-01-01, the zero of DOS date encoding. */
@@ -95,20 +176,55 @@ export const sheetNameIsLegal = (name: string): boolean =>
   name.length > 0 && name.length <= 31 && !/[\\/?*[\]:]/.test(name)
 
 const sheetXml = (sheet: WorkbookSheet): string => {
+  // Row 1 takes the header role and everything below takes its column's, so a
+  // header band is not overwritten by the column role sitting under it.
+  const styleOf = (rowIndex: number, columnIndex: number): number | undefined => {
+    const style =
+      rowIndex === 0
+        ? sheet.headerStyle
+        : (sheet.columnStyles ?? [])[columnIndex]
+    return style === undefined ? undefined : STYLE_INDEX[style]
+  }
   const rows = sheet.rows
     .map((cells, rowIndex) => {
       const row = rowIndex + 1
       const written = cells
-        .map((value, columnIndex) =>
-          value === ''
-            ? ''
-            : `<c r="${columnName(columnIndex)}${row}" t="inlineStr">` +
-              `<is><t xml:space="preserve">${escapeXml(value)}</t></is></c>`,
-        )
+        .map((value, columnIndex) => {
+          const style = styleOf(rowIndex, columnIndex)
+          const attribute = style === undefined ? '' : ` s="${style}"`
+          // An empty cell in a styled column still carries the style, or the
+          // column reads as striped wherever a value happens to be missing.
+          // A value-less `<c>` reads back as an empty string, which is what
+          // an omitted cell reads back as, so the round trip is unmoved.
+          if (value === '') {
+            return style === undefined
+              ? ''
+              : `<c r="${columnName(columnIndex)}${row}"${attribute}/>`
+          }
+          return (
+            `<c r="${columnName(columnIndex)}${row}"${attribute} t="inlineStr">` +
+            `<is><t xml:space="preserve">${escapeXml(value)}</t></is></c>`
+          )
+        })
         .join('')
       return `<row r="${row}">${written}</row>`
     })
     .join('')
+  // Widths are per column and independent of the styles part, so a caller may
+  // ask for them without asking for roles.
+  const cols =
+    sheet.columnWidths === undefined || sheet.columnWidths.length === 0
+      ? ''
+      : '<cols>' +
+        sheet.columnWidths
+          .map((width, index) =>
+            width <= 0
+              ? ''
+              : `<col min="${index + 1}" max="${index + 1}" ` +
+                `width="${width}" customWidth="1"/>`,
+          )
+          .join('') +
+        '</cols>' 
   const pane =
     sheet.frozenRows === undefined || sheet.frozenRows <= 0
       ? '<sheetView workbookViewId="0"/>'
@@ -118,6 +234,7 @@ const sheetXml = (sheet: WorkbookSheet): string => {
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
     '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
     `<sheetViews>${pane}</sheetViews>` +
+    cols +
     `<sheetData>${rows}</sheetData>` +
     '</worksheet>'
   )
@@ -239,6 +356,11 @@ export const writeXlsx = (sheets: readonly WorkbookSheet[]): Uint8Array => {
     throw new Error('Sheet names must be distinct, case-insensitively')
   }
 
+  // The whole additive claim rests on this: a caller that asks for no roles
+  // gets exactly the parts, attributes and bytes it got before styling
+  // existed. The styles part is emitted only when something references it.
+  const styled = usesStyles(sheets)
+
   const contentTypes =
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
     '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
@@ -252,6 +374,10 @@ export const writeXlsx = (sheets: readonly WorkbookSheet[]): Uint8Array => {
           'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>',
       )
       .join('') +
+    (styled
+      ? '<Override PartName="/xl/styles.xml" ' +
+        'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
+      : '') +
     '</Types>'
 
   const rootRels =
@@ -271,6 +397,11 @@ export const writeXlsx = (sheets: readonly WorkbookSheet[]): Uint8Array => {
           `Target="worksheets/sheet${index + 1}.xml"/>`,
       )
       .join('') +
+    (styled
+      ? `<Relationship Id="rId${sheets.length + 1}" ` +
+        'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" ' +
+        'Target="styles.xml"/>'
+      : '') +
     '</Relationships>'
 
   return zip([
@@ -282,5 +413,8 @@ export const writeXlsx = (sheets: readonly WorkbookSheet[]): Uint8Array => {
       path: `xl/worksheets/sheet${index + 1}.xml`,
       bytes: encoder.encode(sheetXml(sheet)),
     })),
+    ...(styled
+      ? [{ path: 'xl/styles.xml', bytes: encoder.encode(STYLES_XML) }]
+      : []),
   ])
 }

@@ -273,3 +273,42 @@ describe('reader primitives', () => {
     expect(decodeXmlText('&nosuch;')).toBe('&nosuch;')
   })
 })
+
+/**
+ * A self-closing cell (#416). Excel writes `<c r="B2" s="1"/>` for a cell that
+ * carries formatting and no value, so this arrives from real workbooks and not
+ * only from what this repository writes.
+ *
+ * It was read against the PREVIOUS cell's column, because the closing branch
+ * ran before the reference was taken from `r`. The value written was empty,
+ * and empty is a CLEARED value rather than an absent one, so the effect was to
+ * silently blank a neighbouring cell that had content.
+ */
+describe('a cell with a reference and no value claims its own column', () => {
+  it('leaves the cell before it alone', async () => {
+    const bytes = await excelShapedWorkbook('01 Concepts', [
+      ['Id', 'Name', 'Note'],
+    ])
+    // Rebuilt by hand: the shaped-workbook helper writes values, and the
+    // shape under test is a cell that has none.
+    const read = await readWorkbook(
+      writeXlsx([
+        {
+          name: '01 Concepts',
+          rows: [
+            ['Id', 'Name', 'Note'],
+            ['', 'Payments API', ''],
+          ],
+          columnStyles: ['emphasis', undefined, 'muted'],
+        },
+      ]),
+    )
+    expect(bytes.length).toBeGreaterThan(0)
+    if (!read.ok) throw new Error(read.reason)
+    expect(read.sheets.get('01 Concepts')?.[1]).toEqual([
+      '',
+      'Payments API',
+      '',
+    ])
+  })
+})

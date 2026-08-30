@@ -262,7 +262,7 @@ const rowsOf = (xml: string, shared: readonly string[]): readonly (readonly stri
         return
       }
       if (name === 'c') {
-        if (tag.closing || tag.selfClosing) {
+        if (tag.closing) {
           if (row !== undefined) {
             const resolved =
               type === 's' ? (shared[Number.parseInt(cell, 10)] ?? '') : cell
@@ -278,6 +278,19 @@ const rowsOf = (xml: string, shared: readonly string[]): readonly (readonly stri
         column = tag.attributes.r === undefined ? row?.length ?? 0 : columnIndexOf(tag.attributes.r)
         type = tag.attributes.t ?? ''
         cell = ''
+        // A SELF-CLOSING cell carries a reference and no value, which is what
+        // Excel writes for a cell that has formatting and nothing in it. It
+        // has to claim its own column here: handling it with the closing
+        // branch above would write an empty value against whatever column the
+        // PREVIOUS cell set, clearing a neighbour rather than itself. Empty is
+        // a CLEARED value, so that was a silent overwrite of real content.
+        if (tag.selfClosing) {
+          if (row !== undefined) {
+            while (row.length < column) row.push('')
+            row[column] = ''
+          }
+          type = ''
+        }
         return
       }
       if (name === 'v') inValue = !tag.closing && !tag.selfClosing
