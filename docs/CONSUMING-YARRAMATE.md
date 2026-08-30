@@ -514,10 +514,11 @@ worth testing rather than taking.
 
 **An optional feature's absence is silent, and that is your test to write.**
 Passing none of these fields produces byte-identical output to a release
-before they existed — asserted here by a test that writes the same sheet with
-and without the fields, and measured independently at a consumer boundary by
-hashing two real workbooks exported under 1.12.0 and 1.13.0, same SHA-256 and
-same length on both. That property is what makes the feature safe to adopt,
+before they existed. That is asserted here by a test that writes the same
+sheet with and without the fields, and it has been checked the way you can
+check it yourself: call `writeXlsx` with the same plain sheets under the
+published 1.12.0 and 1.13.0 packages and hash the results. They are identical,
+byte for byte, and two people have run it with different fixtures. That property is what makes the feature safe to adopt,
 and it is exactly what makes its absence undetectable: if a rename, a bad
 merge or a refactor stops the fields reaching the writer, every test that
 asserts on *behaviour* stays green while the workbook ships with no roles at
