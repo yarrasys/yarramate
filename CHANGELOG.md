@@ -2,6 +2,36 @@
 
 ## Unreleased
 
+### The reference-slot question is settled, and the floor says so
+
+`docs/MODEL-FLOOR.md` closed two open questions rather than continuing to list
+them as under discussion (#388, #397). The section they lived in was called
+*Deliberately open* and is now *Examined and declined*, because nothing in it
+is open: all three questions it holds were measured against a real model
+rather than argued, and all three went the same way.
+
+**Declared reference slots are not built (#388).** A reference's authored id
+stays semantically discarded, so a catalogue can ask "this subject has no
+references" and never "this mapping names no source of truth". That cost is
+real and is recorded. What it would have cost more: emitting only the profile
+predicate breaks every reader of `yarramate/reference/refers-to` for models
+that opt in, and that contract now ships in `NATIVE-DOCUMENT.md` and
+`SEMANTIC-GRAPH.md`; emitting both gives one authored fact two addressable
+claim ids, and evidence targets claims by id, so an observation could attach
+to the one nothing reads and mean nothing.
+
+**An attestation still confirms a topic, not a value (#397).** The remedy is
+the one the document already gives: ask value questions with a condition that
+closes on the value's home, and reserve `missing-attestation` for who-and-when
+questions. Two of the shipped catalogue's 75 conditions are
+`missing-attestation` and both are exactly that. An adopter whose own
+catalogue was 14 of 25 re-authored on this basis and found one genuinely
+homeless card in 348.
+
+Reopen either with an adopter measuring a materially larger residue against
+the floor — the same test that closed #386.
+
+
 ### A missing-claim question offers the field it is missing
 
 `design` now prints an `update-concept` skeleton for a `missing-claim` trigger
