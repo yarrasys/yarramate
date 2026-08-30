@@ -10,8 +10,13 @@ the shipped interview enforces the phase order its own descriptions state
 
 | Wave | Was | Now |
 |---|---|---|
-| `application` | `has-any-subject` | `has-subject-of-kind: applicationService` |
+| `application` | `has-any-subject` | `has-subject-of-kind`, the three service kinds |
 | `technology` | `has-any-subject` | `has-subject-of-kind: applicationComponent` |
+
+**One question is added**, `no-component-declared` in the ungated `business`
+wave: *"What software actually implements these services?"*. It exists to keep
+the technology conversation reachable, and it is the second half of the
+invariant below.
 
 **Migration.** Waves that opened at the first concept now stay shut longer, and
 `summary.questions` counts opened waves only, so **reported denominators change
@@ -22,10 +27,15 @@ a minor one. `docs/INTERROGATION.md` gives the rule: minor is additive and
 loosening only; major is for the change class that can silently alter what
 "complete" means.
 
-Both gates are satisfiable from an earlier ungated wave, so no wave goes silent
-for the model that needed it. `no-service-declared` opens `application` from
-`business`; `applicationComponent` is elicited in `interaction`, `business` and
-`application`.
+**The invariant that makes this a sequence and not a silence:** the kinds a
+gate names are exactly the kinds an ungated workspace-scope question asks for,
+so each gate opens precisely when its question closes and the interview cannot
+reach zero open while a wave is shut. `no-service-declared` forces
+`application`; `no-component-declared` forces `technology`. A test asserts the
+set equality for every gated wave rather than leaving it to review, because
+review missed it twice: `application` was first gated on `applicationService`
+alone while its question fires only when all three service kinds are absent,
+and `technology` was gated with nothing asking for a component at all.
 
 **Two workspace-anchored layer-presence questions are now deferred rather than
 immediate**: `no-event-declared` and `no-artifact-declared`. #272's guarantee

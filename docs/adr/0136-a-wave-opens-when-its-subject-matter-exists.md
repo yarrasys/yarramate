@@ -15,10 +15,40 @@ description and enforced none of it.
 
 Two waves are re-gated. `has-subject-of-kind` (#398, 1.12.0) expresses both.
 
-| Wave | Gate | Why it is safe |
+| Wave | Gate | Forced open by |
 |---|---|---|
-| `application` | `applicationService` | elicited by `no-service-declared` in the ungated `business` wave |
-| `technology` | `applicationComponent` | elicited in `interaction`, `business` and `application`, all earlier |
+| `application` | the three service kinds | `no-service-declared` (`business`, ungated) |
+| `technology` | `applicationComponent` | `no-component-declared` (`business`, ungated, new at 2.0) |
+
+## The invariant, and the review that nearly missed it
+
+A gated wave hides its own layer-presence questions while it is shut. So
+something in an **ungated** wave must force each gate open, or the interview
+can reach zero open questions with a whole layer never asked about, which is
+exactly the #272 defect described below.
+
+The property is **set equality**: the kinds a gate names must be exactly the
+kinds some ungated workspace-scope `no-subject-of-kind` question asks for.
+Then the gate opens precisely when that question closes.
+
+Neither gate had it when this change was first written, and reviewing by
+reading did not find that.
+
+- `application` was gated on `applicationService` alone, while
+  `no-service-declared` fires on `[businessService, applicationService,
+  technologyService]` and therefore closes as soon as **any** of the three
+  exists. A model with one `businessService` closed the question and left the
+  gate shut. The gate now names the same three kinds.
+- `technology` was gated on `applicationComponent` with **nothing** asking for
+  one. A model realizing its services with `applicationFunction` only would
+  never declare a component, so the wave never opened and
+  `no-artifact-declared` never fired. `no-component-declared` is added to the
+  ungated `business` wave to close it.
+
+The first reading of this checked that the gate's kind *appeared in* a forcing
+question's kind list and called it safe. Membership is not equality, and only
+one of the two is checkable by eye. `test/wave-gating.test.ts` now asserts the
+set equality for every gated wave, so the next gate has to satisfy it or fail.
 
 The two remaining waves named in #405 do **not** change, and both reasons were
 found by measurement rather than argument.

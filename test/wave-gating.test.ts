@@ -96,6 +96,73 @@ describe('the shipped interview performs the order it draws', () => {
   })
 })
 
+// The invariant that makes a gate a SEQUENCE rather than a SILENCE (#272,
+// ADR 0136). A gated wave hides its layer-presence questions while it is
+// shut, so something in an ungated wave must force it open, or the interview
+// can reach zero open questions with a whole layer never asked about, which
+// is the exact defect #272 was filed for.
+//
+// Written as a test because prose failed at it. Reviewing this change by
+// reading, I checked only that the gate's kind APPEARED in a forcing
+// question's kind list and called it safe. It was not: `no-service-declared`
+// fires on `[businessService, applicationService, technologyService]`, so it
+// closes as soon as ANY of the three exists, while a gate naming only
+// `applicationService` stays shut. Set equality is the property; membership
+// is not, and only one of them is checkable by eye.
+describe('a gated wave cannot hide a layer nobody is asked about', () => {
+  const gatedWaves = catalogue.waves.filter((wave) =>
+    (wave.opensWhen ?? []).some(
+      (condition) => condition.condition === 'has-subject-of-kind',
+    ),
+  )
+
+  const ungatedWaveIds = new Set(
+    catalogue.waves
+      .filter(
+        (wave) =>
+          !(wave.opensWhen ?? []).some(
+            (condition) => condition.condition === 'has-subject-of-kind',
+          ),
+      )
+      .map(({ id }) => id),
+  )
+
+  it('gates the waves this change set out to gate', () => {
+    expect(gatedWaves.map(({ id }) => id).sort()).toEqual([
+      'application',
+      'technology',
+    ])
+  })
+
+  it.each(gatedWaves.map((wave) => wave.id))(
+    'has an ungated question whose kinds exactly match the %s gate',
+    (waveId) => {
+      const wave = catalogue.waves.find(({ id }) => id === waveId)!
+      const gateKinds = (wave.opensWhen ?? []).flatMap((condition) =>
+        condition.condition === 'has-subject-of-kind' ? condition.kinds : [],
+      )
+      const forcing = catalogue.questions.filter(
+        (question) =>
+          ungatedWaveIds.has(question.wave) &&
+          question.scope === 'workspace' &&
+          question.trigger.some(
+            (condition) =>
+              condition.condition === 'no-subject-of-kind' &&
+              condition.kinds.length === gateKinds.length &&
+              condition.kinds.every((kind) => gateKinds.includes(kind)),
+          ),
+      )
+      expect(
+        forcing.map(({ id }) => id),
+        `No ungated workspace question asks for exactly [${gateKinds.join(', ')}]. ` +
+          'Without one, a model can reach zero open questions while this ' +
+          "wave never opens, and the layer-presence questions inside it are " +
+          'never asked (#272).',
+      ).not.toHaveLength(0)
+    },
+  )
+})
+
 describe('every gate is satisfiable from an earlier wave', () => {
   // The rule a gate must pass: it must never name a subject its own wave
   // exists to elicit, or the wave goes silent for exactly the model that

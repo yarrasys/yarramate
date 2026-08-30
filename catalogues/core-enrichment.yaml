@@ -37,11 +37,15 @@ waves:
     description: >-
       How declared services are realized, performed, and fed with
       information. Waits for a declared service, because that is what this
-      wave asks about the realization of.
+      wave asks about the realization of. The kinds here are exactly the ones
+      `no-service-declared` asks for, so this wave opens precisely when that
+      question closes.
     opensWhen:
       - condition: has-subject-of-kind
         kinds:
+          - yarramate/core@0.1#businessService
           - yarramate/core@0.1#applicationService
+          - yarramate/core@0.1#technologyService
   - id: technology
     name: Technology
     description: >-
@@ -928,6 +932,26 @@ questions:
       seven usually carries the whole conversation — and relate each to
       the services or components that realize it with realization.
 
+  - id: no-component-declared
+    wave: business
+    since: "2.0"
+    scope: workspace
+    trigger:
+      - condition: no-subject-of-kind
+        kinds:
+          - yarramate/core@0.1#applicationComponent
+    question: >-
+      What software actually implements these services?
+    askPlain: >-
+      In plain terms: which applications or systems does this run on?
+    materiality: >-
+      A model with services and nothing implementing them cannot say where
+      anything runs, so the whole technology conversation has no subject.
+      This question exists to keep that conversation reachable: the
+      technology wave opens exactly when this question closes (ADR 0136).
+    authority: human
+    resolution: >-
+      Add the application components that implement the declared services.
   - id: no-contract-declared
     wave: business
     since: "1.2"
