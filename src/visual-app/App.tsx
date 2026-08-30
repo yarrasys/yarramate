@@ -1344,6 +1344,12 @@ export const App = ({
   // The menu is rebuilt from the live model on every render rather than
   // captured when it opened, so a commit landing underneath it cannot leave
   // items pointing at a subject that has gone.
+  // Named for the reopen strip, so a put-away rail still says what the canvas
+  // is showing rather than being an anonymous edge.
+  const activeViewTitle = state.views.find(
+    ({ id }) => id === state.activeView,
+  )?.title;
+
   const menuGroups =
     workspace.contextMenu === null
       ? []
@@ -1565,7 +1571,28 @@ export const App = ({
   return (
     <main className="visual-shell" style={shellStyle}>
       <CommandStrip state={state} connection={connectionOf(state, connected)} />
-      <div className="workspace">
+      <div
+        className="workspace"
+        data-rail={workspace.railHidden ? "hidden" : undefined}
+      >
+        {workspace.railHidden ? (
+          // The rail's own way back, in its place, mirroring the session
+          // panel's strip. It names the view still on the canvas, so putting
+          // the tree away never costs the reviewer their place.
+          <button
+            type="button"
+            className="rail-reopen"
+            title="Show the view tree"
+            aria-label={
+              activeViewTitle === undefined
+                ? "Show the view tree"
+                : `Show the view tree, showing ${activeViewTitle}`
+            }
+            onClick={() => dispatchWorkspace({ type: "rail.toggled" })}
+          >
+            <span aria-hidden="true">»</span>
+          </button>
+        ) : (
         <ViewTree
           views={state.views}
           // Landed truth plus the reviewer's own staged intent (#299): the
@@ -1620,7 +1647,9 @@ export const App = ({
             )
           }
           readOnly={readOnly}
+          onHide={() => dispatchWorkspace({ type: "rail.toggled" })}
         />
+        )}
         <DiagramWorkspace
           state={state}
           selectedId={workspace.selectedSubject?.id ?? null}

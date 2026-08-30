@@ -2,6 +2,41 @@
 
 ## Unreleased
 
+- **Changed.** A property field puts its label beside its control rather than
+  above it. A property sheet is read down the left edge — the reviewer is
+  looking for KIND, not reading prose — so a stacked label doubled the height
+  of every field to say what one column already says. The label column is
+  fixed so the controls line up as one edge, since ragged control starts are
+  what make a two-column form worse than a stacked one. The one exception is a
+  list field, which is a label over N rows and an add button and has no single
+  control to sit beside.
+
+- **Changed.** A list field is one row like every other field. Its rows and
+  its add button sit in a control column of their own, so `AKA` reads
+  `AKA  [Add Aka]` rather than a label with a button beneath it. Where a list
+  holds rows the label aligns to the TOP of them, because centring a label
+  against six rows points it at the fourth. This retires the exception the
+  previous entry described: every field type now follows one rule.
+
+- **Changed.** The rail's lists are quieter and denser. Rows tightened from
+  29px to 25px, because the largest readability win for a list is seeing more
+  of it at once and no tint fixes rows that are off screen. The row icon is
+  dimmed: every row in a list of views carries the SAME icon, so at full
+  strength it is ink that repeats without saying anything and competes with
+  the name beside it — the active row keeps its icon, where the mark is doing
+  work. Counts set in tabular figures, since a column of numbers is read down
+  and proportional figures leave it ragged even right-aligned.
+
+- **Added.** The left rail can be put away, the way the session panel already
+  could (#294's shape, other side). A thin strip stands in its place and
+  brings it back, naming the view still on the canvas so putting the tree away
+  never costs the reviewer their place. A boolean rather than a
+  mode-beside-width, because the rail is a fixed column: there is no dragged
+  width to restore. The two sides are independent — hiding one has never been
+  a reason to move the other.
+
+## Unreleased
+
 - **Added.** **Focus on this**, in the subject and relationship context menus
   (#407, requested by an adopter mounting the editor). It narrows the canvas
   to the subject and everything one hop from it, or for a relationship to its

@@ -194,6 +194,11 @@ export interface ViewTreeProps {
   readonly onRowMenu: TreeRowMenu;
   /** A viewer, not an author (#298): the new-view affordance is absent. */
   readonly readOnly?: boolean;
+  /**
+   * Put the whole rail away (#294's shape, other side). Optional: a host that
+   * gives no way back should not be able to draw the control that takes it.
+   */
+  readonly onHide?: () => void;
 }
 
 export function ViewTree({
@@ -212,6 +217,7 @@ export function ViewTree({
   onSelectSubject,
   onRowMenu,
   readOnly = false,
+  onHide,
 }: ViewTreeProps) {
   const tree = buildViewTree({
     views,
@@ -254,6 +260,20 @@ export function ViewTree({
           value={filterText}
           onChange={(event) => onFilterChange(event.currentTarget.value)}
         />
+        {onHide === undefined ? null : (
+          // Last in the head row so the filter keeps the width: the control
+          // that puts the rail away is reached rarely and should not push the
+          // thing used constantly.
+          <button
+            type="button"
+            className="rail-hide"
+            title="Hide the view tree"
+            aria-label="Hide the view tree"
+            onClick={onHide}
+          >
+            «
+          </button>
+        )}
         {readOnly ? null : (
           <button
             type="button"

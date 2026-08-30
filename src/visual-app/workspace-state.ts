@@ -251,6 +251,17 @@ export interface VisualWorkspaceState {
    * that stands in for the column carries what a shut header would have
    * said: the unread count and a waiting choice (#294).
    */
+  /**
+   * Whether the reviewer has put the left rail away (#294's shape, applied to
+   * the other side of the workspace).
+   *
+   * A boolean and not a width, because the rail is a FIXED column rather than
+   * a dragged one: it holds names at one size, so there is no dragged width to
+   * restore and nothing for a mode-beside-width to protect. The branches
+   * inside it already collapse one by one; this is the further step for the
+   * moments that want the whole canvas.
+   */
+  readonly railHidden: boolean;
   readonly conversation: {
     readonly width: number;
     /**
@@ -375,6 +386,7 @@ export type VisualWorkspaceAction =
     }
   | { readonly type: "conversation.resized"; readonly width: number }
   | { readonly type: "conversation.toggled" }
+  | { readonly type: "rail.toggled" }
   | {
       readonly type: "viewport.resized";
       readonly viewportWidth: number;
@@ -573,6 +585,7 @@ export const createVisualWorkspaceState = (
   viewportWidth: number,
   viewportHeight = 0,
 ): VisualWorkspaceState => ({
+  railHidden: false,
   conversation: {
     width: clampInitialConversationWidth(viewportWidth * 0.28, viewportWidth),
     // On screen: hiding the column is a presenting gesture the reviewer
@@ -659,6 +672,10 @@ export const visualWorkspaceReducer = (
         ? state
         : { ...state, conversation: { ...state.conversation, width } };
     }
+    case "rail.toggled":
+      // Nothing to preserve on the way out and nothing to restore on the way
+      // back: the rail is one fixed width, so hiding it is the whole state.
+      return { ...state, railHidden: !state.railHidden };
     case "conversation.toggled": {
       const hidden = !state.conversation.hidden;
       return {

@@ -1126,3 +1126,40 @@ describe("stackRows", () => {
     expect(rows([])).toEqual([]);
   });
 });
+
+/**
+ * The left rail can leave too, mirroring #294 on the other side of the
+ * workspace. A boolean rather than a mode-beside-width, because the rail is a
+ * FIXED column: there is no dragged width to protect, so hiding it is the
+ * whole state and reopening restores what was never lost.
+ */
+describe("the left rail can leave", () => {
+  const state = createVisualWorkspaceState(1568, 900);
+  const toggled = (from: VisualWorkspaceState): VisualWorkspaceState =>
+    visualWorkspaceReducer(from, { type: "rail.toggled" });
+
+  it("starts on screen: hiding is a gesture, never a resting state", () => {
+    expect(state.railHidden).toBe(false);
+  });
+
+  it("hides and comes back, changing nothing else", () => {
+    const hidden = toggled(state);
+    expect(hidden.railHidden).toBe(true);
+    // The branches the reviewer opened are theirs, not the rail's, so putting
+    // the rail away must not quietly reset the tree behind it.
+    expect(hidden.tree).toEqual(state.tree);
+    expect(toggled(hidden).railHidden).toBe(false);
+    expect(toggled(hidden).tree).toEqual(state.tree);
+  });
+
+  it("leaves the right column alone in both directions", () => {
+    // The two sides are independent: hiding one has never been a reason to
+    // move the other, and a reviewer presenting may want either or both.
+    const hidden = toggled(state);
+    expect(hidden.conversation).toEqual(state.conversation);
+    expect(
+      visualWorkspaceReducer(hidden, { type: "conversation.toggled" })
+        .railHidden,
+    ).toBe(true);
+  });
+});
