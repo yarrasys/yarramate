@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import {
+  type CatalogueCondition,
   INTERROGATION_SEMANTICS_VERSION,
   compileWorkspaceWithProfileContext,
   evaluateCatalogue,
@@ -22,7 +23,7 @@ import {
 // existing question answers.
 
 const EXPECTED_SEMANTICS = '1'
-const EXPECTED_FINGERPRINT = 'c1d51437c346fb07'
+const EXPECTED_FINGERPRINT = '74ee871f5377fedc'
 
 const profile = 'yarramate/core@0.1'
 
@@ -92,25 +93,52 @@ const document = [
 // One question per condition the engine understands. Several never fire
 // against this fixture, and that is the point: a condition that starts firing
 // when it did not before is exactly the drift this catches.
-const conditions: readonly (readonly [string, readonly string[]])[] = [
-  ['missing-claim', ['      - condition: missing-claim', '        predicate: yarramate/ownership/owner']],
-  ['missing-relationship', ['      - condition: missing-relationship', `        kinds: ["${profile}#serving"]`, '        direction: outgoing']],
-  ['isolated', ['      - condition: isolated']],
-  ['no-subject-of-kind', ['      - condition: no-subject-of-kind', `        kinds: ["${profile}#goal"]`]],
-  ['no-state-defined', ['      - condition: no-state-defined']],
-  ['missing-linkage', ['      - condition: missing-linkage', `        kinds: ["${profile}#applicationComponent"]`, '        direction: outgoing', `        counterpartKinds: ["${profile}#applicationFunction"]`]],
-  ['has-linkage', ['      - condition: has-linkage', `        kinds: ["${profile}#applicationComponent"]`, '        direction: outgoing', `        counterpartKinds: ["${profile}#applicationFunction"]`]],
-  ['exists-linkage', ['      - condition: exists-linkage', `        kinds: ["${profile}#applicationComponent"]`, '        direction: outgoing', `        counterpartKinds: ["${profile}#applicationService"]`]],
-  ['missing-constraint', ['      - condition: missing-constraint', `        kinds: ["${profile}#applicationComponent"]`]],
-  ['missing-flow-content', ['      - condition: missing-flow-content']],
-  ['missing-reference', ['      - condition: missing-reference', '        predicate: yarramate/reference/spec', '        direction: outgoing']],
-  ['missing-attestation', ['      - condition: missing-attestation', '        topic: adequacy']],
-  ['near-duplicate', ['      - condition: near-duplicate']],
-  ['unconstrained-kind', ['      - condition: unconstrained-kind']],
-  ['unscoped-succession', ['      - condition: unscoped-succession']],
-  ['unchallenged-evidence', ['      - condition: unchallenged-evidence']],
-  ['has-any-subject', ['      - condition: has-any-subject']],
-]
+// A RECORD over the union's discriminant, not a list, and that is the point.
+//
+// This was a list, and it silently missed two conditions (`has-subject-of-kind`
+// and `fills-pattern-slot`) while the test above claimed to exercise every one
+// the engine understands. The claim was checked against the list itself, so it
+// compared the list to the list and passed. That is CONTRIBUTING.md's ninth
+// rule exactly: an allowlist cannot fail for the author who wrote it, and the
+// author who adds a condition is the one who would have to remember.
+//
+// As a `Record` the typechecker asks instead. A new member of
+// `CatalogueCondition` is a compile error here until it is given a probe, so
+// the backstop cannot fall behind the engine it backstops. Same technique as
+// `CONDITION_SCOPE` in the engine (ADR 0134).
+const CONDITION_PROBES: Record<
+  CatalogueCondition['condition'],
+  readonly string[]
+> = {
+  'missing-claim': ['      - condition: missing-claim', '        predicate: yarramate/ownership/owner'],
+  'missing-relationship': ['      - condition: missing-relationship', `        kinds: ["${profile}#serving"]`, '        direction: outgoing'],
+  'isolated': ['      - condition: isolated'],
+  'no-subject-of-kind': ['      - condition: no-subject-of-kind', `        kinds: ["${profile}#goal"]`],
+  'no-state-defined': ['      - condition: no-state-defined'],
+  'missing-linkage': ['      - condition: missing-linkage', `        kinds: ["${profile}#applicationComponent"]`, '        direction: outgoing', `        counterpartKinds: ["${profile}#applicationFunction"]`],
+  'has-linkage': ['      - condition: has-linkage', `        kinds: ["${profile}#applicationComponent"]`, '        direction: outgoing', `        counterpartKinds: ["${profile}#applicationFunction"]`],
+  'exists-linkage': ['      - condition: exists-linkage', `        kinds: ["${profile}#applicationComponent"]`, '        direction: outgoing', `        counterpartKinds: ["${profile}#applicationService"]`],
+  'missing-constraint': ['      - condition: missing-constraint', `        kinds: ["${profile}#applicationComponent"]`],
+  'missing-flow-content': ['      - condition: missing-flow-content'],
+  'missing-reference': ['      - condition: missing-reference', '        predicate: yarramate/reference/spec', '        direction: outgoing'],
+  'missing-attestation': ['      - condition: missing-attestation', '        topic: adequacy'],
+  'near-duplicate': ['      - condition: near-duplicate'],
+  'unconstrained-kind': ['      - condition: unconstrained-kind'],
+  'unscoped-succession': ['      - condition: unscoped-succession'],
+  'unchallenged-evidence': ['      - condition: unchallenged-evidence'],
+  'has-any-subject': ['      - condition: has-any-subject'],
+  'has-subject-of-kind': ['      - condition: has-subject-of-kind', `        kinds: ["${profile}#applicationComponent"]`],
+  // Fires: the fixture holds one applicationService and the floor is two.
+  'below-subject-count': ['      - condition: below-subject-count', `        kinds: ["${profile}#applicationService"]`, '        atLeast: 2'],
+  // Never fires here, deliberately: no memberships are passed, and "absent
+  // memberships stay quiet" is itself a semantic worth pinning (ADR 0131).
+  'fills-pattern-slot': ['      - condition: fills-pattern-slot'],
+}
+
+const conditionProbes = Object.entries(CONDITION_PROBES) as readonly (readonly [
+  CatalogueCondition['condition'],
+  readonly string[],
+])[]
 
 // The overlay the unchallenged-evidence probe reads: one confirmed
 // observation and no recorded search, so the condition fires. Every other
@@ -127,7 +155,7 @@ const catalogue = [
   '  - id: all',
   '    name: All conditions',
   'questions:',
-  ...conditions.flatMap(([name, trigger]) => [
+  ...conditionProbes.flatMap(([name, trigger]) => [
     `  - id: cond-${name}`,
     '    wave: all',
     '    scope: subject',
@@ -179,9 +207,13 @@ const answers = () => {
 }
 
 describe('interrogation semantics are versioned and pinned', () => {
-  it('exercises every condition the engine understands', () => {
+  it('answers every condition the engine understands', () => {
+    // That the PROBES cover the union is the typechecker's job, above; a
+    // missing member of `CatalogueCondition` will not compile. What this adds
+    // is that every probe reached an answer, so a question cannot be silently
+    // dropped between the catalogue and the report.
     const seen = answers().map(({ id }) => id.replace('cond-', ''))
-    expect(seen.sort()).toEqual(conditions.map(([name]) => name).sort())
+    expect(seen.sort()).toEqual(conditionProbes.map(([name]) => name).sort())
   })
 
   it('has not changed what an existing question answers', () => {

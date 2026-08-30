@@ -1,5 +1,43 @@
 # Changelog
 
+## Unreleased
+
+### A vocabulary question may ask for a vocabulary
+
+`below-subject-count`, a workspace-scope condition that fires while FEWER than
+`atLeast` subjects of the named kinds exist (#411, ADR 0135). Additive: nothing
+today can express it, so no existing catalogue changes meaning, and the
+interrogation semantics version does not move.
+
+`no-subject-of-kind` is satisfied by ONE instance, so a question asking a
+workspace to declare its vocabulary — which sensitivity classes, which
+integration styles, which API-led layers — closed on the first term, and a
+one-term vocabulary was indistinguishable from a complete one. An adopter
+measured two live cases: a class authored incidentally to answer a different
+question closed the vocabulary question four versions before it was ever asked,
+and an `integration-style` vocabulary closed after one entry with nothing in
+the estate that could ever disagree with it.
+
+`atLeast` must be at least 2. `YM918` refuses `atLeast: 1` and names
+`no-subject-of-kind`, because an author who wrote it wanted the condition that
+already exists rather than making an arithmetic mistake; the schema refuses 0
+structurally, since a count could never fall below it.
+
+`kindMatching` defaults to `descendants` as everywhere else, which matters
+here: a classification kind is typically a `grouping` specialization, and a
+catalogue naming the core kind has to count it.
+
+### Also
+
+- The interrogation semantics backstop claimed to exercise every condition the
+  engine understands and missed two, because it checked its own list against
+  itself. The probes are now typechecker-enforced, so a new condition cannot
+  arrive without one (`CONTRIBUTING.md`'s ninth rule; same technique as
+  ADR 0134's `CONDITION_SCOPE`).
+- `docs/INTERROGATION.md` no longer states how many workspace-scope conditions
+  there are. The count shipped wrong once, was corrected, and went stale again
+  the next time one arrived.
+
 ## 1.13.1
 
 Documentation only, and shipped as a patch for the reason 1.11.1 was: an

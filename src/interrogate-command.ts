@@ -101,6 +101,35 @@ export type CatalogueCondition =
       readonly kinds: readonly string[]
       readonly kindMatching?: 'exact' | 'descendants'
     }
+  | {
+      /**
+       * The cardinality member of the same family, workspace-scope like the
+       * other two (#411). Fires while FEWER than `atLeast` subjects of the
+       * named kinds exist, so `no-subject-of-kind` is its `atLeast: 1` case.
+       *
+       * It exists because a **vocabulary question** — "which data sensitivity
+       * classes does this platform recognise?" — had no way to say it wanted
+       * more than one term. `no-subject-of-kind` closes on the first
+       * instance, so a one-term vocabulary was indistinguishable from a
+       * complete one, and an adopter measured two live cases where a class
+       * authored incidentally to answer a different question closed the
+       * vocabulary question before it was ever asked.
+       *
+       * `atLeast` is required and must be at least 2 (`YM918`): 1 is
+       * `no-subject-of-kind` spelled a second way, and 0 is a condition that
+       * can never fire, which is what `YM914` exists to refuse.
+       *
+       * Deliberately NOT a general numeric comparison. A kind's population
+       * against a floor is the whole need, and the narrow condition is the
+       * same trade that kept `has-subject-of-kind` a twin rather than a
+       * predicate: a vocabulary of parameterised comparisons is a query
+       * language, which this design declines.
+       */
+      readonly condition: 'below-subject-count'
+      readonly kinds: readonly string[]
+      readonly atLeast: number
+      readonly kindMatching?: 'exact' | 'descendants'
+    }
   | { readonly condition: 'no-state-defined' }
   | {
       readonly condition: 'missing-linkage'
@@ -512,6 +541,7 @@ const namedKinds = (question: CatalogueQuestion): readonly string[] => {
       case 'missing-relationship':
       case 'no-subject-of-kind':
       case 'has-subject-of-kind':
+      case 'below-subject-count':
       case 'missing-constraint':
         kinds.push(...condition.kinds)
         break
@@ -615,6 +645,7 @@ const CONDITION_SCOPE: Record<
   'has-any-subject': 'workspace',
   'no-subject-of-kind': 'workspace',
   'has-subject-of-kind': 'workspace',
+  'below-subject-count': 'workspace',
   'no-state-defined': 'workspace',
   'exists-linkage': 'workspace',
   'missing-claim': 'subject',
@@ -779,6 +810,33 @@ const conditionHolds = (
           profileContext,
         ),
       )
+    }
+    case 'below-subject-count': {
+      // Counts, then compares. Written as its own count rather than as
+      // `!has-subject-of-kind` plus arithmetic so the degenerate reading
+      // stays visible: at `atLeast: 1` this IS `no-subject-of-kind`, which
+      // is why the loader refuses that spelling rather than quietly
+      // accepting two names for one condition.
+      //
+      // Stops at the threshold instead of counting the whole workspace: the
+      // answer is a comparison, not a tally, and a model with ten thousand
+      // subjects of a kind should cost the same as one with two.
+      const matching = condition.kindMatching ?? 'descendants'
+      let seen = 0
+      for (const id of index.concepts) {
+        if (
+          kindMatches(
+            index.kindOf.get(id),
+            condition.kinds,
+            matching,
+            profileContext,
+          )
+        ) {
+          seen += 1
+          if (seen >= condition.atLeast) return false
+        }
+      }
+      return true
     }
     case 'no-state-defined':
       return !index.hasStates
@@ -1125,6 +1183,70 @@ interface CatalogueKindReference {
  * wave never opens and carries no questions at all - one typo silently
  * retiring a wave (#351).
  */
+/**
+ * Every condition the catalogue holds, gate and trigger alike, with the path
+ * that locates it. `kindReferencesOf` walks the same two places for kinds;
+ * this walks them for the conditions themselves, so a check about a
+ * condition's own shape does not have to re-derive where conditions live.
+ */
+const conditionsOf = (
+  catalogue: QuestionCatalogue,
+): readonly { condition: CatalogueCondition; path: (string | number)[] }[] => {
+  const found: { condition: CatalogueCondition; path: (string | number)[] }[] =
+    []
+  catalogue.waves.forEach((wave, waveIndex) => {
+    ;(wave.opensWhen ?? []).forEach((condition, conditionIndex) => {
+      found.push({
+        condition,
+        path: ['waves', waveIndex, 'opensWhen', conditionIndex],
+      })
+    })
+  })
+  catalogue.questions.forEach((question, questionIndex) => {
+    question.trigger.forEach((condition, conditionIndex) => {
+      found.push({
+        condition,
+        path: ['questions', questionIndex, 'trigger', conditionIndex],
+      })
+    })
+  })
+  return found
+}
+
+/**
+ * `YM918`: `below-subject-count` must ask for at least two (#411).
+ *
+ * `atLeast: 1` is `no-subject-of-kind` under a second name, and this design
+ * refuses second spellings of one meaning wherever it finds them. `atLeast: 0`
+ * is worse: the count can never be below zero, so the question can never fire,
+ * which is what `YM914` refuses from a different cause.
+ *
+ * The message names `no-subject-of-kind` rather than stating a bound, because
+ * an author who wrote `atLeast: 1` did not make an arithmetic mistake. They
+ * wanted the condition that already exists.
+ */
+const subjectCountFloorDiagnostics = ({
+  catalogue,
+  locate,
+}: LoadedCatalogueDocument): readonly Diagnostic[] =>
+  conditionsOf(catalogue).flatMap(({ condition, path }) =>
+    condition.condition === 'below-subject-count' && condition.atLeast < 2
+      ? [
+          {
+            severity: 'error' as const,
+            code: 'YM918',
+            message:
+              `Condition "below-subject-count" asks for atLeast ${condition.atLeast}, ` +
+              (condition.atLeast === 1
+                ? 'which is what "no-subject-of-kind" already asks. Use that condition instead.'
+                : 'so a count could never fall below it and the question could never fire. ' +
+                  'Ask for at least 2, or use "no-subject-of-kind" for the presence case.'),
+            ...locate([...path, 'atLeast']),
+          },
+        ]
+      : [],
+  )
+
 const kindReferencesOf = (
   catalogue: QuestionCatalogue,
 ): readonly CatalogueKindReference[] => {
@@ -1651,6 +1773,7 @@ export function composeCatalogues(
   const crossDiagnostics = documents.flatMap((document) => [
     ...undeclaredWaveDiagnostics(document, declaredWaves),
     ...gateScopeDiagnostics(document),
+    ...subjectCountFloorDiagnostics(document),
     ...unresolvableKindDiagnostics(document, profileContext),
     ...unauthorableOfferDiagnostics(document, profileContext),
   ])
@@ -1703,6 +1826,12 @@ export function loadQuestionCatalogue(
   const scopeDiagnostics = gateScopeDiagnostics(loaded.document)
   if (scopeDiagnostics.length > 0) {
     return { ok: false, diagnostics: scopeDiagnostics }
+  }
+  // Beside the scope check and for the same reason: a threshold below 2 is
+  // wrong on the condition's own terms, with no profile context needed.
+  const floorDiagnostics = subjectCountFloorDiagnostics(loaded.document)
+  if (floorDiagnostics.length > 0) {
+    return { ok: false, diagnostics: floorDiagnostics }
   }
   const kindDiagnostics = unresolvableKindDiagnostics(
     loaded.document,

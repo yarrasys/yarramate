@@ -32,7 +32,11 @@ questions. Each question binds:
   graph (all must hold): `missing-claim`, `missing-relationship`,
   `isolated`, `no-subject-of-kind`, `has-subject-of-kind` (workspace: the
   positive twin of `no-subject-of-kind`, for a gate that opens once the
-  model HAS something), `no-state-defined`,
+  model HAS something), `below-subject-count` (workspace: fewer than
+  `atLeast` subjects of the given kinds exist, so a **vocabulary**
+  question can ask for more than one term; `atLeast` must be at least 2,
+  because 1 is `no-subject-of-kind` under a second name and `YM918`
+  refuses it; ADR 0135), `no-state-defined`,
   `missing-linkage` (no relationship of given kinds, in a given
   direction, whose counterpart is of a given kind — the linkage-depth
   primitive), `has-linkage` (the positive of `missing-linkage`;
@@ -223,16 +227,23 @@ product's wave rail had the same fault on the day the gate shipped.
 ### A gate asks about the workspace, never about a subject
 
 A gate is evaluated with **no subject**, so only a workspace-scope condition
-means anything in `opensWhen`. There are six: `has-any-subject`,
-`no-subject-of-kind`, `has-subject-of-kind`, `no-state-defined`,
+means anything in `opensWhen`: `has-any-subject`, `no-subject-of-kind`,
+`has-subject-of-kind`, `below-subject-count`, `no-state-defined`,
 `exists-linkage` and `unchallenged-evidence`. `exists-linkage` is a positive
 existence check, "some concept would satisfy `has-linkage`", which is easy to
 miss and often the one a gate wants.
 
 **Do not trust this sentence over the engine.** The set is derived from the
-condition union in code, and `YM917`'s own message lists it; a count written
-in prose is the thing that goes stale, and this one did — it shipped saying
-five and omitting `unchallenged-evidence`.
+condition union in code, and `YM917`'s own message lists it, so ask the
+diagnostic rather than this paragraph.
+
+This sentence used to carry a count, and the count is gone deliberately. It
+shipped saying "five" while omitting `unchallenged-evidence`; that was
+corrected to "six"; and it went stale again the next time a workspace-scope
+condition arrived. A number in prose beside a list in code is a second
+encoding of the same fact with nothing holding the two together, which is
+`CONTRIBUTING.md`'s ninth rule in the smallest possible instance. The list
+stays because it is useful, and a reader who needs the count can count it.
 
 Any other condition is refused (`YM917`). Before the refusal existed they
 loaded silently and split two ways: `has-linkage`, `near-duplicate` and

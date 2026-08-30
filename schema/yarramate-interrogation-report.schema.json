@@ -317,6 +317,40 @@
           "type": "object",
           "additionalProperties": false,
           "required": [
+            "condition",
+            "kinds",
+            "atLeast"
+          ],
+          "properties": {
+            "condition": {
+              "const": "below-subject-count"
+            },
+            "kinds": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/qualifiedKind"
+              }
+            },
+            "atLeast": {
+              "description": "The floor the kind's population must reach. At least 2: atLeast 1 is no-subject-of-kind under another name, and the engine refuses it (YM918).",
+              "type": "integer",
+              "minimum": 1
+            },
+            "kindMatching": {
+              "enum": [
+                "exact",
+                "descendants"
+              ],
+              "default": "descendants"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
             "condition"
           ],
           "properties": {
