@@ -221,6 +221,55 @@ a legitimately-empty state is therefore a good moment to go looking for who
 infers completion from emptiness — the state is new, the fault usually is not.
 `docs/INTERROGATION.md` carries the interrogation-specific form.
 
+### A check that reads the vocabulary cannot see what a declaration compiles to
+
+What a declaration *means* is the vocabulary. What it *becomes* is the graph.
+A check written against the first passes over anything that appears only in
+the second, and it passes **silently**, because from the vocabulary's side
+there is nothing to see.
+
+Three checks, written independently, all with this shape:
+
+- `YM914` refuses a catalogue naming a kind its loaded profile does not
+  declare. It tests **declaration**, never **reachability** — whether any
+  document format the compiler compiles can actually produce that kind.
+- A consuming product's catalogue vocabulary guard, the same test, reached
+  independently and for the same reason.
+- The wave-gate rule in `docs/adr/0125-*`, which reads a wave's
+  **description**. Prose is a third thing that is not the graph either.
+
+Each author believed their check covered the case.
+
+The worked example shows why the failure is unguessable rather than merely
+unchecked. `states:` is a key inside an ordinary `yarramate/v1` document —
+there is no separate evolution format — and the compiler mints a `plateau`
+concept from each entry. `implementation-path-missing` fires on there being
+no `workPackage`, `deliverable` or `plateau`, so **declaring a state closes
+it**. Nothing in the document says the two are the same thing; `states` and
+`plateau` are different words. And the one mechanism designed to answer
+"where did this come from" misdirects: the minted claim's source pointer is
+`['states', index, 'kind']`, a field whose value reads `transition`. A reader
+doing exactly the right thing lands on a line that does not contain the word.
+
+**For any check over declared things, ask what the compiler does with the
+declaration, and read the graph rather than the vocabulary to find out.**
+Composition changes only *who* inherits the blind spot — a workspace adding
+to a base catalogue inherits every trigger it ships and can decline none,
+while a host replacing that base inherits none and must re-derive everything,
+including the parts that were right — and never whether the blind spot exists.
+
+A closing caution, because the obvious response to this rule is a reachability
+check and it would have been wrong here. All 62 core concept kinds are
+directly authorable today, so declared and reachable coincide, and such a
+guard would pass on every workspace anyone can construct. **A guard is worth
+building when the failure it detects is reachable from the current state of
+the world, and worth declining when it is only reachable from a design change
+nobody has made yet** — the second ages into decoration, and the divergence
+arrives long after anyone last read it. The counter-example is a consuming
+product's migration guarded on the previous migration's exact bytes: a hand
+edit would have made it a silent no-op behind a green tick, and that failure
+was reachable the day it was written.
+
 A change a user would notice belongs in `CHANGELOG.md`, under the version
 being prepared, in the same pull request that makes it. A change nobody outside
 the repository can see does not. When a `feat`, `fix` or `perf` commit
