@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import cytoscape from 'cytoscape'
 import type { Core, CollectionReturnValue, ElementDefinition, NodeCollection, NodeSingular } from 'cytoscape'
 import elk from 'cytoscape-elk'
+import { spansNesting } from './nesting-span.js'
 import type {
   CanvasGraph,
   CanvasNode,
@@ -1053,7 +1054,53 @@ function runLayout(
   eles: Core | CollectionReturnValue,
   direction: LayoutDirection,
 ): void {
-  eles.layout(buildLayoutConfig(direction)).run()
+  const collection = 'elements' in eles ? eles.elements() : eles
+  // Withhold ancestor-descendant edges from ELK; see `nestedPairEdges`.
+  // `.difference` returns a collection, so the layout still receives every
+  // node and every ordinary edge - only the degenerate ones are absent, and
+  // they are still drawn between the endpoints the layout places.
+  const degenerate = nestedPairEdges(collection)
+  const forLayout = degenerate.empty()
+    ? collection
+    : collection.difference(degenerate)
+  forLayout.layout(buildLayoutConfig(direction)).run()
+}
+
+/**
+ * Edges whose two ends are nested one inside the other (#439).
+ *
+ * Composition maps onto cytoscape's compound `parent`, so a pair that also
+ * carries any OTHER relationship produces an edge from a container to its own
+ * child. ELK cannot lay that out: measured on a five-concept model, the
+ * container and its child render and **every unrelated node loses its
+ * geometry** - 543 painted samples in a 124x64 box against 10,612 in 832x452
+ * for the same model with the second edge removed. Nothing warns, because the
+ * model is legal and compiles clean.
+ *
+ * It is not about which kind the second edge is. `realization` was the
+ * field report; `serving` on the same pair reproduces byte-identically.
+ * Anything drawn between an ancestor and its descendant does it.
+ *
+ * These edges are withheld from the LAYOUT only, never from the graph.
+ * cytoscape draws an edge between its endpoints wherever they land, so the
+ * relationship stays on the canvas and the nesting stays too - which is the
+ * point, since both claims are legitimate and the alternative was to throw
+ * the nesting away like the anomalies `resolveNestingParents` handles.
+ */
+const nestedPairEdges = (
+  collection: CollectionReturnValue,
+): CollectionReturnValue => {
+  const parentOf = new Map<string, string>()
+  collection.nodes().forEach((node) => {
+    const parent = node.parent()
+    if (parent.length > 0) parentOf.set(node.id(), parent.first().id())
+  })
+  if (parentOf.size === 0) return collection.edges().filter(() => false)
+  return collection
+    .edges()
+    .filter((edge) =>
+      spansNesting(edge.source().id(), edge.target().id(), parentOf),
+    )
 }
 
 

@@ -2,6 +2,42 @@
 
 ## Unreleased
 
+### An edge across a nesting boundary no longer collapses the canvas
+
+Field-reported by an adopter on a live engagement, where a 66-subject project
+drew two shapes and a stack of superimposed labels (#439, ADR 0139).
+
+Composition maps onto cytoscape's compound `parent`, so a pair that **also**
+carries any other relationship produces an edge from a container to its own
+child, which ELK cannot lay out. The pair rendered and **every unrelated node
+lost its geometry**. Measured on a five-concept model:
+
+| model | painted | drawn box |
+|---|---|---|
+| composition + realization on the pair | 543 | 124 x 64 |
+| the same, realization removed | **10,612** | **832 x 452** |
+| composition + **serving** on the pair | 543 | 124 x 64 |
+
+One edge, a twentyfold difference. The third row is why the fix is keyed to
+nesting rather than to relationship kinds: swapping `serving` for `realization`
+reproduces byte-identically, so **anything drawn between an ancestor and its
+descendant** does it.
+
+Such an edge is now withheld from the **layout**, never from the graph:
+cytoscape draws it between its endpoints wherever they land, so the
+relationship stays on the canvas and the nesting stays too. Leaving the pair
+unnested instead - which is what `resolveNestingParents` does for the two
+nesting anomalies it already knows about - would have thrown away a correct
+nesting to work around a layout limitation.
+
+**This reaches ordinary models.** Both edges are elicited by catalogue
+questions doing their jobs, "which application composes this flow?" and "which
+application implements this?", and the model compiles clean, so the first sign
+was the canvas. The adopter's field model had the pair three times over from
+normal consulting work. This repository's own 358-subject self-model renders
+only because it happens never to pair composition with another edge.
+
+
 ### A vocabulary is closed by its scheme, not its count
 
 `no-linkage-exists`, the workspace-scope negative of `exists-linkage`: it fires
