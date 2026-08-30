@@ -46,6 +46,42 @@ does not enter Core. Derived outputs live under the ignored
 `.yarramate-out/`; they can be deleted and regenerated without changing the
 architecture.
 
+## Three gates catching each other, 2026-08-30
+
+Recorded because it is the clearest run of this repository's own machinery
+against itself, and because none of it was reachable from the test suite.
+
+Cutting 1.13.0 began with a self-model pass. Each gate caught the omission
+introduced by the previous fix:
+
+1. **`reconcile` found an unclaimed artifact.** A new module,
+   `src/visual-app/focus-neighbourhood.ts`, was one of 151 files in the
+   declared coverage scope and the only one no observation claimed. The suite
+   was green: nothing tests whether the model mentions the code.
+2. **The interview found the concept unwired.** Declaring
+   `select-focus-neighbourhood` to claim the file left an `applicationFunction`
+   that nothing performed, and `ask --open` asked the obvious question —
+   *"Who or what performs Select focus neighbourhood?"* — moving the interview
+   from 0 open to 1.
+3. **The adapter found the mapping missing.** Adding the assignment then broke
+   `export-project` with `YMLC102`, a projected concept with no LikeC4
+   mapping. Both a concept and a relationship mapping were needed; the first
+   alone left the relationship unmapped.
+
+Final state: 354 concepts, 476 relationships, 0 unclaimed of 151, 313 of 313
+observations confirmed, interview 0 open of 51.
+
+The shape worth keeping is that **a test suite cannot see what nothing
+produces.** A green suite says a claim that was made is still true; it says
+nothing about a claim nobody made. Each of these three gates reads a different
+absence — an artifact no observation claims, a subject no relationship reaches,
+a concept no mapping projects — and none of them is a test.
+
+The same week produced the mirror of this from the other side: a workbook
+reader mishandled a cell shape the repository's own writer never emitted, so
+no test could have produced it, and it took an adopter's file to surface it.
+Absence is the thing suites are worst at.
+
 ## Observed and resolved semantic friction
 
 The first self-model did not require a new concept or relationship kind. It did
