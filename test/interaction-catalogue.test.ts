@@ -203,7 +203,7 @@ describe('core-enrichment 1.0 interaction wave', () => {
         id: string
       }[]
     }
-    expect(catalogue.version).toBe('1.3')
+    expect(catalogue.version).toBe('2.0')
     const added = catalogue.questions.filter((question) => question.since === '0.9')
     expect(added.length).toBeGreaterThan(0)
     for (const question of added) {

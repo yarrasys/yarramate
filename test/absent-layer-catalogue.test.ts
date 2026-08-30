@@ -70,13 +70,54 @@ describe('core-enrichment 1.2 asks about absent layers', () => {
     rmSync(workspace, { recursive: true, force: true })
   })
 
-  it('opens every absent front on a model with none of the layers', () => {
+  it('opens every absent front whose wave has opened', () => {
     const ids = openIds(workspace)
     expect(ids).toContain('core-enrichment#no-capability-declared')
-    expect(ids).toContain('core-enrichment#no-event-declared')
     expect(ids).toContain('core-enrichment#no-contract-declared')
     expect(ids).toContain('core-enrichment#no-artifact-declared')
     expect(ids).toContain('core-enrichment#implementation-path-missing')
+  })
+
+  // `no-event-declared` used to be in this list, and its move out is the
+  // sharpest consequence of re-gating `application` on a declared service
+  // (#405, ADR 0136). It is worth stating as its own test rather than as a
+  // deleted line, because #272's guarantee is what is at stake and the
+  // guarantee survives in a changed form.
+  //
+  // #272 fixed a discovery that closed its interview with whole layers
+  // silently absent: subject-scoped questions matched no subject, so nothing
+  // fired and nothing said so. These workspace-anchored questions were the
+  // fix. Gating a wave does NOT bring that failure back, and the difference
+  // is the difference between silence and sequence:
+  //
+  //   - then: the question never fired and the report showed nothing;
+  //   - now: the wave reports as unopened, and the question that opens it
+  //     (`no-service-declared`, in the ungated `business` wave) is itself
+  //     open and waiting.
+  //
+  // So the event layer is still asked about, after the layer it belongs to
+  // has a subject. Both halves are pinned below: deferred here, and reached
+  // as soon as a service exists.
+  it('defers an absent front whose wave has not opened, without losing it', () => {
+    const ids = openIds(workspace)
+    expect(ids).not.toContain('core-enrichment#no-event-declared')
+    // The route to it is open, so this is a sequence and not a silence.
+    expect(ids).toContain('core-enrichment#no-service-declared')
+  })
+
+  it('reaches the deferred front once its wave opens', () => {
+    writeFileSync(
+      join(workspace, 'architecture/main.yaml'),
+      bare.replace(
+        'relationships:',
+        `  - id: ordering
+    kind: applicationService
+    name: Ordering
+relationships:`,
+      ),
+      'utf8',
+    )
+    expect(openIds(workspace)).toContain('core-enrichment#no-event-declared')
   })
 
   it('closes a presence question the moment the layer has a subject', () => {
