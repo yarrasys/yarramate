@@ -497,15 +497,27 @@ computed and ignored on the way back — an editor cannot see which is which,
 and finds out only when an import reports that a cell could not be written
 back. A role in the file says it while they are typing.
 
-Formatting is not content in either direction. A styled workbook reads back
-exactly as an unstyled one, and an editor's own formatting is ignored on
-import — and then lost on the next export, because the workbook is
+**Formatting is not content in either direction, from 1.13.0.** A styled
+workbook reads back exactly as an unstyled one, and an editor's own formatting
+is ignored on import — then lost on the next export, because the workbook is
 regenerated from the model. That last part is why producer-applied styling is
 the only kind that survives.
 
+The version matters here and nowhere else in this section, because this
+sentence is a **guarantee**, and a guarantee's job is to let you decide not to
+write a test. It did not hold in **v1.6.0 through v1.12.0**: a cell carrying
+formatting and no value — which is what Excel writes for a formatted empty
+cell — was read against the previous cell's column, so importing a workbook
+somebody had merely opened and saved could clear a neighbouring value. If you
+are pinned below 1.13.0, that path is the one place this section's promise is
+worth testing rather than taking.
+
 **An optional feature's absence is silent, and that is your test to write.**
 Passing none of these fields produces byte-identical output to a release
-before they existed. That property is what makes the feature safe to adopt,
+before they existed — asserted here by a test that writes the same sheet with
+and without the fields, and measured independently at a consumer boundary by
+hashing two real workbooks exported under 1.12.0 and 1.13.0, same SHA-256 and
+same length on both. That property is what makes the feature safe to adopt,
 and it is exactly what makes its absence undetectable: if a rename, a bad
 merge or a refactor stops the fields reaching the writer, every test that
 asserts on *behaviour* stays green while the workbook ships with no roles at
@@ -515,7 +527,14 @@ The general form, which reaches past this feature to any optional thing you
 take from a library: **assert the feature arrived, not only that the result
 is well-formed.** One positive test at the consumer that fails when the
 feature stops arriving — the styles part is in the bytes, the header is
-present, the width was applied. Behavioural assertions cannot catch an
+present, the width was applied.
+
+**Assert on the artefact, not on the call.** The obvious test is that you
+passed `columnStyles` — inspect the object you handed the writer, or spy on
+the argument — and it is both the easier test to write and the one that
+passes forever while the feature stops arriving, because it asserts your
+intent rather than the result. Read the produced bytes. An absence-shaped
+regression is invisible to any assertion that never opens the output. Behavioural assertions cannot catch an
 absence-shaped regression, because the behaviour is well-defined in both
 cases. This is the same reason a `?? ''` default hides a missing column: what
 degrades gracefully degrades quietly.
