@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- **Changed.** A property field puts its label beside its control rather than
+  above it. A property sheet is read down the left edge — the reviewer is
+  looking for KIND, not reading prose — so a stacked label doubled the height
+  of every field to say what one column already says. The label column is
+  fixed so the controls line up as one edge, since ragged control starts are
+  what make a two-column form worse than a stacked one. The one exception is a
+  list field, which is a label over N rows and an add button and has no single
+  control to sit beside.
+
+- **Added.** The left rail can be put away, the way the session panel already
+  could (#294's shape, other side). A thin strip stands in its place and
+  brings it back, naming the view still on the canvas so putting the tree away
+  never costs the reviewer their place. A boolean rather than a
+  mode-beside-width, because the rail is a fixed column: there is no dragged
+  width to restore. The two sides are independent — hiding one has never been
+  a reason to move the other.
+
+## Unreleased
+
 - **Added.** **Focus on this**, in the subject and relationship context menus
   (#407, requested by an adopter mounting the editor). It narrows the canvas
   to the subject and everything one hop from it, or for a relationship to its

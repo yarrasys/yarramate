@@ -30,6 +30,8 @@
   /* Wide enough for an ArchiMate subject name at 13px without eliding most
      of them, and fixed so the diagram takes every pixel beyond it. */
   --rail-width: 264px;
+  /* Wide enough for DESCRIPTION, the longest label a property sheet shows. */
+  --form-label-width: 6rem;
   color-scheme: light;
 }
 
@@ -364,6 +366,54 @@ body {
   grid-template-columns: var(--rail-width) minmax(0, 1fr) auto var(
       --conversation-width
     );
+}
+
+/* The rail put away: its column becomes the width of the strip that brings it
+   back, so the canvas takes the rest. */
+.workspace[data-rail="hidden"] {
+  grid-template-columns: 22px minmax(0, 1fr) auto var(--conversation-width);
+}
+
+/* The way back while the rail is away, mirroring the session panel's own
+   strip (#294): a thin full-height strip in the rail's place, naming the view
+   still on the canvas so putting the tree away never costs the reviewer their
+   place. */
+.rail-reopen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--step);
+  width: 22px;
+  height: 100%;
+  padding: calc(var(--step) * 1.5) 0;
+  border: none;
+  border-right: 1px solid var(--rule);
+  background: var(--sheet);
+  color: var(--quiet);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.rail-reopen:hover,
+.rail-reopen:focus-visible {
+  color: var(--cobalt);
+}
+
+.rail-hide {
+  flex: none;
+  min-height: 1.75rem;
+  padding: 0 calc(var(--step) * 0.75);
+  border: none;
+  background: transparent;
+  color: var(--quiet);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.rail-hide:hover,
+.rail-hide:focus-visible {
+  color: var(--cobalt);
 }
 
 /* ------------------------------------------------------------- view tree */
@@ -2288,7 +2338,23 @@ body {
   margin: calc(var(--step) * 1) 0;
 }
 
+/* Label beside its control, not above it. A property sheet is read down the
+   left edge - the reviewer is looking for KIND, not reading prose - so a
+   stacked label doubles the height of every field to say what one column
+   already says. The label column is fixed so the controls line up as one
+   edge; ragged control starts are what makes a two-column form worse than a
+   stacked one. */
 .subject-form-field {
+  display: grid;
+  grid-template-columns: var(--form-label-width) minmax(0, 1fr);
+  align-items: center;
+  gap: calc(var(--step) * 0.75);
+}
+
+/* The exception, and the reason this is not a blanket rule: a list field is a
+   label over N rows and an add button, so it has no single control to sit
+   beside and stays stacked. */
+.subject-form-field.subject-form-list {
   display: flex;
   flex-direction: column;
   gap: calc(var(--step) * 0.35);
@@ -2300,6 +2366,11 @@ body {
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--quiet);
+  /* The label column is a column: a wrapped label would push its own control
+     down and undo the row it exists to make. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .subject-form-field input[type='text'],
