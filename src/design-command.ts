@@ -137,6 +137,47 @@ const localKind = (qualified: string): string => {
   return hash === -1 ? qualified : qualified.slice(hash + 1)
 }
 
+/**
+ * The `missing-claim` predicates that name a CONCEPT FIELD, and the field
+ * each one is written through (#430).
+ *
+ * `missing-claim` matches a raw predicate, and a predicate is not an
+ * authoring gesture: `yarramate/attestation/adequacy` is written by adding an
+ * attestation, `yarramate/reference/refers-to` by adding a reference, and a
+ * profile may mint predicates this engine has never heard of. So the
+ * condition cannot map to one operation in general, which is why an adopter
+ * wiring it up got a card with no affordance and filed #430.
+ *
+ * It maps for these three, and only these three, because each is a named
+ * field on a concept that `update-concept` writes directly. They are Core's
+ * own, closed, and they are every `missing-claim` the shipped catalogue uses
+ * — `owner-missing`, `information-unowned`, `concept-undescribed` and
+ * `status-missing`. Anything else returns no skeleton, which is ADR 0110's
+ * rule holding: a wrong skeleton is never offered.
+ *
+ * This is the "one new mapping case" ADR 0110 anticipated, not a remedy DSL.
+ * The engine still takes no position on which predicates a HOST should render
+ * as editable; the trigger carries the predicate and the host decides. This
+ * is the CLI rendering its own affordance, the same as the other two cases.
+ */
+const CONCEPT_FIELD_PREDICATES: Record<
+  string,
+  { readonly name: string; readonly placeholder: string }
+> = {
+  'yarramate/ownership/owner': {
+    name: 'owner',
+    placeholder: '<owning-subject-id>',
+  },
+  'yarramate/concept/description': {
+    name: 'description',
+    placeholder: '<one line>',
+  },
+  'yarramate/lifecycle/status': {
+    name: 'status',
+    placeholder: '<planned|current|retired>',
+  },
+}
+
 const skeletonHeader = (
   documentAddress: string,
   op: string,
@@ -192,6 +233,16 @@ const renderSkeleton = (
       `        kind: ${kinds[0]}${alternatives}`,
       `        from: ${from}${swap}`,
       `        to: ${to}`,
+    ]
+  }
+  if (condition.condition === 'missing-claim' && step.subject !== undefined) {
+    const field = CONCEPT_FIELD_PREDICATES[condition.predicate]
+    if (field === undefined) return []
+    return [
+      ...skeletonHeader(documentAddress, 'update-concept'),
+      '      concept:',
+      `        id: ${step.subject.id.split('#').pop()}`,
+      `        ${field.name}: ${field.placeholder}`,
     ]
   }
   return []

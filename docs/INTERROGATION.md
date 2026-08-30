@@ -424,6 +424,41 @@ every kind it matches.
 relationship, so there is no table to consult, and inventing one for them
 would be the second encoding this refusal refuses.
 
+## A predicate is not an authoring gesture
+
+`missing-claim` matches a **raw predicate**, and every other condition names a
+structure. That difference decides what a consumer can offer for it.
+
+A trigger travels verbatim into the report and the design step (ADR 0110), and
+a host maps it onto its own affordance. Most conditions map cleanly:
+`no-subject-of-kind` is a concept to add, `missing-relationship` an edge to
+draw. `missing-claim` does not, in general, because a predicate is not a
+gesture — `yarramate/attestation/adequacy` is written by adding an attestation,
+`yarramate/reference/refers-to` by adding a reference, and a profile may mint
+predicates this engine has never heard of.
+
+So a card built from `missing-claim` can come back with no affordance, which is
+how an adopter found this (#430): their mapping covered five conditions, this
+was the sixth, and their pack asserts no card degrades to prose.
+
+**The predicate is the shape.** It is on the trigger, and the host decides what
+control to draw for it and which predicates it is willing to draw at all. The
+engine takes no position on which predicates are user-editable fields, because
+it cannot know a host's editor.
+
+`design` maps three, and prints an `update-concept` skeleton for them:
+
+| Predicate | Field |
+|---|---|
+| `yarramate/ownership/owner` | `owner` |
+| `yarramate/concept/description` | `description` |
+| `yarramate/lifecycle/status` | `status` |
+
+Each names a field `update-concept` writes directly, so each is unambiguous.
+Any other predicate prints nothing, which is ADR 0110's rule holding: a wrong
+skeleton is never offered. Those three are every `missing-claim` the shipped
+catalogue uses, and a test keeps that true (ADR 0137).
+
 ## A condition the engine owns defines its own peers
 
 Comparing a subject against its peers is not new here. `near-duplicate` fires
