@@ -191,7 +191,7 @@ calling `evaluateCatalogue` directly should compose first for the same reason.
 ## Waves open when the model has substance
 
 A wave may declare `opensWhen`, conditions that must all hold before it opens
-([ADR 0125](adr/0125-a-wave-opens-when-the-model-has-substance.md)):
+(ADR 0125):
 
 ```yaml
 waves:
@@ -254,7 +254,7 @@ is why this is a refusal rather than a finding, and it is the same invisible
 failure `YM914` refuses when a gate names a kind that resolves nowhere.
 
 A gate that wants "the model now has X" uses `has-subject-of-kind`
-([ADR 0134](adr/0134-a-wave-gate-asks-about-the-workspace-and-may-ask-positively.md)):
+(ADR 0134):
 
 ```yaml
 waves:
