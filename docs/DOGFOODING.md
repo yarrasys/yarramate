@@ -84,8 +84,21 @@ empty cell. No test could have produced it, because nothing here produced it.
 
 What surfaced it was building a feature that emitted the shape for the first
 time: styling a column means styling its empty cells, so the new writer wrote
-one, and the round-trip test failed on the cell beside it. The defect was
-years-old and reachable from any workbook a person had opened and saved.
+one, and the round-trip test failed on the cell beside it.
+
+The defect was present in the reader's **first commit** (`9f99b84`,
+2026-08-27) and shipped in **eight releases over three days**, v1.6.0 through
+v1.12.0. It was reachable that whole time from any workbook a person had
+opened and saved.
+
+Three days rather than three years is the useful number, because it removes
+the comfortable reading. This was not old code nobody had looked at: it was
+written correct-looking, reviewed, tested and shipped eight times in
+seventy-two hours, and not one of those releases could have surfaced it.
+Elapsed time was never what protected it, and neither was usage. The
+condition for surfacing it was somebody emitting a shape nobody had emitted
+yet — so a bug that survived three days for this reason would have survived
+three years for the same one.
 
 So the remedy to "a suite cannot see what nothing produces" is not to wait for
 a consumer to trip over it. It is to **build the shape you have never
