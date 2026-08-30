@@ -220,6 +220,22 @@ locator against the subject, with the provider named. Core never resolves,
 fetches, or interprets the URI: URI ownership is the provider's (ADR 0068,
 `docs/EVIDENCE.md`).
 
+**So no condition can ask about what is inside it, and that is the design
+rather than a gap.** An annex is not compiled, so nothing about its contents
+reaches the graph the interrogation runs over. A catalogue therefore cannot
+ask "are the field mappings recorded"; it can only ask **who confirmed that
+they are**, which is what `missing-attestation` is for. An attestation names a
+person and a date, and where the substance lives outside the graph that is the
+only honest instrument left — a condition claiming to check annex contents
+would be claiming to check something Core never read.
+
+This is the adopter-facing half of CONTRIBUTING.md's fifth rule, arrived at
+from the other side. There a check could not see what a declaration compiles
+to, by accident. Here it cannot see what was deliberately never compiled, by
+design. Same reach limit, opposite cause, and the remedies differ: that one is
+fixed by reading the graph instead of the vocabulary, and this one is not
+fixed at all, because there is nothing to read.
+
 ## Deliberately open
 
 Two of the refusals above are recorded limits rather than settled doctrine,
