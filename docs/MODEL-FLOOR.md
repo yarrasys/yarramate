@@ -236,6 +236,42 @@ design. Same reach limit, opposite cause, and the remedies differ: that one is
 fixed by reading the graph instead of the vocabulary, and this one is not
 fixed at all, because there is nothing to read.
 
+### The model points at the external document, not the reverse
+
+The observation above is what makes an annex reachable, and **the direction of
+the join is load-bearing.** The model names the document. The document does
+not name the model.
+
+Inverting it works, and it costs a check. A host document that declares which
+subject it specifies needs nothing from YarraMate, and it keeps the pointer
+beside the thing that changes, which is a real argument. But nothing YarraMate
+reads can then see the link, so a subject whose annex was never written is
+indistinguishable from one that was never meant to have an annex, and a
+document naming a subject that does not exist is never refused.
+
+Pointed outward, both cases are already reported, without resolving or opening
+anything:
+
+- `reconcile` lists `unobservedSubjects`, every current concept no observation
+  covers (ADR 0049). A subject whose annex is missing appears there by
+  construction.
+- A manifest `coverage` scope makes the mirror case visible: an artifact in
+  scope that no observation claims is listed under `unclaimedArtifacts`
+  (ADR 0130), compared as strings against `repo:<path>` locators.
+
+That is the whole of what a model-side check can offer here, and it is worth
+stating as a limit rather than leaving to be discovered: **the pointer's
+presence is checkable; its target's contents are not.**
+
+A locator carried on the subject itself would buy nothing beyond what the
+observation already gives, and it would be a second reference system that
+resolves nothing. That is why none of the compiled mechanisms takes one, and
+each refusal is narrow and correct on its own terms: `references[].ref`
+resolves a workspace-global subject id, `constraints[].expects` is an
+exact-match producer tuple, and `name`, `description` and `aka` are prose Core
+never queries. The opaque locator is real and it is the one on the
+observation.
+
 ## Deliberately open
 
 Two of the refusals above are recorded limits rather than settled doctrine,
