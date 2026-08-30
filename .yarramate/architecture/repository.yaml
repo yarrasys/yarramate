@@ -742,6 +742,10 @@ concepts:
     kind: repository-file
     name: src/visual-app/subject-draft-panel.tsx
     status: current
+  - id: visual-nesting-span-source
+    kind: repository-file
+    name: src/visual-app/nesting-span.ts
+    status: current
   - id: visual-subject-filter-source
     kind: repository-file
     name: src/visual-app/subject-filter.ts
@@ -1546,6 +1550,10 @@ relationships:
   - id: visual-subject-draft-panel-realizes-browser
     kind: realization
     from: visual-subject-draft-panel-source
+    to: visual-browser
+  - id: visual-nesting-span-realizes-browser
+    kind: realization
+    from: visual-nesting-span-source
     to: visual-browser
   - id: visual-subject-filter-realizes-browser
     kind: realization
