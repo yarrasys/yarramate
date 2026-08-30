@@ -1,6 +1,6 @@
 format: yarramate/question-catalogue/v1
 id: core-enrichment
-version: "1.3"
+version: "2.0"
 profile: yarramate/core@0.1
 presentation:
   title: Core enrichment interview
@@ -36,21 +36,35 @@ waves:
     name: Application
     description: >-
       How declared services are realized, performed, and fed with
-      information.
+      information. Waits for a declared service, because that is what this
+      wave asks about the realization of. The kinds here are exactly the ones
+      `no-service-declared` asks for, so this wave opens precisely when that
+      question closes.
     opensWhen:
-      - condition: has-any-subject
+      - condition: has-subject-of-kind
+        kinds:
+          - yarramate/core@0.1#businessService
+          - yarramate/core@0.1#applicationService
+          - yarramate/core@0.1#technologyService
   - id: technology
     name: Technology
     description: >-
       Where the declared applications actually run and what materializes
-      them.
+      them. Waits for a declared application component, because asking
+      where something runs before anything is declared to run is a question
+      with no subject.
     opensWhen:
-      - condition: has-any-subject
+      - condition: has-subject-of-kind
+        kinds:
+          - yarramate/core@0.1#applicationComponent
   - id: implementation
     name: Implementation
     description: >-
       How the planned architecture becomes real: work, deliverables, and
-      the plateaus between here and there.
+      the plateaus between here and there. NOT phase-gated, deliberately:
+      every candidate gate names something this wave exists to elicit, and
+      a declared state compiles to a plateau, which closes this wave's own
+      lead question. See ADR 0136.
     opensWhen:
       - condition: has-any-subject
   - id: hygiene
@@ -918,6 +932,26 @@ questions:
       seven usually carries the whole conversation — and relate each to
       the services or components that realize it with realization.
 
+  - id: no-component-declared
+    wave: business
+    since: "2.0"
+    scope: workspace
+    trigger:
+      - condition: no-subject-of-kind
+        kinds:
+          - yarramate/core@0.1#applicationComponent
+    question: >-
+      What software actually implements these services?
+    askPlain: >-
+      In plain terms: which applications or systems does this run on?
+    materiality: >-
+      A model with services and nothing implementing them cannot say where
+      anything runs, so the whole technology conversation has no subject.
+      This question exists to keep that conversation reachable: the
+      technology wave opens exactly when this question closes (ADR 0136).
+    authority: human
+    resolution: >-
+      Add the application components that implement the declared services.
   - id: no-contract-declared
     wave: business
     since: "1.2"

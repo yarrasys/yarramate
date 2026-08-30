@@ -2,6 +2,62 @@
 
 ## Unreleased
 
+### The interview performs the order it draws (`core-enrichment` 2.0)
+
+**A major catalogue version, and adopter-visible.** Two waves are re-gated so
+the shipped interview enforces the phase order its own descriptions state
+(#405, ADR 0136):
+
+| Wave | Was | Now |
+|---|---|---|
+| `application` | `has-any-subject` | `has-subject-of-kind`, the three service kinds |
+| `technology` | `has-any-subject` | `has-subject-of-kind: applicationComponent` |
+
+**One question is added**, `no-component-declared` in the ungated `business`
+wave: *"What software actually implements these services?"*. It exists to keep
+the technology conversation reachable, and it is the second half of the
+invariant below.
+
+**Migration.** Waves that opened at the first concept now stay shut longer, and
+`summary.questions` counts opened waves only, so **reported denominators change
+and open-question counts can fall for an unchanged model**. Nothing regresses:
+a complete interview stays complete. What changes is that an incomplete one can
+look nearer to done, which is why this is a major catalogue version rather than
+a minor one. `docs/INTERROGATION.md` gives the rule: minor is additive and
+loosening only; major is for the change class that can silently alter what
+"complete" means.
+
+**The invariant that makes this a sequence and not a silence:** the kinds a
+gate names are exactly the kinds an ungated workspace-scope question asks for,
+so each gate opens precisely when its question closes and the interview cannot
+reach zero open while a wave is shut. `no-service-declared` forces
+`application`; `no-component-declared` forces `technology`. A test asserts the
+set equality for every gated wave rather than leaving it to review, because
+review missed it twice: `application` was first gated on `applicationService`
+alone while its question fires only when all three service kinds are absent,
+and `technology` was gated with nothing asking for a component at all.
+
+**Two workspace-anchored layer-presence questions are now deferred rather than
+immediate**: `no-event-declared` and `no-artifact-declared`. #272's guarantee
+survives in changed form, silence becoming sequence: the wave reports as
+unopened and the question that opens it is open and waiting, so an absent layer
+is still asked about, in layer order rather than all at once.
+
+`implementation` and `interaction` do **not** change, and both were measured
+rather than argued. `implementation` has no honest gate: every candidate names
+something the wave exists to elicit, and a declared state compiles to a plateau,
+which closes the wave's own lead question, so `has-state-defined` is not built.
+`interaction`'s "Hygiene waits" turned out to be true already, because `design`
+serves questions in wave order and `hygiene` is last.
+
+### Also
+
+- Two `## Unreleased` headings in this file described features that shipped in
+  1.13.0. Cutting a release retitled only the first one, and the entries below
+  it read as pending for two releases. Folded into 1.13.0, where they belong,
+  and a test now refuses a second `## Unreleased` heading so the release step
+  cannot leave one behind again.
+
 ### A vocabulary question may ask for a vocabulary
 
 `below-subject-count`, a workspace-scope condition that fires while FEWER than
@@ -97,8 +153,6 @@ read workbooks.
   blank a neighbouring cell that had content. Found by the round-trip test
   added for the styling above, which is the first thing to emit that shape.
 
-## Unreleased
-
 - **Changed.** A property field puts its label beside its control rather than
   above it. A property sheet is read down the left edge — the reviewer is
   looking for KIND, not reading prose — so a stacked label doubled the height
@@ -131,8 +185,6 @@ read workbooks.
   mode-beside-width, because the rail is a fixed column: there is no dragged
   width to restore. The two sides are independent — hiding one has never been
   a reason to move the other.
-
-## Unreleased
 
 - **Added.** **Focus on this**, in the subject and relationship context menus
   (#407, requested by an adopter mounting the editor). It narrows the canvas
