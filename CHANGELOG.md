@@ -1,6 +1,11 @@
 # Changelog
 
-## Unreleased
+## 1.13.1
+
+Documentation only, and shipped as a patch for the reason 1.11.1 was: an
+adopter arrives through npm, so guidance that stays in the repository is
+guidance they never see. 1.13.0 added optional workbook cell styles and column
+widths, and the guide in the tarball did not mention them.
 
 - **Docs.** `docs/CONSUMING-YARRAMATE.md` describes the optional workbook cell
   styles and column widths, which shipped in 1.13.0 without an adopter-facing
