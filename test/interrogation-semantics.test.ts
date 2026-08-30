@@ -23,7 +23,7 @@ import {
 // existing question answers.
 
 const EXPECTED_SEMANTICS = '1'
-const EXPECTED_FINGERPRINT = '74ee871f5377fedc'
+const EXPECTED_FINGERPRINT = '1ef7dc086fdde597'
 
 const profile = 'yarramate/core@0.1'
 
@@ -133,6 +133,9 @@ const CONDITION_PROBES: Record<
   // Never fires here, deliberately: no memberships are passed, and "absent
   // memberships stay quiet" is itself a semantic worth pinning (ADR 0131).
   'fills-pattern-slot': ['      - condition: fills-pattern-slot'],
+  // Fires: nothing in the fixture aggregates anything, which is the state a
+  // vocabulary question is loudest about.
+  'no-linkage-exists': ['      - condition: no-linkage-exists', `        kinds: ["${profile}#aggregation"]`, '        direction: outgoing', `        counterpartKinds: ["${profile}#grouping"]`],
 }
 
 const conditionProbes = Object.entries(CONDITION_PROBES) as readonly (readonly [

@@ -1,6 +1,6 @@
 # A vocabulary is closed by its scheme, not its count
 
-Status: proposed
+Status: accepted
 
 From ApertureX (#436), field evidence on `below-subject-count` after adopting
 it across six vocabulary questions on a live engagement. The condition works:
@@ -161,11 +161,23 @@ authored on an unsurveyed vocabulary.
 semantics to solve a modelling gap, and dismissal is correctly human-only in
 their product.
 
-## Open questions for the maintainer
+## Settled by the maintainer
 
-1. Is the extra scheme subject a fair ask, given `MODEL-FLOOR.md` already says
-   this is how a classification axis should be expressed?
-2. `no-linkage-exists` as the name, matching `exists-linkage` negated.
-3. Whether the guidance change (vocabularies ask for the scheme) belongs in
-   `docs/INTERROGATION.md` beside `below-subject-count`, which would make it
-   the second thing that section says about a condition shipped one day ago.
+The extra scheme subject is a fair ask, `MODEL-FLOOR.md` already prescribing
+the form. The condition is `no-linkage-exists`. The guidance change goes in
+`docs/INTERROGATION.md` beside `below-subject-count`, which is the second thing
+that section says about a condition shipped a day earlier, and that is the
+honest record rather than an embarrassment to manage.
+
+## One thing building it taught
+
+The first fixture used a bare `grouping` for both the scheme and its classes,
+and the scheme then counted as one of its own members — so `below-subject-count`
+CLOSED on a correctly modelled single-class vocabulary, by accident, for the
+wrong reason. It looked like the design working and was the fixture lying.
+
+Modelled the way an adopter actually does it, with the classes as a profile
+specialization and the scheme a plain grouping above them, the row behaves as
+designed. A test that conflates the container with its contents will agree with
+whatever it is asked, which is the same shape of error as counting the
+container in the first place.

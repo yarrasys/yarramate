@@ -36,7 +36,10 @@ questions. Each question binds:
   `atLeast` subjects of the given kinds exist, so a **vocabulary**
   question can ask for more than one term; `atLeast` must be at least 2,
   because 1 is `no-subject-of-kind` under a second name and `YM918`
-  refuses it; ADR 0135), `no-state-defined`,
+  refuses it; ADR 0135), `no-linkage-exists` (workspace: the negative of
+  `exists-linkage` — NO concept anywhere satisfies the linkage, which is how a
+  vocabulary question asks for its scheme rather than counting its members;
+  ADR 0138), `no-state-defined`,
   `missing-linkage` (no relationship of given kinds, in a given
   direction, whose counterpart is of a given kind — the linkage-depth
   primitive), `has-linkage` (the positive of `missing-linkage`;
@@ -229,7 +232,7 @@ product's wave rail had the same fault on the day the gate shipped.
 A gate is evaluated with **no subject**, so only a workspace-scope condition
 means anything in `opensWhen`: `has-any-subject`, `no-subject-of-kind`,
 `has-subject-of-kind`, `below-subject-count`, `no-state-defined`,
-`exists-linkage` and `unchallenged-evidence`. `exists-linkage` is a positive
+`exists-linkage`, `no-linkage-exists` and `unchallenged-evidence`. `exists-linkage` is a positive
 existence check, "some concept would satisfy `has-linkage`", which is easy to
 miss and often the one a gate wants.
 
@@ -423,6 +426,57 @@ every kind it matches.
 `missing-attestation` and `missing-claim` are not checked. They name no
 relationship, so there is no table to consult, and inventing one for them
 would be the second encoding this refusal refuses.
+
+## A vocabulary is closed by its scheme, not its count
+
+`below-subject-count` measures a population. **A vocabulary question is not
+asking about a population; it is asking whether anyone surveyed.** Those come
+apart in both directions, and an adopter measured both within days of adopting
+it (#436, ADR 0138):
+
+- **two throwaway values close it dishonestly.** Anyone who wants the question
+  gone adds a second value, and a count cannot tell a surveyed estate of two
+  from one plus a throwaway.
+- **a truthful single-value estate can never close it.** Saying "one is the
+  whole scheme" was not recordable, so a *correct* model carried a permanently
+  open question that only a human could clear.
+
+No value of `atLeast` fixes both, because the count is a proxy. The rule it
+breaks is `docs/MODEL-FLOOR.md`'s: **whatever the interrogation asks about must
+be recordable as an answer.**
+
+The floor also names the answer's home. A classification axis is a `grouping`
+that aggregates its members, so a **scheme** aggregating its classes IS the
+statement that these are the classes and this is the set. Ask for that:
+
+```yaml
+trigger:
+  - condition: no-linkage-exists
+    kinds: ["yarramate/core@0.1#aggregation"]
+    direction: outgoing
+    counterpartKinds: ["acme/consulting@1.0#sensitivity-class"]
+```
+
+| model state | count test | scheme test |
+|---|---|---|
+| nothing declared | open | open |
+| one class, authored incidentally | open | open |
+| two classes, both incidental | **closed** | open |
+| one class, scheme declared | **open** | closed |
+
+Both failures close at once, and neither by tuning a number: the closer is a
+declaration, which a tally cannot reach.
+
+**`below-subject-count` is not deprecated.** "The model holds fewer than N of
+this kind" remains a legitimate thing to ask, and the adopter's own balance is
+worth carrying: two is the smallest number that cannot be reached by accident,
+it caught real incidental vocabulary within days, and they would adopt it
+again. What changed is which question it is the right tool for.
+
+**Model the scheme as a plain `grouping` above classes that are a
+specialization**, not as one more member of the same kind. A scheme of the same
+kind as its members counts as one of them, which closes the count test by
+accident whenever someone models it correctly — the container counting itself.
 
 ## A predicate is not an authoring gesture
 
