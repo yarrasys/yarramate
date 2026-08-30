@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { existsSync, readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 
 // A shipped document must not point at one that stays in the repository.
 //
@@ -46,6 +47,33 @@ describe('the documentation an adopter receives is self-contained', () => {
       'A shipped document points at one that stays in the repository, so a ' +
         'reader who installed the package cannot follow it. Either add the ' +
         'target to `files` in package.json, or stop citing it by path.',
+    ).toEqual([])
+  })
+
+  it('makes no link a reader with the package cannot follow', () => {
+    // The hole in the two checks above, found by re-reading them after an
+    // adopter reported this class from the other side. They compare bare
+    // `docs/NAME.md` mentions; they say nothing about markdown LINKS, and
+    // nine `[ADR 0110](adr/....md)` links pointed at files that do not ship.
+    //
+    // The adopter's framing is the one worth keeping: prose that says
+    // "recorded in ADR 0136" is honest, and a link that 404s is a promise the
+    // package cannot keep. So a shipped document cites an unshipped one by
+    // NAME or not at all, never by href.
+    const dangling = shipped.flatMap((entry) => {
+      const links = [
+        ...readFileSync(entry, 'utf8').matchAll(/\]\((?!https?:|#|mailto:)([^)]+)\)/g),
+      ].map((match) => match[1]!)
+      return links
+        .map((href) => join(dirname(entry), href.split('#')[0]!))
+        .filter((target) => target.endsWith('.md') && !files.includes(target))
+        .map((target) => `${entry} -> ${target}`)
+    })
+    expect(
+      dangling,
+      'A shipped document links to a file the package does not contain, so a ' +
+        'reader who installed it follows the link to nothing. Cite it by name ' +
+        '("ADR 0136") instead, or add the target to `files` in package.json.',
     ).toEqual([])
   })
 

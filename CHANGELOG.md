@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+### No link a reader with the package cannot follow
+
+Nine markdown links in shipped documents pointed at `adr/` files that do not
+ship, seven in `CONSUMING-YARRAMATE.md` and two in `INTERROGATION.md`. They are
+now prose references, and `test/shipped-docs.test.ts` refuses a new one.
+
+Shipping the ADR closure instead would have been 26 more files out of 137, and
+each shipped file is a contract. The adopter who reported this class put the
+reason for prose better than the size argument does: **prose that says
+"recorded in ADR 0136" is honest, and a link that 404s is a promise the package
+cannot keep.** So the conversion is the fix rather than a workaround for one.
+
+This is the same defect the 1.14.1 guard was written for, one level down. That
+guard compared bare `docs/NAME.md` mentions and said nothing about links, so it
+missed nine instances of exactly what it existed to catch.
+
+
 ### The reference-slot question is settled, and the floor says so
 
 `docs/MODEL-FLOOR.md` closed two open questions rather than continuing to list

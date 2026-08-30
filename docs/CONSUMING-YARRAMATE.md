@@ -227,7 +227,7 @@ These subpaths are Workers/browser-safe: no Node built-ins, no `ws`, and no
 visual session server. The local `yarramate-visual` runtime remains the
 optional loopback conversation product and is not required for projection.
 `presentation.notation: 'archimate'` is still a rendering mode only
-([ADR 0087](adr/0087-archimate-notation-is-a-rendering-mode-not-a-vocabulary.md));
+(ADR 0087);
 the notation module is the rendering vocabulary for that mode; the element
 vocabulary and relationship table themselves are implemented in the core
 profile (ADR 0097).
@@ -262,14 +262,14 @@ const report = { workspace: id, ...evaluateCatalogue(catalogue, graph, profileCo
 
 The report carries `semantics`, the version of condition evaluation, which
 changes only when an existing question's answer can change for an unchanged
-model ([ADR 0106](adr/0106-a-report-says-which-engine-answered.md)). A consumer
+model (ADR 0106). A consumer
 that **persists** answers should store it beside them: equal means a flipped
 answer is about the model and belongs in front of a user, different means the
 engine moved and the right response is to re-baseline silently rather than
 reopen someone's queue.
 
 Every question also carries `trigger`, the catalogue conditions that opened
-it, verbatim ([ADR 0110](adr/0110-an-open-question-carries-its-answer-shape.md)).
+it, verbatim (ADR 0110).
 That is the question's machine-readable answer shape: a host building an
 answering affordance — a concept form with the kind preselected from
 `no-subject-of-kind`, a relationship editor with one endpoint fixed by
@@ -354,7 +354,7 @@ untouched and `ask --open` still reports the question, because the interview is
 not the editor's to settle.
 
 Pass `readOnly: true` to mount a viewer over the same surface — for a frozen
-published snapshot, say ([ADR 0117](adr/0117-a-mounted-editor-can-refuse-the-pen.md)).
+published snapshot, say (ADR 0117).
 The reviewer still selects, filters, navigates views and reads questions and
 properties (as values, not forms), but every affordance that stages or commits
 is absent rather than disabled: no Add subject, no palette or changes
@@ -365,7 +365,7 @@ with a store that refuses writes; the two defenses are independent.
 `mountEditorWith` takes the same flag as its trailing parameter.
 
 The returned handle can also point at the canvas
-([ADR 0118](adr/0118-the-host-can-point-at-the-canvas.md)):
+(ADR 0118):
 `select(subjectId)` selects a concept or relationship exactly as a canvas tap
 would, which also scopes the Open questions section to it;
 `openDraft({ kind })` opens the Add-subject dialog with the kind preselected
@@ -380,7 +380,7 @@ anything they lead to still stages through the changeset and commits through
 the same validated batch.
 
 The viewer also accepts per-subject marks
-([ADR 0119](adr/0119-the-viewer-accepts-the-hosts-marks.md)): pass
+(ADR 0119): pass
 `decorations: { [subjectId]: 'added' | 'removed' | 'changed' }` — concepts and
 relationships alike — and the canvas renders them as visual treatments (added
 an eucalyptus border, removed a quiet dashed one, changed ochre; a fault still
@@ -399,7 +399,7 @@ commits and saves layouts over that store. A changeset's model and view writes
 land together in one compare-and-swap batch; the caller therefore owns
 persistence. An asynchronous product fetches into a synchronous in-memory
 store before mounting and flushes writes itself, per
-[ADR 0100](adr/0100-sources-come-from-a-store-and-a-batch-lands-by-compare-and-swap.md).
+ADR 0100.
 
 The stylesheet ships beside the bundle and is not imported by it, so a host
 attaches it one of two ways. A bundler takes the `import` above; because that
