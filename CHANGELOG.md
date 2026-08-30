@@ -2,6 +2,37 @@
 
 ## Unreleased
 
+- **Added.** `yarramate/workbook` takes optional named cell styles and column
+  widths (#416, asked for by a workbook consumer). `CellStyle` is a closed set
+  of `header`, `muted` and `emphasis` — **roles, not appearances**, so the test
+  for admitting a fourth is whether it can be named without reference to how it
+  looks. A request for a colour is the one a closed set exists to refuse, since
+  that is what turns a style vocabulary into a styling engine. Named rather
+  than given as colours for a second reason: the styles part stays a constant,
+  so "identical inputs produce identical bytes" remains trivially true.
+
+  **A caller that asks for no roles gets byte-identical output to before**, and
+  that is a test rather than a promise: the styles part, its content type, its
+  relationship and every `s` attribute are emitted only when something asks for
+  them. Row 1 takes `headerStyle` and the rows below take their column's, so a
+  header band is not overwritten by the role beneath it.
+
+  The use that carried it is not decoration. A consumer's columns fall into
+  three classes — bound to the model, carried alongside it, or computed and
+  ignored on the way back — and a consultant editing the file could not see
+  which was which until an import told them a cell could not be written back.
+
+- **Fixed.** A cell with a reference and no value is read against its own
+  column. Excel writes `<c r="B2" s="1"/>` for a cell that carries formatting
+  and nothing else, and the reader took it through the closing branch before
+  reading `r`, so it wrote against the PREVIOUS cell's column. The value
+  written was empty, and **empty is a cleared value rather than an absent
+  one**, so a workbook somebody had merely opened and saved could silently
+  blank a neighbouring cell that had content. Found by the round-trip test
+  added for the styling above, which is the first thing to emit that shape.
+
+## Unreleased
+
 - **Changed.** A property field puts its label beside its control rather than
   above it. A property sheet is read down the left edge — the reviewer is
   looking for KIND, not reading prose — so a stacked label doubled the height
