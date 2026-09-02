@@ -28,6 +28,47 @@ path with no supplied source, while binding pattern parts. Patterns turned out
 to be incidental: the crash needs only a file, and the fix is in neither the
 pattern nor the operations path.
 
+### A rename repoints a subject bound into a pattern slot
+
+`parts` binds a subject into a pattern instance's slot by slot name (ADR
+0123), which makes it a place a subject address lives. It was never
+enumerated as one, so a rename could not move it. `applyOperations` refused
+the whole batch:
+
+```
+YM315 Part "interface" of "greeting-app" names "patron-api",
+      which is not a declared subject
+```
+
+That fails closed, which is the right direction, but a bound part was
+un-renameable over operations entirely.
+
+The reason it went missing is worth more than the fix.
+`test/subject-references.test.ts` exists precisely so this cannot happen: it
+derives every address-typed position from the four JSON Schemas and asserts
+the enumeration accounts for all of them, so that "a new reference field
+cannot be added without landing here too". Its walker descends `properties`,
+`items` and `additionalProperties`. `parts` is spelled with
+**`patternProperties`**, the one form it does not descend, so `parts` shipped
+as an unenumerated reference site **with the completeness test green**.
+
+Measured: the walker derived 14 positions from the document schema, and 15
+once `patternProperties` is walked. The one it gains is exactly
+`concepts/*/parts/*`. Every other address in all four schemas lives in a
+**sequence**; this is the only one that lives in a mapping, which is why three
+forms were enough right up until they were not.
+
+That is CONTRIBUTING's ninth rule one level up, where the closed enumeration
+is of schema FORMS rather than of fields, and its seventh: the walker is
+shaped like the addresses that existed when it was written.
+
+`*` in a reference position now means every element of a collection, which is
+every index of a sequence and every value of an open mapping. The pointer
+segment for a part is the **slot name**, so a diagnostic says
+`/concepts/0/parts/interface` rather than a counted position.
+
+Reported by the ApertureX adopter session.
+
 ## 1.15.0
 
 ### An edge across a nesting boundary no longer collapses the canvas
@@ -64,7 +105,6 @@ application implements this?", and the model compiles clean, so the first sign
 was the canvas. The adopter's field model had the pair three times over from
 normal consulting work. This repository's own 358-subject self-model renders
 only because it happens never to pair composition with another edge.
-
 
 ### A vocabulary is closed by its scheme, not its count
 
@@ -127,7 +167,6 @@ for prose describing behaviour 1.14.x changed. Nothing found: the three
 candidate lines in `core-enrichment` are accurate for their conditions, and the
 wave-gating section describes `opened` semantics that ADR 0136 did not alter.
 
-
 ### No link a reader with the package cannot follow
 
 Nine markdown links in shipped documents pointed at `adr/` files that do not
@@ -143,7 +182,6 @@ cannot keep.** So the conversion is the fix rather than a workaround for one.
 This is the same defect the 1.14.1 guard was written for, one level down. That
 guard compared bare `docs/NAME.md` mentions and said nothing about links, so it
 missed nine instances of exactly what it existed to catch.
-
 
 ### The reference-slot question is settled, and the floor says so
 
@@ -174,7 +212,6 @@ homeless card in 348.
 Reopen either with an adopter measuring a materially larger residue against
 the floor — the same test that closed #386.
 
-
 ### A missing-claim question offers the field it is missing
 
 `design` now prints an `update-concept` skeleton for a `missing-claim` trigger
@@ -203,7 +240,6 @@ render as editable** — the trigger carries the predicate and the host decides.
 That was the adopter's own hesitation about asking for a `set-field` answer
 shape, and it was right; ADR 0110 excluded a normalized remedy vocabulary for
 the same reason.
-
 
 ## 1.14.1
 
@@ -237,7 +273,6 @@ they were simply unreachable.
 Docs-only and shipped as a patch on the same reasoning as 1.11.1 and 1.13.1:
 an adopter arrives through npm, so guidance that stays in the repository is
 guidance they do not have.
-
 
 ## 1.14.0
 
@@ -740,8 +775,6 @@ workspace-scope conditions that would work.
   72 of 149 in-scope files were unclaimed, and the backlog was worked to
   zero (#366) — every file bound in by a repository-file concept, a
   realization to what its code serves, and a confirmed observation.
-
-
 
 - **Added.** A workspace can carry its own questions (#345, ADR 0129). A
   `questions:` manifest category resolves like `patterns` and `evidence`, and
@@ -1637,7 +1670,6 @@ workspace-scope conditions that would work.
   patterns from a committed file is a separate decision. Recording comes first,
   because the data has to exist before running it means anything.
 
-
 - **Added.** An interrogation report says which engine answered, not only which
   catalogue asked. `semantics` carries the version of condition evaluation
   itself, exported as `INTERROGATION_SEMANTICS_VERSION`, and it changes only
@@ -1664,7 +1696,6 @@ workspace-scope conditions that would work.
   `test/interrogation-semantics.test.ts` exercises every condition against a
   fixture and fingerprints the answers, so changing what a condition means
   fails the suite and names the version to bump.
-
 
 - **Added.** The interrogation engine is public API. `evaluateCatalogue`,
   `loadQuestionCatalogue`, `renderQuestion` and `renderInterrogationReport`
