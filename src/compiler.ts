@@ -957,9 +957,24 @@ function compileWorkspaceResolved(
     ({ identity }) => identity === shippedPolicyIdentity,
   )
   if (!alreadyDeclaresPolicy) {
+    // This probe runs BEFORE the document gate that rejects a source whose
+    // schema check failed, so it has to hold its own precondition: a source
+    // that composes to anything but a mapping - an empty file, a comment-only
+    // one, a bare scalar - selects no profile at all. It used to read
+    // `.profile` through an `as` cast, which is what hid the null from the
+    // typechecker, and an empty document crashed the whole compile with a
+    // `TypeError` instead of the `YM201 must be object` its schema already
+    // produces. Every other consumer of a parsed entry checks its diagnostics
+    // first (the profile walk above, the pattern walk below); this one could
+    // not, because it runs before that gate exists, so it narrows instead.
     const selected = documentInputs.some(({ entry }) => {
-      const value = entry.value as { readonly profile?: unknown }
-      return value.profile === shippedPolicyIdentity
+      const value: unknown = entry.value
+      return (
+        typeof value === 'object' &&
+        value !== null &&
+        (value as { readonly profile?: unknown }).profile ===
+          shippedPolicyIdentity
+      )
     })
     const extended = pendingProfiles.some(
       ({ value }) => value.extends === shippedPolicyIdentity,
