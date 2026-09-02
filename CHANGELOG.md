@@ -1,5 +1,53 @@
 # Changelog
 
+## 1.15.2
+
+### Importing the package no longer compiles ten JSON Schemas
+
+Ten JSON Schema validators were constructed and compiled at **module scope**,
+so importing the package paid for every one whether or not a caller ever
+validated anything. Measured on the published 1.15.1 dist:
+
+| entry | Ajv compiles at import | import time | share |
+|---|---|---|---|
+| `yarramate` (barrel) | **10** | 155.2 ms | **80% of import** |
+| `yarramate/interrogation` | **1** | 54.7 ms | 63% of import |
+
+That is not a tidiness concern. Cloudflare Workers budget **startup CPU**
+separately from request CPU and refuse a Worker that exceeds it, so an
+adopter's production deploy was rejected outright (`error 10021`) by work no
+request had asked for. The same Worker had deployed earlier the same day at
+569 ms of startup, which is how close to the edge this had been sitting.
+
+Each site also constructed its **own** `Ajv` instance, so each one compiled the
+2020-12 meta-schema again.
+
+Every validator is now built on first use and reused thereafter:
+
+| entry | before | after |
+|---|---|---|
+| `yarramate` (barrel) | 155.2 ms, 10 compiles | **33.2 ms, 0 compiles** |
+| `yarramate/interrogation` | 54.7 ms, 1 compile | **12.1 ms, 0 compiles** |
+
+A caller now pays only for the schemas it actually touches: compiling a
+workspace builds the document validator and leaves the evidence,
+adapter-mapping, core-contract and operations validators unbuilt.
+
+**No API change and no behaviour change.** The only difference is *when* a
+malformed schema would be reported: at import before, at first use now. The
+schemas ship with the package and are covered by tests, so this fails later
+but still fails.
+
+`test/schema-validation-laziness.test.ts` pins it, asserting that importing
+either entry compiles nothing and that first use then compiles something. It is
+`test/export-purity.test.ts`'s idea applied to time rather than to
+dependencies: the static import graph cannot see a module-scope side effect, so
+this one runs the import and watches. It fails on the next module-scope
+validator anyone adds.
+
+Reported by the ApertureX adopter session, whose measured startup profile
+identified the cause.
+
 ## 1.15.1
 
 ### A document that composes to nothing is refused, not crashed on

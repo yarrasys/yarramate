@@ -62,6 +62,7 @@ import type {
   YarramateApplyResult,
   YarramateOperation,
 } from './operations.js'
+import { lazyValidator } from './schema-validation.js'
 
 // `.default ?? module`, not a bare `.default`: NodeNext sees the raw CJS
 // `module.exports` and a bundler sees the unwrapped class, and this file is
@@ -72,10 +73,14 @@ const ajv2020Module = Ajv2020Module as unknown as {
 const Ajv2020 = ajv2020Module.default ?? ajv2020Module
 // `discriminator` routes a batch entry to the single branch its `op` names, so
 // one malformed operation reports one fault instead of ten near-misses.
-const validateOperations = new Ajv2020({
-  allErrors: true,
-  discriminator: true,
-}).compile(operationsSchema)
+// Keeps its own Ajv instance: `discriminator` changes how a schema compiles,
+// so it cannot share one with the nine that do not set it.
+const validateOperations = lazyValidator(() =>
+  new Ajv2020({
+    allErrors: true,
+    discriminator: true,
+  }).compile(operationsSchema),
+)
 
 // Scalar fields replace; list fields append; `remove` retracts (ADR 0062).
 // An answer enriches what is there and may explicitly take back what it
@@ -551,7 +556,7 @@ export const applyOperations = (
   })
   const loadedOperations = loadSourceDocument<OperationsDocument>(
     operations,
-    validateOperations,
+    validateOperations(),
     'Operations',
   )
   if (!loadedOperations.ok) return failed(loadedOperations.diagnostics)
