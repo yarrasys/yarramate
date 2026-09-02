@@ -36,6 +36,28 @@ const ajv2020Module = Ajv2020Module as unknown as {
 } & typeof Ajv2020Module
 const Ajv2020 = ajv2020Module.default ?? ajv2020Module
 
+/**
+ * The prototype that actually OWNS `compile`, found by walking up rather than
+ * assumed to be `Ajv2020.prototype`.
+ *
+ * `Ajv2020` and the draft-07 `Ajv` are different classes that inherit
+ * `compile` from the same base, so a spy installed on `Ajv2020.prototype`
+ * catches only the variant this package happens to use today and would miss a
+ * validator built with plain `ajv`. Deriving the patch point from the
+ * mechanism keeps the guard honest against a class it was not written for -
+ * CONTRIBUTING's seventh rule, on the detector rather than on the defect.
+ * (Pointed out by the ApertureX adopter session, who hit the same asymmetry
+ * spying on their own side.)
+ */
+const compileOwner = (() => {
+  let proto: object | null = Ajv2020.prototype
+  while (proto !== null && !Object.hasOwn(proto, 'compile')) {
+    proto = Object.getPrototypeOf(proto) as object | null
+  }
+  if (proto === null) throw new Error('no prototype in the chain owns compile')
+  return proto as { compile: (...args: unknown[]) => unknown }
+})()
+
 const MINIMAL = `format: yarramate/v1
 id: minimal
 profile: yarramate/core@0.1
@@ -51,7 +73,7 @@ let instances = 0
 
 describe('schema validators are compiled at import, never at request time', () => {
   it('compiles nothing further once the package has been imported', async () => {
-    const original = Ajv2020.prototype.compile
+    const original = compileOwner.compile
     const originalDefault = ajv2020Module.default
     let compiles = 0
     // Counting CONSTRUCTIONS as well as compiles, so the second test can ask
@@ -66,13 +88,13 @@ describe('schema validators are compiled at import, never at request time', () =
       }
     }
     ajv2020Module.default = Counting as unknown as typeof Ajv2020
-    Ajv2020.prototype.compile = function patched(
+    compileOwner.compile = function patched(
       this: unknown,
       ...args: unknown[]
     ) {
       compiles += 1
-      return (original as (...a: unknown[]) => unknown).apply(this, args)
-    } as typeof Ajv2020.prototype.compile
+      return original.apply(this, args)
+    }
     try {
       const loaded = await import('../src/index.js')
       const atImport = compiles
@@ -125,7 +147,7 @@ describe('schema validators are compiled at import, never at request time', () =
           '`compileValidator` in src/schema-validation.ts.',
       ).toBe(0)
     } finally {
-      Ajv2020.prototype.compile = original
+      compileOwner.compile = original
       ajv2020Module.default = originalDefault
     }
   })
