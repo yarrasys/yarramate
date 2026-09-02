@@ -1,5 +1,48 @@
 # Changelog
 
+## Unreleased
+
+### A rename repoints a subject bound into a pattern slot
+
+`parts` binds a subject into a pattern instance's slot by slot name (ADR
+0123), which makes it a place a subject address lives. It was never
+enumerated as one, so a rename could not move it. `applyOperations` refused
+the whole batch:
+
+```
+YM315 Part "interface" of "greeting-app" names "patron-api",
+      which is not a declared subject
+```
+
+That fails closed, which is the right direction, but a bound part was
+un-renameable over operations entirely.
+
+The reason it went missing is worth more than the fix.
+`test/subject-references.test.ts` exists precisely so this cannot happen: it
+derives every address-typed position from the four JSON Schemas and asserts
+the enumeration accounts for all of them, so that "a new reference field
+cannot be added without landing here too". Its walker descends `properties`,
+`items` and `additionalProperties`. `parts` is spelled with
+**`patternProperties`**, the one form it does not descend, so `parts` shipped
+as an unenumerated reference site **with the completeness test green**.
+
+Measured: the walker derived 14 positions from the document schema, and 15
+once `patternProperties` is walked. The one it gains is exactly
+`concepts/*/parts/*`. Every other address in all four schemas lives in a
+**sequence**; this is the only one that lives in a mapping, which is why three
+forms were enough right up until they were not.
+
+That is CONTRIBUTING's ninth rule one level up, where the closed enumeration
+is of schema FORMS rather than of fields, and its seventh: the walker is
+shaped like the addresses that existed when it was written.
+
+`*` in a reference position now means every element of a collection, which is
+every index of a sequence and every value of an open mapping. The pointer
+segment for a part is the **slot name**, so a diagnostic says
+`/concepts/0/parts/interface` rather than a counted position.
+
+Reported by the ApertureX adopter session.
+
 ## 1.15.0
 
 ### An edge across a nesting boundary no longer collapses the canvas
