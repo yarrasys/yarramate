@@ -33,7 +33,7 @@ import {
   shippedPolicyIdentity,
   shippedPolicySource,
 } from './shipped-profile.js'
-import { lazyValidator } from './schema-validation.js'
+import { compileValidator } from './schema-validation.js'
 
 const coreProfile = 'yarramate/core@0.1'
 // `ajv/dist/2020.js` is CJS, and its default-export shape is resolved
@@ -52,15 +52,9 @@ const ajv2020Module = Ajv2020Import as unknown as {
   default?: Ajv2020Ctor
 } & Ajv2020Ctor
 const Ajv2020 = ajv2020Module.default ?? ajv2020Module
-const validateDocument = lazyValidator(() =>
-  new Ajv2020({ allErrors: true }).compile(documentSchema),
-)
-const validateProfile = lazyValidator(() =>
-  new Ajv2020({ allErrors: true }).compile(profileSchema),
-)
-const validatePattern = lazyValidator(() =>
-  new Ajv2020({ allErrors: true }).compile(patternSchema),
-)
+const validateDocument = compileValidator(documentSchema)
+const validateProfile = compileValidator(profileSchema)
+const validatePattern = compileValidator(patternSchema)
 
 export interface WorkspaceSource {
   readonly path: string
@@ -717,13 +711,13 @@ const parseWorkspaceSource = (
     }
   }
 
-  const valid = parseDiagnostics.length === 0 && validateDocument()(value)
+  const valid = parseDiagnostics.length === 0 && validateDocument(value)
   const schemaDiagnostics: Diagnostic[] =
     parseDiagnostics.length > 0
       ? parseDiagnostics
       : valid
         ? []
-        : (validateDocument().errors ?? []).map((error) => {
+        : (validateDocument.errors ?? []).map((error) => {
             const property =
               error.keyword === 'additionalProperties'
                 ? String(error.params.additionalProperty)
@@ -925,8 +919,8 @@ function compileWorkspaceResolved(
       profileDiagnostics.push(...entry.schemaDiagnostics)
       continue
     }
-    if (!validateProfile()(value)) {
-      for (const error of validateProfile().errors ?? []) {
+    if (!validateProfile(value)) {
+      for (const error of validateProfile.errors ?? []) {
         const property =
           error.keyword === 'additionalProperties'
             ? String(error.params.additionalProperty)
@@ -995,8 +989,8 @@ function compileWorkspaceResolved(
       const value = entry.value as NativeProfile
       if (entry.schemaDiagnostics.length > 0) {
         profileDiagnostics.push(...entry.schemaDiagnostics)
-      } else if (!validateProfile()(value)) {
-        for (const error of validateProfile().errors ?? []) {
+      } else if (!validateProfile(value)) {
+        for (const error of validateProfile.errors ?? []) {
           profileDiagnostics.push({
             severity: 'error',
             code: 'YM201',
@@ -1268,8 +1262,8 @@ function compileWorkspaceResolved(
       patternDiagnostics.push(...entry.schemaDiagnostics)
       continue
     }
-    if (!validatePattern()(value)) {
-      for (const error of validatePattern().errors ?? []) {
+    if (!validatePattern(value)) {
+      for (const error of validatePattern.errors ?? []) {
         const property =
           error.keyword === 'additionalProperties'
             ? String(error.params.additionalProperty)

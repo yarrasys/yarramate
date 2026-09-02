@@ -1,36 +1,58 @@
+import Ajv2020Module from 'ajv/dist/2020.js'
 import type { ValidateFunction } from 'ajv'
 
+// The published dual-export dance every other module here does; see the
+// comment in `compiler.ts` for why (#252).
+const ajv2020Module = Ajv2020Module as unknown as {
+  default?: typeof Ajv2020Module
+} & typeof Ajv2020Module
+const Ajv2020 = ajv2020Module.default ?? ajv2020Module
+
 /**
- * Defers compiling a JSON Schema until something actually validates against
- * it, then reuses the compiled validator forever.
+ * Compiles a JSON Schema AT MODULE SCOPE, on an instance shared with every
+ * other schema that wants the same options.
  *
- * Ten validators used to be constructed and compiled at MODULE SCOPE, so
- * importing the package paid for every one of them whether or not a caller
- * ever validated anything. Measured on the published 1.15.1 dist: ten
- * `Ajv.compile` calls costing **123.7ms, 80% of the barrel's entire import
- * time**, and one more on the `yarramate/interrogation` subpath, which is the
- * entry we tell Workers consumers to prefer. That is not an abstract cost:
- * Cloudflare Workers budget STARTUP CPU separately from request CPU and refuse
- * a Worker that exceeds it, so an adopter's deploy was rejected outright
- * (error 10021) by work no request had asked for.
+ * **Compilation must happen at import, and this is not a preference.** Ajv
+ * compiles a schema by generating source and calling `new Function`.
+ * Cloudflare's `workerd` permits code generation during module evaluation and
+ * FORBIDS it at request time - measured on the real runtime binary:
  *
- * Deferring moves that cost to first use, where the budget is seconds rather
- * than milliseconds, and a caller pays only for the schemas it actually
- * touches - a consumer that compiles a workspace no longer pays for the
- * evidence, adapter-mapping and core-contract validators it never calls.
+ * ```
+ * {"atStartup":"ALLOWED",
+ *  "atRequest":"EvalError: Code generation from strings disallowed for this context"}
+ * ```
  *
- * The accessor is a function rather than a getter so the deferral is visible
- * at every call site: `validateDocument()(value)` reads as "get the validator,
- * then use it", and `validateDocument().errors` cannot accidentally be read
- * off a validator that was never run. Ajv attaches `errors` to the validator
- * itself, so the two must come from the same object.
+ * 1.15.2 deferred these compiles to first use to keep startup CPU down, which
+ * moved them into the one context that cannot run them: every request that
+ * validated anything threw. The startup budget was real, but a package that
+ * cannot serve a request is not a fix for it. Deferral is therefore not an
+ * option here, and `test/schema-validation-eagerness.test.ts` asserts the
+ * opposite of what its predecessor did - that importing the package compiles
+ * every validator, so no request has to.
  *
- * `test/schema-validation-laziness.test.ts` asserts that importing the package
- * compiles NOTHING, and fails on the next module-scope validator anyone adds.
+ * The cost is paid down by SHARING one Ajv instance rather than building ten.
+ * Each instance compiles the 2020-12 meta-schema again, and that dominates:
+ * ten instances cost 81.6ms against 35.0ms for one, a 57% reduction with no
+ * change to when anything runs. Sharing is safe here because no schema
+ * registers formats and all 39 ship distinct `$id`s, so nothing collides.
+ *
+ * The real ceiling-lifter is precompiled standalone validators (Ajv's
+ * `code: { source: true }`), which remove Ajv from the runtime altogether and
+ * satisfy both constraints at once. This is the shape that is correct today.
  */
-export const lazyValidator = <T = unknown>(
-  compile: () => ValidateFunction<T>,
-): (() => ValidateFunction<T>) => {
-  let compiled: ValidateFunction<T> | undefined
-  return () => (compiled ??= compile())
-}
+const sharedAjv = new Ajv2020({ allErrors: true })
+
+/** Compiles on the shared `allErrors` instance. */
+export const compileValidator = <T = unknown>(
+  schema: object,
+): ValidateFunction<T> => sharedAjv.compile<T>(schema)
+
+/**
+ * For a schema needing options the shared instance does not carry. Only
+ * `apply-command` uses it: `discriminator` changes how a schema compiles, so
+ * it cannot ride on an instance that does not set it.
+ */
+export const compileValidatorWith = <T = unknown>(
+  options: ConstructorParameters<typeof Ajv2020>[0],
+  schema: object,
+): ValidateFunction<T> => new Ajv2020(options).compile<T>(schema)

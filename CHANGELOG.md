@@ -1,5 +1,68 @@
 # Changelog
 
+## 1.15.3
+
+### Schema validators are compiled at import again, on a shared instance
+
+**1.15.2 is unusable in Cloudflare Workers and has been deprecated on npm.**
+This release restores correctness and keeps most of what 1.15.2 was trying to
+buy. Nothing in your code changes.
+
+1.15.2 deferred JSON Schema compilation to first use, to keep startup CPU
+inside Cloudflare's 400 ms budget. Ajv compiles a schema by generating source
+and calling `new Function`, and `workerd` **permits code generation during
+module evaluation and forbids it at request time**. Measured on the runtime
+binary:
+
+```
+{"atStartup":"ALLOWED",
+ "atRequest":"EvalError: Code generation from strings disallowed for this context"}
+```
+
+So deferral moved compilation into the one context that cannot run it. Every
+request that compiled a workspace, composed a catalogue or applied operations
+threw `EvalError`; an adopter reproduced it across 143 integration tests. That
+asymmetry is also why 1.15.0 and 1.15.1 ran in production for weeks *despite*
+Ajv: their compilation happened at import, where it is allowed.
+
+The startup cost was real, so it is paid down a different way: **one shared Ajv
+instance instead of one per schema.** Each instance recompiles the 2020-12
+meta-schema, and that dominated. Module-scope instances go from ten to two (the
+shared `allErrors` instance, and `apply-command`'s, which sets `discriminator`
+and so cannot share).
+
+Measured on one machine, importing the barrel:
+
+| | import wall | schemas compiled at import | Ajv time | compiled per request |
+|---|---|---|---|---|
+| 1.15.1 | 113.1 ms | 10 | 71.2 ms | 0 |
+| 1.15.2 | 56.1 ms | 0 | 17.9 ms | **1 — throws in Workers** |
+| **1.15.3** | **78.9 ms** | 10 | **50.7 ms** | **0** |
+
+Against 1.15.1 that is 30% off import and 29% off Ajv time, with request-time
+behaviour identical. Against 1.15.2 it gives back some startup headroom, which
+is the price of being able to serve a request at all. The
+`yarramate/interrogation` subpath compiles one schema either way and is
+unchanged.
+
+Precompiled standalone validators (Ajv's `code: { source: true }`) would remove
+Ajv from the runtime entirely and satisfy both constraints at once. That is the
+destination and it is not this release.
+
+### The guard that missed it, replaced
+
+`test/schema-validation-laziness.test.ts` asserted "zero compiles at import"
+and passed on the broken build, because zero-at-import is also what a correct
+precompiled build looks like. The property was necessary and not sufficient,
+and no test that runs only in Node can tell the difference: Node permits code
+generation everywhere.
+
+`test/schema-validation-eagerness.test.ts` asserts the property that
+discriminates and can still be checked anywhere: **after import, exercising the
+package compiles nothing further.** A lazily-built validator fails it on the
+first call that needs one. It also pins the instance sharing, as a relationship
+rather than a count, so the expensive shape cannot drift back.
+
 ## 1.15.2
 
 ### Importing the package no longer compiles ten JSON Schemas

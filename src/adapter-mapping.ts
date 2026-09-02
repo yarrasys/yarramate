@@ -10,7 +10,7 @@ import {
   locateSourcePath,
   type SourceLocation,
 } from './source-document.js'
-import { lazyValidator } from './schema-validation.js'
+import { compileValidator } from './schema-validation.js'
 import adapterMappingSchema from '../schema/yarramate-adapter-mapping.schema.json' with {
   type: 'json',
 }
@@ -23,9 +23,7 @@ const ajv2020Module = Ajv2020Module as unknown as {
   default?: typeof Ajv2020Module
 } & typeof Ajv2020Module
 const Ajv2020 = ajv2020Module.default ?? ajv2020Module
-const validateSchema = lazyValidator(() =>
-  new Ajv2020({ allErrors: true }).compile(adapterMappingSchema),
-)
+const validateSchema = compileValidator(adapterMappingSchema)
 
 export interface AdapterSubjectMapping {
   readonly native: string
@@ -70,7 +68,7 @@ export function loadAdapterMapping(
 ): AdapterMappingLoadResult {
   const loaded = loadSourceDocument<AdapterMapping>(
     source,
-    validateSchema(),
+    validateSchema,
     'Adapter mapping',
   )
   if (!loaded.ok) return loaded

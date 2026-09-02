@@ -30,9 +30,7 @@ const ajv2020Module = Ajv2020Import as unknown as {
   default?: Ajv2020Ctor
 } & Ajv2020Ctor
 const Ajv2020 = ajv2020Module.default ?? ajv2020Module
-const validateProjection = lazyValidator(() =>
-  new Ajv2020({ allErrors: true }).compile(projectionSchema),
-)
+const validateProjection = compileValidator(projectionSchema)
 
 export type LifecycleStatus = 'planned' | 'current' | 'retired'
 
@@ -118,7 +116,7 @@ import type { NestingKind } from './nesting.js'
  */
 export { DEFAULT_DIRECTION, type LayoutDirection } from './layout-direction.js'
 import type { LayoutDirection } from './layout-direction.js'
-import { lazyValidator } from './schema-validation.js'
+import { compileValidator } from './schema-validation.js'
 
 export type ProjectionQuery = ProjectionDefinition['query']
 
@@ -138,7 +136,7 @@ export type ProjectionLoadResult =
 export function loadProjection(source: WorkspaceSource): ProjectionLoadResult {
   const loaded = loadSourceDocument<ProjectionDefinition>(
     source,
-    validateProjection(),
+    validateProjection,
     'Projection',
   )
   return loaded.ok
