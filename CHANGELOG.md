@@ -1,5 +1,33 @@
 # Changelog
 
+## Unreleased
+
+### A document that composes to nothing is refused, not crashed on
+
+Any workspace source whose YAML composes to `null` crashed the whole compile
+with `TypeError: Cannot read properties of null (reading 'profile')`. Four
+forms reach it: an empty file, a whitespace-only file, a file holding the
+`null` literal, and **a document parked behind `#` comments**, which is the
+one a user reaches without doing anything unusual.
+
+The schema always had the right answer. A bare scalar and a list have always
+been refused with `YM201 ... must be object`, and `null` fails that same check.
+It was simply never reached: the probe that decides whether to inject the
+shipped `yarramate/policy@0.1` profile reads `.profile` off every document
+input, and it runs **before** the gate that rejects a schema-invalid document.
+It read through an `as` cast, which is what kept the typechecker quiet.
+
+What a consumer saw is the part worth naming. `yarramate check` wrote a bare
+`TypeError` to stderr and **nothing at all to stdout**, so `check --json`
+handed a machine reader an empty string and `Unexpected end of JSON input`
+from its own parser, with no code, no path and no line to act on. The exit
+code was already 2, so CI failed honestly throughout.
+
+Reported by an adopter who reached the empty-string form through a manifest
+path with no supplied source, while binding pattern parts. Patterns turned out
+to be incidental: the crash needs only a file, and the fix is in neither the
+pattern nor the operations path.
+
 ## 1.15.0
 
 ### An edge across a nesting boundary no longer collapses the canvas
