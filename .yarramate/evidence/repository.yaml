@@ -1115,6 +1115,10 @@ observations:
     result: confirmed
     evidence:
       uri: repo:src/relationship-drafting.ts
+  - subject: schema-validation-source
+    result: confirmed
+    evidence:
+      uri: repo:src/schema-validation.ts
   - subject: shipped-profile-source
     result: confirmed
     evidence:
