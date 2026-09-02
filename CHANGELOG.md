@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.15.1
 
 ### A document that composes to nothing is refused, not crashed on
 
