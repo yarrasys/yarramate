@@ -1,3 +1,4 @@
+import AjvDraft7Module from 'ajv'
 import Ajv2020Module from 'ajv/dist/2020.js'
 import { describe, expect, it } from 'vitest'
 
@@ -49,13 +50,36 @@ const Ajv2020 = ajv2020Module.default ?? ajv2020Module
  * (Pointed out by the ApertureX adopter session, who hit the same asymmetry
  * spying on their own side.)
  */
-const compileOwner = (() => {
-  let proto: object | null = Ajv2020.prototype
+const ownerOf = (constructor: { prototype: object }): object => {
+  let proto: object | null = constructor.prototype
   while (proto !== null && !Object.hasOwn(proto, 'compile')) {
     proto = Object.getPrototypeOf(proto) as object | null
   }
   if (proto === null) throw new Error('no prototype in the chain owns compile')
-  return proto as { compile: (...args: unknown[]) => unknown }
+  return proto
+}
+
+const ajvModule = AjvDraft7Module as unknown as {
+  default?: typeof AjvDraft7Module
+} & typeof AjvDraft7Module
+const AjvDraft7 = ajvModule.default ?? ajvModule
+
+const compileOwner = (() => {
+  const owner = ownerOf(Ajv2020)
+  // The spy sees every Ajv variant only while the variants SHARE this
+  // prototype. If an `ajv` upgrade ever splits them, a single patch point
+  // would quietly instrument half the package and the guard would go on
+  // passing - which is this whole incident's shape, one level down. Refuse to
+  // load instead, so the split is a loud failure rather than a silent hole.
+  // (The self-check is the ApertureX adopter session's idea, adopted here.)
+  if (ownerOf(AjvDraft7) !== owner) {
+    throw new Error(
+      'Ajv2020 and the draft-07 Ajv no longer inherit `compile` from the same ' +
+        'prototype, so one spy cannot see both. Patch each owner separately ' +
+        'before trusting this test again.',
+    )
+  }
+  return owner as { compile: (...args: unknown[]) => unknown }
 })()
 
 const MINIMAL = `format: yarramate/v1
