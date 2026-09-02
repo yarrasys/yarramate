@@ -406,6 +406,25 @@ export interface PatternMembership {
   readonly pattern: string
 }
 
+/**
+ * One OPTIONAL slot of one pattern instance that nothing is bound into
+ * (#447): the shape of a question a pattern already knows to ask. The
+ * mirror of {@link PatternMembership}, and it has to be a second array
+ * rather than a widening of that one, because a vacancy has no `member`
+ * and making that field optional would break every reader.
+ *
+ * Carries no `required` flag on purpose. On a compile that SUCCEEDED every
+ * vacancy is optional by construction: a required slot left unbound is
+ * `YM416` and there is no result to read. The field would be permanently
+ * `false`, which is a lie waiting for someone to trust it.
+ */
+export interface PatternVacancy {
+  readonly instance: string
+  readonly pattern: string
+  readonly slot: string
+  readonly slotKind: string
+}
+
 export type CompilationResult =
   | {
       readonly ok: true
@@ -417,6 +436,8 @@ export type CompilationResult =
        * to `evaluateCatalogue`, or `fills-pattern-slot` never fires.
        */
       readonly patternMemberships?: readonly PatternMembership[]
+      /** Same rule as `patternMemberships`, for the same reason (#447). */
+      readonly patternVacancies?: readonly PatternVacancy[]
     }
   | { readonly ok: false; readonly diagnostics: readonly Diagnostic[] }
 
@@ -426,6 +447,7 @@ export type ContextualCompilationResult =
       readonly graph: SemanticGraph
       readonly profileContext: ResolvedProfileContext
       readonly patternMemberships?: readonly PatternMembership[]
+      readonly patternVacancies?: readonly PatternVacancy[]
     }
 
   | { readonly ok: false; readonly diagnostics: readonly Diagnostic[] }
@@ -3366,9 +3388,32 @@ function compileWorkspaceResolved(
         left.slot.localeCompare(right.slot),
     )
 
+  // The mirror, derived from the same instances (#447). One entry per
+  // OPTIONAL slot nothing was bound into. Always emitted, possibly empty:
+  // an empty array is a workspace whose instances are fully bound, while a
+  // missing array is a caller that never looked.
+  const patternVacancies: PatternVacancy[] = patternInstances
+    .flatMap(({ instance, pattern, bindings }) =>
+      [...pattern.slots.values()]
+        .filter((slot) => !slot.required && !bindings.has(slot.name))
+        .map((slot) => ({
+          instance,
+          pattern: pattern.kindIdentity,
+          slot: slot.name,
+          slotKind: slot.kindIdentity,
+        })),
+    )
+    .sort(
+      (left, right) =>
+        left.instance.localeCompare(right.instance) ||
+        left.pattern.localeCompare(right.pattern) ||
+        left.slot.localeCompare(right.slot),
+    )
+
   return {
     ok: true,
     patternMemberships,
+    patternVacancies,
     profileContext: {
       conceptKindLineages: immutableMap(
         [...conceptKindByIdentity]
@@ -3484,6 +3529,7 @@ export function compileWorkspace(
         ok: true,
         graph: result.graph,
         patternMemberships: result.patternMemberships,
+        patternVacancies: result.patternVacancies,
       }
     : result
 }

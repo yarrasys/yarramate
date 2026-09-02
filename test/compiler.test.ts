@@ -757,6 +757,10 @@ relationships:
       // workspace with no bindings, while an evaluation missing the array
       // is a caller that never looked.
       patternMemberships: [],
+      // The same rule, for the vacant half (#447). An empty array here is a
+      // workspace whose instances are fully bound; a missing one is a caller
+      // that never derived them, and `missing-part` stays quiet for it.
+      patternVacancies: [],
       graph: {
         format: 'yarramate/graph/v2',
         profiles: ['yarramate/core@0.1'],
