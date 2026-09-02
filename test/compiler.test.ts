@@ -2262,6 +2262,38 @@ relationships: []
     expect(compileWorkspace([documentNamed('beta', 'shared-name')]).ok).toBe(true)
   })
 
+  // A source that composes to null used to crash the whole compile with a
+  // `TypeError: Cannot read properties of null (reading 'profile')`, because
+  // the shipped-policy probe read `.profile` off every document input through
+  // an `as` cast before the gate that rejects a schema-invalid document ever
+  // ran. The schema already had the right answer - `must be object`, which is
+  // what a bare scalar has always got - it was simply never reached.
+  //
+  // The four forms are listed from the MECHANISM (any YAML composing to null),
+  // not from the one instance that found it: an adopter hit the empty-string
+  // case through a manifest path with no supplied source, but a user parking a
+  // document behind `#` comments reaches the same crash with no pattern, no
+  // manifest and no adopter anywhere near it.
+  describe.each([
+    ['an empty file', ''],
+    ['a whitespace-only file', '   \n\n'],
+    ['a comment-only file', '# parked until the next engagement\n'],
+    ['a file holding the null literal', 'null\n'],
+  ])('%s', (_label, source) => {
+    it('is refused as a schema violation rather than crashing the compile', () => {
+      const result = compileWorkspace([
+        { path: 'parked.yaml', source },
+        documentNamed('alpha', 'thing'),
+      ])
+      if (result.ok) throw new Error('expected the workspace to be refused')
+      const parked = result.diagnostics.filter(
+        ({ path }) => path === 'parked.yaml',
+      )
+      expect(parked.map(({ code }) => code)).toEqual(['YM201'])
+      expect(parked[0]?.message).toContain('must be object')
+    })
+  })
+
   // A document whose own id repeats would collide on every subject it
   // declares, so the one fault worth acting on is reported alone.
   it('does not pile subject collisions onto a duplicate document id', () => {

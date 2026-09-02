@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+### A document that composes to nothing is refused, not crashed on
+
+Any workspace source whose YAML composes to `null` crashed the whole compile
+with `TypeError: Cannot read properties of null (reading 'profile')`. Four
+forms reach it: an empty file, a whitespace-only file, a file holding the
+`null` literal, and **a document parked behind `#` comments**, which is the
+one a user reaches without doing anything unusual.
+
+The schema always had the right answer. A bare scalar and a list have always
+been refused with `YM201 ... must be object`, and `null` fails that same check.
+It was simply never reached: the probe that decides whether to inject the
+shipped `yarramate/policy@0.1` profile reads `.profile` off every document
+input, and it runs **before** the gate that rejects a schema-invalid document.
+It read through an `as` cast, which is what kept the typechecker quiet.
+
+What a consumer saw is the part worth naming. `yarramate check` wrote a bare
+`TypeError` to stderr and **nothing at all to stdout**, so `check --json`
+handed a machine reader an empty string and `Unexpected end of JSON input`
+from its own parser, with no code, no path and no line to act on. The exit
+code was already 2, so CI failed honestly throughout.
+
+Reported by an adopter who reached the empty-string form through a manifest
+path with no supplied source, while binding pattern parts. Patterns turned out
+to be incidental: the crash needs only a file, and the fix is in neither the
+pattern nor the operations path.
+
 ### A rename repoints a subject bound into a pattern slot
 
 `parts` binds a subject into a pattern instance's slot by slot name (ADR
@@ -80,7 +106,6 @@ was the canvas. The adopter's field model had the pair three times over from
 normal consulting work. This repository's own 358-subject self-model renders
 only because it happens never to pair composition with another edge.
 
-
 ### A vocabulary is closed by its scheme, not its count
 
 `no-linkage-exists`, the workspace-scope negative of `exists-linkage`: it fires
@@ -142,7 +167,6 @@ for prose describing behaviour 1.14.x changed. Nothing found: the three
 candidate lines in `core-enrichment` are accurate for their conditions, and the
 wave-gating section describes `opened` semantics that ADR 0136 did not alter.
 
-
 ### No link a reader with the package cannot follow
 
 Nine markdown links in shipped documents pointed at `adr/` files that do not
@@ -158,7 +182,6 @@ cannot keep.** So the conversion is the fix rather than a workaround for one.
 This is the same defect the 1.14.1 guard was written for, one level down. That
 guard compared bare `docs/NAME.md` mentions and said nothing about links, so it
 missed nine instances of exactly what it existed to catch.
-
 
 ### The reference-slot question is settled, and the floor says so
 
@@ -189,7 +212,6 @@ homeless card in 348.
 Reopen either with an adopter measuring a materially larger residue against
 the floor — the same test that closed #386.
 
-
 ### A missing-claim question offers the field it is missing
 
 `design` now prints an `update-concept` skeleton for a `missing-claim` trigger
@@ -218,7 +240,6 @@ render as editable** — the trigger carries the predicate and the host decides.
 That was the adopter's own hesitation about asking for a `set-field` answer
 shape, and it was right; ADR 0110 excluded a normalized remedy vocabulary for
 the same reason.
-
 
 ## 1.14.1
 
@@ -252,7 +273,6 @@ they were simply unreachable.
 Docs-only and shipped as a patch on the same reasoning as 1.11.1 and 1.13.1:
 an adopter arrives through npm, so guidance that stays in the repository is
 guidance they do not have.
-
 
 ## 1.14.0
 
@@ -755,8 +775,6 @@ workspace-scope conditions that would work.
   72 of 149 in-scope files were unclaimed, and the backlog was worked to
   zero (#366) — every file bound in by a repository-file concept, a
   realization to what its code serves, and a confirmed observation.
-
-
 
 - **Added.** A workspace can carry its own questions (#345, ADR 0129). A
   `questions:` manifest category resolves like `patterns` and `evidence`, and
@@ -1652,7 +1670,6 @@ workspace-scope conditions that would work.
   patterns from a committed file is a separate decision. Recording comes first,
   because the data has to exist before running it means anything.
 
-
 - **Added.** An interrogation report says which engine answered, not only which
   catalogue asked. `semantics` carries the version of condition evaluation
   itself, exported as `INTERROGATION_SEMANTICS_VERSION`, and it changes only
@@ -1679,7 +1696,6 @@ workspace-scope conditions that would work.
   `test/interrogation-semantics.test.ts` exercises every condition against a
   fixture and fingerprints the answers, so changing what a condition means
   fails the suite and names the version to bump.
-
 
 - **Added.** The interrogation engine is public API. `evaluateCatalogue`,
   `loadQuestionCatalogue`, `renderQuestion` and `renderInterrogationReport`
