@@ -626,6 +626,10 @@ concepts:
     kind: repository-file
     name: src/relationship-drafting.ts
     status: current
+  - id: schema-validation-source
+    kind: repository-file
+    name: src/schema-validation.ts
+    status: current
   - id: shipped-profile-source
     kind: repository-file
     name: src/shipped-profile.ts
@@ -1435,6 +1439,10 @@ relationships:
     kind: realization
     from: relationship-drafting-source
     to: apply-operations
+  - id: schema-validation-realizes-document-validation
+    kind: realization
+    from: schema-validation-source
+    to: validate-document-structure
   - id: shipped-profile-realizes-catalogue
     kind: realization
     from: shipped-profile-source
