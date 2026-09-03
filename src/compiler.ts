@@ -407,22 +407,29 @@ export interface PatternMembership {
 }
 
 /**
- * One OPTIONAL slot of one pattern instance that nothing is bound into
- * (#447): the shape of a question a pattern already knows to ask. The
- * mirror of {@link PatternMembership}, and it has to be a second array
- * rather than a widening of that one, because a vacancy has no `member`
- * and making that field optional would break every reader.
+ * One slot of one pattern instance that nothing is bound into (#447): the
+ * shape of a question a pattern already knows to ask. The mirror of
+ * {@link PatternMembership}, and it has to be a second array rather than a
+ * widening of that one, because a vacancy has no `member` and making that
+ * field optional would break every reader.
  *
- * Carries no `required` flag on purpose. On a compile that SUCCEEDED every
- * vacancy is optional by construction: a required slot left unbound is
- * `YM416` and there is no result to read. The field would be permanently
- * `false`, which is a lie waiting for someone to trust it.
+ * `required` is here because a vacancy on a SUCCESSFUL compile can be a
+ * required slot after all. The first draft of this shape left the field out,
+ * reasoning that a required slot left unbound is `YM416` and so never reaches
+ * a result. That is true only of an instance that declares `parts`: a concept
+ * whose kind has a pattern but which declares no parts at all is not a
+ * `PatternInstance`, never reaches YM416, and compiles clean with every slot
+ * vacant. So the flag is load-bearing rather than permanently `false`, and it
+ * is the difference between "you have not decided this yet" and "this model
+ * does not stand up without it".
  */
 export interface PatternVacancy {
   readonly instance: string
   readonly pattern: string
   readonly slot: string
   readonly slotKind: string
+  /** The pattern declares this part `required` (ADR 0123). */
+  readonly required: boolean
 }
 
 export type CompilationResult =
@@ -1504,6 +1511,19 @@ function compileWorkspaceResolved(
 
   const patternInstances: PatternInstance[] = []
 
+  /**
+   * Concepts whose kind HAS a pattern but which declare no `parts` at all —
+   * the greenfield instance ADR 0123 named and left to a later phase, and the
+   * one an interview has the most to ask (#447).
+   *
+   * Deliberately NOT `patternInstances`. That list drives YM416, wiring
+   * expansion and membership, and adding these to it would start refusing
+   * workspaces that compile today. Instance-hood for the purpose of BEING
+   * ASKED is a wider question than instance-hood for the purpose of being
+   * expanded, so it gets its own list rather than a widened one.
+   */
+  const unbegunInstances: { instance: string; pattern: ResolvedPattern }[] = []
+
   const documents = documentInputs.map(({ input, entry, fresh }) => {
     // Schema-checked by `parseWorkspaceSource`; the faults it found are the
     // `schemaDiagnostics` returned below, and they gate every later phase.
@@ -2426,10 +2446,18 @@ function compileWorkspaceResolved(
       // A pattern instance is only COLLECTED here. What its slots bind may be
       // declared in any document, so the bindings cannot be checked until
       // every document has been read (#268, ADR 0123).
+      const conceptKindIdentity =
+        selectedProfile.conceptKinds.get(concept.kind)?.identity ?? concept.kind
+      if (concept.parts === undefined) {
+        // Nothing to bind and nothing to expand, but the kind still promises a
+        // shape, so the interview can still ask about it (#447).
+        const pattern = patternsByKind.get(conceptKindIdentity)
+        if (pattern !== undefined) {
+          unbegunInstances.push({ instance: subject, pattern })
+        }
+      }
       if (concept.parts !== undefined) {
-        const kindIdentity =
-          selectedProfile.conceptKinds.get(concept.kind)?.identity ??
-          concept.kind
+        const kindIdentity = conceptKindIdentity
         const pattern = patternsByKind.get(kindIdentity)
         if (pattern === undefined) {
           const where = location(
@@ -3388,19 +3416,37 @@ function compileWorkspaceResolved(
         left.slot.localeCompare(right.slot),
     )
 
-  // The mirror, derived from the same instances (#447). One entry per
-  // OPTIONAL slot nothing was bound into. Always emitted, possibly empty:
-  // an empty array is a workspace whose instances are fully bound, while a
-  // missing array is a caller that never looked.
-  const patternVacancies: PatternVacancy[] = patternInstances
-    .flatMap(({ instance, pattern, bindings }) =>
+  // The mirror (#447): one entry per slot nothing was bound into. Always
+  // emitted, possibly empty — an empty array is a workspace whose instances
+  // are fully bound, while a missing array is a caller that never looked.
+  //
+  // Derived from BOTH lists, and that is the substance of the thing. An
+  // instance that declares some parts is asked about the rest; an instance
+  // that declares none is asked about all of them, because a template nobody
+  // has begun filling in is the one with the most blanks, not the one with
+  // none. Reading only `patternInstances` here would have reported `[]` for
+  // it, and `[]` means "fully bound".
+  const patternVacancies: PatternVacancy[] = [
+    ...patternInstances.map(({ instance, pattern, bindings }) => ({
+      instance,
+      pattern,
+      bound: bindings,
+    })),
+    ...unbegunInstances.map(({ instance, pattern }) => ({
+      instance,
+      pattern,
+      bound: new Map<string, string>(),
+    })),
+  ]
+    .flatMap(({ instance, pattern, bound }) =>
       [...pattern.slots.values()]
-        .filter((slot) => !slot.required && !bindings.has(slot.name))
+        .filter((slot) => !bound.has(slot.name))
         .map((slot) => ({
           instance,
           pattern: pattern.kindIdentity,
           slot: slot.name,
           slotKind: slot.kindIdentity,
+          required: slot.required === true,
         })),
     )
     .sort(

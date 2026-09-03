@@ -1,5 +1,51 @@
 # Changelog
 
+## Unreleased
+
+### A pattern can become a questionnaire
+
+A pattern declares the shape a kind promises, and an instance that has not
+bound its parts is a model with known questions to ask. There was no way to ask
+them: `patternMemberships` carries a row per **bound** slot, a vacancy has no
+`member`, and so no condition over the engine's inputs could fire. A required
+part left unbound was `YM416` at compile, enforced and never elicited; an
+optional one produced no question anywhere (#447, raised by the ApertureX
+adopter session).
+
+A successful compilation now carries **`patternVacancies`** beside
+`patternMemberships` — `{instance, pattern, slot, slotKind, required}`, one row
+per part nothing is bound into — and a new trigger condition
+**`missing-part`** reads it. It is the mirror of `fills-pattern-slot`
+throughout: bare it means "some part of this instance's pattern is unbound",
+`patternKinds` and `slots` narrow it, and an absent input stays quiet rather
+than reading as "nothing missing". The subject is the INSTANCE, because the
+absent member has no id to be a subject with; a catalogue wanting a question
+per part writes one per part with `slots: [service]`, which it wants anyway
+because each part deserves its own text and materiality.
+
+**An instance that declares no `parts` at all is asked about every part**,
+including required ones. Such a concept is not a pattern instance — nothing is
+collected, nothing is expanded, and `YM416` never fires — so it compiles clean
+with the whole template blank. That is the greenfield case ADR 0123 left open,
+it is where adoption actually starts, and it is the instance with the most to
+ask. Deriving vacancies only from collected instances would have reported `[]`
+for it, and `[]` means *fully bound*. Nothing that compiles today stops
+compiling: the greenfield instances are collected separately, precisely so they
+do not start firing `YM416`.
+
+The row carries `required` for the same reason. On an instance that declares
+`parts`, a required part left unbound is `YM416` and produces no result to
+read; on a greenfield instance it is a vacancy you can see, and "you have not
+decided this yet" and "this model does not stand up without it" are different
+questions to put to a person.
+
+`INTERROGATION_SEMANTICS_VERSION` does not move: a new condition cannot change
+what an existing question answers, confirmed against the fingerprint rather
+than asserted. Consumers of `evaluateCatalogue` pass vacancies as a seventh
+optional parameter, and a caller that passes none gets a condition that never
+holds. Consumers doing exact equality on a `CompilationResult` will see the new
+field; readers using `?? []` are unaffected. See ADR 0140.
+
 ## 1.17.0
 
 ### A host can refresh the canvas without discarding staged work

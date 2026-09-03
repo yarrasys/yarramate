@@ -1,6 +1,7 @@
 import {
   compileWorkspaceWithProfileContext,
   type PatternMembership,
+  type PatternVacancy,
   type ResolvedProfileContext,
   type SemanticGraph,
   type WorkspaceSource,
@@ -171,6 +172,7 @@ export const createLocalHost = (options: LocalHostOptions): LocalEditorHost => {
         readonly graph: SemanticGraph
         readonly profileContext: ResolvedProfileContext
         readonly patternMemberships?: readonly PatternMembership[]
+        readonly patternVacancies?: readonly PatternVacancy[]
       }
     | undefined
   let model: VisualRenderedModel = EMPTY_MODEL
@@ -239,6 +241,7 @@ export const createLocalHost = (options: LocalHostOptions): LocalEditorHost => {
       graph: result.graph,
       profileContext: result.profileContext,
       patternMemberships: result.patternMemberships,
+      patternVacancies: result.patternVacancies,
     }
     compiled = refreshed
     standingDiagnostics = []

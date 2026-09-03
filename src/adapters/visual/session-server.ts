@@ -82,6 +82,7 @@ import {
   withDiagnosticSubjects,
   type Diagnostic,
   type PatternMembership,
+  type PatternVacancy,
   type ResolvedProfileContext,
   type SemanticGraph,
 } from "../../compiler.js";
@@ -787,6 +788,7 @@ export const startVisualServer = async (
         readonly graph: SemanticGraph;
         readonly profileContext: ResolvedProfileContext;
         readonly patternMemberships?: readonly PatternMembership[];
+        readonly patternVacancies?: readonly PatternVacancy[];
       }
     | undefined;
 
@@ -939,6 +941,8 @@ export const startVisualServer = async (
         // Threaded whole (ADR 0131): a narrow copy here is how a slot
         // question would silently never fire in the embedded pane.
         patternMemberships: compiled.patternMemberships,
+        // The vacant half, on the same rule (#447).
+        patternVacancies: compiled.patternVacancies,
       };
       const workspaceModel = renderedWorkspaceOf(compiledWorkspace, views, {
         authority: rendered.authority,

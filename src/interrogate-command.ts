@@ -204,16 +204,19 @@ export type CatalogueCondition =
     }
   | {
       /**
-       * The subject is a pattern INSTANCE with an optional slot nothing is
-       * bound into (#447). The mirror of `fills-pattern-slot`, and the
-       * mechanism by which a pattern becomes a questionnaire: bare, it means
-       * any optional slot of this instance's pattern is unbound;
-       * `patternKinds` narrows by the pattern's kind identity and `slots` by
-       * part name, exactly as its mirror does.
+       * The subject is a pattern INSTANCE with a slot nothing is bound into
+       * (#447). The mirror of `fills-pattern-slot`, and the mechanism by which
+       * a pattern becomes a questionnaire: bare, it means any slot of this
+       * instance's pattern is unbound; `patternKinds` narrows by the pattern's
+       * kind identity and `slots` by part name, exactly as its mirror does.
        *
-       * Never fires for a required slot: one left unbound is YM416 and there
-       * is no compile to read, so a required part is enforced rather than
-       * elicited.
+       * It fires for a REQUIRED slot too, but only where one can survive a
+       * compile: an instance that declares `parts` and omits a required one is
+       * YM416 and there is no result to read, while an instance that declares
+       * no `parts` at all never reaches YM416 and is exactly the greenfield
+       * case ADR 0123 left open. The vacancy row's `required` tells the two
+       * apart for the host; the condition itself does not read it, because a
+       * catalogue that wants only one of them says so with `slots`.
        */
       readonly condition: 'missing-part'
       readonly patternKinds?: readonly string[]
@@ -265,6 +268,14 @@ export interface CataloguePatternVacancy {
   readonly pattern: string
   readonly slot: string
   readonly slotKind: string
+  /**
+   * The pattern declares this part required. The condition does NOT read it —
+   * a vacancy is a vacancy — but it travels because the host derives its
+   * answer shape from this row, and "you have not decided this yet" and "this
+   * model does not stand up without it" are different questions to put to a
+   * person (#447).
+   */
+  readonly required: boolean
 }
 
 export interface CatalogueQuestion {

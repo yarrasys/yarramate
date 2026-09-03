@@ -663,7 +663,7 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "description": "The subject is a pattern INSTANCE with an optional slot nothing is bound into (#447): the mirror of fills-pattern-slot, and the mechanism by which a pattern becomes a questionnaire. Bare, it means any optional slot of this instance's pattern is unbound; patternKinds narrows by the pattern's kind identity and slots by part name. Never fires for a required slot, which is YM416 at compile and so enforced rather than elicited. Evaluation reads pattern vacancies from the compilation; a caller that does not supply them gets a condition that never holds.",
+          "description": "The subject is a pattern INSTANCE with a slot nothing is bound into (#447): the mirror of fills-pattern-slot, and the mechanism by which a pattern becomes a questionnaire. Bare, it means any slot of this instance's pattern is unbound; patternKinds narrows by the pattern's kind identity and slots by part name. It fires for a required slot only where one survives a compile: an instance declaring parts that omits a required one is YM416, while an instance declaring no parts at all never reaches YM416 and is asked about every slot. Evaluation reads pattern vacancies from the compilation; a caller that does not supply them gets a condition that never holds.",
           "required": [
             "condition"
           ],
