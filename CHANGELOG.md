@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### `CataloguePatternVacancy` reaches the runtime-pure subpath
+
+`yarramate/interrogation` exists so a host that may not import Node builtins —
+a Durable Object, a Worker — can reach the engine. #447 exported
+`CataloguePatternVacancy` from the barrel and **not** from that subpath, so the
+one consumer the subpath exists for had to derive the row type as
+`NonNullable<Parameters<typeof evaluateCatalogue>[6]>[number]` (reported by the
+ApertureX adopter session against 1.18.0).
+
+The export-purity tests could not have caught it and no addition to them could:
+they assert runtime exports, and types are erased before any of it runs. So the
+check now reads the source and asserts a rule rather than a list — every type
+the barrel re-exports from `interrogate-command` must reach the subpath too, so
+a type added to one and forgotten on the other fails here rather than in an
+adopter's editor.
+
 ### An agent can bind a pattern part
 
 `conceptFields` in the operations schema was closed and `parts` was not in it,

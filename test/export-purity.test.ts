@@ -137,6 +137,38 @@ describe('the interrogation barrel', () => {
     expect(typeof barrel.qualifiedQuestionId).toBe('function')
   })
 
+  it('publishes every interrogation TYPE the barrel does', () => {
+    // The omission this test exists for, reported by the ApertureX session
+    // against 1.18.0: `CataloguePatternVacancy` reached the barrel and not
+    // this subpath, so a Durable Object host - the one consumer the subpath
+    // exists FOR, since it may not import Node builtins - had to derive the
+    // row type as `NonNullable<Parameters<typeof evaluateCatalogue>[6]>[number]`.
+    //
+    // The runtime assertions above could not catch it, and no addition to them
+    // could: types are erased before any of this runs. So the check reads the
+    // SOURCE, and it is a rule rather than a list - every type the barrel
+    // re-exports from `interrogate-command` must reach the subpath too, so a
+    // type added to one and forgotten on the other fails here rather than in
+    // an adopter's editor.
+    const typeExports = (file: string): readonly string[] => {
+      const source = readFileSync(join(root, file), 'utf8')
+      const block = source
+        .split(/from ['"]\.\/interrogate-command\.js['"]/)[0]!
+        .split(/export \{|import \{/)
+        .pop()!
+      return [...block.matchAll(/type\s+(\w+)/g)]
+        .map((match) => match[1]!)
+        .sort()
+    }
+    const barrel = typeExports('index.ts')
+    const subpath = typeExports('interrogation-entry.ts')
+    // A sanity floor: if the extraction stops finding anything, the assertion
+    // below would pass vacuously and this check would quietly stop working.
+    expect(barrel.length).toBeGreaterThan(5)
+    expect(subpath.length).toBeGreaterThan(5)
+    expect(barrel.filter((name) => !subpath.includes(name))).toEqual([])
+  })
+
   it('composes end to end from the published entry alone', async () => {
     // Through the entry, not through the module: an export that resolves but
     // does not work is what a barrel test is for.
