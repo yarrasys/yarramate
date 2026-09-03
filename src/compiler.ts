@@ -3113,6 +3113,26 @@ function compileWorkspaceResolved(
       else group.push(entry)
     }
 
+    /**
+     * Every wire that wants to mint, keyed by the TRIPLE it names (#460).
+     * Collected across all instances before any is minted, because two wires
+     * belonging to different instances can name one triple and only one claim
+     * may survive.
+     */
+    const wireCandidates = new Map<
+      string,
+      {
+        readonly instance: string
+        readonly pattern: ResolvedPattern
+        readonly wire: ResolvedPattern['wiring'][number]
+        readonly from: string
+        readonly to: string
+        readonly where: GraphSource
+        readonly owner: boolean
+        readonly wireId: string
+      }[]
+    >()
+
     for (const { instance, pattern, bindings, sourceOf } of patternInstances) {
       const boundTo = new Map<string, string>()
       for (const [slot, target] of bindings) {
@@ -3218,37 +3238,91 @@ function compileWorkspaceResolved(
           })
         }
         if (satisfied) continue
-        const wireId = [
+        // Collected rather than minted, because whether this wire mints
+        // depends on wires belonging to OTHER instances (#460). Two wires can
+        // name one triple, and before this they both minted: two relationship
+        // claims for one relationship.
+        const key = `${from}\u0000${wire.kindIdentity}\u0000${to}`
+        const candidate = {
           instance,
-          ...(wire.from === 'self' ? [] : [wire.from]),
-          wire.coreKind,
-          wire.to,
-        ].join('-')
-        if (declaredIds.has(wireId)) {
-          diagnostics.push({
-            severity: 'error',
-            code: 'YM420',
-            message:
-              `The pattern for "${pattern.kindIdentity}" derives the wiring id ` +
-              `"${wireId}" for "${instance}", which is already a declared subject`,
-            path: where.path,
-            pointer: where.pointer,
-            line: where.line,
-            column: where.column,
-          })
-          continue
+          pattern,
+          wire,
+          from,
+          to,
+          where,
+          owner: wire.from === 'self',
+          wireId: [
+            instance,
+            ...(wire.from === 'self' ? [] : [wire.from]),
+            wire.coreKind,
+            wire.to,
+          ].join('-'),
         }
-        declaredIds.add(wireId)
-        subjects.push({ id: wireId, type: 'relationship' })
-        claims.push({
-          id: wireId,
-          subject: from,
-          predicate: wire.kindIdentity,
-          object: { ref: to },
-          origin: 'declared',
-          source: where,
-        })
+        const group = wireCandidates.get(key)
+        if (group === undefined) wireCandidates.set(key, [candidate])
+        else group.push(candidate)
       }
+    }
+
+    // One claim per triple, whichever wires named it (#460, ADR 0141).
+    //
+    // OWNERSHIP decides the id, not walk order. A wire whose `from` is `self`
+    // owns the edge, because the edge leaves that instance; a wire whose
+    // `from` is a slot is a guest naming somebody else's edge, and defers. So
+    // an edge with an owner keeps the ADR 0123 id it has always had, and
+    // nothing moves for a workspace that compiles today.
+    //
+    // Where every wire is a guest the owner's wire is absent — typically its
+    // instance is greenfield, and an unbound slot wires nothing — so there is
+    // no ADR 0123 id to prefer and the id comes from the TRIPLE instead. That
+    // is stable under adding or removing further guests, which sorting a
+    // winner out of the guests would not be.
+    for (const [, group] of [...wireCandidates].sort(([left], [right]) =>
+      left.localeCompare(right),
+    )) {
+      const owners = group
+        .filter(({ owner }) => owner)
+        // Two owners on one triple cannot happen: `self` differs per instance,
+        // and within one instance YM315 already refuses two slots naming one
+        // subject. Sorted anyway rather than trusting that from a distance.
+        .sort((left, right) => left.wireId.localeCompare(right.wireId))
+      const winner = owners[0] ?? group[0]
+      if (winner === undefined) continue
+      // A group of ONE is not a collision and keeps its ADR 0123 id, always.
+      // This is the case that matters most, because a wire between two SLOTS
+      // of one pattern (`component --composition--> interface`) has no `self`
+      // endpoint and so no owner, yet nothing is competing with it. Deriving
+      // its id from the triple would rename every such edge in every
+      // workspace, which is exactly the migration ownership exists to avoid;
+      // ADR 0123's own worked example is one of them.
+      const wireId =
+        group.length === 1 || owners.length > 0
+          ? winner.wireId
+          : [winner.from, winner.wire.coreKind, winner.to].join('-')
+      if (declaredIds.has(wireId)) {
+        diagnostics.push({
+          severity: 'error',
+          code: 'YM420',
+          message:
+            `The pattern for "${winner.pattern.kindIdentity}" derives the wiring id ` +
+            `"${wireId}" for "${winner.instance}", which is already a declared subject`,
+          path: winner.where.path,
+          pointer: winner.where.pointer,
+          line: winner.where.line,
+          column: winner.where.column,
+        })
+        continue
+      }
+      declaredIds.add(wireId)
+      subjects.push({ id: wireId, type: 'relationship' })
+      claims.push({
+        id: wireId,
+        subject: winner.from,
+        predicate: winner.wire.kindIdentity,
+        object: { ref: winner.to },
+        origin: 'declared',
+        source: winner.where,
+      })
     }
   }
 
