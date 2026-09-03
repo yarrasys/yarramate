@@ -27,7 +27,13 @@ export type SubjectReferenceForm = 'declaration' | 'reference' | 'qualified'
 
 export interface SubjectReferencePosition {
   readonly group: SubjectReferenceGroup
-  /** Key path from the document root; `*` matches every sequence index. */
+  /**
+   * Key path from the document root; `*` matches every element of a
+   * collection, which is every index of a sequence and every value of a
+   * mapping whose keys are open. Both spell `*` because the schema, not the
+   * position, is what decides which one a path lands on: `items` and
+   * `patternProperties` are the same shape of "and now, each of these".
+   */
   readonly path: readonly string[]
   readonly form: SubjectReferenceForm
 }
@@ -57,6 +63,15 @@ export const SUBJECT_REFERENCE_POSITIONS: readonly SubjectReferencePosition[] =
     {
       group: 'document',
       path: ['concepts', '*', 'constraints', '*', 'ref'],
+      form: 'reference',
+    },
+    // The subjects bound into a pattern instance's slots (ADR 0123). Keyed by
+    // slot name rather than indexed, which is why it went missing: this is the
+    // only address in any of the four schemas that lives in a mapping, and the
+    // completeness walker below derived only sequences.
+    {
+      group: 'document',
+      path: ['concepts', '*', 'parts', '*'],
       form: 'reference',
     },
     {
@@ -225,18 +240,39 @@ const collect = (
   }
   const [segment, ...rest] = path as [string, ...string[]]
   if (segment === '*') {
-    if (!isSeq(node)) return
-    for (const [index, item] of node.items.entries()) {
-      collect(
-        item,
-        rest,
-        `${pointer}/${index}`,
-        form,
-        documentId,
-        source,
-        hits,
-        aliases,
-      )
+    if (isSeq(node)) {
+      for (const [index, item] of node.items.entries()) {
+        collect(
+          item,
+          rest,
+          `${pointer}/${index}`,
+          form,
+          documentId,
+          source,
+          hits,
+          aliases,
+        )
+      }
+      return
+    }
+    // A mapping with open keys, which today is `parts` alone. The pointer
+    // segment is the authored key, so a diagnostic names the SLOT ("/parts/
+    // interface") rather than a position the reader would have to count out.
+    if (isMap(node)) {
+      for (const item of node.items) {
+        const key = isScalar(item.key) ? String(item.key.value) : undefined
+        if (key === undefined) continue
+        collect(
+          item.value,
+          rest,
+          `${pointer}/${key}`,
+          form,
+          documentId,
+          source,
+          hits,
+          aliases,
+        )
+      }
     }
     return
   }

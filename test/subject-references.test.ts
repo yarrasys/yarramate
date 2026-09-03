@@ -46,6 +46,7 @@ interface JsonSchemaNode {
   readonly properties?: Readonly<Record<string, JsonSchemaNode>>
   readonly items?: JsonSchemaNode
   readonly additionalProperties?: JsonSchemaNode | boolean
+  readonly patternProperties?: Readonly<Record<string, JsonSchemaNode>>
   readonly allOf?: readonly JsonSchemaNode[]
   readonly oneOf?: readonly JsonSchemaNode[]
   readonly anyOf?: readonly JsonSchemaNode[]
@@ -87,6 +88,17 @@ const addressPositions = (schema: JsonSchemaNode): string[] => {
     walk(node.items, [...path, '*'], seen)
     if (typeof node.additionalProperties === 'object') {
       walk(node.additionalProperties, [...path, '*'], seen)
+    }
+    // A mapping whose KEYS are open is a collection like any other, and
+    // `parts` is spelled that way: `patternProperties` against the slot-name
+    // grammar. Deriving only `properties`, `items` and `additionalProperties`
+    // covered every address that existed when this walker was written - all of
+    // them sequences - so the one form that arrived later was the one form it
+    // could not see, and `concepts/*/parts/*` shipped unenumerated with this
+    // test green. That is CONTRIBUTING's ninth rule one level up: the closed
+    // enumeration here is of SCHEMA FORMS rather than of fields.
+    for (const child of Object.values(node.patternProperties ?? {})) {
+      walk(child, [...path, '*'], seen)
     }
   }
   walk(schema, [], new Set())
@@ -193,6 +205,33 @@ observations:
     expect(hit?.raw).toBe('"checkout~name"')
   })
 
+  // `parts` binds by SLOT NAME, so it is the only address in any of the four
+  // schemas that lives in a mapping rather than a sequence. The walker derived
+  // sequences only, so a bound part was invisible to a rename: `applyOperations`
+  // refused with `YM315 Part "interface" of "greeting-app" names "patron-api",
+  // which is not a declared subject` - failing closed, but leaving a bound part
+  // un-renameable over operations entirely.
+  it('finds a subject bound into a pattern slot, naming the slot', () => {
+    const bound = `format: yarramate/v1
+id: main
+profile: demo/mule@1.0
+concepts:
+  - id: greeting-app
+    kind: mule-http-api
+    name: Greeting
+    parts:
+      interface: patron-api
+      service: patron-service
+relationships: []
+`
+    const scan = scanSubjectReferences(bound, 'document')
+    expect(
+      scan.hits
+        .filter((hit) => hit.address === 'patron-api')
+        .map((hit) => hit.pointer),
+    ).toEqual(['/concepts/0/parts/interface'])
+  })
+
   it('reports an alias at a reference position rather than walking it', () => {
     const aliased = `format: yarramate/v1
 id: main
@@ -239,6 +278,33 @@ describe('rewriteSubjectReferences', () => {
     if (!result.ok) throw new Error(result.aliases.join(', '))
     expect(result.source).toContain('owner: platform-team')
     expect(result.source).toContain('ref: "platform-team"')
+  })
+
+  it('repoints a subject bound into a pattern slot, leaving the slot name', () => {
+    const bound = `format: yarramate/v1
+id: main
+profile: demo/mule@1.0
+concepts:
+  - id: platform
+    kind: businessActor
+    name: Platform
+  - id: greeting-app
+    kind: mule-http-api
+    name: Greeting
+    parts:
+      interface: platform
+      service: untouched
+relationships: []
+`
+    const result = rewriteSubjectReferences(bound, 'document', rename)
+    if (!result.ok) throw new Error(result.aliases.join(', '))
+    expect(result.moved).toEqual([
+      '/concepts/0/id',
+      '/concepts/1/parts/interface',
+    ])
+    // The KEY is a slot name, not an address: only the value moves.
+    expect(result.source).toContain('interface: platform-team')
+    expect(result.source).toContain('service: untouched')
   })
 
   it('carries an aspect suffix through the move', () => {

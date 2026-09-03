@@ -31,9 +31,8 @@ const ajv2020Module = Ajv2020Module as unknown as {
   default?: typeof Ajv2020Module
 } & typeof Ajv2020Module
 const Ajv2020 = ajv2020Module.default ?? ajv2020Module
-const validateCatalogue = new Ajv2020({ allErrors: true }).compile(
-  catalogueSchema,
-)
+import { compileValidator } from './schema-validation.js'
+const validateCatalogue = compileValidator(catalogueSchema)
 
 /**
  * The version of condition evaluation itself, not of the package.

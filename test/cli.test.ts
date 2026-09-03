@@ -132,6 +132,37 @@ describe('YarraMate CLI', () => {
     ).toBe(true)
   })
 
+  // The compiler used to throw on any source composing to null, so `check`
+  // reported a bare `TypeError` on stderr and wrote NOTHING to stdout. The
+  // exit code was already 2, so CI failed honestly; what a machine consumer
+  // got was an empty stdout and `Unexpected end of JSON input` from its own
+  // parser, with no code, no path and no line to act on. A crash has to stay
+  // inside the result schema like every other refusal.
+  it('reports a document composing to nothing as a diagnostic, not a crash', () => {
+    const schema = JSON.parse(
+      readFileSync(
+        join(repositoryRoot, 'schema/yarramate-check-result.schema.json'),
+        'utf8',
+      ),
+    )
+    const validate = new Ajv2020({ allErrors: true }).compile(schema)
+    const result = runCli(
+      ['check', 'test/fixtures/invalid/comment-only-document.yaml', '--json'],
+      repositoryRoot,
+    )
+
+    expect(result.exitCode).toBe(1)
+    expect(result.stderr).toBe('')
+    const parsed = JSON.parse(result.stdout)
+    expect(validate(parsed), JSON.stringify(validate.errors ?? [])).toBe(true)
+    expect(parsed.diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: 'YM201',
+        path: 'test/fixtures/invalid/comment-only-document.yaml',
+      }),
+    )
+  })
+
   it('emits deterministic machine-readable diagnostics and a failing exit code', () => {
     const result = runCli(
       [

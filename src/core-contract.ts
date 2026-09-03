@@ -6,6 +6,7 @@ import {
   loadSourceDocument,
   locateSourcePath,
 } from './source-document.js'
+import { compileValidator } from './schema-validation.js'
 import coreContractSchema from '../schema/yarramate-core-contract.schema.json' with {
   type: 'json',
 }
@@ -18,9 +19,7 @@ const ajv2020Module = Ajv2020Module as unknown as {
   default?: typeof Ajv2020Module
 } & typeof Ajv2020Module
 const Ajv2020 = ajv2020Module.default ?? ajv2020Module
-const validateCoreContract = new Ajv2020({ allErrors: true }).compile(
-  coreContractSchema,
-)
+const validateCoreContract = compileValidator(coreContractSchema)
 
 export interface CoreContractFormat {
   readonly id: string

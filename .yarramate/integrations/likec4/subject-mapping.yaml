@@ -2511,3 +2511,9 @@ mappings:
   - native: workbook-merge-reads-workbook
     external: workbookMergeReadsWorkbook
     type: relationship
+  - native: schema-validation-realizes-document-validation
+    external: schemaValidationRealizesDocumentValidation
+    type: relationship
+  - native: schema-validation-source
+    external: schemaValidationSource
+    type: concept

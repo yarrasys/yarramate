@@ -1,5 +1,185 @@
 # Changelog
 
+## 1.15.3
+
+### Schema validators are compiled at import again, on a shared instance
+
+**1.15.2 is unusable in Cloudflare Workers and has been deprecated on npm.**
+This release restores correctness and keeps most of what 1.15.2 was trying to
+buy. Nothing in your code changes.
+
+1.15.2 deferred JSON Schema compilation to first use, to keep startup CPU
+inside Cloudflare's 400 ms budget. Ajv compiles a schema by generating source
+and calling `new Function`, and `workerd` **permits code generation during
+module evaluation and forbids it at request time**. Measured on the runtime
+binary:
+
+```
+{"atStartup":"ALLOWED",
+ "atRequest":"EvalError: Code generation from strings disallowed for this context"}
+```
+
+So deferral moved compilation into the one context that cannot run it. Every
+request that compiled a workspace, composed a catalogue or applied operations
+threw `EvalError`; an adopter reproduced it across 143 integration tests. That
+asymmetry is also why 1.15.0 and 1.15.1 ran in production for weeks *despite*
+Ajv: their compilation happened at import, where it is allowed.
+
+The startup cost was real, so it is paid down a different way: **one shared Ajv
+instance instead of one per schema.** Each instance recompiles the 2020-12
+meta-schema, and that dominated. Module-scope instances go from ten to two (the
+shared `allErrors` instance, and `apply-command`'s, which sets `discriminator`
+and so cannot share).
+
+Measured on one machine, importing the barrel:
+
+| | import wall | schemas compiled at import | Ajv time | compiled per request |
+|---|---|---|---|---|
+| 1.15.1 | 113.1 ms | 10 | 71.2 ms | 0 |
+| 1.15.2 | 56.1 ms | 0 | 17.9 ms | **1 — throws in Workers** |
+| **1.15.3** | **78.9 ms** | 10 | **50.7 ms** | **0** |
+
+Against 1.15.1 that is 30% off import and 29% off Ajv time, with request-time
+behaviour identical. Against 1.15.2 it gives back some startup headroom, which
+is the price of being able to serve a request at all. The
+`yarramate/interrogation` subpath compiles one schema either way and is
+unchanged.
+
+Precompiled standalone validators (Ajv's `code: { source: true }`) would remove
+Ajv from the runtime entirely and satisfy both constraints at once. That is the
+destination and it is not this release.
+
+### The guard that missed it, replaced
+
+`test/schema-validation-laziness.test.ts` asserted "zero compiles at import"
+and passed on the broken build, because zero-at-import is also what a correct
+precompiled build looks like. The property was necessary and not sufficient,
+and no test that runs only in Node can tell the difference: Node permits code
+generation everywhere.
+
+`test/schema-validation-eagerness.test.ts` asserts the property that
+discriminates and can still be checked anywhere: **after import, exercising the
+package compiles nothing further.** A lazily-built validator fails it on the
+first call that needs one. It also pins the instance sharing, as a relationship
+rather than a count, so the expensive shape cannot drift back.
+
+## 1.15.2
+
+### Importing the package no longer compiles ten JSON Schemas
+
+Ten JSON Schema validators were constructed and compiled at **module scope**,
+so importing the package paid for every one whether or not a caller ever
+validated anything. Measured on the published 1.15.1 dist:
+
+| entry | Ajv compiles at import | import time | share |
+|---|---|---|---|
+| `yarramate` (barrel) | **10** | 155.2 ms | **80% of import** |
+| `yarramate/interrogation` | **1** | 54.7 ms | 63% of import |
+
+That is not a tidiness concern. Cloudflare Workers budget **startup CPU**
+separately from request CPU and refuse a Worker that exceeds it, so an
+adopter's production deploy was rejected outright (`error 10021`) by work no
+request had asked for. The same Worker had deployed earlier the same day at
+569 ms of startup, which is how close to the edge this had been sitting.
+
+Each site also constructed its **own** `Ajv` instance, so each one compiled the
+2020-12 meta-schema again.
+
+Every validator is now built on first use and reused thereafter:
+
+| entry | before | after |
+|---|---|---|
+| `yarramate` (barrel) | 155.2 ms, 10 compiles | **33.2 ms, 0 compiles** |
+| `yarramate/interrogation` | 54.7 ms, 1 compile | **12.1 ms, 0 compiles** |
+
+A caller now pays only for the schemas it actually touches: compiling a
+workspace builds the document validator and leaves the evidence,
+adapter-mapping, core-contract and operations validators unbuilt.
+
+**No API change and no behaviour change.** The only difference is *when* a
+malformed schema would be reported: at import before, at first use now. The
+schemas ship with the package and are covered by tests, so this fails later
+but still fails.
+
+`test/schema-validation-laziness.test.ts` pins it, asserting that importing
+either entry compiles nothing and that first use then compiles something. It is
+`test/export-purity.test.ts`'s idea applied to time rather than to
+dependencies: the static import graph cannot see a module-scope side effect, so
+this one runs the import and watches. It fails on the next module-scope
+validator anyone adds.
+
+Reported by the ApertureX adopter session, whose measured startup profile
+identified the cause.
+
+## 1.15.1
+
+### A document that composes to nothing is refused, not crashed on
+
+Any workspace source whose YAML composes to `null` crashed the whole compile
+with `TypeError: Cannot read properties of null (reading 'profile')`. Four
+forms reach it: an empty file, a whitespace-only file, a file holding the
+`null` literal, and **a document parked behind `#` comments**, which is the
+one a user reaches without doing anything unusual.
+
+The schema always had the right answer. A bare scalar and a list have always
+been refused with `YM201 ... must be object`, and `null` fails that same check.
+It was simply never reached: the probe that decides whether to inject the
+shipped `yarramate/policy@0.1` profile reads `.profile` off every document
+input, and it runs **before** the gate that rejects a schema-invalid document.
+It read through an `as` cast, which is what kept the typechecker quiet.
+
+What a consumer saw is the part worth naming. `yarramate check` wrote a bare
+`TypeError` to stderr and **nothing at all to stdout**, so `check --json`
+handed a machine reader an empty string and `Unexpected end of JSON input`
+from its own parser, with no code, no path and no line to act on. The exit
+code was already 2, so CI failed honestly throughout.
+
+Reported by an adopter who reached the empty-string form through a manifest
+path with no supplied source, while binding pattern parts. Patterns turned out
+to be incidental: the crash needs only a file, and the fix is in neither the
+pattern nor the operations path.
+
+### A rename repoints a subject bound into a pattern slot
+
+`parts` binds a subject into a pattern instance's slot by slot name (ADR
+0123), which makes it a place a subject address lives. It was never
+enumerated as one, so a rename could not move it. `applyOperations` refused
+the whole batch:
+
+```
+YM315 Part "interface" of "greeting-app" names "patron-api",
+      which is not a declared subject
+```
+
+That fails closed, which is the right direction, but a bound part was
+un-renameable over operations entirely.
+
+The reason it went missing is worth more than the fix.
+`test/subject-references.test.ts` exists precisely so this cannot happen: it
+derives every address-typed position from the four JSON Schemas and asserts
+the enumeration accounts for all of them, so that "a new reference field
+cannot be added without landing here too". Its walker descends `properties`,
+`items` and `additionalProperties`. `parts` is spelled with
+**`patternProperties`**, the one form it does not descend, so `parts` shipped
+as an unenumerated reference site **with the completeness test green**.
+
+Measured: the walker derived 14 positions from the document schema, and 15
+once `patternProperties` is walked. The one it gains is exactly
+`concepts/*/parts/*`. Every other address in all four schemas lives in a
+**sequence**; this is the only one that lives in a mapping, which is why three
+forms were enough right up until they were not.
+
+That is CONTRIBUTING's ninth rule one level up, where the closed enumeration
+is of schema FORMS rather than of fields, and its seventh: the walker is
+shaped like the addresses that existed when it was written.
+
+`*` in a reference position now means every element of a collection, which is
+every index of a sequence and every value of an open mapping. The pointer
+segment for a part is the **slot name**, so a diagnostic says
+`/concepts/0/parts/interface` rather than a counted position.
+
+Reported by the ApertureX adopter session.
+
 ## 1.15.0
 
 ### An edge across a nesting boundary no longer collapses the canvas
@@ -36,7 +216,6 @@ application implements this?", and the model compiles clean, so the first sign
 was the canvas. The adopter's field model had the pair three times over from
 normal consulting work. This repository's own 358-subject self-model renders
 only because it happens never to pair composition with another edge.
-
 
 ### A vocabulary is closed by its scheme, not its count
 
@@ -99,7 +278,6 @@ for prose describing behaviour 1.14.x changed. Nothing found: the three
 candidate lines in `core-enrichment` are accurate for their conditions, and the
 wave-gating section describes `opened` semantics that ADR 0136 did not alter.
 
-
 ### No link a reader with the package cannot follow
 
 Nine markdown links in shipped documents pointed at `adr/` files that do not
@@ -115,7 +293,6 @@ cannot keep.** So the conversion is the fix rather than a workaround for one.
 This is the same defect the 1.14.1 guard was written for, one level down. That
 guard compared bare `docs/NAME.md` mentions and said nothing about links, so it
 missed nine instances of exactly what it existed to catch.
-
 
 ### The reference-slot question is settled, and the floor says so
 
@@ -146,7 +323,6 @@ homeless card in 348.
 Reopen either with an adopter measuring a materially larger residue against
 the floor — the same test that closed #386.
 
-
 ### A missing-claim question offers the field it is missing
 
 `design` now prints an `update-concept` skeleton for a `missing-claim` trigger
@@ -175,7 +351,6 @@ render as editable** — the trigger carries the predicate and the host decides.
 That was the adopter's own hesitation about asking for a `set-field` answer
 shape, and it was right; ADR 0110 excluded a normalized remedy vocabulary for
 the same reason.
-
 
 ## 1.14.1
 
@@ -209,7 +384,6 @@ they were simply unreachable.
 Docs-only and shipped as a patch on the same reasoning as 1.11.1 and 1.13.1:
 an adopter arrives through npm, so guidance that stays in the repository is
 guidance they do not have.
-
 
 ## 1.14.0
 
@@ -712,8 +886,6 @@ workspace-scope conditions that would work.
   72 of 149 in-scope files were unclaimed, and the backlog was worked to
   zero (#366) — every file bound in by a repository-file concept, a
   realization to what its code serves, and a confirmed observation.
-
-
 
 - **Added.** A workspace can carry its own questions (#345, ADR 0129). A
   `questions:` manifest category resolves like `patterns` and `evidence`, and
@@ -1609,7 +1781,6 @@ workspace-scope conditions that would work.
   patterns from a committed file is a separate decision. Recording comes first,
   because the data has to exist before running it means anything.
 
-
 - **Added.** An interrogation report says which engine answered, not only which
   catalogue asked. `semantics` carries the version of condition evaluation
   itself, exported as `INTERROGATION_SEMANTICS_VERSION`, and it changes only
@@ -1636,7 +1807,6 @@ workspace-scope conditions that would work.
   `test/interrogation-semantics.test.ts` exercises every condition against a
   fixture and fingerprints the answers, so changing what a condition means
   fails the suite and names the version to bump.
-
 
 - **Added.** The interrogation engine is public API. `evaluateCatalogue`,
   `loadQuestionCatalogue`, `renderQuestion` and `renderInterrogationReport`

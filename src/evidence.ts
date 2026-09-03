@@ -22,9 +22,8 @@ const ajv2020Module = Ajv2020Module as unknown as {
   default?: typeof Ajv2020Module
 } & typeof Ajv2020Module
 const Ajv2020 = ajv2020Module.default ?? ajv2020Module
-const validateEvidenceSchema = new Ajv2020({ allErrors: true }).compile(
-  evidenceSchema,
-)
+import { compileValidator } from './schema-validation.js'
+const validateEvidenceSchema = compileValidator(evidenceSchema)
 
 export type EvidenceResult =
   | 'confirmed'
