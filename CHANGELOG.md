@@ -1,5 +1,30 @@
 # Changelog
 
+## Unreleased
+
+### A profile's kinds no longer have to be declared parent-first
+
+A profile's concept kinds resolved in **declaration order**, so a kind whose
+parent was declared below it was refused with `YM407 ... is not available` — the
+same message a genuinely missing kind gets. The author went looking for a typo
+or a missing declaration while the file in front of them already declared the
+parent three lines down. Nothing in the code, the schema or the docs said order
+was meant to matter (#470, raised by the ApertureX adopter session while
+building a profile-adopt step that appends a new parent and re-parents two
+shipped kinds onto it — the obvious shape for an append-only writer, and it was
+refused).
+
+Resolution now runs in rounds until one adds nothing, so order carries no
+meaning. **Strictly additive**: every profile that compiles today still
+compiles, and resolves on the first round, because parent-first was the only
+order that ever worked.
+
+One case becomes newly reachable and now says what it is. A parent cycle could
+not be expressed before — whichever kind came first was refused as a forward
+reference — and under rounds both halves survive unresolved. `YM407` names it as
+a cycle rather than claiming the parent is not available, which would be
+actively wrong: the parent is right there, it just cannot ever have a lineage.
+
 ## 1.19.0
 
 ### An agent can bind a pattern part

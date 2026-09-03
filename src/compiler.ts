@@ -1072,7 +1072,20 @@ function compileWorkspaceResolved(
       }
 
       const resolvedConceptKinds = new Map(parentProfile.conceptKinds)
-      for (const [index, kind] of value.conceptKinds.entries()) {
+      // A profile is a SET of kind declarations, so a kind whose parent is
+      // declared below it resolves like any other (#470). This used to be one
+      // pass in declaration order, which made a forward reference
+      // indistinguishable from a parent that does not exist - and `YM407` says
+      // "not available", so an author went looking for a missing kind while the
+      // file in front of them already declared it three lines down.
+      //
+      // Rounds until one adds nothing. Everything that compiled before compiles
+      // now and resolves on the first round, because parent-first was the only
+      // order that worked.
+      let pendingKinds = [...value.conceptKinds.entries()]
+      for (;;) {
+        const deferred: typeof pendingKinds = []
+        for (const [index, kind] of pendingKinds) {
         if (resolvedConceptKinds.has(kind.id)) {
           const position = positionFor(['conceptKinds', index, 'id'])
           profileDiagnostics.push({
@@ -1088,16 +1101,9 @@ function compileWorkspaceResolved(
         }
         const parent = conceptKindByIdentity.get(kind.parent)
         if (parent === undefined) {
-          const position = positionFor(['conceptKinds', index, 'parent'])
-          profileDiagnostics.push({
-            severity: 'error',
-            code: 'YM407',
-            message: `Concept parent "${kind.parent}" is not available`,
-            path: input.path,
-            pointer: `/conceptKinds/${index}/parent`,
-            line: position.line,
-            column: position.col,
-          })
+          // Might resolve in a later round. Whether it never resolves at all
+          // is decided once the rounds stop, not here.
+          deferred.push([index, kind])
           continue
         }
         // OntoClean: an anti-rigid kind cannot subsume a rigid one. The
@@ -1132,6 +1138,34 @@ function compileWorkspaceResolved(
         } satisfies ResolvedConceptKind
         resolvedConceptKinds.set(kind.id, resolved)
         conceptKindByIdentity.set(resolved.identity, resolved)
+        }
+        // No round can help what the last one could not.
+        if (deferred.length === 0 || deferred.length === pendingKinds.length) {
+          pendingKinds = deferred
+          break
+        }
+        pendingKinds = deferred
+      }
+      // What survived every round names a parent that never arrives. Two
+      // causes, and they are different problems for the author: the parent is
+      // declared nowhere, or it is in a cycle with this kind and neither can
+      // ever have a lineage.
+      const unresolvableIds = new Set(
+        pendingKinds.map(([, kind]) => `${identity}#${kind.id}`),
+      )
+      for (const [index, kind] of pendingKinds) {
+        const position = positionFor(['conceptKinds', index, 'parent'])
+        profileDiagnostics.push({
+          severity: 'error',
+          code: 'YM407',
+          message: unresolvableIds.has(kind.parent)
+            ? `Concept parent "${kind.parent}" cannot resolve: it is in a parent cycle with "${kind.id}", so neither kind has a lineage`
+            : `Concept parent "${kind.parent}" is not available`,
+          path: input.path,
+          pointer: `/conceptKinds/${index}/parent`,
+          line: position.line,
+          column: position.col,
+        })
       }
 
       const resolvedRelationshipKinds = new Map(
