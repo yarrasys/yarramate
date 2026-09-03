@@ -35,6 +35,20 @@ export interface ConceptFields {
   readonly constraints?: readonly ConstraintReference[]
   readonly references?: readonly IdentifiedReference[]
   readonly presentIn?: readonly string[]
+  /**
+   * The subjects this instance binds into its pattern's slots (ADR 0123),
+   * keyed by part name (#448). The first MAP-valued concept field, so it is a
+   * third category beside the scalars and the lists rather than a schema line.
+   *
+   * `update-concept` MERGES by slot: a named slot rebinds, an unnamed one is
+   * untouched. That is ADR 0062's convention rather than a new decision — a
+   * write enriches what is there and never silently shrinks it — and
+   * replace-whole-map would quietly unbind slots the operation never
+   * mentioned. Retraction is coarse, `remove: ['parts']`, because a second
+   * retraction idiom for one field reads fine to whoever wrote it and traps
+   * everyone else.
+   */
+  readonly parts?: Readonly<Record<string, string>>
   // A batch is a machine's transcription of someone's judgment, so the
   // operations contract makes the recorder mandatory here even though a
   // hand-written document may omit it (the committer is the recorder).

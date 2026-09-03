@@ -1,5 +1,37 @@
 # Changelog
 
+## Unreleased
+
+### An agent can bind a pattern part
+
+`conceptFields` in the operations schema was closed and `parts` was not in it,
+so `update-concept` carrying `parts: { interface: patron-api }` was refused with
+`YM201 Property "parts" is not allowed`. **An agent could not instantiate a
+pattern over `apply` at all**: the whole pattern mechanism (ADR 0123) was
+reachable only from raw YAML, which is the one surface agents do not drive
+(#448, raised by the ApertureX adopter session).
+
+`parts` is now a concept field on `add-concept` and `update-concept`. It is the
+first map-valued field, so it is a third category beside the scalars and the
+lists rather than a schema line, and it follows ADR 0062's convention from that
+third direction: **it merges by slot.** A slot the operation names is rebound, a
+slot it does not name is untouched. Replace-whole-map would silently unbind
+slots the operation never mentioned, which is exactly the shrinking that rule
+forbids.
+
+Retraction is coarse. `remove: ["parts"]` unbinds the whole mapping, and there
+is deliberately no `remove: ["parts.service"]`: that would make `parts` both the
+first map-valued field and the first field with its own retraction grammar, and
+a second idiom for one field reads fine to whoever wrote it and traps everyone
+else.
+
+One interaction worth knowing, because it is surprising in the right direction:
+a full retraction leaves a concept with no `parts` key, which is not a pattern
+instance, so `YM416` does not fire for a required slot and the compile stays
+green. The requirement is not lost. As a greenfield instance it now reports a
+vacancy per slot with `required: true` on the retracted one, so the obligation
+moves from the compile gate to the interview (ADR 0140).
+
 ## 1.18.0
 
 ### A pattern can become a questionnaire
