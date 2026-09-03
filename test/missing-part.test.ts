@@ -701,3 +701,196 @@ describe('missing-part through the published API', () => {
     ).not.toContain('vacancy-probe#bind-service')
   })
 })
+
+// A NESTED instance, which is the shape the reporting adopter's estate is about
+// to take: their mapping pattern is now product-wide, shipped into every new
+// project, and every runtime pattern nests it through a `mapping` slot. So the
+// common case becomes an instance that declares `parts` and binds one of them
+// to another instance that is itself greenfield.
+//
+// The two facts are about different patterns, and the risk is that an
+// implementation conflates them: being bound INTO something is not the same as
+// having bound anything YOURSELF. Requested by the ApertureX session (#447).
+
+const nestedProfile = `format: yarramate/profile/v1
+id: aperturex/consulting
+version: "1.0"
+extends: yarramate/core@0.1
+conceptKinds:
+  - id: mule-http-api
+    name: Mule HTTP API
+    parent: yarramate/core@0.1#grouping
+  - id: mapping-application-function
+    name: Mapping
+    parent: yarramate/core@0.1#applicationFunction
+relationshipKinds: []
+`
+
+const nestedPatterns = `format: yarramate/pattern/v1
+id: consulting
+version: "1.0"
+patterns:
+  - kind: aperturex/consulting@1.0#mule-http-api
+    parts:
+      interface:
+        kind: yarramate/core@0.1#applicationInterface
+        required: true
+      mapping:
+        kind: aperturex/consulting@1.0#mapping-application-function
+      payload:
+        kind: yarramate/core@0.1#dataObject
+    wiring:
+      - from: self
+        kind: yarramate/core@0.1#aggregation
+        to: interface
+  - kind: aperturex/consulting@1.0#mapping-application-function
+    parts:
+      source:
+        kind: yarramate/core@0.1#dataObject
+      target:
+        kind: yarramate/core@0.1#dataObject
+      specification:
+        kind: yarramate/core@0.1#artifact
+    wiring:
+      - from: self
+        kind: yarramate/core@0.1#access
+        to: source
+      - from: self
+        kind: yarramate/core@0.1#access
+        to: target
+      - from: self
+        kind: yarramate/core@0.1#association
+        to: specification
+`
+
+// `app` is expanded and binds `mapping: map-x`; `map-x` has a pattern of its
+// own and declares no parts.
+const nestedDocument = `format: yarramate/v1
+id: main
+profile: aperturex/consulting@1.0
+concepts:
+  - id: app
+    kind: mule-http-api
+    name: App
+    parts:
+      interface: patron-api
+      mapping: map-x
+  - id: patron-api
+    kind: applicationInterface
+    name: Patron API
+  - id: map-x
+    kind: mapping-application-function
+    name: Map X
+relationships: []
+`
+
+describe('missing-part: a nested greenfield instance', () => {
+  const compiled = () =>
+    compileWorkspaceWithProfileContext([
+      { path: 'profiles/consulting.yaml', source: nestedProfile },
+      { path: 'patterns/consulting.yaml', source: nestedPatterns },
+      { path: 'architecture/main.yaml', source: nestedDocument },
+    ])
+
+  it('asks the nested instance about its own parts', () => {
+    const result = compiled()
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(
+      result.patternVacancies
+        ?.filter(({ instance }) => instance === 'map-x')
+        .map(({ slot, slotKind, required }) => [slot, slotKind, required]),
+    ).toEqual([
+      ['source', 'yarramate/core@0.1#dataObject', false],
+      ['specification', 'yarramate/core@0.1#artifact', false],
+      ['target', 'yarramate/core@0.1#dataObject', false],
+    ])
+  })
+
+  it('does not attribute the nested instance\'s parts to its host', () => {
+    // `app` answers for its own unbound slots and nothing else. Its `interface`
+    // and `mapping` are bound, so `payload` is all it owes.
+    const result = compiled()
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(
+      result.patternVacancies
+        ?.filter(({ instance }) => instance === 'app')
+        .map(({ slot }) => slot),
+    ).toEqual(['payload'])
+  })
+
+  it('counts a bound instance as a member THERE and a vacancy holder HERE', () => {
+    // The assertion this whole block exists for. `map-x` is bound into `app`,
+    // so it is a member; it has bound nothing itself, so it is greenfield. Both
+    // at once, because the two facts are about different patterns. An engine
+    // that treated "bound into a slot" as "has bound its slots" would drop the
+    // three rows above and report the mapping as finished.
+    const result = compiled()
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(
+      result.patternMemberships?.map(({ member, slot, instance }) => [
+        member,
+        slot,
+        instance,
+      ]),
+    ).toEqual([
+      ['map-x', 'mapping', 'app'],
+      ['patron-api', 'interface', 'app'],
+    ])
+    expect(
+      result.patternVacancies?.some(({ instance }) => instance === 'map-x'),
+    ).toBe(true)
+  })
+
+  it('empties the nested vacancies as its parts are bound', () => {
+    // The adopter's own arithmetic: a shipped reference whose mappings are all
+    // bound yields zero mapping vacancies, and a fresh project's first mapping
+    // yields three. Asserted as the transition rather than as two states, so a
+    // fixture that had quietly stopped compiling the nested pattern could not
+    // pass it.
+    const result = compileWorkspaceWithProfileContext([
+      { path: 'profiles/consulting.yaml', source: nestedProfile },
+      { path: 'patterns/consulting.yaml', source: nestedPatterns },
+      {
+        path: 'architecture/main.yaml',
+        source: `format: yarramate/v1
+id: main
+profile: aperturex/consulting@1.0
+concepts:
+  - id: app
+    kind: mule-http-api
+    name: App
+    parts:
+      interface: patron-api
+      mapping: map-x
+      payload: order-record
+  - id: patron-api
+    kind: applicationInterface
+    name: Patron API
+  - id: map-x
+    kind: mapping-application-function
+    name: Map X
+    parts:
+      source: order-record
+      target: patron-record
+      specification: mapping-spec
+  - id: order-record
+    kind: dataObject
+    name: Order record
+  - id: patron-record
+    kind: dataObject
+    name: Patron record
+  - id: mapping-spec
+    kind: artifact
+    name: Mapping spec
+relationships: []
+`,
+      },
+    ])
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.patternVacancies).toEqual([])
+  })
+})
