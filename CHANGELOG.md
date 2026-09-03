@@ -32,6 +32,37 @@ green. The requirement is not lost. As a greenfield instance it now reports a
 vacancy per slot with `required: true` on the retracted one, so the obligation
 moves from the compile gate to the interview (ADR 0140).
 
+### A pattern slot can admit a family of variant subkinds
+
+A slot matched its bound subject's kind exactly, so it could not stand for a
+family. The motivating shape is a decisional dependency: a `secrets` slot
+admitting `bundled` or `vault`, each variant carrying its own pattern, so
+choosing the variant is what opens the next set of questions (#449, raised by
+the ApertureX adopter session).
+
+`kindMatching: 'exact' | 'descendants'` on a part, defaulting to `exact`:
+
+```yaml
+parts:
+  secrets:
+    kind: "acme/platform@1.0#secret-store"
+    kindMatching: descendants
+```
+
+`descendants` holds when the bound subject's kind lineage includes the slot
+kind. The default is unchanged, so no shipped pattern means anything different,
+and the word means the same here as on catalogue selectors and on
+`missing-relationship` rather than introducing a second vocabulary. Sharing an
+ancestor is not descent: a sibling kind under the same core parent is still
+refused with `YM417`, whose message now says what the slot actually accepts.
+
+One clarification on the safety argument, since the issue stated it as a check
+and it is really a property: a descendant resolves to the same CORE kind as the
+slot kind (`permittedBetween` reads `lineage[0]`), so the relationship table
+returns the same verdict for both. Widening what a slot admits therefore cannot
+widen what the minted wiring may legally say — by construction, not by a check
+that could fail.
+
 ## 1.18.0
 
 ### A pattern can become a questionnaire

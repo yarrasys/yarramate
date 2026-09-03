@@ -203,6 +203,7 @@ interface NativeProfile {
 interface NativePatternPart {
   readonly kind: string
   readonly required?: boolean
+  readonly kindMatching?: 'exact' | 'descendants'
 }
 
 interface NativePatternWire {
@@ -235,6 +236,13 @@ interface ResolvedSlot {
   readonly name: string
   readonly kindIdentity: string
   readonly required: boolean
+  /**
+   * How a bound subject's kind is matched against {@link kindIdentity} (#449).
+   * `exact` admits only that kind; `descendants` admits any kind whose lineage
+   * includes it, so one slot can admit a family of variant subkinds. Default
+   * `exact`, so no shipped pattern changes meaning.
+   */
+  readonly kindMatching: 'exact' | 'descendants'
 }
 
 interface ResolvedWire {
@@ -1348,6 +1356,8 @@ function compileWorkspaceResolved(
           name: slot,
           kindIdentity: kind.identity,
           required: part.required === true,
+          kindMatching:
+            part.kindMatching === 'descendants' ? 'descendants' : 'exact',
         })
       }
       if (!slotsOk) continue
@@ -3167,14 +3177,31 @@ function compileWorkspaceResolved(
         }
         boundTo.set(target, slot)
         const actual = kindOfSubject.get(target)
-        if (actual !== slotShape.kindIdentity) {
+        // `descendants` admits any kind whose lineage includes the slot kind
+        // (#449), which is what the word already means on catalogue selectors
+        // and on `missing-relationship`. It fails safe: minted wiring is
+        // checked against the relationship table using the ACTUAL bound
+        // subjects' kinds, so a descendant that is not a legal endpoint is
+        // still refused by the ordinary relationship check rather than
+        // slipping through on the pattern's authority.
+        const admitted =
+          actual === slotShape.kindIdentity ||
+          (slotShape.kindMatching === 'descendants' &&
+            actual !== undefined &&
+            (conceptKindByIdentity.get(actual)?.lineage ?? []).includes(
+              slotShape.kindIdentity,
+            ))
+        if (!admitted) {
           diagnostics.push({
             severity: 'error',
             code: 'YM417',
             message:
               `Part "${slot}" of "${instance}" binds "${target}", which is ` +
               `"${actual ?? 'not a concept'}"; the pattern declares this part ` +
-              `"${slotShape.kindIdentity}"`,
+              `"${slotShape.kindIdentity}"` +
+              (slotShape.kindMatching === 'descendants'
+                ? ' or a kind descending from it'
+                : ''),
             path: where.path,
             pointer: where.pointer,
             line: where.line,
