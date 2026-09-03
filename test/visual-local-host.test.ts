@@ -135,7 +135,7 @@ const openHost = (
     session: () => ({ lastSequence: 0, closed: false }),
   })
   const send = (input: VisualBrowserInput) => host.send(input)
-  return { store, frames, send, stop }
+  return { store, host, frames, send, stop }
 }
 
 const input = (
@@ -542,5 +542,121 @@ concepts:
     send(input('filter.query', { query: {} }))
 
     expect(frames).toHaveLength(seen)
+  })
+})
+
+/**
+ * Following a model that moved under an open canvas (#444).
+ *
+ * A host whose store changes while a reviewer watches - an agent writing over
+ * MCP is the case this exists for - previously had only `unmount` plus mounting
+ * again, which discards everything staged. The delivery half already worked: a
+ * mid-session `model` frame replaces the compilation and leaves the staged
+ * changeset alone. What was missing was any way to ask for one, and any way to
+ * find out that asking would strand staged work.
+ */
+describe('local host refresh', () => {
+  const bump = (
+    store: ReturnType<typeof memoryStore>,
+    path: string,
+    source: string,
+  ): void => {
+    const outcome = store.writeAll([
+      { path, source, expected: store.read(path)?.revision ?? null },
+    ])
+    expect(outcome.ok).toBe(true)
+  }
+
+  it('delivers the fresh model when nothing is staged', () => {
+    const { store, host, frames } = openHost()
+    const before = frames.length
+    bump(
+      store,
+      'architecture/main.yaml',
+      document.replace('name: Checkout', 'name: Checkout Service'),
+    )
+
+    expect(host.refresh({})).toEqual({ applied: true })
+    const model = frames.slice(before).find((frame) => frame.kind === 'model')
+    expect(model?.kind).toBe('model')
+    if (model?.kind !== 'model') return
+    expect(model.model.graph.nodes.map(({ name }) => name)).toContain(
+      'Checkout Service',
+    )
+  })
+
+  it('refuses when staged work pins a document that moved, and delivers nothing', () => {
+    const { store, host, frames } = openHost()
+    // What the reviewer's staged edit vouched for: the revision the document
+    // held when they staged it.
+    const staged = {
+      'architecture/main.yaml':
+        store.read('architecture/main.yaml')?.revision ?? '',
+    }
+    bump(
+      store,
+      'architecture/main.yaml',
+      document.replace('name: Ledger', 'name: General Ledger'),
+    )
+    const before = frames.length
+
+    expect(host.refresh(staged)).toEqual({
+      applied: false,
+      reason: 'staged-against-changed-documents',
+      documents: ['architecture/main.yaml'],
+    })
+    // The canvas is untouched, which is the point: the reviewer's staged rows
+    // are exactly where they left them and no frame moved under them.
+    expect(frames.slice(before)).toEqual([])
+  })
+
+  it('refreshes when the pin still matches what the store holds', () => {
+    const { store, host } = openHost()
+    const staged = {
+      'architecture/main.yaml':
+        store.read('architecture/main.yaml')?.revision ?? '',
+    }
+
+    // Nothing moved, so staged work is not stranded and the refresh proceeds.
+    expect(host.refresh(staged)).toEqual({ applied: true })
+  })
+
+  it('counts a document that is gone as changed', () => {
+    const { store, host } = openHost()
+    const staged = {
+      'architecture/main.yaml':
+        store.read('architecture/main.yaml')?.revision ?? '',
+    }
+    store.writeAll([
+      {
+        path: 'architecture/main.yaml',
+        source: null,
+        expected: store.read('architecture/main.yaml')?.revision ?? null,
+      },
+    ])
+
+    // The edit was staged against something no longer there, which is what
+    // `YMVS312` says at commit; saying it here is the same fact, earlier.
+    expect(host.refresh(staged)).toEqual({
+      applied: false,
+      reason: 'staged-against-changed-documents',
+      documents: ['architecture/main.yaml'],
+    })
+  })
+
+  it('reports why rather than blanking the canvas when the store stops compiling', () => {
+    const { store, host, frames } = openHost()
+    bump(store, 'architecture/main.yaml', 'format: yarramate/v1\nid: main\n')
+    const before = frames.length
+
+    const outcome = host.refresh({})
+    expect(outcome.applied).toBe(false)
+    if (outcome.applied) return
+    expect(outcome.reason).toBe('refused')
+    if (outcome.reason !== 'refused') return
+    expect(outcome.diagnostics.length).toBeGreaterThan(0)
+    // No model frame: the last good one stays on screen, the same posture
+    // every other failing recompile takes (#349).
+    expect(frames.slice(before).filter((frame) => frame.kind === 'model')).toEqual([])
   })
 })

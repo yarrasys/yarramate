@@ -1137,10 +1137,14 @@ export const App = ({
   const pointerContext = useRef<EditorPointerContext>({
     graph: null,
     readOnly,
+    stagedPins: {},
   });
   pointerContext.current = {
     graph: state.model?.graph ?? null,
     readOnly,
+    // Read at call time like the graph is, so a host asking just before a
+    // refresh sees what is staged now rather than at mount (#444).
+    stagedPins: state.pendingChangeset.sourceDigests,
   };
   useEffect(() => {
     onReady?.(
