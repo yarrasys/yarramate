@@ -2,6 +2,62 @@
 
 ## Unreleased
 
+### A report says which inputs it was given
+
+`asked: false` says "this question was never asked" for a selector that matched
+no subject. The same fault existed one level down, for **inputs**: a condition
+that reads an optional `evaluateCatalogue` parameter it was not given stays
+quiet — correct, since the caller did not look — but a quiet condition was
+byte-identical to a satisfied one, `open: false, asked: true`. A host summing
+closed questions therefore read **"nothing was supplied" as "nothing is
+missing"**, and for an absence question like `missing-part` the silent direction
+is "the interview is satisfied". The reporting adopter attributes three shipped
+bugs to this class (#450).
+
+Every report now carries a required `inputs` map:
+
+```json
+"inputs": {
+  "profileContext": true, "evidence": false,
+  "patternMemberships": true, "patternVacancies": false
+}
+```
+
+Required rather than optional, on ADR 0110's reasoning for `trigger`: the fact
+exists for every report, so an optional field would force every consumer to
+write an absent-case branch for a case that cannot occur. It is a separate field
+rather than a third `asked` value, because `asked` is published and because "no
+subject matched" and "no data was supplied" are different facts.
+
+**`conditionInput` is published beside `conditionScope`**, from the barrel and
+from `yarramate/interrogation`, so a host can join a question's echoed `trigger`
+to the map and answer the question it actually has: which of the questions in
+front of me could not be evaluated? The rendered report names a withheld input
+only when a question in that catalogue actually reads it.
+
+Neither the key set nor the condition mapping is hand-written: both are `Record`s
+over closed unions, so a new condition does not compile until it declares which
+input it needs, and a new input does not compile until the report reports it.
+
+**Compatibility:** the report schema is `additionalProperties: false`, so output
+from this version fails validation against a pinned pre-change copy — the same
+cost ADR 0110 took for `trigger`. A validator that resolves the schema from the
+package rather than from a vendored copy passes on the same bump that ships
+this. `INTERROGATION_SEMANTICS_VERSION` does not move. See ADR 0142.
+
+### `ask --open --json` emitted a report its own schema rejected
+
+Found while building the above. `yarramate-ask-result.schema.json` restates the
+report's shape with `additionalProperties: false`, and that restatement never
+gained `catalogues` when composition shipped (#345). So **a workspace with two
+catalogues produced an `ask --open --json` payload that failed the published
+ask-result schema.** Invisible until now because every fixture used one
+catalogue.
+
+Both `catalogues` and the new `inputs` are added, and a test now asserts the
+restatement carries every field the report schema declares, so the next field
+cannot repeat it.
+
 ### `CataloguePatternVacancy` reaches the runtime-pure subpath
 
 `yarramate/interrogation` exists so a host that may not import Node builtins —

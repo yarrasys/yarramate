@@ -1167,6 +1167,7 @@ export function runAskCommand(
           ? {}
           : { catalogues: report.catalogues }),
         semantics: report.semantics,
+        inputs: report.inputs,
         summary: report.summary,
         waves: report.waves,
       }
