@@ -26,6 +26,7 @@ import {
   evaluateCatalogue,
   composeCatalogues,
   type CataloguePatternMembership,
+  type CataloguePatternVacancy,
 } from "../../interrogate-command.js";
 import type { VisualKindOption, VisualViewSummary } from "./protocol-contract.js";
 import type {
@@ -106,6 +107,8 @@ export const interrogationOverlayOf = (
     readonly profileContext: ResolvedProfileContext;
     /** From the compilation (ADR 0131); absent, slot questions stay quiet. */
     readonly patternMemberships?: readonly CataloguePatternMembership[];
+    /** From the compilation (#447); absent, `missing-part` stays quiet. */
+    readonly patternVacancies?: readonly CataloguePatternVacancy[];
   },
   /**
    * The catalogue, or the composed SET a workspace carries (#345, ADR 0129).
@@ -135,6 +138,7 @@ export const interrogationOverlayOf = (
     undefined,
     composed.composed.catalogues,
     compiled.patternMemberships,
+    compiled.patternVacancies,
   );
   const dismissedEverywhere = new Set(
     dismissed
@@ -194,6 +198,8 @@ export const renderedWorkspaceOf = (
     readonly graph: SemanticGraph;
     readonly profileContext: ResolvedProfileContext;
     readonly patternMemberships?: readonly CataloguePatternMembership[];
+    /** Threaded on to the overlay (#447); absent, `missing-part` stays quiet. */
+    readonly patternVacancies?: readonly CataloguePatternVacancy[];
   },
   views: readonly VisualViewSummary[],
   metadata: Omit<VisualRenderedModel, "graph" | "vocabulary" | "interrogation">,

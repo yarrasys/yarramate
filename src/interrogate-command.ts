@@ -202,6 +202,26 @@ export type CatalogueCondition =
       readonly patternKinds?: readonly string[]
       readonly slots?: readonly string[]
     }
+  | {
+      /**
+       * The subject is a pattern INSTANCE with a slot nothing is bound into
+       * (#447). The mirror of `fills-pattern-slot`, and the mechanism by which
+       * a pattern becomes a questionnaire: bare, it means any slot of this
+       * instance's pattern is unbound; `patternKinds` narrows by the pattern's
+       * kind identity and `slots` by part name, exactly as its mirror does.
+       *
+       * It fires for a REQUIRED slot too, but only where one can survive a
+       * compile: an instance that declares `parts` and omits a required one is
+       * YM416 and there is no result to read, while an instance that declares
+       * no `parts` at all never reaches YM416 and is exactly the greenfield
+       * case ADR 0123 left open. The vacancy row's `required` tells the two
+       * apart for the host; the condition itself does not read it, because a
+       * catalogue that wants only one of them says so with `slots`.
+       */
+      readonly condition: 'missing-part'
+      readonly patternKinds?: readonly string[]
+      readonly slots?: readonly string[]
+    }
 
 /**
  * One observation from the workspace's evidence overlay, reduced to what
@@ -235,6 +255,27 @@ export interface CataloguePatternMembership {
   readonly slot: string
   readonly instance: string
   readonly pattern: string
+}
+
+/**
+ * One vacant optional slot of one pattern instance, as interrogation reads
+ * it. Structural for the same reason {@link CataloguePatternMembership} is:
+ * a host passes `compilation.patternVacancies` and the compiler's types are
+ * never dragged into the pure engine entry. Only `missing-part` reads it.
+ */
+export interface CataloguePatternVacancy {
+  readonly instance: string
+  readonly pattern: string
+  readonly slot: string
+  readonly slotKind: string
+  /**
+   * The pattern declares this part required. The condition does NOT read it —
+   * a vacancy is a vacancy — but it travels because the host derives its
+   * answer shape from this row, and "you have not decided this yet" and "this
+   * model does not stand up without it" are different questions to put to a
+   * person (#447).
+   */
+  readonly required: boolean
 }
 
 export interface CatalogueQuestion {
@@ -684,6 +725,7 @@ const CONDITION_SCOPE: Record<
   'unscoped-succession': 'subject',
   'unchallenged-evidence': 'workspace',
   'fills-pattern-slot': 'subject',
+  'missing-part': 'subject',
 }
 
 export const conditionScope = (
@@ -697,8 +739,26 @@ const conditionHolds = (
   profileContext: ResolvedProfileContext | undefined,
   evidence: readonly CatalogueEvidenceObservation[] | undefined,
   memberships: readonly CataloguePatternMembership[] | undefined,
+  vacancies: readonly CataloguePatternVacancy[] | undefined,
 ): boolean => {
   switch (condition.condition) {
+    case 'missing-part':
+      // Absent vacancies stay quiet, exactly as absent memberships do below:
+      // the caller did not derive them, so what is unbound is unknown rather
+      // than nothing. An EMPTY array is the opposite and says so - every
+      // instance is fully bound (#447, CONTRIBUTING's second rule).
+      return (
+        vacancies !== undefined &&
+        subjectId !== undefined &&
+        vacancies.some(
+          (vacancy) =>
+            vacancy.instance === subjectId &&
+            (condition.patternKinds === undefined ||
+              condition.patternKinds.includes(vacancy.pattern)) &&
+            (condition.slots === undefined ||
+              condition.slots.includes(vacancy.slot)),
+        )
+      )
     case 'fills-pattern-slot':
       // Absent memberships stay quiet: the caller did not derive them, so
       // participation is unknown, not absent — the same rule
@@ -1080,6 +1140,12 @@ export function evaluateCatalogue(
    * already calls it.
    */
   patternMemberships?: readonly CataloguePatternMembership[],
+  /**
+   * Pattern vacancies from the compilation (#447) - pass
+   * `compilation.patternVacancies`, or `missing-part` conditions never fire.
+   * A seventh optional parameter for the same reason the sixth is one.
+   */
+  patternVacancies?: readonly CataloguePatternVacancy[],
 ): Omit<InterrogationReport, 'workspace'> {
   const index = indexGraph(graph)
   let open = 0
@@ -1090,7 +1156,7 @@ export function evaluateCatalogue(
   const waveOpens = (wave: QuestionCatalogue['waves'][number]): boolean =>
     wave.opensWhen === undefined ||
     wave.opensWhen.every((condition) =>
-      conditionHolds(index, condition, undefined, profileContext, evidence, patternMemberships),
+      conditionHolds(index, condition, undefined, profileContext, evidence, patternMemberships, patternVacancies),
     )
   const waves = catalogue.waves.map((wave) => ({
     id: wave.id,
@@ -1117,7 +1183,7 @@ export function evaluateCatalogue(
         }
         if (question.scope === 'workspace') {
           const isOpen = question.trigger.every((condition) =>
-            conditionHolds(index, condition, undefined, profileContext, evidence, patternMemberships),
+            conditionHolds(index, condition, undefined, profileContext, evidence, patternMemberships, patternVacancies),
           )
           if (isOpen) {
             open += 1
@@ -1140,7 +1206,7 @@ export function evaluateCatalogue(
         }
         const matches = selected.filter((id) =>
           question.trigger.every((condition) =>
-            conditionHolds(index, condition, id, profileContext, evidence, patternMemberships),
+            conditionHolds(index, condition, id, profileContext, evidence, patternMemberships, patternVacancies),
           ),
         )
         if (matches.length === 0) {

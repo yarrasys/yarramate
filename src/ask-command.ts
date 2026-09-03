@@ -832,6 +832,7 @@ export function runAskCommand(
         evidenceDocuments.flatMap(({ observations }) => observations),
         composed.composed.catalogues,
         compilation.patternMemberships,
+        compilation.patternVacancies,
       )
 
       const result: AskResult = {
@@ -1149,6 +1150,7 @@ export function runAskCommand(
           evidenceObservations,
           composed.composed.catalogues,
           compilation.patternMemberships,
+          compilation.patternVacancies,
         ),
         workspace: workspace.id,
       }
@@ -1539,6 +1541,7 @@ export function runAskCommand(
       evidenceDocuments.flatMap(({ observations }) => observations),
       composed.composed.catalogues,
       compilation.patternMemberships,
+      compilation.patternVacancies,
     )
     const openQuestions: OpenQuestionRef[] = []
     for (const wave of report.waves) {

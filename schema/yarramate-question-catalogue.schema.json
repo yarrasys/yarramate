@@ -663,6 +663,36 @@
         {
           "type": "object",
           "additionalProperties": false,
+          "description": "The subject is a pattern INSTANCE with a slot nothing is bound into (#447): the mirror of fills-pattern-slot, and the mechanism by which a pattern becomes a questionnaire. Bare, it means any slot of this instance's pattern is unbound; patternKinds narrows by the pattern's kind identity and slots by part name. It fires for a required slot only where one survives a compile: an instance declaring parts that omits a required one is YM416, while an instance declaring no parts at all never reaches YM416 and is asked about every slot. Evaluation reads pattern vacancies from the compilation; a caller that does not supply them gets a condition that never holds.",
+          "required": [
+            "condition"
+          ],
+          "properties": {
+            "condition": {
+              "const": "missing-part"
+            },
+            "patternKinds": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/qualifiedKind"
+              }
+            },
+            "slots": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
           "description": "The workspace's evidence overlay records observations and every one is a frictionless confirmation: no contradicted, unknown, or not-observed result, and no recorded search (ADR 0107). A discovery that never records anything but success never tested a claim it might fail. The one condition that reads the evidence overlay rather than the compiled graph; where the evaluating consumer supplies no overlay it stays quiet (ADR 0120).",
           "required": [
             "condition"

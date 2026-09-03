@@ -239,3 +239,18 @@ Both halves are expressible:
   as context (`patternMemberships` on the compilation result), never as
   graph claims — the expansion stays indistinguishable from a
   hand-authored graph. See [docs/INTERROGATION.md](INTERROGATION.md).
+- **Vacancy-level** uses `missing-part` (ADR 0140), the mirror: it holds
+  for an INSTANCE with a part nothing is bound into, read from
+  `patternVacancies` on the same compilation result. This is what makes a
+  pattern a questionnaire — the parts an instance has not bound are
+  precisely the decisions its adopter has not taken.
+
+  **An instance that declares no `parts` at all is asked about every
+  part.** It is not a `PatternInstance` — nothing is collected, nothing is
+  expanded, and `YM416` never fires — so it compiles clean with the whole
+  template blank, which is exactly the greenfield case this ADR left open.
+  Before #447 it reported no vacancies, and no vacancies reads as *fully
+  bound*. Its rows carry `required: true` where the part is required,
+  which on a successful compile happens only here: an instance that
+  declares `parts` and omits a required one is `YM416` and produces no
+  result to read.

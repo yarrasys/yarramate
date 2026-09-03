@@ -91,6 +91,25 @@ questions. Each question binds:
   gets a condition that never holds — participation unknown, not absent,
   the same rule `unchallenged-evidence` applies to a missing overlay. The
   CLI verbs, the design interview, and the embedded pane all thread it),
+  `missing-part` (the subject is a pattern INSTANCE with a slot nothing is
+  bound into — the vacant half, and the mechanism by which a pattern
+  becomes a questionnaire, #447. The mirror of `fills-pattern-slot` in
+  every respect: bare it means any slot of this instance's pattern is
+  unbound, `patternKinds` narrows by the pattern's kind identity and
+  `slots` by part name, and an absent input stays quiet. The subject is
+  the INSTANCE, because the absent member has no id to be a subject with,
+  so one question yields one entry per instance; an author wanting a
+  question per part writes one question per part with `slots: [service]`,
+  which they want anyway because each part deserves its own text and
+  materiality. Evaluation reads the compilation's `patternVacancies`.
+  `patternKinds` is DEFENCE IN DEPTH rather than the thing that scopes the
+  question: a kind has at most one pattern (`YM411`), so a subject
+  selector naming one kind already pins the pattern, and the facet earns
+  its place only where the selector is broader — several kinds, or
+  `kindMatching: descendants`. The slot's KIND is not in the report: a
+  host joins `(instance, slot)` against `patternVacancies` and reads
+  `slotKind` there, so pattern data lives in one place and cannot drift
+  into a second),
 - a **scope** — `workspace` (asked once) or `subject` (asked per matching
   subject, selected by kinds, statuses, and documents, with `descendants`
   kind matching by default so profile-derived kinds satisfy a catalogue
