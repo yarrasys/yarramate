@@ -9,6 +9,7 @@
     "workspace",
     "catalogue",
     "semantics",
+    "inputs",
     "summary",
     "waves"
   ],
@@ -37,6 +38,35 @@
       "type": "string",
       "minLength": 1,
       "description": "The version of condition evaluation that produced this report, as distinct from the package version. It changes only when an existing question's answer can change for an unchanged model, so a consumer holding stored answers can tell an engine change from a model change. Absent on reports produced before yarramate 1.1.0."
+    },
+    "inputs": {
+      "description": "Which optional inputs the evaluation was given (#450). A condition that reads one it was not given stays quiet, which is correct - the caller did not look, so the answer is unknown rather than negative - but a quiet condition and a satisfied one are both open:false. Without this a host summing closed questions reads \"nothing was supplied\" as \"nothing is missing\", and for an absence question the silent direction is \"the interview is satisfied\". This says the same thing asked:false says one level up, for inputs rather than for subjects. Every key is present on every report, so a consumer reads a boolean rather than testing for presence.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profileContext",
+        "evidence",
+        "patternMemberships",
+        "patternVacancies"
+      ],
+      "properties": {
+        "profileContext": {
+          "description": "Resolved profile context. Without it `unconstrained-kind` never holds.",
+          "type": "boolean"
+        },
+        "evidence": {
+          "description": "Evidence overlay observations. Without them `unchallenged-evidence` never holds.",
+          "type": "boolean"
+        },
+        "patternMemberships": {
+          "description": "Pattern memberships from the compilation. Without them `fills-pattern-slot` never holds.",
+          "type": "boolean"
+        },
+        "patternVacancies": {
+          "description": "Pattern vacancies from the compilation. Without them `missing-part` never holds.",
+          "type": "boolean"
+        }
+      }
     },
     "summary": {
       "type": "object",

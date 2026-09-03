@@ -385,6 +385,30 @@ export interface InterrogationReport {
   readonly catalogues?: readonly string[]
   /** {@link INTERROGATION_SEMANTICS_VERSION} at the time of evaluation. */
   readonly semantics: string
+  /**
+   * Which optional inputs the evaluation was GIVEN (#450). A condition that
+   * reads one it was not given stays quiet, which is right - the caller did
+   * not look - but a quiet condition and a satisfied one are both
+   * `open: false`, so without this a host summing closed questions reads
+   * "nothing was supplied" as "nothing is missing". For an absence question
+   * like `missing-part` the silent direction is "the interview is satisfied",
+   * which stops an agent working rather than making it do redundant work.
+   *
+   * `asked: false` (#375, ADR 0132) says the same thing one level up, for a
+   * selector that matched no subject. This is the level below it, for inputs.
+   * It is a separate field rather than a third `asked` value because `asked`
+   * is published and because "no subject" and "no data" are different facts a
+   * host acts on differently.
+   *
+   * REQUIRED, on ADR 0110's reasoning for `trigger`: the fact exists for every
+   * report, so an optional field would force every consumer to write an
+   * absent-case branch for a case that cannot occur. Every key is present on
+   * every report, so a host reads a boolean rather than testing for presence.
+   *
+   * To find which QUESTIONS could not be evaluated, join a question's echoed
+   * `trigger` to this map through {@link conditionInput}.
+   */
+  readonly inputs: Readonly<Record<CatalogueInput, boolean>>
   readonly summary: InterrogationSummary
   readonly waves: readonly ReportWave[]
 }
@@ -700,6 +724,80 @@ const linkageHits = (
  * its scope is declared, so the compiler asks the question rather than this
  * table remembering the answer.
  */
+/**
+ * An optional input to {@link evaluateCatalogue} that some condition needs in
+ * order to mean anything (#450).
+ *
+ * `catalogues` is not one: it names contributing catalogues in the report and
+ * no condition reads it, so withholding it cannot silence anything.
+ */
+export type CatalogueInput =
+  | 'profileContext'
+  | 'evidence'
+  | 'patternMemberships'
+  | 'patternVacancies'
+
+/**
+ * Which optional input each condition goes QUIET without, or `undefined` for
+ * one that needs none (#450).
+ *
+ * A condition that reads an input it was not given returns `false`, which is
+ * correct - the caller did not look, so the answer is unknown rather than
+ * negative - but byte-identical to a satisfied condition. This table is what
+ * lets a report say which of the two happened.
+ *
+ * A `Record` over the union's discriminant for the same reason
+ * {@link CONDITION_SCOPE} is one, and the reason is CONTRIBUTING's ninth rule:
+ * a hand-written list of "which conditions need data" is a closed enumeration
+ * authored by whoever knew today's conditions, and a new condition would join
+ * the engine and be quietly absent from it. Here it cannot - adding a member to
+ * `CatalogueCondition` is a TYPECHECK ERROR until its dependency is declared.
+ *
+ * The other direction is closed too: a new member of {@link CatalogueInput}
+ * fails to compile until {@link InterrogationReport}'s `inputs` reports it.
+ *
+ * `unconstrained-kind` is the only condition that goes quiet without
+ * `profileContext`. Others pass it to helpers for lineage widening, where its
+ * absence narrows what matches rather than silencing the condition.
+ */
+const CONDITION_INPUTS: Record<
+  CatalogueCondition['condition'],
+  CatalogueInput | undefined
+> = {
+  'has-any-subject': undefined,
+  'no-subject-of-kind': undefined,
+  'has-subject-of-kind': undefined,
+  'below-subject-count': undefined,
+  'no-state-defined': undefined,
+  'exists-linkage': undefined,
+  'no-linkage-exists': undefined,
+  'missing-claim': undefined,
+  'missing-relationship': undefined,
+  isolated: undefined,
+  'missing-linkage': undefined,
+  'has-linkage': undefined,
+  'missing-constraint': undefined,
+  'missing-flow-content': undefined,
+  'missing-reference': undefined,
+  'missing-attestation': undefined,
+  'near-duplicate': undefined,
+  'unconstrained-kind': 'profileContext',
+  'unscoped-succession': undefined,
+  'unchallenged-evidence': 'evidence',
+  'fills-pattern-slot': 'patternMemberships',
+  'missing-part': 'patternVacancies',
+}
+
+/**
+ * The input this condition goes quiet without, if any (#450). Published beside
+ * {@link conditionScope} so a host can join a report's echoed trigger to its
+ * `inputs` and answer the question it actually has: which of the questions in
+ * front of me could not be evaluated?
+ */
+export const conditionInput = (
+  condition: CatalogueCondition,
+): CatalogueInput | undefined => CONDITION_INPUTS[condition.condition]
+
 const CONDITION_SCOPE: Record<
   CatalogueCondition['condition'],
   'workspace' | 'subject'
@@ -1242,6 +1340,15 @@ export function evaluateCatalogue(
       ? {}
       : { catalogues }),
     semantics: INTERROGATION_SEMANTICS_VERSION,
+    // What the caller actually handed over (#450). Every key present on every
+    // report, so a host reads a boolean rather than testing for presence. A
+    // new member of `CatalogueInput` will not compile until it appears here.
+    inputs: {
+      profileContext: profileContext !== undefined,
+      evidence: evidence !== undefined,
+      patternMemberships: patternMemberships !== undefined,
+      patternVacancies: patternVacancies !== undefined,
+    },
     summary: {
       // Questions in OPENED waves only (#334, ADR 0125). A closed wave's
       // questions have not been asked, so counting them in the denominator
@@ -1954,6 +2061,35 @@ export function renderInterrogationReport(
       `${report.summary.open} open ` +
       `(${report.summary.openQuestions} of ${report.summary.questions} questions)`,
   ]
+  // Named only when it MATTERS (#450): an input this catalogue's own triggers
+  // read, that the caller did not supply. Listing every input on every report
+  // would be noise a reader learns to skip, and the one line that mattered
+  // would be skipped with it. Derived from (inputs withheld) x (conditions
+  // actually used), which is the question a reader has rather than the one the
+  // field literally answers.
+  const withheld = [
+    ...new Set(
+      report.waves.flatMap((wave) =>
+        wave.questions.flatMap((question) =>
+          question.trigger
+            .map((condition) => conditionInput(condition))
+            .filter(
+              (input): input is CatalogueInput =>
+                input !== undefined && !report.inputs[input],
+            ),
+        ),
+      ),
+    ),
+  ].sort()
+  if (withheld.length > 0) {
+    // Not a warning about the model: a warning about this evaluation. The
+    // questions reading those conditions answered "no" because nothing was
+    // handed over, which is indistinguishable from "satisfied" in the lines
+    // below.
+    lines.push(
+      `  note: ${withheld.join(', ')} not supplied — questions reading ${withheld.length === 1 ? 'it' : 'them'} could not be evaluated`,
+    )
+  }
   for (const wave of report.waves) {
     lines.push('', `== ${wave.name} ==`)
     // A wave that has not opened must not read like one whose questions are

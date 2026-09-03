@@ -517,12 +517,14 @@
           "const": "open"
         },
         "report": {
+          "description": "A shallow restatement of the interrogation report, kept in step with yarramate-interrogation-report.schema.json by a test rather than by memory: this copy silently rejected `catalogues` from the day composition shipped, because `additionalProperties` is false here and nobody updated both places.",
           "type": "object",
           "required": [
             "format",
             "workspace",
             "catalogue",
             "semantics",
+            "inputs",
             "summary",
             "waves"
           ],
@@ -536,8 +538,14 @@
             "catalogue": {
               "type": "string"
             },
+            "catalogues": {
+              "type": "array"
+            },
             "semantics": {
               "type": "string"
+            },
+            "inputs": {
+              "type": "object"
             },
             "summary": {
               "type": "object"
