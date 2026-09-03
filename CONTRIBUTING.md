@@ -64,6 +64,26 @@ Use test-driven development for compiler and validation behaviour. New
 diagnostics should be deterministic and source-located. Keep adapter-specific
 fields outside Core documents and preserve canonical output ordering.
 
+**A `Test timed out` with no assertion failure is probably not your change**
+(#458). `pnpm verify` used to fail intermittently on a busy machine with exactly
+that and nothing else — no assertion, no diff — which reads like a regression in
+whatever you had just touched. It cost real time: a stash-and-reverify cycle to
+establish a change was *not* at fault, and re-runs to decide whether a release
+was safe to tag.
+
+The cause was the timeout, not the tests. Vitest's 5000ms default sat *below*
+this suite's own top end: unloaded, the slowest test takes **9159ms** and eight
+are over 2000ms, because the heaviest ones compile the whole repository
+self-model or read the built browser bundles. `testTimeout` is now 30s.
+
+Two things that looked true and were not, recorded because they are the shape of
+the mistake rather than facts about these ten files. It was first read as worker
+contention over `git` subprocesses, since the files that shell out break first —
+but push the load higher and plain in-process tests time out too, so it is
+starvation, not contention. And a per-file rule keyed on *does this file spawn*
+was built and then thrown away, because the slowest test in the suite does not
+spawn and the rule would have exempted everything except it.
+
 ## Proposing semantic changes
 
 A semantic change should begin with a GitHub Issue so its intended contract can
