@@ -105,6 +105,18 @@ every instance on the next compile.
   exactly what a wiring edge says, nothing is minted: the authored one
   satisfies the wiring. A model can adopt a pattern without touching a
   line and delete the redundant relationships afterwards.
+- **One relationship, one claim, when two wires name it** (ADR 0141). Two
+  patterns can wire the same triple — an app wiring `mapping access
+  payload` and the mapping wiring `self access source`, both landing on
+  one data object — and only one claim is minted. Which id survives is
+  decided by OWNERSHIP: a wire whose `from` is `self` owns the edge,
+  because the edge leaves that instance, and keeps its derived id above.
+  A wire whose `from` is a slot is a guest naming somebody else's edge,
+  and defers. Where every wire is a guest, which happens when the owning
+  instance is greenfield and so its own wire never fires, the id comes
+  from the triple instead: `{from}-{kind}-{to}`. A wire nothing competes
+  with is not a collision and is untouched, including a wire between two
+  slots of one pattern, which has no `self` endpoint but no rival either.
 - **The pattern owns the pairs it wires.** Any other authored
   relationship between a wired pair — reversed, or a different kind — is
   a compile error. Edges from a part to anything *else* are free.
