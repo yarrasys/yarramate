@@ -1,34 +1,6 @@
 # Changelog
 
-## Unreleased
-
-### One relationship, one claim, when two pattern wires name it
-
-Two wires could name the same triple, and both minted, so one relationship
-became two relationship claims in the graph. Any consumer counting or diffing
-relationships saw one edge twice: `check` totals, `export graph`, the workbook,
-a canvas drawing two edges between one pair. Both claims carried
-`origin: 'declared'`, so nothing downstream could tell them apart (#460,
-observed by the ApertureX adopter session against 1.16.0 and 1.17.0).
-
-The wiring loop asked whether an **authored** relationship already said it, and
-whether the derived id was already a declared subject, but never whether a
-**previously minted wire** had said it. An authored edge satisfies both wires,
-which is why a workspace that writes the relationship down never met this and
-one that left it to expansion did.
-
-Now one claim per triple, with **ownership** deciding which id survives: an edge
-with an owner carries its owner's wiring id, and an edge with only guests
-carries the id of its triple. A wire whose `from` is `self` owns the edge
-because the edge leaves that instance; a wire whose `from` is a slot is a guest
-naming somebody else's edge, and defers.
-
-**No id changes for a workspace that compiles today.** Every existing edge
-either has an owner or is a group of one, and a group of one is not a collision:
-a wire between two slots of one pattern keeps its ADR 0123 id untouched. The
-triple-derived id appears only where two or more guests name one triple and the
-owner's wire is absent, which happens when the owning instance is greenfield and
-an unbound slot wires nothing. See ADR 0141.
+## 1.18.0
 
 ### A pattern can become a questionnaire
 
@@ -73,6 +45,34 @@ than asserted. Consumers of `evaluateCatalogue` pass vacancies as a seventh
 optional parameter, and a caller that passes none gets a condition that never
 holds. Consumers doing exact equality on a `CompilationResult` will see the new
 field; readers using `?? []` are unaffected. See ADR 0140.
+
+### One relationship, one claim, when two pattern wires name it
+
+Two wires could name the same triple, and both minted, so one relationship
+became two relationship claims in the graph. Any consumer counting or diffing
+relationships saw one edge twice: `check` totals, `export graph`, the workbook,
+a canvas drawing two edges between one pair. Both claims carried
+`origin: 'declared'`, so nothing downstream could tell them apart (#460,
+observed by the ApertureX adopter session against 1.16.0 and 1.17.0).
+
+The wiring loop asked whether an **authored** relationship already said it, and
+whether the derived id was already a declared subject, but never whether a
+**previously minted wire** had said it. An authored edge satisfies both wires,
+which is why a workspace that writes the relationship down never met this and
+one that left it to expansion did.
+
+Now one claim per triple, with **ownership** deciding which id survives: an edge
+with an owner carries its owner's wiring id, and an edge with only guests
+carries the id of its triple. A wire whose `from` is `self` owns the edge
+because the edge leaves that instance; a wire whose `from` is a slot is a guest
+naming somebody else's edge, and defers.
+
+**No id changes for a workspace that compiles today.** Every existing edge
+either has an owner or is a group of one, and a group of one is not a collision:
+a wire between two slots of one pattern keeps its ADR 0123 id untouched. The
+triple-derived id appears only where two or more guests name one triple and the
+owner's wire is absent, which happens when the owning instance is greenfield and
+an unbound slot wires nothing. See ADR 0141.
 
 ## 1.17.0
 
