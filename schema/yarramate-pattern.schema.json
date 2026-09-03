@@ -79,6 +79,10 @@
         "required": {
           "description": "An instance that leaves a required slot unbound fails compilation (YM416). Absent means optional.",
           "type": "boolean"
+        },
+        "kindMatching": {
+          "description": "How a bound subject's kind is matched against this part's kind (#449). \"exact\" (the default) admits only that kind. \"descendants\" admits any kind whose lineage includes it, so one slot can admit a family of variant subkinds and choosing the variant is what opens the next set of questions. The word means the same here as on catalogue selectors and on missing-relationship, so it is one vocabulary rather than two. It fails safe: minted wiring is checked against the relationship table using the ACTUAL bound subjects' kinds, not the slot kinds, so a descendant that is not a legal endpoint is still refused by the ordinary relationship check.",
+          "enum": ["exact", "descendants"]
         }
       }
     },

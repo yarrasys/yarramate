@@ -120,6 +120,27 @@ every instance on the next compile.
 - **The pattern owns the pairs it wires.** Any other authored
   relationship between a wired pair — reversed, or a different kind — is
   a compile error. Edges from a part to anything *else* are free.
+- **A slot can admit a family of variant subkinds** (#449). A part matches
+  its bound subject's kind exactly by default; `kindMatching: descendants`
+  admits any kind whose lineage includes the slot kind, so one slot can
+  stand for a family and choosing which member fills it is itself the
+  decision. The motivating shape is a decisional dependency: a `secrets`
+  slot admitting `bundled` or `vault`, each variant carrying its own
+  pattern, so the choice is what opens the next set of questions.
+
+  ```yaml
+  parts:
+    secrets:
+      kind: "acme/platform@1.0#secret-store"
+      kindMatching: descendants
+  ```
+
+  The word means the same here as on catalogue selectors and on
+  `missing-relationship`, so it is one vocabulary rather than two. Sharing
+  an ancestor is not descent: a sibling kind under the same core parent is
+  still refused. Note that a descendant resolves to the same CORE kind as
+  the slot kind, so the relationship table returns the same verdict for
+  both; widening the slot cannot widen what the wiring may legally say.
 - **An unbound optional slot wires nothing**, silently.
 - **A pattern that cannot expand legally fails once, at the pattern.**
   The slot kinds fix both endpoint kinds, so whether the relationship
