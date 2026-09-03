@@ -1,6 +1,67 @@
 # Changelog
 
-## Unreleased
+## 1.19.0
+
+### An agent can bind a pattern part
+
+`conceptFields` in the operations schema was closed and `parts` was not in it,
+so `update-concept` carrying `parts: { interface: patron-api }` was refused with
+`YM201 Property "parts" is not allowed`. **An agent could not instantiate a
+pattern over `apply` at all**: the whole pattern mechanism (ADR 0123) was
+reachable only from raw YAML, which is the one surface agents do not drive
+(#448, raised by the ApertureX adopter session).
+
+`parts` is now a concept field on `add-concept` and `update-concept`. It is the
+first map-valued field, so it is a third category beside the scalars and the
+lists rather than a schema line, and it follows ADR 0062's convention from that
+third direction: **it merges by slot.** A slot the operation names is rebound, a
+slot it does not name is untouched. Replace-whole-map would silently unbind
+slots the operation never mentioned, which is exactly the shrinking that rule
+forbids.
+
+Retraction is coarse. `remove: ["parts"]` unbinds the whole mapping, and there
+is deliberately no `remove: ["parts.service"]`: that would make `parts` both the
+first map-valued field and the first field with its own retraction grammar, and
+a second idiom for one field reads fine to whoever wrote it and traps everyone
+else.
+
+One interaction worth knowing, because it is surprising in the right direction:
+a full retraction leaves a concept with no `parts` key, which is not a pattern
+instance, so `YM416` does not fire for a required slot and the compile stays
+green. The requirement is not lost. As a greenfield instance it now reports a
+vacancy per slot with `required: true` on the retracted one, so the obligation
+moves from the compile gate to the interview (ADR 0140).
+
+### A pattern slot can admit a family of variant subkinds
+
+A slot matched its bound subject's kind exactly, so it could not stand for a
+family. The motivating shape is a decisional dependency: a `secrets` slot
+admitting `bundled` or `vault`, each variant carrying its own pattern, so
+choosing the variant is what opens the next set of questions (#449, raised by
+the ApertureX adopter session).
+
+`kindMatching: 'exact' | 'descendants'` on a part, defaulting to `exact`:
+
+```yaml
+parts:
+  secrets:
+    kind: "acme/platform@1.0#secret-store"
+    kindMatching: descendants
+```
+
+`descendants` holds when the bound subject's kind lineage includes the slot
+kind. The default is unchanged, so no shipped pattern means anything different,
+and the word means the same here as on catalogue selectors and on
+`missing-relationship` rather than introducing a second vocabulary. Sharing an
+ancestor is not descent: a sibling kind under the same core parent is still
+refused with `YM417`, whose message now says what the slot actually accepts.
+
+One clarification on the safety argument, since the issue stated it as a check
+and it is really a property: a descendant resolves to the same CORE kind as the
+slot kind (`permittedBetween` reads `lineage[0]`), so the relationship table
+returns the same verdict for both. Widening what a slot admits therefore cannot
+widen what the minted wiring may legally say — by construction, not by a check
+that could fail.
 
 ### A report says which inputs it was given
 
@@ -73,67 +134,6 @@ check now reads the source and asserts a rule rather than a list — every type
 the barrel re-exports from `interrogate-command` must reach the subpath too, so
 a type added to one and forgotten on the other fails here rather than in an
 adopter's editor.
-
-### An agent can bind a pattern part
-
-`conceptFields` in the operations schema was closed and `parts` was not in it,
-so `update-concept` carrying `parts: { interface: patron-api }` was refused with
-`YM201 Property "parts" is not allowed`. **An agent could not instantiate a
-pattern over `apply` at all**: the whole pattern mechanism (ADR 0123) was
-reachable only from raw YAML, which is the one surface agents do not drive
-(#448, raised by the ApertureX adopter session).
-
-`parts` is now a concept field on `add-concept` and `update-concept`. It is the
-first map-valued field, so it is a third category beside the scalars and the
-lists rather than a schema line, and it follows ADR 0062's convention from that
-third direction: **it merges by slot.** A slot the operation names is rebound, a
-slot it does not name is untouched. Replace-whole-map would silently unbind
-slots the operation never mentioned, which is exactly the shrinking that rule
-forbids.
-
-Retraction is coarse. `remove: ["parts"]` unbinds the whole mapping, and there
-is deliberately no `remove: ["parts.service"]`: that would make `parts` both the
-first map-valued field and the first field with its own retraction grammar, and
-a second idiom for one field reads fine to whoever wrote it and traps everyone
-else.
-
-One interaction worth knowing, because it is surprising in the right direction:
-a full retraction leaves a concept with no `parts` key, which is not a pattern
-instance, so `YM416` does not fire for a required slot and the compile stays
-green. The requirement is not lost. As a greenfield instance it now reports a
-vacancy per slot with `required: true` on the retracted one, so the obligation
-moves from the compile gate to the interview (ADR 0140).
-
-### A pattern slot can admit a family of variant subkinds
-
-A slot matched its bound subject's kind exactly, so it could not stand for a
-family. The motivating shape is a decisional dependency: a `secrets` slot
-admitting `bundled` or `vault`, each variant carrying its own pattern, so
-choosing the variant is what opens the next set of questions (#449, raised by
-the ApertureX adopter session).
-
-`kindMatching: 'exact' | 'descendants'` on a part, defaulting to `exact`:
-
-```yaml
-parts:
-  secrets:
-    kind: "acme/platform@1.0#secret-store"
-    kindMatching: descendants
-```
-
-`descendants` holds when the bound subject's kind lineage includes the slot
-kind. The default is unchanged, so no shipped pattern means anything different,
-and the word means the same here as on catalogue selectors and on
-`missing-relationship` rather than introducing a second vocabulary. Sharing an
-ancestor is not descent: a sibling kind under the same core parent is still
-refused with `YM417`, whose message now says what the slot actually accepts.
-
-One clarification on the safety argument, since the issue stated it as a check
-and it is really a property: a descendant resolves to the same CORE kind as the
-slot kind (`permittedBetween` reads `lineage[0]`), so the relationship table
-returns the same verdict for both. Widening what a slot admits therefore cannot
-widen what the minted wiring may legally say — by construction, not by a check
-that could fail.
 
 ## 1.18.0
 
@@ -600,6 +600,7 @@ right tool for, and `docs/INTERROGATION.md` now says so beside it.
 The shipped catalogue is unaffected: it uses `below-subject-count` zero times,
 and its thirteen workspace `no-subject-of-kind` questions are layer-presence
 questions (#272), not vocabularies.
+
 ### Adopting a condition has a consumer-side half
 
 Two sections in `docs/INTERROGATION.md`, both earned by an adopter adopting
