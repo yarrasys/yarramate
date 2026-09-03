@@ -114,6 +114,15 @@ const nextRelationship = (
 export interface EditorPointerContext {
   readonly graph: CanvasGraph | null;
   readonly readOnly: boolean;
+  /**
+   * What the staged changeset pinned: path -> the revision that path held when
+   * the first edit against it was staged (#444). Empty when nothing is staged.
+   *
+   * The pointer only reports these; it never compares them. A revision is
+   * opaque and only the store that minted it may compare two (ADR 0100), so
+   * the staleness question is answered host-side.
+   */
+  readonly stagedPins: Readonly<Record<string, string>>;
 }
 
 /**
@@ -137,6 +146,12 @@ export interface EditorPointer {
    * method does - a handle before the shell's first render or after disposal.
    */
   readonly setDecorations: (decorations: DecorationMap) => boolean;
+  /**
+   * The staged changeset's pins, for a host about to refresh the canvas
+   * (#444). Reported, never interpreted: the host owns the store that minted
+   * these revisions and is the only party that may compare them (ADR 0100).
+   */
+  readonly stagedPins: () => Readonly<Record<string, string>>;
 }
 
 /**
@@ -184,6 +199,7 @@ export const editorPointerFor = (
     dispatch({ type: "connection.started", from: fromSubjectId });
     return true;
   },
+  stagedPins: () => context().stagedPins,
   setDecorations: (decorations) => {
     // No graph gate and no read-only gate, deliberately (#314, ADR 0119):
     // the marks are held client-side and rendered when a model is on screen,

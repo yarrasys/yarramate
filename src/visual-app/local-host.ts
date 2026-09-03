@@ -127,7 +127,44 @@ const EMPTY_MODEL: VisualRenderedModel = {
   projectionDigests: {},
 }
 
-export const createLocalHost = (options: LocalHostOptions): EditorHost => {
+/**
+ * What a `refresh` did, or why it did nothing (#444).
+ *
+ * A result rather than a boolean, because the caller needs to tell three
+ * different situations apart and act differently on each: it worked, the
+ * workspace will not compile, or the reviewer has staged work against content
+ * that has since moved. `setDecorations` answers with a bare boolean because
+ * decorating is reading and the only failure is a not-there window; refreshing
+ * can fail for reasons a host must be able to explain to a person.
+ */
+export type RefreshOutcome =
+  | { readonly applied: true }
+  | {
+      /**
+       * Staged operations pin content this refresh would replace. Nothing was
+       * delivered and the canvas is unchanged, so the reviewer's work is
+       * exactly where they left it; the named documents are what a host should
+       * put in front of them.
+       */
+      readonly applied: false
+      readonly reason: 'staged-against-changed-documents'
+      readonly documents: readonly string[]
+    }
+  | {
+      /** The store's current contents do not compile; the last good model stands. */
+      readonly applied: false
+      readonly reason: 'refused'
+      readonly diagnostics: readonly VisualDiagnostic[]
+    }
+
+/** A local host, plus the refresh only a store-owning host can perform. */
+export type LocalEditorHost = EditorHost & {
+  readonly refresh: (
+    stagedPins: Readonly<Record<string, string>>,
+  ) => RefreshOutcome
+}
+
+export const createLocalHost = (options: LocalHostOptions): LocalEditorHost => {
   const { store, workspace } = options
   let compiled:
     | {
@@ -385,6 +422,56 @@ export const createLocalHost = (options: LocalHostOptions): EditorHost => {
   })
 
   return {
+    /**
+     * Re-reads the store and pushes the fresh model, keeping staged work
+     * (#444).
+     *
+     * A host whose model moved underneath an open canvas - an agent writing
+     * over MCP while a reviewer watches - previously had only `unmount` plus
+     * `mountEditor` again, which discards everything staged. The delivery half
+     * of the answer already existed: a mid-session `model` frame replaces the
+     * compilation and leaves `pendingChangeset` untouched. What was missing
+     * was any way to ASK for one.
+     *
+     * The staleness question is answered HERE rather than in the handle,
+     * because a revision is opaque and only the store that minted it may
+     * compare two (ADR 0100). The handle reports what is staged; this decides
+     * what that means.
+     *
+     * Refusing rather than refreshing when staged work pins content that
+     * moved is the whole point of the shape. Refreshing anyway would leave
+     * operations staged against bytes nobody can see, to be refused at commit
+     * by `YMVS312` - correct, but only after more work. Re-pinning them
+     * silently would be worse still: it is exactly the unconditional write
+     * the pins exist to prevent.
+     */
+    refresh: (stagedPins: Readonly<Record<string, string>>): RefreshOutcome => {
+      const conflicting = Object.keys(stagedPins)
+        .filter((path) => {
+          const held = store.read(path)
+          // Gone counts as changed: the edit was staged against something that
+          // is no longer there, which is what `YMVS312` says at commit.
+          if (held === undefined) return true
+          return held.revision !== stagedPins[path]
+        })
+        .sort()
+      if (conflicting.length > 0) {
+        return {
+          applied: false,
+          reason: 'staged-against-changed-documents',
+          documents: conflicting,
+        }
+      }
+      const recompiled = recompile()
+      if (!recompiled.ok) {
+        // The canvas keeps the last good model, as it does everywhere else a
+        // recompile fails: a host asking to refresh gets told why rather than
+        // having the graph blanked under its reviewer.
+        return { applied: false, reason: 'refused', diagnostics: recompiled.diagnostics }
+      }
+      deliver?.frame({ kind: 'model', model, views })
+      return { applied: true }
+    },
     open: (events: EditorHostEvents) => {
       deliver = events
       const opened = recompile()

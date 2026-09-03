@@ -98,6 +98,80 @@ describe('mountEditorWith', () => {
     expect(editor.openDraft({ kind: 'goal' })).toBe(false)
     expect(editor.startConnection('app.checkout')).toBe(false)
     expect(editor.setDecorations({ 'app.checkout': 'added' })).toBe(false)
+    expect(editor.refresh()).toEqual({
+      applied: false,
+      reason: 'not-mounted',
+    })
+  })
+
+  /**
+   * A caller-built host already owns delivery (#444): it speaks the protocol
+   * and can push a `model` frame whenever it likes, which is the same refresh
+   * by another route. Saying so is better than a bare false, which would read
+   * as "nothing to refresh" and send a host looking for a bug.
+   */
+  it('declines to refresh a host it did not build, and says which it is', () => {
+    const editor = mountEditorWith({} as Element, host, sections)
+    const pointer = {
+      select: vi.fn(() => true),
+      openDraft: vi.fn(() => true),
+      startConnection: vi.fn(() => true),
+      setDecorations: vi.fn(() => true),
+      stagedPins: vi.fn(() => ({})),
+    }
+    onReadyOf(root.render.mock.calls[0]!)(pointer)
+
+    expect(editor.refresh()).toEqual({
+      applied: false,
+      reason: 'not-supported',
+    })
+    // Nothing was asked of the pointer: there is no store behind this host to
+    // compare pins against.
+    expect(pointer.stagedPins).not.toHaveBeenCalled()
+  })
+
+  /**
+   * The pins go across unread. The handle reports what is staged and the store
+   * that minted those revisions decides what they mean (ADR 0100), so this
+   * asserts the handoff rather than any comparison.
+   */
+  it('hands the staged pins to a store-owning host and returns its verdict', () => {
+    const refresh = vi.fn(() => ({ applied: true }) as const)
+    const storeHost = { ...host, refresh }
+    const editor = mountEditorWith({} as Element, storeHost, sections)
+    const pins = { 'architecture/main.yaml': '3' }
+    const pointer = {
+      select: vi.fn(() => true),
+      openDraft: vi.fn(() => true),
+      startConnection: vi.fn(() => true),
+      setDecorations: vi.fn(() => true),
+      stagedPins: vi.fn(() => pins),
+    }
+    onReadyOf(root.render.mock.calls[0]!)(pointer)
+
+    expect(editor.refresh()).toEqual({ applied: true })
+    expect(refresh).toHaveBeenCalledWith(pins)
+  })
+
+  it('passes a refusal back to the host unchanged, naming the documents', () => {
+    const refused = {
+      applied: false,
+      reason: 'staged-against-changed-documents',
+      documents: ['architecture/main.yaml'],
+    } as const
+    const storeHost = { ...host, refresh: vi.fn(() => refused) }
+    const editor = mountEditorWith({} as Element, storeHost, sections)
+    onReadyOf(root.render.mock.calls[0]!)({
+      select: vi.fn(() => true),
+      openDraft: vi.fn(() => true),
+      startConnection: vi.fn(() => true),
+      setDecorations: vi.fn(() => true),
+      stagedPins: vi.fn(() => ({ 'architecture/main.yaml': '1' })),
+    })
+
+    // The named documents are what a host puts in front of a reviewer, so
+    // they have to survive the trip rather than collapse to a boolean.
+    expect(editor.refresh()).toEqual(refused)
   })
 
   it('delegates each method to the pointer the shell hands up (#297)', () => {
@@ -107,6 +181,7 @@ describe('mountEditorWith', () => {
       openDraft: vi.fn(() => true),
       startConnection: vi.fn(() => false),
       setDecorations: vi.fn(() => true),
+      stagedPins: vi.fn(() => ({})),
     }
     onReadyOf(root.render.mock.calls[0]!)(pointer)
 
@@ -131,6 +206,7 @@ describe('mountEditorWith', () => {
       openDraft: vi.fn(() => true),
       startConnection: vi.fn(() => true),
       setDecorations: vi.fn(() => true),
+      stagedPins: vi.fn(() => ({})),
     }
     onReadyOf(root.render.mock.calls[0]!)(pointer)
 
@@ -212,7 +288,7 @@ describe('editorPointerFor', () => {
   }
 
   it('selects a concept exactly as a canvas tap would', () => {
-    const { pointer, dispatched } = pointerOver({ graph, readOnly: false })
+    const { pointer, dispatched } = pointerOver({ graph, readOnly: false, stagedPins: {} })
 
     expect(pointer.select('app.checkout')).toBe(true)
     expect(dispatched).toEqual([
@@ -224,7 +300,7 @@ describe('editorPointerFor', () => {
   })
 
   it('selects a relationship with its endpoint titles resolved', () => {
-    const { pointer, dispatched } = pointerOver({ graph, readOnly: false })
+    const { pointer, dispatched } = pointerOver({ graph, readOnly: false, stagedPins: {} })
 
     expect(pointer.select('checkout-serves-ledger')).toBe(true)
     expect(dispatched).toEqual([
@@ -242,14 +318,14 @@ describe('editorPointerFor', () => {
   })
 
   it('still selects under a read-only mount, because selecting is reading', () => {
-    const { pointer, dispatched } = pointerOver({ graph, readOnly: true })
+    const { pointer, dispatched } = pointerOver({ graph, readOnly: true, stagedPins: {} })
 
     expect(pointer.select('app.checkout')).toBe(true)
     expect(dispatched).toHaveLength(1)
   })
 
   it('moves nothing for an id the model does not name', () => {
-    const { pointer, dispatched } = pointerOver({ graph, readOnly: false })
+    const { pointer, dispatched } = pointerOver({ graph, readOnly: false, stagedPins: {} })
 
     expect(pointer.select('app.gone')).toBe(false)
     expect(dispatched).toEqual([])
@@ -259,6 +335,7 @@ describe('editorPointerFor', () => {
     const { pointer, dispatched, seeded } = pointerOver({
       graph,
       readOnly: false,
+      stagedPins: {},
     })
 
     expect(pointer.openDraft({ kind: 'goal' })).toBe(true)
@@ -267,7 +344,7 @@ describe('editorPointerFor', () => {
   })
 
   it('opens a plain draft with no kind, clearing any earlier seed (ADR 0116)', () => {
-    const { pointer, seeded } = pointerOver({ graph, readOnly: false })
+    const { pointer, seeded } = pointerOver({ graph, readOnly: false, stagedPins: {} })
 
     expect(pointer.openDraft()).toBe(true)
     expect(seeded).toEqual([undefined])
@@ -277,6 +354,7 @@ describe('editorPointerFor', () => {
     const { pointer, dispatched, seeded } = pointerOver({
       graph,
       readOnly: true,
+      stagedPins: {},
     })
 
     expect(pointer.openDraft({ kind: 'goal' })).toBe(false)
@@ -285,7 +363,7 @@ describe('editorPointerFor', () => {
   })
 
   it('arms the connection tool from a subject, as Connect does', () => {
-    const { pointer, dispatched } = pointerOver({ graph, readOnly: false })
+    const { pointer, dispatched } = pointerOver({ graph, readOnly: false, stagedPins: {} })
 
     expect(pointer.startConnection('app.checkout')).toBe(true)
     expect(dispatched).toEqual([
@@ -294,7 +372,7 @@ describe('editorPointerFor', () => {
   })
 
   it('refuses a source that is unknown, or not a concept at all', () => {
-    const { pointer, dispatched } = pointerOver({ graph, readOnly: false })
+    const { pointer, dispatched } = pointerOver({ graph, readOnly: false, stagedPins: {} })
 
     expect(pointer.startConnection('app.gone')).toBe(false)
     // A relationship has no endpoint to draw from.
@@ -303,7 +381,7 @@ describe('editorPointerFor', () => {
   })
 
   it('refuses to arm the connection tool in a viewer (#298)', () => {
-    const { pointer, dispatched } = pointerOver({ graph, readOnly: true })
+    const { pointer, dispatched } = pointerOver({ graph, readOnly: true, stagedPins: {} })
 
     expect(pointer.startConnection('app.checkout')).toBe(false)
     expect(dispatched).toEqual([])
@@ -316,6 +394,7 @@ describe('editorPointerFor', () => {
     const { pointer, dispatched, decorated } = pointerOver({
       graph,
       readOnly: false,
+      stagedPins: {},
     })
 
     expect(pointer.setDecorations({ 'app.checkout': 'added' })).toBe(true)
@@ -332,13 +411,13 @@ describe('editorPointerFor', () => {
     // the moment a model is on screen - a host hands the map with the mount,
     // not after the first frame. And decorating is reading (#298), so the
     // read-only posture refuses nothing here.
-    const early = pointerOver({ graph: null, readOnly: false })
+    const early = pointerOver({ graph: null, readOnly: false, stagedPins: {} })
     expect(early.pointer.setDecorations({ 'app.checkout': 'removed' })).toBe(
       true,
     )
     expect(early.decorated).toEqual([{ 'app.checkout': 'removed' }])
 
-    const viewer = pointerOver({ graph, readOnly: true })
+    const viewer = pointerOver({ graph, readOnly: true, stagedPins: {} })
     expect(viewer.pointer.setDecorations({})).toBe(true)
     expect(viewer.decorated).toEqual([{}])
   })
@@ -346,7 +425,7 @@ describe('editorPointerFor', () => {
   it('reads the model at call time, so the methods answer for the graph on screen', () => {
     // Before the host's first frame there is nothing to point at; the same
     // pointer starts answering true once the model arrives, with no re-bind.
-    let context: EditorPointerContext = { graph: null, readOnly: false }
+    let context: EditorPointerContext = { graph: null, readOnly: false, stagedPins: {} }
     const dispatched: VisualWorkspaceAction[] = []
     const pointer = editorPointerFor(
       () => context,
@@ -360,7 +439,7 @@ describe('editorPointerFor', () => {
     expect(pointer.startConnection('app.checkout')).toBe(false)
     expect(dispatched).toEqual([])
 
-    context = { graph, readOnly: false }
+    context = { graph, readOnly: false, stagedPins: {} }
     expect(pointer.select('app.checkout')).toBe(true)
     expect(pointer.openDraft()).toBe(true)
     expect(pointer.startConnection('app.checkout')).toBe(true)

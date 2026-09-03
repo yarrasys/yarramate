@@ -1,5 +1,55 @@
 # Changelog
 
+## Unreleased
+
+### A host can refresh the canvas without discarding staged work
+
+`mountEditor` gave a host no way to show new model content except `unmount`
+plus mounting again, which throws away whatever the reviewer had staged — and
+no way to find out whether anything was staged, so a host had to assume the
+worst every time. An adopter shipped a banner and a *Reload the canvas* button,
+then narrowed it with a `pointerdown` proxy that treats any gesture as proof of
+staged work: sound in one direction only, so one stray tap meant banners for
+the rest of the session (#444).
+
+`MountedEditor` gains **`refresh()`**. It re-reads the host's store and follows
+it, keeping the reviewer's staged rows, zoom, selection and filter — only the
+compilation is replaced.
+
+It hands the store no bytes. The host already owns the store and the editor
+reads through it (ADR 0100), so this asks for a re-read rather than opening a
+second way in. Two-thirds of the machinery was already there: a mid-session
+`model` frame has always replaced the compilation while leaving the staged
+changeset alone. What was missing was any way to ask for one, and any way to
+learn that asking would strand staged work.
+
+It answers with an outcome rather than a boolean, because a host must be able
+to explain the result to a person:
+
+| result | meaning |
+|---|---|
+| `{ applied: true }` | the canvas follows the store |
+| `staged-against-changed-documents` | staged work pins content this would replace; nothing delivered, and the named documents are what to show the reviewer |
+| `refused` | the store no longer compiles; the last good model stands, with diagnostics |
+| `not-mounted` | before the shell's first render, or after `unmount` |
+| `not-supported` | a `mountEditorWith` host, which already owns delivery |
+
+**The refusal is the point.** Refreshing over staged work would leave a
+reviewer editing against content nobody can see, to be refused at commit by
+`YMVS312` after more effort had gone in. Re-pinning their operations silently
+would be worse: those pins are the precondition that stops one author
+overwriting another. Refusing at the moment of divergence is the earliest
+honest answer, and it names the documents so the host can say something
+specific instead of showing a blanket banner.
+
+The staleness question is answered host-side, not in the handle: a revision is
+opaque and only the store that minted it may compare two (ADR 0100). The
+handle reports what is staged; the store decides what that means.
+
+Requested by the ApertureX adopter session, who proposed handing documents in
+directly. Asking for a re-read instead keeps the store's ownership intact and
+turned out to be the smaller change.
+
 ## 1.16.0
 
 ### Schema validators are precompiled, so the package never generates code

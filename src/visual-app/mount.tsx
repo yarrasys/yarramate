@@ -1,6 +1,11 @@
 import { createRoot } from 'react-dom/client'
 import { App } from './App.js'
-import { createLocalHost, type LocalHostOptions } from './local-host.js'
+import {
+  createLocalHost,
+  type LocalEditorHost,
+  type LocalHostOptions,
+  type RefreshOutcome,
+} from './local-host.js'
 import type { DecorationMap } from './graph-canvas.js'
 import type { EditorHost } from './editor-host.js'
 import {
@@ -113,7 +118,47 @@ export interface MountedEditor {
    * after unmount.
    */
   readonly setDecorations: (decorations: DecorationMap) => boolean
+  /**
+   * Re-reads the host's store and follows it, keeping staged work (#444).
+   *
+   * The answer to a model that moves under an open canvas - an agent writing
+   * while a reviewer watches - where the only previous option was `unmount`
+   * plus mounting again, which discards everything staged. A clean refresh
+   * keeps the reviewer's staged rows, their zoom, their selection and their
+   * filter: only the compilation is replaced.
+   *
+   * It hands the store no bytes. The host already owns the store and the
+   * editor reads through it (ADR 0100), so this asks for a re-read rather
+   * than introducing a second way in.
+   *
+   * Refuses rather than refreshing where staged operations pin content that
+   * moved, naming those documents. That refusal is the point: refreshing
+   * anyway would leave a reviewer editing against bytes nobody can see, to be
+   * refused at commit by `YMVS312` after more work had gone in.
+   *
+   * A mount over a host the caller built (`mountEditorWith`) answers
+   * `not-supported`: such a host already owns delivery and can push a model
+   * frame whenever it likes, which is the same refresh by another route.
+   */
+  readonly refresh: () => MountRefreshOutcome
 }
+
+/** {@link RefreshOutcome}, plus the two ways a handle itself can decline. */
+export type MountRefreshOutcome =
+  | RefreshOutcome
+  | {
+      /** Before the shell's first render, or after `unmount`. */
+      readonly applied: false
+      readonly reason: 'not-mounted'
+    }
+  | {
+      /**
+       * The mount runs over a host the caller built, which owns its own
+       * delivery. Push a `model` frame instead.
+       */
+      readonly applied: false
+      readonly reason: 'not-supported'
+    }
 
 /**
  * The sections a read-only mount defaults to: the reading surfaces. No palette
@@ -184,11 +229,29 @@ export const mountEditorWith = (
       bridge.current?.startConnection(fromSubjectId) ?? false,
     setDecorations: (decorations) =>
       bridge.current?.setDecorations(decorations) ?? false,
+    refresh: () => {
+      const pointer = bridge.current
+      if (pointer === null) return { applied: false, reason: 'not-mounted' }
+      // Only a host that owns a store can re-read one. A caller-built host is
+      // already on the delivering side of the protocol.
+      if (!isLocalHost(host)) return { applied: false, reason: 'not-supported' }
+      // The pins go host-side unread: the handle reports what is staged and
+      // the store that minted those revisions decides what they mean
+      // (ADR 0100).
+      return host.refresh(pointer.stagedPins())
+    },
   }
 }
 
+const isLocalHost = (host: EditorHost): host is LocalEditorHost =>
+  typeof (host as Partial<LocalEditorHost>).refresh === 'function'
+
 export type { EditorHost, EditorHostEvents } from './editor-host.js'
 export type { DecorationMap, DecorationMark } from './graph-canvas.js'
-export type { LocalHostOptions } from './local-host.js'
+export type {
+  LocalEditorHost,
+  LocalHostOptions,
+  RefreshOutcome,
+} from './local-host.js'
 export { createLocalHost } from './local-host.js'
 export { RIGHT_SECTIONS, type RightSectionId } from './workspace-state.js'

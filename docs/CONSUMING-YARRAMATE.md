@@ -393,6 +393,33 @@ model frame, and ids the model does not name are silently inert. It shares the
 pointer methods' one false window: before the shell's first render, or after
 unmount.
 
+`refresh()` follows a model that moved under an open canvas. An agent writing
+to the same store a reviewer is watching is the case it exists for: before it,
+the only way to show new content was `unmount` plus mounting again, which
+discards whatever the reviewer had staged. A clean refresh keeps their staged
+rows, their zoom, their selection and their filter — only the compilation is
+replaced. It hands the store no bytes: your host already owns the store and the
+editor reads through it, so this asks for a re-read rather than opening a
+second way in.
+
+It answers with what happened, not a boolean, because a host has to be able to
+explain the outcome to a person:
+
+| result | meaning |
+|---|---|
+| `{ applied: true }` | the canvas now follows the store |
+| `staged-against-changed-documents` | staged work pins content this refresh would replace; **nothing was delivered** and the named documents are what to put in front of the reviewer |
+| `refused` | the store's contents no longer compile; the last good model stays on screen and the diagnostics say why |
+| `not-mounted` | before the shell's first render, or after `unmount` |
+| `not-supported` | a `mountEditorWith` host, which already owns delivery and can push a `model` frame itself |
+
+The refusal is deliberate rather than a limitation. Refreshing over staged work
+would leave a reviewer editing against content nobody can see, to be refused at
+commit by `YMVS312` after more effort had gone in; re-pinning their operations
+silently would be worse still, since those pins are the precondition that stops
+one author overwriting another. Refusing at the moment of divergence is the
+earliest honest answer.
+
 `store` is the caller's synchronous `SourceStore`; `workspace` is the caller's
 pre-resolved `ResolvedWorkspace`. The local host compiles, projects, filters,
 commits and saves layouts over that store. A changeset's model and view writes
