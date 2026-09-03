@@ -1,5 +1,3 @@
-import Ajv2020Import from 'ajv/dist/2020.js'
-import type Ajv2020Type from 'ajv/dist/2020.js'
 import { LineCounter, parse, parseDocument } from 'yaml'
 import {
   conceptKinds,
@@ -33,7 +31,7 @@ import {
   shippedPolicyIdentity,
   shippedPolicySource,
 } from './shipped-profile.js'
-import { compileValidator } from './schema-validation.js'
+import { validateDocument, validateProfile, validatePattern } from './schema-validation.js'
 
 const coreProfile = 'yarramate/core@0.1'
 // `ajv/dist/2020.js` is CJS, and its default-export shape is resolved
@@ -47,14 +45,9 @@ const coreProfile = 'yarramate/core@0.1'
 // into the browser bundle, where it is not a function - which is exactly how
 // this module became unimportable from a browser, and why the editor could
 // only ever run behind a Node process (#252).
-type Ajv2020Ctor = typeof Ajv2020Type extends { default: infer D } ? D : typeof Ajv2020Type
-const ajv2020Module = Ajv2020Import as unknown as {
-  default?: Ajv2020Ctor
-} & Ajv2020Ctor
-const Ajv2020 = ajv2020Module.default ?? ajv2020Module
-const validateDocument = compileValidator(documentSchema)
-const validateProfile = compileValidator(profileSchema)
-const validatePattern = compileValidator(patternSchema)
+
+
+
 
 export interface WorkspaceSource {
   readonly path: string

@@ -630,6 +630,14 @@ concepts:
     kind: repository-file
     name: src/schema-validation.ts
     status: current
+  - id: schema-validators-generated-source
+    kind: repository-file
+    name: src/schema-validators.generated.ts
+    status: current
+  - id: schema-validators-operations-generated-source
+    kind: repository-file
+    name: src/schema-validators-operations.generated.ts
+    status: current
   - id: shipped-profile-source
     kind: repository-file
     name: src/shipped-profile.ts
@@ -1443,6 +1451,14 @@ relationships:
     kind: realization
     from: schema-validation-source
     to: validate-document-structure
+  - id: schema-validators-generated-realizes-document-validation
+    kind: realization
+    from: schema-validators-generated-source
+    to: validate-document-structure
+  - id: schema-validators-operations-generated-realizes-apply
+    kind: realization
+    from: schema-validators-operations-generated-source
+    to: apply-operations
   - id: shipped-profile-realizes-catalogue
     kind: realization
     from: shipped-profile-source

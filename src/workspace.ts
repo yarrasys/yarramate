@@ -6,7 +6,6 @@ import {
   resolve,
   sep,
 } from 'node:path'
-import Ajv2020Module from 'ajv/dist/2020.js'
 import type { Diagnostic, WorkspaceSource } from './compiler.js'
 import {
   diagnosticOrder,
@@ -19,14 +18,8 @@ import workspaceSchema from '../schema/yarramate-workspace.schema.json' with {
 // `.default ?? module`, not a bare `.default`: NodeNext sees the raw CJS
 // `module.exports` and a bundler the unwrapped class. This file resolves a
 // manifest's globs against a real filesystem and so is never bundled, but the
-import { compileValidator } from './schema-validation.js'
-// two shapes cost one `??` and a reader should not have to work out which of
-// the engine's four Ajv sites is the odd one.
-const ajv2020Module = Ajv2020Module as unknown as {
-  default?: typeof Ajv2020Module
-} & typeof Ajv2020Module
-const Ajv2020 = ajv2020Module.default ?? ajv2020Module
-const validateWorkspace = compileValidator(workspaceSchema)
+import { validateWorkspace } from './schema-validation.js'
+
 
 export interface WorkspaceManifest {
   readonly format: 'yarramate/workspace/v1'

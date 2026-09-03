@@ -1,6 +1,6 @@
 {
   "name": "yarramate",
-  "version": "1.15.3",
+  "version": "1.16.0",
   "description": "Tool-neutral semantic architecture engine and guided methodology",
   "license": "MIT",
   "repository": {
@@ -137,6 +137,7 @@
     "docs:dev": "pnpm self:export:likec4 && likec4 serve .yarramate-out/likec4",
     "format": "likec4 format assets/likec4",
     "generate:archimate": "node scripts/generate-archimate-relationships.mjs",
+    "generate:validators": "node scripts/generate-validators.mjs",
     "self:check": "pnpm build && node dist/cli.js check .yarramate/workspace.yaml",
     "self:check:json": "pnpm build && node dist/cli.js check .yarramate/workspace.yaml --json",
     "self:ask": "pnpm build && node dist/cli.js ask .yarramate/workspace.yaml",

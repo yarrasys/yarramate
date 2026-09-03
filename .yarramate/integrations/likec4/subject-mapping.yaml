@@ -2517,3 +2517,15 @@ mappings:
   - native: schema-validation-source
     external: schemaValidationSource
     type: concept
+  - native: schema-validators-generated-realizes-document-validation
+    external: schemaValidatorsGeneratedRealizesDocumentValidation
+    type: relationship
+  - native: schema-validators-generated-source
+    external: schemaValidatorsGeneratedSource
+    type: concept
+  - native: schema-validators-operations-generated-realizes-apply
+    external: schemaValidatorsOperationsGeneratedRealizesApply
+    type: relationship
+  - native: schema-validators-operations-generated-source
+    external: schemaValidatorsOperationsGeneratedSource
+    type: concept

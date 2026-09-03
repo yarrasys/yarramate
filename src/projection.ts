@@ -1,5 +1,3 @@
-import Ajv2020Import from 'ajv/dist/2020.js'
-import type Ajv2020Type from 'ajv/dist/2020.js'
 import { isDeclaredNonGoal } from './brief.js'
 import type {
   Diagnostic,
@@ -25,12 +23,7 @@ import projectionSchema from '../schema/yarramate-projection.schema.json' with {
 // into the browser bundle, where it is not a function - which is exactly how
 // this module became unimportable from a browser, and why the editor could
 // only ever run behind a Node process (#252).
-type Ajv2020Ctor = typeof Ajv2020Type extends { default: infer D } ? D : typeof Ajv2020Type
-const ajv2020Module = Ajv2020Import as unknown as {
-  default?: Ajv2020Ctor
-} & Ajv2020Ctor
-const Ajv2020 = ajv2020Module.default ?? ajv2020Module
-const validateProjection = compileValidator(projectionSchema)
+
 
 export type LifecycleStatus = 'planned' | 'current' | 'retired'
 
@@ -116,7 +109,7 @@ import type { NestingKind } from './nesting.js'
  */
 export { DEFAULT_DIRECTION, type LayoutDirection } from './layout-direction.js'
 import type { LayoutDirection } from './layout-direction.js'
-import { compileValidator } from './schema-validation.js'
+import { validateProjection } from './schema-validation.js'
 
 export type ProjectionQuery = ProjectionDefinition['query']
 

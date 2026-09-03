@@ -1,4 +1,3 @@
-import Ajv2020Module from 'ajv/dist/2020.js'
 import type {
   Diagnostic,
   SemanticGraph,
@@ -14,16 +13,8 @@ import evidenceSchema from '../schema/yarramate-evidence.schema.json' with {
   type: 'json',
 }
 
-// `.default ?? module`, not a bare `.default`: NodeNext sees the raw CJS
-// `module.exports` and a bundler the unwrapped class. One shape for all of
-// them, so which modules a browser happens to reach is not a thing anyone has
-// to keep track of (#252).
-const ajv2020Module = Ajv2020Module as unknown as {
-  default?: typeof Ajv2020Module
-} & typeof Ajv2020Module
-const Ajv2020 = ajv2020Module.default ?? ajv2020Module
-import { compileValidator } from './schema-validation.js'
-const validateEvidenceSchema = compileValidator(evidenceSchema)
+import { validateEvidence as validateEvidenceSchema } from './schema-validation.js'
+
 
 export type EvidenceResult =
   | 'confirmed'
