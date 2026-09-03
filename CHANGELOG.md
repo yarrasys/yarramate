@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.19.1
 
 ### A profile's kinds no longer have to be declared parent-first
 
