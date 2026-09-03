@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.17.0
 
 ### A host can refresh the canvas without discarding staged work
 
