@@ -7,7 +7,6 @@ import {
   type YAMLMap,
   type YAMLSeq,
 } from 'yaml'
-import Ajv2020Module from 'ajv/dist/2020.js'
 import { loadAdapterMapping } from './adapter-mapping.js'
 import {
   compileWorkspace,
@@ -62,23 +61,11 @@ import type {
   YarramateApplyResult,
   YarramateOperation,
 } from './operations.js'
-import { compileValidatorWith } from './schema-validation.js'
+import { validateOperations } from './schema-validation.js'
 
-// `.default ?? module`, not a bare `.default`: NodeNext sees the raw CJS
-// `module.exports` and a bundler sees the unwrapped class, and this file is
-// reachable from a browser through `./apply-operations.js` (#252).
-const ajv2020Module = Ajv2020Module as unknown as {
-  default?: typeof Ajv2020Module
-} & typeof Ajv2020Module
-const Ajv2020 = ajv2020Module.default ?? ajv2020Module
 // `discriminator` routes a batch entry to the single branch its `op` names, so
 // one malformed operation reports one fault instead of ten near-misses.
-// Keeps its own Ajv instance: `discriminator` changes how a schema compiles,
-// so it cannot share one with the nine that do not set it.
-const validateOperations = compileValidatorWith(
-  { allErrors: true, discriminator: true },
-  operationsSchema,
-)
+
 
 // Scalar fields replace; list fields append; `remove` retracts (ADR 0062).
 // An answer enriches what is there and may explicitly take back what it

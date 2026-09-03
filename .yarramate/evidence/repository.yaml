@@ -1119,6 +1119,14 @@ observations:
     result: confirmed
     evidence:
       uri: repo:src/schema-validation.ts
+  - subject: schema-validators-generated-source
+    result: confirmed
+    evidence:
+      uri: repo:src/schema-validators.generated.ts
+  - subject: schema-validators-operations-generated-source
+    result: confirmed
+    evidence:
+      uri: repo:src/schema-validators-operations.generated.ts
   - subject: shipped-profile-source
     result: confirmed
     evidence:

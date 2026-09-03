@@ -1,5 +1,95 @@
 # Changelog
 
+## 1.16.0
+
+### Schema validators are precompiled, so the package never generates code
+
+Ajv compiles a JSON Schema by generating source and calling `new Function`.
+Where that happened decided the last two releases, and this one removes the
+question instead of answering it again.
+
+- **1.15.2** deferred compilation to first use to save startup CPU. Cloudflare's
+  `workerd` permits code generation during module evaluation and **forbids it
+  at request time**, so every request that validated anything threw
+  `EvalError`. Deprecated.
+- **1.15.3** moved compilation back to import, where it is permitted. Correct,
+  but the codegen still ran, and Workers budget startup CPU separately (400 ms)
+  and refuse a Worker that exceeds it. An adopter's deploy came back at 439 ms.
+
+The validators are now compiled **at build time** into committed modules
+(`pnpm generate:validators`). The runtime imports plain functions. There is no
+compile step left to put in the wrong place, and no refactoring can move one
+back.
+
+Measured on one machine, importing the barrel:
+
+| | import wall | import **CPU** | schemas compiled | per request |
+|---|---|---|---|---|
+| 1.15.1 | 161.9 ms | 207.1 ms | 10 | 0 |
+| 1.15.3 | 107.1 ms | 129.8 ms | 10 | 0 |
+| **1.16.0** | **31.8 ms** | **32.9 ms** | **0** | **0** |
+
+CPU is the quantity Cloudflare meters: **84% below 1.15.1 and 75% below
+1.15.3.** The `yarramate/interrogation` subpath, which the consumer guide
+points Workers users at, drops from 54.7 ms and one compile to **14.6 ms and
+none**.
+
+Precompiling alone did not get there. It removed the compiling, but eight
+modules still *imported* Ajv for validators they no longer built, so the whole
+compiler was still loaded and parsed on every import for nothing. Removing
+those dead imports is most of the difference between 70 ms and 32 ms, and it
+is what makes the claim below true rather than nearly true.
+
+The strongest form of the check now passes: under
+`node --disallow-code-generation-from-strings`, importing the package,
+compiling a workspace and applying operations all succeed. Neither 1.15.1 nor
+1.15.3 could do that.
+
+**Behaviour is unchanged.** Same diagnostics, same messages, same `allErrors`
+collection, same `errors` on each validator. `validateOperations` is emitted
+from an instance with `discriminator` enabled, compiled into it.
+
+### What this changes for consumers
+
+Ajv's **compiler** has left the library's runtime graph. Verified by walking
+the built import graph rather than asserted:
+
+| entry | files | Ajv compiler |
+|---|---|---|
+| `yarramate` | 35 | **none** |
+| `yarramate/interrogation` | 10 | **none** |
+| `yarramate/cli` | 46 | `check-command` only |
+
+The CLI keeps it because `check` can validate a user-supplied schema, which is
+a genuine compile of something not known until runtime. Two pure helpers, a
+deep-equal and a UCS-2 string length, are still imported from
+`ajv/dist/runtime` by the generated modules; that is the accurate claim rather
+than "Ajv is gone".
+
+Nothing about the API changes, so this is a minor only because a
+bundle-conscious consumer deserves to be told rather than discover it.
+
+The package ships about 500 kB more source, which is the emitted validators.
+
+### Guards
+
+`test/generated-validators.test.ts` regenerates and compares byte for byte, so
+a schema edited without regenerating fails there rather than shipping a
+validator that checks the old shape. It also asserts the emitted modules
+contain no `new Function`, no `eval` and no `require`, and that every import
+they carry resolves inside `ajv/dist/runtime`.
+
+`test/schema-validation-no-codegen.test.ts` replaces the eagerness guard, whose
+assertion has now been wrong in both directions. It counts **zero** Ajv
+compiles at import and zero while the package is used, spying on the prototype
+that *owns* `compile` so both Ajv classes are covered, and refusing to load if
+a future `ajv` ever splits them. Its second test proves the package still
+rejects what it should, because zero compiles is also the count of a package
+that validates nothing.
+
+Prompted by the ApertureX adopter session, whose deploy measurements drove all
+three releases in this arc.
+
 ## 1.15.3
 
 ### Schema validators are compiled at import again, on a shared instance
