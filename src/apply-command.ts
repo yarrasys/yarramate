@@ -72,6 +72,10 @@ import { validateOperations } from './schema-validation.js'
 // asserted — it never silently shrinks anything.
 const SCALAR_CONCEPT_FIELDS = ['kind', 'name', 'description', 'status', 'owner'] as const
 const LIST_CONCEPT_FIELDS = ['aka', 'constraints', 'references', 'presentIn', 'attestations', 'distinctFrom', 'supersedes'] as const
+// The third category (#448). `parts` is the first MAP-valued concept field:
+// it neither replaces like a scalar nor appends like a list, it merges by
+// slot. See `mergeMapField`.
+const MAP_CONCEPT_FIELDS = ['parts'] as const
 const SCALAR_RELATIONSHIP_FIELDS = ['kind', 'from', 'to', 'name', 'description', 'status', 'mode', 'content'] as const
 const LIST_RELATIONSHIP_FIELDS = ['references', 'presentIn'] as const
 // An overlay entry's address is the pair (target, key); everything else it
@@ -405,6 +409,80 @@ const appendListField = (
     valueEnd,
     `\n${sequenceEntries(merged, indent + 2)}`,
   )
+}
+
+// Merge a MAP-valued field by key (#448). A named slot rebinds, an unnamed one
+// is untouched: ADR 0062's convention, where a write enriches what is there and
+// never silently shrinks it. Replacing the whole map would unbind slots the
+// operation never mentioned, which is exactly the silent shrinking that rule
+// forbids.
+//
+// The per-slot work is `setScalarField` against the NESTED map, because
+// inserting or replacing one key of a mapping is what that already does. The
+// source is re-parsed between slots for the same reason the caller re-parses
+// between fields: every splice moves the offsets after it.
+const mergeMapField = (
+  source: string,
+  locateMap: (source: string) => YAMLMap | undefined,
+  key: string,
+  additions: Readonly<Record<string, unknown>>,
+): string => {
+  const entries = Object.entries(additions)
+  if (entries.length === 0) return source
+  const map = locateMap(source)
+  if (map === undefined) return source
+  if (map.flow) {
+    return rewriteFlowItem(source, map, (fields) => ({
+      ...fields,
+      [key]: {
+        ...((fields[key] as Record<string, unknown> | undefined) ?? {}),
+        ...additions,
+      },
+    }))
+  }
+  const existing = nestedMap(map, key)
+  if (existing === undefined) {
+    const pair = pairFor(map, key)
+    const indent = fieldIndentOf(source, map)
+    const rendered = entries
+      .map(([slot, value]) => `${' '.repeat(indent + 2)}${slot}: ${valueText(value)}`)
+      .join('\n')
+    // A `parts` that exists but is not a block mapping (flow, or empty) is
+    // replaced wholesale rather than merged into: there is nothing to preserve
+    // that the entries do not already carry.
+    if (pair !== undefined) {
+      const held = isMap(pair.value)
+        ? ((pair.value as YAMLMap).toJSON() as Record<string, unknown>)
+        : {}
+      const merged = { ...held, ...additions }
+      const [start, valueEnd] = nodeRange(pair.value)
+      return spliceValue(
+        source,
+        start,
+        valueEnd,
+        `\n${Object.entries(merged)
+          .map(
+            ([slot, value]) =>
+              `${' '.repeat(indent + 2)}${slot}: ${valueText(value)}`,
+          )
+          .join('\n')}`,
+      )
+    }
+    return insertBlock(
+      source,
+      itemFieldInsertAt(source, map),
+      `${' '.repeat(indent)}${key}:\n${rendered}\n`,
+    )
+  }
+  let updated = source
+  for (const [slot, value] of entries) {
+    const host = locateMap(updated)
+    if (host === undefined) break
+    const target = nestedMap(host, key)
+    if (target === undefined) break
+    updated = setScalarField(updated, target, slot, value)
+  }
+  return updated
 }
 
 // Retraction (#115): delete the field's whole entry, from the start of its
@@ -940,6 +1018,20 @@ export const applyOperations = (
           key,
           additions,
         )
+      }
+      if (operation.op === 'update-concept') {
+        for (const key of MAP_CONCEPT_FIELDS) {
+          const additions = payload[key] as
+            | Readonly<Record<string, unknown>>
+            | undefined
+          if (additions === undefined) continue
+          source = mergeMapField(
+            source,
+            (current) => itemMap(current, collection, id)?.map,
+            key,
+            additions,
+          )
+        }
       }
       for (const key of removals) {
         const removed = removeField(

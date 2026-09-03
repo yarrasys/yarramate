@@ -496,16 +496,30 @@ The model operations are `add-concept`, `add-relationship`,
 Concept and relationship records accept the same
 optional fields as the authoring format — for example `status`,
 `description`, `aka`, `owner`, `distinctFrom`, `supersedes`,
-`constraints`, `references`, `presentIn`, `attestations`, and the
+`constraints`, `references`, `presentIn`, `parts`, `attestations`, and the
 controlled `mode` and `content` fields. `apply` writes by splicing minimal
 text edits into the authored source, so bytes an operation never touched —
 including folded prose and comments — stay byte-identical (ADR 0062). It
 compiles the entire candidate workspace in memory and replaces the targets
 only when validation succeeds; a rejected batch leaves every source
 byte-for-byte unchanged. Update operations enrich by default — scalar
-fields replace, list fields append — and retract explicitly: an update may
-carry `remove: [<field> ...]` to delete optional fields it previously
-asserted. Identity fields (`id`, `kind`, `from`, `to`) are never removable,
+fields replace, list fields append, and the map-valued `parts` merges by slot
+— and retract explicitly: an update may carry `remove: [<field> ...]` to
+delete optional fields it previously asserted.
+
+`parts` binds an instance's pattern slots (ADR 0123) and is the only
+map-valued field, so it follows the same rule from a third direction: a slot
+the operation names is rebound, a slot it does not name is untouched, because
+a write enriches what is there and never silently shrinks it. Without it an
+agent could not instantiate a pattern over `apply` at all, and the pattern
+mechanism was reachable only from raw YAML (#448). Retraction is coarse:
+`remove: ["parts"]` unbinds the whole mapping, and there is deliberately no
+slot-granular spelling, since a second retraction idiom for one field reads
+fine to whoever wrote it and traps everyone else. Note that a full retraction
+leaves a concept with no `parts` key, which is not a pattern instance, so
+`YM416` does not fire for a required slot; the obligation moves from the
+compile gate to the interview, where the instance reports a vacancy with
+`required: true` (ADR 0140). Identity fields (`id`, `kind`, `from`, `to`) are never removable,
 removing a field that is not set is an error, and one operation cannot both
 set and remove the same field. Delete operations remove the whole authored
 item and are rejected while anything still references the target —

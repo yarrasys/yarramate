@@ -173,6 +173,17 @@
             "$ref": "#/$defs/nonEmptyText"
           }
         },
+        "parts": {
+          "description": "The subjects this instance binds into its pattern's slots (ADR 0123), keyed by part name. Without this an agent cannot instantiate a pattern over apply at all, so the whole pattern mechanism was reachable only from raw YAML (#448). On update-concept it MERGES by slot: a named slot rebinds, an unnamed one is untouched, because a write enriches what is there and never silently shrinks it (ADR 0062). Retraction is coarse: remove: [\"parts\"] unbinds the whole map, and there is no slot-granular spelling.",
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": false,
+          "patternProperties": {
+            "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$": {
+              "$ref": "#/$defs/nonEmptyText"
+            }
+          }
+        },
         "attestations": {
           "type": "array",
           "items": {
@@ -497,6 +508,7 @@
                   "constraints",
                   "references",
                   "presentIn",
+                  "parts",
                   "attestations"
                 ]
               }
