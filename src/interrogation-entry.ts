@@ -20,6 +20,7 @@ export {
   type CatalogueCondition,
   type CatalogueEvidenceObservation,
   type CataloguePatternMembership,
+  type CataloguePatternVacancy,
   type CatalogueLoadResult,
   type CatalogueQuestion,
   type CatalogueSelector,
