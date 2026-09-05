@@ -589,3 +589,54 @@ describe("a read-only menu offers no way to stage", () => {
     }
   });
 });
+
+describe("#473: folding is offered where something can fold", () => {
+  // Folding writes to the layout sidecar, which is adapter-owned presentation
+  // state (ADR 0023), never to the model. So it is a READING intent and a
+  // read-only reviewer keeps every one of these.
+  const withFold = (over: Partial<ContextMenuContext> = {}): ContextMenuContext =>
+    context({ containerIds: new Set(["api"]), ...over });
+
+  const foldItems = (ctx: ContextMenuContext, id = "api") =>
+    contextMenuFor({ kind: "subject", id }, ctx)
+      .filter((group) => group.key === "fold")
+      .flatMap((group) => group.items);
+
+  it("offers Fold on a subject that contains something", () => {
+    const items = foldItems(withFold());
+    expect(items.map((item) => item.key)).toEqual(["fold"]);
+  });
+
+  it("offers nothing at all on a subject that contains nothing", () => {
+    // An item that could only ever do nothing is worse than no item (#255).
+    expect(foldItems(withFold({ containerIds: new Set() }))).toEqual([]);
+  });
+
+  it("offers Unfold and Unfold-everything once it is shut", () => {
+    const items = foldItems(withFold({ folded: new Set(["api"]) }));
+    expect(items.map((item) => item.key)).toEqual(["unfold", "unfold-all"]);
+  });
+
+  it("acts on the SELECTION when the box is one of several selected", () => {
+    // Acting on one of a selected set and leaving the rest is not what the
+    // gesture meant.
+    const items = foldItems(
+      withFold({ selectedIds: ["api", "ui"], containerIds: new Set(["api", "ui"]) }),
+    );
+    expect(items.map((item) => item.key)).toEqual([
+      "selection-fold",
+      "selection-unfold",
+    ]);
+    expect(items[0]!.label).toBe("Fold 2 selected");
+  });
+
+  it("survives a read-only menu, because it stages nothing", () => {
+    const items = contextMenuFor(
+      { kind: "subject", id: "api" },
+      { ...withFold(), readOnly: true },
+    )
+      .filter((group) => group.key === "fold")
+      .flatMap((group) => group.items);
+    expect(items.map((item) => item.key)).toEqual(["fold"]);
+  });
+});
