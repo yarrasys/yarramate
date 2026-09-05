@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.22.0
 
 ### A member held only inside one box now folds into it
 
