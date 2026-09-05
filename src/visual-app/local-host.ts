@@ -559,7 +559,7 @@ export const createLocalHost = (options: LocalHostOptions): LocalEditorHost => {
           commit(input)
           return
         case 'layout.save': {
-          const { projectionId, positions } = input.payload
+          const { projectionId, positions, folded, unfolded } = input.payload
           if (!views.some((view) => view.id === projectionId)) {
             deliver?.frame({
               kind: 'layout-save-result',
@@ -579,6 +579,12 @@ export const createLocalHost = (options: LocalHostOptions): LocalEditorHost => {
                 format: 'yarramate/visual-layout/v1',
                 projectionId,
                 positions,
+                // Fold state rides WITH the positions in one document (#473),
+                // written in full every time. A box and the positions of what
+                // is inside it are one fact; splitting them across two writes
+                // means a reload can land between them.
+                ...(folded === undefined ? {} : { folded }),
+                ...(unfolded === undefined ? {} : { unfolded }),
               }),
               expected: held?.revision ?? null,
             },
@@ -596,6 +602,17 @@ export const createLocalHost = (options: LocalHostOptions): LocalEditorHost => {
           model = {
             ...model,
             layouts: { ...model.layouts, [projectionId]: positions },
+            ...(folded === undefined && unfolded === undefined
+              ? {}
+              : {
+                  folds: {
+                    ...model.folds,
+                    [projectionId]: {
+                      folded: folded ?? [],
+                      unfolded: unfolded ?? [],
+                    },
+                  },
+                }),
           }
           deliver?.frame({
             kind: 'layout-save-result',

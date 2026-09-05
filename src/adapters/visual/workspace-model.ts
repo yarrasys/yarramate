@@ -234,6 +234,17 @@ export const renderedWorkspaceOf = (
         ),
       },
       ...(interrogation === undefined ? {} : { interrogation }),
+      // Containment context, forwarded rather than re-derived (#473). Both
+      // hosts build the model here, so local-host and session-server cannot
+      // disagree about what is inside a box - which is the shape of defect
+      // that made `patterns` ship non-functional in 1.4.0, ten source lists
+      // each dropping the same thing.
+      ...(compiled.patternMemberships === undefined
+        ? {}
+        : { memberships: compiled.patternMemberships }),
+      ...(compiled.patternVacancies === undefined
+        ? {}
+        : { vacancies: compiled.patternVacancies }),
     },
     views: refreshedViews,
   };

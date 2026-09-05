@@ -79,6 +79,10 @@ const workspace = vi.hoisted(() => ({
   unread: 0,
   selectedSubject: null as SelectedDiagramSubject | null,
   panelOpen: false,
+  // The same seam, for fold (#473). Static markup cannot click a box shut,
+  // and the whole point of these tests is that the APP hands the fold to the
+  // canvas and the rail rather than that a unit computes it.
+  folded: [] as readonly string[],
 }))
 
 vi.mock('../src/visual-app/workspace-state.js', async (importOriginal) => {
@@ -91,6 +95,7 @@ vi.mock('../src/visual-app/workspace-state.js', async (importOriginal) => {
       return {
         ...state,
         selectedSubject: workspace.selectedSubject,
+        folded: workspace.folded,
         bottomPanel: workspace.panelOpen
           ? { ...state.bottomPanel, open: true }
           : state.bottomPanel,
@@ -140,6 +145,7 @@ beforeEach(() => {
   workspace.hidden = false
   workspace.unread = 0
   workspace.selectedSubject = null
+  workspace.folded = []
   workspace.panelOpen = false
 })
 
@@ -1178,5 +1184,93 @@ describe('a read-only mount (#298)', () => {
     expect(inspector).toContain('>Connect</button>')
     expect(inspector).toContain('>Delete</button>')
     expect(inspector).toContain('<select')
+  })
+})
+
+// #473, and the reason this block exists rather than another unit test.
+//
+// Every fold component was built and unit-tested and the whole feature was
+// INERT in the app: nothing passed `folded` or `memberships` to the canvas, and
+// nothing passed `folded` / `insideCounts` to the rail. The unit tests called
+// `graphToElements` and `buildModelTree` directly, so they tested the
+// CONSTRUCTOR and never the assembly — the exact failure CONTRIBUTING's "a test
+// must go through the seam it is testing, not around it" was written for, and
+// the same shape that shipped `patterns` non-functional in 1.4.0 while 1800
+// tests stayed green.
+//
+// These render the APP and assert on its markup. They fail if the wiring is
+// removed, whatever the unit tests say.
+describe('#473: folding reaches the DOM the app actually renders', () => {
+  const instance = (): VisualRenderedModel => ({
+    ...renderedModel,
+    graph: {
+      nodes: [
+        subject('app.checkout', 'Checkout'),
+        subject('app.ledger', 'Ledger'),
+      ],
+      edges: [],
+    },
+    // `app.ledger` is a part of `app.checkout`, so checkout is a box that can
+    // fold. Supplied on the FRAME, which is the seam the app reads.
+    memberships: [
+      {
+        member: 'app.ledger',
+        slot: 'ledger',
+        instance: 'app.checkout',
+        pattern: 'acme/p@1.0#api',
+        wiring: 'owned',
+      },
+    ],
+    vacancies: [
+      {
+        instance: 'app.checkout',
+        pattern: 'acme/p@1.0#api',
+        slot: 'audit',
+        slotKind: 'yarramate/core@0.1#applicationService',
+        required: true,
+      },
+    ],
+  })
+
+  it('draws the Slots section for a selected instance', () => {
+    workspace.selectedSubject = {
+      id: 'app.checkout',
+      type: 'element',
+      title: 'Checkout',
+      kind: 'yarramate/core@0.1#applicationComponent',
+      description: null,
+    }
+    const markup = renderSession({ model: instance() })
+    expect(markup).toContain('subject-slots')
+    expect(markup).toContain('ledger')
+    // A required vacancy reads differently from an optional one.
+    expect(markup).toContain('to decide — required')
+  })
+
+  it('draws no Slots section for a subject that is not an instance', () => {
+    // An empty "Slots" heading would claim "this has no parts".
+    workspace.selectedSubject = {
+      id: 'app.ledger',
+      type: 'element',
+      title: 'Ledger',
+      kind: 'yarramate/core@0.1#applicationComponent',
+      description: null,
+    }
+    const markup = renderSession({ model: instance() })
+    expect(markup).not.toContain('subject-slots')
+  })
+
+  it('marks a folded box in the rail with a chevron and its count', () => {
+    // The wiring this whole block exists for: the rail is only told what is
+    // folded because the app derives it and hands it over.
+    workspace.folded = ['app.checkout']
+    const markup = renderSession({ model: instance() })
+    expect(markup).toContain('tree-fold')
+    expect(markup).toContain('folded over 1 subject')
+  })
+
+  it('marks nothing in the rail when nothing is folded', () => {
+    const markup = renderSession({ model: instance() })
+    expect(markup).not.toContain('tree-fold')
   })
 })

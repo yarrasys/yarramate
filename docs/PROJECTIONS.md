@@ -142,6 +142,17 @@ populated yet is empty, correctly.
 `title` and `description` are presentation hints. They do not affect selection
 or carry semantic authority.
 
+`presentation.fold` says whether an editor draws this view's pattern instances
+COLLAPSED by default — `instances`, or `none` which is the default and draws
+everything ([ADR 0143](adr/0143-a-folded-instance-is-a-node-and-the-view-says-the-default.md)).
+Like `nesting` and `direction` it is a hint about a first look, not a
+restriction: a reader opens what they want, and nothing about selection
+changes. Folding reads the same containment tree nesting does, so a view
+declaring `fold: instances` without `assignment` in `nesting` collapses less
+than its author probably expects; an editor says so rather than the loader
+refusing it. See [docs/VISUAL-ADAPTER.md](VISUAL-ADAPTER.md) for what a folded
+box draws.
+
 ## Result
 
 Evaluation returns deterministic `yarramate/projection-result/v1` JSON with

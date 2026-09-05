@@ -10,6 +10,13 @@ import type {
   CanvasEdge,
 } from '../graph-projection.js'
 import { DEFAULT_NESTING, type NestingKind } from '../nesting.js'
+import {
+  foldGraph,
+  foldTree,
+  nestingTree,
+  type FoldMembership,
+  type FoldTree,
+} from '../fold-tree.js'
 import { DEFAULT_DIRECTION, type LayoutDirection } from '../layout-direction.js'
 import type {
   VisualLayoutPositions,
@@ -18,6 +25,7 @@ import type {
 import {
   EVIDENCE_BADGE_URI,
   LIFECYCLE_BADGE_URI,
+  foldChipUri,
   isLifecycleStatus,
   openQuestionsBadgeUri,
   ownerBadgeUri,
@@ -538,6 +546,49 @@ export function buildStylesheet(
         'border-width': 4,
       },
     },
+    // A FOLDED box (#473): a stacked outline saying there is more behind it,
+    // and a chip saying how much. `ghost` is cytoscape's own offset copy, so
+    // the stack costs no extra element and cannot drift out of step with the
+    // node it shadows.
+    {
+      selector: 'node.folded',
+      style: {
+        ghost: 'yes',
+        'ghost-offset-x': 4,
+        'ghost-offset-y': 4,
+        'ghost-opacity': 0.35,
+        'border-width': 2,
+      },
+    },
+    {
+      // Drawn only when there is something inside to open, so a box the view
+      // has emptied says nothing rather than claiming zero.
+      selector: 'node.folded[insideCount > 0]',
+      style: {
+        'background-image': (node: NodeSingular) =>
+          foldChipUri(Number(node.data('insideCount') ?? 0)),
+        'background-image-containment': 'over',
+        'background-clip': 'none',
+        'background-fit': 'none',
+        'background-width': 26,
+        'background-height': 12,
+        'background-position-x': '100%',
+        'background-position-y': '100%',
+        'background-offset-x': -4,
+        'background-offset-y': -4,
+      },
+    },
+    // A LIFTED edge stands for relationships hidden inside a box. Dashed,
+    // because it is not a relationship the model states between these two
+    // subjects - it is a summary of ones it states further in.
+    {
+      selector: 'edge.lifted',
+      style: {
+        'line-style': 'dashed',
+        'line-dash-pattern': [6, 3],
+        width: 2,
+      },
+    },
     {
       selector: 'edge',
       style: {
@@ -711,127 +762,49 @@ export function buildStylesheet(
   ]
 }
 
-// Composition expresses exclusive whole-part structure (ADR 0004: a workspace
-// cannot claim both composition and aggregation over the same ordered pair),
-// which maps 1:1 onto cytoscape's compound `parent` field - the container is
-// the relationship's `from`, the nested child its `to`. Aggregation is
-// deliberately excluded: it allows a part to belong to multiple wholes at
-// once, which a single `parent` field can't represent, so it stays a normal
-// rendered edge like every other relationship kind. Composition edges that
-// are consumed into nesting are never also drawn as a line.
-const COMPOSITION_RELATIONSHIP_KIND = 'yarramate/core@0.1#composition'
-const ASSIGNMENT_RELATIONSHIP_KIND = 'yarramate/core@0.1#assignment'
-
-// A view names which relationships nest, in precedence order (ADR 0101). The
-// short names a projection is authored in resolve to the kind identities the
-// graph carries here, in one place, so the schema's vocabulary and the
-// canvas's cannot drift.
-const NESTING_KIND_IDS: Readonly<Record<NestingKind, string>> = {
-  composition: COMPOSITION_RELATIONSHIP_KIND,
-  assignment: ASSIGNMENT_RELATIONSHIP_KIND,
-}
-
-/**
- * Assignment nests internal behaviour, never a service. A service is the
- * promise the layer above consumes, so burying it inside the thing that
- * exposes it inverts what it is for. This declines to *draw* a nesting, not to
- * accept the model: `applicationComponent -assignment-> applicationService` is
- * permitted by the ArchiMate 3.2 table (ADR 0097) and stays drawn as a line.
- * Composition is unaffected, because a composed service is a part.
- */
-const nestsAsAssignment = (edge: CanvasEdge, kindOf: (id: string) => string) =>
-  !kindOf(edge.to).endsWith('Service')
-
-// The compiler's YM501 rule only rejects the same (from, to) pair declaring
-// both composition and aggregation - it does not reject two different
-// composition relationships naming the same `to`, which cytoscape's
-// single-parent field can't represent either. Nor does anything upstream
-// reject a composition chain that loops back on itself, which cytoscape's
-// compound nesting must be acyclic to render. Both are real modeling
-// anomalies this layer surfaces rather than silently resolving: affected
-// subjects are left unnested (ordinary top-level nodes) and every
-// composition edge naming them stays drawn as a regular edge, so the
-// conflicting claims stay visible on the canvas instead of one silently
-// winning.
+// Containment moved to `src/fold-tree.ts` (#473), which imports nothing and is
+// published on the runtime-neutral `yarramate/adapter/visual-graph` subpath: a
+// host that never renders still needs to know what contains what. This wrapper
+// keeps the signature the canvas and its tests already use, and does the one
+// thing the pure module deliberately will not — talk to the console.
+//
+// Composition expresses exclusive whole-part structure (ADR 0004) and maps 1:1
+// onto cytoscape's compound `parent`. Aggregation is deliberately excluded: it
+// allows a part to belong to several wholes at once, which a single `parent`
+// field cannot represent.
 export function resolveNestingParents(
   edges: readonly CanvasEdge[],
   nesting: readonly NestingKind[],
-  kindOf: (id: string) => string
+  coreKindOf: (id: string) => string
 ): {
   readonly parentOf: ReadonlyMap<string, string>
   readonly consumedEdgeIds: ReadonlySet<string>
 } {
-  // Precedence is the order the view listed: a child claimed by a composition
-  // and by an assignment nests under the composition.
-  const rankOf = new Map(
-    nesting.map((kind, rank) => [NESTING_KIND_IDS[kind], rank])
-  )
-  const nestingEdges = edges.filter(
-    (edge) =>
-      rankOf.has(edge.kind) &&
-      (edge.kind !== ASSIGNMENT_RELATIONSHIP_KIND ||
-        nestsAsAssignment(edge, kindOf))
-  )
-
-  const claimsByChild = new Map<string, CanvasEdge[]>()
-  for (const edge of nestingEdges) {
-    const claims = claimsByChild.get(edge.to)
-    if (claims === undefined) {
-      claimsByChild.set(edge.to, [edge])
-    } else {
-      claims.push(edge)
-    }
-  }
-
-  const parentOf = new Map<string, string>()
-  for (const [child, claims] of claimsByChild) {
-    // Only claims at the best rank compete. Two of them naming different
-    // parents stays undecidable and falls through to unnest-and-warn, which is
-    // the behaviour composition alone already had.
-    const best = Math.min(...claims.map((claim) => rankOf.get(claim.kind)!))
-    const winners = claims.filter((claim) => rankOf.get(claim.kind) === best)
-    const parents = new Set(winners.map((claim) => claim.from))
-    if (parents.size === 1) {
-      parentOf.set(child, winners[0]!.from)
-    } else {
-      console.warn(
-        `Nesting conflict: "${child}" is claimed by ${parents.size} different parents at the same precedence (${winners.map((claim) => `${claim.kindLabel} from ${claim.from}`).join(', ')}) - rendering it unnested; every claim stays drawn as a regular edge.`
-      )
-    }
-  }
-
-  // Walk each child's parent chain; a ancestor id revisited before the chain
-  // runs out marks a cycle. Only the cycle itself is unnested, not whatever
-  // leads into it - a straight-line ancestor of a cycle is still validly
-  // nested under its own (non-cyclic) parent.
-  const cycleMembers = new Set<string>()
-  for (const start of parentOf.keys()) {
-    const path: string[] = []
-    const indexInPath = new Map<string, number>()
-    let current: string | undefined = start
-    while (current !== undefined) {
-      const seenAt = indexInPath.get(current)
-      if (seenAt !== undefined) {
-        for (const id of path.slice(seenAt)) cycleMembers.add(id)
-        break
-      }
-      indexInPath.set(current, path.length)
-      path.push(current)
-      current = parentOf.get(current)
-    }
-  }
-  if (cycleMembers.size > 0) {
-    console.warn(`Nesting cycle detected among: ${[...cycleMembers].join(', ')} - rendering them unnested.`)
-    for (const id of cycleMembers) parentOf.delete(id)
-  }
-
-  const consumedEdgeIds = new Set<string>()
-  for (const edge of nestingEdges) {
-    if (parentOf.get(edge.to) === edge.from) consumedEdgeIds.add(edge.id)
-  }
-
-  return { parentOf, consumedEdgeIds }
+  const tree = nestingTree(edges, nesting, coreKindOf)
+  warnAboutNesting(tree)
+  return { parentOf: tree.parentOf, consumedEdgeIds: tree.consumedEdgeIds }
 }
+
+/**
+ * The one thing the pure module deliberately will not do. Both callers route
+ * through here so a conflict is reported once, in one wording.
+ */
+function warnAboutNesting(tree: FoldTree): void {
+  for (const conflict of tree.conflicts) {
+    const parents = new Set(conflict.claims.map((claim) => claim.from))
+    console.warn(
+      `Nesting conflict: "${conflict.child}" is claimed by ${parents.size} different parents at the same precedence (${conflict.claims.map((claim) => `${kindLabelOfId(claim.kind)} from ${claim.from}`).join(', ')}) - rendering it unnested; every claim stays drawn as a regular edge.`
+    )
+  }
+  if (tree.cycleMembers.length > 0) {
+    console.warn(
+      `Nesting cycle detected among: ${tree.cycleMembers.join(', ')} - rendering them unnested.`
+    )
+  }
+}
+
+/** `yarramate/core@0.1#composition` -> `composition`, for a warning only. */
+const kindLabelOfId = (kind: string) => kind.split('#')[1] ?? kind
 
 // Convert CanvasGraph nodes and edges to cytoscape ElementDefinition format.
 // Exported for the headless tests: the parallel-edge class assignment below is
@@ -839,19 +812,57 @@ export function resolveNestingParents(
 export function graphToElements(
   graph: CanvasGraph,
   nesting: readonly NestingKind[],
-  openQuestionCounts: ReadonlyMap<string, number>
+  openQuestionCounts: ReadonlyMap<string, number>,
+  fold?: {
+    /** Which instances draw folded. Empty or absent draws everything. */
+    readonly folded: ReadonlySet<string>
+    /** From the model frame; without them only view nesting contains anything. */
+    readonly memberships?: readonly FoldMembership[]
+  }
 ): ElementDefinition[] {
-  // A node's own kind decides whether an assignment may nest it, so the lookup
-  // is built once here rather than searched per edge.
-  const kindById = new Map(graph.nodes.map((node) => [node.id, node.kind]))
-  const { parentOf, consumedEdgeIds } = resolveNestingParents(
-    graph.edges,
-    nesting,
-    (id) => kindById.get(id) ?? ''
+  // CORE kinds, not the authored ones (#473). The rule that decides whether an
+  // assignment may nest reads what a subject IS, and a profile's
+  // `mule-api-operation` is an `applicationService` however it is spelled.
+  // This used to pass `node.kind`, which happens to work for a subject
+  // authored as a core kind - the identity ends with "Service" too - and
+  // silently does not for any profile that named one of its own.
+  const coreKindById = new Map(
+    graph.nodes.map((node) => [node.id, node.coreKindLabel])
   )
+  const tree = foldTree({
+    nodes: graph.nodes.map((node) => ({
+      id: node.id,
+      kind: node.kind,
+      coreKind: node.coreKindLabel,
+    })),
+    edges: graph.edges,
+    memberships: fold?.memberships ?? [],
+    nesting,
+  })
+  warnAboutNesting(tree)
+  const consumedEdgeIds = tree.consumedEdgeIds
+
+  // What each folded box stands for, and what it must therefore say. Counted
+  // over the WHOLE tree rather than what this view shows; `applyFilter` narrows
+  // the chip to the view when it hides what the view leaves out.
+  const insideIds = new Map<string, string[]>()
+  for (const id of tree.parentOf.keys()) {
+    let ancestor = tree.parentOf.get(id)
+    const seen = new Set<string>([id])
+    while (ancestor !== undefined && !seen.has(ancestor)) {
+      seen.add(ancestor)
+      const held = insideIds.get(ancestor)
+      if (held === undefined) insideIds.set(ancestor, [id])
+      else held.push(id)
+      ancestor = tree.parentOf.get(ancestor)
+    }
+  }
+  const folded = fold?.folded ?? new Set<string>()
 
   const nodeElements = graph.nodes.map((node): ElementDefinition => {
-    const parent = parentOf.get(node.id)
+    const parent = tree.parentOf.get(node.id)
+    const inside = insideIds.get(node.id) ?? []
+    const isFolded = folded.has(node.id)
     return {
       data: {
         id: node.id,
@@ -875,7 +886,20 @@ export function graphToElements(
         // From the interrogation overlay, not the node: the overlay ships
         // beside the graph in the same model frame, so both refresh
         // together (#292). Zero draws nothing.
-        openQuestions: openQuestionCounts.get(node.id) ?? 0,
+        // A FOLDED box answers for everything it stands in for: an open
+        // question inside a shut box is still open, and a reader who cannot
+        // see the member must still see that something in there is unanswered.
+        openQuestions: isFolded
+          ? [node.id, ...inside].reduce(
+              (total, id) => total + (openQuestionCounts.get(id) ?? 0),
+              0
+            )
+          : (openQuestionCounts.get(node.id) ?? 0),
+        // What the box is standing in for. Drawn as a chip only when folded,
+        // and `applyFilter` narrows it to what this VIEW shows - a box with
+        // nothing inside it in this view draws no chip at all.
+        insideCount: inside.length,
+        insideIds: inside,
         // `parent` is cytoscape's live nesting pointer and `applyFilter` moves
         // it as views come and go, so the model's own claim is kept alongside
         // it under a key cytoscape does not interpret. Without this the
@@ -883,6 +907,9 @@ export function graphToElements(
         ...(parent === undefined ? {} : { parent, compositionParent: parent }),
       },
       group: 'nodes',
+      // `folded` drives the stacked outline and the chip. A class rather than
+      // a data flag because cytoscape selects on it in the stylesheet.
+      ...(isFolded ? { classes: 'folded' } : {}),
     }
   })
 
@@ -924,7 +951,47 @@ export function graphToElements(
     })
   )
 
-  return [...nodeElements, ...edgeElements]
+  // Every relationship with an end inside a shut box, lifted onto the box
+  // (#473). Synthetic: `lift:` ids, never saved, never in the model. The
+  // ORIGINALS stay in the element list and are hidden by `applyFilter`
+  // instead of being removed, so a fold that is later opened has nothing to
+  // rebuild and `layout.save` still knows where every member sits (review F4).
+  const liftedElements =
+    folded.size === 0
+      ? []
+      : foldGraph(
+          { nodes: graph.nodes, edges: drawnEdges },
+          tree,
+          folded
+        )
+          .edges.filter(
+            (edge): edge is Extract<typeof edge, { count: number }> =>
+              'count' in edge
+          )
+          .map(
+            (edge): ElementDefinition => ({
+              data: {
+                id: edge.id,
+                source: edge.from,
+                target: edge.to,
+                // "kind xN" rather than a name: a lifted edge stands for
+                // several relationships and has no name of its own.
+                label:
+                  edge.count === 1
+                    ? kindLabelOfId(edge.kind)
+                    : `${kindLabelOfId(edge.kind)} \u00d7${edge.count}`,
+                wrapLabel: withWrapPoints(kindLabelOfId(edge.kind)),
+                coreKindLabel: kindLabelOfId(edge.kind),
+                lifted: true,
+                liftedCount: edge.count,
+                relationshipIds: edge.relationshipIds,
+              },
+              group: 'edges',
+              classes: 'lifted',
+            })
+          )
+
+  return [...nodeElements, ...edgeElements, ...liftedElements]
 }
 
 // How many of the graph's subjects the standing filter and the quick-filter
@@ -985,6 +1052,10 @@ export function applyFilter(
       ? baseNodeIds
       : baseNodeIds.filter(nodeMatchesQuickFilter)
   )
+  // What the view and the filter chose, before folding takes anything away.
+  // The chip below counts against THIS, so a member hidden by its own box
+  // still counts as inside it while one the view never selected does not.
+  const baseVisible = new Set(visibleNodeIds)
 
   // A compound child that matches the filter needs its container(s) shown
   // too, or it renders as a stray top-level node instead of the nested part
@@ -1002,6 +1073,28 @@ export function applyFilter(
     while (ancestor !== undefined && !seen.has(ancestor)) {
       seen.add(ancestor)
       visibleNodeIds.add(ancestor)
+      ancestor = canonicalParentOf(ancestor)
+    }
+  }
+
+  // A FOLDED ancestor hides everything under it, whatever the view said
+  // (#473). Precedence, and it has to be this way round: a reader who shut a
+  // box asked not to see inside it, and a view naming a member cannot overrule
+  // a gesture made after the view was chosen.
+  //
+  // HIDDEN, never removed (review F4). The nodes stay in the graph with their
+  // positions intact, so opening the box has nothing to rebuild and
+  // `layout.save` still names every member. Removing them would lose exactly
+  // the coordinates a save is for.
+  for (const id of [...visibleNodeIds]) {
+    const seen = new Set<string>([id])
+    let ancestor = canonicalParentOf(id)
+    while (ancestor !== undefined && !seen.has(ancestor)) {
+      seen.add(ancestor)
+      if (cy.getElementById(ancestor).hasClass('folded')) {
+        visibleNodeIds.delete(id)
+        break
+      }
       ancestor = canonicalParentOf(ancestor)
     }
   }
@@ -1027,6 +1120,21 @@ export function applyFilter(
   // `move` carries data and classes across but drops inline style, so it has to
   // land before the display pass below rather than after it.
   for (const { node, parent } of reparents) cy.getElementById(node).move({ parent })
+
+  // The chip counts what THIS VIEW shows, not what the tree holds: a box whose
+  // members are all filtered out draws no chip, because there is nothing in
+  // there to open (#473).
+  for (const node of cy.nodes('.folded')) {
+    const inside = node.data('insideIds')
+    const held = Array.isArray(inside) ? (inside as string[]) : []
+    node.data(
+      'insideCount',
+      held.filter((id) => {
+        const element = cy.getElementById(id)
+        return element.nonempty() && baseVisible.has(id)
+      }).length
+    )
+  }
 
   const visibleIds = new Set<string>(visibleNodeIds)
   for (const edge of cy.edges()) {
@@ -1114,6 +1222,65 @@ const nestedPairEdges = (
 // never need to guard against "the new view matched nothing".
 export function relayoutVisible(cy: Core, direction: LayoutDirection): void {
   runLayout(cy.elements(':visible'), direction)
+}
+
+/**
+ * Relayout after a fold change, keeping the toggled box where the reader last
+ * saw it (#473).
+ *
+ * A fold changes the element set, so a fit alone will not do — the graph has to
+ * be placed again. But the reader's eye is on the box they just clicked, and a
+ * layout that moves it across the screen costs them their place. So: lay out,
+ * then translate the whole result so the toggled node's screen position is the
+ * one it had, and re-frame ONLY if that leaves the changed region off-viewport.
+ *
+ * The layout itself is the ORDINARY one (ADR 0121's NETWORK_SIMPLEX). ELK's
+ * INTERACTIVE placement was proposed for this and MEASURED AND REJECTED: on the
+ * reference Landscape it moved untouched nodes a median of 1156px on a fold and
+ * 2799px on an unfold, against a gate of one node width, and raised crossings
+ * where network simplex lowered them. Anchoring is what actually keeps the
+ * reader's place; the placement strategy did not help. Table in ADR 0143.
+ *
+ * Returns whether it re-framed, so a caller can record a framing this actually
+ * produced rather than one it assumed.
+ */
+export function relayoutAfterFold(
+  cy: Core,
+  direction: LayoutDirection,
+  anchorId: string | null,
+): boolean {
+  const anchor = anchorId === null ? null : cy.getElementById(anchorId)
+  const before =
+    anchor !== null && anchor.nonempty() ? { ...anchor.position() } : null
+  relayoutVisible(cy, direction)
+  if (before !== null && anchor !== null && anchor.nonempty()) {
+    const after = anchor.position()
+    const dx = before.x - after.x
+    const dy = before.y - after.y
+    // Whole-graph translation, so nothing moves RELATIVE to anything else -
+    // the layout ELK produced is kept exactly, just slid back under the
+    // reader's eye.
+    if (dx !== 0 || dy !== 0) {
+      cy.nodes().forEach((node) => {
+        const position = node.position()
+        node.position({ x: position.x + dx, y: position.y + dy })
+      })
+    }
+  }
+  // Fit only when the result would otherwise be off screen: a reader who can
+  // still see what they changed does not want the viewport moved.
+  const visible = cy.elements(':visible')
+  if (visible.empty()) return false
+  const box = visible.boundingBox()
+  const extent = cy.extent()
+  const outside =
+    box.x2 < extent.x1 ||
+    box.x1 > extent.x2 ||
+    box.y2 < extent.y1 ||
+    box.y1 > extent.y2
+  if (!outside) return false
+  cy.fit(visible, 40)
+  return true
 }
 
 // Re-frames the viewport around what is visible without moving a single node.
@@ -1296,6 +1463,13 @@ interface GraphCanvasProps {
   /** Open-question count per subject id, from the model's interrogation
    * overlay; an empty map (host shipped no overlay) draws no chips. */
   readonly openQuestionCounts: ReadonlyMap<string, number>
+  /**
+   * Which instances draw folded, and the memberships that let the canvas know
+   * what is inside them (#473). Absent draws everything, which is what every
+   * caller did before folding existed.
+   */
+  readonly folded?: ReadonlySet<string>
+  readonly memberships?: readonly FoldMembership[]
   readonly activeViewId: string
   /**
    * Which way the active view runs its layers (#274, ADR 0121), from its
@@ -1356,6 +1530,8 @@ export function GraphCanvas({
   showOwnership,
   showNudges,
   openQuestionCounts,
+  folded,
+  memberships,
 }: GraphCanvasProps): React.ReactElement {
   const containerRef = useRef<HTMLDivElement>(null)
   const cyRef = useRef<Core | null>(null)
@@ -1435,7 +1611,15 @@ export function GraphCanvas({
 
     const cy = cytoscape({
       container: containerRef.current,
-      elements: graphToElements(graph, nesting, openQuestionCounts),
+      elements: graphToElements(graph, nesting, openQuestionCounts, {
+        folded: folded ?? new Set(),
+        memberships,
+      }),
+      // Multi-select, so fold and unfold can act on a set (#473). Additive on
+      // shift and by box drag; a single click still replaces the selection,
+      // which is what every existing gesture assumes.
+      selectionType: 'additive',
+      boxSelectionEnabled: true,
       // `showLifecycle`/`showEvidence`/`showOwnership`/`showNudges` seed the
       // stylesheet the mount builds; the effect below re-applies it to the
       // live instance on every later toggle, without remounting or
@@ -1609,7 +1793,10 @@ export function GraphCanvas({
     if (isInitialSyncRef.current) {
       isInitialSyncRef.current = false
     } else {
-      const elements = graphToElements(graph, nesting, openQuestionCounts)
+      const elements = graphToElements(graph, nesting, openQuestionCounts, {
+        folded: folded ?? new Set(),
+        memberships,
+      })
       cyRef.current.elements().remove()
       cyRef.current.add(elements)
     }
@@ -1619,6 +1806,43 @@ export function GraphCanvas({
     // so its identity moves exactly when the graph's does - listed for
     // honesty, never an extra rerun.
   }, [graph, openQuestionCounts])
+
+  // A FOLD change is an element-set change, so a fit alone will not do: the
+  // graph has to be placed again (#473). But the reader's eye is on the box
+  // they just clicked, so this rebuilds the elements, lays out with ELK's
+  // INTERACTIVE placement seeded from where things already are, anchors the
+  // toggled node back to its own screen position, and re-frames only if the
+  // result would otherwise be off screen.
+  //
+  // Separate from the graph effect above and keyed only on the fold set: a
+  // fold must not repack the canvas the way a view switch does, and a graph
+  // change must not be treated as a fold.
+  const previousFoldedRef = useRef<ReadonlySet<string> | null>(null)
+  useEffect(() => {
+    const cy = cyRef.current
+    if (cy === null) return
+    const previous = previousFoldedRef.current
+    previousFoldedRef.current = folded ?? new Set()
+    // Nothing to do on the first run: the mount already drew the fold state.
+    if (previous === null) return
+    const current = folded ?? new Set<string>()
+    const changed = [
+      ...[...current].filter((id) => !previous.has(id)),
+      ...[...previous].filter((id) => !current.has(id)),
+    ]
+    if (changed.length === 0) return
+    cy.elements().remove()
+    cy.add(
+      graphToElements(graph, nesting, openQuestionCounts, {
+        folded: current,
+        memberships,
+      })
+    )
+    applyFilter(cy, matchedIds, quickFilterText)
+    // The node the reader touched, where exactly one changed. On a fold-all
+    // there is no single anchor and the layout is free to place everything.
+    relayoutAfterFold(cy, direction, changed.length === 1 ? changed[0]! : null)
+  }, [folded])
 
   // Mark every subject a diagnostic named. Runs on its own rather than with
   // selection, because a fault outlives whatever the reviewer happens to have

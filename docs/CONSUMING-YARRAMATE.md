@@ -214,7 +214,11 @@ other) host can import the pure projection and notation surfaces — without
 starting `yarramate-visual`:
 
 ```ts
-import { projectGraphForCanvas } from 'yarramate/adapter/visual-graph'
+import {
+  projectGraphForCanvas,
+  foldTree,
+  foldGraph,
+} from 'yarramate/adapter/visual-graph'
 import {
   conceptNotationOf,
   relationshipNotationOf,
@@ -222,6 +226,24 @@ import {
   LAYER_COLORS,
 } from 'yarramate/notation/archimate'
 ```
+
+`foldTree` and `foldGraph` answer what contains what, and what a collapsed
+container draws instead of its contents (ADR 0143). They are published here rather than only on the canvas because a host that
+never renders still has to answer both: an interview counts open questions per
+box, a report says what an application is made of.
+
+`foldTree` takes plain nodes, edges, `patternMemberships` and the view's
+nesting kinds, and returns a parent-of map, the edge ids consumed into
+containment, and any same-rank conflicts or cycles — RETURNED rather than
+resolved, so a caller decides what to say about them. `foldGraph` takes that
+tree and a set of folded ids and returns the nodes to draw and the edges,
+merging every relationship lifted between one ordered pair of the same kind
+into one edge carrying its `count` and the `relationshipIds` it stands for.
+
+Both are pure functions over plain data and import nothing. Nodes carry their
+CORE kind, not the authored one: a profile's `mule-api-operation` is an
+`applicationService` and the containment rules read what a subject IS rather
+than what it was called.
 
 These subpaths are Workers/browser-safe: no Node built-ins, no `ws`, and no
 visual session server. The local `yarramate-visual` runtime remains the

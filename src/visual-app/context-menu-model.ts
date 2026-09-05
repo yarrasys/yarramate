@@ -59,6 +59,22 @@ export type ContextMenuIntent =
   | { readonly type: "subject.focus"; readonly id: string }
   /** The relationship and its two endpoints. Nothing further (#407). */
   | { readonly type: "relationship.focus"; readonly id: string }
+  /**
+   * Shut a box, open it, or open it and everything inside it (#473).
+   *
+   * `subject.unfold` reveals ONE level: instances nested inside appear folded,
+   * so opening a box is a step rather than a cliff. `unfold-all` is the whole
+   * subtree, for a reader who wants the detail now.
+   */
+  | { readonly type: "subject.fold"; readonly id: string }
+  | { readonly type: "subject.unfold"; readonly id: string }
+  | { readonly type: "subject.unfold-all"; readonly id: string }
+  /** The same, over whatever the reader has selected. */
+  | { readonly type: "selection.fold"; readonly ids: readonly string[] }
+  | { readonly type: "selection.unfold"; readonly ids: readonly string[] }
+  /** Every instance in the view at once. */
+  | { readonly type: "canvas.fold-all" }
+  | { readonly type: "canvas.unfold-all" }
   | { readonly type: "view.clear" }
   | { readonly type: "view.new" }
   /**
@@ -138,6 +154,17 @@ export interface ContextMenuContext {
    */
   readonly membership: ActiveViewMembership | null;
   /**
+   * Which subjects draw folded, and which of them contain anything (#473).
+   *
+   * Both optional, so every existing constructor of this context keeps
+   * compiling - the same reason `focusReturnLabel` above is optional, and
+   * CONTRIBUTING's first rule.
+   */
+  readonly folded?: ReadonlySet<string>;
+  readonly containerIds?: ReadonlySet<string>;
+  /** What the reader has selected, when it is more than one thing. */
+  readonly selectedIds?: readonly string[];
+  /**
    * A viewer, not an author (#298, ADR 0117). A read-only menu keeps the items
    * that read or navigate and drops every item whose intent stages a change -
    * absent, never disabled.
@@ -160,6 +187,16 @@ const READING_INTENTS: ReadonlySet<ContextMenuIntent["type"]> = new Set([
   // Focus reads and narrows; it stages nothing, so a viewer keeps it.
   "subject.focus",
   "relationship.focus",
+  // Folding is a way of LOOKING (#473). It writes to the layout sidecar, which
+  // is adapter-owned presentation state (ADR 0023), never to the model - so a
+  // read-only reviewer keeps every one of these.
+  "subject.fold",
+  "subject.unfold",
+  "subject.unfold-all",
+  "selection.fold",
+  "selection.unfold",
+  "canvas.fold-all",
+  "canvas.unfold-all",
   "view.copy-path",
   "canvas.export-png",
 ]);
@@ -287,6 +324,67 @@ const focusAndMembershipGroups = (
   },
 ];
 
+/**
+ * Fold, unfold, or unfold everything under a box (#473).
+ *
+ * Nothing at all for a subject that contains nothing: an item that could only
+ * ever do nothing is worse than no item (#255, the reasoning that shaped the
+ * membership group above). A box the reader has selected alongside others
+ * offers the selection verbs instead, because acting on one of a selected set
+ * and leaving the rest is not what the gesture meant.
+ */
+const foldGroup = (
+  id: string,
+  context: ContextMenuContext,
+): readonly ContextMenuGroup[] => {
+  if (context.containerIds?.has(id) !== true) return [];
+  const selected = context.selectedIds ?? [];
+  const overSelection = selected.length > 1 && selected.includes(id);
+  const shut = context.folded?.has(id) === true;
+  const items = overSelection
+    ? [
+        {
+          key: "selection-fold",
+          label: `Fold ${selected.length} selected`,
+          intent: { type: "selection.fold" as const, ids: selected },
+        },
+        {
+          key: "selection-unfold",
+          label: `Unfold ${selected.length} selected`,
+          intent: { type: "selection.unfold" as const, ids: selected },
+        },
+      ]
+    : shut
+      ? [
+          {
+            key: "unfold",
+            label: "Unfold",
+            intent: { type: "subject.unfold" as const, id },
+          },
+          {
+            key: "unfold-all",
+            label: "Unfold everything inside",
+            intent: { type: "subject.unfold-all" as const, id },
+          },
+        ]
+      : [
+          {
+            key: "fold",
+            label: "Fold",
+            intent: { type: "subject.fold" as const, id },
+          },
+        ];
+  return [
+    {
+      key: "fold",
+      scope: "view",
+      label: "Fold",
+      destructive: false,
+      items,
+    },
+  ];
+};
+
 const subjectMenu = (
   id: string,
   context: ContextMenuContext,
@@ -302,6 +400,7 @@ const subjectMenu = (
       membershipGroup(id, context),
       context,
     ),
+    ...foldGroup(id, context),
     {
       key: "model",
       scope: "model",
@@ -410,6 +509,22 @@ const canvasMenu = (
           label: "Export PNG",
           intent: { type: "canvas.export-png" },
         },
+        // Only where something can actually fold: an item that could only ever
+        // do nothing is worse than no item (#255).
+        ...(context.containerIds !== undefined && context.containerIds.size > 0
+          ? [
+              {
+                key: "canvas.fold-all",
+                label: "Fold every instance",
+                intent: { type: "canvas.fold-all" as const },
+              },
+              {
+                key: "canvas.unfold-all",
+                label: "Unfold everything",
+                intent: { type: "canvas.unfold-all" as const },
+              },
+            ]
+          : []),
       ],
     },
     {
@@ -512,6 +627,11 @@ const modelRowMenu = (
     // The rail's own answer to "add this one to the view I am looking at",
     // which is what the design draws as a drag from this tree onto the canvas.
     ...membershipGroup(id, context),
+    // Folding has to be reachable HERE and not only from the canvas (#473,
+    // review F17 on #309): the rail is DOM and the canvas is not, so a
+    // keyboard or screen-reader user has no other way to shut a box, and an
+    // automated journey has nothing to drive.
+    ...foldGroup(id, context),
     {
       key: "model",
       scope: "model",

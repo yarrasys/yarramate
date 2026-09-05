@@ -1,5 +1,54 @@
 # Changelog
 
+## Unreleased
+
+### A pattern instance can draw as one box
+
+A pattern instance drew as a scatter of member boxes. On a real reference model
+— 277 subjects, 431 relationships — nothing collapsed, so eight applications put
+102 of their members on the canvas as peers of everything else, and the
+structure the pattern already knows was invisible at the grain a reader wants
+(#473).
+
+**Folding** makes an instance one node carrying its members inside it, with the
+edges into and out of them lifted onto the box, merged per kind and ordered pair
+and labelled `kind ×n`. On that reference it takes 277 top-level boxes to
+**172**, and its Landscape view from 157 subjects to **73**.
+
+What a box contains is the view's nesting plus the instance's pattern slots — a
+member bound in exactly one instance whose slot wiring is `owned` or `unwired`,
+never `context`. A context slot names what an instance USES rather than what it
+holds, and folding those would swallow half the landscape into whichever box
+referenced it. Rulings never fold as nodes: a policy is not machinery, and one
+is routinely shared.
+
+New and optional, so nothing that reads today breaks:
+
+- `presentation.fold: 'instances' | 'none'` on a view, defaulting to `none`
+- `folded` / `unfolded` on the layout sidecar, written with the positions in one
+  document — still `visual-layout/v1`, because the addition is optional and a v2
+  would make every reader branch for a field it can simply not find
+- `PatternMembership.wiring: 'owned' | 'context' | 'unwired'`, read from the
+  pattern so it holds whether or not the slot is bound
+- `foldTree` / `foldGraph` on `yarramate/adapter/visual-graph`, for a host that
+  never renders but still has to say what is inside a box
+
+The properties column gains a read-only **Slots** section listing what an
+instance holds by slot, with context slots marked — they are the one bound kind
+that does not fold inside the box — shared parts counted, and vacancies as "to
+decide", or "to decide — required" where the model does not stand up without
+one. The rail marks a folded row with a chevron and the count it swallowed,
+because the rail is where a reader looks when the canvas has hidden something.
+
+**One behaviour change beyond folding.** Assignment nesting now reads CORE
+kinds, and a service IS nested when the source is an interface, because exposure
+is the opposite relation to implementation. The rule this replaces tested the
+profile kind's LABEL, so a profile that named a service `mule-api-operation`
+nested while a plain `applicationService` beside it did not — one relation drawn
+two ways depending on what somebody called it. Measured over this repository's
+own model before adopting: 362 subjects, 47 assignment edges, **zero** verdict
+changes across all 22 authored views. See ADR 0143.
+
 ## 1.19.1
 
 ### A profile's kinds no longer have to be declared parent-first

@@ -149,6 +149,30 @@ export function openQuestionsBadgeUri(count: number): string {
   return toDataUri(openQuestionsBadgeSvg(count))
 }
 
+/**
+ * The chip a FOLDED box wears, saying how many subjects are shut inside it
+ * (#473). A right-pointing triangle and a count, because the affordance and
+ * the quantity are one thing: "there are nineteen in here, and this opens".
+ *
+ * `count` is what the VIEW shows inside the box, so a box whose members this
+ * view never selected draws nothing at all rather than a lying zero.
+ */
+function foldChipSvg(count: number): string {
+  const glyph = count > 99 ? '99+' : String(count)
+  const width = 12 + glyph.length * 4
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} 12" width="${width}" height="12">` +
+    `<rect x="0" y="0" width="${width}" height="12" rx="3" fill="${INK}"/>` +
+    `<path d="M4 3.5 L7.5 6 L4 8.5 Z" fill="#ffffff"/>` +
+    `<text x="${width - 3}" y="6.5" font-size="7" font-weight="bold" fill="#ffffff" text-anchor="end" dominant-baseline="middle">${glyph}</text>` +
+    `</svg>`
+  )
+}
+
+export function foldChipUri(count: number): string {
+  return toDataUri(foldChipSvg(count))
+}
+
 // `owner` is a qualified ref (`document#localId`, e.g.
 // "yarramate-product#yarramate-maintainers" - the one owner this repo's own
 // graph declares, per the plan's Task 6 grounding). Initials come from the
