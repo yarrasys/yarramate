@@ -61,7 +61,6 @@ const badges = {
   showLifecycle: true,
   showEvidence: true,
   showOwnership: false,
-  showConstraints: false,
 } as const
 
 const documentInput = {
@@ -317,7 +316,6 @@ describe('QueryPanel', () => {
         showLifecycle: true,
         showEvidence: true,
         showOwnership: false,
-        showConstraints: false,
         showNudges: true,
         onTogglePresentation: vi.fn(),
         onToggleOpen: vi.fn(),

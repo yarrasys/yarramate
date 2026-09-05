@@ -1,5 +1,47 @@
 # Changelog
 
+## Unreleased
+
+### Rulings as rows is withdrawn
+
+`presentation.showConstraints` shipped in 1.22.0 and never drew a row, on any
+path. It is **removed** rather than fixed under pressure: the schema field, the
+projection field, the view-query checkbox and the canvas support are all gone,
+and a query that names it is refused by the schema again.
+
+The derivation was never the problem. What was wrong is that rows were built by
+REBUILDING the element set, and a rebuild drops everything the canvas had
+applied to it: the 82 hidden rulings stayed on screen, the fold and the focus
+filter were lost, a fold afterwards wiped the rows, and on an open container the
+rows drew at the compound's label position two or three lines deep over the
+edges around them. Found by the ApertureX session in a browser, first on the
+published 1.22.0 bytes and then again on the first fix.
+
+It returns as element STATE applied in place, the way a fold is, with the box
+widening to its longest row. ADR 0145 carries the design and the reason each
+part of the first attempt failed. **Nothing that authored `showConstraints`
+exists**: no release of it was adopted.
+
+### A change of nesting redraws the containment
+
+Switching to a view that declares a different nesting vocabulary drew the
+PREVIOUS view's containment. No effect depended on `nesting`, so the canvas
+re-rendered and rebuilt nothing. **True since per-view nesting shipped**, and
+unreported until it came out of the row work.
+
+Measured on the ApertureX reference after the fix: `[composition]` nests 70
+subjects in 57 containers, `[composition, assignment]` nests 120 in 61, and
+switching back returns to 70.
+
+The element effect now depends on every input it passes to the builder.
+`folded` stays deliberately absent, because a fold rebuilds through its own
+effect with the reader's eye anchored on the box they clicked.
+`test/graph-canvas-effect-deps.test.ts` reads the source and refuses an input to
+`graphToElements` the effect does not depend on, in both directions. This is the
+third time in the fold programme that a feature passed its own tests and did
+nothing in the product, so the check is derived from the mechanism rather than
+from the instance.
+
 ## 1.22.0
 
 ### A member held only inside one box now folds into it

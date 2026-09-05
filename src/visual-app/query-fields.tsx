@@ -235,7 +235,6 @@ export type PresentationFlag =
   | 'showLifecycle'
   | 'showEvidence'
   | 'showOwnership'
-  | 'showConstraints'
   | 'showNudges'
 
 /** The checkbox's onChange handler, extracted so it is directly testable in
@@ -358,14 +357,12 @@ export function PresentationToggles({
   showLifecycle,
   showEvidence,
   showOwnership,
-  showConstraints,
   showNudges,
   onTogglePresentation,
 }: {
   readonly showLifecycle: boolean
   readonly showEvidence: boolean
   readonly showOwnership: boolean
-  readonly showConstraints: boolean
   readonly showNudges: boolean
   readonly onTogglePresentation: (flag: PresentationFlag, value: boolean) => void
 }) {
@@ -407,23 +404,6 @@ export function PresentationToggles({
           }
         />
         Ownership badges
-      </label>
-      {/* Not a badge: this one moves the NODE. A bound ruling becomes a row
-          inside the instance that holds it rather than a box of its own
-          (#473 phase 3, ADR 0145). It sits here because it is the same kind of
-          choice to a reviewer - per view, saved with the view, never a
-          changeset - and the alternative was a fourth place to look. */}
-      <label className="filter-checkbox-option">
-        <input
-          type="checkbox"
-          checked={showConstraints}
-          onChange={(event) =>
-            presentationToggleHandler(onTogglePresentation, 'showConstraints')(
-              event.currentTarget.checked,
-            )
-          }
-        />
-        Constraints as rows
       </label>
       {/* Workspace presentation only: unlike the three above, this flag is
           never written into a view document's `presentation` - a saved view

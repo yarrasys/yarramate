@@ -170,10 +170,6 @@
         "showOwnership": {
           "type": "boolean"
         },
-        "showConstraints": {
-          "description": "Whether this view draws a bound RULING as a row inside the instance that holds it rather than as a node of its own (#473 phase 3, ADR 0145). A constraint filling an unwired slot of a visible instance becomes a line in that instance's label block, carrying its slot, its name and its RULER, and its association edge to the owner is hidden with it. Constraints nothing binds stay nodes: a requirement with no holder has no box to sit in. Presentation only, exactly like the three toggles above it: the model, the query and the selected set are identical either way, and a reader turns it off to get the boxes back.",
-          "type": "boolean"
-        },
         "notation": {
           "enum": ["archimate"]
         },

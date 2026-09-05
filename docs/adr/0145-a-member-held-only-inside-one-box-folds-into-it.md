@@ -83,7 +83,40 @@ working rather than an anomaly.
 
 Swept this repository's own model: **22 views, zero containment changes.**
 
-## Rulings as rows
+## Rulings as rows: shipped in 1.22.0, WITHDRAWN in 1.22.1
+
+**The design below stands. The implementation did not, and the feature is out of
+the package until it is rebuilt.**
+
+`presentation.showConstraints` shipped in 1.22.0 and never drew a row, on any
+path. The ApertureX session found it in a browser on the published bytes, then
+found three more faults in the first fix. The derivation module was correct
+throughout, verified against a real compiled frame: 23 instances with rows, 82
+hidden nodes, 82 hidden edges. **Everything that was wrong was in how the canvas
+applied it**, and all of it comes from one mistaken decision: rows were built by
+REBUILDING the element set.
+
+- The rebuild never re-applied `applyFilter`, so the 82 hidden rulings stayed on
+  screen and the fold and the focus filter were both dropped. Toggling under a
+  fold showed the members again while their lifted edges were still drawn.
+- The fold effect rebuilt without the rows argument, so any fold wiped them, and
+  a view that opened folded showed none at all.
+- On an open container the rows drew at the compound's label position at the
+  default label width, wrapping two or three lines and overlapping the edges
+  around them. A compound's height comes from its children, so the per-node
+  height did nothing there.
+
+**When it returns it is element STATE, applied in place like `folded`**: an
+effect that mutates the existing elements, hides the rulings through the same
+visibility predicate the fold and the filter use, and never rebuilds. The fold
+relabel and the rows compose through one label function, so whichever runs last
+cannot erase the other. **The box widens to its longest row** (Nabeel,
+2026-09-05), because the ruler is the measured reason the row exists and a
+tooltip is invisible in an export.
+
+The design that follows is unchanged and is what to build against.
+
+## Rulings as rows, the design
 
 A bound ruling is a box carrying one association edge. On the reference there
 are 82 of them, and drawing them as boxes is what takes the whole model to 173.

@@ -4,11 +4,6 @@ import cytoscape from 'cytoscape'
 import type { Core, CollectionReturnValue, ElementDefinition, NodeCollection, NodeSingular } from 'cytoscape'
 import elk from 'cytoscape-elk'
 import { spansNesting } from './nesting-span.js'
-import {
-  constraintRowLabel,
-  constraintRowsOf,
-  type ConstraintRowsResult,
-} from './constraint-rows.js'
 import type {
   CanvasGraph,
   CanvasNode,
@@ -72,10 +67,6 @@ const DEFAULT_BORDER = '#999999'
 // tradeoff diagram tools make for uniform node sizing.
 const NODE_WIDTH = 170
 const NODE_HEIGHT = 50
-/** One ruling row inside a box (#473 phase 3). Measured 13-18 rows per
- * application on the reference, so a box that states rules is visibly taller
- * than one that does not, which is the point of drawing them at all. */
-const ROW_HEIGHT = 14
 const LABEL_MAX_TEXT_WIDTH = 150
 
 // Edge labels are free-floating text at a route midpoint with no box to sit
@@ -479,12 +470,7 @@ export function buildStylesheet(
         'border-width': 2,
         shape: 'roundrectangle',
         width: NODE_WIDTH,
-        // Per node where a box carries ruling rows, the fixed default
-        // everywhere else (#473 phase 3, ADR 0145).
-        height: (ele: NodeSingular) => {
-          const rowed = ele.data('rowHeight')
-          return typeof rowed === 'number' ? rowed : NODE_HEIGHT
-        },
+        height: NODE_HEIGHT,
         padding: '8px',
         label: 'data(wrapLabel)',
         'font-size': 12,
@@ -832,16 +818,7 @@ export function graphToElements(
     readonly folded: ReadonlySet<string>
     /** From the model frame; without them only view nesting contains anything. */
     readonly memberships?: readonly FoldMembership[]
-  },
-  /**
-   * Bound rulings drawn as ROWS instead of boxes (#473 phase 3, ADR 0145).
-   *
-   * Absent draws every ruling as a node, which is what the toggle being off
-   * means. The rulings it names keep their elements and are HIDDEN rather than
-   * removed, the same contract folded members have (review F4): turning the
-   * toggle back on has nothing to rebuild and `layout.save` still names them.
-   */
-  constraints?: ConstraintRowsResult
+  }
 ): ElementDefinition[] {
   // CORE kinds, not the authored ones (#473). The rule that decides whether an
   // assignment may nest reads what a subject IS, and a profile's
@@ -881,11 +858,8 @@ export function graphToElements(
     }
   }
   const folded = fold?.folded ?? new Set<string>()
-  const rowsByInstance = constraints?.rowsByInstance ?? new Map()
-  const rowedAway = constraints?.hiddenNodeIds ?? new Set<string>()
 
   const nodeElements = graph.nodes.map((node): ElementDefinition => {
-    const constraintRows = rowsByInstance.get(node.id) ?? []
     const parent = tree.parentOf.get(node.id)
     const inside = insideIds.get(node.id) ?? []
     const isFolded = folded.has(node.id)
@@ -893,15 +867,7 @@ export function graphToElements(
       data: {
         id: node.id,
         label: node.name,
-        // Rows join the LABEL, which is what makes them rows inside the box
-        // rather than a second thing floating near it (#473 phase 3).
-        wrapLabel:
-          constraintRows.length === 0
-            ? withWrapPoints(node.name)
-            : [
-                withWrapPoints(node.name),
-                ...constraintRows.map(constraintRowLabel),
-              ].join('\n'),
+        wrapLabel: withWrapPoints(node.name),
         kind: node.kind,
         kindLabel: node.kindLabel,
         // The node's resolved core-vocabulary kind, carried for the same
@@ -934,19 +900,6 @@ export function graphToElements(
         // nothing inside it in this view draws no chip at all.
         insideCount: inside.length,
         insideIds: inside,
-        // The rulings this box states, as rows in its label block. Only where
-        // there are any, so a box with none carries nothing extra.
-        ...(constraintRows.length === 0
-          ? {}
-          : {
-              constraintRows: constraintRows.map(constraintRowLabel),
-              // Per-node, because a box with 18 rows is not the height of one
-              // with none. Everything else keeps the fixed default.
-              rowHeight: NODE_HEIGHT + constraintRows.length * ROW_HEIGHT,
-            }),
-        // A ruling that became a row somewhere. Hidden by `applyFilter`, not
-        // dropped, so the toggle is reversible without a rebuild.
-        ...(rowedAway.has(node.id) ? { rowedAway: true } : {}),
         // `parent` is cytoscape's live nesting pointer and `applyFilter` moves
         // it as views come and go, so the model's own claim is kept alongside
         // it under a key cytoscape does not interpret. Without this the
@@ -990,11 +943,6 @@ export function graphToElements(
         label: edge.name ?? edge.kindLabel,
         wrapLabel: withWrapPoints(edge.name ?? edge.kindLabel),
         coreKindLabel: edge.coreKindLabel,
-        // An edge whose end became a row has nowhere to land. Marked rather
-        // than dropped, on the same terms as the node.
-        ...(constraints?.hiddenEdgeIds.has(edge.id) === true
-          ? { rowedAway: true }
-          : {}),
       },
       group: 'edges',
       ...(drawnPerPair.get(pairKey(edge))! > 1
@@ -1134,15 +1082,6 @@ export function applyFilter(
   // box asked not to see inside it, and a view naming a member cannot overrule
   // a gesture made after the view was chosen.
   //
-  // A ruling drawn as a ROW is not a box in this view (#473 phase 3). Hidden
-  // on the same terms as a folded member: the element stays, so turning the
-  // toggle off restores it without a rebuild.
-  for (const id of [...visibleNodeIds]) {
-    if (cy.getElementById(id).data('rowedAway') === true) {
-      visibleNodeIds.delete(id)
-    }
-  }
-
   // HIDDEN, never removed (review F4). The nodes stay in the graph with their
   // positions intact, so opening the box has nothing to rebuild and
   // `layout.save` still names every member. Removing them would lose exactly
@@ -1530,7 +1469,6 @@ interface GraphCanvasProps {
    * caller did before folding existed.
    */
   readonly folded?: ReadonlySet<string>
-  readonly showConstraints?: boolean
   readonly memberships?: readonly FoldMembership[]
   readonly activeViewId: string
   /**
@@ -1594,7 +1532,6 @@ export function GraphCanvas({
   openQuestionCounts,
   folded,
   memberships,
-  showConstraints,
 }: GraphCanvasProps): React.ReactElement {
   const containerRef = useRef<HTMLDivElement>(null)
   const cyRef = useRef<Core | null>(null)
@@ -1674,13 +1611,10 @@ export function GraphCanvas({
 
     const cy = cytoscape({
       container: containerRef.current,
-      elements: graphToElements(
-        graph,
-        nesting,
-        openQuestionCounts,
-        { folded: folded ?? new Set(), memberships },
-        constraintRowsOf(graph, memberships, showConstraints === true)
-      ),
+      elements: graphToElements(graph, nesting, openQuestionCounts, {
+        folded: folded ?? new Set(),
+        memberships,
+      }),
       // Multi-select, so fold and unfold can act on a set (#473). Additive on
       // shift and by box drag; a single click still replaces the selection,
       // which is what every existing gesture assumes.
@@ -1859,22 +1793,39 @@ export function GraphCanvas({
     if (isInitialSyncRef.current) {
       isInitialSyncRef.current = false
     } else {
-      const elements = graphToElements(
-        graph,
-        nesting,
-        openQuestionCounts,
-        { folded: folded ?? new Set(), memberships },
-        constraintRowsOf(graph, memberships, showConstraints === true)
-      )
+      const elements = graphToElements(graph, nesting, openQuestionCounts, {
+        folded: folded ?? new Set(),
+        memberships,
+      })
       cyRef.current.elements().remove()
       cyRef.current.add(elements)
     }
 
     runLayout(cyRef.current, direction)
-    // `openQuestionCounts` is derived from the same model frame as `graph`,
-    // so its identity moves exactly when the graph's does - listed for
-    // honesty, never an extra rerun.
-  }, [graph, openQuestionCounts])
+    // EVERY input passed to `graphToElements` above, because an input this
+    // effect reads and does not depend on cannot rebuild anything: the
+    // component re-renders with the new prop and the elements on screen stay
+    // the old ones.
+    //
+    // `nesting` was exactly that, and had been since per-view nesting shipped:
+    // switching to a view declaring a different nesting vocabulary redrew the
+    // PREVIOUS view's containment, and nobody had reported it. Measured on the
+    // ApertureX reference after the fix: `[composition]` nests 70 subjects in
+    // 57 containers, `[composition, assignment]` nests 120 in 61, and
+    // switching back returns to 70.
+    //
+    // `openQuestionCounts` is derived from the same model frame as `graph`, so
+    // its identity moves exactly when the graph's does - listed for honesty,
+    // never an extra rerun. `memberships` and `nesting` are the same shape:
+    // stable references from state, `nesting` guarded by `sameNesting` in the
+    // reducer.
+    //
+    // `folded` is deliberately ABSENT. A fold rebuilds through its own effect
+    // below, which lays out with the reader's eye anchored on the box they
+    // just clicked; routing it here would relayout the whole canvas instead,
+    // and a rebuild here does not re-apply the fold or the filter at all.
+    // `test/graph-canvas-effect-deps.test.ts` pins both halves.
+  }, [graph, openQuestionCounts, nesting, memberships])
 
   // A FOLD change is an element-set change, so a fit alone will not do: the
   // graph has to be placed again (#473). But the reader's eye is on the box
