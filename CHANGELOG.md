@@ -59,6 +59,23 @@ The rule is constraint LINEAGE and slot admission together, never "appears as
 a slot kind". `dataObject` is a slot kind on that reference and is a
 first-class thing to draw.
 
+### Dropping a pattern opens a form for its parts
+
+Picking a pattern from the palette opens an instance form instead of the
+subject form: they ask different questions, and a pattern drafted as a bare
+subject would mint an instance with every slot empty.
+
+The form asks for the slots the pattern declares, in the order it declared
+them. Each slot offers the existing subjects its `admits` allows, plus **New…**
+to mint a child there and then. A required slot blocks staging; a context slot
+is labelled, because it is the one row whose subject will not fold inside the
+box. The wires the compiler will mint are previewed read-only.
+
+It stages **one changeset**: the minted children first, then the instance whose
+`parts` names them. Every minted id is reserved as it is proposed, so two slots
+filled with the same name do not slug to the same id and have the second
+silently replace the first.
+
 ### The standalone editor accepts the filter its own browser sends
 
 **A defect shipped in 1.21.0 and live through 1.22.1.** `nesting` was added to

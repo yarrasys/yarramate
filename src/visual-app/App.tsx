@@ -44,6 +44,7 @@ import type {
   VisualChoicePresentPayload,
   VisualDiagnostic,
   VisualLayoutSavePayload,
+  VisualPatternOption,
   VisualViewOperation,
   VisualViewSummary,
 } from "../adapters/visual/protocol-contract.js";
@@ -72,6 +73,7 @@ import {
 import { ConnectionPanel } from "./connection-panel.js";
 import { faultedSubjects } from "./faults.js";
 import { KindPalette } from "./kind-palette.js";
+import { InstanceDraftPanel } from "./instance-draft-panel.js";
 import { SubjectDraftPanel } from "./subject-draft-panel.js";
 import { ConfirmDialog } from "./confirm-dialog.js";
 import { PromptDialog } from "./prompt-dialog.js";
@@ -264,6 +266,7 @@ const DiagramWorkspace = ({
   onDraftStage,
   draftingSubject,
   draftInitialKind,
+  draftPattern,
   onKindDrop,
   onDraftSubject,
   onDraftSubjectClose,
@@ -320,6 +323,13 @@ const DiagramWorkspace = ({
   /** The kind the open draft was seeded with - a palette pick (#295) - or
    * undefined for a draft opened plain. */
   readonly draftInitialKind: string | undefined;
+  /**
+   * The pattern the drafted kind IS, when it is one (#473 phase 4). Present
+   * means the instance form opens instead of the subject form: they ask
+   * different questions, and a pattern drafted as a bare subject would mint an
+   * instance with every slot empty.
+   */
+  readonly draftPattern: VisualPatternOption | undefined;
   /** A kind dropped from the palette onto the canvas (#295). */
   readonly onKindDrop: (
     kindLabel: string,
@@ -456,7 +466,29 @@ const DiagramWorkspace = ({
             )}
           </div>
         )}
-        {!draftingSubject || state.model === null ? null : (
+        {!draftingSubject || state.model === null || draftPattern === undefined ? null : (
+          <InstanceDraftPanel
+            // Keyed like the subject form: picking another pattern while this
+            // one is open is a fresh draft, not a silent no-op (ADR 0116).
+            key={`pattern:${draftPattern.kind}`}
+            graph={state.model.graph}
+            pattern={draftPattern}
+            documents={state.model.documents}
+            reservedIds={stagedSubjectIds(state.pendingChangeset.operations)}
+            defaultDocument={
+              (selectedId === null
+                ? undefined
+                : state.model.graph.nodes.find(
+                    (node) => node.id === selectedId,
+                  )?.document) ?? state.model.documents[0] ?? ""
+            }
+            // The same handlers the subject form uses: staging an instance is
+            // staging concepts, and a second path would be a second grammar.
+            onStage={onDraftStage}
+            onCancel={onDraftSubjectClose}
+          />
+        )}
+        {!draftingSubject || state.model === null || draftPattern !== undefined ? null : (
           <SubjectDraftPanel
             // Keyed on the seed: a kind picked up while the form is already
             // open is a fresh draft, re-seeded, rather than a pick that
@@ -1896,6 +1928,11 @@ export const App = ({
           }}
           draftingSubject={workspace.draftingSubject}
           draftInitialKind={draftKind}
+          // Resolved from the frame's own vocabulary rather than guessed from
+          // the label: a kind is a pattern because the workspace says so.
+          draftPattern={(state.model?.vocabulary.patterns ?? []).find(
+            (option) => option.label === draftKind,
+          )}
           onKindDrop={(kindLabel) => draftWithKind(kindLabel)}
           onDraftSubject={() => {
             // The plain opener starts with no kind chosen, whatever a palette

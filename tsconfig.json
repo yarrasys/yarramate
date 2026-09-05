@@ -30,6 +30,7 @@
     "test/graph-canvas-nesting.test.ts",
     "test/graph-canvas-fold.test.ts",
     "test/kind-palette-patterns.test.ts",
+    "test/instance-draft-panel.test.ts",
     "test/projection-instances.test.ts",
     "test/connection-panel.test.ts",
     "test/subject-draft-panel.test.ts",
