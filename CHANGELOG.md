@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.23.0
 
 ### A pattern's resolved shape is a public type (PR #482)
 
