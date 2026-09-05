@@ -85,6 +85,7 @@ import {
   type ContextMenuTarget,
 } from "./context-menu-model.js";
 import { stageRelationshipScalarChange } from "./subject-form.js";
+import { slotsSectionFor, slotRowLabel } from "./slots-model.js";
 import { describeDeletion, draftDeletion } from "../deletion-drafting.js";
 import { stagedSubjectIds } from "../relationship-drafting.js";
 
@@ -783,11 +784,64 @@ const SelectedSubjectInspector = ({
         )
       ) : null}
 
+      {node === undefined ? null : <SlotsSection id={node.id} model={model} />}
+
       <ExpandableDescription
         text={subject.description}
         expanded={expanded}
         onToggle={onToggleDescription}
       />
+    </section>
+  );
+};
+
+/**
+ * What a pattern instance holds, and what it has not decided (#473).
+ *
+ * READ-ONLY, and deliberately: binding a part is a model edit `apply` already
+ * performs through `update-concept` with `parts` (#448), and a second way in
+ * would be a second spelling of one operation. This says what is there and
+ * leaves the deciding to the surface that already does it.
+ *
+ * Draws NOTHING for a subject that is not a pattern instance — an empty
+ * "Slots" heading would claim "this has no parts", which is a different and
+ * wrong thing to say.
+ */
+const SlotsSection = ({
+  id,
+  model,
+}: {
+  readonly id: string;
+  readonly model: VisualRenderedModel;
+}) => {
+  const slots = slotsSectionFor(id, model.memberships, model.vacancies);
+  if (slots === null) return null;
+  return (
+    <section className="subject-slots" aria-labelledby="slots-heading">
+      <h3 id="slots-heading" className="subject-slots-heading">
+        Slots
+        <span className="tree-count">
+          {slots.vacantCount === 0
+            ? `${slots.boundCount}`
+            : `${slots.boundCount} of ${slots.boundCount + slots.vacantCount}`}
+        </span>
+      </h3>
+      <dl className="subject-slots-list">
+        {slots.rows.map((row) => (
+          <div key={row.slot} className="subject-slot-row">
+            <dt className="subject-slot-name">{row.slot}</dt>
+            <dd
+              className={
+                row.member === null
+                  ? "subject-slot-value subject-slot-vacant"
+                  : "subject-slot-value"
+              }
+            >
+              {slotRowLabel(row)}
+            </dd>
+          </div>
+        ))}
+      </dl>
     </section>
   );
 };

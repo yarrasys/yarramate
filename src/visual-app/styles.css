@@ -547,6 +547,64 @@ body {
   white-space: nowrap;
 }
 
+/* What a pattern instance holds, in the properties column (#473). A
+   definition list, because that is what it is: a slot name and what fills it.
+   A vacancy is quiet rather than red - "to decide" is a normal state for a
+   model still being written, not a fault. */
+.subject-slots {
+  margin-top: 12px;
+}
+
+.subject-slots-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 0 4px;
+  font-family: var(--utility);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--quiet);
+}
+
+.subject-slots-list {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 10px;
+  row-gap: 2px;
+  font-size: 12px;
+}
+
+.subject-slot-row {
+  display: contents;
+}
+
+.subject-slot-name {
+  font-family: var(--utility);
+  color: var(--quiet);
+}
+
+.subject-slot-value {
+  margin: 0;
+}
+
+.subject-slot-vacant {
+  color: var(--quiet);
+  font-style: italic;
+}
+
+/* A folded box in the rail (#473). The chevron sits before the label rather
+   than after it, so a column of rows reads as a list of openable things at a
+   glance; the count uses `.tree-count` beside it, right-aligned with every
+   other number in the column. */
+.tree-fold {
+  flex: none;
+  font-size: 9px;
+  color: var(--quiet);
+  line-height: 1;
+}
+
 .tree-count {
   flex: none;
   font-family: var(--utility);

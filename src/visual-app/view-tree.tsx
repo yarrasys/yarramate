@@ -402,7 +402,11 @@ export function ViewTree({
                             className={`tree-row tree-subject tree-depth-2${
                               subject.inView ? "" : " tree-row-quiet"
                             }`}
-                            title={`${subject.name} — ${subject.kindLabel}`}
+                            title={
+                              subject.foldedCount === null
+                                ? `${subject.name} — ${subject.kindLabel}`
+                                : `${subject.name} — ${subject.kindLabel}, folded over ${subject.foldedCount} ${subject.foldedCount === 1 ? "subject" : "subjects"}`
+                            }
                             onClick={() => onSelectSubject(subject.id)}
                             onContextMenu={menuHandler(
                               { kind: "subject", id: subject.id },
@@ -410,7 +414,21 @@ export function ViewTree({
                             )}
                           >
                             <LayerSwatch layer={subject.layer} />
+                            {/* The rail is where a reader looks when the
+                                canvas has hidden something, so a folded box
+                                says here what it swallowed (#473). */}
+                            {subject.foldedCount === null ? null : (
+                              <span className="tree-fold" aria-hidden="true">
+                                ▸
+                              </span>
+                            )}
                             <span className="tree-label">{subject.name}</span>
+                            {subject.foldedCount === null ||
+                            subject.foldedCount === 0 ? null : (
+                              <span className="tree-count">
+                                {subject.foldedCount}
+                              </span>
+                            )}
                             {subject.inView ? null : (
                               <span className="tree-count">not in view</span>
                             )}

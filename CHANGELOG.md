@@ -33,6 +33,13 @@ New and optional, so nothing that reads today breaks:
 - `foldTree` / `foldGraph` on `yarramate/adapter/visual-graph`, for a host that
   never renders but still has to say what is inside a box
 
+The properties column gains a read-only **Slots** section listing what an
+instance holds by slot, with context slots marked — they are the one bound kind
+that does not fold inside the box — shared parts counted, and vacancies as "to
+decide", or "to decide — required" where the model does not stand up without
+one. The rail marks a folded row with a chevron and the count it swallowed,
+because the rail is where a reader looks when the canvas has hidden something.
+
 **One behaviour change beyond folding.** Assignment nesting now reads CORE
 kinds, and a service IS nested when the source is an interface, because exposure
 is the opposite relation to implementation. The rule this replaces tested the

@@ -96,6 +96,16 @@ export interface ModelSubjectRow {
    * ones it holds that the active view leaves out.
    */
   readonly inView: boolean;
+  /**
+   * How many subjects this one holds inside it when the active view draws it
+   * FOLDED, or `null` where it is not a folded box (#473).
+   *
+   * The rail is where a reader looks when the canvas has hidden something, so
+   * a folded instance has to say what it swallowed. `null` rather than `0`:
+   * "not a folded box" and "a folded box holding nothing" are different, and
+   * only the second should draw a count.
+   */
+  readonly foldedCount: number | null;
 }
 
 export interface ModelTreeGroup {
@@ -304,12 +314,21 @@ export interface ModelTreeInput {
    */
   readonly inViewIds: ReadonlySet<string> | null;
   readonly filterText: string;
+  /**
+   * What the active view draws folded, and what each of those boxes holds
+   * (#473). Optional, so every existing caller keeps compiling: absent means
+   * nothing is folded, which is what the rail said before folding existed.
+   */
+  readonly folded?: ReadonlySet<string>;
+  readonly insideCounts?: ReadonlyMap<string, number>;
 }
 
 export const buildModelTree = ({
   nodes,
   inViewIds,
   filterText,
+  folded,
+  insideCounts,
 }: ModelTreeInput): readonly ModelTreeGroup[] => {
   const needle = normalizeFilterText(filterText);
   const byFolder = new Map<string, ModelSubjectRow[]>();
@@ -344,6 +363,10 @@ export const buildModelTree = ({
       layer,
       folder,
       inView: inViewIds === null || inViewIds.has(node.id),
+      // `null` rather than `0`: "not a folded box" and "a folded box holding
+      // nothing" are different, and only the second should draw a count.
+      foldedCount:
+        folded?.has(node.id) === true ? (insideCounts?.get(node.id) ?? 0) : null,
     };
     const into = folder === null ? byLayer : byFolder;
     const existing = into.get(group);
