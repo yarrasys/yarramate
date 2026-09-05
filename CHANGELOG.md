@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+### A kind states its display name beside its id (#473)
+
+`VisualKindOption.name` shipped in 1.23.0 carrying the display name a profile
+authored, and **nothing read it**. Not one consumer anywhere in the app: it was
+added to the wire, typechecked, tested, and never connected to a renderer. A
+pack that authored `Mule API interface` saw it nowhere, and the properties
+panel offered a bare `mule-api` to a consultant who has no way to know what
+that means.
+
+Both selects and both fact rows in the properties panel now read
+`Mule API interface (mule-api)`: the name a reader needs, then the id the
+document will actually carry. A kind whose profile authored no name - every
+core kind - is unchanged, and a name identical to its own id does not repeat.
+
+The VALUE a select carries is untouched and stays the bare label, because that
+is what a staged operation writes and `apply` refuses anything else as an
+unknown kind (YM401). Pinned by its own test; the mutation that makes the value
+the display text fails it.
+
+Found by the ApertureX session, reading a mounted host rather than believing
+this session's claim about where the name reached.
+
 ### Rulings as rows is withdrawn for good (#473)
 
 `presentation.showConstraints` shipped inert in 1.22.0, was withdrawn in 1.22.1,

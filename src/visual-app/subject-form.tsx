@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { kindLabelOf } from '../kind-label.js'
+import { kindLabelOf, kindOptionText } from '../kind-label.js'
 import { relationshipKindOffer } from './relationship-kind-options.js'
 import type { CanvasEdge, CanvasNode } from '../graph-projection.js'
 import type { VisualRenderedModel } from '../adapters/visual/wire.js'
@@ -701,6 +701,14 @@ const MODE_OPTIONS = [
 const kindLabelFor = (kind: string, options: readonly VisualKindOption[]): string =>
   options.find((option) => option.id === kind)?.label ?? kindLabelOf(kind)
 
+// What a READER sees, which is not what the select CARRIES. `kindLabelFor`
+// above resolves the value a staged operation writes and must stay the bare
+// label; this one resolves the text beside it.
+const kindTextFor = (kind: string, options: readonly VisualKindOption[]): string => {
+  const option = options.find((candidate) => candidate.id === kind)
+  return option === undefined ? kindLabelOf(kind) : kindOptionText(option)
+}
+
 export interface ConceptFormProps {
   readonly node: CanvasNode
   readonly model: VisualRenderedModel
@@ -716,7 +724,7 @@ export const ConceptForm = ({ node, model, operations, onStageChange }: ConceptF
   // compile derived - which is the one the canvas and the inspector show.
   const id = node.localId
   const stage = (ops: readonly YarramateOperation[]) => ops.forEach(onStageChange)
-  const kindOptions = model.vocabulary.conceptKinds.map((option) => ({ value: option.label, label: option.label }))
+  const kindOptions = model.vocabulary.conceptKinds.map((option) => ({ value: option.label, label: kindOptionText(option) }))
   const currentKind = kindLabelFor(effective.kind, model.vocabulary.conceptKinds)
 
   return (
@@ -824,7 +832,7 @@ export const ConceptFacts = ({
       <span className="subject-form-label">Identity</span>
       <code>{node.id}</code>
     </div>
-    <FactRow label="Kind" value={kindLabelFor(node.kind, model.vocabulary.conceptKinds)} />
+    <FactRow label="Kind" value={kindTextFor(node.kind, model.vocabulary.conceptKinds)} />
     <FactRow label="Name" value={node.name} />
     <FactRow label="Status" value={node.status ?? ''} />
     <FactRow label="Owner" value={node.owner ?? ''} />
@@ -866,7 +874,7 @@ export const RelationshipFacts = ({
         <span className="subject-form-label">Identity</span>
         <code>{edge.id}</code>
       </div>
-      <FactRow label="Kind" value={kindLabelFor(edge.kind, model.vocabulary.relationshipKinds)} />
+      <FactRow label="Kind" value={kindTextFor(edge.kind, model.vocabulary.relationshipKinds)} />
       <FactRow label="From" value={titleOf(edge.from)} />
       <FactRow label="To" value={titleOf(edge.to)} />
       <FactRow label="Name" value={edge.name ?? ''} />
@@ -908,7 +916,7 @@ export const RelationshipForm = ({ edge, model, operations, onStageChange }: Rel
     currentKind,
   ).options.map((option) => ({
     value: option.label,
-    label: option.label,
+    label: kindOptionText(option),
   }))
   // Endpoints are refs, not addresses: `qualifyReference` leaves an already
   // qualified ref alone, so writing the canvas id keeps a cross-document

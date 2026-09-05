@@ -4,6 +4,7 @@ import type { CanvasGraph } from '../graph-projection.js'
 import type { YarramateOperation } from '../operations.js'
 import { draftConcept, proposeConceptId } from '../concept-drafting.js'
 import type { VisualKindOption } from '../adapters/visual/protocol-contract.js'
+import { kindOptionText } from '../kind-label.js'
 
 /**
  * Making a subject, the counterpart to the connection tool.
@@ -92,7 +93,7 @@ export const SubjectDraftPanel = ({
             // `apply` refuses the full identity as an unknown kind (`YM401`).
             // `subject-form.tsx` has always done this; this form did not.
             <option key={option.id} value={option.label}>
-              {option.label}
+              {kindOptionText(option)}
             </option>
           ))}
         </select>
