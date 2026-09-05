@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.23.1
 
 ### A staged slot binding shows on the row where it was made
 
