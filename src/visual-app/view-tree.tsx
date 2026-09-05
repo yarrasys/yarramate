@@ -183,6 +183,9 @@ export interface ViewTreeProps {
   readonly nodes: readonly CanvasNode[];
   /** What the canvas is drawing, or `null` when it is drawing everything. */
   readonly inViewIds: ReadonlySet<string> | null;
+  /** What the active view draws folded, and what each box holds (#473). */
+  readonly folded?: ReadonlySet<string>;
+  readonly insideCounts?: ReadonlyMap<string, number>;
   readonly filterText: string;
   readonly collapsed: ReadonlySet<string>;
   readonly onFilterChange: (text: string) => void;
@@ -207,6 +210,8 @@ export function ViewTree({
   activeViewId,
   nodes,
   inViewIds,
+  folded,
+  insideCounts,
   filterText,
   collapsed,
   onFilterChange,
@@ -238,6 +243,8 @@ export function ViewTree({
     nodes,
     inViewIds,
     filterText,
+    folded,
+    insideCounts,
   });
   const viewsOpen = !collapsed.has(VIEWS_ROOT_KEY);
   const modelOpen = !collapsed.has(MODEL_ROOT_KEY);

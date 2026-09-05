@@ -627,6 +627,11 @@ const modelRowMenu = (
     // The rail's own answer to "add this one to the view I am looking at",
     // which is what the design draws as a drag from this tree onto the canvas.
     ...membershipGroup(id, context),
+    // Folding has to be reachable HERE and not only from the canvas (#473,
+    // review F17 on #309): the rail is DOM and the canvas is not, so a
+    // keyboard or screen-reader user has no other way to shut a box, and an
+    // automated journey has nothing to drive.
+    ...foldGroup(id, context),
     {
       key: "model",
       scope: "model",

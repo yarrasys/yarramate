@@ -34,6 +34,8 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import type { NestingKind } from "../nesting.js";
+import type { PatternMembership } from "../compiler.js";
+import { foldTree } from "../fold-tree.js";
 import type { LayoutDirection } from "../layout-direction.js";
 import type { ProjectionQuery } from "../projection.js";
 import type { VisualRenderedModel } from "../adapters/visual/wire.js";
@@ -246,6 +248,8 @@ const DiagramWorkspace = ({
   waiting,
   layout,
   nesting,
+  folded,
+  memberships,
   direction,
   showLifecycle,
   showEvidence,
@@ -286,6 +290,13 @@ const DiagramWorkspace = ({
   readonly waiting: string | null;
   readonly layout: "layered";
   readonly nesting: readonly NestingKind[];
+  /**
+   * Which instances draw folded, resolved from the view's default and the
+   * reader's own toggles (#473), and the memberships that tell the canvas what
+   * is inside them.
+   */
+  readonly folded: ReadonlySet<string>;
+  readonly memberships?: readonly PatternMembership[];
   /** Which way the active view runs its layers (#274, ADR 0121). */
   readonly direction: LayoutDirection;
   readonly showLifecycle: boolean;
@@ -537,6 +548,8 @@ const DiagramWorkspace = ({
             matchedIds={state.activeFilter?.matchedIds ?? null}
             quickFilterText={state.quickFilterText}
             nesting={nesting}
+            folded={folded}
+            memberships={memberships}
             faultedIds={faultedSubjects(state.commitDiagnostics ?? [])}
             decorations={decorations}
             showLifecycle={showLifecycle}
@@ -1326,6 +1339,63 @@ export const App = ({
       ),
     [interrogation],
   );
+  // What contains what, and therefore which boxes CAN fold and what is inside
+  // each (#473). Derived here, once, from the same frame the canvas and the
+  // rail both read.
+  const containment = useMemo(() => {
+    const graph = state.model?.graph;
+    if (graph === undefined) {
+      return {
+        folded: new Set<string>(),
+        insideCounts: new Map<string, number>(),
+        insideIds: new Map<string, string[]>(),
+      };
+    }
+    const tree = foldTree({
+      nodes: graph.nodes.map((node) => ({
+        id: node.id,
+        kind: node.kind,
+        coreKind: node.coreKindLabel,
+      })),
+      edges: graph.edges,
+      memberships: state.model?.memberships ?? [],
+      nesting: workspace.nesting,
+    });
+    const insideCounts = new Map<string, number>();
+    const insideIds = new Map<string, string[]>();
+    for (const id of tree.parentOf.keys()) {
+      let ancestor = tree.parentOf.get(id);
+      const seen = new Set<string>([id]);
+      while (ancestor !== undefined && !seen.has(ancestor)) {
+        seen.add(ancestor);
+        insideCounts.set(ancestor, (insideCounts.get(ancestor) ?? 0) + 1);
+        const held = insideIds.get(ancestor);
+        if (held === undefined) insideIds.set(ancestor, [id]);
+        else held.push(id);
+        ancestor = tree.parentOf.get(ancestor);
+      }
+    }
+    // Shut when the view's default says so and the reader has not opened it,
+    // or when the reader shut it outright. Only ever a subject that HOLDS
+    // something: folding a leaf would draw a box over nothing.
+    const folded = new Set<string>();
+    for (const id of insideCounts.keys()) {
+      const shutByReader = workspace.folded.includes(id);
+      const openedByReader = workspace.unfolded.includes(id);
+      if (shutByReader || (workspace.foldMode === "instances" && !openedByReader)) {
+        folded.add(id);
+      }
+    }
+    return { folded, insideCounts, insideIds };
+  }, [
+    state.model,
+    workspace.nesting,
+    workspace.foldMode,
+    workspace.folded,
+    workspace.unfolded,
+  ]);
+  const foldedIds = containment.folded;
+
   // Read-only strips the sections that exist only to stage (#298, ADR 0117):
   // a palette that cannot create and a changes tray that cannot commit are
   // not "sections the host wants shown", whatever the list says. The filter
@@ -1417,6 +1487,15 @@ export const App = ({
           activeViewId: state.activeView,
           filtered: state.activeFilter !== null,
           membership: activeViewMembership(state),
+          // What can fold, what is folded, and what the reader has selected
+          // (#473). Without these the menu offers folding on subjects that
+          // hold nothing, and offers "Fold" on a box already shut.
+          folded: foldedIds,
+          containerIds: new Set(containment.insideCounts.keys()),
+          selectedIds:
+            workspace.selectedSubject === null
+              ? []
+              : [workspace.selectedSubject.id],
           ...(focusReturnLabelOf(state) === undefined
             ? {}
             : { focusReturnLabel: focusReturnLabelOf(state)! }),
@@ -1516,6 +1595,48 @@ export const App = ({
       // canvas is narrowed" and one way out (#407). `between` rather than
       // `connected`: the subjects ARE the neighbourhood, and connected would
       // expand from each of them again and make it two hops.
+      // Folding is a way of LOOKING: it writes to the layout sidecar, which is
+      // adapter-owned presentation state (ADR 0023), never to the model. So
+      // these dispatch and dismiss, and a read-only reviewer keeps them (#473).
+      case "subject.fold":
+      case "subject.unfold": {
+        dispatchWorkspace({ type: "fold.toggled", id: intent.id });
+        dispatchWorkspace({ type: "menu.dismissed" });
+        return;
+      }
+      case "subject.unfold-all": {
+        // The whole subtree, for a reader who wants the detail now: every
+        // folded box under this one opens with it, not just this one.
+        const inside = containment.insideIds.get(intent.id) ?? [];
+        dispatchWorkspace({
+          type: "fold.all",
+          folded: false,
+          ids: [intent.id, ...inside],
+        });
+        dispatchWorkspace({ type: "menu.dismissed" });
+        return;
+      }
+      case "selection.fold":
+      case "selection.unfold": {
+        for (const id of intent.ids) {
+          const shut = foldedIds.has(id);
+          if (shut !== (intent.type === "selection.fold")) {
+            dispatchWorkspace({ type: "fold.toggled", id });
+          }
+        }
+        dispatchWorkspace({ type: "menu.dismissed" });
+        return;
+      }
+      case "canvas.fold-all":
+      case "canvas.unfold-all": {
+        dispatchWorkspace({
+          type: "fold.all",
+          folded: intent.type === "canvas.fold-all",
+          ids: [...containment.insideCounts.keys()],
+        });
+        dispatchWorkspace({ type: "menu.dismissed" });
+        return;
+      }
       case "subject.focus":
       case "relationship.focus": {
         const graph = state.model?.graph ?? null;
@@ -1660,6 +1781,12 @@ export const App = ({
           stagedViewOperations={state.pendingChangeset.viewOperations}
           activeViewId={state.activeView}
           nodes={state.model?.graph.nodes ?? []}
+          // The rail is where a reader looks when the canvas has hidden
+          // something, so it is told the same fold the canvas was (#473),
+          // from the SAME derivation - two derivations would be two answers
+          // to one question.
+          folded={foldedIds}
+          insideCounts={containment.insideCounts}
           // What the canvas is drawing, which is the graph narrowed by the
           // standing filter's match set — never `state.model.graph`, which
           // holds every subject the workspace declares whatever is on screen.
@@ -1714,6 +1841,8 @@ export const App = ({
           waiting={waiting}
           layout={workspace.layout}
           nesting={workspace.nesting}
+          folded={foldedIds}
+          memberships={state.model?.memberships}
           direction={workspace.direction}
           decorations={decorations}
           connection={workspace.connection}
