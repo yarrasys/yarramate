@@ -1,5 +1,37 @@
 # Changelog
 
+## Unreleased
+
+### A member held only inside one box now folds into it
+
+**A behaviour change to the fold**, and the first in the programme that alters
+how an existing model draws.
+
+1.20.0 kept every shared subject outside a folded box, on the reasoning that two
+owners force a single-parent tree to pick one. That holds only where the owners
+sit in DIFFERENT boxes. Where both already sit under one there is nothing to
+pick, and the rule was costing real structure: on the ApertureX reference, 14 of
+the Landscape's 30 data objects sat outside the single application whose own
+parts were binding them (#473, ADR 0145).
+
+A member's holders are now every instance whose slots name it. One holder puts
+it in that holder, unchanged. Several put it in their lowest common ancestor,
+counting each holder as an ancestor of itself, so one holder inside another
+gives the outer holder. Holders with no common ancestor still leave the member
+outside. At least one binding must be `owned` or `unwired`, rulings still never
+fold, and a view's own nesting still wins.
+
+Measured on that reference, everything folded: the Landscape goes from **73
+boxes to 58** and 153 edges to 120; the whole model from 173 visible boxes to
+158, and 172 top-level to 157. Fifteen members newly fold, several onto a call
+or an interface rather than the application, because that is where their holders
+diverge. Swept this repository's own model: **22 views, zero changes.**
+
+One case improves as a side effect. A member that already contained its holder
+used to be placed anyway, closing a loop the cycle guard then broke by unnesting
+BOTH nodes, so the holder lost authored nesting it was entitled to. The
+placement is refused now, so no loop forms and the holder keeps its parent.
+
 ## 1.21.0
 
 ### A view can name an instance and get what it holds

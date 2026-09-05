@@ -222,6 +222,22 @@ export function nestingTree(
  * a straight-line ancestor of a cycle is still validly nested under its own
  * non-cyclic parent. Mutates `parentOf` and returns what it removed.
  */
+/** Whether `id` sits anywhere inside `ancestor` in the tree built so far. */
+const isDescendantOf = (
+  id: string,
+  ancestor: string,
+  parentOf: ReadonlyMap<string, string>,
+): boolean => {
+  const seen = new Set<string>([id])
+  let current = parentOf.get(id)
+  while (current !== undefined && !seen.has(current)) {
+    if (current === ancestor) return true
+    seen.add(current)
+    current = parentOf.get(current)
+  }
+  return false
+}
+
 function unnestCycles(parentOf: Map<string, string>): readonly string[] {
   const cycleMembers = new Set<string>()
   for (const start of parentOf.keys()) {
@@ -244,17 +260,63 @@ function unnestCycles(parentOf: Map<string, string>): readonly string[] {
 }
 
 /**
+ * The lowest node that contains every one of `ids`, counting each id as an
+ * ancestor of itself, or `undefined` when they do not share one.
+ *
+ * "Counting each id as an ancestor of itself" is the part that matters: where
+ * one holder already sits inside another, the answer is the outer holder rather
+ * than something above them both.
+ */
+const lowestCommonAncestor = (
+  ids: readonly string[],
+  parentOf: ReadonlyMap<string, string>,
+): string | undefined => {
+  const chainOf = (id: string): string[] => {
+    const chain: string[] = []
+    const seen = new Set<string>()
+    let current: string | undefined = id
+    while (current !== undefined && !seen.has(current)) {
+      seen.add(current)
+      chain.push(current)
+      current = parentOf.get(current)
+    }
+    return chain
+  }
+  const [first, ...rest] = ids
+  if (first === undefined) return undefined
+  const others = rest.map((id) => new Set(chainOf(id)))
+  // Walking the first chain from the node OUTWARDS makes the first hit the
+  // lowest by construction.
+  return chainOf(first).find((candidate) =>
+    others.every((chain) => chain.has(candidate)),
+  )
+}
+
+/**
  * The containment tree: what a view nests, plus what a pattern owns.
  *
- * A slot member joins the tree only when all three hold, and each condition is
- * a different way of getting the answer wrong:
+ * A slot member joins the tree only when all of these hold, and each condition
+ * is a different way of getting the answer wrong:
  *
- * - **Exclusive.** A subject bound into two instances has two owners, and a
- *   single-parent tree would silently pick one. Shared subjects stay outside.
- * - **`owned` or `unwired`, never `context`.** A context slot names something
- *   the instance USES and does not contain — the upstream API it calls, the
- *   plane it runs on. Folding those would swallow half the landscape into
- *   whichever box happened to reference it.
+ * - **Held inside one box.** A member's HOLDERS are every instance whose slots
+ *   name it. One holder puts the member in that holder. Several put it in their
+ *   lowest common ancestor, which is the level at which the holders diverge and
+ *   therefore the innermost box that contains all of them. Holders with no
+ *   common ancestor leave the member outside, because there is no one box it
+ *   sits within and a single-parent tree would have to pick.
+ *
+ *   This AMENDS ADR 0143's "Exclusive" rule, which kept every shared subject
+ *   outside (#473 phase 3, ADR 0145, Nabeel's decision of 2026-09-05). The
+ *   original reasoning was that two owners force a silent choice; it is only
+ *   true when the owners sit in different boxes. Where both already sit under
+ *   one box there is nothing to choose, and the old rule left 14 of the
+ *   reference Landscape's 30 data objects outside the single application whose
+ *   own parts were the things binding them.
+ * - **`owned` or `unwired`, never `context` alone.** A context slot names
+ *   something the instance USES and does not contain — the upstream API it
+ *   calls, the plane it runs on. Folding those would swallow half the landscape
+ *   into whichever box happened to reference it. At least one binding must be
+ *   `owned` or `unwired` for the member to fold at all.
  * - **Not a ruling.** See {@link RULING_CORE_KINDS}.
  *
  * A view's own nesting wins where both apply: the view is the more specific
@@ -275,16 +337,69 @@ export function foldTree(input: FoldInput): FoldTree {
     else instances.add(membership.instance)
   }
 
-  const parentOf = new Map(fromNesting.parentOf)
+  // Whether ANY of a member's bindings is one the instance holds it out by. A
+  // member bound only through context slots never folds, however many hold it.
+  const heldOutSomewhere = new Set<string>()
   for (const membership of input.memberships) {
-    if (parentOf.has(membership.member)) continue
-    if ((instancesOf.get(membership.member)?.size ?? 0) !== 1) continue
-    if (membership.wiring === 'context') continue
-    if (RULING_CORE_KINDS.has(coreKindOf(membership.member))) continue
-    // A node the input does not carry cannot be drawn inside anything.
-    if (!coreKindById.has(membership.member)) continue
-    if (membership.member === membership.instance) continue
-    parentOf.set(membership.member, membership.instance)
+    if (membership.wiring !== 'context') heldOutSomewhere.add(membership.member)
+  }
+
+  const parentOf = new Map(fromNesting.parentOf)
+
+  const candidates = [
+    ...new Set(
+      input.memberships
+        .map(({ member }) => member)
+        .filter(
+          (member) =>
+            // A view's own nesting already placed it, and the view wins.
+            !parentOf.has(member) &&
+            heldOutSomewhere.has(member) &&
+            !RULING_CORE_KINDS.has(coreKindOf(member)) &&
+            // A node the input does not carry cannot be drawn inside anything.
+            coreKindById.has(member) &&
+            // Something that holds itself is not held by anything.
+            instancesOf.get(member)?.has(member) !== true,
+        ),
+    ),
+  ]
+
+  // Resolved in ROUNDS rather than one pass, because a member's holders may
+  // themselves be members whose own parents are decided here. Placing a member
+  // before its holders are settled would measure the lowest common ancestor
+  // against a tree that is still missing the levels that separate them, and the
+  // reference has five-deep chains (spec, mapping, call, client, application),
+  // so this is exercised rather than theoretical.
+  //
+  // A member is settled once it is placed or once it is known to stay outside.
+  // Whatever a round cannot decide it hands to the next; when a round decides
+  // nothing, what is left is a mutual dependency and stays outside, which is the
+  // same answer the cycle guard below would reach for it anyway.
+  let pending = candidates
+  while (pending.length > 0) {
+    const deferred: string[] = []
+    let decided = false
+    for (const member of pending) {
+      const holders = [...(instancesOf.get(member) ?? [])]
+      if (holders.some((holder) => pending.includes(holder) && holder !== member)) {
+        deferred.push(member)
+        continue
+      }
+      decided = true
+      const parent =
+        holders.length === 1
+          ? holders[0]
+          : lowestCommonAncestor(holders, parentOf)
+      if (parent === undefined || parent === member) continue
+      // A member that already contains one of its holders cannot also sit
+      // inside it. The cycle guard below is the backstop, not the rule.
+      if (holders.some((holder) => isDescendantOf(holder, member, parentOf))) {
+        continue
+      }
+      parentOf.set(member, parent)
+    }
+    if (!decided) break
+    pending = deferred
   }
 
   // Slot membership can close a loop the view's nesting alone did not, so the
