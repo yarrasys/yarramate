@@ -275,6 +275,56 @@ interface ResolvedPattern {
 }
 
 /**
+ * One slot of a pattern, as a CONSUMER reads it (#473 phase 4, ADR 0146).
+ *
+ * The resolved shape rather than the authored one: `kindIdentity` is qualified
+ * and `kindMatching` is explicit, so a caller deciding what a slot admits does
+ * not have to re-resolve the document it came from.
+ */
+export interface PatternSlotShape {
+  readonly name: string
+  readonly kindIdentity: string
+  readonly required: boolean
+  readonly kindMatching: 'exact' | 'descendants'
+}
+
+/** A wire the pattern declares, `self` naming the instance. */
+export interface PatternWireShape {
+  readonly from: string
+  readonly to: string
+  readonly kindIdentity: string
+}
+
+/** Where a macro edge of one kind leaves and arrives (ADR 0124). */
+export interface PatternPortShape {
+  readonly kindIdentity: string
+  readonly out: string
+  readonly in: string
+}
+
+/**
+ * A pattern as the workspace resolved it.
+ *
+ * The pattern DOCUMENT has had a JSON schema since ADR 0123 and never a public
+ * TypeScript type, so a host that wanted to offer patterns had to re-read the
+ * YAML or guess. Slots come as an ordered array rather than a map because the
+ * order a pattern DECLARES them is the order a form should ask for them, and a
+ * map's iteration order is not something a consumer should have to trust.
+ */
+export interface PatternShape {
+  readonly kindIdentity: string
+  /**
+   * The PATH of the pattern document that declared it, not that document's id.
+   * It is the same string a duplicate-declaration diagnostic names, so a host
+   * grouping patterns by document groups them by the thing a reader can open.
+   */
+  readonly declaredBy: string
+  readonly slots: readonly PatternSlotShape[]
+  readonly wiring: readonly PatternWireShape[]
+  readonly ports: readonly PatternPortShape[]
+}
+
+/**
  * One instance of a pattern, collected while its document is read and expanded
  * once every document has been, because expansion has to see the whole
  * workspace: what a slot binds may be declared anywhere, and whether an
@@ -386,6 +436,23 @@ export interface ResolvedProfileContext {
    * else.
    */
   readonly patternPortKinds: ReadonlyMap<string, readonly RelationshipKind[]>
+  /**
+   * Every pattern the workspace resolved, in kind order (#473 phase 4).
+   *
+   * Optional for the reason `patternMemberships` is: this shape is published
+   * and a required addition is free for readers and a break for CONSTRUCTORS.
+   * Read it as `?? []`. Absent, a host offers no patterns rather than offering
+   * an empty list of them.
+   */
+  readonly patterns?: readonly PatternShape[]
+  /**
+   * Kind identity -> the display name its PROFILE authored (#473 phase 4).
+   *
+   * Only profile-declared kinds appear: a core kind's name is the vocabulary's
+   * own and a consumer already has it. Optional for the reason `patterns` is,
+   * and read as `?? new Map()`.
+   */
+  readonly conceptKindNames?: ReadonlyMap<string, string>
   /**
    * The core relationship kinds the ArchiMate table permits between two
    * concept kind identities, resolved through lineage; undefined when either
@@ -941,6 +1008,10 @@ function compileWorkspaceResolved(
   }
 
   const profiles = new Map<string, ResolvedProfile>()
+  // Kind identity -> the display name the profile authored for it (#473 phase
+  // 4). Resolution keeps identity, lineage, layer and aspect and drops the
+  // name, so a palette had nothing to show but the local id.
+  const conceptKindNames = new Map<string, string>()
   const conceptKindByIdentity = new Map<string, ResolvedConceptKind>()
   const relationshipKindByIdentity = new Map<string, ResolvedRelationshipKind>()
   const coreConceptKinds = new Map<string, ResolvedConceptKind>()
@@ -1179,6 +1250,7 @@ function compileWorkspaceResolved(
         } satisfies ResolvedConceptKind
         resolvedConceptKinds.set(kind.id, resolved)
         conceptKindByIdentity.set(resolved.identity, resolved)
+        conceptKindNames.set(resolved.identity, kind.name)
         }
         // No round can help what the last one could not.
         if (deferred.length === 0 || deferred.length === pendingKinds.length) {
@@ -3696,6 +3768,43 @@ function compileWorkspaceResolved(
           .sort(([left], [right]) => left.localeCompare(right))
           .map(([identity, kind]) => [identity, kind.coreKind] as const),
       ),
+      // Ordered by kind, and each pattern's slots in the order the document
+      // DECLARED them, because that is the order a form should ask for them.
+      conceptKindNames: immutableMap(
+        [...conceptKindNames].sort(([left], [right]) =>
+          left.localeCompare(right),
+        ),
+      ),
+      patterns: Object.freeze(
+        [...patternsByKind]
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([identity, pattern]): PatternShape => ({
+            kindIdentity: identity,
+            declaredBy: pattern.declaredBy,
+            slots: Object.freeze(
+              [...pattern.slots.values()].map((slot) => ({
+                name: slot.name,
+                kindIdentity: slot.kindIdentity,
+                required: slot.required,
+                kindMatching: slot.kindMatching,
+              })),
+            ) as readonly PatternSlotShape[],
+            wiring: Object.freeze(
+              pattern.wiring.map((wire) => ({
+                from: wire.from,
+                to: wire.to,
+                kindIdentity: wire.kindIdentity,
+              })),
+            ) as readonly PatternWireShape[],
+            ports: Object.freeze(
+              [...pattern.ports].map(([kindIdentity, port]) => ({
+                kindIdentity,
+                out: port.out,
+                in: port.in,
+              })),
+            ) as readonly PatternPortShape[],
+          })),
+      ) as readonly PatternShape[],
       patternPortKinds: immutableMap(
         [...patternsByKind]
           .sort(([left], [right]) => left.localeCompare(right))

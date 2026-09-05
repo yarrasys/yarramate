@@ -182,6 +182,12 @@
       "properties": {
         "query": {
           "$ref": "https://yarramate.org/schema/projection/v1#/$defs/query"
+        },
+        "nesting": {
+          "description": "The nesting the canvas is drawing with, when the browser knows it (#473). Only `query.instances` reads it, and it must: an instance's closure IS the containment tree, so resolving it under a different nesting than the canvas answers a different question. Optional, so a browser that does not send it behaves exactly as before.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "enum": ["composition", "assignment"] }
         }
       }
     },

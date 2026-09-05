@@ -252,6 +252,122 @@ describe('#448: parts over operations', () => {
     expect(partsOf('greeting-app').backend).toBe('fresh-backend')
   })
 
+  // #473 phase 4 item 4.1. The instance form drafts a pattern's children AND
+  // the instance that binds them, so what it can stage in ONE changeset decides
+  // whether the form is one step or two. The cases above bind a fresh child to
+  // an EXISTING instance; neither creates both in the same batch.
+  //
+  // `apply` compiles the whole candidate workspace atomically before a byte is
+  // written, so ORDER SHOULD NOT MATTER. That is the claim, and a claim about
+  // an ordering is worth proving in both orders rather than in the one the form
+  // happens to emit.
+  it('adds a child and the new instance that binds it, in one batch', () => {
+    const result = apply([
+      {
+        op: 'add-concept',
+        document: 'architecture/main.yaml',
+        concept: {
+          id: 'minted-interface',
+          kind: 'applicationInterface',
+          name: 'Minted interface',
+        },
+      },
+      {
+        op: 'add-concept',
+        document: 'architecture/main.yaml',
+        concept: {
+          id: 'minted-api',
+          kind: 'mule-http-api',
+          name: 'Minted API',
+          parts: { interface: 'minted-interface' },
+        },
+      },
+    ])
+    expect(result.exitCode).toBe(0)
+    expect(partsOf('minted-api')).toEqual({ interface: 'minted-interface' })
+  })
+
+  it('does the same with the instance written BEFORE its child', () => {
+    // The form would naturally emit children first. If this order failed, the
+    // form would carry an ordering constraint nobody wrote down.
+    const result = apply([
+      {
+        op: 'add-concept',
+        document: 'architecture/main.yaml',
+        concept: {
+          id: 'reversed-api',
+          kind: 'mule-http-api',
+          name: 'Reversed API',
+          parts: { interface: 'reversed-interface' },
+        },
+      },
+      {
+        op: 'add-concept',
+        document: 'architecture/main.yaml',
+        concept: {
+          id: 'reversed-interface',
+          kind: 'applicationInterface',
+          name: 'Reversed interface',
+        },
+      },
+    ])
+    expect(result.exitCode).toBe(0)
+    expect(partsOf('reversed-api')).toEqual({ interface: 'reversed-interface' })
+  })
+
+  it('binds every slot of a freshly minted instance at once', () => {
+    // What the form actually stages: one required slot and two optional ones,
+    // each a child minted in the same batch.
+    const child = (id: string, kind: string, name: string) => ({
+      op: 'add-concept',
+      document: 'architecture/main.yaml',
+      concept: { id, kind, name },
+    })
+    const result = apply([
+      child('full-interface', 'applicationInterface', 'Full interface'),
+      child('full-service', 'applicationService', 'Full service'),
+      child('full-backend', 'applicationComponent', 'Full backend'),
+      {
+        op: 'add-concept',
+        document: 'architecture/main.yaml',
+        concept: {
+          id: 'full-api',
+          kind: 'mule-http-api',
+          name: 'Full API',
+          parts: {
+            interface: 'full-interface',
+            service: 'full-service',
+            backend: 'full-backend',
+          },
+        },
+      },
+    ])
+    expect(result.exitCode).toBe(0)
+    expect(partsOf('full-api')).toEqual({
+      interface: 'full-interface',
+      service: 'full-service',
+      backend: 'full-backend',
+    })
+  })
+
+  it('refuses the batch when a bound child is never minted', () => {
+    // The other half of the claim. If a dangling part were accepted, the form
+    // could stage a half-built instance and the reader would find out later.
+    const result = apply([
+      {
+        op: 'add-concept',
+        document: 'architecture/main.yaml',
+        concept: {
+          id: 'dangling-api',
+          kind: 'mule-http-api',
+          name: 'Dangling API',
+          parts: { interface: 'never-minted' },
+        },
+      },
+    ])
+    expect(result.exitCode).not.toBe(0)
+  })
+
   it('unbinds the whole mapping through remove, coarsely', () => {
     // The only retraction spelling. There is deliberately no
     // `remove: ["parts.service"]`: `parts` would become both the first

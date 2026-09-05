@@ -1,5 +1,120 @@
 # Changelog
 
+## Unreleased
+
+### A pattern's resolved shape is a public type (PR #482)
+
+The pattern document has had a JSON schema since ADR 0123 and never a public
+TypeScript type, so a host that wanted to offer patterns had to re-read the YAML
+or guess. `ResolvedProfileContext.patterns` now carries each pattern RESOLVED:
+slot kinds qualified, `required` and `kindMatching` stated rather than
+defaulted, wiring and ports flattened out of the maps that hold them.
+`PatternShape`, `PatternSlotShape`, `PatternWireShape` and `PatternPortShape`
+are exported.
+
+Slots come as an ordered array rather than a map, because the order a pattern
+declares them is the order a form should ask for them and a consumer must not
+have to trust a map's iteration order for that.
+
+Optional on the context, so a required addition does not break anything that
+constructs one: read it as `?? []`. It is an empty array for a workspace with no
+patterns and absent when nobody looked, which are different claims.
+
+### A browser can offer the patterns a workspace declares
+
+`VisualRenderedModel.vocabulary.patterns` carries each pattern with everything a
+form needs to ask for its parts: the kind, the document that declared it, and
+each slot with whether it is required, how it is WIRED to the instance, and the
+kind labels it ADMITS.
+
+`admits` is resolved here rather than in the browser because it needs the
+lineage map the frame does not carry: a slot declaring `kindMatching:
+descendants` accepts a family, and a picker built from the declared kind alone
+would refuse subjects the compiler accepts.
+
+`VisualKindOption` gains `pattern`, naming the pattern a kind IS, and `name`,
+the display name its profile authored. `label` stays the local id, because that
+is what a drag payload and an operation carry and the two must not drift.
+
+Absent rather than empty where a workspace declares no patterns, so a palette
+can tell "this workspace has none" from "nobody looked".
+
+### The pattern is the unit on the palette
+
+A band per pattern document sits above the layer bands, one row per pattern:
+the stacked mark a folded node wears, the display name its profile authored,
+and how many slots it has and how many are required. The row drags the same
+kind label every other row does, so a drop handler needs no second grammar.
+
+**A ruling a slot admits moves into a collapsed row under its own layer**,
+labelled `<layer> · n kinds bound through a slot`. On the ApertureX reference
+that is 46 kinds folded out of the motivation band, which opened with
+`availability-constraint`, `coverage-target`, `idempotency-constraint` before
+anything a reader was looking for. They are still reachable, one click away:
+they are authored by filling a slot rather than by dragging, but a ruling
+nothing binds stays an ordinary row, because filling a slot is not a way to
+author it.
+
+The rule is constraint LINEAGE and slot admission together, never "appears as
+a slot kind". `dataObject` is a slot kind on that reference and is a
+first-class thing to draw.
+
+### Dropping a pattern opens a form for its parts
+
+Picking a pattern from the palette opens an instance form instead of the
+subject form: they ask different questions, and a pattern drafted as a bare
+subject would mint an instance with every slot empty.
+
+The form asks for the slots the pattern declares, in the order it declared
+them. Each slot offers the existing subjects its `admits` allows, plus **New…**
+to mint a child there and then. A required slot blocks staging; a context slot
+is labelled, because it is the one row whose subject will not fold inside the
+box. The wires the compiler will mint are previewed read-only.
+
+It stages **one changeset**: the minted children first, then the instance whose
+`parts` names them. Every minted id is reserved as it is proposed, so two slots
+filled with the same name do not slug to the same id and have the second
+silently replace the first.
+
+### An empty slot can be filled from the properties column
+
+The Slots section phase 1 made read-only now offers a picker on every slot
+nothing is bound into, narrowed to the kinds that slot admits, with **New…** to
+mint a subject there and then. This is where a `missing-part` question gets
+answered on the canvas rather than in a file.
+
+Staging merges BY SLOT: the operation names only the slot being filled and
+leaves every other alone, so answering one question cannot unbind another.
+Retraction is unchanged and remains the coarse `remove: ['parts']`, because
+filling a slot and clearing them all are different gestures.
+
+A bound slot keeps its read-only row, a viewer sees no pickers at all, and a
+slot whose pattern admits nothing this workspace holds says so rather than
+offering an empty list.
+
+### The standalone editor accepts the filter its own browser sends
+
+**A defect shipped in 1.21.0 and live through 1.22.1.** `nesting` was added to
+the `filter.query` payload so an instance closure resolves against the nesting
+the canvas is drawing with. The TypeScript contract gained it; the WIRE SCHEMA
+did not, and `filterQueryPayload` is `additionalProperties: false`. So the
+session server refused every filter the browser sent with **YMVS109 Property
+"nesting" is not allowed**, and the editor showed "The workspace did not
+compile. The diagram still shows the model that did."
+
+The effect was that opening a view drew the whole model. On the reference,
+selecting a 65-subject view left all 277 subjects on the canvas.
+
+It survived three releases and two browser passes because the ApertureX harness
+mounts the library and never goes through this validation. That host is a
+different path, and a pass on one says nothing about the other. It was found in
+the first minute of opening the standalone editor, which is the only place this
+path runs.
+
+`test/visual-filter-payload.test.ts` now parses what the browser actually
+composes through `parseVisualBrowserInput`, the call the session server makes.
+Taking the field back out of the schema turns three of its cases red.
+
 ## 1.22.1
 
 ### Rulings as rows is withdrawn

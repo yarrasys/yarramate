@@ -169,9 +169,64 @@ export interface VisualViewSummary {
   readonly subjectCount: number;
 }
 
+/**
+ * One pattern a browser may offer, with everything a form needs to ask for its
+ * parts (#473 phase 4, ADR 0146).
+ *
+ * Built in `workspace-model.ts` so both hosts agree, for the reason the
+ * containment tree is: two derivations of what a pattern holds would be two
+ * answers to one question.
+ */
+export interface VisualPatternOption {
+  /** The concept kind that IS this pattern. */
+  readonly kind: string;
+  readonly label: string;
+  /** The core kind the pattern's own kind descends from. */
+  readonly coreLabel: string;
+  /** The pattern document that declared it, by path. */
+  readonly document: string;
+  /** The profile's display name for the kind, where it authored one. */
+  readonly name?: string;
+  readonly slots: readonly {
+    readonly name: string;
+    readonly required: boolean;
+    readonly wiring: "owned" | "context" | "unwired";
+    /**
+     * The kind LABELS this slot accepts, descendants already resolved.
+     *
+     * Resolved here rather than in the browser because it needs the lineage
+     * map: a slot declaring `kindMatching: descendants` admits a family, and a
+     * picker that offered only the declared kind would refuse subjects the
+     * compiler accepts.
+     */
+    readonly admits: readonly string[];
+  }[];
+  readonly wiring: readonly {
+    readonly from: string;
+    readonly kind: string;
+    readonly to: string;
+  }[];
+  readonly ports: readonly {
+    readonly kind: string;
+    readonly out: string;
+    readonly in: string;
+  }[];
+}
+
 export interface VisualKindOption {
   readonly id: string;
   readonly label: string;
+  /**
+   * The pattern this kind IS, which for a pattern kind is its own id (#473
+   * phase 4). Absent on a kind no pattern declares, which is most of them.
+   */
+  readonly pattern?: string;
+  /**
+   * The display name the profile authored, where it authored one. `label`
+   * stays the local id, because that is what a drag payload and an operation
+   * carry and the two must not drift.
+   */
+  readonly name?: string;
   /**
    * The nearest core-profile kind this one descends from, as a label — the
    * same resolution `CanvasNode.coreKindLabel` and `CanvasEdge.coreKindLabel`

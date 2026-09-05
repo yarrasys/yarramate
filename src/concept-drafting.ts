@@ -98,3 +98,174 @@ export const draftConcept = (
     concept: { id, kind: input.kind, name },
   }
 }
+
+/**
+ * What a reviewer chose for one slot of a pattern instance (#473 phase 4).
+ *
+ * `null` is a slot left alone, which is legal for an optional slot and is what
+ * the interview later asks about (ADR 0140). A required slot left null is
+ * refused here rather than staged and refused by the compiler, because a
+ * changeset that cannot land is worse than a form that will not submit.
+ */
+export type SlotBinding =
+  | { readonly mode: 'existing'; readonly subject: string }
+  | { readonly mode: 'new'; readonly name: string; readonly kind: string }
+  | null
+
+export interface InstanceDraft {
+  readonly name: string
+  readonly document: string
+  /** The pattern's own kind, as a label, the same spelling an operation uses. */
+  readonly kind: string
+  readonly slots: readonly {
+    readonly name: string
+    readonly required: boolean
+    /** Kind labels this slot accepts, descendants already resolved. */
+    readonly admits: readonly string[]
+  }[]
+}
+
+/**
+ * A pattern instance and every child it mints, as ONE batch.
+ *
+ * Children first and the instance last, though `apply` compiles the whole
+ * candidate workspace atomically and would take either order: item 4.1 proved
+ * both, and emitting the order a reader would write by hand costs nothing and
+ * makes the diff read forwards.
+ *
+ * Every minted id is reserved as it is proposed, so two slots filled with the
+ * same name do not both slug to `payload` and have the second silently replace
+ * the first (#315, the defect that made `reservedIds` required).
+ *
+ * `null` rather than a partial batch when anything is wrong: a form that stages
+ * half an instance leaves the reviewer to discover the rest from a compile
+ * error.
+ */
+export const draftInstance = (
+  graph: CanvasGraph,
+  input: InstanceDraft,
+  bindings: ReadonlyMap<string, SlotBinding>,
+  reserved: Iterable<string> = [],
+): readonly YarramateOperation[] | null => {
+  if (input.document === '') return null
+  const name = input.name.trim()
+  if (name === '') return null
+
+  const claimed = new Set(reserved)
+  const children: YarramateOperation[] = []
+  const parts: Record<string, string> = {}
+
+  for (const slot of input.slots) {
+    const binding = bindings.get(slot.name) ?? null
+    if (binding === null) {
+      // The model does not stand up without it, so the form cannot stage it.
+      if (slot.required) return null
+      continue
+    }
+    if (binding.mode === 'existing') {
+      if (binding.subject === '') return null
+      parts[slot.name] = binding.subject
+      continue
+    }
+    // A minted child: its kind has to be one the slot admits, or the compiler
+    // refuses the binding and the reviewer learns it from a diagnostic.
+    if (!slot.admits.includes(binding.kind)) return null
+    const childName = binding.name.trim()
+    if (childName === '') return null
+    const childId = proposeConceptId(graph, childName, claimed)
+    if (childId === null) return null
+    claimed.add(childId)
+    children.push({
+      op: 'add-concept',
+      // The instance's document, not a choice: a part authored somewhere else
+      // is a part the reader has to go looking for.
+      document: input.document,
+      concept: { id: childId, kind: binding.kind, name: childName },
+    })
+    parts[slot.name] = childId
+  }
+
+  const instanceId = proposeConceptId(graph, name, claimed)
+  if (instanceId === null) return null
+
+  return [
+    ...children,
+    {
+      op: 'add-concept',
+      document: input.document,
+      concept: {
+        id: instanceId,
+        kind: input.kind,
+        name,
+        // Omitted rather than empty where nothing was bound: an empty `parts`
+        // says the instance binds nothing, and the compiler reads the two the
+        // same way but a reader does not.
+        ...(Object.keys(parts).length === 0 ? {} : { parts }),
+      },
+    },
+  ]
+}
+
+/**
+ * Filling ONE slot of an instance that already exists (#473 phase 4).
+ *
+ * The other half of {@link draftInstance}: that one mints an instance and its
+ * parts together, this one answers a slot left open, which is what a
+ * `missing-part` card asks about (ADR 0140, #447). Both stage the same shape,
+ * so the model cannot tell which surface a binding came from.
+ *
+ * Merges BY SLOT, per ADR 0062's recorded convention: the operation names only
+ * the slot being filled, and the slots it does not mention are left alone
+ * (#448). There is no null idiom for retraction here, because retraction is
+ * coarse `remove: ['parts']` and is a different gesture from filling one.
+ *
+ * `null` rather than a partial batch: a child minted without the binding that
+ * uses it is a subject nobody asked for.
+ */
+export const draftSlotBinding = (
+  graph: CanvasGraph,
+  input: {
+    /** The instance whose slot is being filled. */
+    readonly instance: string
+    readonly slot: string
+    /** The document the operation writes to, and any minted child with it. */
+    readonly document: string
+    /** Kind labels the slot accepts, descendants already resolved. */
+    readonly admits: readonly string[]
+  },
+  binding: SlotBinding,
+  reserved: Iterable<string> = [],
+): readonly YarramateOperation[] | null => {
+  if (binding === null) return null
+  if (input.document === '') return null
+  if (input.slot === '') return null
+
+  if (binding.mode === 'existing') {
+    if (binding.subject === '') return null
+    return [
+      {
+        op: 'update-concept',
+        document: input.document,
+        concept: { id: input.instance, parts: { [input.slot]: binding.subject } },
+      },
+    ]
+  }
+
+  if (!input.admits.includes(binding.kind)) return null
+  const childName = binding.name.trim()
+  if (childName === '') return null
+  const childId = proposeConceptId(graph, childName, reserved)
+  if (childId === null) return null
+  return [
+    {
+      op: 'add-concept',
+      document: input.document,
+      concept: { id: childId, kind: binding.kind, name: childName },
+    },
+    {
+      op: 'update-concept',
+      document: input.document,
+      concept: { id: input.instance, parts: { [input.slot]: childId } },
+    },
+  ]
+}

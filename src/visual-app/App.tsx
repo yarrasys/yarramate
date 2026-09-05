@@ -44,6 +44,7 @@ import type {
   VisualChoicePresentPayload,
   VisualDiagnostic,
   VisualLayoutSavePayload,
+  VisualPatternOption,
   VisualViewOperation,
   VisualViewSummary,
 } from "../adapters/visual/protocol-contract.js";
@@ -72,6 +73,7 @@ import {
 import { ConnectionPanel } from "./connection-panel.js";
 import { faultedSubjects } from "./faults.js";
 import { KindPalette } from "./kind-palette.js";
+import { InstanceDraftPanel } from "./instance-draft-panel.js";
 import { SubjectDraftPanel } from "./subject-draft-panel.js";
 import { ConfirmDialog } from "./confirm-dialog.js";
 import { PromptDialog } from "./prompt-dialog.js";
@@ -90,6 +92,8 @@ import { stageRelationshipScalarChange } from "./subject-form.js";
 import { slotsSectionFor, slotRowLabel } from "./slots-model.js";
 import { describeDeletion, draftDeletion } from "../deletion-drafting.js";
 import { stagedSubjectIds } from "../relationship-drafting.js";
+import { draftSlotBinding } from "../concept-drafting.js";
+import type { CanvasGraph } from "../graph-projection.js";
 
 /**
  * A drawing board, not a document: the diagram holds the workspace, one compact
@@ -264,6 +268,7 @@ const DiagramWorkspace = ({
   onDraftStage,
   draftingSubject,
   draftInitialKind,
+  draftPattern,
   onKindDrop,
   onDraftSubject,
   onDraftSubjectClose,
@@ -320,6 +325,13 @@ const DiagramWorkspace = ({
   /** The kind the open draft was seeded with - a palette pick (#295) - or
    * undefined for a draft opened plain. */
   readonly draftInitialKind: string | undefined;
+  /**
+   * The pattern the drafted kind IS, when it is one (#473 phase 4). Present
+   * means the instance form opens instead of the subject form: they ask
+   * different questions, and a pattern drafted as a bare subject would mint an
+   * instance with every slot empty.
+   */
+  readonly draftPattern: VisualPatternOption | undefined;
   /** A kind dropped from the palette onto the canvas (#295). */
   readonly onKindDrop: (
     kindLabel: string,
@@ -456,7 +468,29 @@ const DiagramWorkspace = ({
             )}
           </div>
         )}
-        {!draftingSubject || state.model === null ? null : (
+        {!draftingSubject || state.model === null || draftPattern === undefined ? null : (
+          <InstanceDraftPanel
+            // Keyed like the subject form: picking another pattern while this
+            // one is open is a fresh draft, not a silent no-op (ADR 0116).
+            key={`pattern:${draftPattern.kind}`}
+            graph={state.model.graph}
+            pattern={draftPattern}
+            documents={state.model.documents}
+            reservedIds={stagedSubjectIds(state.pendingChangeset.operations)}
+            defaultDocument={
+              (selectedId === null
+                ? undefined
+                : state.model.graph.nodes.find(
+                    (node) => node.id === selectedId,
+                  )?.document) ?? state.model.documents[0] ?? ""
+            }
+            // The same handlers the subject form uses: staging an instance is
+            // staging concepts, and a second path would be a second grammar.
+            onStage={onDraftStage}
+            onCancel={onDraftSubjectClose}
+          />
+        )}
+        {!draftingSubject || state.model === null || draftPattern !== undefined ? null : (
           <SubjectDraftPanel
             // Keyed on the seed: a kind picked up while the form is already
             // open is a fresh draft, re-seeded, rather than a pick that
@@ -797,7 +831,17 @@ const SelectedSubjectInspector = ({
         )
       ) : null}
 
-      {node === undefined ? null : <SlotsSection id={node.id} model={model} />}
+      {node === undefined ? null : (
+        <SlotsSection
+          id={node.id}
+          model={model}
+          // From the pending changeset, the same reading every other drafting
+          // surface takes: the graph knows only what has landed (#315).
+          reservedIds={stagedSubjectIds(operations)}
+          onStage={onStageChange}
+          readOnly={readOnly}
+        />
+      )}
 
       <ExpandableDescription
         text={subject.description}
@@ -820,15 +864,118 @@ const SelectedSubjectInspector = ({
  * "Slots" heading would claim "this has no parts", which is a different and
  * wrong thing to say.
  */
+/**
+ * One empty slot, offered to be filled (#473 phase 4, ADR 0146).
+ *
+ * The picker is narrowed to what the slot ADMITS, which the frame resolved:
+ * offering everything and letting the compiler refuse it would teach the reader
+ * the pattern's rules one diagnostic at a time.
+ */
+const SlotFiller = ({
+  graph,
+  instance,
+  slot,
+  document,
+  admits,
+  reservedIds,
+  onStage,
+  fallback,
+}: {
+  readonly graph: CanvasGraph;
+  readonly instance: string;
+  readonly slot: string;
+  readonly document: string;
+  readonly admits: readonly string[];
+  readonly reservedIds: readonly string[];
+  readonly onStage: (operation: YarramateOperation) => void;
+  /** What the row says when the slot admits nothing this workspace has. */
+  readonly fallback: string;
+}) => {
+  const [minting, setMinting] = useState(false);
+  const [name, setName] = useState("");
+  const candidates = graph.nodes.filter((candidate) =>
+    admits.includes(candidate.kindLabel),
+  );
+  if (admits.length === 0) return <>{fallback}</>;
+
+  const stage = (binding: Parameters<typeof draftSlotBinding>[2]) => {
+    const operations = draftSlotBinding(
+      graph,
+      { instance, slot, document, admits },
+      binding,
+      reservedIds,
+    );
+    if (operations === null) return;
+    for (const operation of operations) onStage(operation);
+    setMinting(false);
+    setName("");
+  };
+
+  return (
+    <span className="subject-slot-filler">
+      <select
+        aria-label={`Fill ${slot}`}
+        value=""
+        onChange={(event) => {
+          const chosen = event.target.value;
+          if (chosen === "") return;
+          if (chosen === "__new__") return setMinting(true);
+          stage({ mode: "existing", subject: chosen });
+        }}
+      >
+        <option value="">to decide</option>
+        {candidates.map((node) => (
+          <option key={node.id} value={node.id}>
+            {node.name}
+          </option>
+        ))}
+        <option value="__new__">New…</option>
+      </select>
+      {!minting ? null : (
+        <>
+          <input
+            aria-label={`New ${slot} name`}
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+          />
+          <button
+            type="button"
+            disabled={name.trim() === ""}
+            onClick={() =>
+              stage({ mode: "new", name, kind: admits[0] ?? "" })
+            }
+          >
+            Add
+          </button>
+        </>
+      )}
+    </span>
+  );
+};
+
 const SlotsSection = ({
   id,
   model,
+  reservedIds,
+  onStage,
+  readOnly,
 }: {
   readonly id: string;
   readonly model: VisualRenderedModel;
+  readonly reservedIds: readonly string[];
+  readonly onStage: (operation: YarramateOperation) => void;
+  /** A viewer reads the slots and fills none (#298, ADR 0117). */
+  readonly readOnly: boolean;
 }) => {
   const slots = slotsSectionFor(id, model.memberships, model.vacancies);
   if (slots === null) return null;
+  const node = model.graph.nodes.find((candidate) => candidate.id === id);
+  // The pattern this instance IS, which is what says what each slot admits.
+  // Without it the rows stay read-only rather than offering a picker that
+  // cannot know what it may offer.
+  const pattern = (model.vocabulary.patterns ?? []).find(
+    (option) => option.kind === node?.kind,
+  );
   return (
     <section className="subject-slots" aria-labelledby="slots-heading">
       <h3 id="slots-heading" className="subject-slots-heading">
@@ -850,7 +997,26 @@ const SlotsSection = ({
                   : "subject-slot-value"
               }
             >
-              {slotRowLabel(row)}
+              {row.member !== null ||
+              readOnly ||
+              pattern === undefined ||
+              node === undefined ? (
+                slotRowLabel(row)
+              ) : (
+                <SlotFiller
+                  graph={model.graph}
+                  instance={id}
+                  slot={row.slot}
+                  document={node.document}
+                  admits={
+                    pattern.slots.find((slot) => slot.name === row.slot)
+                      ?.admits ?? []
+                  }
+                  reservedIds={reservedIds}
+                  onStage={onStage}
+                  fallback={slotRowLabel(row)}
+                />
+              )}
             </dd>
           </div>
         ))}
@@ -1424,6 +1590,9 @@ export const App = ({
   // list the Add-subject dialog compiles its Kind select from, so the two can
   // never disagree about what a workspace may contain.
   const paletteKinds = state.model?.vocabulary.conceptKinds ?? [];
+  // The patterns the workspace declares, where the frame carried any (#473
+  // phase 4). Absent means no patterns, and the palette simply has no band.
+  const palettePatterns = state.model?.vocabulary.patterns;
   const treeCollapsed = useMemo(
     () => new Set(workspace.tree.collapsed),
     [workspace.tree.collapsed],
@@ -1893,6 +2062,11 @@ export const App = ({
           }}
           draftingSubject={workspace.draftingSubject}
           draftInitialKind={draftKind}
+          // Resolved from the frame's own vocabulary rather than guessed from
+          // the label: a kind is a pattern because the workspace says so.
+          draftPattern={(state.model?.vocabulary.patterns ?? []).find(
+            (option) => option.label === draftKind,
+          )}
           onKindDrop={(kindLabel) => draftWithKind(kindLabel)}
           onDraftSubject={() => {
             // The plain opener starts with no kind chosen, whatever a palette
@@ -2030,7 +2204,11 @@ export const App = ({
                           No model yet. The kinds arrive with it.
                         </p>
                       ) : (
-                        <KindPalette kinds={paletteKinds} onPick={draftWithKind} />
+                        <KindPalette
+                          kinds={paletteKinds}
+                          patterns={palettePatterns}
+                          onPick={draftWithKind}
+                        />
                       )}
                     </Section>
                   ),

@@ -1012,6 +1012,107 @@ body {
   flex: 0 0 auto;
 }
 
+/* The stacked mark a pattern row wears (#473 phase 4): the same "this is one
+   box standing for several" idea a folded node draws, at icon size so it lines
+   up with the glyphs on every other row. Two offset outlines rather than an
+   image, because it stands for a shape rather than for a kind. */
+.kind-palette-stack {
+  position: relative;
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--ink);
+  border-radius: 2px;
+  background: var(--paper);
+}
+
+.kind-palette-stack::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: 3px;
+  width: 100%;
+  height: 100%;
+  border: 1px solid color-mix(in oklab, var(--ink) 45%, transparent);
+  border-radius: 2px;
+  background: var(--paper);
+  z-index: -1;
+}
+
+/* The slot count sits at the end of the row, quieter than the name. */
+.kind-palette-slots {
+  margin-left: auto;
+  font-size: 11px;
+  color: color-mix(in oklab, var(--ink) 60%, transparent);
+}
+
+/* The instance form's slot rows (#473 phase 4). A form, not a list: the
+   default bullets and the label running straight into its control read as
+   prose with dropdowns in it. Seen in a browser, not in a test. */
+.instance-draft-slots {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.instance-draft-slot {
+  display: grid;
+  grid-template-columns: 10rem 1fr;
+  align-items: center;
+  gap: calc(var(--step) * 0.75);
+  margin-bottom: calc(var(--step) * 0.75);
+}
+
+.instance-draft-slot > label {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--step) * 0.5);
+}
+
+.instance-draft-slot-name {
+  font-weight: 600;
+}
+
+/* Two marks that answer different questions: whether the model stands up
+   without this slot, and whether what fills it will sit INSIDE the box. */
+.instance-draft-required,
+.instance-draft-context {
+  font-size: 11px;
+  padding: 0 0.35em;
+  border-radius: 2px;
+}
+
+.instance-draft-required {
+  color: var(--failure);
+  border: 1px solid color-mix(in oklab, var(--failure) 40%, transparent);
+}
+
+.instance-draft-context {
+  color: color-mix(in oklab, var(--ink) 65%, transparent);
+  border: 1px solid color-mix(in oklab, var(--ink) 25%, transparent);
+}
+
+/* The fields for a child being minted, under the picker that opened them. */
+.instance-draft-new {
+  grid-column: 2;
+  display: flex;
+  gap: calc(var(--step) * 0.5);
+}
+
+.instance-draft-wiring h4 {
+  margin: calc(var(--step) * 1.5) 0 calc(var(--step) * 0.5);
+  font-size: 12px;
+  color: color-mix(in oklab, var(--ink) 65%, transparent);
+}
+
+/* The rulings a slot admits, folded away under their layer. Indented so the
+   band reads as part of the layer above it rather than as a sibling. */
+.kind-palette-bound-name {
+  padding-left: calc(var(--step) * 2.5);
+  font-size: 12px;
+  color: color-mix(in oklab, var(--ink) 65%, transparent);
+}
+
 .section-head {
   display: flex;
   align-items: center;

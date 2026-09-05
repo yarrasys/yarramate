@@ -320,6 +320,40 @@ const editor = mountEditor(document.querySelector('#editor')!, {
 editor.unmount()
 ```
 
+### Reading a workspace's patterns
+
+A host that never renders can still offer patterns, because the pattern
+document now has a public type (#473 phase 4, ADR 0146). Before it, the shape
+existed only as a JSON schema, so a consumer had to re-read the YAML.
+
+```ts
+import { compileWorkspaceWithProfileContext, type PatternShape } from 'yarramate'
+
+const compiled = compileWorkspaceWithProfileContext(sources)
+if (compiled.ok) {
+  // `?? []` throughout: absent means nobody looked, an empty array means the
+  // workspace declares none, and the two are different claims.
+  for (const pattern of compiled.profileContext.patterns ?? []) {
+    // Slots in the order the DOCUMENT declared them, which is the order a form
+    // should ask for them. Not a map: iteration order is not a contract.
+    for (const slot of pattern.slots) {
+      console.log(pattern.kindIdentity, slot.name, slot.required, slot.kindMatching)
+    }
+  }
+}
+```
+
+`PatternShape`, `PatternSlotShape`, `PatternWireShape` and `PatternPortShape`
+are exported from `.`. `declaredBy` is the document's PATH rather than its id,
+because that is what a diagnostic names and what a reader can open.
+
+The mounted editor gets the same shape one step further resolved, as
+`VisualRenderedModel.vocabulary.patterns`, where each slot's `admits` lists the
+kind labels it accepts with `kindMatching: descendants` already expanded.
+Resolving that family needs the lineage map, which the frame does not carry, so
+a host building a picker should use `admits` rather than the slot's declared
+kind: the declared kind alone refuses subjects the compiler accepts.
+
 ### The questions are yours
 
 The questions section evaluates the shipped `core-enrichment` catalogue by
