@@ -233,3 +233,68 @@ describe('yarramate-visual request', () => {
     }
   })
 })
+
+describe('#473: the frame carries containment context, optionally', () => {
+  // `memberships`, `vacancies` and `folds` are OPTIONAL additions to the
+  // rendered model. The test that matters is not that a frame carrying them
+  // works — it is that a frame WITHOUT them still does, because that is every
+  // frame a host built before this shipped and every frame a host that never
+  // folds will build after.
+  //
+  // The frame is a TypeScript type rather than a schema-validated payload
+  // (`visual-model/v1` validates the session-start model, a different shape),
+  // so this is a structural round-trip rather than a validator check.
+  const base = {
+    authority: 'canonical' as const,
+    initialView: 'v1',
+    graph: { nodes: [], edges: [] },
+    documents: ['documents/main.yaml'],
+    vocabulary: { conceptKinds: [], relationshipKinds: [] },
+    layouts: {},
+    sourceDigests: {},
+    projectionDigests: {},
+  }
+
+  it('round-trips a frame with neither field', () => {
+    const frame = JSON.parse(JSON.stringify(base)) as typeof base & {
+      memberships?: unknown
+      folds?: unknown
+    }
+    expect(frame.memberships).toBeUndefined()
+    expect(frame.folds).toBeUndefined()
+    expect(frame.layouts).toEqual({})
+  })
+
+  it('round-trips a frame carrying memberships, vacancies and folds', () => {
+    const withFold = {
+      ...base,
+      memberships: [
+        {
+          member: 'iface',
+          slot: 'interface',
+          instance: 'app',
+          pattern: 'acme/p@1.0#api',
+          wiring: 'owned' as const,
+        },
+      ],
+      vacancies: [
+        {
+          instance: 'app',
+          pattern: 'acme/p@1.0#api',
+          slot: 'service',
+          slotKind: 'yarramate/core@0.1#applicationService',
+          required: false,
+        },
+      ],
+      folds: { v1: { folded: ['app'], unfolded: [] } },
+    }
+    const frame = JSON.parse(JSON.stringify(withFold)) as typeof withFold
+    expect(frame.memberships[0]!.wiring).toBe('owned')
+    expect(frame.vacancies[0]!.slot).toBe('service')
+    expect(frame.folds.v1!.folded).toEqual(['app'])
+    // `folds` is a SIBLING of `layouts`, never a field inside a layout entry:
+    // widening a layout entry would make every reader of `layouts[id]` handle
+    // a case that did not exist.
+    expect(frame.layouts).toEqual({})
+  })
+})

@@ -1,4 +1,5 @@
 import type { CanvasGraph } from '../../graph-projection.js'
+import type { PatternMembership, PatternVacancy } from '../../compiler.js'
 import type {
   VISUAL_PROTOCOL_VERSION,
   VisualApplyResultPayload,
@@ -73,6 +74,28 @@ export interface VisualRenderedModel {
   }
   /** Every saved layout sidecar, keyed by projection id (Plan-level decision 1). */
   readonly layouts: { readonly [projectionId: string]: VisualLayoutPositions }
+  /**
+   * What each view folds, keyed by projection id (#473). A SIBLING of
+   * `layouts` rather than a field inside its entries: a layout entry is
+   * positions, one shape a host may already be reading, and widening it would
+   * make every reader of `layouts[id]` handle a case that did not exist.
+   */
+  readonly folds?: {
+    readonly [projectionId: string]: {
+      readonly folded: readonly string[]
+      readonly unfolded: readonly string[]
+    }
+  }
+  /**
+   * Which subject fills which slot of which instance (ADR 0131), and which
+   * slots nothing fills (#447), forwarded so the browser can draw containment
+   * and answer "what is inside this box" without a second round trip.
+   *
+   * Optional: a host that never folds and never shows slots need not supply
+   * them, and a frame from before #473 has neither.
+   */
+  readonly memberships?: readonly PatternMembership[]
+  readonly vacancies?: readonly PatternVacancy[]
   /**
    * The sha256 of every workspace source this graph was compiled from, keyed by
    * manifest-relative path — the same map `visual-model/v1` already requires of
