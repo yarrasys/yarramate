@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased
+
+### Rulings as rows is withdrawn for good (#473)
+
+`presentation.showConstraints` shipped inert in 1.22.0, was withdrawn in 1.22.1,
+and has now been rebuilt, looked at, and dropped. It is not returning, and ADR
+0145 records why rather than only that.
+
+The rebuild worked: rows as element state applied in place, surviving every
+rebuild, 23 boxes stating their rulings on the reference with all 82 ruling
+boxes and their edges gone from the canvas. Then someone looked at one. A box
+that states fourteen rulings is no longer a name, it is a paragraph, and a
+diagram of paragraphs is not a diagram. The 82 boxes were noise; fourteen lines
+of prose inside the thing you were trying to read is noise you cannot skip.
+
+Nothing changes for anyone. The field never survived 1.22.1, so no view can
+declare it and no released version drew a row. A folded box shows its name and
+a chip counting what went inside, which is what the fold was for; **which**
+rulings govern a subject is answered by the Slots section of the properties
+panel, where the list can scroll and each ruling can be clicked through.
+
 ## 1.23.1
 
 ### A staged slot binding shows on the row where it was made

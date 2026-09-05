@@ -83,69 +83,66 @@ working rather than an anomaly.
 
 Swept this repository's own model: **22 views, zero containment changes.**
 
-## Rulings as rows: shipped in 1.22.0, WITHDRAWN in 1.22.1
+## Rulings as rows: shipped in 1.22.0, withdrawn for good
 
-**The design below stands. The implementation did not, and the feature is out of
-the package until it is rebuilt.**
+**Superseded. `presentation.showConstraints` is out of the package and is not
+coming back.** The design below is kept because the reasoning that killed it is
+worth more than the reasoning that proposed it.
 
-`presentation.showConstraints` shipped in 1.22.0 and never drew a row, on any
-path. The ApertureX session found it in a browser on the published bytes, then
-found three more faults in the first fix. The derivation module was correct
-throughout, verified against a real compiled frame: 23 instances with rows, 82
-hidden nodes, 82 hidden edges. **Everything that was wrong was in how the canvas
-applied it**, and all of it comes from one mistaken decision: rows were built by
-REBUILDING the element set.
-
-- The rebuild never re-applied `applyFilter`, so the 82 hidden rulings stayed on
-  screen and the fold and the focus filter were both dropped. Toggling under a
-  fold showed the members again while their lifted edges were still drawn.
-- The fold effect rebuilt without the rows argument, so any fold wiped them, and
-  a view that opened folded showed none at all.
-- On an open container the rows drew at the compound's label position at the
-  default label width, wrapping two or three lines and overlapping the edges
-  around them. A compound's height comes from its children, so the per-node
-  height did nothing there.
-
-**When it returns it is element STATE, applied in place like `folded`**: an
-effect that mutates the existing elements, hides the rulings through the same
-visibility predicate the fold and the filter use, and never rebuilds. The fold
-relabel and the rows compose through one label function, so whichever runs last
-cannot erase the other. **The box widens to its longest row** (Nabeel,
-2026-09-05), because the ruler is the measured reason the row exists and a
-tooltip is invisible in an export.
-
-The design that follows is unchanged and is what to build against.
-
-## Rulings as rows, the design
+### What it was for
 
 A bound ruling is a box carrying one association edge. On the reference there
 are 82 of them, and drawing them as boxes is what takes the whole model to 173.
+The proposal: hide a ruling that fills an unwired slot and draw it as a row of
+text inside the instance that holds it, reading `slot: name · ruler`, marked
+where several instances bind the same one. Presentation only, off by default.
 
-With `presentation.showConstraints`, a constraint filling an UNWIRED slot of a
-visible instance is hidden as a node and drawn as a row in that instance's label
-block; its edges are hidden with it. A ruling several instances bind draws in
-every holder, marked shared. A constraint nothing binds stays a box: it has no
-box to sit in.
+### Why it is dead
 
-**The row carries the RULER, and that is the measured part.** Every one of the
-82 rulings has its authored edge from a ruler rather than from its holder, which
-reaches the ruling only through the slot. Hide the ruling and the ruler's edge
-has nowhere to land, and a role whose every edge ran to a ruling becomes a box
-with no edges at all. So the row reads `slot: name · ruler`. The ruler is
-derived from the graph, as whoever points at the ruling from outside its own
-holders, rather than from a list of business and motivation kinds: a list would
-be right for this reference and silently wrong for the next, which is the ninth
-rule.
+Nabeel looked at a rendered box, 2026-09-05: *"when we fold, we just need the
+element name they are folded into."*
 
-The ruler's own box stays. An edge-less box is the truthful picture once its
-relations are rows.
+The arithmetic was never the problem. Read on the reference, `salesforce-patron-
+sapi` states fourteen rows, and the box that was a NAME becomes a paragraph. A
+diagram of paragraphs is not a diagram. The count was the honest measure and it
+pointed the wrong way: 82 boxes removed, and in exchange fourteen lines of prose
+in a node that a reader has to read rather than see. Removing noise by relocating
+it into the thing you were trying to read is not removing it.
 
-**Presentation only, and off by default.** The model, the query and the selected
-set are identical either way. Off by default for the reason `fold` is: rows hide
-boxes a reader can see today, and a view that hid them without being asked would
-be a surprise its author never wrote down. Node height becomes per-node for
-boxes carrying rows; everything else keeps the fixed default. The fold tree does
-not change, because rulings never nested as nodes in the first place.
+The fold already does what the feature was reaching for. A folded box shows its
+name and a chip saying how many members went inside; that is the whole ask, and
+it was shipped in phases 1 and 2. **Which** rulings govern a subject is a
+question for the Slots section of the properties panel, where a list can scroll,
+can be clicked through to each ruling, and does not have to fit inside a
+rectangle competing with edge routing.
+
+### What it cost, and what it taught
+
+Two builds. The first shipped inert in 1.22.0 and was withdrawn in 1.22.1: rows
+were built by REBUILDING the element set, which dropped the fold and the focus
+filter, never applied the hiding, and was wiped by the next fold. The second
+rebuilt it correctly as element state applied in place, and that build worked -
+23 boxes rowed, 82 rulings hidden with none still drawn, the toggle round-
+tripping exactly, nine tests on the applier that had never had any.
+
+It was thrown away anyway, and this is the lesson worth keeping: **the second
+build was verified against every property except the one that mattered.** Rows
+survive a rebuild, the box widens to its longest row, the label uses that width,
+rows stay off an open container - all measured, all true, and none of them the
+question. The question was whether a person wants to look at the result, and
+that was answerable from the first screenshot of the first build. Nobody asked
+it until the fourth.
+
+That is the same failure this programme has repeated at every phase, one layer
+up: not *the arithmetic was right and the picture was wrong*, but *the picture
+was right to spec and the spec was wrong*. Correctness of implementation was
+checked continuously; desirability of the artifact was never checked at all,
+because a suite cannot ask it and I did not put a rendering in front of anyone
+until the feature was finished twice.
+
+**The rule that comes out of it: a presentation feature is reviewed by looking
+at it, on real data, BEFORE it is built, not after.** One screenshot of one
+box would have cost ten minutes and saved two builds.
 
 ## The edge-label spike: measured, held
 
