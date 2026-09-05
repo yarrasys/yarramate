@@ -1,5 +1,58 @@
 # Changelog
 
+## Unreleased
+
+### A member held only inside one box now folds into it
+
+**A behaviour change to the fold**, and the first in the programme that alters
+how an existing model draws.
+
+1.20.0 kept every shared subject outside a folded box, on the reasoning that two
+owners force a single-parent tree to pick one. That holds only where the owners
+sit in DIFFERENT boxes. Where both already sit under one there is nothing to
+pick, and the rule was costing real structure: on the ApertureX reference, 14 of
+the Landscape's 30 data objects sat outside the single application whose own
+parts were binding them (#473, ADR 0145).
+
+A member's holders are now every instance whose slots name it. One holder puts
+it in that holder, unchanged. Several put it in their lowest common ancestor,
+counting each holder as an ancestor of itself, so one holder inside another
+gives the outer holder. Holders with no common ancestor still leave the member
+outside. At least one binding must be `owned` or `unwired`, rulings still never
+fold, and a view's own nesting still wins.
+
+Measured on that reference, everything folded: the Landscape goes from **73
+boxes to 58** and 153 edges to 120; the whole model from 173 visible boxes to
+158, and 172 top-level to 157. Fifteen members newly fold, several onto a call
+or an interface rather than the application, because that is where their holders
+diverge. Swept this repository's own model: **22 views, zero changes.**
+
+One case improves as a side effect. A member that already contained its holder
+used to be placed anyway, closing a loop the cycle guard then broke by unnesting
+BOTH nodes, so the holder lost authored nesting it was entitled to. The
+placement is refused now, so no loop forms and the holder keeps its parent.
+
+### A bound ruling can draw as a row instead of a box
+
+New `presentation.showConstraints` on a view, off by default, in the family of
+`showLifecycle` / `showEvidence` / `showOwnership`. With it on, a constraint
+filling an unwired slot of a visible instance is hidden as a node and drawn as a
+line in that instance's label block; its edges are hidden with it. A ruling
+several instances bind draws in each, marked shared. A constraint nothing binds
+stays a box, because it has no box to sit in.
+
+The row reads `slot: name · ruler`, and the ruler is the measured part: on the
+reference all 82 rulings have their authored edge from a role or stakeholder
+rather than from the holder, which reaches the ruling only through the slot.
+Hide the box without naming the ruler and a role whose every edge ran to a
+ruling becomes a box with no edges at all. The ruler is derived from the graph
+as whoever points at the ruling from outside its own holders, not from a list of
+layers, so it does not go stale on a model that is shaped differently.
+
+Presentation only: the model, the query and the selected set are identical
+either way, and turning it off restores the boxes. Rulings hidden this way are
+hidden and not removed, so the toggle costs no rebuild.
+
 ## 1.21.0
 
 ### A view can name an instance and get what it holds

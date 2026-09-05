@@ -27,6 +27,14 @@ different way of getting the answer wrong:
 
 - **Exclusive.** A subject bound into two instances has two owners, and a
   single-parent tree would silently pick one.
+
+  **AMENDED by [ADR 0145](0145-a-member-held-only-inside-one-box-folds-into-it.md)
+  (#473 phase 3).** The reasoning holds only where the owners sit in DIFFERENT
+  boxes. Where they already sit under one, there is nothing to pick, and this
+  rule left 14 of the reference Landscape's 30 data objects outside the single
+  application whose own parts were binding them. A member now folds into the
+  lowest common ancestor of its holders, and stays outside only when they have
+  none.
 - **`owned` or `unwired`, never `context`.** A context slot names what the
   instance USES and does not contain — the upstream API it calls, the plane it
   runs on. Folding those would swallow half the landscape into whichever box

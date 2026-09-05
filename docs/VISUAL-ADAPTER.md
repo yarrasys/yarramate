@@ -410,11 +410,37 @@ labelled `kind ×n`; an edge whose two ends fold into the same box vanishes,
 because it is internal to what the box now stands for.
 
 What a box contains is the view's nesting **plus** the instance's pattern
-slots — a member bound in exactly one instance, whose slot wiring is `owned` or
-`unwired` and never `context`. A context slot names what the instance uses
-rather than what it holds, and folding those would swallow half the landscape
-into whichever box referenced it. Rulings never fold as nodes: a policy is not
-machinery, and one ruling is routinely shared by several instances.
+slots. A member's HOLDERS are every instance whose slots name it. One holder
+puts the member in that holder; several put it in their **lowest common
+ancestor**, counting each holder as an ancestor of itself, so one holder sitting
+inside another gives the outer holder rather than something above them both.
+Holders with no common ancestor leave the member outside, because there is no
+single box it sits within and the tree will not pick one.
+
+At least one of a member's bindings must be `owned` or `unwired`, never
+`context` alone. A context slot names what the instance uses rather than what it
+holds, and folding those would swallow half the landscape into whichever box
+referenced it. Rulings never fold as nodes: a policy is not machinery.
+
+This AMENDS the rule 1.20.0 shipped, which required a member to be bound in
+**exactly one** instance and kept every shared subject outside (ADR 0143's
+"Exclusive", superseded by [ADR 0145](adr/0145-a-member-held-only-inside-one-box-folds-into-it.md)).
+Two owners only force a choice when they sit in different boxes; where both
+already sit under one, there is nothing to choose. On the reference this takes
+the whole model from 173 boxes to 158 and the Landscape from 73 to 58.
+
+**A bound ruling can draw as a ROW rather than a box** when the view sets
+`presentation.showConstraints`. A constraint filling an unwired slot of a
+visible instance becomes a line in that instance's label block reading
+`slot: name · ruler`, and its edges are hidden with it. The row carries the
+RULER because that is where a ruling's authored edge comes from: on the
+reference all 82 run from a role or a stakeholder, never from the holder, which
+reaches the ruling only through the slot. Hide the box without naming the ruler
+and a role whose every edge ran to a ruling becomes a box with no edges at all.
+A ruling several instances bind draws in each of them, marked shared; a
+constraint nothing binds stays a box, because it has no box to sit in. Rows are
+presentation: the model, the query and the selected set do not move, and turning
+the toggle off restores the boxes.
 
 `fold` and `nesting` read the same containment tree, so a view declaring
 `fold: instances` without `assignment` in `nesting` collapses less than its

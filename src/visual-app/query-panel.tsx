@@ -189,12 +189,18 @@ export const pulledBackIn = (
   return excluded.filter(({ id }) => drawn.has(id)).length;
 };
 
-/** The three badge toggles, which are the only presentation a reviewer can
- * change from this tab. */
+/** The presentation toggles a reviewer can change from this tab.
+ *
+ * Three badges and, since #473 phase 3, one that is not a badge at all:
+ * `showConstraints` turns a bound ruling from a box into a row. It rides here
+ * because it is the same KIND of thing to a reviewer - a per-view drawing
+ * choice saved with the view and never a changeset - even though what it moves
+ * is the node rather than a chip on it. */
 export interface BadgeChoices {
   readonly showLifecycle: boolean;
   readonly showEvidence: boolean;
   readonly showOwnership: boolean;
+  readonly showConstraints: boolean;
 }
 
 export interface ViewDocumentInput {
@@ -234,6 +240,7 @@ const badgePresentation = (
     ...write("showLifecycle"),
     ...write("showEvidence"),
     ...write("showOwnership"),
+    ...write("showConstraints"),
   };
 };
 
@@ -299,6 +306,7 @@ export interface QueryPanelProps {
   readonly showLifecycle: boolean;
   readonly showEvidence: boolean;
   readonly showOwnership: boolean;
+  readonly showConstraints: boolean;
   readonly showNudges: boolean;
   readonly onTogglePresentation: (
     flag: PresentationFlag,
@@ -327,6 +335,7 @@ export function QueryPanel({
   showLifecycle,
   showEvidence,
   showOwnership,
+  showConstraints,
   showNudges,
   onTogglePresentation,
   onToggleOpen,
@@ -351,6 +360,7 @@ export function QueryPanel({
     showLifecycle,
     showEvidence,
     showOwnership,
+    showConstraints,
   }));
 
   const scheduleApply = (next: QueryFields) => {
@@ -393,7 +403,12 @@ export function QueryPanel({
       : {
           view,
           query: composed,
-          badges: { showLifecycle, showEvidence, showOwnership },
+          badges: {
+            showLifecycle,
+            showEvidence,
+            showOwnership,
+            showConstraints,
+          },
           opened,
         };
 
@@ -455,6 +470,7 @@ export function QueryPanel({
                 showLifecycle={showLifecycle}
                 showEvidence={showEvidence}
                 showOwnership={showOwnership}
+                showConstraints={showConstraints}
                 showNudges={showNudges}
                 onTogglePresentation={onTogglePresentation}
               />

@@ -206,9 +206,15 @@ describe('#473: anomalies are reported, not resolved', () => {
     expect(tree.parentOf.get('z')).toBe('x')
   })
 
-  it('terminates on a cycle closed by slot membership rather than by an edge', () => {
-    // The combined tree can loop where neither half did, which is why the
-    // guard runs again after memberships join.
+  it('refuses a member that already contains its holder, rather than looping and unnesting both', () => {
+    // `q` nests inside `p` by an authored composition, and `p`'s slot names `q`
+    // as its holder. Placing `p` inside `q` would close a loop.
+    //
+    // It used to: the membership pass made the cycle and the guard then
+    // unnested BOTH, so `q` lost the authored nesting it was entitled to as
+    // collateral damage. The rule now refuses the placement instead (#473 phase
+    // 3, ADR 0145), so `p` stays outside and `q` keeps its parent. The guard is
+    // the backstop rather than the rule, and it still runs.
     const tree = treeOf({
       nodes: [node('p', 'applicationComponent'), node('q', 'applicationComponent')],
       edges: [edge('e1', COMPOSITION, 'p', 'q')],
@@ -216,7 +222,21 @@ describe('#473: anomalies are reported, not resolved', () => {
       nesting: ['composition'],
     })
     expect(tree.parentOf.has('p')).toBe(false)
-    expect(tree.parentOf.has('q')).toBe(false)
+    expect(tree.parentOf.get('q')).toBe('p')
+    expect(tree.cycleMembers).toEqual([])
+  })
+
+  it('terminates on holders that hold each other, leaving both outside', () => {
+    // Neither can be placed before the other, so the round decides nothing and
+    // the loop stops rather than spinning.
+    const tree = treeOf({
+      nodes: [node('a', 'applicationComponent'), node('b', 'applicationComponent')],
+      edges: [],
+      memberships: [bind('a', 'slot', 'b', 'owned'), bind('b', 'slot', 'a', 'owned')],
+      nesting: ['composition'],
+    })
+    expect(tree.parentOf.has('a')).toBe(false)
+    expect(tree.parentOf.has('b')).toBe(false)
   })
 })
 
@@ -294,5 +314,246 @@ describe('#473: foldGraph', () => {
     // caller passed, or the canvas loses everything else it carries.
     const { edges } = foldGraph(graph, tree, new Set())
     expect(edges).toEqual(expect.arrayContaining(graph.edges))
+  })
+})
+
+describe('#473 phase 3: the one-box fold (ADR 0145)', () => {
+  // ADR 0143 kept every shared subject outside, on the reasoning that two
+  // owners force a single-parent tree to pick one. That is only true when the
+  // owners sit in DIFFERENT boxes. Where both already sit under one box there
+  // is nothing to pick, and the old rule left 14 of the reference Landscape's
+  // 30 data objects outside the one application whose own parts bound them.
+  const COMPONENT = 'applicationComponent'
+
+  it('folds a member its two holders share a box with, into that box', () => {
+    const tree = treeOf({
+      nodes: [
+        node('app', COMPONENT),
+        node('part-a', COMPONENT),
+        node('part-b', COMPONENT),
+        node('shared', 'dataObject'),
+      ],
+      edges: [],
+      memberships: [
+        bind('part-a', 'a', 'app', 'owned'),
+        bind('part-b', 'b', 'app', 'owned'),
+        bind('shared', 's', 'part-a', 'owned'),
+        bind('shared', 's', 'part-b', 'owned'),
+      ],
+      nesting: ['composition'],
+    })
+    // Both holders sit in `app`, so `app` is where they diverge.
+    expect(tree.parentOf.get('part-a')).toBe('app')
+    expect(tree.parentOf.get('part-b')).toBe('app')
+    expect(tree.parentOf.get('shared')).toBe('app')
+  })
+
+  it('folds to the CLIENT rather than the application when the holders share one', () => {
+    // The level where the holders diverge, not the outermost box. Unfolding the
+    // application one level shows the client; one more shows the member.
+    const tree = treeOf({
+      nodes: [
+        node('app', COMPONENT),
+        node('client', COMPONENT),
+        node('call-a', COMPONENT),
+        node('call-b', COMPONENT),
+        node('spec', 'dataObject'),
+      ],
+      edges: [],
+      memberships: [
+        bind('client', 'c', 'app', 'owned'),
+        bind('call-a', 'a', 'client', 'owned'),
+        bind('call-b', 'b', 'client', 'owned'),
+        bind('spec', 's', 'call-a', 'owned'),
+        bind('spec', 's', 'call-b', 'owned'),
+      ],
+      nesting: ['composition'],
+    })
+    expect(tree.parentOf.get('spec')).toBe('client')
+  })
+
+  it('leaves a member outside when its holders are in different top-level boxes', () => {
+    const tree = treeOf({
+      nodes: [
+        node('app-one', COMPONENT),
+        node('app-two', COMPONENT),
+        node('crosses', 'dataObject'),
+      ],
+      edges: [],
+      memberships: [
+        bind('crosses', 's', 'app-one', 'owned'),
+        bind('crosses', 's', 'app-two', 'owned'),
+      ],
+      nesting: ['composition'],
+    })
+    // No one box contains both holders, so there is still a choice to make and
+    // the tree still declines to make it.
+    expect(tree.parentOf.has('crosses')).toBe(false)
+  })
+
+  it('leaves a member outside when one holder is top-level beside the other', () => {
+    const tree = treeOf({
+      nodes: [
+        node('app', COMPONENT),
+        node('part', COMPONENT),
+        node('elsewhere', COMPONENT),
+        node('shared', 'dataObject'),
+      ],
+      edges: [],
+      memberships: [
+        bind('part', 'p', 'app', 'owned'),
+        bind('shared', 's', 'part', 'owned'),
+        bind('shared', 's', 'elsewhere', 'owned'),
+      ],
+      nesting: ['composition'],
+    })
+    expect(tree.parentOf.has('shared')).toBe(false)
+  })
+
+  it('still refuses a member whose bindings are all context', () => {
+    const tree = treeOf({
+      nodes: [
+        node('app', COMPONENT),
+        node('part-a', COMPONENT),
+        node('part-b', COMPONENT),
+        node('used', 'dataObject'),
+      ],
+      edges: [],
+      memberships: [
+        bind('part-a', 'a', 'app', 'owned'),
+        bind('part-b', 'b', 'app', 'owned'),
+        bind('used', 'u', 'part-a', 'context'),
+        bind('used', 'u', 'part-b', 'context'),
+      ],
+      nesting: ['composition'],
+    })
+    // A context slot names what an instance USES. Sharing it changes nothing
+    // about that, and folding it would swallow the landscape.
+    expect(tree.parentOf.has('used')).toBe(false)
+  })
+
+  it('folds a member held by context in one place and owned in another', () => {
+    const tree = treeOf({
+      nodes: [
+        node('app', COMPONENT),
+        node('part-a', COMPONENT),
+        node('part-b', COMPONENT),
+        node('mixed', 'dataObject'),
+      ],
+      edges: [],
+      memberships: [
+        bind('part-a', 'a', 'app', 'owned'),
+        bind('part-b', 'b', 'app', 'owned'),
+        bind('mixed', 'm', 'part-a', 'owned'),
+        bind('mixed', 'm', 'part-b', 'context'),
+      ],
+      nesting: ['composition'],
+    })
+    // One binding holds it out, so it folds; the context holder still counts
+    // for WHERE, which is why it lands on `app` and not on `part-a`.
+    expect(tree.parentOf.get('mixed')).toBe('app')
+  })
+
+  it('still refuses a ruling however many hold it', () => {
+    const tree = treeOf({
+      nodes: [
+        node('app', COMPONENT),
+        node('part-a', COMPONENT),
+        node('part-b', COMPONENT),
+        node('policy', 'constraint'),
+      ],
+      edges: [],
+      memberships: [
+        bind('part-a', 'a', 'app', 'owned'),
+        bind('part-b', 'b', 'app', 'owned'),
+        bind('policy', 'p', 'part-a', 'owned'),
+        bind('policy', 'p', 'part-b', 'owned'),
+      ],
+      nesting: ['composition'],
+    })
+    // A policy is not machinery (review F5). Phase 3 gives it a row instead.
+    expect(tree.parentOf.has('policy')).toBe(false)
+  })
+
+  it('lands the member on the right ancestor whatever order the holders resolve in', () => {
+    // The membership list is deliberately inside-out: `spec`'s holders are
+    // themselves members whose parents are decided in the same pass. A single
+    // forward pass would measure the ancestor against a tree still missing the
+    // levels that separate them.
+    const deep = {
+      nodes: [
+        node('app', COMPONENT),
+        node('client', COMPONENT),
+        node('call-a', COMPONENT),
+        node('call-b', COMPONENT),
+        node('spec', 'dataObject'),
+      ],
+      edges: [],
+      nesting: ['composition' as const],
+    }
+    const inOrder = foldTree({
+      ...deep,
+      memberships: [
+        bind('client', 'c', 'app', 'owned'),
+        bind('call-a', 'a', 'client', 'owned'),
+        bind('call-b', 'b', 'client', 'owned'),
+        bind('spec', 's', 'call-a', 'owned'),
+        bind('spec', 's', 'call-b', 'owned'),
+      ],
+    })
+    const reversed = foldTree({
+      ...deep,
+      memberships: [
+        bind('spec', 's', 'call-a', 'owned'),
+        bind('spec', 's', 'call-b', 'owned'),
+        bind('call-b', 'b', 'client', 'owned'),
+        bind('call-a', 'a', 'client', 'owned'),
+        bind('client', 'c', 'app', 'owned'),
+      ],
+    })
+    expect(reversed.parentOf.get('spec')).toBe('client')
+    expect([...reversed.parentOf.entries()].sort()).toEqual(
+      [...inOrder.parentOf.entries()].sort(),
+    )
+  })
+
+  it('keeps one holder inside another as the answer, rather than reaching past both', () => {
+    const tree = treeOf({
+      nodes: [
+        node('app', COMPONENT),
+        node('client', COMPONENT),
+        node('shared', 'dataObject'),
+      ],
+      edges: [],
+      memberships: [
+        bind('client', 'c', 'app', 'owned'),
+        bind('shared', 's', 'app', 'owned'),
+        bind('shared', 's', 'client', 'owned'),
+      ],
+      nesting: ['composition'],
+    })
+    // `app` already contains `client`, so it IS the lowest box containing both.
+    expect(tree.parentOf.get('shared')).toBe('app')
+  })
+
+  it('lets a view\'s own nesting keep winning over the slot parents', () => {
+    const tree = treeOf({
+      nodes: [
+        node('app', COMPONENT),
+        node('part-a', COMPONENT),
+        node('part-b', COMPONENT),
+        node('shared', 'dataObject'),
+        node('elsewhere', COMPONENT),
+      ],
+      edges: [edge('e1', COMPOSITION, 'elsewhere', 'shared')],
+      memberships: [
+        bind('part-a', 'a', 'app', 'owned'),
+        bind('part-b', 'b', 'app', 'owned'),
+        bind('shared', 's', 'part-a', 'owned'),
+        bind('shared', 's', 'part-b', 'owned'),
+      ],
+      nesting: ['composition'],
+    })
+    expect(tree.parentOf.get('shared')).toBe('elsewhere')
   })
 })
