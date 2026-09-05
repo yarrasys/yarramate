@@ -9,6 +9,7 @@
  * `node:path`, or the schema documents into its bundle.
  */
 import type { CanvasGraph } from "../../graph-projection.js";
+import type { NestingKind } from "../../nesting.js";
 import type {
   YarramateApplyResult,
   YarramateOperation,
@@ -186,6 +187,20 @@ export interface VisualKindOption {
 
 export interface VisualFilterQueryPayload {
   readonly query: ProjectionQuery;
+  /**
+   * The nesting the canvas is drawing with, when the browser knows it (#473
+   * phase 2).
+   *
+   * Only `query.instances` reads it, and it must: the closure of an instance IS
+   * the containment tree, so evaluating it under a different nesting than the
+   * canvas answers a different question. On the ApertureX reference that is 15
+   * subjects against 2.
+   *
+   * Optional, so an older browser and every filter that names no instance keep
+   * working unchanged; absent, the evaluator falls back to the default nesting
+   * exactly as it did before.
+   */
+  readonly nesting?: readonly NestingKind[];
 }
 
 export interface VisualFilterResultPayload {

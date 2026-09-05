@@ -54,6 +54,13 @@ query and the server resolves it, staging nothing. The item is gated on
 instance-hood rather than containment, because a plain component with a
 composition contains something and has no parts to focus on.
 
+The closure reads the view's nesting everywhere, including the paths that build
+an ad-hoc projection from a bare query. Those have no `presentation`, so they
+fell back to the default and the rail counted **2** subjects where the canvas
+drew **15**. Each view's own nesting now reaches its subject count, and
+`filter.query` carries an optional `nesting` the browser sends from what the
+canvas is drawing with.
+
 `instanceClosureOf` is exported for a host that never renders and still has to
 say what a view naming an instance holds. See ADR 0144.
 

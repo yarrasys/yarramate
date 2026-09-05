@@ -755,10 +755,17 @@ concepts:
   - id: sys-interface
     kind: applicationInterface
     name: System interface
+  - id: deep-part
+    kind: applicationComponent
+    name: Deep part
   - id: outsider
     kind: applicationComponent
     name: Outsider
-relationships: []
+relationships:
+  - id: component-holds-deep-part
+    kind: composition
+    from: sys-component
+    to: deep-part
 `
 
   const view = `format: yarramate/projection/v1
@@ -817,12 +824,49 @@ presentation:
     // members survive; a view that reached the same members by expansion would
     // draw them as unconnected boxes.
     expect([...result.result.matchedIds].sort()).toEqual([
+      'component-holds-deep-part',
+      'deep-part',
       'sys-api',
       'sys-api-aggregation-component',
       'sys-api-component-composition-interface',
       'sys-component',
       'sys-interface',
     ])
+  })
+
+  it('resolves the closure under the nesting the canvas is drawing with', () => {
+    // The ad-hoc projection a filter builds has no presentation, so without the
+    // nesting travelling on the payload the closure falls back to the DEFAULT
+    // and answers a different question than the canvas. On the ApertureX
+    // reference that is 2 subjects where the canvas draws 15 - a wrong number
+    // rather than a missing one, which is the failure mode this whole feature
+    // is supposed to be against.
+    const { frames, send } = openPatternHost()
+    send(
+      input('filter.query', {
+        query: { instances: ['sys-api'] },
+        // `sys-component` holds `sys-interface` through a COMPOSITION, so
+        // dropping composition from the nesting shrinks the closure.
+        nesting: ['assignment'],
+      }),
+    )
+    const narrowed = frames.at(-1)
+    if (narrowed?.kind !== 'filter-result') throw new Error('no filter result')
+
+    send(
+      input('filter.query', {
+        query: { instances: ['sys-api'] },
+        nesting: ['composition'],
+      }),
+    )
+    const wider = frames.at(-1)
+    if (wider?.kind !== 'filter-result') throw new Error('no filter result')
+
+    // `deep-part` is reached by a COMPOSITION off a member rather than by a
+    // slot, so it is the one subject whose membership of the box depends on the
+    // nesting rather than on the pattern.
+    expect(narrowed.result.matchedIds).not.toContain('deep-part')
+    expect(wider.result.matchedIds).toContain('deep-part')
   })
 
   it('says the facet is why it dropped the rest', () => {

@@ -547,12 +547,14 @@ export const createLocalHost = (options: LocalHostOptions): LocalEditorHost => {
                 input.payload.query,
                 compiled.profileContext,
                 compiled.patternMemberships,
+                input.payload.nesting,
               ),
               excluded: exclusionsOf(
                 compiled.graph,
                 input.payload.query,
                 compiled.profileContext,
                 compiled.patternMemberships,
+                input.payload.nesting,
               ),
             },
           })

@@ -20,6 +20,7 @@ import {
   withMembership,
 } from "../adapters/visual/view-identity.js";
 import type { YarramateOperation } from "../operations.js";
+import type { NestingKind } from "../nesting.js";
 import type {
   ProjectionExclusion,
   ProjectionQuery,
@@ -915,7 +916,11 @@ export type VisualAppIntent =
     }
   | { readonly kind: "navigate"; readonly viewId: string }
   | { readonly kind: "end" }
-  | { readonly kind: "filter"; readonly query: ProjectionQuery }
+  | {
+      readonly kind: "filter";
+      readonly query: ProjectionQuery;
+      readonly nesting?: readonly NestingKind[];
+    }
   | { readonly kind: "commit-changeset" }
   | { readonly kind: "save-layout"; readonly payload: VisualLayoutSavePayload };
 
@@ -960,7 +965,10 @@ export const visualBrowserInputFor = (
       return {
         type: "filter.query",
         lastAcknowledgedSequence,
-        payload: { query: intent.query },
+        payload: {
+          query: intent.query,
+          ...(intent.nesting === undefined ? {} : { nesting: intent.nesting }),
+        },
       };
     case "commit-changeset":
       return {

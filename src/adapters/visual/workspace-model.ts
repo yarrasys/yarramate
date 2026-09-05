@@ -13,6 +13,7 @@ import type {
 } from "./protocol-contract.js";
 import { evaluateProjection, explainProjection } from "../../projection.js";
 import type {
+  NestingKind,
   ProjectionDefinition,
   ProjectionExclusion,
   ProjectionQuery,
@@ -83,10 +84,11 @@ export const conceptCountOf = (
   query: ProjectionQuery,
   profileContext: ResolvedProfileContext,
   memberships?: readonly CataloguePatternMembership[],
+  nesting?: readonly NestingKind[],
 ): number =>
   evaluateProjection(
     graph,
-    adHoc(query),
+    adHoc(query, nesting),
     profileContext,
     memberships,
   ).subjects.filter(({ type }) => type === "concept").length;
@@ -224,6 +226,10 @@ export const renderedWorkspaceOf = (
       // Without these an `instances` view counts 1 and the rail says so, which
       // is a wrong number rather than a missing one (ADR 0144).
       compiled.patternMemberships,
+      // Each view's OWN nesting, because each view's closure is its own. A rail
+      // sitting beside the canvas must not count a different tree than the
+      // canvas draws.
+      view.presentation?.nesting,
     ),
   }));
   const interrogation =
@@ -263,10 +269,14 @@ export const matchedIdsOf = (
   query: ProjectionQuery,
   profileContext: ResolvedProfileContext,
   memberships?: readonly CataloguePatternMembership[],
+  nesting?: readonly NestingKind[],
 ): readonly string[] =>
-  evaluateProjection(graph, adHoc(query), profileContext, memberships).subjects.map(
-    ({ id }) => id,
-  );
+  evaluateProjection(
+    graph,
+    adHoc(query, nesting),
+    profileContext,
+    memberships,
+  ).subjects.map(({ id }) => id);
 
 /** Every concept a query dropped, and the facet that dropped it (#248). */
 export const exclusionsOf = (
@@ -274,18 +284,27 @@ export const exclusionsOf = (
   query: ProjectionQuery,
   profileContext: ResolvedProfileContext,
   memberships?: readonly CataloguePatternMembership[],
+  nesting?: readonly NestingKind[],
 ): readonly ProjectionExclusion[] =>
-  explainProjection(graph, adHoc(query), profileContext, memberships);
+  explainProjection(graph, adHoc(query, nesting), profileContext, memberships);
 
 /**
  * A query on its own is not a projection, and every evaluator here wants one.
  * The id is a placeholder that never reaches a document.
  */
-const adHoc = (query: ProjectionQuery): ProjectionDefinition => ({
+const adHoc = (
+  query: ProjectionQuery,
+  nesting?: readonly NestingKind[],
+): ProjectionDefinition => ({
   format: "yarramate/projection/v1",
   id: "ad-hoc",
   version: "0",
   query,
+  // `query.instances` resolves its closure through the view's nesting, so an
+  // ad-hoc projection that dropped the nesting would answer a DIFFERENT
+  // question than the canvas is drawing: 2 subjects against 15 on the
+  // ApertureX reference, with nothing to say it had (#473 phase 2).
+  ...(nesting === undefined ? {} : { presentation: { nesting } }),
 });
 
 /**

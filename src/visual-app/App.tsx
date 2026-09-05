@@ -1255,7 +1255,7 @@ export const App = ({
     );
     if (view === null) return;
     appliedViewRef.current = view.id;
-    filter(view.query, "view");
+    filter(view.query, "view", view.presentation?.nesting);
     for (const action of presentationActionsFor(view.presentation)) {
       dispatchWorkspace(action);
     }
@@ -1648,7 +1648,11 @@ export const App = ({
         // against the pattern (ADR 0144). Composing the member list here
         // instead would freeze it at the moment of the click and would be a
         // second answer to "what is inside this box".
-        filter({ instances: [intent.id], relationships: "between" }, "focus");
+        filter(
+          { instances: [intent.id], relationships: "between" },
+          "focus",
+          workspace.nesting,
+        );
         dispatchWorkspace({ type: "menu.dismissed" });
         return;
       }
@@ -1669,7 +1673,11 @@ export const App = ({
           dispatchWorkspace({ type: "menu.dismissed" });
           return;
         }
-        filter({ subjects: [...subjects], relationships: "between" }, "focus");
+        filter(
+          { subjects: [...subjects], relationships: "between" },
+          "focus",
+          workspace.nesting,
+        );
         dispatchWorkspace({ type: "menu.dismissed" });
         return;
       }
@@ -1939,7 +1947,7 @@ export const App = ({
           }
           // An edit of the active view's query is still that view, so it is
           // filtered as `editor` and the tree goes on naming what is drawn.
-          onApplyFilter={(query) => filter(query, "editor")}
+          onApplyFilter={(query) => filter(query, "editor", workspace.nesting)}
           onStageView={stageViewChange}
           readOnly={readOnly}
           paletteReachable={offeredSections.includes("palette")}

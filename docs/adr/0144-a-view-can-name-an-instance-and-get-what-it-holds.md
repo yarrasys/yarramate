@@ -134,6 +134,40 @@ The item is gated on instance-hood, not on containment. A plain component with
 a composition contains something and has no parts to focus on, and an item that
 can only ever select one subject is worse than no item (#255).
 
+### The nesting has to travel, and it nearly did not
+
+An ad-hoc projection built from a bare query has no `presentation`, so the
+closure fell back to the DEFAULT nesting while the canvas beside it used the
+view's. On the ApertureX reference that is **2 subjects where the canvas draws
+15**, and 2 against 28 for the system API: a wrong number rather than a missing
+one, which is the failure this ADR is otherwise about.
+
+So the nesting travels. Each view's own `presentation.nesting` reaches the
+rail's subject count, and `filter.query` gained an optional `nesting` the
+browser sends from what the canvas is drawing with. Optional, so an older
+browser and every filter naming no instance behave exactly as before.
+
+Found by reading the code path a peer's journey was about to assert against;
+confirmed independently by that journey, which read 2 through the product's own
+write path. Worth recording because the defect was INSIDE the change that
+argues against it: one answer per caller is easy to write while explaining why
+there must only be one.
+
+### Where the gesture lives
+
+"Focus on this instance" is composed into two menus from one definition: the
+canvas node menu, and the rail's model row. The rail placement is not a
+nicety. It is the reason the fold group is there too, recorded at the time: the
+rail is DOM and the canvas is not, so a keyboard or screen-reader user has no
+other way to reach the gesture, and an automated journey has nothing to drive.
+Shipped canvas-only it was a pointer-only gesture, which a browser journey
+found by failing to reach it.
+
+The one-hop `subject.focus` is deliberately NOT added to the rail alongside it.
+That gap is pre-existing and belongs to #309, which is gated on a scoping
+session rather than an agent build. A test pins the absence so that adding it
+later is a decision rather than a drift.
+
 ## Consequences
 
 The facet is optional and additive, so every view that reads today reads the

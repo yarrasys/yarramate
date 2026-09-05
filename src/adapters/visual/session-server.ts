@@ -12,6 +12,7 @@ import {
   type ServerResponse,
 } from "node:http";
 import type { AddressInfo, Socket } from "node:net";
+import type { NestingKind } from "../../nesting.js";
 import { basename, extname, join, relative, resolve, sep } from "node:path";
 import type { Duplex } from "node:stream";
 import { fileURLToPath } from "node:url";
@@ -1019,7 +1020,10 @@ export const startVisualServer = async (
     if (!started.ok) standingDiagnostics = started.diagnostics;
   }
 
-  const filterMatchedIds = (query: ProjectionQuery): readonly string[] =>
+  const filterMatchedIds = (
+    query: ProjectionQuery,
+    nesting?: readonly NestingKind[],
+  ): readonly string[] =>
     compiledWorkspace === undefined
       ? []
       : matchedIdsOf(
@@ -1029,6 +1033,9 @@ export const startVisualServer = async (
           // A view's query can name `instances`, and the facet resolves to the
           // instance alone without these (ADR 0144).
           compiledWorkspace.patternMemberships,
+          // And it resolves the WRONG closure without the nesting the canvas is
+          // drawing with, which is a wrong number rather than a missing one.
+          nesting,
         );
 
   /**
@@ -1044,6 +1051,7 @@ export const startVisualServer = async (
    */
   const filterExclusions = (
     query: ProjectionQuery,
+    nesting?: readonly NestingKind[],
   ): readonly ProjectionExclusion[] =>
     compiledWorkspace === undefined
       ? []
@@ -1052,6 +1060,7 @@ export const startVisualServer = async (
           query,
           compiledWorkspace.profileContext,
           compiledWorkspace.patternMemberships,
+          nesting,
         );
 
   let listening = false;
@@ -1652,8 +1661,14 @@ export const startVisualServer = async (
           kind: "filter-result",
           result: {
             query: event.payload.query,
-            matchedIds: filterMatchedIds(event.payload.query),
-            excluded: filterExclusions(event.payload.query),
+            matchedIds: filterMatchedIds(
+              event.payload.query,
+              event.payload.nesting,
+            ),
+            excluded: filterExclusions(
+              event.payload.query,
+              event.payload.nesting,
+            ),
           },
         });
         return;

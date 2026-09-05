@@ -327,6 +327,37 @@ const deleteGroup = (
  * making the reviewer find blank canvas to escape would be the second exit
  * this feature exists not to add.
  */
+/**
+ * "Focus on this instance", where the model knows the subject as one (#473
+ * phase 2).
+ *
+ * Its own function because it is composed into TWO menus. The canvas node menu
+ * offers it beside "Focus on this": the same question with a different reading
+ * of "near", what the pattern says this holds rather than what the graph
+ * happens to touch. The rail's model row offers it for the reason the fold
+ * group is there, which is the stronger one: the rail is DOM and the canvas is
+ * not, so a keyboard or screen-reader user has no other way to reach the
+ * gesture at all, and an automated journey has nothing to drive.
+ *
+ * Nothing at all where the subject is not an instance. Not the same question as
+ * containment: a plain component with a composition contains something and has
+ * no parts to focus on, so a menu keyed on containment would offer a query that
+ * selects one subject (#255).
+ */
+const focusInstanceItems = (
+  id: string,
+  context: ContextMenuContext,
+): readonly ContextMenuItem[] =>
+  context.instanceIds?.has(id) === true
+    ? [
+        {
+          key: "focus-instance",
+          label: "Focus on this instance",
+          intent: { type: "subject.focus-instance" as const, id },
+        },
+      ]
+    : [];
+
 const focusAndMembershipGroups = (
   focus: ContextMenuIntent,
   membership: readonly ContextMenuGroup[],
@@ -339,21 +370,8 @@ const focusAndMembershipGroups = (
     destructive: false,
     items: [
       { key: "focus", label: "Focus on this", intent: focus },
-      // Beside "Focus on this" because it answers the same question with a
-      // different reading of "near": what the pattern says this holds, rather
-      // than what the graph happens to touch.
-      ...(focus.type === "subject.focus" &&
-      context.instanceIds?.has(focus.id) === true
-        ? [
-            {
-              key: "focus-instance",
-              label: "Focus on this instance",
-              intent: {
-                type: "subject.focus-instance" as const,
-                id: focus.id,
-              },
-            },
-          ]
+      ...(focus.type === "subject.focus"
+        ? focusInstanceItems(focus.id, context)
         : []),
       ...membership.flatMap((group) => group.items),
       ...(context.filtered ? [clearItem(context)] : []),
@@ -664,10 +682,25 @@ const modelRowMenu = (
     // The rail's own answer to "add this one to the view I am looking at",
     // which is what the design draws as a drag from this tree onto the canvas.
     ...membershipGroup(id, context),
-    // Folding has to be reachable HERE and not only from the canvas (#473,
-    // review F17 on #309): the rail is DOM and the canvas is not, so a
-    // keyboard or screen-reader user has no other way to shut a box, and an
-    // automated journey has nothing to drive.
+    // Focusing on what an instance holds, for the same reason folding is here
+    // (#473 phase 2). Shipped canvas-only it would be a pointer-only gesture,
+    // which is what the fold group already refused to be. Reported from a
+    // browser journey that could not reach it from the rail.
+    //
+    // The one-hop `subject.focus` is deliberately NOT added alongside it: that
+    // gap is pre-existing and belongs to #309, which is gated on a scoping
+    // session rather than an agent build.
+    ...(focusInstanceItems(id, context).length === 0
+      ? []
+      : [
+          {
+            key: "view" as const,
+            scope: "view" as const,
+            label: "View",
+            destructive: false,
+            items: focusInstanceItems(id, context),
+          },
+        ]),
     ...foldGroup(id, context),
     {
       key: "model",
