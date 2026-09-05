@@ -2,6 +2,14 @@
 
 Status: accepted
 
+> Superseded in part in 1.24 by [ADR 0147](0147-a-layout-is-a-way-of-reading-and-the-reviewer-picks-it.md):
+> the edge is withheld from the layout AND not drawn. This ADR believed
+> cytoscape drew it between its endpoints; measured, cytoscape files a
+> parent-to-member edge as a compound loop and computes no geometry, so these
+> edges had been vanishing silently. The hide is now deliberate; the
+> relationship stays in the model and the fact panel. What this ADR decided
+> about the LAYOUT stands.
+
 From ApertureX (#439), field-reported on a live consulting engagement: the
 canvas drew two shapes and a stack of superimposed labels for a 66-subject
 project. Bisected by the adopter to a four-edge minimal case, reproduced and

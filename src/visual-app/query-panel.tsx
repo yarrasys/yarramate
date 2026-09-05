@@ -189,12 +189,13 @@ export const pulledBackIn = (
   return excluded.filter(({ id }) => drawn.has(id)).length;
 };
 
-/** The three badge toggles, which are the only presentation a reviewer can
- * change from this tab. */
+/** The presentation a reviewer can change from this tab: the three badge
+ * toggles and the kind-label toggle (ADR 0147). */
 export interface BadgeChoices {
   readonly showLifecycle: boolean;
   readonly showEvidence: boolean;
   readonly showOwnership: boolean;
+  readonly showKindLabels: boolean;
 }
 
 export interface ViewDocumentInput {
@@ -234,6 +235,7 @@ const badgePresentation = (
     ...write("showLifecycle"),
     ...write("showEvidence"),
     ...write("showOwnership"),
+    ...write("showKindLabels"),
   };
 };
 
@@ -299,6 +301,7 @@ export interface QueryPanelProps {
   readonly showLifecycle: boolean;
   readonly showEvidence: boolean;
   readonly showOwnership: boolean;
+  readonly showKindLabels: boolean;
   readonly showNudges: boolean;
   readonly onTogglePresentation: (
     flag: PresentationFlag,
@@ -327,6 +330,7 @@ export function QueryPanel({
   showLifecycle,
   showEvidence,
   showOwnership,
+  showKindLabels,
   showNudges,
   onTogglePresentation,
   onToggleOpen,
@@ -351,6 +355,7 @@ export function QueryPanel({
     showLifecycle,
     showEvidence,
     showOwnership,
+    showKindLabels,
   }));
 
   const scheduleApply = (next: QueryFields) => {
@@ -393,7 +398,7 @@ export function QueryPanel({
       : {
           view,
           query: composed,
-          badges: { showLifecycle, showEvidence, showOwnership },
+          badges: { showLifecycle, showEvidence, showOwnership, showKindLabels },
           opened,
         };
 
@@ -455,6 +460,7 @@ export function QueryPanel({
                 showLifecycle={showLifecycle}
                 showEvidence={showEvidence}
                 showOwnership={showOwnership}
+                showKindLabels={showKindLabels}
                 showNudges={showNudges}
                 onTogglePresentation={onTogglePresentation}
               />

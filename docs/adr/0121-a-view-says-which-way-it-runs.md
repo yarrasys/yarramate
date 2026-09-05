@@ -2,6 +2,13 @@
 
 Status: accepted
 
+> Amended in 1.24 by [ADR 0147](0147-a-layout-is-a-way-of-reading-and-the-reviewer-picks-it.md):
+> the "no direction control on screen" exclusion below is reversed. Direction
+> and layout mode have selects on the canvas; the view still declares both, a
+> view switch restates the declaration, and a save writes the value in force.
+> The exclusion of a per-view placement strategy stands: `NETWORK_SIMPLEX`
+> remains the one undeclared placement.
+
 `presentation.direction` has been in `yarramate/projection/v1` since the
 format had a presentation block, with exactly two values, and the LikeC4
 export has always honoured it for its own `autoLayout`. The canvas did

@@ -4,6 +4,7 @@ import type {
 } from './compiler.js'
 import { conceptKinds } from './profile.js'
 import type { ProjectionResult } from './projection.js'
+import { RELATIONSHIP_READING, humanizeKind } from './relationship-reading.js'
 
 const coreKindNames = new Map(
   conceptKinds.map(({ id, name }) => [id, name]),
@@ -76,13 +77,6 @@ export const isDeclaredNonGoal = (
   return core !== undefined && nonGoalKindIds.has(core)
 }
 
-const humanizeKind = (kind: string): string => {
-  const local = kind.slice(kind.indexOf('#') + 1)
-  return local
-    .replaceAll(/([a-z0-9])([A-Z])/g, '$1 $2')
-    .replaceAll('-', ' ')
-    .toLowerCase()
-}
 
 const article = (reading: string): string =>
   /^[aeiou]/.test(reading) ? 'an' : 'a'
@@ -96,46 +90,31 @@ const listPhrase = (items: readonly string[]): string =>
     : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`
 
 // Phrase forms are the prose readings of each core relationship kind's
-// declared intent — the same table `next` reads for ordering, spoken
-// from the source's perspective.
+// declared intent - the same table `next` reads for ordering, spoken from
+// the source's perspective. The plain readings live in
+// `./relationship-reading.ts`, shared with the canvas's edge labels (ADR
+// 0147); only the two kinds whose reading depends on the relationship's own
+// fields are phrased here.
 const relationshipPhrase = (
   coreKind: string | undefined,
   fallbackKind: string,
   mode: string | undefined,
   content: string | undefined,
 ): string => {
-  switch (coreKind) {
-    case 'serving':
-      return 'serves'
-    case 'access':
-      return mode === 'read'
-        ? 'reads'
-        : mode === 'write'
-          ? 'writes'
-          : mode === 'read-write'
-            ? 'reads and writes'
-            : 'accesses'
-    case 'realization':
-      return 'realizes'
-    case 'composition':
-      return 'comprises'
-    case 'aggregation':
-      return 'aggregates'
-    case 'assignment':
-      return 'is assigned to'
-    case 'triggering':
-      return 'triggers'
-    case 'flow':
-      return content === undefined ? 'flows to' : `sends ${content} to`
-    case 'specialization':
-      return 'specializes'
-    case 'influence':
-      return 'influences'
-    case 'association':
-      return 'is associated with'
-    default:
-      return humanizeKind(fallbackKind)
+  if (coreKind === 'access') {
+    return mode === 'read'
+      ? 'reads'
+      : mode === 'write'
+        ? 'writes'
+        : mode === 'read-write'
+          ? 'reads and writes'
+          : 'accesses'
   }
+  if (coreKind === 'flow') {
+    return content === undefined ? 'flows to' : `sends ${content} to`
+  }
+  const reading = coreKind === undefined ? undefined : RELATIONSHIP_READING[coreKind]
+  return reading ?? humanizeKind(fallbackKind)
 }
 
 interface BriefRelationship {

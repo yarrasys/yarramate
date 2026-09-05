@@ -1,8 +1,7 @@
 import type React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import cytoscape from 'cytoscape'
-import type { Core, CollectionReturnValue, ElementDefinition, NodeCollection, NodeSingular } from 'cytoscape'
-import elk from 'cytoscape-elk'
+import type { Core, CollectionReturnValue, EdgeSingular, ElementDefinition, NodeCollection, NodeSingular } from 'cytoscape'
 import { spansNesting } from './nesting-span.js'
 import type {
   CanvasGraph,
@@ -18,6 +17,7 @@ import {
   type FoldTree,
 } from '../fold-tree.js'
 import { DEFAULT_DIRECTION, type LayoutDirection } from '../layout-direction.js'
+import { DEFAULT_LAYOUT, routesEdges, type LayoutMode } from '../layout-mode.js'
 import type {
   VisualLayoutPositions,
   VisualLayoutSavePayload,
@@ -38,13 +38,22 @@ import { KIND_MIME } from './kind-palette.js'
 // reported can never drift (#307, #317).
 import { subjectMatchesQuickFilter } from './subject-filter.js'
 import { ASPECT_SHAPES, LAYER_COLORS, RELATIONSHIP_NOTATION } from '../notation/archimate.js'
-
-// Register elk extension once at module load, guarded against re-registration
-let elkRegistered = false
-if (!elkRegistered) {
-  cytoscape.use(elk)
-  elkRegistered = true
-}
+import {
+  CONTAINER_PADDING,
+  EDGE_LABEL_FONT_SIZE,
+  EDGE_LABEL_MAX_TEXT_WIDTH,
+  buildElkGraph,
+  edgeLabelText,
+  layoutWithElk,
+  readElkLayout,
+  type EdgeLabelData,
+} from './elk-layout.js'
+import {
+  applyEdgeRoutes,
+  clearEdgeRoutes,
+  placedByElk,
+  registerRouteInvalidation,
+} from './edge-routes.js'
 
 // Re-exported so `badges.test.ts` (and any other existing consumer of this
 // module's `LAYER_COLORS`) keeps working - the palette itself now lives in
@@ -69,11 +78,6 @@ const NODE_WIDTH = 170
 const NODE_HEIGHT = 50
 const LABEL_MAX_TEXT_WIDTH = 150
 
-// Edge labels are free-floating text at a route midpoint with no box to sit
-// in, so they wrap narrower than node labels - a tall, narrow label intrudes
-// on far fewer neighbours than a wide, flat one.
-const EDGE_LABEL_MAX_TEXT_WIDTH = 110
-
 // Cytoscape's `text-wrap: 'wrap'` only breaks lines on whitespace (or an
 // explicit zero-width space - `separatorRegex` in cytoscape's own text-layout
 // code matches `[\s\u200b]+`). Identifiers with no whitespace - repo-relative
@@ -89,39 +93,8 @@ function withWrapPoints(text: string): string {
   return text.replace(/([/._-])/g, `$1${WRAP_POINT}`)
 }
 
-// ELK layout options: extends base layout with elk-specific config not in
-// cytoscape's types. `nodeLayoutOptions` is cytoscape-elk's only per-node hook
-// (`makeNode` calls it for every node and assigns the result to that node's
-// ELK `layoutOptions`). `elk.direction` stays optional on the type because it
-// describes elk's option bag rather than this canvas's use of it: `layered`
-// reads it, other algorithms ignore it entirely.
-interface ElkLayoutOptions extends Record<string, unknown> {
-  name: 'elk'
-  elk: {
-    algorithm: string
-    'elk.direction'?: 'DOWN' | 'UP' | 'LEFT' | 'RIGHT'
-    [key: string]: unknown
-  }
-  nodeLayoutOptions?: (node: cytoscape.NodeSingular) => Record<string, unknown> | undefined
-}
-
-// cytoscape draws a compound parent's box itself - cytoscape-elk only feeds
-// positions back for leaf nodes (`nodes.filter((n) => !n.isParent())`), so the
-// container rectangle is its children's bounding box grown by cytoscape's own
-// `padding`. ELK independently reserves `elk.padding` around each child cluster
-// when spacing siblings apart. If cytoscape's padding is the larger of the two,
-// every container is drawn wider than the room ELK left for it and neighbouring
-// boxes close up until they touch - so the two numbers must stay equal.
-const CONTAINER_PADDING = 30
-
-// Extra room ELK leaves above the children that cytoscape does not draw into,
-// giving the container's own label - rendered outside the box by
-// `text-valign: top` - somewhere to sit that isn't the box above it.
-const CONTAINER_LABEL_GAP = 22
-
-// Padding left around the graph when reframing after a canvas resize. Matches
-// cytoscape-elk's own `padding: 20` fit default, so a resize-driven refit lands
-// on the same framing the layout would have produced at the new canvas size.
+// The padding every layout fits with, and the padding a resize-driven refit
+// reframes with, so the two land on the same framing.
 const FIT_PADDING = 20
 
 // One press of the on-canvas zoom buttons (#308). Wheel zoom stands at
@@ -141,115 +114,6 @@ export function steppedZoom(current: number, direction: 1 | -1): number {
   const level =
     direction === 1 ? current * BUTTON_ZOOM_STEP : current / BUTTON_ZOOM_STEP
   return Math.min(MAX_BUTTON_ZOOM, Math.max(MIN_BUTTON_ZOOM, level))
-}
-
-// Spacing, shared by the root graph and every compound container.
-//
-// ELK's defaults are ~20px throughout, which is too tight for 170x50 nodes
-// carrying wrapped labels, and it does not account for edge labels at all:
-// cytoscape-elk's `makeEdge` sends only id/source/target, never `labels[]`, so
-// ELK reserves no midpoint space for the relationship text cytoscape then
-// draws there. The between-layer gap therefore has to cover the edge label as
-// well as the edge.
-//
-// A graph's layout options govern only that graph's own children, and
-// cytoscape-elk sets them on the root graph alone, so each container is laid
-// out as a separate child graph that would otherwise fall back to those ~20px
-// defaults - measured: nodes inside a container sat 18px apart while their
-// siblings outside sat 58px apart. Handing the same spacing to every parent
-// through `nodeLayoutOptions` closes that gap. (`elk.hierarchyHandling:
-// INCLUDE_CHILDREN` does not: measured on the 289-node graph it left the
-// in-container gap at the default and widened the layout from 28.5k to 35k px.
-// Direction is deliberately not passed down - ELK ignores it on child graphs,
-// verified by identical container boxes for DOWN and RIGHT.)
-const ELK_SPACING: Record<string, unknown> = {
-  // Between siblings in the same layer.
-  'elk.spacing.nodeNode': 60,
-  // Across layers - the axis edge labels are drawn on.
-  'elk.layered.spacing.nodeNodeBetweenLayers': 100,
-  // Keep routed edges off the node boxes they pass.
-  'elk.spacing.edgeNode': 30,
-  'elk.layered.spacing.edgeNodeBetweenLayers': 30,
-  // Keep parallel edges apart so their labels do not stack.
-  'elk.spacing.edgeEdge': 20,
-  'elk.layered.spacing.edgeEdgeBetweenLayers': 20,
-  // Disconnected subgraphs read as separate clusters, not one mass.
-  'elk.spacing.componentComponent': 80,
-  'elk.padding': `[top=${CONTAINER_PADDING + CONTAINER_LABEL_GAP},left=${CONTAINER_PADDING},bottom=${CONTAINER_PADDING},right=${CONTAINER_PADDING}]`,
-}
-
-// The proportion disconnected components pack toward (#308). `layered`
-// separates components by default; what failed at register scale was the
-// packing. cytoscape-elk hands the whole `elk` bag to ELK verbatim as the
-// root graph's `layoutOptions` (`graph['layoutOptions'] = options.elk` in
-// its `Layout.run`), but first injects `aspectRatio: cy.width() /
-// cy.height()` as a default - the viewport's momentary shape, which is NaN
-// on a headless instance and, at mount time on a canvas taller than wide,
-// small enough that ELK's row-breaking (`sqrt(total component area) x
-// aspectRatio`) fits one component per row: 54 subjects with no
-// relationships drew as one 172x6942 column fitted to zoom ~0.10. The bare
-// `aspectRatio` spelling below is load-bearing: it replaces the injected
-// key at cytoscape-elk's own `assign`, so exactly one value ever reaches
-// ELK, the same headless and mounted. The value is not the drawn
-// proportion: the packer breaks rows in the pre-rotation frame, so under
-// `DOWN` the requested ratio lands roughly inverted and quantised.
-// Measured on disconnected 170x50 subjects at 2.5: 9 -> 672x312 (a 3x3
-// grid), 20 -> 922x572, 54 -> 1672x962, 120 -> 2422x1482 - drawn ratios
-// 1.6-2.2, no overlaps - while a connected cycle's layout is untouched
-// (component packing never reaches a single-component graph).
-const COMPONENT_ASPECT_RATIO = 2.5
-
-// Shared by the full-graph layout effect and the visible-subgraph relayout
-// that runs on view switch, so both always agree on algorithm and direction.
-//
-//
-// One backend. `radial` (cytoscape `concentric`) and `force` (elk `stress`
-// then `sporeOverlap`) were measured against `layered` on every view of the
-// contact-update journey and lost on all three counts that matter: edge
-// crossings, total edge length, and how large the graph draws once fitted to
-// the canvas. They are removed rather than deprecated, and the `seed` only
-// `force` ever read went with them - the projection schema had required a
-// seed of every view that declared a layout at all, for one backend's benefit.
-//
-// `elk.direction` is read only by `layered`, and the view says which way it
-// runs (#274, ADR 0121). It was pinned `DOWN` on the reasoning that ArchiMate's
-// layer bands only read top-down, which is right for a layer-band view and
-// wrong for the others: a deployment realization chain and a fan-out both read
-// better left to right, and `presentation.direction` has been in the projection
-// format all along, honoured by the LikeC4 export for its own `autoLayout`. A
-// view that says nothing still runs top-down, so the band reasoning keeps the
-// default it earned and stops being the only answer.
-const ELK_DIRECTION: Readonly<Record<LayoutDirection, 'DOWN' | 'RIGHT'>> = {
-  'top-down': 'DOWN',
-  'left-right': 'RIGHT',
-}
-
-export function buildLayoutConfig(direction: LayoutDirection): cytoscape.LayoutOptions {
-  const elk: ElkLayoutOptions['elk'] = {
-    algorithm: 'layered',
-    'elk.direction': ELK_DIRECTION[direction],
-    // Placement measured across every authored view in this repository - the
-    // six contact-update journey views and the self-model's twenty-two - and
-    // adopted on that sweep rather than on the single 8-subject view #274
-    // opened with (ADR 0121). Holding direction DOWN, NETWORK_SIMPLEX against
-    // the BRANDES_KOEPF default cut total edge length by a third (1.46M px to
-    // 987k), narrowed the summed layout by 15%, and moved crossings 1888 to
-    // 1821: fewer on ten views, more on three, unchanged on fifteen. The three
-    // it costs crossings are the three largest, and each pays for them with 12
-    // to 40% less edge - which is why the trade is taken here once for every
-    // view rather than declared per view.
-    'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
-    // Bare key on purpose - replaces cytoscape-elk's injected viewport
-    // ratio; see COMPONENT_ASPECT_RATIO.
-    aspectRatio: COMPONENT_ASPECT_RATIO,
-    ...ELK_SPACING,
-  }
-  const config: ElkLayoutOptions = {
-    name: 'elk',
-    elk,
-    nodeLayoutOptions: (node) => (node.isParent() ? ELK_SPACING : undefined),
-  }
-  return config as unknown as cytoscape.LayoutOptions
 }
 
 // Badge layer geometry: cytoscape has no single "layer" style value - each
@@ -431,7 +295,15 @@ export function buildStylesheet(
   showEvidence: boolean,
   showOwnership: boolean,
   showNudges: boolean,
+  showKindLabels: boolean = true,
+  layout: LayoutMode = DEFAULT_LAYOUT,
 ): cytoscape.StylesheetJsonBlock[] {
+  // What an edge says is decided in one place (ADR 0147): the relationship's
+  // name, or its reading in this layout's voice - "serves" in a layout that
+  // draws the server above, "served by" in one that draws it below - or
+  // nothing when kind labels are off. A mapper, so a toggle repaints in place.
+  const edgeText = (edge: EdgeSingular): string =>
+    withWrapPoints(edgeLabelText(edge.data() as EdgeLabelData, layout, showKindLabels))
   // Cytoscape re-evaluates every mapper on each style recalculation - a single
   // selection change re-runs all seven over every node - and rebuilding the
   // percent-encoded SVG payloads that often is pure waste. Which images a node
@@ -594,16 +466,19 @@ export function buildStylesheet(
       style: {
         'line-color': '#999999',
         width: 1.5,
+        // What an edge draws as when nothing routes it: every edge under
+        // `layered`, and any edge whose route a moved endpoint invalidated. A
+        // routed edge carries its own geometry as a bypass over this.
         'curve-style': 'round-taxi',
         'taxi-radius': 25,
         'target-arrow-shape': 'triangle',
         'target-arrow-color': '#999999',
-        label: 'data(wrapLabel)',
-        'font-size': 10,
-        // ELK reserves no space for edge text (cytoscape-elk's `makeEdge` never
-        // emits `labels[]`), so a long relationship name renders as one wide
-        // banner across the midpoint and collides with whatever else routes
-        // through there. Wrapping caps how far that text can reach sideways.
+        label: edgeText,
+        'font-size': EDGE_LABEL_FONT_SIZE,
+        // Under `layered` nothing reserves space for edge text, so a long
+        // relationship name renders as one wide banner across the midpoint
+        // and collides with whatever else routes through there. Wrapping caps
+        // how far that text can reach sideways.
         'text-wrap': 'wrap',
         'text-max-width': `${EDGE_LABEL_MAX_TEXT_WIDTH}px`,
         'text-background-color': '#FFFFFF',
@@ -625,6 +500,21 @@ export function buildStylesheet(
       style: {
         'curve-style': 'bezier',
         'control-point-step-size': 40,
+      },
+    },
+    {
+      // A ROUTED edge (ADR 0147) says its text where ELK reserved room for it:
+      // as a source label at the arc position the route applier sets per
+      // edge, with the midpoint label blanked. Blanked HERE, in the
+      // stylesheet, because an empty bypass value removes the bypass rather
+      // than setting it, and the midpoint label would show through beside the
+      // routed one.
+      selector: 'edge.routed',
+      style: {
+        label: '',
+        'source-label': edgeText,
+        'text-wrap': 'wrap',
+        'text-max-width': `${EDGE_LABEL_MAX_TEXT_WIDTH}px`,
       },
     },
     {
@@ -940,6 +830,11 @@ export function graphToElements(
         id: edge.id,
         source: edge.from,
         target: edge.to,
+        // What the stylesheet's label mapper reads (ADR 0147): the name when
+        // there is one, else the kind - the authored one and its core - so the
+        // label can say a reading for a core kind and spell out an extension.
+        name: edge.name ?? null,
+        kindLabel: edge.kindLabel,
         label: edge.name ?? edge.kindLabel,
         wrapLabel: withWrapPoints(edge.name ?? edge.kindLabel),
         coreKindLabel: edge.coreKindLabel,
@@ -981,6 +876,8 @@ export function graphToElements(
                     ? kindLabelOfId(edge.kind)
                     : `${kindLabelOfId(edge.kind)} \u00d7${edge.count}`,
                 wrapLabel: withWrapPoints(kindLabelOfId(edge.kind)),
+                name: null,
+                kindLabel: kindLabelOfId(edge.kind),
                 coreKindLabel: kindLabelOfId(edge.kind),
                 lifted: true,
                 liftedCount: edge.count,
@@ -1136,6 +1033,16 @@ export function applyFilter(
     )
   }
 
+  // An edge between a box and one of its own members is implied by the
+  // nesting and is not drawn (ADR 0147, superseding ADR 0139's "never from the
+  // graph"). cytoscape cannot draw one: it files the edge as a compound loop
+  // and computes no geometry for it, so these had been vanishing all along
+  // without anyone deciding so. Decided after the reparent pass above, against
+  // the containment actually on screen; the relationship stays in the model
+  // and the fact panel.
+  const implied = new Set<string>(
+    nestedPairEdges(cy.elements()).map((edge) => edge.id()),
+  )
   const visibleIds = new Set<string>(visibleNodeIds)
   for (const edge of cy.edges()) {
     const source = edge.data('source') as string
@@ -1144,6 +1051,11 @@ export function applyFilter(
       visibleIds.add(edge.id())
     }
   }
+  // Subtracted last, because a view's match set may name relationships as
+  // well as subjects (`between` and `connected` queries do), and a named one
+  // is seeded into the visible set above before any edge rule runs. Measured:
+  // 20 of API tiers' 24 box-to-member edges came back through that seed.
+  for (const id of implied) visibleIds.delete(id)
 
   cy.elements().style('display', 'none')
   cy.elements()
@@ -1151,27 +1063,75 @@ export function applyFilter(
     .style('display', 'element')
 }
 
-// One synchronous pass, built by `buildLayoutConfig` and run. The busy notice,
-// the two-pass chain and the in-flight guard that used to live here existed
-// only for the `force` backend, whose elk `stress` pass blocked the main
-// thread for seconds and then needed a second `sporeOverlap` pass to separate
-// the nodes it left overlapping. With `layered` the only backend a layout run
-// cannot still be in flight when the next one is requested, so none of that
-// apparatus has anything left to guard.
-function runLayout(
+// The scratch key a layout run stamps its generation under, so a run that
+// resolves after a later one was requested applies nothing.
+const LAYOUT_GENERATION = '_layoutGeneration'
+
+/**
+ * One layout run (ADR 0147): build the ELK graph for the collection, wait for
+ * ELK, place the nodes through cytoscape's own `preset` layout - which fits
+ * the collection and emits `layoutstop` exactly as the extension used to, so
+ * the mount handler pins saved positions and records the framing unchanged -
+ * and then, in a routed mode, draw ELK's routes on every edge whose two ends
+ * are still where ELK put them. Saved positions have landed by then, so an
+ * edge on a pinned node keeps the stylesheet's straight line.
+ *
+ * Every run first hands every edge back to the stylesheet: a route belongs to
+ * the placement it was computed for, and the placement is about to change.
+ *
+ * Runs resolve in the order ELK finishes them, which is not the order they
+ * were requested in when a view switch lands during a slow layout. The last
+ * request wins: a run that finds a newer generation stamped on the instance
+ * drops its answer, positions, routes and fit alike, rather than laying a
+ * previous view's geometry over the current one's ids.
+ */
+async function runLayout(
   eles: Core | CollectionReturnValue,
   direction: LayoutDirection,
-): void {
+  mode: LayoutMode,
+  showKindLabels: boolean,
+): Promise<void> {
+  const cy: Core = 'elements' in eles ? eles : eles.cy()
   const collection = 'elements' in eles ? eles.elements() : eles
+  if (collection.nodes().empty()) return
   // Withhold ancestor-descendant edges from ELK; see `nestedPairEdges`.
-  // `.difference` returns a collection, so the layout still receives every
-  // node and every ordinary edge - only the degenerate ones are absent, and
-  // they are still drawn between the endpoints the layout places.
   const degenerate = nestedPairEdges(collection)
   const forLayout = degenerate.empty()
     ? collection
     : collection.difference(degenerate)
-  forLayout.layout(buildLayoutConfig(direction)).run()
+  clearEdgeRoutes(cy.edges())
+  const generation =
+    ((cy.scratch(LAYOUT_GENERATION) as number | undefined) ?? 0) + 1
+  cy.scratch(LAYOUT_GENERATION, generation)
+  const { graph, reversed } = buildElkGraph(forLayout, {
+    direction,
+    mode,
+    showKindLabels,
+  })
+  const laid = await layoutWithElk(graph)
+  if (cy.destroyed() || cy.scratch(LAYOUT_GENERATION) !== generation) return
+  const placement = readElkLayout(laid, reversed)
+  forLayout
+    .layout({
+      name: 'preset',
+      // A node ELK did not place (a container, whose box cytoscape derives
+      // from its children) is left alone: `preset` skips a null.
+      positions: (node: NodeSingular) => placement.nodes.get(node.id()) ?? null,
+      fit: true,
+      padding: FIT_PADDING,
+      animate: false,
+    } as unknown as cytoscape.LayoutOptions)
+    .run()
+  if (!routesEdges(mode)) return
+  // A compound's own position refreshes lazily; every endpoint offset below is
+  // measured against the box that will actually be drawn.
+  ;(cy.nodes() as unknown as { updateCompoundBounds(force: boolean): void })
+    .updateCompoundBounds(true)
+  applyEdgeRoutes(
+    cy,
+    placement,
+    (edge) => placedByElk(edge.source(), placement) && placedByElk(edge.target(), placement),
+  )
 }
 
 /**
@@ -1189,11 +1149,15 @@ function runLayout(
  * field report; `serving` on the same pair reproduces byte-identically.
  * Anything drawn between an ancestor and its descendant does it.
  *
- * These edges are withheld from the LAYOUT only, never from the graph.
- * cytoscape draws an edge between its endpoints wherever they land, so the
- * relationship stays on the canvas and the nesting stays too - which is the
- * point, since both claims are legitimate and the alternative was to throw
- * the nesting away like the anomalies `resolveNestingParents` handles.
+ * These edges are withheld from the layout AND from the picture (ADR 0147,
+ * superseding ADR 0139's "never from the graph"): ADR 0139 believed cytoscape
+ * drew them between their endpoints, and it does not - it files a
+ * parent-to-member edge as a compound loop and computes no geometry, so they
+ * had been vanishing silently. `applyFilter` now hides them on purpose. The
+ * relationship stays in the model and the fact panel; the nesting stays too,
+ * which is the point, since both claims are legitimate and the alternative
+ * was to throw the nesting away like the anomalies `resolveNestingParents`
+ * handles.
  */
 const nestedPairEdges = (
   collection: CollectionReturnValue,
@@ -1212,16 +1176,20 @@ const nestedPairEdges = (
 }
 
 
-// Positions come from the last full-graph layout, which packs every node
-// (including ones a view hides) into one shared coordinate space. Reusing
-// those positions for a disjoint visible subset leaves it scattered across
-// the old full-graph span - relaying out just the visible collection gives
-// each view a fresh, compact layout instead. cytoscape-elk's own `fit: true`
-// default re-frames the viewport to the result, so no separate fit call is
-// needed; `layout()` is a no-op on an empty visible collection, so callers
-// never need to guard against "the new view matched nothing".
-export function relayoutVisible(cy: Core, direction: LayoutDirection): void {
-  runLayout(cy.elements(':visible'), direction)
+// Positions come from whatever layout last ran, which packed a different set
+// of nodes into one shared coordinate space. Reusing those positions for a
+// disjoint visible subset leaves it scattered across the old span - relaying
+// out just the visible collection gives each view a fresh, compact layout
+// instead. The run's own fit re-frames the viewport to the result, and an
+// empty visible collection resolves at once without asking ELK anything, so
+// callers never need to guard against "the new view matched nothing".
+export function relayoutVisible(
+  cy: Core,
+  direction: LayoutDirection,
+  mode: LayoutMode = DEFAULT_LAYOUT,
+  showKindLabels: boolean = true,
+): Promise<void> {
+  return runLayout(cy.elements(':visible'), direction, mode, showKindLabels)
 }
 
 /**
@@ -1244,22 +1212,29 @@ export function relayoutVisible(cy: Core, direction: LayoutDirection): void {
  * Returns whether it re-framed, so a caller can record a framing this actually
  * produced rather than one it assumed.
  */
-export function relayoutAfterFold(
+export async function relayoutAfterFold(
   cy: Core,
   direction: LayoutDirection,
+  mode: LayoutMode,
+  showKindLabels: boolean,
   anchorId: string | null,
-): boolean {
+): Promise<boolean> {
   const anchor = anchorId === null ? null : cy.getElementById(anchorId)
   const before =
     anchor !== null && anchor.nonempty() ? { ...anchor.position() } : null
-  relayoutVisible(cy, direction)
+  // Awaited, so the anchor is read from the finished layout. Layout has
+  // always resolved asynchronously, and before ADR 0147 this read it before
+  // ELK had run: the translation below never fired.
+  await relayoutVisible(cy, direction, mode, showKindLabels)
+  if (cy.destroyed()) return false
   if (before !== null && anchor !== null && anchor.nonempty()) {
     const after = anchor.position()
     const dx = before.x - after.x
     const dy = before.y - after.y
     // Whole-graph translation, so nothing moves RELATIVE to anything else -
     // the layout ELK produced is kept exactly, just slid back under the
-    // reader's eye.
+    // reader's eye. Routes survive it: every routed edge is stated relative
+    // to its own endpoints.
     if (dx !== 0 || dy !== 0) {
       cy.nodes().forEach((node) => {
         const position = node.position()
@@ -1477,6 +1452,14 @@ interface GraphCanvasProps {
    * `DEFAULT_DIRECTION`, so the canvas never has to decide what silence means.
    */
   readonly direction: LayoutDirection
+  /**
+   * How the active view arranges itself (ADR 0147): its `presentation.layout`
+   * or the reviewer's pick on the canvas. A view that declares none is handed
+   * `DEFAULT_LAYOUT` by the caller.
+   */
+  readonly layout: LayoutMode
+  /** Whether an unnamed relationship is labelled with its reading (ADR 0147). */
+  readonly showKindLabels: boolean
   /** Saved layout for the active view, or undefined when it has none yet. */
   readonly savedPositions: VisualLayoutPositions | undefined
   readonly onSaveLayout: (payload: VisualLayoutSavePayload) => void
@@ -1521,6 +1504,8 @@ export function GraphCanvas({
   decorations,
   activeViewId,
   direction,
+  layout,
+  showKindLabels,
   savedPositions,
   onSaveLayout,
   onKindDrop,
@@ -1558,6 +1543,7 @@ export function GraphCanvas({
   const isInitialPresentationSyncRef = useRef(true)
   const activeViewIdRef = useRef(activeViewId)
   const directionRef = useRef(direction)
+  const layoutRef = useRef(layout)
   const pendingViewFitRef = useRef(false)
   const matchedIdsRef = useRef(matchedIds)
   // Seeded with the prop so the mount render never reads as "the quick filter
@@ -1567,9 +1553,6 @@ export function GraphCanvas({
   const onSaveLayoutRef = useRef(onSaveLayout)
   const savedPositionsRef = useRef(effectiveSaved)
   const dragSaveHandleRef = useRef<DragSaveHandle | null>(null)
-  // The force backend's in-flight layout (see `runLayout`), shared by the
-  // graph-change effect and the view-switch relayout so either can supersede
-  // the other instead of stacking a second stress+sporeOverlap chain on top.
   // The viewport a layout (or a resize refit) last left behind. Anything else
   // on screen is the reviewer's own pan/zoom, which a resize must not discard.
   const autoViewportRef = useRef<{
@@ -1620,11 +1603,17 @@ export function GraphCanvas({
       // which is what every existing gesture assumes.
       selectionType: 'additive',
       boxSelectionEnabled: true,
-      // `showLifecycle`/`showEvidence`/`showOwnership`/`showNudges` seed the
-      // stylesheet the mount builds; the effect below re-applies it to the
-      // live instance on every later toggle, without remounting or
-      // re-laying-out.
-      style: buildStylesheet(showLifecycle, showEvidence, showOwnership, showNudges),
+      // The presentation flags and the layout seed the stylesheet the mount
+      // builds; the effect below re-applies it to the live instance on every
+      // later change, without remounting or re-laying-out.
+      style: buildStylesheet(
+        showLifecycle,
+        showEvidence,
+        showOwnership,
+        showNudges,
+        showKindLabels,
+        layout,
+      ),
       wheelSensitivity: 0.1,
       layout: { name: 'null' },
     })
@@ -1712,6 +1701,10 @@ export function GraphCanvas({
       },
     )
 
+    // A dragged node's edges go back to the stylesheet's straight lines: the
+    // routes they carried were computed for where the node was (ADR 0147).
+    const disposeRoutes = registerRouteInvalidation(cy)
+
     const rememberFraming = (): void => {
       autoViewportRef.current = { zoom: cy.zoom(), pan: { ...cy.pan() } }
     }
@@ -1758,6 +1751,7 @@ export function GraphCanvas({
     return () => {
       cancelAnimationFrame(pendingFrame)
       observer.disconnect()
+      disposeRoutes()
       dragSaveHandleRef.current?.dispose()
       // Withdrawn before the instance goes, so nothing can photograph a
       // destroyed canvas.
@@ -1778,8 +1772,19 @@ export function GraphCanvas({
       isInitialPresentationSyncRef.current = false
       return
     }
-    cyRef.current.style(buildStylesheet(showLifecycle, showEvidence, showOwnership, showNudges))
-  }, [showLifecycle, showEvidence, showOwnership, showNudges])
+    cyRef.current.style(
+      buildStylesheet(
+        showLifecycle,
+        showEvidence,
+        showOwnership,
+        showNudges,
+        showKindLabels,
+        layout,
+      ),
+    )
+    // `showKindLabels` and `layout` are here for the LABEL WORDING they
+    // change; the relayout a layout change needs is armed below.
+  }, [showLifecycle, showEvidence, showOwnership, showNudges, showKindLabels, layout])
 
   // Update elements whenever the graph itself changes. Keyed on the graph and
   // nothing else: a full remove/re-add plus an unscoped layout over every
@@ -1801,7 +1806,18 @@ export function GraphCanvas({
       cyRef.current.add(elements)
     }
 
-    runLayout(cyRef.current, direction)
+    // Laid out over what the standing filter leaves visible, never over every
+    // element: the first paint used to lay out the whole model and then hide
+    // most of it, which sprawled the survivors (the filter effect below
+    // measured it) and, with routing, would spend seconds placing a graph
+    // nobody sees. The refs hold what the filter effect last applied.
+    applyFilter(cyRef.current, matchedIdsRef.current, quickFilterTextRef.current)
+    void runLayout(
+      cyRef.current.elements(':visible'),
+      direction,
+      layout,
+      showKindLabels,
+    )
     // EVERY input passed to `graphToElements` above, because an input this
     // effect reads and does not depend on cannot rebuild anything: the
     // component re-renders with the new prop and the elements on screen stay
@@ -1861,7 +1877,13 @@ export function GraphCanvas({
     applyFilter(cy, matchedIds, quickFilterText)
     // The node the reader touched, where exactly one changed. On a fold-all
     // there is no single anchor and the layout is free to place everything.
-    relayoutAfterFold(cy, direction, changed.length === 1 ? changed[0]! : null)
+    void relayoutAfterFold(
+      cy,
+      direction,
+      layout,
+      showKindLabels,
+      changed.length === 1 ? changed[0]! : null,
+    )
   }, [folded])
 
   // Mark every subject a diagnostic named. Runs on its own rather than with
@@ -1900,25 +1922,30 @@ export function GraphCanvas({
     }
   }, [selectedId, graph])
 
-  // Arms a pending fit when the active view changes, or when the direction it
-  // declares does (#274). Direction is a variable again: it feeds
-  // `buildLayoutConfig`, so a view whose `presentation.direction` is edited
-  // and committed would otherwise keep the geometry of the direction it no
-  // longer declares. Notation is still not one - there is a single notation -
-  // so the view and its direction are all that can change what the layout
-  // should be.
+  // Arms a pending fit when the active view changes, or when the direction or
+  // the layout mode does (#274, ADR 0147) - a reviewer picking a mode on the
+  // canvas, or a view whose presentation was edited and committed, would
+  // otherwise keep the geometry of the mode it no longer runs. Notation is
+  // still not one - there is a single notation. Kind labels are not one
+  // either: a label toggle repaints in place, and ELK's reserved label room
+  // stays as it was until the next layout.
   // Declared before the filter-apply effect below - same-phase effects commit
   // in source order, so a view switch whose filter result lands in the very
   // same render (e.g. clearing back to "All") is still armed in time for that
   // commit.
   useEffect(() => {
-    if (activeViewId === activeViewIdRef.current && direction === directionRef.current) {
+    if (
+      activeViewId === activeViewIdRef.current &&
+      direction === directionRef.current &&
+      layout === layoutRef.current
+    ) {
       return
     }
     activeViewIdRef.current = activeViewId
     directionRef.current = direction
+    layoutRef.current = layout
     pendingViewFitRef.current = true
-  }, [activeViewId, direction])
+  }, [activeViewId, direction, layout])
 
   // Apply structural filter (matchedIds) and quick-filter narrowing, then,
   // only once a pending view-switch relayout is armed and its filter result
@@ -1950,7 +1977,7 @@ export function GraphCanvas({
     quickFilterTextRef.current = quickFilterText
     if (pendingViewFitRef.current || matchedChanged) {
       pendingViewFitRef.current = false
-      relayoutVisible(cyRef.current, direction)
+      void relayoutVisible(cyRef.current, direction, layout, showKindLabels)
     } else if (quickFilterChanged && fitVisible(cyRef.current)) {
       // A quick-filter keystroke never relayouts - the survivors keep their
       // positions (a reviewer's drags included) and the viewport re-frames
@@ -1966,7 +1993,7 @@ export function GraphCanvas({
         pan: { ...cyRef.current.pan() },
       }
     }
-  }, [matchedIds, quickFilterText, graph, direction])
+  }, [matchedIds, quickFilterText, graph, direction, layout])
 
   // Session-local discard of the active view's saved layout: record the
   // discard, drop the pin the layoutstop handler would re-apply, and run a
@@ -1980,7 +2007,9 @@ export function GraphCanvas({
     setDiscardedViews((prev) => new Set(prev).add(activeViewId))
     savedPositionsRef.current = undefined
     dragSaveHandleRef.current?.cancelPending()
-    if (cyRef.current !== null) relayoutVisible(cyRef.current, direction)
+    if (cyRef.current !== null) {
+      void relayoutVisible(cyRef.current, direction, layout, showKindLabels)
+    }
   }
 
   // The on-canvas zoom cluster (#308). A press zooms about the viewport's own

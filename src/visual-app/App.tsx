@@ -37,6 +37,8 @@ import type { NestingKind } from "../nesting.js";
 import type { PatternMembership } from "../compiler.js";
 import { foldTree } from "../fold-tree.js";
 import type { LayoutDirection } from "../layout-direction.js";
+import type { LayoutMode } from "../layout-mode.js";
+import { LayoutControls } from "./layout-controls.js";
 import type { ProjectionQuery } from "../projection.js";
 import type { VisualRenderedModel } from "../adapters/visual/wire.js";
 import type { YarramateOperation } from "../operations.js";
@@ -255,9 +257,12 @@ const DiagramWorkspace = ({
   folded,
   memberships,
   direction,
+  onLayoutChange,
+  onDirectionChange,
   showLifecycle,
   showEvidence,
   showOwnership,
+  showKindLabels,
   showNudges,
   openQuestionCounts,
   decorations,
@@ -293,7 +298,8 @@ const DiagramWorkspace = ({
   readonly state: VisualAppState;
   readonly selectedId: string | null;
   readonly waiting: string | null;
-  readonly layout: "layered";
+  /** How the active view arranges itself (ADR 0147). */
+  readonly layout: LayoutMode;
   readonly nesting: readonly NestingKind[];
   /**
    * Which instances draw folded, resolved from the view's default and the
@@ -304,9 +310,13 @@ const DiagramWorkspace = ({
   readonly memberships?: readonly PatternMembership[];
   /** Which way the active view runs its layers (#274, ADR 0121). */
   readonly direction: LayoutDirection;
+  /** The reviewer's picks from the canvas selects (ADR 0147). */
+  readonly onLayoutChange: (layout: LayoutMode) => void;
+  readonly onDirectionChange: (direction: LayoutDirection) => void;
   readonly showLifecycle: boolean;
   readonly showEvidence: boolean;
   readonly showOwnership: boolean;
+  readonly showKindLabels: boolean;
   readonly showNudges: boolean;
   readonly openQuestionCounts: ReadonlyMap<string, number>;
   /** The host's per-subject marks (#314, ADR 0119), for the canvas. */
@@ -453,6 +463,14 @@ const DiagramWorkspace = ({
               value={state.quickFilterText}
               onChange={onQuickFilterChange}
             />
+            {/* Layout and direction, beside the filter and for the same reason:
+              * they change the drawing, so they sit with it (ADR 0147). */}
+            <LayoutControls
+              layout={layout}
+              direction={direction}
+              onLayoutChange={onLayoutChange}
+              onDirectionChange={onDirectionChange}
+            />
             {/* The palette is the authoring entry when it is reachable; this
               * button is the FALLBACK for a host that mounts without the
               * palette section (#295's sections opt-in), not a duplicate
@@ -593,6 +611,8 @@ const DiagramWorkspace = ({
             openQuestionCounts={openQuestionCounts}
             activeViewId={state.activeView}
             direction={direction}
+            layout={layout}
+            showKindLabels={showKindLabels}
             savedPositions={state.model.layouts[state.activeView]}
             // A read-only drag still moves the node - arranging what is on
             // screen is reading - but the debounced save it would queue goes
@@ -658,6 +678,7 @@ const DiagramWorkspace = ({
         showLifecycle={showLifecycle}
         showEvidence={showEvidence}
         showOwnership={showOwnership}
+        showKindLabels={showKindLabels}
         showNudges={showNudges}
         onTogglePresentation={onTogglePresentation}
         onToggleOpen={onToggleBottomPanel}
@@ -2048,6 +2069,12 @@ export const App = ({
           folded={foldedIds}
           memberships={state.model?.memberships}
           direction={workspace.direction}
+          onLayoutChange={(layout) =>
+            dispatchWorkspace({ type: "layout.set", layout })
+          }
+          onDirectionChange={(direction) =>
+            dispatchWorkspace({ type: "direction.set", direction })
+          }
           decorations={decorations}
           connection={workspace.connection}
           onConnectTarget={(id) =>
@@ -2096,6 +2123,7 @@ export const App = ({
           showLifecycle={workspace.showLifecycle}
           showEvidence={workspace.showEvidence}
           showOwnership={workspace.showOwnership}
+          showKindLabels={workspace.showKindLabels}
           showNudges={workspace.showNudges}
           openQuestionCounts={openQuestionCounts}
           onSelect={(subject) =>
@@ -2391,9 +2419,11 @@ export const App = ({
         // query on screen, which is why nothing clears it on the way in.
         query={state.activeFilter?.query ?? null}
         layout={workspace.layout}
+        direction={workspace.direction}
         showLifecycle={workspace.showLifecycle}
         showEvidence={workspace.showEvidence}
         showOwnership={workspace.showOwnership}
+        showKindLabels={workspace.showKindLabels}
         open={saveViewOpen}
         folder={saveViewFolder}
         onClose={() => setSaveViewOpen(false)}

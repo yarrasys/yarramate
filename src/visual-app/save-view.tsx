@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { LayoutDirection } from "../layout-direction.js";
+import type { LayoutMode } from "../layout-mode.js";
 import type { ProjectionQuery } from "../projection.js";
 import type {
   VisualViewOperation,
@@ -15,10 +16,13 @@ export interface SaveViewDialogProps {
   readonly views: readonly VisualViewSummary[];
   readonly activeViewId: string;
   readonly query: ProjectionQuery | null;
-  readonly layout: "layered";
+  /** The layout mode and direction in force on the canvas (ADR 0147). */
+  readonly layout: LayoutMode;
+  readonly direction: LayoutDirection;
   readonly showLifecycle: boolean;
   readonly showEvidence: boolean;
   readonly showOwnership: boolean;
+  readonly showKindLabels: boolean;
   /**
    * Openness is the caller's, not the form's: every way in is somewhere else -
    * the rail's new-view button, three context-menu items - and two components
@@ -49,27 +53,27 @@ export interface BuildPayloadParams {
   /** Where the overwritten view's document already lives, if there is one. */
   readonly path: string | undefined;
   /**
-   * The folder this document declares. Carried rather than composed, for the
-   * same reason `carriedDirection` is: this builds the presentation block from
-   * scratch, so a field it is not given is a field the save DROPS - and a
-   * reviewer who overwrote a view would find it had left its folder.
+   * The folder this document declares. Carried rather than composed: this
+   * builds the presentation block from scratch, so a field it is not given is
+   * a field the save DROPS - and a reviewer who overwrote a view would find it
+   * had left its folder.
    */
   readonly folder: string | undefined;
   readonly title: string;
   readonly description: string;
   readonly query: ProjectionQuery | null;
-  readonly layout: "layered";
+  /**
+   * The layout mode and direction the canvas is drawing (ADR 0147). Both have
+   * controls on screen now, so a save writes what is in force, the way it
+   * writes the badge flags; there is nothing to carry from a declaration the
+   * reviewer may have moved away from.
+   */
+  readonly layout: LayoutMode;
+  readonly direction: LayoutDirection;
   readonly showLifecycle: boolean;
   readonly showEvidence: boolean;
   readonly showOwnership: boolean;
-  /**
-   * Whatever the view being overwritten already declared, carried through
-   * rather than restated. The canvas draws the direction now (#274, ADR 0121)
-   * and the LikeC4 export has always read it, but there is still no control
-   * that sets one: the view declares it, so a save that simply omitted it
-   * would drop a value the reviewer never asked to discard.
-   */
-  readonly carriedDirection: LayoutDirection | undefined;
+  readonly showKindLabels: boolean;
 }
 
 /**
@@ -93,10 +97,11 @@ export const buildPayload = ({
   description,
   query,
   layout,
+  direction,
   showLifecycle,
   showEvidence,
   showOwnership,
-  carriedDirection,
+  showKindLabels,
 }: BuildPayloadParams): VisualViewOperation => {
   const viewId = id ?? viewIdFrom(title, taken);
   return {
@@ -109,9 +114,7 @@ export const buildPayload = ({
       query: query ?? {},
       presentation: {
         layout,
-        ...(carriedDirection === undefined
-          ? {}
-          : { direction: carriedDirection }),
+        direction,
         // A folder is written only where there is one to write: an empty
         // string is not "no folder", it is a folder with no name, and the
         // schema refuses it.
@@ -119,6 +122,7 @@ export const buildPayload = ({
         showLifecycle,
         showEvidence,
         showOwnership,
+        showKindLabels,
       },
     }),
   };
@@ -263,9 +267,11 @@ export function SaveViewDialog({
   activeViewId,
   query,
   layout,
+  direction,
   showLifecycle,
   showEvidence,
   showOwnership,
+  showKindLabels,
   open,
   folder,
   onClose,
@@ -297,13 +303,11 @@ export function SaveViewDialog({
         description,
         query,
         layout,
+        direction,
         showLifecycle,
         showEvidence,
         showOwnership,
-        // Overwriting carries the view's own direction; a brand new view has
-        // none to carry, and the export's own default applies.
-        carriedDirection:
-          id === undefined ? undefined : activeView?.presentation?.direction,
+        showKindLabels,
       }),
     );
   };

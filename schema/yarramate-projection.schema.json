@@ -145,7 +145,8 @@
           "$ref": "#/$defs/nonEmptyText"
         },
         "layout": {
-          "enum": ["layered"]
+          "description": "How the view arranges itself (ADR 0147), a ladder where each mode keeps everything below it: \"layered\" places the nodes and lets the canvas draw straight lines between them; \"routed\" also routes every edge around the nodes and reserves room for its label; \"served-by\" also layers serving, realization and specialization upward, so the served element sits above what serves it and the label reads down the page; \"bands\" also pins every element to its ArchiMate layer's band. A view that says nothing lays out \"served-by\".",
+          "enum": ["layered", "routed", "served-by", "bands"]
         },
         "direction": {
           "enum": ["top-down", "left-right"]
@@ -168,6 +169,10 @@
           "type": "boolean"
         },
         "showOwnership": {
+          "type": "boolean"
+        },
+        "showKindLabels": {
+          "description": "Whether an unnamed relationship is labelled with its reading (\"serves\", \"served by\", \"realizes\"). Off, the line style and arrowhead alone say the kind; a named relationship keeps its name either way. On when absent.",
           "type": "boolean"
         },
         "notation": {

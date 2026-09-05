@@ -14,8 +14,9 @@ import { defineConfig } from 'vite'
  * source, and the served page is the one that must stay byte-addressable by
  * the asset route.
  *
- * SIZE, measured rather than assumed: the library is 4.0 MB raw and 968 KB
- * gzipped against the served page's 2.2 MB and 683 KB. The 285 KB gzipped
+ * SIZE, measured rather than assumed (1.24, elkjs 0.12 spoken to directly in
+ * place of cytoscape-elk's 0.9.3): the library is 4.0 MB raw and 878 KB
+ * gzipped against the served page's 2.3 MB and 696 KB. The gzipped
  * difference is the engine - the compiler, Ajv and the schemas - which is what
  * a host is buying: a canvas that compiles, projects and plans without a
  * server. Lib mode leaves whitespace in whatever `minify` is set to, so the

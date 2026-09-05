@@ -1099,6 +1099,14 @@ observations:
     result: confirmed
     evidence:
       uri: repo:src/layout-direction.ts
+  - subject: layout-mode-source
+    result: confirmed
+    evidence:
+      uri: repo:src/layout-mode.ts
+  - subject: relationship-reading-source
+    result: confirmed
+    evidence:
+      uri: repo:src/relationship-reading.ts
   - subject: nesting-source
     result: confirmed
     evidence:
@@ -1155,10 +1163,18 @@ observations:
     result: confirmed
     evidence:
       uri: repo:src/visual-app/context-menu.tsx
-  - subject: visual-cytoscape-elk-types-source
+  - subject: visual-elk-layout-source
     result: confirmed
     evidence:
-      uri: repo:src/visual-app/cytoscape-elk.d.ts
+      uri: repo:src/visual-app/elk-layout.ts
+  - subject: visual-edge-routes-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/edge-routes.ts
+  - subject: visual-layout-controls-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/layout-controls.tsx
   - subject: visual-describe-query-source
     result: confirmed
     evidence:

@@ -614,6 +614,14 @@ concepts:
     kind: repository-file
     name: src/nesting.ts
     status: current
+  - id: layout-mode-source
+    kind: repository-file
+    name: src/layout-mode.ts
+    status: current
+  - id: relationship-reading-source
+    kind: repository-file
+    name: src/relationship-reading.ts
+    status: current
   - id: archimate-notation-source
     kind: repository-file
     name: src/notation/archimate.ts
@@ -666,9 +674,17 @@ concepts:
     kind: repository-file
     name: src/visual-app/context-menu.tsx
     status: current
-  - id: visual-cytoscape-elk-types-source
+  - id: visual-elk-layout-source
     kind: repository-file
-    name: src/visual-app/cytoscape-elk.d.ts
+    name: src/visual-app/elk-layout.ts
+    status: current
+  - id: visual-edge-routes-source
+    kind: repository-file
+    name: src/visual-app/edge-routes.ts
+    status: current
+  - id: visual-layout-controls-source
+    kind: repository-file
+    name: src/visual-app/layout-controls.tsx
     status: current
   - id: visual-describe-query-source
     kind: repository-file
@@ -1435,6 +1451,14 @@ relationships:
     kind: realization
     from: nesting-source
     to: render-visual-model
+  - id: layout-mode-realizes-visual-model
+    kind: realization
+    from: layout-mode-source
+    to: render-visual-model
+  - id: relationship-reading-realizes-visual-model
+    kind: realization
+    from: relationship-reading-source
+    to: render-visual-model
   - id: archimate-notation-realizes-kind-icons
     kind: realization
     from: archimate-notation-source
@@ -1487,9 +1511,17 @@ relationships:
     kind: realization
     from: visual-context-menu-source
     to: visual-browser
-  - id: visual-cytoscape-elk-types-realizes-browser
+  - id: visual-elk-layout-realizes-browser
     kind: realization
-    from: visual-cytoscape-elk-types-source
+    from: visual-elk-layout-source
+    to: visual-browser
+  - id: visual-edge-routes-realizes-browser
+    kind: realization
+    from: visual-edge-routes-source
+    to: visual-browser
+  - id: visual-layout-controls-realizes-browser
+    kind: realization
+    from: visual-layout-controls-source
     to: visual-browser
   - id: visual-describe-query-realizes-browser
     kind: realization

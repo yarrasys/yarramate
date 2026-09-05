@@ -39,10 +39,11 @@ const build = (
     description: 'desc',
     query,
     layout: 'layered',
-    carriedDirection: 'top-down',
+    direction: 'top-down',
     showLifecycle: true,
     showEvidence: true,
     showOwnership: false,
+    showKindLabels: true,
     ...overrides,
   })
 
@@ -72,6 +73,7 @@ describe('buildPayload', () => {
           showLifecycle: true,
           showEvidence: true,
           showOwnership: false,
+          showKindLabels: true,
         },
       },
     })
@@ -128,13 +130,28 @@ describe('buildPayload', () => {
     expect(projectionOf(build()).presentation?.notation).toBeUndefined()
   })
 
-  // There is no direction control on screen - the view declares one (#274,
-  // ADR 0121) - so a save must carry through what it already said. Dropping it
-  // would discard a value the canvas and the LikeC4 export both read.
-  it('omits direction entirely when there is none to carry', () => {
+  // Direction has a control on screen now (ADR 0147), so a save writes the
+  // direction in force the way it writes the badge flags - for a new view and
+  // an overwrite alike. Nothing is carried from a declaration the reviewer may
+  // have moved away from.
+  it('writes the direction in force, new view or overwrite', () => {
     expect(
-      projectionOf(build({ carriedDirection: undefined })).presentation,
-    ).not.toHaveProperty('direction')
+      projectionOf(build({ direction: 'left-right' })).presentation?.direction,
+    ).toBe('left-right')
+    expect(
+      projectionOf(build({ id: undefined, path: undefined, direction: 'left-right' }))
+        .presentation?.direction,
+    ).toBe('left-right')
+  })
+
+  it('carries the layout mode in force, whichever it is', () => {
+    expect(projectionOf(build({ layout: 'bands' })).presentation?.layout).toBe('bands')
+  })
+
+  it('round-trips the kind-label flag beside the badges', () => {
+    expect(
+      projectionOf(build({ showKindLabels: false })).presentation?.showKindLabels,
+    ).toBe(false)
   })
 
   it('declares the folder a new view was asked for, and files it beside the rest', () => {
@@ -373,9 +390,11 @@ describe('the save dialog, opened with a folder preset', () => {
         activeViewId: 'existing-view',
         query: null,
         layout: 'layered',
+        direction: 'top-down',
         showLifecycle: true,
         showEvidence: true,
         showOwnership: false,
+        showKindLabels: true,
         open: true,
         folder: undefined,
         onClose: () => {},

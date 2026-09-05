@@ -174,6 +174,21 @@ populated yet is empty, correctly.
 `title` and `description` are presentation hints. They do not affect selection
 or carry semantic authority.
 
+`presentation.layout` says how an editor arranges the view
+([ADR 0147](adr/0147-a-layout-is-a-way-of-reading-and-the-reviewer-picks-it.md)):
+`layered` (nodes placed, straight lines drawn between them), `routed` (edges
+routed around the nodes with room reserved for labels), `served-by` (routed,
+and the served, realized or general element drawn above what serves, realizes
+or specializes it), or `bands` (served-by, and every element pinned to its
+ArchiMate layer's band). A view that says nothing lays out `served-by`.
+`presentation.direction` says which way it runs, `top-down` or `left-right`.
+Both are declared by the view and can be changed on the canvas; a saved view
+records what was in force. `presentation.showKindLabels` says whether an
+unnamed relationship is labelled with its reading ("serves", "served by");
+off, the line style and arrowhead carry the kind, and a named relationship
+keeps its name either way. Like `nesting` and `fold` these are hints about a
+first look, not restrictions.
+
 `presentation.fold` says whether an editor draws this view's pattern instances
 COLLAPSED by default — `instances`, or `none` which is the default and draws
 everything ([ADR 0143](adr/0143-a-folded-instance-is-a-node-and-the-view-says-the-default.md)).

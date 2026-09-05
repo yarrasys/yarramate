@@ -1392,6 +1392,24 @@ body {
   color: var(--quiet);
 }
 
+/* The layout and direction selects (ADR 0147), cut to the quick filter's
+   cloth so the three read as one row of canvas controls. */
+.canvas-controls .canvas-select {
+  min-height: 28px;
+  padding: 0 0.4rem;
+  border: 1px solid var(--rule-firm);
+  border-radius: 0;
+  background: var(--sheet);
+  color: var(--ink);
+  font-family: var(--utility);
+  font-size: 12px;
+}
+
+.canvas-controls .canvas-select:focus-visible {
+  outline: 2px solid var(--cobalt);
+  outline-offset: 1px;
+}
+
 /* Opens below the canvas toolbar rather than under it: `.canvas-controls`
    sits at `top: var(--step)` with 28px-high controls and z-index 5, and this
    panel used to open at nearly the same corner one layer down, so the toolbar
