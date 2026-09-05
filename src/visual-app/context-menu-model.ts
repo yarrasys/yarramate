@@ -57,6 +57,14 @@ export type ContextMenuIntent =
    * the same "Show all subjects" — one narrowing concept, one escape.
    */
   | { readonly type: "subject.focus"; readonly id: string }
+  /**
+   * Narrow the canvas to what this pattern instance HOLDS (#473 phase 2).
+   *
+   * Distinct from `subject.focus`, which walks one hop of relationships. This
+   * one asks the model what is inside the box, so it answers with the pattern's
+   * own parts rather than with whatever happens to be adjacent.
+   */
+  | { readonly type: "subject.focus-instance"; readonly id: string }
   /** The relationship and its two endpoints. Nothing further (#407). */
   | { readonly type: "relationship.focus"; readonly id: string }
   /**
@@ -162,6 +170,18 @@ export interface ContextMenuContext {
    */
   readonly folded?: ReadonlySet<string>;
   readonly containerIds?: ReadonlySet<string>;
+  /**
+   * Which subjects the model knows as pattern INSTANCES (#473 phase 2).
+   *
+   * Not `containerIds`: a subject contains things when the view's nesting puts
+   * them inside it, which a plain component with a composition does. Only an
+   * instance has parts to focus on, and offering the item on anything else
+   * would compose a query that selects one subject.
+   *
+   * Optional for the reason every field above it is: a required addition here
+   * is free for readers and a typecheck break for constructors.
+   */
+  readonly instanceIds?: ReadonlySet<string>;
   /** What the reader has selected, when it is more than one thing. */
   readonly selectedIds?: readonly string[];
   /**
@@ -186,6 +206,7 @@ const READING_INTENTS: ReadonlySet<ContextMenuIntent["type"]> = new Set([
   "view.clear",
   // Focus reads and narrows; it stages nothing, so a viewer keeps it.
   "subject.focus",
+  "subject.focus-instance",
   "relationship.focus",
   // Folding is a way of LOOKING (#473). It writes to the layout sidecar, which
   // is adapter-owned presentation state (ADR 0023), never to the model - so a
@@ -306,6 +327,37 @@ const deleteGroup = (
  * making the reviewer find blank canvas to escape would be the second exit
  * this feature exists not to add.
  */
+/**
+ * "Focus on this instance", where the model knows the subject as one (#473
+ * phase 2).
+ *
+ * Its own function because it is composed into TWO menus. The canvas node menu
+ * offers it beside "Focus on this": the same question with a different reading
+ * of "near", what the pattern says this holds rather than what the graph
+ * happens to touch. The rail's model row offers it for the reason the fold
+ * group is there, which is the stronger one: the rail is DOM and the canvas is
+ * not, so a keyboard or screen-reader user has no other way to reach the
+ * gesture at all, and an automated journey has nothing to drive.
+ *
+ * Nothing at all where the subject is not an instance. Not the same question as
+ * containment: a plain component with a composition contains something and has
+ * no parts to focus on, so a menu keyed on containment would offer a query that
+ * selects one subject (#255).
+ */
+const focusInstanceItems = (
+  id: string,
+  context: ContextMenuContext,
+): readonly ContextMenuItem[] =>
+  context.instanceIds?.has(id) === true
+    ? [
+        {
+          key: "focus-instance",
+          label: "Focus on this instance",
+          intent: { type: "subject.focus-instance" as const, id },
+        },
+      ]
+    : [];
+
 const focusAndMembershipGroups = (
   focus: ContextMenuIntent,
   membership: readonly ContextMenuGroup[],
@@ -318,6 +370,9 @@ const focusAndMembershipGroups = (
     destructive: false,
     items: [
       { key: "focus", label: "Focus on this", intent: focus },
+      ...(focus.type === "subject.focus"
+        ? focusInstanceItems(focus.id, context)
+        : []),
       ...membership.flatMap((group) => group.items),
       ...(context.filtered ? [clearItem(context)] : []),
     ],
@@ -627,10 +682,25 @@ const modelRowMenu = (
     // The rail's own answer to "add this one to the view I am looking at",
     // which is what the design draws as a drag from this tree onto the canvas.
     ...membershipGroup(id, context),
-    // Folding has to be reachable HERE and not only from the canvas (#473,
-    // review F17 on #309): the rail is DOM and the canvas is not, so a
-    // keyboard or screen-reader user has no other way to shut a box, and an
-    // automated journey has nothing to drive.
+    // Focusing on what an instance holds, for the same reason folding is here
+    // (#473 phase 2). Shipped canvas-only it would be a pointer-only gesture,
+    // which is what the fold group already refused to be. Reported from a
+    // browser journey that could not reach it from the rail.
+    //
+    // The one-hop `subject.focus` is deliberately NOT added alongside it: that
+    // gap is pre-existing and belongs to #309, which is gated on a scoping
+    // session rather than an agent build.
+    ...(focusInstanceItems(id, context).length === 0
+      ? []
+      : [
+          {
+            key: "view" as const,
+            scope: "view" as const,
+            label: "View",
+            destructive: false,
+            items: focusInstanceItems(id, context),
+          },
+        ]),
     ...foldGroup(id, context),
     {
       key: "model",

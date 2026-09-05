@@ -29,6 +29,7 @@
     "test/graph-canvas-layout.test.ts",
     "test/graph-canvas-nesting.test.ts",
     "test/graph-canvas-fold.test.ts",
+    "test/projection-instances.test.ts",
     "test/connection-panel.test.ts",
     "test/subject-draft-panel.test.ts",
     "test/faults.test.ts",

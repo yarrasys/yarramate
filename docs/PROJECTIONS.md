@@ -26,9 +26,20 @@ presentation:
   title: Current engine
 ```
 
-Query fields combine with logical AND:
+Query fields combine with logical AND, with one named exception stated below:
 
 - `subjects` filters globally qualified concept subject identities;
+- `instances` names pattern instances and selects each one together with
+  everything the fold tree would draw inside it, read through this view's own
+  `presentation.nesting` (#473, [ADR 0144](adr/0144-a-view-can-name-an-instance-and-get-what-it-holds.md)).
+  It is the one facet that ADDS rather than narrows, and it is the exception to
+  the AND above: **`subjects` and `instances` are a single identity facet
+  spelled two ways, and their values combine with OR.** Naming a subject and
+  naming the instance that holds it are the same act of selection, so a query
+  carrying both selects the union; every other field then ANDs over that union
+  exactly as it always did. A query carrying neither still selects everything.
+  The alternative is hand-listing the members, and that list is wrong the next
+  time the pattern binds a slot;
 - `exclude` names subjects this query would otherwise select and the author
   has taken out: the exception a rule cannot state (#267,
   [ADR 0122](adr/0122-a-rule-can-name-its-exception.md)). It applies after
@@ -115,6 +126,14 @@ even when a referenced concept is outside the selected documents or kinds.
 Projection filters select result subjects; they do not silently expand the
 query into a transitive reference closure.
 
+`instances` is the one closure a query can ask for, and the word to hold onto
+is ASK. It expands nothing on its own: a view gets an instance's contents
+because its author wrote the instance down, which is the same explicitness
+`subjects` has. What it is not is the reference walk the paragraph above
+refuses, and it is not `connected` either. It follows the containment the
+pattern already declares, so the set it adds is bounded by the instance rather
+than by how many things happen to point at something.
+
 Selectors are portable by default. A well-formed subject, document, kind,
 owner, or constraint identity that is absent from the current graph
 contributes no matches and is not an evaluation error. This supports partial
@@ -128,6 +147,19 @@ workspace manifest DECLARES, and refuses one naming something the model does
 not have (YM921, ADR 0128). A mistyped state selects no state, which selects
 no subject, which writes a clean empty artifact and exits 0; the failure is
 silent and the artifact reaches whoever asked for it.
+
+`instances` is checked twice over, because there are two ways to get it wrong
+and they send an author to different places. A name the model does not hold at
+all is YM921, the same as any other selector. A name the model DOES hold but
+which is not a pattern instance is **YM922**: the subject is real and the
+author has confused it with the instance that contains it, so the message says
+to name it under `subjects` instead. Instance-hood is read from the compile's
+bound memberships AND its vacancies, so an instance whose slots are all still
+empty is an instance rather than a stranger. **YM923** is the third case and
+the least visible: a caller resolving a query without telling `check` which
+subjects are instances would get each named instance alone, which is a smaller
+view that reads exactly like a correct one, so it is refused instead of
+answered (#450).
 
 The two hold together because they are about different documents. A projection
 in this workspace's manifest is this repository's own document and is checked
@@ -152,6 +184,13 @@ declaring `fold: instances` without `assignment` in `nesting` collapses less
 than its author probably expects; an editor says so rather than the loader
 refusing it. See [docs/VISUAL-ADAPTER.md](VISUAL-ADAPTER.md) for what a folded
 box draws.
+
+**`presentation.fold: instances` and `query.instances` are different things
+that share a word.** The first is about DRAWING: every instance in the view
+starts collapsed, and nothing about selection changes. The second is about
+SELECTION: these named instances and their contents are what the view holds at
+all. A view can use either alone. Using both says "hold these instances, and
+open shut", which is the common case for a view built around one pattern.
 
 ## Result
 

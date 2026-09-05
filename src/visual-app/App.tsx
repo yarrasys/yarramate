@@ -1255,7 +1255,7 @@ export const App = ({
     );
     if (view === null) return;
     appliedViewRef.current = view.id;
-    filter(view.query, "view");
+    filter(view.query, "view", view.presentation?.nesting);
     for (const action of presentationActionsFor(view.presentation)) {
       dispatchWorkspace(action);
     }
@@ -1492,6 +1492,12 @@ export const App = ({
           // hold nothing, and offers "Fold" on a box already shut.
           folded: foldedIds,
           containerIds: new Set(containment.insideCounts.keys()),
+          // Which subjects the model knows as instances, which is not the same
+          // question as which ones contain something: a component with a
+          // composition contains, and has no parts to focus on.
+          instanceIds: new Set(
+            (state.model?.memberships ?? []).map(({ instance }) => instance),
+          ),
           selectedIds:
             workspace.selectedSubject === null
               ? []
@@ -1637,6 +1643,19 @@ export const App = ({
         dispatchWorkspace({ type: "menu.dismissed" });
         return;
       }
+      case "subject.focus-instance": {
+        // The query says `instances`, so the SERVER resolves the closure
+        // against the pattern (ADR 0144). Composing the member list here
+        // instead would freeze it at the moment of the click and would be a
+        // second answer to "what is inside this box".
+        filter(
+          { instances: [intent.id], relationships: "between" },
+          "focus",
+          workspace.nesting,
+        );
+        dispatchWorkspace({ type: "menu.dismissed" });
+        return;
+      }
       case "subject.focus":
       case "relationship.focus": {
         const graph = state.model?.graph ?? null;
@@ -1654,7 +1673,11 @@ export const App = ({
           dispatchWorkspace({ type: "menu.dismissed" });
           return;
         }
-        filter({ subjects: [...subjects], relationships: "between" }, "focus");
+        filter(
+          { subjects: [...subjects], relationships: "between" },
+          "focus",
+          workspace.nesting,
+        );
         dispatchWorkspace({ type: "menu.dismissed" });
         return;
       }
@@ -1924,7 +1947,7 @@ export const App = ({
           }
           // An edit of the active view's query is still that view, so it is
           // filtered as `editor` and the tree goes on naming what is drawn.
-          onApplyFilter={(query) => filter(query, "editor")}
+          onApplyFilter={(query) => filter(query, "editor", workspace.nesting)}
           onStageView={stageViewChange}
           readOnly={readOnly}
           paletteReachable={offeredSections.includes("palette")}

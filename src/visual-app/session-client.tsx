@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import type { ProjectionQuery } from '../projection.js'
+import type { NestingKind } from '../nesting.js'
 import type {
   VisualLayoutSavePayload,
   VisualViewOperation,
@@ -35,7 +36,15 @@ export interface VisualSession {
   readonly ask: (text: string) => void
   readonly choose: (optionId: string) => void
   readonly navigate: (viewId: string) => void
-  readonly filter: (query: ProjectionQuery, origin?: FilterSource) => void
+  readonly filter: (
+    query: ProjectionQuery,
+    origin?: FilterSource,
+    /**
+     * The nesting the canvas is drawing with. Only `query.instances` reads it,
+     * and it must: the closure IS the containment tree (#473 phase 2).
+     */
+    nesting?: readonly NestingKind[],
+  ) => void
   readonly clearFilter: () => void
   readonly setQuickFilterText: (text: string) => void
   readonly stageViewChange: (operation: VisualViewOperation) => void
@@ -146,9 +155,17 @@ export const useVisualSession = (host: EditorHost): VisualSession => {
   )
 
   const filter = useCallback(
-    (query: ProjectionQuery, origin: FilterSource = 'panel') => {
+    (
+      query: ProjectionQuery,
+      origin: FilterSource = 'panel',
+      nesting?: readonly NestingKind[],
+    ) => {
       filterOriginRef.current = origin
-      send({ kind: 'filter', query })
+      send({
+        kind: 'filter',
+        query,
+        ...(nesting === undefined ? {} : { nesting }),
+      })
     },
     [send],
   )

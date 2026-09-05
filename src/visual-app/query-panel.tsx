@@ -96,6 +96,7 @@ export const EXCLUSION_LABELS: {
   exclude: "Taken out of this view",
   states: "States",
   subjects: "Subjects",
+  instances: "Not inside a named instance",
   documents: "Documents",
   kinds: "Kinds",
   layers: "Layers",

@@ -640,3 +640,116 @@ describe("#473: folding is offered where something can fold", () => {
     expect(items.map((item) => item.key)).toEqual(["fold"]);
   });
 });
+
+describe("#473 phase 2: focusing on what an instance holds", () => {
+  const viewItems = (ctx: ContextMenuContext, id = "api") =>
+    contextMenuFor({ kind: "subject", id }, ctx)
+      .filter((group) => group.key === "view")
+      .flatMap((group) => group.items);
+
+  it("offers the item on a pattern instance", () => {
+    const items = viewItems(context({ instanceIds: new Set(["api"]) }));
+    expect(items.map((item) => item.key)).toContain("focus-instance");
+  });
+
+  it("offers nothing extra on a subject that is not an instance", () => {
+    // Not the same question as `containerIds`: a component with a composition
+    // CONTAINS something and still has no parts to focus on, so a menu keyed on
+    // containment would offer a query that selects one subject.
+    const items = viewItems(
+      context({ containerIds: new Set(["api"]), instanceIds: new Set() }),
+    );
+    expect(items.map((item) => item.key)).not.toContain("focus-instance");
+  });
+
+  it("offers nothing extra when the frame never said which subjects are instances", () => {
+    expect(labels(contextMenuFor({ kind: "subject", id: "api" }, context()))).not.toContain(
+      "Focus on this instance",
+    );
+  });
+
+  it("composes an instances query rather than a member list", () => {
+    const item = viewItems(context({ instanceIds: new Set(["api"]) })).find(
+      ({ key }) => key === "focus-instance",
+    );
+    // The id of the INSTANCE, so the server resolves the closure against the
+    // pattern. A member list composed here would freeze at the click.
+    expect(item?.intent).toEqual({ type: "subject.focus-instance", id: "api" });
+  });
+
+  it("keeps the item for a read-only viewer, because it only reads", () => {
+    const items = viewItems(
+      context({ instanceIds: new Set(["api"]), readOnly: true }),
+    );
+    expect(items.map((item) => item.key)).toContain("focus-instance");
+  });
+
+  it("leaves it off a relationship menu", () => {
+    const items = contextMenuFor(
+      { kind: "relationship", id: "api-serving-ui" },
+      context({ instanceIds: new Set(["api", "api-serving-ui"]) }),
+    ).flatMap((group) => group.items);
+    expect(items.map((item) => item.key)).not.toContain("focus-instance");
+  });
+});
+
+describe("#473 phase 2: the rail can reach it too", () => {
+  // Reported from a browser journey: the item existed on the canvas node menu
+  // and was unreachable from the rail, so it was a pointer-only gesture. The
+  // fold group is in the rail for exactly this reason and it is the precedent.
+  const rowItems = (ctx: ContextMenuContext, id = "api") =>
+    contextMenuFor({ kind: "model-row", id }, ctx).flatMap(
+      (group) => group.items,
+    );
+
+  it("offers it on a model row the frame names as an instance", () => {
+    expect(
+      rowItems(context({ instanceIds: new Set(["api"]) })).map(({ key }) => key),
+    ).toContain("focus-instance");
+  });
+
+  it("offers it on the canvas node as well, from the one definition", () => {
+    const both = [
+      contextMenuFor({ kind: "subject", id: "api" }, context({ instanceIds: new Set(["api"]) })),
+      contextMenuFor({ kind: "model-row", id: "api" }, context({ instanceIds: new Set(["api"]) })),
+    ].map((groups) =>
+      groups
+        .flatMap((group) => group.items)
+        .find(({ key }) => key === "focus-instance")?.intent,
+    );
+    // One item composed twice, not two items that must be kept in step.
+    expect(both[0]).toEqual({ type: "subject.focus-instance", id: "api" });
+    expect(both[0]).toEqual(both[1]);
+  });
+
+  it("offers nothing on a row that is not an instance", () => {
+    expect(
+      rowItems(context({ containerIds: new Set(["api"]) })).map(({ key }) => key),
+    ).not.toContain("focus-instance");
+  });
+
+  it("adds no empty View group where there is nothing to put in it", () => {
+    // An empty group would draw a heading over nothing (#255).
+    expect(
+      contextMenuFor({ kind: "model-row", id: "api" }, context())
+        .filter((group) => group.key === "view")
+        .flatMap((group) => group.items),
+    ).toEqual([]);
+  });
+
+  it("keeps the rail item for a read-only viewer", () => {
+    expect(
+      rowItems(context({ instanceIds: new Set(["api"]), readOnly: true })).map(
+        ({ key }) => key,
+      ),
+    ).toContain("focus-instance");
+  });
+
+  it("does not add the one-hop focus to the rail, which belongs to #309", () => {
+    // A pre-existing gap, and #309 is gated on a scoping session rather than an
+    // agent build. Pinned so that adding it is a decision rather than a drift.
+    expect(
+      rowItems(context({ instanceIds: new Set(["api"]) })).map(({ key }) => key),
+    ).not.toContain("focus");
+  });
+});

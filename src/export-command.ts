@@ -355,6 +355,9 @@ export function runExportCommand(
         compilation.graph,
         loadedProjection.projection,
         compilation.profileContext,
+        // An AUTHORED projection can name `instances`, and the facet resolves
+        // to the instance alone without these (ADR 0144).
+        compilation.patternMemberships,
       )
     }
 

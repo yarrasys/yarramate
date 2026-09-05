@@ -1230,6 +1230,7 @@ export function runAskCommand(
           graph,
           loaded.projection,
           compilation.profileContext,
+          compilation.patternMemberships,
         )
         for (const subject of membership.subjects) {
           covered.add(subject.id)
@@ -1324,6 +1325,7 @@ export function runAskCommand(
         graph,
         loaded.projection,
         compilation.profileContext,
+        compilation.patternMemberships,
       )
       const result: AskResult = {
         format: 'yarramate/ask-result/v1',

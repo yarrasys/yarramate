@@ -105,6 +105,7 @@ export {
   canonicalProjection,
   evaluateProjection,
   explainProjection,
+  instanceClosureOf,
   loadProjection,
   renderProjectionMarkdown,
   type ConceptFacet,
