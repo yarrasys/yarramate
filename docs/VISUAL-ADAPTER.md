@@ -114,9 +114,35 @@ sentence about what the session *is* belongs beside the name.
 **The right column is a stack of collapsible sections**, split by handles a
 pointer or the arrow keys can drag:
 
-1. **Kind palette** — the profile's concept kinds, grouped by layer, dragged
-   onto the canvas or clicked: either way the Add-subject dialog opens with
-   the kind preselected (#295).
+1. **Kind palette** — what a reviewer may add. A band per PATTERN document
+   comes first, then the profile's concept kinds grouped by layer. Dragging or
+   clicking either opens a dialog with the choice preselected (#295), and which
+   dialog opens is the difference: a plain kind opens the Add-subject form, a
+   pattern opens the instance form below (#473 phase 4,
+   [ADR 0146](adr/0146-the-pattern-is-the-unit-on-the-palette.md)).
+
+   A pattern row wears the stacked mark a folded node wears, its profile's
+   display name, and how many slots it has and how many are required. It drags
+   the same kind label every other row drags, so a drop handler needs no second
+   grammar.
+
+   A ruling a pattern slot admits moves into a collapsed row under its own
+   layer, `<layer> · n kinds bound through a slot`. Those kinds are authored by
+   FILLING A SLOT rather than by dragging, and on a real reference there are 46
+   of them ahead of anything a reader is looking for. The rule is constraint
+   LINEAGE and slot admission together, never "appears as a slot kind":
+   `dataObject` is a slot kind and is a first-class thing to draw. A ruling
+   nothing binds stays an ordinary row, because filling a slot is not a way to
+   author it.
+
+   **The instance form.** Dropping a pattern asks for its slots in the order the
+   pattern declared them: a picker over the existing subjects each slot admits,
+   plus `New…` to mint one there and then. A required slot blocks staging; a
+   context slot is labelled, because it is the one row whose subject will not
+   fold inside the box. The wires the compiler will mint are shown read-only.
+   It stages ONE changeset — the minted children, then the instance whose
+   `parts` names them — and every minted id is reserved as it is proposed so two
+   slots given the same name do not collide.
 2. **Element properties** — the subject form. Its header names the selected
    subject; selecting one opens the section, because that is what selecting was
    for.

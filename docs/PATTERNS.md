@@ -254,17 +254,45 @@ schema violation, `YM401`/`YM402` for a kind that is not available,
 declared part, `YM404` for wiring the relationship table forbids, and
 `YM411` for a second pattern claiming one kind.
 
+## The shape a consumer reads
+
+The pattern document has had a JSON schema since ADR 0123 and, until #473
+phase 4, no public TypeScript type: a host that wanted to offer patterns had to
+re-read the YAML or guess. `ResolvedProfileContext.patterns` now carries each
+pattern RESOLVED — slot kinds qualified, `required` and `kindMatching` stated
+rather than defaulted, wiring and ports flattened out of the maps holding them.
+`PatternShape`, `PatternSlotShape`, `PatternWireShape` and `PatternPortShape`
+are exported from the package root.
+
+**Slots come as an ordered array, not a map.** The order a pattern declares its
+slots is the order a form should ask for them, and a consumer must not have to
+trust a map's iteration order for that.
+
+`declaredBy` is the document's PATH rather than its id: it is what a
+duplicate-declaration diagnostic names, so grouping patterns by it groups them
+by the thing a reader can open.
+
+The field is optional, and it is an empty array for a workspace with no patterns
+and absent when nobody looked. Read it as `?? []`.
+
+An editor gets the same shape one step further resolved, as
+`VisualRenderedModel.vocabulary.patterns`: each slot's `admits` is the list of
+kind LABELS it accepts with `kindMatching: descendants` already expanded,
+because resolving a family needs the lineage map and a browser does not have
+one. See [docs/VISUAL-ADAPTER.md](VISUAL-ADAPTER.md) for what the palette and
+the instance form do with it.
+
 ## Not yet
 
-Phases 1, 2 and 3 of #268 have landed. What remains open is a canvas
-**toggle** for folding — collapsing clusters on whatever view is on
-screen, rather than switching to a view authored as folded. That is a
-convenience over what a projection already does, not a missing
-capability.
+Phases 1, 2 and 3 of #268 have landed, and #473 has added folding, the
+`instances` facet and the palette. What remains open is a canvas **toggle** for
+folding — collapsing clusters on whatever view is on screen, rather than
+switching to a view authored as folded. That is a convenience over what a
+projection already does, not a missing capability.
 
-Generating an unbound part rather than requiring it to exist is also left
-open. An instance that binds nothing is exactly the greenfield case, and
-nothing in these decisions prevents a later phase from minting one.
+Generating an unbound part rather than requiring it to exist is NO LONGER open:
+the instance form mints a part into a slot, and so does the Slots section on an
+instance that already exists (#473 phase 4).
 
 ## The interview half
 
