@@ -880,3 +880,183 @@ presentation:
     ).toEqual(['outsider:instances'])
   })
 })
+
+describe('#473 phase 4: the patterns a workspace declares reach the browser', () => {
+  // The frame is what a palette reads. `patternOptionsOf` is arithmetic and is
+  // tested on its own; what this asks is whether the HOST actually puts it on
+  // the wire, which is the step three features in this programme got wrong.
+  const profile = `format: yarramate/profile/v1
+id: acme/api
+version: "1.0"
+extends: yarramate/core@0.1
+conceptKinds:
+  - id: api
+    name: Acme API
+    parent: yarramate/core@0.1#grouping
+  - id: special-service
+    name: Special service
+    parent: yarramate/core@0.1#applicationService
+relationshipKinds: []
+`
+
+  const pattern = `format: yarramate/pattern/v1
+id: acme-api
+version: "1.0"
+patterns:
+  - kind: acme/api@1.0#api
+    parts:
+      interface:
+        kind: yarramate/core@0.1#applicationInterface
+        required: true
+      upstream:
+        kind: yarramate/core@0.1#applicationComponent
+      exposed:
+        kind: yarramate/core@0.1#applicationService
+        kindMatching: descendants
+      pinned:
+        kind: yarramate/core@0.1#applicationService
+    wiring:
+      - from: self
+        kind: yarramate/core@0.1#aggregation
+        to: interface
+      - from: upstream
+        kind: yarramate/core@0.1#serving
+        to: self
+      - from: self
+        kind: yarramate/core@0.1#aggregation
+        to: exposed
+      - from: exposed
+        kind: yarramate/core@0.1#serving
+        to: self
+`
+
+  const document = `format: yarramate/v1
+id: main
+profile: acme/api@1.0
+concepts:
+  - id: lone
+    kind: applicationComponent
+    name: Lone
+relationships: []
+`
+
+  const view = `format: yarramate/projection/v1
+id: everything
+version: "1.0"
+query: {}
+presentation:
+  title: Everything
+`
+
+  const readyFrame = (files: Readonly<Record<string, string>>, patterns: readonly string[]) => {
+    const store = memoryStore(files)
+    const host = createLocalHost({
+      store,
+      workspace: {
+        id: 'embedded',
+        documents: ['architecture/main.yaml'],
+        profiles: ['profiles/api.yaml'],
+        projections: ['projections/everything.yaml'],
+        adapterMappings: [],
+        patterns: [...patterns],
+        evidence: [],
+        contracts: [],
+      },
+    })
+    const frames: VisualServerFrame[] = []
+    host.open({
+      frame: (frame) => frames.push(frame),
+      connected: () => {},
+      lost: () => {},
+      session: () => ({ lastSequence: 0, closed: false }),
+    })
+    const ready = frames[0]
+    if (ready?.kind !== 'ready') throw new Error('no ready frame')
+    return ready.snapshot.model
+  }
+
+  const withPatterns = () =>
+    readyFrame(
+      {
+        'profiles/api.yaml': profile,
+        'patterns/api.yaml': pattern,
+        'architecture/main.yaml': document,
+        'projections/everything.yaml': view,
+      },
+      ['patterns/api.yaml'],
+    )
+
+  it('puts each pattern on the frame with its document', () => {
+    const patterns = withPatterns().vocabulary.patterns ?? []
+    expect(patterns.map(({ kind }) => kind)).toEqual(['acme/api@1.0#api'])
+    expect(patterns[0]?.document).toBe('patterns/api.yaml')
+    expect(patterns[0]?.label).toBe('api')
+    expect(patterns[0]?.coreLabel).toBe('grouping')
+    // The profile authored "Acme API"; `label` stays the local id because that
+    // is what a drag payload and an operation carry.
+    expect(patterns[0]?.name).toBe('Acme API')
+  })
+
+  it('resolves each slot to what it admits, and how it is wired', () => {
+    expect(withPatterns().vocabulary.patterns?.[0]?.slots).toEqual([
+      {
+        name: 'interface',
+        required: true,
+        wiring: 'owned',
+        admits: ['applicationInterface'],
+      },
+      {
+        name: 'upstream',
+        required: false,
+        // `upstream -> self` is what the instance USES, not what it holds.
+        wiring: 'context',
+        admits: ['applicationComponent'],
+      },
+      {
+        name: 'exposed',
+        required: false,
+        // Wired BOTH ways, and owned wins: the instance holding something out
+        // is the stronger statement (ADR 0143). A fixture with no both-ways
+        // slot cannot tell that precedence from its opposite.
+        wiring: 'owned',
+        // `kindMatching: descendants`, so the family resolves: the declared
+        // kind AND the profile's subkind of it. A picker offered only the
+        // declared kind would refuse a subject the compiler accepts.
+        admits: ['applicationService', 'special-service'],
+      },
+      {
+        name: 'pinned',
+        required: false,
+        wiring: 'unwired',
+        // The SAME kind as `exposed`, declared `exact`. This is the only pair
+        // that can tell the two matchings apart: on a kind with no subkinds
+        // both branches give the same answer, so a fixture without it lets
+        // "resolve descendants everywhere" pass unnoticed.
+        admits: ['applicationService'],
+      },
+    ])
+  })
+
+  it('marks the kind that IS a pattern, and names it', () => {
+    const kinds = withPatterns().vocabulary.conceptKinds
+    const api = kinds.find(({ id }) => id === 'acme/api@1.0#api')
+    expect(api?.pattern).toBe('acme/api@1.0#api')
+    expect(api?.name).toBe('Acme API')
+    // Every other kind carries neither, so a palette can tell them apart.
+    expect(kinds.filter(({ pattern }) => pattern !== undefined)).toHaveLength(1)
+  })
+
+  it('says nothing at all where the workspace declares no patterns', () => {
+    // ABSENT, not empty: an empty list claims the workspace has none, and a
+    // host that never looked is a different thing (rule 2).
+    const model = readyFrame(
+      {
+        'profiles/api.yaml': profile,
+        'architecture/main.yaml': document,
+        'projections/everything.yaml': view,
+      },
+      [],
+    )
+    expect(model.vocabulary.patterns).toBeUndefined()
+  })
+})

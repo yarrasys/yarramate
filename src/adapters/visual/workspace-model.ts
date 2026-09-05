@@ -12,6 +12,7 @@ import type {
   VisualViewOperation,
 } from "./protocol-contract.js";
 import { evaluateProjection, explainProjection } from "../../projection.js";
+import type { PatternShape } from "../../compiler.js";
 import type {
   NestingKind,
   ProjectionDefinition,
@@ -29,7 +30,11 @@ import {
   type CataloguePatternMembership,
   type CataloguePatternVacancy,
 } from "../../interrogate-command.js";
-import type { VisualKindOption, VisualViewSummary } from "./protocol-contract.js";
+import type {
+  VisualKindOption,
+  VisualPatternOption,
+  VisualViewSummary,
+} from "./protocol-contract.js";
 import type {
   VisualInterrogationOverlay,
   VisualQuestionEntry,
@@ -63,12 +68,87 @@ import type {
  */
 export const kindOptionsOf = (
   lineages: ReadonlyMap<string, readonly string[]>,
+  /** Which kinds ARE patterns, so a palette can group them (#473 phase 4). */
+  patterns: ReadonlyMap<string, PatternShape> = new Map(),
+  /** The profile's display names, where it authored any. */
+  names: ReadonlyMap<string, string> = new Map(),
 ): readonly VisualKindOption[] =>
   [...lineages.keys()].map((id) => ({
     id,
     label: kindLabelOf(id),
     coreLabel: kindLabelOf(lineages.get(id)?.[0] ?? id),
+    ...(patterns.has(id) ? { pattern: id } : {}),
+    ...(names.has(id) ? { name: names.get(id)! } : {}),
   }));
+
+/**
+ * Every pattern a browser may offer, with its slots resolved to what they
+ * admit.
+ *
+ * `admits` is the expensive part and the reason this lives here rather than in
+ * the browser: a slot declaring `kindMatching: descendants` accepts a whole
+ * family, and resolving that needs the lineage map the frame does not carry.
+ * A picker built from the declared kind alone would refuse subjects the
+ * compiler accepts.
+ */
+export const patternOptionsOf = (
+  patterns: readonly PatternShape[],
+  lineages: ReadonlyMap<string, readonly string[]>,
+  names: ReadonlyMap<string, string> = new Map(),
+): readonly VisualPatternOption[] =>
+  patterns.map((pattern) => ({
+    kind: pattern.kindIdentity,
+    label: kindLabelOf(pattern.kindIdentity),
+    coreLabel: kindLabelOf(
+      lineages.get(pattern.kindIdentity)?.[0] ?? pattern.kindIdentity,
+    ),
+    document: pattern.declaredBy,
+    ...(names.has(pattern.kindIdentity)
+      ? { name: names.get(pattern.kindIdentity)! }
+      : {}),
+    slots: pattern.slots.map((slot) => ({
+      name: slot.name,
+      required: slot.required,
+      wiring: wiringOf(pattern, slot.name),
+      admits:
+        slot.kindMatching === "exact"
+          ? [kindLabelOf(slot.kindIdentity)]
+          : [...lineages]
+              .filter(([, lineage]) => lineage.includes(slot.kindIdentity))
+              .map(([id]) => kindLabelOf(id))
+              .sort(),
+    })),
+    wiring: pattern.wiring.map((wire) => ({
+      from: wire.from,
+      kind: kindLabelOf(wire.kindIdentity),
+      to: wire.to,
+    })),
+    ports: pattern.ports.map((port) => ({
+      kind: kindLabelOf(port.kindIdentity),
+      out: port.out,
+      in: port.in,
+    })),
+  }));
+
+/**
+ * How a pattern's wiring relates a slot to the instance, by the same rule the
+ * compiler applies (ADR 0143): `self -> slot` is owned, `slot -> self` is
+ * context, neither is unwired, and BOTH is owned, because the instance holding
+ * something out is the stronger statement.
+ */
+const wiringOf = (
+  pattern: PatternShape,
+  slot: string,
+): "owned" | "context" | "unwired" => {
+  const out = pattern.wiring.some(
+    (wire) => wire.from === "self" && wire.to === slot,
+  );
+  const back = pattern.wiring.some(
+    (wire) => wire.from === slot && wire.to === "self",
+  );
+  if (out) return "owned";
+  return back ? "context" : "unwired";
+};
 
 /**
  * How many SUBJECTS a query matches, which is not the size of its match set.
@@ -241,10 +321,31 @@ export const renderedWorkspaceOf = (
       ...metadata,
       graph: projectGraphForCanvas(compiled.graph, compiled.profileContext),
       vocabulary: {
-        conceptKinds: kindOptionsOf(compiled.profileContext.conceptKindLineages),
+        conceptKinds: kindOptionsOf(
+          compiled.profileContext.conceptKindLineages,
+          new Map(
+            (compiled.profileContext.patterns ?? []).map((pattern) => [
+              pattern.kindIdentity,
+              pattern,
+            ]),
+          ),
+          compiled.profileContext.conceptKindNames ?? new Map(),
+        ),
         relationshipKinds: kindOptionsOf(
           compiled.profileContext.relationshipKindLineages,
         ),
+        // Only where the workspace HAS patterns. An empty list would say the
+        // workspace declares none, which is a different claim from a host that
+        // never looked (rule 2), and the field is optional for exactly that.
+        ...((compiled.profileContext.patterns ?? []).length === 0
+          ? {}
+          : {
+              patterns: patternOptionsOf(
+                compiled.profileContext.patterns ?? [],
+                compiled.profileContext.conceptKindLineages,
+                compiled.profileContext.conceptKindNames ?? new Map(),
+              ),
+            }),
       },
       ...(interrogation === undefined ? {} : { interrogation }),
       // Containment context, forwarded rather than re-derived (#473). Both

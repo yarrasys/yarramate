@@ -446,6 +446,14 @@ export interface ResolvedProfileContext {
    */
   readonly patterns?: readonly PatternShape[]
   /**
+   * Kind identity -> the display name its PROFILE authored (#473 phase 4).
+   *
+   * Only profile-declared kinds appear: a core kind's name is the vocabulary's
+   * own and a consumer already has it. Optional for the reason `patterns` is,
+   * and read as `?? new Map()`.
+   */
+  readonly conceptKindNames?: ReadonlyMap<string, string>
+  /**
    * The core relationship kinds the ArchiMate table permits between two
    * concept kind identities, resolved through lineage; undefined when either
    * identity is unknown. An extension relationship kind's own narrowing is
@@ -1000,6 +1008,10 @@ function compileWorkspaceResolved(
   }
 
   const profiles = new Map<string, ResolvedProfile>()
+  // Kind identity -> the display name the profile authored for it (#473 phase
+  // 4). Resolution keeps identity, lineage, layer and aspect and drops the
+  // name, so a palette had nothing to show but the local id.
+  const conceptKindNames = new Map<string, string>()
   const conceptKindByIdentity = new Map<string, ResolvedConceptKind>()
   const relationshipKindByIdentity = new Map<string, ResolvedRelationshipKind>()
   const coreConceptKinds = new Map<string, ResolvedConceptKind>()
@@ -1238,6 +1250,7 @@ function compileWorkspaceResolved(
         } satisfies ResolvedConceptKind
         resolvedConceptKinds.set(kind.id, resolved)
         conceptKindByIdentity.set(resolved.identity, resolved)
+        conceptKindNames.set(resolved.identity, kind.name)
         }
         // No round can help what the last one could not.
         if (deferred.length === 0 || deferred.length === pendingKinds.length) {
@@ -3757,6 +3770,11 @@ function compileWorkspaceResolved(
       ),
       // Ordered by kind, and each pattern's slots in the order the document
       // DECLARED them, because that is the order a form should ask for them.
+      conceptKindNames: immutableMap(
+        [...conceptKindNames].sort(([left], [right]) =>
+          left.localeCompare(right),
+        ),
+      ),
       patterns: Object.freeze(
         [...patternsByKind]
           .sort(([left], [right]) => left.localeCompare(right))

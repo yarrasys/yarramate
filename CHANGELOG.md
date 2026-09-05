@@ -20,6 +20,25 @@ Optional on the context, so a required addition does not break anything that
 constructs one: read it as `?? []`. It is an empty array for a workspace with no
 patterns and absent when nobody looked, which are different claims.
 
+### A browser can offer the patterns a workspace declares
+
+`VisualRenderedModel.vocabulary.patterns` carries each pattern with everything a
+form needs to ask for its parts: the kind, the document that declared it, and
+each slot with whether it is required, how it is WIRED to the instance, and the
+kind labels it ADMITS.
+
+`admits` is resolved here rather than in the browser because it needs the
+lineage map the frame does not carry: a slot declaring `kindMatching:
+descendants` accepts a family, and a picker built from the declared kind alone
+would refuse subjects the compiler accepts.
+
+`VisualKindOption` gains `pattern`, naming the pattern a kind IS, and `name`,
+the display name its profile authored. `label` stays the local id, because that
+is what a drag payload and an operation carry and the two must not drift.
+
+Absent rather than empty where a workspace declares no patterns, so a palette
+can tell "this workspace has none" from "nobody looked".
+
 ### The standalone editor accepts the filter its own browser sends
 
 **A defect shipped in 1.21.0 and live through 1.22.1.** `nesting` was added to

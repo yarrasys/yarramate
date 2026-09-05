@@ -11,6 +11,7 @@ import type {
   VisualFilterResultPayload,
   VisualFreezeReason,
   VisualKindOption,
+  VisualPatternOption,
   VisualLayoutPositions,
   VisualLayoutSaveResultPayload,
   VisualResponse,
@@ -71,6 +72,15 @@ export interface VisualRenderedModel {
   readonly vocabulary: {
     readonly conceptKinds: readonly VisualKindOption[]
     readonly relationshipKinds: readonly VisualKindOption[]
+    /**
+     * The patterns this workspace declares, with their slots resolved to what
+     * each admits (#473 phase 4, ADR 0146).
+     *
+     * Optional, and ABSENT rather than empty where the workspace declares none:
+     * an empty list is a workspace with no patterns, while absence is a host
+     * that never looked, and a palette should be able to tell those apart.
+     */
+    readonly patterns?: readonly VisualPatternOption[]
   }
   /** Every saved layout sidecar, keyed by projection id (Plan-level decision 1). */
   readonly layouts: { readonly [projectionId: string]: VisualLayoutPositions }
