@@ -141,6 +141,15 @@ every instance on the next compile.
   still refused. Note that a descendant resolves to the same CORE kind as
   the slot kind, so the relationship table returns the same verdict for
   both; widening the slot cannot widen what the wiring may legally say.
+- **A slot's wiring says whether the instance HOLDS the part or USES it**
+  (ADR 0143). `PatternMembership.wiring` is `owned` where a wire runs
+  `self -> slot`, `context` where one runs `slot -> self`, and `unwired` where
+  the pattern declares the slot and wires nothing through it. Both directions
+  is `owned`: holding something out is the stronger statement. It is read from
+  the PATTERN, so it holds whether or not the slot is bound, and an editor
+  folding instances draws owned and unwired members inside the box while a
+  context member — the upstream API it calls, the plane it runs on — stays
+  outside it.
 - **An unbound optional slot wires nothing**, silently.
 - **A pattern that cannot expand legally fails once, at the pattern.**
   The slot kinds fix both endpoint kinds, so whether the relationship

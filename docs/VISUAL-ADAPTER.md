@@ -393,6 +393,44 @@ nesting has no control and is a property of the view, and inheriting one view's
 containment meaning into a view that never asked for it is the ambiguity this
 is meant to prevent.
 
+### Folding
+
+`presentation.fold` says whether this view draws pattern instances collapsed by
+default ([ADR 0143](adr/0143-a-folded-instance-is-a-node-and-the-view-says-the-default.md)):
+
+```yaml
+presentation:
+  nesting: [composition, assignment]
+  fold: instances          # or `none`, the default
+```
+
+A **folded** instance is one node carrying its members inside it. Edges into and
+out of those members lift onto the box, merged per kind and ordered pair and
+labelled `kind ×n`; an edge whose two ends fold into the same box vanishes,
+because it is internal to what the box now stands for.
+
+What a box contains is the view's nesting **plus** the instance's pattern
+slots — a member bound in exactly one instance, whose slot wiring is `owned` or
+`unwired` and never `context`. A context slot names what the instance uses
+rather than what it holds, and folding those would swallow half the landscape
+into whichever box referenced it. Rulings never fold as nodes: a policy is not
+machinery, and one ruling is routinely shared by several instances.
+
+`fold` and `nesting` read the same containment tree, so a view declaring
+`fold: instances` without `assignment` in `nesting` collapses less than its
+author probably expects — the calls stay outside. That is a hint in the view
+query tab rather than a refusal: a diagnostic has no warning severity, and this
+is not an error.
+
+Fold state saves beside the positions in the same layout sidecar, as optional
+`folded` and `unfolded` lists, in full every time. Two lists rather than one,
+because a view's `fold` is a DEFAULT: a reader who opened a box must not have it
+shut again the moment that default is read back on the next view switch.
+
+Members of a folded box are **hidden, never removed**. They keep their
+positions, so opening a box has nothing to rebuild and a layout save still names
+every member.
+
 ### Presentation toggles
 
 Three presentation state fields ride alongside layout in `presentation`, staged with the view and persisted in the projection document:
