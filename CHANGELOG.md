@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.22.1
 
 ### Rulings as rows is withdrawn
 
