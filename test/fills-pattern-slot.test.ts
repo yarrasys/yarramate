@@ -330,24 +330,32 @@ describe('fills-pattern-slot through the published API', () => {
     expect(compiled.ok).toBe(true)
     if (!compiled.ok) return
     // The exact context a host threads through — values, not shapes.
+    // `wiring` arrived with #473 and says which way the pattern's wires run
+    // between the instance and the slot. This fixture has all three cases bar
+    // `context`: `self -> component` makes the component OWNED, while
+    // `component -> interface` and `interface -> service` never touch `self`,
+    // so both are UNWIRED. See `test/apply-parts.test.ts` for `context`.
     expect(compiled.patternMemberships).toEqual([
       {
         member: 'sys-component',
         slot: 'component',
         instance: 'sys-api',
         pattern: 'yarrasys/api-led@1.0#api',
+        wiring: 'owned',
       },
       {
         member: 'sys-interface',
         slot: 'interface',
         instance: 'sys-api',
         pattern: 'yarrasys/api-led@1.0#api',
+        wiring: 'unwired',
       },
       {
         member: 'sys-service',
         slot: 'service',
         instance: 'sys-api',
         pattern: 'yarrasys/api-led@1.0#api',
+        wiring: 'unwired',
       },
     ])
 

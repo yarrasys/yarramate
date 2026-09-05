@@ -412,6 +412,27 @@ export interface PatternMembership {
   readonly slot: string
   readonly instance: string
   readonly pattern: string
+  /**
+   * How the pattern's WIRING relates this slot to the instance (#473).
+   *
+   * - `owned` — a wire runs `self -> slot`. The instance holds the member out:
+   *   it is a part, and a view that folds instances may draw it inside.
+   * - `context` — a wire runs `slot -> self`. The member acts on the instance
+   *   rather than belonging to it: the upstream API it calls, the plane it runs
+   *   on. Folding these would swallow half the landscape into whichever box
+   *   happened to name it.
+   * - `unwired` — the pattern declares the slot and wires nothing through it.
+   *   Still a part; nothing about containment changes.
+   *
+   * A slot with wires in BOTH directions is `owned`: the instance holding
+   * something out is the stronger statement, and it is what a reader means by
+   * the box.
+   *
+   * Optional, so no existing reader breaks. `yarramate/graph/v2` is unchanged:
+   * this is compile CONTEXT like the rest of membership (ADR 0131), never a
+   * claim an author could have written.
+   */
+  readonly wiring?: 'owned' | 'context' | 'unwired'
 }
 
 /**
@@ -438,6 +459,26 @@ export interface PatternVacancy {
   readonly slotKind: string
   /** The pattern declares this part `required` (ADR 0123). */
   readonly required: boolean
+}
+
+/**
+ * Which way the pattern's wiring runs between an instance and one of its slots
+ * (#473). Read from the pattern rather than from the graph, because it is a
+ * fact about the SHAPE and holds whether or not the slot is bound.
+ */
+const slotWiringOf = (
+  pattern: ResolvedPattern,
+  slot: string,
+): 'owned' | 'context' | 'unwired' => {
+  let held = false
+  let acts = false
+  for (const wire of pattern.wiring) {
+    if (wire.from === 'self' && wire.to === slot) held = true
+    if (wire.from === slot && wire.to === 'self') acts = true
+  }
+  // Both directions is `owned`: holding something out is the stronger claim,
+  // and it is what a reader means by drawing the box around it.
+  return held ? 'owned' : acts ? 'context' : 'unwired'
 }
 
 export type CompilationResult =
@@ -3541,6 +3582,7 @@ function compileWorkspaceResolved(
         slot,
         instance,
         pattern: pattern.kindIdentity,
+        wiring: slotWiringOf(pattern, slot),
       })),
     )
     .sort(

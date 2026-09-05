@@ -10,6 +10,7 @@ import type {
   CanvasEdge,
 } from '../graph-projection.js'
 import { DEFAULT_NESTING, type NestingKind } from '../nesting.js'
+import { nestingTree } from '../fold-tree.js'
 import { DEFAULT_DIRECTION, type LayoutDirection } from '../layout-direction.js'
 import type {
   VisualLayoutPositions,
@@ -711,127 +712,41 @@ export function buildStylesheet(
   ]
 }
 
-// Composition expresses exclusive whole-part structure (ADR 0004: a workspace
-// cannot claim both composition and aggregation over the same ordered pair),
-// which maps 1:1 onto cytoscape's compound `parent` field - the container is
-// the relationship's `from`, the nested child its `to`. Aggregation is
-// deliberately excluded: it allows a part to belong to multiple wholes at
-// once, which a single `parent` field can't represent, so it stays a normal
-// rendered edge like every other relationship kind. Composition edges that
-// are consumed into nesting are never also drawn as a line.
-const COMPOSITION_RELATIONSHIP_KIND = 'yarramate/core@0.1#composition'
-const ASSIGNMENT_RELATIONSHIP_KIND = 'yarramate/core@0.1#assignment'
-
-// A view names which relationships nest, in precedence order (ADR 0101). The
-// short names a projection is authored in resolve to the kind identities the
-// graph carries here, in one place, so the schema's vocabulary and the
-// canvas's cannot drift.
-const NESTING_KIND_IDS: Readonly<Record<NestingKind, string>> = {
-  composition: COMPOSITION_RELATIONSHIP_KIND,
-  assignment: ASSIGNMENT_RELATIONSHIP_KIND,
-}
-
-/**
- * Assignment nests internal behaviour, never a service. A service is the
- * promise the layer above consumes, so burying it inside the thing that
- * exposes it inverts what it is for. This declines to *draw* a nesting, not to
- * accept the model: `applicationComponent -assignment-> applicationService` is
- * permitted by the ArchiMate 3.2 table (ADR 0097) and stays drawn as a line.
- * Composition is unaffected, because a composed service is a part.
- */
-const nestsAsAssignment = (edge: CanvasEdge, kindOf: (id: string) => string) =>
-  !kindOf(edge.to).endsWith('Service')
-
-// The compiler's YM501 rule only rejects the same (from, to) pair declaring
-// both composition and aggregation - it does not reject two different
-// composition relationships naming the same `to`, which cytoscape's
-// single-parent field can't represent either. Nor does anything upstream
-// reject a composition chain that loops back on itself, which cytoscape's
-// compound nesting must be acyclic to render. Both are real modeling
-// anomalies this layer surfaces rather than silently resolving: affected
-// subjects are left unnested (ordinary top-level nodes) and every
-// composition edge naming them stays drawn as a regular edge, so the
-// conflicting claims stay visible on the canvas instead of one silently
-// winning.
+// Containment moved to `src/fold-tree.ts` (#473), which imports nothing and is
+// published on the runtime-neutral `yarramate/adapter/visual-graph` subpath: a
+// host that never renders still needs to know what contains what. This wrapper
+// keeps the signature the canvas and its tests already use, and does the one
+// thing the pure module deliberately will not — talk to the console.
+//
+// Composition expresses exclusive whole-part structure (ADR 0004) and maps 1:1
+// onto cytoscape's compound `parent`. Aggregation is deliberately excluded: it
+// allows a part to belong to several wholes at once, which a single `parent`
+// field cannot represent.
 export function resolveNestingParents(
   edges: readonly CanvasEdge[],
   nesting: readonly NestingKind[],
-  kindOf: (id: string) => string
+  coreKindOf: (id: string) => string
 ): {
   readonly parentOf: ReadonlyMap<string, string>
   readonly consumedEdgeIds: ReadonlySet<string>
 } {
-  // Precedence is the order the view listed: a child claimed by a composition
-  // and by an assignment nests under the composition.
-  const rankOf = new Map(
-    nesting.map((kind, rank) => [NESTING_KIND_IDS[kind], rank])
-  )
-  const nestingEdges = edges.filter(
-    (edge) =>
-      rankOf.has(edge.kind) &&
-      (edge.kind !== ASSIGNMENT_RELATIONSHIP_KIND ||
-        nestsAsAssignment(edge, kindOf))
-  )
-
-  const claimsByChild = new Map<string, CanvasEdge[]>()
-  for (const edge of nestingEdges) {
-    const claims = claimsByChild.get(edge.to)
-    if (claims === undefined) {
-      claimsByChild.set(edge.to, [edge])
-    } else {
-      claims.push(edge)
-    }
+  const tree = nestingTree(edges, nesting, coreKindOf)
+  for (const conflict of tree.conflicts) {
+    const parents = new Set(conflict.claims.map((claim) => claim.from))
+    console.warn(
+      `Nesting conflict: "${conflict.child}" is claimed by ${parents.size} different parents at the same precedence (${conflict.claims.map((claim) => `${kindLabelOfId(claim.kind)} from ${claim.from}`).join(', ')}) - rendering it unnested; every claim stays drawn as a regular edge.`
+    )
   }
-
-  const parentOf = new Map<string, string>()
-  for (const [child, claims] of claimsByChild) {
-    // Only claims at the best rank compete. Two of them naming different
-    // parents stays undecidable and falls through to unnest-and-warn, which is
-    // the behaviour composition alone already had.
-    const best = Math.min(...claims.map((claim) => rankOf.get(claim.kind)!))
-    const winners = claims.filter((claim) => rankOf.get(claim.kind) === best)
-    const parents = new Set(winners.map((claim) => claim.from))
-    if (parents.size === 1) {
-      parentOf.set(child, winners[0]!.from)
-    } else {
-      console.warn(
-        `Nesting conflict: "${child}" is claimed by ${parents.size} different parents at the same precedence (${winners.map((claim) => `${claim.kindLabel} from ${claim.from}`).join(', ')}) - rendering it unnested; every claim stays drawn as a regular edge.`
-      )
-    }
+  if (tree.cycleMembers.length > 0) {
+    console.warn(
+      `Nesting cycle detected among: ${tree.cycleMembers.join(', ')} - rendering them unnested.`
+    )
   }
-
-  // Walk each child's parent chain; a ancestor id revisited before the chain
-  // runs out marks a cycle. Only the cycle itself is unnested, not whatever
-  // leads into it - a straight-line ancestor of a cycle is still validly
-  // nested under its own (non-cyclic) parent.
-  const cycleMembers = new Set<string>()
-  for (const start of parentOf.keys()) {
-    const path: string[] = []
-    const indexInPath = new Map<string, number>()
-    let current: string | undefined = start
-    while (current !== undefined) {
-      const seenAt = indexInPath.get(current)
-      if (seenAt !== undefined) {
-        for (const id of path.slice(seenAt)) cycleMembers.add(id)
-        break
-      }
-      indexInPath.set(current, path.length)
-      path.push(current)
-      current = parentOf.get(current)
-    }
-  }
-  if (cycleMembers.size > 0) {
-    console.warn(`Nesting cycle detected among: ${[...cycleMembers].join(', ')} - rendering them unnested.`)
-    for (const id of cycleMembers) parentOf.delete(id)
-  }
-
-  const consumedEdgeIds = new Set<string>()
-  for (const edge of nestingEdges) {
-    if (parentOf.get(edge.to) === edge.from) consumedEdgeIds.add(edge.id)
-  }
-
-  return { parentOf, consumedEdgeIds }
+  return { parentOf: tree.parentOf, consumedEdgeIds: tree.consumedEdgeIds }
 }
+
+/** `yarramate/core@0.1#composition` -> `composition`, for a warning only. */
+const kindLabelOfId = (kind: string) => kind.split('#')[1] ?? kind
 
 // Convert CanvasGraph nodes and edges to cytoscape ElementDefinition format.
 // Exported for the headless tests: the parallel-edge class assignment below is

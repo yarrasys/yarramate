@@ -43,6 +43,9 @@ patterns:
       - from: self
         kind: yarramate/core@0.1#aggregation
         to: interface
+      - from: backend
+        kind: yarramate/core@0.1#serving
+        to: self
 `
 
 const document = `format: yarramate/v1
@@ -369,5 +372,58 @@ describe('#448: parts over operations', () => {
         '      service: greeting-service\n      backend: greeting-backend\n',
       ),
     )
+  })
+})
+
+describe('#473: a membership says which way its slot is wired', () => {
+  // `owned`, `context` and `unwired` are the three shapes a pattern can put a
+  // slot in, and folding treats them differently: an owned member may be drawn
+  // INSIDE the instance, a context member never may. The distinction is a fact
+  // about the pattern, so it is read from the wiring rather than from the
+  // graph, and it holds whether or not the slot is bound.
+  it('reports owned, context and unwired from the pattern wiring', () => {
+    const compiled = compileWorkspaceWithProfileContext([
+      { path: 'profiles/mule.yaml', source: profile },
+      { path: 'patterns/mule.yaml', source: pattern },
+      {
+        path: 'architecture/main.yaml',
+        source: `format: yarramate/v1
+id: main
+profile: aperturex/mule@1.0
+concepts:
+  - id: greeting-app
+    kind: mule-http-api
+    name: Greeting app
+    parts:
+      interface: patron-api
+      service: greeting-service
+      backend: greeting-backend
+  - id: patron-api
+    kind: applicationInterface
+    name: Patron API
+  - id: greeting-service
+    kind: applicationService
+    name: Greeting service
+  - id: greeting-backend
+    kind: applicationComponent
+    name: Greeting backend
+relationships: []
+`,
+      },
+    ])
+    expect(compiled.ok).toBe(true)
+    if (!compiled.ok) return
+    // Keyed by slot rather than asserted in order: the emission is sorted by
+    // MEMBER id, and pinning that order here would test the sort a second time
+    // while obscuring what this test is about.
+    const wiringBySlot = new Map(
+      (compiled.patternMemberships ?? []).map(({ slot, wiring }) => [slot, wiring]),
+    )
+    // `self -> interface`: the instance holds it out.
+    expect(wiringBySlot.get('interface')).toBe('owned')
+    // `backend -> self`: the backend acts ON the app. Never folded inside it.
+    expect(wiringBySlot.get('backend')).toBe('context')
+    // Declared, wired to nothing. Still a part.
+    expect(wiringBySlot.get('service')).toBe('unwired')
   })
 })
