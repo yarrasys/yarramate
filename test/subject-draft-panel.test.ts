@@ -43,6 +43,13 @@ const KINDS = [
     label: 'businessActor',
     coreLabel: 'businessActor',
   },
+  // A profile kind that authored a display name, which core kinds never do.
+  {
+    id: 'aperturex/mule@1.0#mule-api',
+    label: 'mule-api',
+    coreLabel: 'applicationInterface',
+    name: 'Mule API interface',
+  },
 ]
 
 const render = (overrides: { readonly initialKind?: string } = {}) =>
@@ -245,5 +252,26 @@ describe('SubjectDraftPanel', () => {
     // …and no id is claimed twice, in the panel or by two labels.
     expect(new Set(ids).size).toBe(ids.length)
     expect(new Set(fors).size).toBe(fors.length)
+  })
+})
+
+describe('a kind that authored a display name', () => {
+  it('offers the name AND the id, so a reader knows what the token means', () => {
+    // `VisualKindOption.name` shipped in phase 4 with no consumer at all: a
+    // profile could author "Mule API interface" and see it nowhere. Found by
+    // the ApertureX session reading a mounted host.
+    expect(render()).toContain('Mule API interface (mule-api)')
+  })
+
+  it('keeps the bare label as the VALUE the option carries', () => {
+    // The half that must not move. A document names a kind the short way and
+    // `apply` refuses anything else as an unknown kind (YM401), so the text a
+    // reader sees and the token a stage writes are different things.
+    expect(render()).toContain('value="mule-api"')
+    expect(render()).not.toContain('value="Mule API interface (mule-api)"')
+  })
+
+  it('leaves a kind with no authored name exactly as it was', () => {
+    expect(render()).toContain('>applicationComponent</option>')
   })
 })
