@@ -328,6 +328,21 @@ export function runCheckCommand(
                 loaded.projection,
                 result.graph,
                 result.profileContext,
+                // Instance-hood from BOTH lists. A membership row exists only
+                // for a BOUND slot, so an instance whose slots are all empty
+                // has none - and judging it by bindings alone would call a real
+                // instance "not an instance" on the day it was authored, before
+                // anything was wired into it. The honest question is not "did
+                // it bind anything" but "does the model know it as an
+                // instance" (rule 2).
+                new Set([
+                  ...(result.patternMemberships ?? []).map(
+                    ({ instance }) => instance,
+                  ),
+                  ...(result.patternVacancies ?? []).map(
+                    ({ instance }) => instance,
+                  ),
+                ]),
               )
             : [],
         )

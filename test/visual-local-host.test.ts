@@ -700,3 +700,139 @@ describe('local host refresh', () => {
     expect(frames.slice(before).filter((frame) => frame.kind === 'model')).toEqual([])
   })
 })
+
+describe('#473 phase 2: a filter that names an instance', () => {
+  // The wiring, not the arithmetic. `instanceClosureOf` is covered in
+  // `projection-instances.test.ts`; what this asks is whether the HOST hands
+  // the evaluator the memberships it needs. Phase 1 shipped folding with every
+  // unit test green and nothing wired into the app, so the seam between them is
+  // the thing worth a test of its own.
+  const profile = `format: yarramate/profile/v1
+id: yarrasys/api-led
+version: "1.0"
+extends: yarramate/core@0.1
+conceptKinds:
+  - id: api
+    name: API
+    parent: yarramate/core@0.1#grouping
+relationshipKinds: []
+`
+
+  const pattern = `format: yarramate/pattern/v1
+id: api-led
+version: "1.0"
+patterns:
+  - kind: yarrasys/api-led@1.0#api
+    parts:
+      component:
+        kind: yarramate/core@0.1#applicationComponent
+        required: true
+      interface:
+        kind: yarramate/core@0.1#applicationInterface
+        required: true
+    wiring:
+      - from: self
+        kind: yarramate/core@0.1#aggregation
+        to: component
+      - from: component
+        kind: yarramate/core@0.1#composition
+        to: interface
+`
+
+  const patterned = `format: yarramate/v1
+id: main
+profile: yarrasys/api-led@1.0
+concepts:
+  - id: sys-api
+    kind: api
+    name: System API
+    parts:
+      component: sys-component
+      interface: sys-interface
+  - id: sys-component
+    kind: applicationComponent
+    name: System component
+  - id: sys-interface
+    kind: applicationInterface
+    name: System interface
+  - id: outsider
+    kind: applicationComponent
+    name: Outsider
+relationships: []
+`
+
+  const view = `format: yarramate/projection/v1
+id: everything
+version: "1.0"
+query: {}
+presentation:
+  title: Everything
+`
+
+  const openPatternHost = () => {
+    const store = memoryStore({
+      'profiles/api-led.yaml': profile,
+      'patterns/api-led.yaml': pattern,
+      'architecture/main.yaml': patterned,
+      'projections/everything.yaml': view,
+    })
+    const host = createLocalHost({
+      store,
+      workspace: {
+        id: 'embedded',
+        documents: ['architecture/main.yaml'],
+        profiles: ['profiles/api-led.yaml'],
+        projections: ['projections/everything.yaml'],
+        adapterMappings: [],
+        patterns: ['patterns/api-led.yaml'],
+        evidence: [],
+        contracts: [],
+      },
+    })
+    const frames: VisualServerFrame[] = []
+    host.open({
+      frame: (frame) => frames.push(frame),
+      connected: () => {},
+      lost: () => {},
+      session: () => ({ lastSequence: 0, closed: false }),
+    })
+    return { frames, send: (value: VisualBrowserInput) => host.send(value) }
+  }
+
+  it('matches the instance and everything it holds', () => {
+    const { frames, send } = openPatternHost()
+    const ready = frames[0]
+    expect(ready?.kind).toBe('ready')
+
+    send(input('filter.query', { query: { instances: ['sys-api'] } }))
+    const result = frames.at(-1)
+
+    expect(result?.kind).toBe('filter-result')
+    if (result?.kind !== 'filter-result') return
+    // Without the memberships the host now threads, this would be `['sys-api']`
+    // - one subject, a canvas showing a single empty box, and no error anywhere.
+    //
+    // The two relationships are the other half of the point. The closure is
+    // INITIALLY selected rather than expansion-added, so the edges among its
+    // members survive; a view that reached the same members by expansion would
+    // draw them as unconnected boxes.
+    expect([...result.result.matchedIds].sort()).toEqual([
+      'sys-api',
+      'sys-api-aggregation-component',
+      'sys-api-component-composition-interface',
+      'sys-component',
+      'sys-interface',
+    ])
+  })
+
+  it('says the facet is why it dropped the rest', () => {
+    const { frames, send } = openPatternHost()
+    send(input('filter.query', { query: { instances: ['sys-api'] } }))
+    const result = frames.at(-1)
+    if (result?.kind !== 'filter-result') throw new Error('no filter result')
+
+    expect(
+      result.result.excluded.map(({ id, facet }) => `${id}:${facet}`),
+    ).toEqual(['outsider:instances'])
+  })
+})

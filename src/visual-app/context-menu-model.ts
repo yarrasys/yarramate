@@ -57,6 +57,14 @@ export type ContextMenuIntent =
    * the same "Show all subjects" — one narrowing concept, one escape.
    */
   | { readonly type: "subject.focus"; readonly id: string }
+  /**
+   * Narrow the canvas to what this pattern instance HOLDS (#473 phase 2).
+   *
+   * Distinct from `subject.focus`, which walks one hop of relationships. This
+   * one asks the model what is inside the box, so it answers with the pattern's
+   * own parts rather than with whatever happens to be adjacent.
+   */
+  | { readonly type: "subject.focus-instance"; readonly id: string }
   /** The relationship and its two endpoints. Nothing further (#407). */
   | { readonly type: "relationship.focus"; readonly id: string }
   /**
@@ -162,6 +170,18 @@ export interface ContextMenuContext {
    */
   readonly folded?: ReadonlySet<string>;
   readonly containerIds?: ReadonlySet<string>;
+  /**
+   * Which subjects the model knows as pattern INSTANCES (#473 phase 2).
+   *
+   * Not `containerIds`: a subject contains things when the view's nesting puts
+   * them inside it, which a plain component with a composition does. Only an
+   * instance has parts to focus on, and offering the item on anything else
+   * would compose a query that selects one subject.
+   *
+   * Optional for the reason every field above it is: a required addition here
+   * is free for readers and a typecheck break for constructors.
+   */
+  readonly instanceIds?: ReadonlySet<string>;
   /** What the reader has selected, when it is more than one thing. */
   readonly selectedIds?: readonly string[];
   /**
@@ -186,6 +206,7 @@ const READING_INTENTS: ReadonlySet<ContextMenuIntent["type"]> = new Set([
   "view.clear",
   // Focus reads and narrows; it stages nothing, so a viewer keeps it.
   "subject.focus",
+  "subject.focus-instance",
   "relationship.focus",
   // Folding is a way of LOOKING (#473). It writes to the layout sidecar, which
   // is adapter-owned presentation state (ADR 0023), never to the model - so a
@@ -318,6 +339,22 @@ const focusAndMembershipGroups = (
     destructive: false,
     items: [
       { key: "focus", label: "Focus on this", intent: focus },
+      // Beside "Focus on this" because it answers the same question with a
+      // different reading of "near": what the pattern says this holds, rather
+      // than what the graph happens to touch.
+      ...(focus.type === "subject.focus" &&
+      context.instanceIds?.has(focus.id) === true
+        ? [
+            {
+              key: "focus-instance",
+              label: "Focus on this instance",
+              intent: {
+                type: "subject.focus-instance" as const,
+                id: focus.id,
+              },
+            },
+          ]
+        : []),
       ...membership.flatMap((group) => group.items),
       ...(context.filtered ? [clearItem(context)] : []),
     ],

@@ -1026,6 +1026,9 @@ export const startVisualServer = async (
           compiledWorkspace.graph,
           query,
           compiledWorkspace.profileContext,
+          // A view's query can name `instances`, and the facet resolves to the
+          // instance alone without these (ADR 0144).
+          compiledWorkspace.patternMemberships,
         );
 
   /**
@@ -1048,6 +1051,7 @@ export const startVisualServer = async (
           compiledWorkspace.graph,
           query,
           compiledWorkspace.profileContext,
+          compiledWorkspace.patternMemberships,
         );
 
   let listening = false;

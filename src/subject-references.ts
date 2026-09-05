@@ -106,6 +106,14 @@ export const SUBJECT_REFERENCE_POSITIONS: readonly SubjectReferencePosition[] =
       form: 'qualified',
     },
     {
+      // Instances a view names to select what they hold (#473, ADR 0144). A
+      // subject address like any other, so a rename must rewrite it: a view
+      // pointing at an instance's old id would select nothing and draw empty.
+      group: 'projection',
+      path: ['query', 'instances', '*'],
+      form: 'qualified',
+    },
+    {
       group: 'projection',
       path: ['query', 'exclude', '*'],
       form: 'qualified',

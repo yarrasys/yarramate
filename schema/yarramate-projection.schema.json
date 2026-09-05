@@ -36,6 +36,15 @@
             "$ref": "#/$defs/subjectIdentity"
           }
         },
+        "instances": {
+          "description": "Pattern instances whose CONTENTS this query selects (#473, ADR 0144). Each id names an instance, and the facet selects that instance together with everything the fold tree would draw inside it: the same closure `presentation.fold: \"instances\"` collapses into one box, read through this view's own `nesting`. This is the one facet that ADDS rather than narrows. `subjects` and `instances` are a single identity facet spelled two ways and their values combine with OR, while every other field still ANDs over the union. Naming the instance rather than hand-listing its members is what keeps a view from going stale the next time the pattern binds a slot. An id that names nothing is refused (YM921); one that names a subject which is not a pattern instance is refused separately (YM922), because a typo and a category error send an author to different places.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/subjectIdentity"
+          }
+        },
         "exclude": {
           "description": "Subjects this query would otherwise select and the author has taken out: the exception a rule cannot state (#267, ADR 0122). Applied after every other facet and after relationship expansion, so an excluded subject is out whichever way it would have come back in. Naming a subject no facet selects is allowed and inert until the model grows into the rule.",
           "type": "array",

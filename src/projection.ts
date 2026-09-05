@@ -34,6 +34,25 @@ export interface ProjectionDefinition {
   readonly query: {
     readonly subjects?: readonly string[]
     /**
+     * Pattern instances whose CONTENTS this query wants (#473, ADR 0144).
+     *
+     * Each id names an instance, and the facet selects that instance together
+     * with everything the fold tree would draw inside it - the same closure
+     * `presentation.fold: instances` collapses into one box, read through the
+     * view's own `nesting`. A view that wanted the box wanted what is in it.
+     *
+     * This is the ONE facet that adds rather than narrows, and it is why
+     * `subjects` and this are read as a single identity facet whose values
+     * combine with OR (`docs/PROJECTIONS.md`). Every other field still ANDs
+     * over the union: `instances` says which subjects are in play, and `kinds`
+     * or `statuses` narrow that set the way they always did.
+     *
+     * Hand-listing the members instead is what this replaces, and the list goes
+     * stale the moment the pattern binds another slot. The names here are the
+     * instance, not its parts, so the view follows the model.
+     */
+    readonly instances?: readonly string[]
+    /**
      * Subjects this query would otherwise select and the author has taken out
      * (#267, ADR 0122). A facet view states a rule, and every interesting rule
      * has an exception someone would rather state than abandon the rule for;
@@ -118,6 +137,9 @@ export { DEFAULT_NESTING, type NestingKind } from './nesting.js'
  */
 export { DEFAULT_FOLD, type FoldMode } from './fold-tree.js'
 import type { NestingKind } from './nesting.js'
+import { DEFAULT_NESTING as NESTING_DEFAULT } from './nesting.js'
+import { foldTree, type FoldMembership } from './fold-tree.js'
+import { kindLabelOf } from './kind-label.js'
 
 /**
  * Which way a view runs, and the default. Split out for the same reason as the
@@ -164,6 +186,7 @@ export function canonicalProjection(
     version: projection.version,
     query: {
       ...(query.subjects === undefined ? {} : { subjects: [...query.subjects].sort() }),
+      ...(query.instances === undefined ? {} : { instances: [...query.instances].sort() }),
       ...(query.documents === undefined ? {} : { documents: [...query.documents].sort() }),
       ...(query.kinds === undefined ? {} : { kinds: [...query.kinds].sort() }),
       ...(query.layers === undefined ? {} : { layers: [...query.layers].sort() }),
@@ -239,6 +262,7 @@ export type ConceptFacet =
   | 'exclude'
   | 'states'
   | 'subjects'
+  | 'instances'
   | 'documents'
   | 'kinds'
   | 'layers'
@@ -268,11 +292,122 @@ interface ConceptSelector {
  * why one is out. They must never be able to disagree, which is why there is
  * one selector rather than a filter here and a reason-finder somewhere else.
  */
+/**
+ * Which subjects each named pattern instance holds, transitively.
+ *
+ * The SAME tree the canvas folds, computed from the same module over the same
+ * inputs, because a view that names an instance must select exactly what the
+ * box would have contained. Two implementations of "what is inside this
+ * instance" would be two answers to one question, and the one the reader sees
+ * is whichever they happened to open (rule: a test must go through the seam it
+ * is testing - so must a second caller).
+ *
+ * Nesting comes from THIS view's `presentation.nesting`, not the default, for
+ * the reason folding reads it too: containment is a property of the view, and a
+ * view that nests on composition alone holds less than one that also nests on
+ * assignment.
+ *
+ * Without `memberships` the closure is the named instances ALONE. That is a
+ * degradation, not an answer, and it is why `check` refuses rather than
+ * quietly returning a smaller view (#447, #450).
+ */
+export function instanceClosureOf(
+  graph: SemanticGraph,
+  projection: ProjectionDefinition,
+  profileContext?: ResolvedProfileContext,
+  memberships?: readonly FoldMembership[],
+): ReadonlyMap<string, string> {
+  const named = projection.query.instances
+  const broughtInBy = new Map<string, string>()
+  if (named === undefined || named.length === 0) return broughtInBy
+
+  // Sorted so that an instance nested inside another named instance resolves to
+  // a stable owner rather than to whichever the author typed first.
+  const roots = [...named].sort()
+  for (const root of roots) broughtInBy.set(root, root)
+  if (memberships === undefined) return broughtInBy
+
+  const kindOf = new Map<string, string>()
+  for (const claim of graph.claims) {
+    if (claim.predicate !== 'yarramate/concept/kind') continue
+    if ('value' in claim.object) kindOf.set(claim.subject, claim.object.value)
+  }
+
+  const nodes = graph.subjects
+    .filter(({ type }) => type === 'concept')
+    .map(({ id }) => {
+      const kind = kindOf.get(id) ?? ''
+      return {
+        id,
+        kind,
+        // The same reading `projectGraphForCanvas` gives `coreKindLabel`: the
+        // nearest declared ancestor, labelled. Every rule in `foldTree` reads
+        // this and never the authored kind (#473).
+        coreKind: kindLabelOf(
+          profileContext?.conceptKindLineages.get(kind)?.[0] ?? kind,
+        ),
+      }
+    })
+
+  const edges = graph.subjects
+    .filter(({ type }) => type === 'relationship')
+    .flatMap(({ id }) => {
+      const claim = graph.claims.find((candidate) => candidate.id === id)
+      if (claim === undefined || !('ref' in claim.object)) return []
+      return [
+        {
+          id,
+          kind: claim.predicate,
+          from: claim.subject,
+          to: claim.object.ref,
+        },
+      ]
+    })
+
+  const tree = foldTree({
+    nodes,
+    edges,
+    memberships,
+    nesting: projection.presentation?.nesting ?? NESTING_DEFAULT,
+  })
+
+  const childrenOf = new Map<string, string[]>()
+  for (const [child, parent] of tree.parentOf) {
+    const siblings = childrenOf.get(parent)
+    if (siblings === undefined) childrenOf.set(parent, [child])
+    else siblings.push(child)
+  }
+
+  // Transitive, because the box is: unfolding one reveals the folded rows
+  // inside it, and a view naming the outer instance wants those too.
+  for (const root of roots) {
+    const queue = [root]
+    while (queue.length > 0) {
+      const current = queue.pop()!
+      for (const child of childrenOf.get(current) ?? []) {
+        if (broughtInBy.has(child)) continue
+        broughtInBy.set(child, root)
+        queue.push(child)
+      }
+    }
+  }
+  return broughtInBy
+}
+
 const conceptSelector = (
   graph: SemanticGraph,
   projection: ProjectionDefinition,
   profileContext?: ResolvedProfileContext,
+  memberships?: readonly FoldMembership[],
 ): ConceptSelector => {
+  // Computed once for the whole query rather than per subject: the fold tree is
+  // a fact about the model and the view, not about the subject being judged.
+  const instanceClosure = instanceClosureOf(
+    graph,
+    projection,
+    profileContext,
+    memberships,
+  )
   const architectureStateIds = new Set(
     graph.claims
       .filter(({ predicate }) => predicate === 'yarramate/state/type')
@@ -348,8 +483,24 @@ const conceptSelector = (
       ) {
         return 'states'
       }
-      if (query.subjects !== undefined && !query.subjects.includes(id)) {
-        return 'subjects'
+      // `subjects` and `instances` are ONE identity facet spelled two ways,
+      // and values within a facet combine with OR - the rule
+      // `docs/PROJECTIONS.md` already states for the values inside a list,
+      // applied to the two lists that name the same thing. Naming a subject and
+      // naming the instance that holds it are the same act of selection, so a
+      // query carrying both selects the union and every other facet then ANDs
+      // over it, exactly as before.
+      //
+      // The reported facet keeps `subjects` whenever the author wrote one, so
+      // that no view which exists today changes the answer it gives the editor;
+      // `instances` is reported only where it is the sole identity facet.
+      if (query.subjects !== undefined || query.instances !== undefined) {
+        if (
+          query.subjects?.includes(id) !== true &&
+          !instanceClosure.has(id)
+        ) {
+          return query.subjects === undefined ? 'instances' : 'subjects'
+        }
       }
       if (
         query.documents !== undefined &&
@@ -493,6 +644,11 @@ export function unmatchedSelectors(
 
   const subjectIds = new Set(graph.subjects.map(({ id }) => id))
   check('subjects', query.subjects, subjectIds)
+  // Only whether the id names a subject at all. Whether that subject is a
+  // pattern INSTANCE is a second question with a different answer and its own
+  // diagnostic, because "you misspelled this" and "this is real but it is not
+  // an instance" send an author to two different places.
+  check('instances', query.instances, subjectIds)
   check('exclude', query.exclude, subjectIds)
   // Against the SUBJECT list rather than against owners currently in use: a
   // team that owns nothing yet is a real concept and selecting it is a real
@@ -558,8 +714,9 @@ export function projectionReferenceDiagnostics(
   projection: ProjectionDefinition,
   graph: SemanticGraph,
   profileContext?: ResolvedProfileContext,
+  instances?: ReadonlySet<string>,
 ): readonly Diagnostic[] {
-  return unmatchedSelectors(graph, projection, profileContext).map(
+  const unmatched = unmatchedSelectors(graph, projection, profileContext).map(
     ({ facet, value, nearest }) => ({
       severity: 'error' as const,
       code: 'YM921',
@@ -574,6 +731,54 @@ export function projectionReferenceDiagnostics(
       ...locate(source.source, value),
     }),
   )
+
+  const named = projection.query.instances
+  if (named === undefined) return unmatched
+
+  // The facet cannot be resolved without knowing which subjects are instances,
+  // and a caller that did not look is not the same as a workspace with none.
+  // Answering anyway would return the instances alone, which is a SMALLER view
+  // that reads exactly like a correct one - the failure #450 is about.
+  if (instances === undefined) {
+    return [
+      ...unmatched,
+      {
+        severity: 'error' as const,
+        code: 'YM923',
+        message:
+          'Projection query `instances` cannot be resolved here, because this ' +
+          'check was given no pattern instances to resolve it against. ' +
+          'Without them the facet would select each named instance alone and ' +
+          'silently drop everything it holds.',
+        path: source.path,
+        pointer: '/query/instances',
+        // The facet itself is what is wrong here, not any one name in it, so
+        // point at the word `instances` rather than at an arbitrary member.
+        ...locate(source.source, 'instances'),
+      },
+    ]
+  }
+
+  const knownIds = new Set(graph.subjects.map(({ id }) => id))
+  return [
+    ...unmatched,
+    ...named
+      // A name that resolves to nothing is already YM921's; saying it twice
+      // would send the author looking for a second fault.
+      .filter((value) => knownIds.has(value) && !instances.has(value))
+      .map((value) => ({
+        severity: 'error' as const,
+        code: 'YM922',
+        message:
+          `Projection query \`instances\` names ${JSON.stringify(value)}, ` +
+          'which this workspace has but which is not a pattern instance, so ' +
+          'it holds nothing for the facet to select. Name it under ' +
+          '`subjects` to select the subject itself.',
+        path: source.path,
+        pointer: '/query/instances',
+        ...locate(source.source, value),
+      })),
+  ]
 }
 
 /**
@@ -595,8 +800,14 @@ export function explainProjection(
   graph: SemanticGraph,
   projection: ProjectionDefinition,
   profileContext?: ResolvedProfileContext,
+  memberships?: readonly FoldMembership[],
 ): readonly ProjectionExclusion[] {
-  const { droppedBy } = conceptSelector(graph, projection, profileContext)
+  const { droppedBy } = conceptSelector(
+    graph,
+    projection,
+    profileContext,
+    memberships,
+  )
   const exclusions: ProjectionExclusion[] = []
   for (const subject of graph.subjects) {
     if (subject.type !== 'concept') continue
@@ -610,9 +821,10 @@ export function evaluateProjection(
   graph: SemanticGraph,
   projection: ProjectionDefinition,
   profileContext?: ResolvedProfileContext,
+  memberships?: readonly FoldMembership[],
 ): ProjectionResult {
   const { droppedBy, architectureStateIds, participatesInSelectedState } =
-    conceptSelector(graph, projection, profileContext)
+    conceptSelector(graph, projection, profileContext, memberships)
   const endpointExcluded = (id: string): boolean => {
     // An exclusion is final (#267, ADR 0122). Dropping the subject from the
     // initial selection alone would not be: `relationships: connected` adds

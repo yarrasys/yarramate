@@ -246,6 +246,7 @@ export function prepareLikeC4Export(
     compilation.graph,
     projection.projection,
     compilation.profileContext,
+    compilation.patternMemberships,
   )
   const comparison =
     input.comparison === undefined

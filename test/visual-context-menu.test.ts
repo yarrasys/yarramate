@@ -640,3 +640,55 @@ describe("#473: folding is offered where something can fold", () => {
     expect(items.map((item) => item.key)).toEqual(["fold"]);
   });
 });
+
+describe("#473 phase 2: focusing on what an instance holds", () => {
+  const viewItems = (ctx: ContextMenuContext, id = "api") =>
+    contextMenuFor({ kind: "subject", id }, ctx)
+      .filter((group) => group.key === "view")
+      .flatMap((group) => group.items);
+
+  it("offers the item on a pattern instance", () => {
+    const items = viewItems(context({ instanceIds: new Set(["api"]) }));
+    expect(items.map((item) => item.key)).toContain("focus-instance");
+  });
+
+  it("offers nothing extra on a subject that is not an instance", () => {
+    // Not the same question as `containerIds`: a component with a composition
+    // CONTAINS something and still has no parts to focus on, so a menu keyed on
+    // containment would offer a query that selects one subject.
+    const items = viewItems(
+      context({ containerIds: new Set(["api"]), instanceIds: new Set() }),
+    );
+    expect(items.map((item) => item.key)).not.toContain("focus-instance");
+  });
+
+  it("offers nothing extra when the frame never said which subjects are instances", () => {
+    expect(labels(contextMenuFor({ kind: "subject", id: "api" }, context()))).not.toContain(
+      "Focus on this instance",
+    );
+  });
+
+  it("composes an instances query rather than a member list", () => {
+    const item = viewItems(context({ instanceIds: new Set(["api"]) })).find(
+      ({ key }) => key === "focus-instance",
+    );
+    // The id of the INSTANCE, so the server resolves the closure against the
+    // pattern. A member list composed here would freeze at the click.
+    expect(item?.intent).toEqual({ type: "subject.focus-instance", id: "api" });
+  });
+
+  it("keeps the item for a read-only viewer, because it only reads", () => {
+    const items = viewItems(
+      context({ instanceIds: new Set(["api"]), readOnly: true }),
+    );
+    expect(items.map((item) => item.key)).toContain("focus-instance");
+  });
+
+  it("leaves it off a relationship menu", () => {
+    const items = contextMenuFor(
+      { kind: "relationship", id: "api-serving-ui" },
+      context({ instanceIds: new Set(["api", "api-serving-ui"]) }),
+    ).flatMap((group) => group.items);
+    expect(items.map((item) => item.key)).not.toContain("focus-instance");
+  });
+});

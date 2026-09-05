@@ -82,10 +82,14 @@ export const conceptCountOf = (
   graph: SemanticGraph,
   query: ProjectionQuery,
   profileContext: ResolvedProfileContext,
+  memberships?: readonly CataloguePatternMembership[],
 ): number =>
-  evaluateProjection(graph, adHoc(query), profileContext).subjects.filter(
-    ({ type }) => type === "concept",
-  ).length;
+  evaluateProjection(
+    graph,
+    adHoc(query),
+    profileContext,
+    memberships,
+  ).subjects.filter(({ type }) => type === "concept").length;
 
 /**
  * Folds one interrogation report into what the canvas draws (#292).
@@ -217,6 +221,9 @@ export const renderedWorkspaceOf = (
       compiled.graph,
       view.query,
       compiled.profileContext,
+      // Without these an `instances` view counts 1 and the rail says so, which
+      // is a wrong number rather than a missing one (ADR 0144).
+      compiled.patternMemberships,
     ),
   }));
   const interrogation =
@@ -255,8 +262,9 @@ export const matchedIdsOf = (
   graph: SemanticGraph,
   query: ProjectionQuery,
   profileContext: ResolvedProfileContext,
+  memberships?: readonly CataloguePatternMembership[],
 ): readonly string[] =>
-  evaluateProjection(graph, adHoc(query), profileContext).subjects.map(
+  evaluateProjection(graph, adHoc(query), profileContext, memberships).subjects.map(
     ({ id }) => id,
   );
 
@@ -265,8 +273,9 @@ export const exclusionsOf = (
   graph: SemanticGraph,
   query: ProjectionQuery,
   profileContext: ResolvedProfileContext,
+  memberships?: readonly CataloguePatternMembership[],
 ): readonly ProjectionExclusion[] =>
-  explainProjection(graph, adHoc(query), profileContext);
+  explainProjection(graph, adHoc(query), profileContext, memberships);
 
 /**
  * A query on its own is not a projection, and every evaluator here wants one.

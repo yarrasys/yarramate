@@ -1,5 +1,62 @@
 # Changelog
 
+## Unreleased
+
+### A view can name an instance and get what it holds
+
+1.20.0 made a pattern instance DRAW as one box. It changed nothing about what a
+view holds, so the view built around one instance still hand-listed its members,
+and that list was wrong the next time somebody bound a slot. Nothing said so;
+the view drew one box short, which reads as a model that lost a subject rather
+than a query that stopped keeping up (#473).
+
+A query may now name instances:
+
+```yaml
+query:
+  instances: [checkin-xapi]
+```
+
+The facet selects each named instance together with everything the fold tree
+would draw inside it, transitively, read through the view's own
+`presentation.nesting`. It is the same closure the canvas collapses, from the
+same module over the same inputs, because two implementations of "what is
+inside this instance" would be two answers to one question.
+
+**One documented rule moves, and it moves in the open.** Every other query facet
+narrows, and `docs/PROJECTIONS.md` has always said fields combine with AND.
+`instances` adds. So `subjects` and `instances` are now one identity facet
+spelled two ways whose values combine with OR, and every other field ANDs over
+that union. A view naming a closure PLUS three boundary neighbours is the case
+this exists for, and intersecting the two lists would have given the empty set.
+
+The closure joins the INITIAL selection rather than arriving by expansion, which
+is what keeps its internal edges. Under `relationships: connected` the evaluator
+keeps a relationship only when an endpoint was initially selected, so edges
+between two expansion-added neighbours are dropped: 71 of them on the reference
+Landscape. An instance view now keeps every edge among its members, which is
+what the canvas already drew.
+
+`check` splits the refusal, because there are two ways to get it wrong and they
+send an author to different places. **YM921** is a name the model does not hold,
+a typo, suggesting the nearest subject. **YM922** is a name it does hold that is
+not a pattern instance, pointing at `subjects` instead. Instance-hood reads the
+compile's bound memberships AND its vacancies, so an instance whose slots are
+all still empty is an instance rather than a stranger. **YM923** refuses to
+answer at all when the caller never said which subjects are instances, because
+the facet would otherwise degrade to each instance alone: a smaller view that
+reads exactly like a correct one.
+
+The canvas menu gains **Focus on this instance** on a node the model knows as an
+instance, beside "Focus on this". Two readings of "near": one hop of
+relationships, or what the pattern says this holds. It composes an ephemeral
+query and the server resolves it, staging nothing. The item is gated on
+instance-hood rather than containment, because a plain component with a
+composition contains something and has no parts to focus on.
+
+`instanceClosureOf` is exported for a host that never renders and still has to
+say what a view naming an instance holds. See ADR 0144.
+
 ## 1.20.0
 
 ### A pattern instance can draw as one box

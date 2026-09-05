@@ -1492,6 +1492,12 @@ export const App = ({
           // hold nothing, and offers "Fold" on a box already shut.
           folded: foldedIds,
           containerIds: new Set(containment.insideCounts.keys()),
+          // Which subjects the model knows as instances, which is not the same
+          // question as which ones contain something: a component with a
+          // composition contains, and has no parts to focus on.
+          instanceIds: new Set(
+            (state.model?.memberships ?? []).map(({ instance }) => instance),
+          ),
           selectedIds:
             workspace.selectedSubject === null
               ? []
@@ -1634,6 +1640,15 @@ export const App = ({
           folded: intent.type === "canvas.fold-all",
           ids: [...containment.insideCounts.keys()],
         });
+        dispatchWorkspace({ type: "menu.dismissed" });
+        return;
+      }
+      case "subject.focus-instance": {
+        // The query says `instances`, so the SERVER resolves the closure
+        // against the pattern (ADR 0144). Composing the member list here
+        // instead would freeze it at the moment of the click and would be a
+        // second answer to "what is inside this box".
+        filter({ instances: [intent.id], relationships: "between" }, "focus");
         dispatchWorkspace({ type: "menu.dismissed" });
         return;
       }
