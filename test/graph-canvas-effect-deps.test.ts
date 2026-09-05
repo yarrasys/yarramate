@@ -5,11 +5,13 @@ import { describe, expect, it } from 'vitest'
 //
 // `showConstraints` reached `graphToElements` at both call sites, typechecked,
 // and was covered by unit tests and four mutations. It was still INERT in the
-// app: the effect that rebuilds the elements lists `[graph, openQuestionCounts]`,
-// so flipping the toggle re-rendered the component and re-ran nothing. Found by
-// the ApertureX session reading cytoscape's own registration in a browser, on a
-// PUBLISHED release, after I had written "wired, not just built" in the pull
-// request.
+// app: the effect that rebuilds the elements listed `[graph,
+// openQuestionCounts]`, so flipping the toggle re-rendered the component and
+// re-ran nothing. Found by the ApertureX session reading cytoscape's own
+// registration in a browser, on a PUBLISHED release, after I had written
+// "wired, not just built" in the pull request. That feature is WITHDRAWN in
+// 1.22.1 and will be re-landed as element state; `nesting` was the same defect,
+// older and unreported, and it is fixed here.
 //
 // This is the third time in the programme that a feature passed its own tests
 // and did nothing in the product: patterns in 1.4.0, folding in 1.20.0, rows in
@@ -75,7 +77,8 @@ describe('every input to the element build can rebuild the elements', () => {
   it('found the props and the effect, or it is asserting nothing', () => {
     // Guard against the parse degrading to an empty sweep, which would make
     // the assertion below vacuously true - the inert-fixture shape.
-    expect(props).toContain('showConstraints')
+    expect(props).toContain('nesting')
+    expect(props).toContain('memberships')
     expect(effect.call).toContain('graphToElements(')
     expect(effect.deps.length).toBeGreaterThan(0)
   })

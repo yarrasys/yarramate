@@ -429,18 +429,14 @@ Two owners only force a choice when they sit in different boxes; where both
 already sit under one, there is nothing to choose. On the reference this takes
 the whole model from 173 boxes to 158 and the Landscape from 73 to 58.
 
-**A bound ruling can draw as a ROW rather than a box** when the view sets
-`presentation.showConstraints`. A constraint filling an unwired slot of a
-visible instance becomes a line in that instance's label block reading
-`slot: name · ruler`, and its edges are hidden with it. The row carries the
-RULER because that is where a ruling's authored edge comes from: on the
-reference all 82 run from a role or a stakeholder, never from the holder, which
-reaches the ruling only through the slot. Hide the box without naming the ruler
-and a role whose every edge ran to a ruling becomes a box with no edges at all.
-A ruling several instances bind draws in each of them, marked shared; a
-constraint nothing binds stays a box, because it has no box to sit in. Rows are
-presentation: the model, the query and the selected set do not move, and turning
-the toggle off restores the boxes.
+**A bound ruling drawing as a ROW rather than a box was shipped in 1.22.0 and
+WITHDRAWN in 1.22.1.** `presentation.showConstraints` no longer exists. The
+derivation was right and the canvas integration was not: rows were built by
+rebuilding the element set, which dropped the fold and the focus filter, never
+applied the hiding, and was wiped by the next fold. See
+[ADR 0145](adr/0145-a-member-held-only-inside-one-box-folds-into-it.md) for what
+it will be when it returns: element STATE applied in place, the way `folded`
+is.
 
 `fold` and `nesting` read the same containment tree, so a view declaring
 `fold: instances` without `assignment` in `nesting` collapses less than its

@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { graphToElements } from '../src/visual-app/graph-canvas.js'
-import { constraintRowsOf } from '../src/visual-app/constraint-rows.js'
 import type { CanvasEdge, CanvasGraph, CanvasNode } from '../src/graph-projection.js'
 
 // #473 item 1.6, headless through `graphToElements`. The canvas rules that
@@ -177,80 +176,5 @@ describe('#473: lifted edges', () => {
     // `lift:` ids are never saved and never reach a document, so they must be
     // recognisable as synthetic at a glance.
     expect(String(lifted(['app'])[0]!.data.id)).toMatch(/^lift:/)
-  })
-})
-
-describe('#473 phase 3: rulings as rows (ADR 0145)', () => {
-  // Through `graphToElements`, not through `constraintRowsOf` alone: the
-  // arithmetic is tested in `constraint-rows.test.ts`, and what these ask is
-  // whether the canvas actually stops drawing the box and starts drawing the
-  // row. Phase 1 shipped a feature whose unit tests were green and whose app
-  // was inert, so the seam is the thing worth a test of its own.
-  const ASSOCIATION = 'yarramate/core@0.1#association'
-
-  const rowGraph: CanvasGraph = {
-    nodes: [
-      node('api', 'applicationComponent'),
-      node('other-api', 'applicationComponent'),
-      node('rate-limit', 'constraint'),
-      node('security', 'businessRole'),
-    ],
-    edges: [
-      edge('r1', ASSOCIATION, 'security', 'rate-limit'),
-      edge('r2', SERVING, 'api', 'other-api'),
-    ],
-  } as unknown as CanvasGraph
-
-  const memberships = [
-    { member: 'rate-limit', slot: 'policy', instance: 'api', wiring: 'unwired' as const },
-  ]
-
-  const elementsWith = (showConstraints: boolean): Element[] =>
-    graphToElements(
-      rowGraph,
-      ['composition'],
-      new Map(),
-      { folded: new Set(), memberships },
-      constraintRowsOf(rowGraph, memberships, showConstraints)
-    ) as unknown as Element[]
-
-  const byId = (elements: readonly Element[], id: string) =>
-    elements.find((element) => element.data['id'] === id)
-
-  it('marks the ruling and its edge away, and keeps both elements', () => {
-    const elements = elementsWith(true)
-    // HIDDEN, never removed (review F4): the toggle must be reversible without
-    // rebuilding, and `layout.save` still has to name every subject.
-    expect(byId(elements, 'rate-limit')?.data['rowedAway']).toBe(true)
-    expect(byId(elements, 'r1')?.data['rowedAway']).toBe(true)
-    expect(byId(elements, 'rate-limit')).toBeDefined()
-    expect(byId(elements, 'r1')).toBeDefined()
-  })
-
-  it('puts the row on the holder, with the ruler named', () => {
-    const holder = byId(elementsWith(true), 'api')
-    expect(holder?.data['constraintRows']).toEqual([
-      'policy: rate-limit · security',
-    ])
-    expect(String(holder?.data['wrapLabel'])).toContain('policy: rate-limit')
-  })
-
-  it('makes a box with rows taller than one without', () => {
-    const elements = elementsWith(true)
-    expect(byId(elements, 'api')?.data['rowHeight']).toBeGreaterThan(50)
-    // Everything else keeps the fixed default rather than gaining a height.
-    expect(byId(elements, 'other-api')?.data['rowHeight']).toBeUndefined()
-  })
-
-  it('leaves an edge between two surviving boxes alone', () => {
-    expect(byId(elementsWith(true), 'r2')?.data['rowedAway']).toBeUndefined()
-  })
-
-  it('draws boxes again with the toggle off', () => {
-    const elements = elementsWith(false)
-    expect(byId(elements, 'rate-limit')?.data['rowedAway']).toBeUndefined()
-    expect(byId(elements, 'r1')?.data['rowedAway']).toBeUndefined()
-    expect(byId(elements, 'api')?.data['constraintRows']).toBeUndefined()
-    expect(byId(elements, 'api')?.data['rowHeight']).toBeUndefined()
   })
 })
