@@ -455,14 +455,15 @@ Two owners only force a choice when they sit in different boxes; where both
 already sit under one, there is nothing to choose. On the reference this takes
 the whole model from 173 boxes to 158 and the Landscape from 73 to 58.
 
-**A bound ruling drawing as a ROW rather than a box was shipped in 1.22.0 and
-WITHDRAWN in 1.22.1.** `presentation.showConstraints` no longer exists. The
-derivation was right and the canvas integration was not: rows were built by
-rebuilding the element set, which dropped the fold and the focus filter, never
-applied the hiding, and was wiped by the next fold. See
-[ADR 0145](adr/0145-a-member-held-only-inside-one-box-folds-into-it.md) for what
-it will be when it returns: element STATE applied in place, the way `folded`
-is.
+**A bound ruling drawing as a ROW rather than a box was shipped in 1.22.0,
+withdrawn in 1.22.1, and is not returning.** `presentation.showConstraints` does
+not exist. It was rebuilt correctly the second time and thrown away on sight: a
+box that states fourteen rulings stops being a name and becomes a paragraph, and
+a diagram of paragraphs is not a diagram. A folded box shows its name and the
+count of what went inside; **which** rulings govern a subject is a question for
+the Slots section of the properties panel, where the list can scroll and each
+ruling can be clicked through. See
+[ADR 0145](adr/0145-a-member-held-only-inside-one-box-folds-into-it.md).
 
 `fold` and `nesting` read the same containment tree, so a view declaring
 `fold: instances` without `assignment` in `nesting` collapses less than its
