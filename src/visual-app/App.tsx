@@ -835,6 +835,7 @@ const SelectedSubjectInspector = ({
         <SlotsSection
           id={node.id}
           model={model}
+          operations={operations}
           // From the pending changeset, the same reading every other drafting
           // surface takes: the graph knows only what has landed (#315).
           reservedIds={stagedSubjectIds(operations)}
@@ -956,18 +957,29 @@ const SlotFiller = ({
 const SlotsSection = ({
   id,
   model,
+  operations,
   reservedIds,
   onStage,
   readOnly,
 }: {
   readonly id: string;
   readonly model: VisualRenderedModel;
+  /** The pending changeset, so a staged binding shows on its row. */
+  readonly operations: readonly YarramateOperation[];
   readonly reservedIds: readonly string[];
   readonly onStage: (operation: YarramateOperation) => void;
   /** A viewer reads the slots and fills none (#298, ADR 0117). */
   readonly readOnly: boolean;
 }) => {
-  const slots = slotsSectionFor(id, model.memberships, model.vacancies);
+  // The pending changeset too, so a staged binding shows on the row where it
+  // was made. Without it the row snapped back to "to decide" and the only
+  // evidence of the pick was a count in another section.
+  const slots = slotsSectionFor(
+    id,
+    model.memberships,
+    model.vacancies,
+    operations,
+  );
   if (slots === null) return null;
   const node = model.graph.nodes.find((candidate) => candidate.id === id);
   // The pattern this instance IS, which is what says what each slot admits.

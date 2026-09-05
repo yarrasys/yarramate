@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+### A staged slot binding shows on the row where it was made
+
+Picking a subject for an empty slot staged the operation correctly and then the
+row snapped straight back to "to decide", with the only evidence of the pick a
+count in another section. A consultant filled a slot and watched the editor
+forget.
+
+The properties form already overlays staged edits onto the fields it shows,
+which is why a staged name is visible and re-editable. The Slots section is the
+same question asked about `parts`, and was not doing it. It reads the pending
+changeset now: a staged binding shows as the bound subject marked `staged`, the
+picker gives way to it, and the heading counts it, so the section cannot
+disagree with its own rows. Read in tray order the way `apply` replays a batch,
+so a slot picked twice shows the last choice.
+
+Found by the ApertureX session looking at published 1.23.0.
+
 ## 1.23.0
 
 ### A pattern's resolved shape is a public type (PR #482)

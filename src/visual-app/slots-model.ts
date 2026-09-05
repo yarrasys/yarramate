@@ -12,6 +12,7 @@
  */
 
 import type { PatternMembership, PatternVacancy } from '../compiler.js'
+import type { YarramateOperation } from '../operations.js'
 
 /** One slot of one instance, bound or not. */
 export interface SlotRow {
@@ -33,6 +34,16 @@ export interface SlotRow {
   readonly required: boolean
   /** How many OTHER instances bind the same subject, for a shared part. */
   readonly sharedWith: number
+  /**
+   * Bound by a change that is STAGED and not yet landed (#473 phase 4).
+   *
+   * The compile knows only what landed, so without this a reviewer picks a
+   * subject for an empty slot, the row snaps back to "to decide", and the only
+   * evidence anything happened is a count in another section. The properties
+   * form already overlays staged edits onto the fields it shows, and the slots
+   * are the same question asked about `parts`.
+   */
+  readonly staged?: boolean
 }
 
 export interface SlotsSection {
@@ -58,10 +69,34 @@ export function slotsSectionFor(
   subjectId: string,
   memberships: readonly PatternMembership[] = [],
   vacancies: readonly PatternVacancy[] = [],
+  /**
+   * The pending changeset, so a staged binding shows where it was made. Read
+   * in tray order, the way `apply` replays a batch, so a slot picked twice
+   * shows the LAST choice rather than the first.
+   */
+  staged: readonly YarramateOperation[] = [],
 ): SlotsSection | null {
   const bound = memberships.filter(({ instance }) => instance === subjectId)
   const vacant = vacancies.filter(({ instance }) => instance === subjectId)
   if (bound.length === 0 && vacant.length === 0) return null
+
+  // Staged `parts` for THIS instance, by slot. `add-concept` carries them too,
+  // for an instance minted and bound in one batch.
+  const stagedParts = new Map<string, string>()
+  for (const operation of staged) {
+    const concept =
+      operation.op === 'update-concept' || operation.op === 'add-concept'
+        ? operation.concept
+        : undefined
+    if (concept === undefined) continue
+    // The instance id is qualified in the frame and local in an operation, so
+    // the tail is what the two have in common.
+    const local = subjectId.slice(subjectId.lastIndexOf('#') + 1)
+    if (concept.id !== local && concept.id !== subjectId) continue
+    for (const [slot, member] of Object.entries(concept.parts ?? {})) {
+      if (typeof member === 'string') stagedParts.set(slot, member)
+    }
+  }
 
   // How many instances bind each subject, so a shared part can say so. Counted
   // over EVERY membership, not just this instance's: sharing is a fact about
@@ -87,23 +122,40 @@ export function slotsSectionFor(
         sharedWith: (instancesOf.get(membership.member)?.size ?? 1) - 1,
       }),
     ),
-    ...[...vacant].sort(byName).map(
-      (vacancy): SlotRow => ({
-        slot: vacancy.slot,
-        member: null,
-        wiring: undefined,
-        required: vacancy.required,
-        sharedWith: 0,
-      }),
-    ),
+    ...[...vacant].sort(byName).map((vacancy): SlotRow => {
+      const stagedMember = stagedParts.get(vacancy.slot)
+      return stagedMember === undefined
+        ? {
+            slot: vacancy.slot,
+            member: null,
+            wiring: undefined,
+            required: vacancy.required,
+            sharedWith: 0,
+          }
+        : {
+            slot: vacancy.slot,
+            member: stagedMember,
+            // The wiring is the PATTERN's and does not change with a binding,
+            // but the compile only reports it for a bound slot, so a staged row
+            // has none to report yet.
+            wiring: undefined,
+            required: vacancy.required,
+            sharedWith: 0,
+            staged: true,
+          }
+    }),
   ]
 
+  const stagedCount = rows.filter((row) => row.staged === true).length
   return {
     pattern:
       bound[0]?.pattern ?? vacant[0]?.pattern ?? '',
     rows,
-    boundCount: bound.length,
-    vacantCount: vacant.length,
+    // Staged counts as bound HERE, because the heading sits beside rows that
+    // show the staged binding and a count that disagreed with them would be
+    // the section arguing with itself.
+    boundCount: bound.length + stagedCount,
+    vacantCount: vacant.length - stagedCount,
   }
 }
 
@@ -116,6 +168,9 @@ export function slotRowLabel(row: SlotRow): string {
     return row.required ? 'to decide — required' : 'to decide'
   }
   const marks: string[] = []
+  // Said first, because it changes what the rest of the row MEANS: this is a
+  // decision in the changeset, not one the model holds.
+  if (row.staged === true) marks.push('staged')
   // Marked because it is the one kind of bound slot that does NOT draw inside
   // the box when the instance is folded.
   if (row.wiring === 'context') marks.push('context')
