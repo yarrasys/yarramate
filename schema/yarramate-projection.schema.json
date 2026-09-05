@@ -148,6 +148,10 @@
             "enum": ["composition", "assignment"]
           }
         },
+        "fold": {
+          "description": "Whether this view draws pattern instances FOLDED by default (#473). \"instances\" collapses every instance to a single node carrying its members, with the edges into and out of them lifted onto the box; \"none\", the default, draws everything. A reader opens what they want, so this says where to START rather than what may be seen. Folding reads the same containment tree nesting does, so a view declaring fold without \"assignment\" in nesting collapses less than its author probably expects; the editor says so rather than the loader refusing it, because a diagnostic has no warning severity and this is not an error.",
+          "enum": ["instances", "none"]
+        },
         "showLifecycle": {
           "type": "boolean"
         },

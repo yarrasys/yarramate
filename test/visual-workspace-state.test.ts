@@ -341,6 +341,10 @@ describe("visualWorkspaceReducer layout", () => {
     expect(actions).toEqual([
       { type: "layout.set", layout: "layered" },
       { type: "nesting.set", nesting: ["composition"] },
+      // Unconditional, the rule `nesting.set` and `direction.set` follow: a
+      // view that omits `fold` folds nothing and must not inherit the folded
+      // state of the view the reviewer arrived from (#473).
+      { type: "fold.set", mode: "none", folded: [], unfolded: [] },
       { type: "direction.set", direction: "left-right" },
     ]);
     const next = actions.reduce(visualWorkspaceReducer, workspaceState);
@@ -390,6 +394,10 @@ describe("visualWorkspaceReducer layout", () => {
     expect(actions).toEqual([
       { type: "layout.set", layout: "layered" },
       { type: "nesting.set", nesting: ["composition"] },
+      // Unconditional, the rule `nesting.set` and `direction.set` follow: a
+      // view that omits `fold` folds nothing and must not inherit the folded
+      // state of the view the reviewer arrived from (#473).
+      { type: "fold.set", mode: "none", folded: [], unfolded: [] },
       { type: "direction.set", direction: "top-down" },
     ]);
   });
@@ -449,6 +457,10 @@ describe("visualWorkspaceReducer presentation", () => {
     const actions = presentationActionsFor({ showOwnership: true });
     expect(actions).toEqual([
       { type: "nesting.set", nesting: ["composition"] },
+      // Unconditional, the rule `nesting.set` and `direction.set` follow: a
+      // view that omits `fold` folds nothing and must not inherit the folded
+      // state of the view the reviewer arrived from (#473).
+      { type: "fold.set", mode: "none", folded: [], unfolded: [] },
       { type: "direction.set", direction: "top-down" },
       { type: "presentation.toggled", flag: "showOwnership", value: true },
     ]);
@@ -1161,5 +1173,97 @@ describe("the left rail can leave", () => {
       visualWorkspaceReducer(hidden, { type: "conversation.toggled" })
         .railHidden,
     ).toBe(true);
+  });
+});
+
+describe("#473: fold state survives a view switch", () => {
+  const workspaceState = createVisualWorkspaceState(1280);
+  // The whole reason there are two sets rather than one flag. `fold.set` is
+  // restated on EVERY view switch, so a reader who opened a box must not have
+  // it shut again the moment the view's default is read back.
+  const foldedIn = (state: typeof workspaceState, id: string) =>
+    state.folded.includes(id) ||
+    (state.foldMode === "instances" && !state.unfolded.includes(id));
+
+  it("folds nothing by default", () => {
+    expect(workspaceState.foldMode).toBe("none");
+    expect(workspaceState.folded).toEqual([]);
+    expect(workspaceState.unfolded).toEqual([]);
+  });
+
+  it("toggles a box shut and open again", () => {
+    const shut = visualWorkspaceReducer(workspaceState, {
+      type: "fold.toggled",
+      id: "app",
+    });
+    expect(foldedIn(shut, "app")).toBe(true);
+    const open = visualWorkspaceReducer(shut, { type: "fold.toggled", id: "app" });
+    expect(foldedIn(open, "app")).toBe(false);
+  });
+
+  it("keeps a box the reader OPENED open when the view default is restated", () => {
+    // The regression this design exists to prevent.
+    const folding = visualWorkspaceReducer(workspaceState, {
+      type: "fold.set",
+      mode: "instances",
+      folded: [],
+      unfolded: [],
+    });
+    expect(foldedIn(folding, "app")).toBe(true);
+
+    const opened = visualWorkspaceReducer(folding, {
+      type: "fold.toggled",
+      id: "app",
+    });
+    expect(foldedIn(opened, "app")).toBe(false);
+    expect(opened.unfolded).toContain("app");
+
+    // The same view is selected again: `fold.set` fires with the view's own
+    // default, and it must not undo what the reader did.
+    const restated = visualWorkspaceReducer(opened, {
+      type: "fold.set",
+      mode: "instances",
+      folded: [],
+      unfolded: ["app"],
+    });
+    expect(foldedIn(restated, "app")).toBe(false);
+  });
+
+  it("returns the SAME state object when fold.set restates what is true", () => {
+    // The `nesting.set` rule: a view switch that changes nothing must not mint
+    // a new object, or every identity memo downstream misses.
+    const set = { type: "fold.set", mode: "instances", folded: ["a"], unfolded: ["b"] } as const;
+    const once = visualWorkspaceReducer(workspaceState, set);
+    const twice = visualWorkspaceReducer(once, set);
+    expect(twice).toBe(once);
+  });
+
+  it("ignores the order of the two sets when deciding that", () => {
+    const once = visualWorkspaceReducer(workspaceState, {
+      type: "fold.set", mode: "none", folded: ["a", "b"], unfolded: [],
+    });
+    const twice = visualWorkspaceReducer(once, {
+      type: "fold.set", mode: "none", folded: ["b", "a"], unfolded: [],
+    });
+    expect(twice).toBe(once);
+  });
+
+  it("folds and unfolds everything at once, clearing the other opinion", () => {
+    const opened = visualWorkspaceReducer(workspaceState, {
+      type: "fold.toggled", id: "app",
+    });
+    const all = visualWorkspaceReducer(opened, {
+      type: "fold.all", folded: true, ids: ["app", "other"],
+    });
+    expect(all.folded).toEqual(["app", "other"]);
+    // "fold everything" is a statement about the whole view: nothing may be
+    // left holding an opinion from before it.
+    expect(all.unfolded).toEqual([]);
+
+    const none = visualWorkspaceReducer(all, {
+      type: "fold.all", folded: false, ids: ["app", "other"],
+    });
+    expect(none.folded).toEqual([]);
+    expect(none.unfolded).toEqual(["app", "other"]);
   });
 });

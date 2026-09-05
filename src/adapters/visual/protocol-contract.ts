@@ -275,6 +275,19 @@ export interface VisualChangesetCommitPayload {
 export interface VisualLayoutSavePayload {
   readonly projectionId: string;
   readonly positions: VisualLayoutPositions;
+  /**
+   * What this view folds, saved beside the positions in ONE document (#473).
+   *
+   * Full state every time, never a patch. A half-applied fold state draws a
+   * box whose contents are somewhere else on the canvas, and the sidecar is
+   * written by a browser that may have been reloaded between any two saves.
+   *
+   * `unfolded` exists because the view's own `presentation.fold` is a default,
+   * not a rule: a reader who opened a box must not have it close again when the
+   * default is read back.
+   */
+  readonly folded?: readonly string[];
+  readonly unfolded?: readonly string[];
 }
 
 /**

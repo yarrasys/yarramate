@@ -731,13 +731,17 @@ export const startVisualServer = async (
   // like a broken saved view above — presentation state must never fail a
   // session.
   const layoutDir = resolve(options.cwd, ".yarramate/visual-layout");
-  const layouts: Record<string, VisualLayoutPositions> = (() => {
-    const built: Record<string, VisualLayoutPositions> = {};
+  const { layouts, folds } = ((): {
+    layouts: Record<string, VisualLayoutPositions>;
+    folds: Record<string, { folded: string[]; unfolded: string[] }>;
+  } => {
+    const layouts: Record<string, VisualLayoutPositions> = {};
+    const folds: Record<string, { folded: string[]; unfolded: string[] }> = {};
     let entries: readonly string[];
     try {
       entries = readdirSync(layoutDir);
     } catch {
-      return built;
+      return { layouts, folds };
     }
     for (const entry of entries) {
       if (extname(entry) !== ".yaml" && extname(entry) !== ".yml") continue;
@@ -748,13 +752,24 @@ export const startVisualServer = async (
         const sidecar = parsed as {
           readonly projectionId: string;
           readonly positions: VisualLayoutPositions;
+          readonly folded?: readonly string[];
+          readonly unfolded?: readonly string[];
         };
-        built[sidecar.projectionId] = sidecar.positions;
+        layouts[sidecar.projectionId] = sidecar.positions;
+        // A sidecar written before #473 has neither list, and says nothing
+        // about folding rather than saying "fold nothing" - the view's own
+        // default decides for it. Only a sidecar that STATES a fold overrides.
+        if (sidecar.folded !== undefined || sidecar.unfolded !== undefined) {
+          folds[sidecar.projectionId] = {
+            folded: [...(sidecar.folded ?? [])],
+            unfolded: [...(sidecar.unfolded ?? [])],
+          };
+        }
       } catch {
         // Skipped sidecar: presentation state must never fail a session.
       }
     }
-    return built;
+    return { layouts, folds };
   })();
 
   // `request.initialModel.graph` is the caller's compile (`buildVisualModelGraph`,
@@ -769,6 +784,7 @@ export const startVisualServer = async (
     documents: [],
     vocabulary: { conceptKinds: [], relationshipKinds: [] },
     layouts,
+    ...(Object.keys(folds).length === 0 ? {} : { folds }),
     sourceDigests: request.initialModel.sourceDigests,
     // The request's model has no projections in it - `visual-model/v1` carries
     // a graph, not a workspace - so the fallback states nothing rather than
@@ -1853,7 +1869,7 @@ export const startVisualServer = async (
         // never `git commit`ed. It never asks the agent anything, so it is
         // answered here directly rather than through the pending queue a
         // poll would drain.
-        const { projectionId, positions } = event.payload;
+        const { projectionId, positions, folded, unfolded } = event.payload;
         if (!views.some((view) => view.id === projectionId)) {
           sendFrame(socket, {
             kind: "layout-save-result",
@@ -1872,12 +1888,28 @@ export const startVisualServer = async (
             format: "yarramate/visual-layout/v1",
             projectionId,
             positions,
+            // With the positions, in one document, in full (#473). Same rule
+            // the local host follows, and it has to be the same rule: a
+            // sidecar written by one host is read by the other.
+            ...(folded === undefined ? {} : { folded }),
+            ...(unfolded === undefined ? {} : { unfolded }),
           }),
           "utf8",
         );
         rendered = {
           ...rendered,
           layouts: { ...rendered.layouts, [projectionId]: positions },
+          ...(folded === undefined && unfolded === undefined
+            ? {}
+            : {
+                folds: {
+                  ...rendered.folds,
+                  [projectionId]: {
+                    folded: folded ?? [],
+                    unfolded: unfolded ?? [],
+                  },
+                },
+              }),
         };
         sendFrame(socket, {
           kind: "layout-save-result",

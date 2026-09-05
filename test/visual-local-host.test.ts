@@ -359,6 +359,46 @@ concepts:
     expect(store.held.get('projections/apps.yaml')).toContain('Actors')
   })
 
+  it('writes fold state beside the positions, in one document (#473)', () => {
+    // One document and full state every time, never a patch: a box and the
+    // positions of what is inside it are one fact, and the sidecar is written
+    // by a browser that may have reloaded between any two saves.
+    const { store, frames, send } = openHost()
+    send(
+      input('layout.save', {
+        projectionId: 'apps',
+        positions: { checkout: { x: 1, y: 2 } },
+        folded: ['checkout'],
+        unfolded: [],
+      }),
+    )
+    const saved = frames.at(-1)
+    expect(saved?.kind).toBe('layout-save-result')
+    const sidecar = parse(store.held.get('.yarramate/visual-layout/apps.yaml') ?? '')
+    expect(sidecar).toEqual({
+      format: 'yarramate/visual-layout/v1',
+      projectionId: 'apps',
+      positions: { checkout: { x: 1, y: 2 } },
+      folded: ['checkout'],
+      unfolded: [],
+    })
+  })
+
+  it('writes no fold keys at all when the host sends none', () => {
+    // Every sidecar written before #473 has neither list, and a host that
+    // never folds should keep producing exactly those bytes.
+    const { store, send } = openHost()
+    send(
+      input('layout.save', {
+        projectionId: 'apps',
+        positions: { checkout: { x: 1, y: 2 } },
+      }),
+    )
+    const sidecar = parse(store.held.get('.yarramate/visual-layout/apps.yaml') ?? '') as Record<string, unknown>
+    expect('folded' in sidecar).toBe(false)
+    expect('unfolded' in sidecar).toBe(false)
+  })
+
   it('persists a known view layout across the next model frame', () => {
     const { store, frames, send } = openHost()
     const positions = {

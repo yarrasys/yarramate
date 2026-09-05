@@ -73,6 +73,16 @@ export interface ProjectionDefinition {
      * that shipped before a view could say; `[]` draws everything as a line.
      */
     readonly nesting?: readonly NestingKind[]
+    /**
+     * Whether this view draws pattern instances FOLDED by default (#473).
+     *
+     * `instances` collapses every instance to one node carrying its members;
+     * `none`, the default, draws everything. A reader opens what they want, so
+     * this says where to START rather than what may be seen — the same shape
+     * `nesting` has, and for the same reason: a view is an opinion about a
+     * first look, not a restriction.
+     */
+    readonly fold?: import('./fold-tree.js').FoldMode
     readonly showLifecycle?: boolean
     readonly showEvidence?: boolean
     readonly showOwnership?: boolean
@@ -101,6 +111,12 @@ export interface ProjectionDefinition {
  * and a schema, which is a great deal of bundle for one constant (ADR 0101).
  */
 export { DEFAULT_NESTING, type NestingKind } from './nesting.js'
+/**
+ * Whether a view folds instances, and the default. Defined in `./fold-tree.js`,
+ * which imports nothing, and re-exported here on the same terms as the nesting
+ * vocabulary above (#473).
+ */
+export { DEFAULT_FOLD, type FoldMode } from './fold-tree.js'
 import type { NestingKind } from './nesting.js'
 
 /**
@@ -170,6 +186,7 @@ export function canonicalProjection(
             ...(presentation.layout === undefined ? {} : { layout: presentation.layout }),
             ...(presentation.direction === undefined ? {} : { direction: presentation.direction }),
             ...(presentation.nesting === undefined ? {} : { nesting: presentation.nesting }),
+            ...(presentation.fold === undefined ? {} : { fold: presentation.fold }),
             ...(presentation.showLifecycle === undefined ? {} : { showLifecycle: presentation.showLifecycle }),
             ...(presentation.showEvidence === undefined ? {} : { showEvidence: presentation.showEvidence }),
             ...(presentation.showOwnership === undefined ? {} : { showOwnership: presentation.showOwnership }),
@@ -748,6 +765,9 @@ export function evaluateProjection(
             ...(projection.presentation.nesting === undefined
               ? {}
               : { nesting: projection.presentation.nesting }),
+            ...(projection.presentation.fold === undefined
+              ? {}
+              : { fold: projection.presentation.fold }),
             ...(projection.presentation.showLifecycle === undefined
               ? {}
               : { showLifecycle: projection.presentation.showLifecycle }),

@@ -4,6 +4,7 @@ import type {
   CanvasNode,
 } from "../graph-projection.js";
 import { DEFAULT_NESTING, type NestingKind } from "../nesting.js";
+import { DEFAULT_FOLD, type FoldMode } from "../fold-tree.js";
 import {
   DEFAULT_DIRECTION,
   type LayoutDirection,
@@ -377,6 +378,20 @@ export interface VisualWorkspaceState {
    */
   readonly nesting: readonly NestingKind[];
   /**
+   * Whether the active view folds pattern instances by default (#473), and the
+   * two sets that override it: boxes the reader shut beyond the default, and
+   * boxes the reader OPENED against it.
+   *
+   * Two sets rather than one flag, because `fold.set` restates the view's
+   * default on every view switch and a reader who opened a box must not have it
+   * shut again the moment that default is read back. An instance draws folded
+   * when the mode says so and it is not in `unfolded`, or when it is in
+   * `folded` outright.
+   */
+  readonly foldMode: FoldMode;
+  readonly folded: readonly string[];
+  readonly unfolded: readonly string[];
+  /**
    * Which way the active view runs its layers (#274, ADR 0121). A view that
    * says nothing runs `DEFAULT_DIRECTION`, the same rule `nesting` follows:
    * silence restores the default rather than carrying the previous view's
@@ -452,6 +467,27 @@ export type VisualWorkspaceAction =
       readonly nesting: readonly NestingKind[];
     }
   | {
+      /**
+       * The view's fold default plus whatever the sidecar saved, restated on
+       * every view switch (#473) — the rule `nesting.set` follows.
+       */
+      readonly type: "fold.set";
+      readonly mode: FoldMode;
+      readonly folded: readonly string[];
+      readonly unfolded: readonly string[];
+    }
+  | {
+      /** One box opened or shut by a reader. */
+      readonly type: "fold.toggled";
+      readonly id: string;
+    }
+  | {
+      /** Every instance at once, from the canvas menu. */
+      readonly type: "fold.all";
+      readonly folded: boolean;
+      readonly ids: readonly string[];
+    }
+  | {
       readonly type: "direction.set";
       readonly direction: LayoutDirection;
     }
@@ -480,6 +516,11 @@ export type VisualWorkspaceAction =
 // leaves unset keeps the workspace's current value untouched. Returns the
 // actions to dispatch, in declaration order, so App.tsx has nothing left to
 // decide - it only has to dispatch what comes back.
+/** Order-insensitive set equality over subject ids (#473). */
+const sameIds = (left: readonly string[], right: readonly string[]): boolean =>
+  left.length === right.length &&
+  new Set([...left, ...right]).size === new Set(left).size
+
 const sameNesting = (
   left: readonly NestingKind[],
   right: readonly NestingKind[],
@@ -492,6 +533,7 @@ export const presentationActionsFor = (
     | {
         readonly layout?: "layered";
         readonly nesting?: readonly NestingKind[];
+        readonly fold?: FoldMode;
         readonly direction?: LayoutDirection;
         readonly showLifecycle?: boolean;
         readonly showEvidence?: boolean;
@@ -509,6 +551,16 @@ export const presentationActionsFor = (
   actions.push({
     type: "nesting.set",
     nesting: presentation?.nesting ?? DEFAULT_NESTING,
+  });
+  // Unconditional for the same reason as nesting: a view that omits `fold`
+  // folds NOTHING, and must not inherit the folded state of the view the
+  // reviewer came from. The saved sidecar, if there is one, is applied over
+  // this by the caller — which is why both override sets start empty here.
+  actions.push({
+    type: "fold.set",
+    mode: presentation?.fold ?? DEFAULT_FOLD,
+    folded: [],
+    unfolded: [],
   });
   // Unconditional for the same reason as nesting above: a view that omits
   // `direction` runs top-down, and must not inherit the left-right run of the
@@ -632,6 +684,9 @@ export const createVisualWorkspaceState = (
   pendingViewRename: null,
   contextMenu: null,
   nesting: DEFAULT_NESTING,
+  foldMode: DEFAULT_FOLD,
+  folded: [],
+  unfolded: [],
   direction: DEFAULT_DIRECTION,
   layout: "layered",
   showLifecycle: true,
@@ -885,6 +940,46 @@ export const visualWorkspaceReducer = (
       return sameNesting(state.nesting, action.nesting)
         ? state
         : { ...state, nesting: action.nesting };
+    case "fold.set": {
+      // Same rule as `nesting.set`: restating what is already true must not
+      // mint a new state object, or every identity memo downstream misses on
+      // every view switch.
+      const unchanged =
+        state.foldMode === action.mode &&
+        sameIds(state.folded, action.folded) &&
+        sameIds(state.unfolded, action.unfolded);
+      return unchanged
+        ? state
+        : {
+            ...state,
+            foldMode: action.mode,
+            folded: action.folded,
+            unfolded: action.unfolded,
+          };
+    }
+    case "fold.toggled": {
+      // A toggle MOVES the id between the two sets rather than flipping one
+      // flag, because "the reader opened this" has to survive the view's
+      // default being restated on the next view switch.
+      const shut =
+        state.folded.includes(action.id) ||
+        (state.foldMode === "instances" && !state.unfolded.includes(action.id));
+      return {
+        ...state,
+        folded: shut
+          ? state.folded.filter((id) => id !== action.id)
+          : [...state.folded.filter((id) => id !== action.id), action.id],
+        unfolded: shut
+          ? [...state.unfolded.filter((id) => id !== action.id), action.id]
+          : state.unfolded.filter((id) => id !== action.id),
+      };
+    }
+    case "fold.all":
+      // A statement about the whole view, so nothing may be left holding an
+      // opinion from before it.
+      return action.folded
+        ? { ...state, folded: [...action.ids], unfolded: [] }
+        : { ...state, folded: [], unfolded: [...action.ids] };
     case "direction.set":
       // Restating the same direction is not a change, the rule `nesting.set`
       // states above: every view declares one, so without this a view switch

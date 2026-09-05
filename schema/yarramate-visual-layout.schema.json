@@ -15,9 +15,25 @@
     },
     "positions": {
       "$ref": "#/$defs/positions"
+    },
+    "folded": {
+      "description": "The instances this view draws folded (#473). Written WITH the positions in the same document and always in full, never as a patch: a reader that half-applies a fold state draws a box whose contents are somewhere else on the canvas. Absent means the view's own `presentation.fold` decides.",
+      "$ref": "#/$defs/subjectIds"
+    },
+    "unfolded": {
+      "description": "The instances this view draws OPEN even though `presentation.fold` says to fold them (#473). Two lists rather than one, because a reader who opened a box must not have it close again the moment the view's default is read back.",
+      "$ref": "#/$defs/subjectIds"
     }
   },
   "$defs": {
+    "subjectIds": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
     "positions": {
       "type": "object",
       "propertyNames": {

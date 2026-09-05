@@ -49,6 +49,22 @@ export const NESTING_KIND_IDS: Readonly<Record<NestingKind, string>> = {
  */
 const RULING_CORE_KINDS: ReadonlySet<string> = new Set(['constraint'])
 
+/**
+ * Whether a view draws pattern instances folded by default (#473).
+ *
+ * Lives here rather than in `projection.ts` for the reason `nesting.ts` exists:
+ * the browser needs the VALUE, and `projection.ts` drags Ajv and the projection
+ * schema in behind it. `projection.ts` re-exports both.
+ */
+export type FoldMode = 'instances' | 'none'
+
+/**
+ * What a view folds when it does not say: nothing. Folding hides detail, and a
+ * view that hid detail without being asked would be a surprise its author never
+ * wrote down.
+ */
+export const DEFAULT_FOLD: FoldMode = 'none'
+
 /** One node, reduced to what containment needs to know about it. */
 export interface FoldNode {
   readonly id: string
