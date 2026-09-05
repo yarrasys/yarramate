@@ -1424,6 +1424,9 @@ export const App = ({
   // list the Add-subject dialog compiles its Kind select from, so the two can
   // never disagree about what a workspace may contain.
   const paletteKinds = state.model?.vocabulary.conceptKinds ?? [];
+  // The patterns the workspace declares, where the frame carried any (#473
+  // phase 4). Absent means no patterns, and the palette simply has no band.
+  const palettePatterns = state.model?.vocabulary.patterns;
   const treeCollapsed = useMemo(
     () => new Set(workspace.tree.collapsed),
     [workspace.tree.collapsed],
@@ -2030,7 +2033,11 @@ export const App = ({
                           No model yet. The kinds arrive with it.
                         </p>
                       ) : (
-                        <KindPalette kinds={paletteKinds} onPick={draftWithKind} />
+                        <KindPalette
+                          kinds={paletteKinds}
+                          patterns={palettePatterns}
+                          onPick={draftWithKind}
+                        />
                       )}
                     </Section>
                   ),

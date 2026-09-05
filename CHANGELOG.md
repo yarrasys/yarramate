@@ -39,6 +39,26 @@ is what a drag payload and an operation carry and the two must not drift.
 Absent rather than empty where a workspace declares no patterns, so a palette
 can tell "this workspace has none" from "nobody looked".
 
+### The pattern is the unit on the palette
+
+A band per pattern document sits above the layer bands, one row per pattern:
+the stacked mark a folded node wears, the display name its profile authored,
+and how many slots it has and how many are required. The row drags the same
+kind label every other row does, so a drop handler needs no second grammar.
+
+**A ruling a slot admits moves into a collapsed row under its own layer**,
+labelled `<layer> · n kinds bound through a slot`. On the ApertureX reference
+that is 46 kinds folded out of the motivation band, which opened with
+`availability-constraint`, `coverage-target`, `idempotency-constraint` before
+anything a reader was looking for. They are still reachable, one click away:
+they are authored by filling a slot rather than by dragging, but a ruling
+nothing binds stays an ordinary row, because filling a slot is not a way to
+author it.
+
+The rule is constraint LINEAGE and slot admission together, never "appears as
+a slot kind". `dataObject` is a slot kind on that reference and is a
+first-class thing to draw.
+
 ### The standalone editor accepts the filter its own browser sends
 
 **A defect shipped in 1.21.0 and live through 1.22.1.** `nesting` was added to
