@@ -32,6 +32,27 @@ used to be placed anyway, closing a loop the cycle guard then broke by unnesting
 BOTH nodes, so the holder lost authored nesting it was entitled to. The
 placement is refused now, so no loop forms and the holder keeps its parent.
 
+### A bound ruling can draw as a row instead of a box
+
+New `presentation.showConstraints` on a view, off by default, in the family of
+`showLifecycle` / `showEvidence` / `showOwnership`. With it on, a constraint
+filling an unwired slot of a visible instance is hidden as a node and drawn as a
+line in that instance's label block; its edges are hidden with it. A ruling
+several instances bind draws in each, marked shared. A constraint nothing binds
+stays a box, because it has no box to sit in.
+
+The row reads `slot: name · ruler`, and the ruler is the measured part: on the
+reference all 82 rulings have their authored edge from a role or stakeholder
+rather than from the holder, which reaches the ruling only through the slot.
+Hide the box without naming the ruler and a role whose every edge ran to a
+ruling becomes a box with no edges at all. The ruler is derived from the graph
+as whoever points at the ruling from outside its own holders, not from a list of
+layers, so it does not go stale on a model that is shaped differently.
+
+Presentation only: the model, the query and the selected set are identical
+either way, and turning it off restores the boxes. Rulings hidden this way are
+hidden and not removed, so the toggle costs no rebuild.
+
 ## 1.21.0
 
 ### A view can name an instance and get what it holds

@@ -106,6 +106,17 @@ export interface ProjectionDefinition {
     readonly showEvidence?: boolean
     readonly showOwnership?: boolean
     /**
+     * Whether a bound RULING draws as a row inside its holder rather than as a
+     * node of its own (#473 phase 3, ADR 0145).
+     *
+     * On the reference this takes the whole model from 173 boxes to 91, because
+     * 82 of its rulings are bound into slots and every one of them was drawing
+     * as a box with a single association edge. Presentation only: the model,
+     * the query and the selected set do not move, and turning it off restores
+     * the boxes.
+     */
+    readonly showConstraints?: boolean
+    /**
      * The folder this view files itself under in an editor's rail: a label the
      * author declares, nested with `/`, never the directory the projection
      * sits in (ADR 0104). The same word `yarramate/likec4-project/v1` uses for
@@ -213,6 +224,7 @@ export function canonicalProjection(
             ...(presentation.showLifecycle === undefined ? {} : { showLifecycle: presentation.showLifecycle }),
             ...(presentation.showEvidence === undefined ? {} : { showEvidence: presentation.showEvidence }),
             ...(presentation.showOwnership === undefined ? {} : { showOwnership: presentation.showOwnership }),
+            ...(presentation.showConstraints === undefined ? {} : { showConstraints: presentation.showConstraints }),
             ...(presentation.notation === undefined ? {} : { notation: presentation.notation }),
           },
         }),
@@ -989,6 +1001,9 @@ export function evaluateProjection(
             ...(projection.presentation.showOwnership === undefined
               ? {}
               : { showOwnership: projection.presentation.showOwnership }),
+            ...(projection.presentation.showConstraints === undefined
+              ? {}
+              : { showConstraints: projection.presentation.showConstraints }),
             ...(projection.presentation.notation === undefined
               ? {}
               : { notation: projection.presentation.notation }),

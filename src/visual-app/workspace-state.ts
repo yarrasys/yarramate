@@ -402,6 +402,12 @@ export interface VisualWorkspaceState {
   readonly showLifecycle: boolean;
   readonly showEvidence: boolean;
   readonly showOwnership: boolean;
+  /**
+   * Whether a bound ruling draws as a ROW inside its holder rather than as a
+   * node (#473 phase 3, ADR 0145). Per view, restored by
+   * `presentationActionsFor` like the three above it.
+   */
+  readonly showConstraints: boolean;
   readonly showNudges: boolean;
 }
 
@@ -501,6 +507,7 @@ export type VisualWorkspaceAction =
         | "showLifecycle"
         | "showEvidence"
         | "showOwnership"
+        | "showConstraints"
         | "showNudges";
       readonly value: boolean;
     }
@@ -538,6 +545,7 @@ export const presentationActionsFor = (
         readonly showLifecycle?: boolean;
         readonly showEvidence?: boolean;
         readonly showOwnership?: boolean;
+        readonly showConstraints?: boolean;
       }
     | undefined,
 ): readonly VisualWorkspaceAction[] => {
@@ -588,6 +596,13 @@ export const presentationActionsFor = (
       type: "presentation.toggled",
       flag: "showOwnership",
       value: presentation.showOwnership,
+    });
+  }
+  if (presentation?.showConstraints !== undefined) {
+    actions.push({
+      type: "presentation.toggled",
+      flag: "showConstraints",
+      value: presentation.showConstraints,
     });
   }
   return actions;
@@ -695,6 +710,10 @@ export const createVisualWorkspaceState = (
   // `yarramate/ownership/owner` claims, so every chip would render
   // identically - uniform noise until real ownership diversity exists.
   showOwnership: false,
+  // Off by default, the same call `fold` made: rows HIDE boxes a reader can see
+  // today, and a view that hid them without being asked would be a surprise its
+  // author never wrote down (#473, ADR 0143's reasoning applied to ADR 0145).
+  showConstraints: false,
   // On by default: the chip is the canvas half of the interview (#292), and
   // it only draws where a count is non-zero, so a finished model stays calm.
   showNudges: true,

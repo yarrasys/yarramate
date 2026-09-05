@@ -254,6 +254,7 @@ const DiagramWorkspace = ({
   showLifecycle,
   showEvidence,
   showOwnership,
+  showConstraints,
   showNudges,
   openQuestionCounts,
   decorations,
@@ -302,6 +303,8 @@ const DiagramWorkspace = ({
   readonly showLifecycle: boolean;
   readonly showEvidence: boolean;
   readonly showOwnership: boolean;
+  /** Whether a bound ruling draws as a ROW inside its holder (#473 phase 3). */
+  readonly showConstraints: boolean;
   readonly showNudges: boolean;
   readonly openQuestionCounts: ReadonlyMap<string, number>;
   /** The host's per-subject marks (#314, ADR 0119), for the canvas. */
@@ -550,6 +553,7 @@ const DiagramWorkspace = ({
             nesting={nesting}
             folded={folded}
             memberships={memberships}
+            showConstraints={showConstraints}
             faultedIds={faultedSubjects(state.commitDiagnostics ?? [])}
             decorations={decorations}
             showLifecycle={showLifecycle}
@@ -624,6 +628,7 @@ const DiagramWorkspace = ({
         showLifecycle={showLifecycle}
         showEvidence={showEvidence}
         showOwnership={showOwnership}
+        showConstraints={showConstraints}
         showNudges={showNudges}
         onTogglePresentation={onTogglePresentation}
         onToggleOpen={onToggleBottomPanel}
@@ -1910,6 +1915,7 @@ export const App = ({
           showLifecycle={workspace.showLifecycle}
           showEvidence={workspace.showEvidence}
           showOwnership={workspace.showOwnership}
+          showConstraints={workspace.showConstraints}
           showNudges={workspace.showNudges}
           openQuestionCounts={openQuestionCounts}
           onSelect={(subject) =>
