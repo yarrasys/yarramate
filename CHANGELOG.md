@@ -1,5 +1,30 @@
 # Changelog
 
+## Unreleased
+
+### The standalone editor accepts the filter its own browser sends
+
+**A defect shipped in 1.21.0 and live through 1.22.1.** `nesting` was added to
+the `filter.query` payload so an instance closure resolves against the nesting
+the canvas is drawing with. The TypeScript contract gained it; the WIRE SCHEMA
+did not, and `filterQueryPayload` is `additionalProperties: false`. So the
+session server refused every filter the browser sent with **YMVS109 Property
+"nesting" is not allowed**, and the editor showed "The workspace did not
+compile. The diagram still shows the model that did."
+
+The effect was that opening a view drew the whole model. On the reference,
+selecting a 65-subject view left all 277 subjects on the canvas.
+
+It survived three releases and two browser passes because the ApertureX harness
+mounts the library and never goes through this validation. That host is a
+different path, and a pass on one says nothing about the other. It was found in
+the first minute of opening the standalone editor, which is the only place this
+path runs.
+
+`test/visual-filter-payload.test.ts` now parses what the browser actually
+composes through `parseVisualBrowserInput`, the call the session server makes.
+Taking the field back out of the schema turns three of its cases red.
+
 ## 1.22.1
 
 ### Rulings as rows is withdrawn
