@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-### A pattern's resolved shape is a public type
+### A pattern's resolved shape is a public type (PR #482)
 
 The pattern document has had a JSON schema since ADR 0123 and never a public
 TypeScript type, so a host that wanted to offer patterns had to re-read the YAML
