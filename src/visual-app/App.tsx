@@ -92,6 +92,8 @@ import { stageRelationshipScalarChange } from "./subject-form.js";
 import { slotsSectionFor, slotRowLabel } from "./slots-model.js";
 import { describeDeletion, draftDeletion } from "../deletion-drafting.js";
 import { stagedSubjectIds } from "../relationship-drafting.js";
+import { draftSlotBinding } from "../concept-drafting.js";
+import type { CanvasGraph } from "../graph-projection.js";
 
 /**
  * A drawing board, not a document: the diagram holds the workspace, one compact
@@ -829,7 +831,17 @@ const SelectedSubjectInspector = ({
         )
       ) : null}
 
-      {node === undefined ? null : <SlotsSection id={node.id} model={model} />}
+      {node === undefined ? null : (
+        <SlotsSection
+          id={node.id}
+          model={model}
+          // From the pending changeset, the same reading every other drafting
+          // surface takes: the graph knows only what has landed (#315).
+          reservedIds={stagedSubjectIds(operations)}
+          onStage={onStageChange}
+          readOnly={readOnly}
+        />
+      )}
 
       <ExpandableDescription
         text={subject.description}
@@ -852,15 +864,118 @@ const SelectedSubjectInspector = ({
  * "Slots" heading would claim "this has no parts", which is a different and
  * wrong thing to say.
  */
+/**
+ * One empty slot, offered to be filled (#473 phase 4, ADR 0146).
+ *
+ * The picker is narrowed to what the slot ADMITS, which the frame resolved:
+ * offering everything and letting the compiler refuse it would teach the reader
+ * the pattern's rules one diagnostic at a time.
+ */
+const SlotFiller = ({
+  graph,
+  instance,
+  slot,
+  document,
+  admits,
+  reservedIds,
+  onStage,
+  fallback,
+}: {
+  readonly graph: CanvasGraph;
+  readonly instance: string;
+  readonly slot: string;
+  readonly document: string;
+  readonly admits: readonly string[];
+  readonly reservedIds: readonly string[];
+  readonly onStage: (operation: YarramateOperation) => void;
+  /** What the row says when the slot admits nothing this workspace has. */
+  readonly fallback: string;
+}) => {
+  const [minting, setMinting] = useState(false);
+  const [name, setName] = useState("");
+  const candidates = graph.nodes.filter((candidate) =>
+    admits.includes(candidate.kindLabel),
+  );
+  if (admits.length === 0) return <>{fallback}</>;
+
+  const stage = (binding: Parameters<typeof draftSlotBinding>[2]) => {
+    const operations = draftSlotBinding(
+      graph,
+      { instance, slot, document, admits },
+      binding,
+      reservedIds,
+    );
+    if (operations === null) return;
+    for (const operation of operations) onStage(operation);
+    setMinting(false);
+    setName("");
+  };
+
+  return (
+    <span className="subject-slot-filler">
+      <select
+        aria-label={`Fill ${slot}`}
+        value=""
+        onChange={(event) => {
+          const chosen = event.target.value;
+          if (chosen === "") return;
+          if (chosen === "__new__") return setMinting(true);
+          stage({ mode: "existing", subject: chosen });
+        }}
+      >
+        <option value="">to decide</option>
+        {candidates.map((node) => (
+          <option key={node.id} value={node.id}>
+            {node.name}
+          </option>
+        ))}
+        <option value="__new__">New…</option>
+      </select>
+      {!minting ? null : (
+        <>
+          <input
+            aria-label={`New ${slot} name`}
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+          />
+          <button
+            type="button"
+            disabled={name.trim() === ""}
+            onClick={() =>
+              stage({ mode: "new", name, kind: admits[0] ?? "" })
+            }
+          >
+            Add
+          </button>
+        </>
+      )}
+    </span>
+  );
+};
+
 const SlotsSection = ({
   id,
   model,
+  reservedIds,
+  onStage,
+  readOnly,
 }: {
   readonly id: string;
   readonly model: VisualRenderedModel;
+  readonly reservedIds: readonly string[];
+  readonly onStage: (operation: YarramateOperation) => void;
+  /** A viewer reads the slots and fills none (#298, ADR 0117). */
+  readonly readOnly: boolean;
 }) => {
   const slots = slotsSectionFor(id, model.memberships, model.vacancies);
   if (slots === null) return null;
+  const node = model.graph.nodes.find((candidate) => candidate.id === id);
+  // The pattern this instance IS, which is what says what each slot admits.
+  // Without it the rows stay read-only rather than offering a picker that
+  // cannot know what it may offer.
+  const pattern = (model.vocabulary.patterns ?? []).find(
+    (option) => option.kind === node?.kind,
+  );
   return (
     <section className="subject-slots" aria-labelledby="slots-heading">
       <h3 id="slots-heading" className="subject-slots-heading">
@@ -882,7 +997,26 @@ const SlotsSection = ({
                   : "subject-slot-value"
               }
             >
-              {slotRowLabel(row)}
+              {row.member !== null ||
+              readOnly ||
+              pattern === undefined ||
+              node === undefined ? (
+                slotRowLabel(row)
+              ) : (
+                <SlotFiller
+                  graph={model.graph}
+                  instance={id}
+                  slot={row.slot}
+                  document={node.document}
+                  admits={
+                    pattern.slots.find((slot) => slot.name === row.slot)
+                      ?.admits ?? []
+                  }
+                  reservedIds={reservedIds}
+                  onStage={onStage}
+                  fallback={slotRowLabel(row)}
+                />
+              )}
             </dd>
           </div>
         ))}

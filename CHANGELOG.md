@@ -76,6 +76,22 @@ It stages **one changeset**: the minted children first, then the instance whose
 filled with the same name do not slug to the same id and have the second
 silently replace the first.
 
+### An empty slot can be filled from the properties column
+
+The Slots section phase 1 made read-only now offers a picker on every slot
+nothing is bound into, narrowed to the kinds that slot admits, with **New…** to
+mint a subject there and then. This is where a `missing-part` question gets
+answered on the canvas rather than in a file.
+
+Staging merges BY SLOT: the operation names only the slot being filled and
+leaves every other alone, so answering one question cannot unbind another.
+Retraction is unchanged and remains the coarse `remove: ['parts']`, because
+filling a slot and clearing them all are different gestures.
+
+A bound slot keeps its read-only row, a viewer sees no pickers at all, and a
+slot whose pattern admits nothing this workspace holds says so rather than
+offering an empty list.
+
 ### The standalone editor accepts the filter its own browser sends
 
 **A defect shipped in 1.21.0 and live through 1.22.1.** `nesting` was added to

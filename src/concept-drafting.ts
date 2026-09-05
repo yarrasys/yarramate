@@ -205,3 +205,67 @@ export const draftInstance = (
     },
   ]
 }
+
+/**
+ * Filling ONE slot of an instance that already exists (#473 phase 4).
+ *
+ * The other half of {@link draftInstance}: that one mints an instance and its
+ * parts together, this one answers a slot left open, which is what a
+ * `missing-part` card asks about (ADR 0140, #447). Both stage the same shape,
+ * so the model cannot tell which surface a binding came from.
+ *
+ * Merges BY SLOT, per ADR 0062's recorded convention: the operation names only
+ * the slot being filled, and the slots it does not mention are left alone
+ * (#448). There is no null idiom for retraction here, because retraction is
+ * coarse `remove: ['parts']` and is a different gesture from filling one.
+ *
+ * `null` rather than a partial batch: a child minted without the binding that
+ * uses it is a subject nobody asked for.
+ */
+export const draftSlotBinding = (
+  graph: CanvasGraph,
+  input: {
+    /** The instance whose slot is being filled. */
+    readonly instance: string
+    readonly slot: string
+    /** The document the operation writes to, and any minted child with it. */
+    readonly document: string
+    /** Kind labels the slot accepts, descendants already resolved. */
+    readonly admits: readonly string[]
+  },
+  binding: SlotBinding,
+  reserved: Iterable<string> = [],
+): readonly YarramateOperation[] | null => {
+  if (binding === null) return null
+  if (input.document === '') return null
+  if (input.slot === '') return null
+
+  if (binding.mode === 'existing') {
+    if (binding.subject === '') return null
+    return [
+      {
+        op: 'update-concept',
+        document: input.document,
+        concept: { id: input.instance, parts: { [input.slot]: binding.subject } },
+      },
+    ]
+  }
+
+  if (!input.admits.includes(binding.kind)) return null
+  const childName = binding.name.trim()
+  if (childName === '') return null
+  const childId = proposeConceptId(graph, childName, reserved)
+  if (childId === null) return null
+  return [
+    {
+      op: 'add-concept',
+      document: input.document,
+      concept: { id: childId, kind: binding.kind, name: childName },
+    },
+    {
+      op: 'update-concept',
+      document: input.document,
+      concept: { id: input.instance, parts: { [input.slot]: childId } },
+    },
+  ]
+}
