@@ -1224,6 +1224,65 @@ export function relayoutVisible(cy: Core, direction: LayoutDirection): void {
   runLayout(cy.elements(':visible'), direction)
 }
 
+/**
+ * Relayout after a fold change, keeping the toggled box where the reader last
+ * saw it (#473).
+ *
+ * A fold changes the element set, so a fit alone will not do — the graph has to
+ * be placed again. But the reader's eye is on the box they just clicked, and a
+ * layout that moves it across the screen costs them their place. So: lay out,
+ * then translate the whole result so the toggled node's screen position is the
+ * one it had, and re-frame ONLY if that leaves the changed region off-viewport.
+ *
+ * The layout itself is the ORDINARY one (ADR 0121's NETWORK_SIMPLEX). ELK's
+ * INTERACTIVE placement was proposed for this and MEASURED AND REJECTED: on the
+ * reference Landscape it moved untouched nodes a median of 1156px on a fold and
+ * 2799px on an unfold, against a gate of one node width, and raised crossings
+ * where network simplex lowered them. Anchoring is what actually keeps the
+ * reader's place; the placement strategy did not help. Table in ADR 0143.
+ *
+ * Returns whether it re-framed, so a caller can record a framing this actually
+ * produced rather than one it assumed.
+ */
+export function relayoutAfterFold(
+  cy: Core,
+  direction: LayoutDirection,
+  anchorId: string | null,
+): boolean {
+  const anchor = anchorId === null ? null : cy.getElementById(anchorId)
+  const before =
+    anchor !== null && anchor.nonempty() ? { ...anchor.position() } : null
+  relayoutVisible(cy, direction)
+  if (before !== null && anchor !== null && anchor.nonempty()) {
+    const after = anchor.position()
+    const dx = before.x - after.x
+    const dy = before.y - after.y
+    // Whole-graph translation, so nothing moves RELATIVE to anything else -
+    // the layout ELK produced is kept exactly, just slid back under the
+    // reader's eye.
+    if (dx !== 0 || dy !== 0) {
+      cy.nodes().forEach((node) => {
+        const position = node.position()
+        node.position({ x: position.x + dx, y: position.y + dy })
+      })
+    }
+  }
+  // Fit only when the result would otherwise be off screen: a reader who can
+  // still see what they changed does not want the viewport moved.
+  const visible = cy.elements(':visible')
+  if (visible.empty()) return false
+  const box = visible.boundingBox()
+  const extent = cy.extent()
+  const outside =
+    box.x2 < extent.x1 ||
+    box.x1 > extent.x2 ||
+    box.y2 < extent.y1 ||
+    box.y1 > extent.y2
+  if (!outside) return false
+  cy.fit(visible, 40)
+  return true
+}
+
 // Re-frames the viewport around what is visible without moving a single node.
 // A quick-filter keystroke changes visibility only: the survivors keep the
 // positions the last layout (or the reviewer's own drag) gave them, but at
@@ -1404,6 +1463,13 @@ interface GraphCanvasProps {
   /** Open-question count per subject id, from the model's interrogation
    * overlay; an empty map (host shipped no overlay) draws no chips. */
   readonly openQuestionCounts: ReadonlyMap<string, number>
+  /**
+   * Which instances draw folded, and the memberships that let the canvas know
+   * what is inside them (#473). Absent draws everything, which is what every
+   * caller did before folding existed.
+   */
+  readonly folded?: ReadonlySet<string>
+  readonly memberships?: readonly FoldMembership[]
   readonly activeViewId: string
   /**
    * Which way the active view runs its layers (#274, ADR 0121), from its
@@ -1464,6 +1530,8 @@ export function GraphCanvas({
   showOwnership,
   showNudges,
   openQuestionCounts,
+  folded,
+  memberships,
 }: GraphCanvasProps): React.ReactElement {
   const containerRef = useRef<HTMLDivElement>(null)
   const cyRef = useRef<Core | null>(null)
@@ -1543,7 +1611,15 @@ export function GraphCanvas({
 
     const cy = cytoscape({
       container: containerRef.current,
-      elements: graphToElements(graph, nesting, openQuestionCounts),
+      elements: graphToElements(graph, nesting, openQuestionCounts, {
+        folded: folded ?? new Set(),
+        memberships,
+      }),
+      // Multi-select, so fold and unfold can act on a set (#473). Additive on
+      // shift and by box drag; a single click still replaces the selection,
+      // which is what every existing gesture assumes.
+      selectionType: 'additive',
+      boxSelectionEnabled: true,
       // `showLifecycle`/`showEvidence`/`showOwnership`/`showNudges` seed the
       // stylesheet the mount builds; the effect below re-applies it to the
       // live instance on every later toggle, without remounting or
@@ -1717,7 +1793,10 @@ export function GraphCanvas({
     if (isInitialSyncRef.current) {
       isInitialSyncRef.current = false
     } else {
-      const elements = graphToElements(graph, nesting, openQuestionCounts)
+      const elements = graphToElements(graph, nesting, openQuestionCounts, {
+        folded: folded ?? new Set(),
+        memberships,
+      })
       cyRef.current.elements().remove()
       cyRef.current.add(elements)
     }
@@ -1727,6 +1806,43 @@ export function GraphCanvas({
     // so its identity moves exactly when the graph's does - listed for
     // honesty, never an extra rerun.
   }, [graph, openQuestionCounts])
+
+  // A FOLD change is an element-set change, so a fit alone will not do: the
+  // graph has to be placed again (#473). But the reader's eye is on the box
+  // they just clicked, so this rebuilds the elements, lays out with ELK's
+  // INTERACTIVE placement seeded from where things already are, anchors the
+  // toggled node back to its own screen position, and re-frames only if the
+  // result would otherwise be off screen.
+  //
+  // Separate from the graph effect above and keyed only on the fold set: a
+  // fold must not repack the canvas the way a view switch does, and a graph
+  // change must not be treated as a fold.
+  const previousFoldedRef = useRef<ReadonlySet<string> | null>(null)
+  useEffect(() => {
+    const cy = cyRef.current
+    if (cy === null) return
+    const previous = previousFoldedRef.current
+    previousFoldedRef.current = folded ?? new Set()
+    // Nothing to do on the first run: the mount already drew the fold state.
+    if (previous === null) return
+    const current = folded ?? new Set<string>()
+    const changed = [
+      ...[...current].filter((id) => !previous.has(id)),
+      ...[...previous].filter((id) => !current.has(id)),
+    ]
+    if (changed.length === 0) return
+    cy.elements().remove()
+    cy.add(
+      graphToElements(graph, nesting, openQuestionCounts, {
+        folded: current,
+        memberships,
+      })
+    )
+    applyFilter(cy, matchedIds, quickFilterText)
+    // The node the reader touched, where exactly one changed. On a fold-all
+    // there is no single anchor and the layout is free to place everything.
+    relayoutAfterFold(cy, direction, changed.length === 1 ? changed[0]! : null)
+  }, [folded])
 
   // Mark every subject a diagnostic named. Runs on its own rather than with
   // selection, because a fault outlives whatever the reviewer happens to have

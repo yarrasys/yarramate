@@ -10,6 +10,13 @@ import type { CanvasEdge, CanvasGraph, CanvasNode } from '../src/graph-projectio
 //   - edges into a shut box lift onto it, merged and counted
 //   - the open-questions badge SUMS what is inside
 
+/** What `graphToElements` returns, structurally. */
+interface Element {
+  readonly group?: string
+  readonly classes?: string
+  readonly data: Record<string, unknown>
+}
+
 const ASSIGNMENT = 'yarramate/core@0.1#assignment'
 const SERVING = 'yarramate/core@0.1#serving'
 
@@ -77,7 +84,7 @@ const elementsFor = (
   })
 
 const nodeData = (elements: ReturnType<typeof elementsFor>, id: string) =>
-  elements.find((el) => el.group === 'nodes' && el.data.id === id)
+  elements.find((el: Element) => el.group === 'nodes' && el.data.id === id)
 
 describe('#473: a folded box on the canvas', () => {
   it('keeps its own node and says what it stands for', () => {
@@ -121,7 +128,7 @@ describe('#473: a folded box on the canvas', () => {
 describe('#473: lifted edges', () => {
   const lifted = (folded: readonly string[]) =>
     elementsFor(folded).filter(
-      (el) => el.group === 'edges' && el.data.lifted === true,
+      (el: Element) => el.group === 'edges' && el.data.lifted === true,
     )
 
   it('merges the edges leaving a shut box into one, with a count', () => {
@@ -149,7 +156,7 @@ describe('#473: lifted edges', () => {
     } as CanvasGraph
     const edges = graphToElements(single, ['composition', 'assignment'], new Map(), {
       folded: new Set(['app']),
-    }).filter((el) => el.data.lifted === true)
+    }).filter((el: Element) => el.data.lifted === true)
     expect(edges[0]!.data.label).toBe('serving')
   })
 
@@ -160,7 +167,7 @@ describe('#473: lifted edges', () => {
   it('keeps the ORIGINAL edges in the element list', () => {
     // They are hidden by the visibility pass, not removed, for the same reason
     // the nodes are: opening the box must have nothing to rebuild.
-    const ids = elementsFor(['app']).map((el) => el.data.id)
+    const ids = elementsFor(['app']).map((el: Element) => el.data.id)
     expect(ids).toContain('r1')
     expect(ids).toContain('r2')
   })
