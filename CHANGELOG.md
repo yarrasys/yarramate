@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+### A pattern's resolved shape is a public type
+
+The pattern document has had a JSON schema since ADR 0123 and never a public
+TypeScript type, so a host that wanted to offer patterns had to re-read the YAML
+or guess. `ResolvedProfileContext.patterns` now carries each pattern RESOLVED:
+slot kinds qualified, `required` and `kindMatching` stated rather than
+defaulted, wiring and ports flattened out of the maps that hold them.
+`PatternShape`, `PatternSlotShape`, `PatternWireShape` and `PatternPortShape`
+are exported.
+
+Slots come as an ordered array rather than a map, because the order a pattern
+declares them is the order a form should ask for them and a consumer must not
+have to trust a map's iteration order for that.
+
+Optional on the context, so a required addition does not break anything that
+constructs one: read it as `?? []`. It is an empty array for a workspace with no
+patterns and absent when nobody looked, which are different claims.
+
 ### The standalone editor accepts the filter its own browser sends
 
 **A defect shipped in 1.21.0 and live through 1.22.1.** `nesting` was added to
