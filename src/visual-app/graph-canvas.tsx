@@ -1871,10 +1871,27 @@ export function GraphCanvas({
     }
 
     runLayout(cyRef.current, direction)
-    // `openQuestionCounts` is derived from the same model frame as `graph`,
-    // so its identity moves exactly when the graph's does - listed for
-    // honesty, never an extra rerun.
-  }, [graph, openQuestionCounts])
+    // EVERY input to `graphToElements` above, because an input this effect
+    // reads and does not depend on cannot rebuild anything: the component
+    // re-renders with the new prop and the elements on screen are the old
+    // ones. `showConstraints` shipped that way in 1.22.0 and the rows were
+    // inert in the app while their own tests were green, which is the third
+    // time in this programme (patterns 1.4.0, folding 1.20.0, rows 1.22.0).
+    // `nesting` was the same defect, older and unreported: switching to a view
+    // that declares a different nesting redrew nothing, because no effect
+    // depended on it either.
+    //
+    // `openQuestionCounts` is derived from the same model frame as `graph`, so
+    // its identity moves exactly when the graph's does - listed for honesty,
+    // never an extra rerun. `memberships` and `nesting` are the same shape:
+    // both are stable references from state, guarded by `sameNesting` in the
+    // reducer's case.
+    //
+    // `folded` is deliberately ABSENT. A fold rebuilds through its own effect
+    // below, which lays out with the reader's eye anchored on the box they
+    // just clicked; routing it here would relayout the whole canvas instead.
+    // `test/graph-canvas-effect-deps.test.ts` pins both halves of that.
+  }, [graph, openQuestionCounts, nesting, memberships, showConstraints])
 
   // A FOLD change is an element-set change, so a fit alone will not do: the
   // graph has to be placed again (#473). But the reader's eye is on the box

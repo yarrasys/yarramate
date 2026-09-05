@@ -1,5 +1,34 @@
 # Changelog
 
+## Unreleased
+
+### Rulings as rows actually draw, and so does a change of nesting
+
+1.22.0 shipped `presentation.showConstraints` and the rows never appeared, on
+any path. The derivation was right and its tests were green; the canvas effect
+that rebuilds the element set listed `[graph, openQuestionCounts]`, so flipping
+the toggle re-rendered the component and rebuilt nothing. Found by the
+ApertureX session reading cytoscape's own element registration in a browser,
+against the published package.
+
+**A second, older defect of the same family came out with it.** No effect
+depended on `nesting` either, so switching to a view that declares a different
+nesting vocabulary redrew the previous view's containment. That has been true
+since per-view nesting shipped and nobody had reported it.
+
+The effect now depends on every input it passes to the element builder:
+`graph`, `openQuestionCounts`, `nesting`, `memberships` and `showConstraints`.
+`folded` stays deliberately absent, because a fold rebuilds through its own
+effect with the reader's eye anchored on the box they clicked, and routing it
+here would relayout the whole canvas instead.
+
+`test/graph-canvas-effect-deps.test.ts` now reads the source and refuses an
+input to `graphToElements` that the effect does not depend on, in both
+directions: removing any of the four turns it red, and so does adding `folded`.
+This is the third time in the fold programme that a feature passed its own
+tests and did nothing in the product, so the check is derived from the
+mechanism rather than from this instance.
+
 ## 1.22.0
 
 ### A member held only inside one box now folds into it
