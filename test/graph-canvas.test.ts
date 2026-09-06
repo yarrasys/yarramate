@@ -525,7 +525,7 @@ describe('parallel relationships between the same pair', () => {
     expect(cy.$id('e2').style('curve-style')).toBe('bezier')
     expect(cy.$id('e4').style('curve-style')).toBe('bezier')
     expect(cy.$id('e1').style('control-point-step-size')).toBe('40px')
-    expect(cy.$id('e5').style('curve-style')).toBe('round-taxi')
+    expect(cy.$id('e5').style('curve-style')).toBe('taxi')
   })
 
   it('does not count an edge consumed into nesting as a parallel member', () => {

@@ -77,8 +77,9 @@ describe('routeStyle', () => {
     // which for a rightward line points down the page.
     expect(style['segment-weights']).toBe('0.0000 1.0000')
     expect(style['segment-distances']).toBe('75.00 75.00')
-    expect(style['segment-radii']).toBe('10')
-    expect(style['radius-type']).toBe('arc-radius')
+    // Square corners, the same as layered: no radius is asked for.
+    expect(style).not.toHaveProperty('segment-radii')
+    expect(style).not.toHaveProperty('radius-type')
     expect(style['source-text-offset']).toBe(40)
   })
 
