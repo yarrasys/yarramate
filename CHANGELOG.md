@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.25.2
 
 ### A subject added to an undescribed view can be committed again (#509)
 
