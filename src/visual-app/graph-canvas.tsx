@@ -50,6 +50,7 @@ import {
   type EdgeLabelData,
 } from './elk-layout.js'
 import {
+  EDGE_CORNER_RADIUS,
   applyEdgeRoutes,
   clearEdgeRoutes,
   placedByElk,
@@ -472,7 +473,7 @@ export function buildStylesheet(
         // `layered`, and any edge whose route a moved endpoint invalidated. A
         // routed edge carries its own geometry as a bypass over this.
         'curve-style': 'round-taxi',
-        'taxi-radius': 25,
+        'taxi-radius': EDGE_CORNER_RADIUS,
         'target-arrow-shape': 'triangle',
         'target-arrow-color': '#999999',
         label: edgeText,

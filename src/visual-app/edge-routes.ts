@@ -19,6 +19,9 @@ export interface Point {
   readonly y: number
 }
 
+/** The corner radius every orthogonal edge turns with, routed or not (see PR #495). */
+export const EDGE_CORNER_RADIUS = 25
+
 /**
  * Every property a route sets. Cleared by name, never by a bare
  * `removeStyle()`: `applyFilter` hides elements through a `display` bypass,
@@ -72,7 +75,7 @@ export function routeStyle(
     distances.push((vx * nx + vy * ny).toFixed(2))
   }
   const style: Record<string, string | number> = {
-    'curve-style': inner.length > 0 ? 'segments' : 'straight',
+    'curve-style': inner.length > 0 ? 'round-segments' : 'straight',
     // Weights and distances measured against the manual endpoints, not the
     // node centres or cytoscape's own intersections.
     'edge-distances': 'endpoints',
@@ -83,7 +86,7 @@ export function routeStyle(
   if (inner.length > 0) {
     style['segment-weights'] = weights.join(' ')
     style['segment-distances'] = distances.join(' ')
-    style['segment-radii'] = '10'
+    style['segment-radii'] = String(EDGE_CORNER_RADIUS)
     style['radius-type'] = 'arc-radius'
   }
   return style
