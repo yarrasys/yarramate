@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.25.0
 
 ### The served page lays out in a Web Worker (#490)
 
