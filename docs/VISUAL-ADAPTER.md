@@ -183,7 +183,11 @@ the directory's files, the mounted host hands it what its store lists under
 the directory plus every view's own sidecar path asked for by name, so a store
 that cannot enumerate still restores what it holds. What a sidecar said, or a
 save set, is carried across every recompile, positions, fold state and routes
-alike.
+alike. The pin places leaves only (#507): a box's centre is derived from its
+members, so pinning the members pins the box, and positioning the box itself
+would move them off their saved places by whatever its sidecar entry differs
+from the centre they derive. A folded box is a plain node by then and is
+pinned like one.
 
 ### Layout
 

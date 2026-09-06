@@ -8,7 +8,12 @@ Status: accepted
 > a drag was kept in the repository and never applied again. The reader takes
 > sources and returns positions, fold state and routes; the server hands it
 > the directory's files, the mounted host what its store lists under the
-> directory plus each view's own sidecar path by name.
+> directory plus each view's own sidecar path by name. And the pin places
+> leaves only (#507): a box's centre is derived from its members, and
+> positioning a box moves them, so a sidecar's box entry, a few pixels off
+> the centre its pinned members derive, had been moving those members off
+> their saved places. The entry is still written, and a folded box, a plain
+> node by the time the pin runs, is pinned by it.
 
 [ADR 0023](0023-state-comparison-visualization-is-adapter-presentation.md)
 settled that visualization is adapter presentation: Core classifies, the

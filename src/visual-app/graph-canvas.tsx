@@ -1343,10 +1343,21 @@ export function buildPositionMap(nodes: NodeCollection): VisualLayoutPositions {
 // that the next whole-canvas drag-save would immortalise. `visible()` is the
 // same judgement `relayoutVisible` scopes by (and returns true wholesale on a
 // style-disabled instance, where nothing is ever hidden).
+//
+// Leaves only (#507). A box's centre is derived from its members, and cytoscape
+// answers a box being positioned by translating every member by the difference
+// between the derived centre and the asked one. The sidecar's box entry was
+// read off the canvas at save time, when the drag had already changed the
+// box's extent, so it differs from the centre the pinned members derive by a
+// few pixels; pinning the box then moved every member by exactly that, off
+// their saved places and out of their routes: 7.8 px and 28 routes on the
+// reference API tiers. Pinning the members pins the box. A folded box is not a
+// parent by the time this runs, `applyFilter` having detached its hidden
+// members, so it is pinned like the leaf it is drawn as.
 export function applySavedPositions(cy: Core, saved: VisualLayoutPositions | undefined): void {
   if (saved === undefined) return
   cy.nodes().forEach((node) => {
-    if (!node.visible()) return
+    if (!node.visible() || node.isParent()) return
     const position = saved[node.id()]
     if (position !== undefined) node.position(position)
   })
