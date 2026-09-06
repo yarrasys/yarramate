@@ -1,5 +1,6 @@
 import type { LayoutDirection } from "../layout-direction.js";
 import { LAYOUT_MODES, type LayoutMode } from "../layout-mode.js";
+import { STYLE_PRESETS, type StylePresetId } from "./style-presets.js";
 
 /**
  * What each layout mode is called on the canvas. Iterated by the test against
@@ -20,23 +21,30 @@ export const DIRECTION_LABELS: Readonly<Record<LayoutDirection, string>> = {
 };
 
 /**
- * The layout and direction selects, on the canvas they arrange (ADR 0147).
+ * The layout, direction and style selects, on the canvas they arrange (ADR
+ * 0147, ADR 0148).
  *
- * The view declares both and a view switch restates them; what a reviewer picks
- * here holds until then, and a save writes it. Shown in read-only hosts too:
- * arranging what is on screen is reading, the same judgement the quick filter
- * and a drag already make.
+ * The view declares layout and direction and a view switch restates them; what
+ * a reviewer picks here holds until then, and a save writes it. The style is
+ * the reviewer's alone: the browser remembers it and no view carries it.
+ * Shown in read-only hosts too: arranging what is on screen is reading, the
+ * same judgement the quick filter and a drag already make.
  */
 export function LayoutControls({
   layout,
   direction,
   onLayoutChange,
   onDirectionChange,
+  stylePreset,
+  onStyleChange,
 }: {
   readonly layout: LayoutMode;
   readonly direction: LayoutDirection;
   readonly onLayoutChange: (layout: LayoutMode) => void;
   readonly onDirectionChange: (direction: LayoutDirection) => void;
+  /** The dress the canvas wears (ADR 0148), the reviewer's own. */
+  readonly stylePreset: StylePresetId;
+  readonly onStyleChange: (preset: StylePresetId) => void;
 }) {
   return (
     <>
@@ -63,6 +71,18 @@ export function LayoutControls({
         {DIRECTIONS.map((candidate) => (
           <option key={candidate} value={candidate}>
             {DIRECTION_LABELS[candidate]}
+          </option>
+        ))}
+      </select>
+      <select
+        className="canvas-select"
+        aria-label="Style"
+        value={stylePreset}
+        onChange={(event) => onStyleChange(event.currentTarget.value as StylePresetId)}
+      >
+        {STYLE_PRESETS.map((preset) => (
+          <option key={preset.id} value={preset.id}>
+            {preset.title}
           </option>
         ))}
       </select>

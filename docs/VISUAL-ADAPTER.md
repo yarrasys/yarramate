@@ -276,6 +276,20 @@ recorded what those two backends mapped onto and why the obvious ELK choices
 were rejected; it is superseded here. The layout mechanism it expected is the
 four modes above (ADR 0147).
 
+### Style
+
+Five dresses for the same notation, picked from a **Style** select beside
+Layout and Direction ([ADR 0148](adr/0148-a-style-is-the-reviewers-not-the-views.md)):
+`current` (ArchiMate pastels, what shipped), `drafting` (the shell's own
+paper, hairline rules and faces), `ink` (white subjects, the layer in a
+coloured border, ink edges), `tinted` (a contemporary muted palette, 8px
+corners, pill labels) and `dark` (a dark ground, light ink and light glyphs).
+A dress changes colour, weight, face and radius and nothing that means
+anything: shapes, arrowheads, glyph strokes, badges and label wording are the
+notation's under every one. The pick is the reviewer's, remembered in the
+browser's storage and never written into a view; a view switch leaves it
+alone, and a fresh browser opens on `current`.
+
 ### Deleting
 
 **Delete** on a selected subject or relationship asks first, because this is the

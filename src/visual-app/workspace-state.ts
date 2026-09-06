@@ -10,6 +10,7 @@ import {
   type LayoutDirection,
 } from "../layout-direction.js";
 import { DEFAULT_LAYOUT, type LayoutMode } from "../layout-mode.js";
+import { readStoredStylePreset, type StylePresetId } from "./style-presets.js";
 import type { DecorationMap } from "./graph-canvas.js";
 import type { ContextMenuTarget } from "./context-menu-model.js";
 import type { BottomPanelTabId } from "./query-panel.js";
@@ -411,6 +412,11 @@ export interface VisualWorkspaceState {
   /** Whether an unnamed relationship is labelled with its reading (ADR 0147). */
   readonly showKindLabels: boolean;
   readonly showNudges: boolean;
+  /**
+   * The dress the canvas wears (ADR 0148). The reviewer's own: remembered by
+   * the browser, never written into a view, untouched by a view switch.
+   */
+  readonly stylePreset: StylePresetId;
 }
 
 export type VisualWorkspaceAction =
@@ -502,6 +508,10 @@ export type VisualWorkspaceAction =
   | {
       readonly type: "layout.set";
       readonly layout: LayoutMode;
+    }
+  | {
+      readonly type: "style.set";
+      readonly preset: StylePresetId;
     }
   | {
       readonly type: "presentation.toggled";
@@ -722,6 +732,8 @@ export const createVisualWorkspaceState = (
   // On by default: the chip is the canvas half of the interview (#292), and
   // it only draws where a count is non-zero, so a finished model stays calm.
   showNudges: true,
+  // Whatever this browser remembered; `current` on a fresh one.
+  stylePreset: readStoredStylePreset(),
 });
 
 export const visualWorkspaceReducer = (
@@ -1020,6 +1032,10 @@ export const visualWorkspaceReducer = (
         : { ...state, layout: action.layout };
     case "presentation.toggled":
       return { ...state, [action.flag]: action.value };
+    case "style.set":
+      return state.stylePreset === action.preset
+        ? state
+        : { ...state, stylePreset: action.preset };
     case "model.replaced": {
       // A menu is anchored to a pointer position over a subject that may not
       // have survived the commit. `contextMenuFor` would return an empty menu

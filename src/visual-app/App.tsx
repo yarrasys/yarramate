@@ -39,6 +39,7 @@ import { foldTree } from "../fold-tree.js";
 import type { LayoutDirection } from "../layout-direction.js";
 import type { LayoutMode } from "../layout-mode.js";
 import { LayoutControls } from "./layout-controls.js";
+import { storeStylePreset, type StylePresetId } from "./style-presets.js";
 import type { ProjectionQuery } from "../projection.js";
 import type { VisualRenderedModel } from "../adapters/visual/wire.js";
 import type { YarramateOperation } from "../operations.js";
@@ -259,6 +260,8 @@ const DiagramWorkspace = ({
   direction,
   onLayoutChange,
   onDirectionChange,
+  stylePreset,
+  onStyleChange,
   showLifecycle,
   showEvidence,
   showOwnership,
@@ -313,6 +316,9 @@ const DiagramWorkspace = ({
   /** The reviewer's picks from the canvas selects (ADR 0147). */
   readonly onLayoutChange: (layout: LayoutMode) => void;
   readonly onDirectionChange: (direction: LayoutDirection) => void;
+  /** The dress the canvas wears (ADR 0148). */
+  readonly stylePreset: StylePresetId;
+  readonly onStyleChange: (preset: StylePresetId) => void;
   readonly showLifecycle: boolean;
   readonly showEvidence: boolean;
   readonly showOwnership: boolean;
@@ -470,6 +476,8 @@ const DiagramWorkspace = ({
               direction={direction}
               onLayoutChange={onLayoutChange}
               onDirectionChange={onDirectionChange}
+              stylePreset={stylePreset}
+              onStyleChange={onStyleChange}
             />
             {/* The palette is the authoring entry when it is reachable; this
               * button is the FALLBACK for a host that mounts without the
@@ -613,6 +621,7 @@ const DiagramWorkspace = ({
             direction={direction}
             layout={layout}
             showKindLabels={showKindLabels}
+            stylePreset={stylePreset}
             savedPositions={state.model.layouts[state.activeView]}
             // A read-only drag still moves the node - arranging what is on
             // screen is reading - but the debounced save it would queue goes
@@ -2075,6 +2084,13 @@ export const App = ({
           onDirectionChange={(direction) =>
             dispatchWorkspace({ type: "direction.set", direction })
           }
+          stylePreset={workspace.stylePreset}
+          onStyleChange={(preset) => {
+            // Remembered by the browser before it is drawn: a style is the
+            // reviewer's, and a reload should open on it (ADR 0148).
+            storeStylePreset(preset);
+            dispatchWorkspace({ type: "style.set", preset });
+          }}
           decorations={decorations}
           connection={workspace.connection}
           onConnectTarget={(id) =>

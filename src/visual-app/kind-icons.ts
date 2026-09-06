@@ -17,6 +17,6 @@ export { ICON_SIZE }
 // `kindLabel` is a kind's local id (`kindLabelOf` in `src/kind-label.ts`),
 // not the qualified `<profile>#<id>` identity. Unknown label -> no icon, no
 // crash: the top-right slot simply stays empty.
-export function kindIconUriOf(kindLabel: string): string | null {
-  return coreKindGlyphDataUriOf(kindLabel)
+export function kindIconUriOf(kindLabel: string, ink?: string): string | null {
+  return coreKindGlyphDataUriOf(kindLabel, ink)
 }
