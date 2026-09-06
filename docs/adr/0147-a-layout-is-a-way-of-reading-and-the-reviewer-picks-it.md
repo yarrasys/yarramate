@@ -10,6 +10,13 @@ Status: accepted
 > subject and handed every edge back to the straight line for good, which was
 > seen on the reference model. A drag still clears the moved subject's routes.
 
+> Amended after 1.24.0 (#490): the served page runs ELK in a Web Worker. The
+> exclusion below stands for the library bundle, whose host's policy this
+> package cannot promise; that bundle keeps the engine on the calling thread
+> unless the host passes `workerFactory` to `mountEditor`. One seam,
+> `installLayoutEngine` in `src/visual-app/elk-layout.ts`, and the canvas
+> never knows which engine answers.
+
 Two things were reported on the ApertureX reference model on 2026-09-06
 (#489): edges were drawn through boxes, and serving read the wrong way. A
 layout lab built on that model, six treatments side by side with collision
@@ -125,6 +132,8 @@ container's top border stops 22 px above the drawn box, in the label band.
   library bundle a host mounts is one file, and an inline worker needs a
   `blob:` allowance in the HOST's policy that this package cannot promise.
   Tracked as a follow-up for the served page, with the freeze measured (#490).
+  Done since for the served page; the library keeps the exclusion (amendment
+  above).
 - **`elk.layered.compaction.postCompaction.strategy: EDGE_LENGTH`.** It
   throws inside ELK on a nested graph ("Invalid hitboxes for scanline
   constraint calculation").

@@ -211,9 +211,16 @@ a view switch restates the declaration (a view that omits `layout` is restored
 to `served-by`, the rule nesting and direction follow), and **Save view**
 writes what is in force. Measured on the 157-subject reference Landscape in a
 browser: `layered` 278 ms, `routed` 815 ms, `served-by` 805 ms, `bands`
-1181 ms, on the main thread; the 65-subject API tiers view runs `served-by`
-in about 200 ms. A routed Landscape draws roughly three times the area of
-today's, which was compact only by drawing through things.
+1181 ms; the 65-subject API tiers view runs `served-by` in about 200 ms. On
+the served page that work runs in a Web Worker (#490): vite emits
+`elk-worker.min-<hash>.js` beside the other assets, the asset route serves it,
+and the page's `default-src 'self'` admits it as a same-origin worker, so the
+page stays responsive through a layout. The library bundle cannot promise
+what its host's policy admits, so it keeps the engine on the calling thread
+unless the host passes `workerFactory` to `mountEditor`
+([CONSUMING-YARRAMATE](CONSUMING-YARRAMATE.md)). A routed Landscape draws
+roughly three times the area of today's, which was compact only by drawing
+through things.
 
 **A route belongs to the placement it was computed for.** An edge keeps its
 route only while both ends sit exactly where that placement put them: ELK's

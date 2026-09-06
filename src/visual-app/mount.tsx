@@ -9,6 +9,11 @@ import {
 import type { DecorationMap } from './graph-canvas.js'
 import type { EditorHost } from './editor-host.js'
 import {
+  installLayoutEngine,
+  workerLayoutEngine,
+  type LayoutWorker,
+} from './elk-layout.js'
+import {
   RIGHT_SECTIONS,
   type EditorPointer,
   type RightSectionId,
@@ -72,6 +77,17 @@ export interface MountOptions extends LocalHostOptions {
    * replaces it wholesale through the handle's `setDecorations`.
    */
   readonly decorations?: DecorationMap
+  /**
+   * Runs the layout engine in a Web Worker the host constructs (#490). ELK
+   * otherwise runs on the calling thread, and a routed layout of a large view
+   * freezes the page for most of a second. The bundle cannot promise a worker
+   * itself: an inline one needs a `blob:` allowance in the HOST's policy. A
+   * host that can serve `elkjs/lib/elk-worker.min.js` from its own origin
+   * passes `() => new Worker(thatUrl)`, and every layout runs there. One
+   * engine per page: the mount that passed a factory owns the worker, and
+   * unmounting it terminates the worker and restores the bundled engine.
+   */
+  readonly workerFactory?: () => LayoutWorker
 }
 
 /**
@@ -171,8 +187,13 @@ const READ_SECTIONS: readonly RightSectionId[] = ['properties', 'questions']
 export const mountEditor = (
   element: Element,
   options: MountOptions,
-): MountedEditor =>
-  mountEditorWith(
+): MountedEditor => {
+  const engine =
+    options.workerFactory === undefined
+      ? undefined
+      : workerLayoutEngine(options.workerFactory)
+  if (engine !== undefined) installLayoutEngine(engine)
+  const mounted = mountEditorWith(
     element,
     createLocalHost(options),
     options.sections ??
@@ -180,6 +201,16 @@ export const mountEditor = (
     options.readOnly,
     options.decorations,
   )
+  if (engine === undefined) return mounted
+  return {
+    ...mounted,
+    unmount: () => {
+      mounted.unmount()
+      engine.terminate?.()
+      installLayoutEngine(undefined)
+    },
+  }
+}
 
 /**
  * The same editor over a host the caller built.

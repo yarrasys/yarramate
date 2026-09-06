@@ -8,11 +8,15 @@ const createRoot = vi.hoisted(() => vi.fn(() => root))
 
 vi.mock('react-dom/client', () => ({ createRoot }))
 import {
+  mountEditor,
   mountEditorWith,
   type DecorationMap,
   type EditorHost,
   type RightSectionId,
 } from '../src/visual-app/mount.js'
+import { layoutWithElk } from '../src/visual-app/elk-layout.js'
+import type { SourceStore } from '../src/source-store.js'
+import type { ResolvedWorkspace } from '../src/workspace.js'
 import {
   editorPointerFor,
   normalizeSelectedElement,
@@ -443,5 +447,65 @@ describe('editorPointerFor', () => {
     expect(pointer.select('app.checkout')).toBe(true)
     expect(pointer.openDraft()).toBe(true)
     expect(pointer.startConnection('app.checkout')).toBe(true)
+  })
+})
+
+// A host that can serve the worker file hands `mountEditor` a factory (#490):
+// every layout then runs in that worker, and unmounting lets it go.
+describe('mountEditor with a workerFactory', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  const emptyWorkspace: ResolvedWorkspace = {
+    id: 'embedded',
+    documents: [],
+    profiles: [],
+    projections: [],
+    adapterMappings: [],
+    patterns: [],
+    evidence: [],
+    contracts: [],
+  }
+  const store = {} as SourceStore
+
+  it('constructs the worker once, lays out through it, and terminates it on unmount', async () => {
+    const posted: { id: number; cmd: string }[] = []
+    let terminated = 0
+    const worker = {
+      onmessage: null as ((event: { readonly data: unknown }) => void) | null,
+      postMessage(message: unknown) {
+        const sent = message as { id: number; cmd: string; graph?: unknown }
+        posted.push(sent)
+        queueMicrotask(() =>
+          this.onmessage?.({ data: { id: sent.id, data: sent.cmd === 'layout' ? sent.graph : [] } }),
+        )
+      },
+      terminate() {
+        terminated += 1
+      },
+    }
+    const workerFactory = vi.fn(() => worker)
+
+    const editor = mountEditor({} as Element, { store, workspace: emptyWorkspace, workerFactory })
+    expect(workerFactory).toHaveBeenCalledOnce()
+    const laid = await layoutWithElk({ id: 'root' })
+    expect(laid).toEqual({ id: 'root' })
+    expect(posted.at(-1)?.cmd).toBe('layout')
+
+    editor.unmount()
+    expect(root.unmount).toHaveBeenCalledOnce()
+    expect(terminated).toBe(1)
+    // Back on the bundled engine: the worker sees no further layout.
+    const before = posted.length
+    await layoutWithElk({ id: 'root', children: [{ id: 'n', width: 170, height: 50 }] })
+    expect(posted.length).toBe(before)
+  })
+
+  it('leaves the bundled engine in place when no factory is given', () => {
+    const editor = mountEditor({} as Element, { store, workspace: emptyWorkspace })
+    expect(root.render).toHaveBeenCalledOnce()
+    editor.unmount()
+    expect(root.unmount).toHaveBeenCalledOnce()
   })
 })
