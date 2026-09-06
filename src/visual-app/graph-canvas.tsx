@@ -18,7 +18,7 @@ import {
 } from '../fold-tree.js'
 import { DEFAULT_DIRECTION, type LayoutDirection } from '../layout-direction.js'
 import { DEFAULT_LAYOUT, routesEdges, type LayoutMode } from '../layout-mode.js'
-import { presetBlocks, stylePresetOf, type StylePresetId } from './style-presets.js'
+import { DEFAULT_STYLE_PRESET, presetBlocks, stylePresetOf, type StylePresetId } from './style-presets.js'
 import type {
   VisualLayoutPositions,
   VisualLayoutSavePayload,
@@ -163,14 +163,16 @@ function badgeLayersFor(
   showEvidence: boolean,
   showOwnership: boolean,
   showNudges: boolean,
+  glyphInk?: string,
 ): BadgeLayer[] {
   const layers: BadgeLayer[] = []
   // Label first, then the core kind it descends from - the same two-step
   // the palette takes. A profile-declared kind is named by its author and
-  // drawn as what it IS.
+  // drawn as what it IS. The stroke is the style's: a dark ground asks for a
+  // light glyph (ADR 0148).
   const icon =
-    kindIconUriOf(String(ele.data('kindLabel'))) ??
-    kindIconUriOf(String(ele.data('coreKindLabel')))
+    kindIconUriOf(String(ele.data('kindLabel')), glyphInk) ??
+    kindIconUriOf(String(ele.data('coreKindLabel')), glyphInk)
   if (icon !== null) {
     layers.push({ image: icon, positionX: '0%', positionY: '0%', size: ICON_SIZE })
   }
@@ -298,8 +300,9 @@ export function buildStylesheet(
   showNudges: boolean,
   showKindLabels: boolean = true,
   layout: LayoutMode = DEFAULT_LAYOUT,
-  stylePreset: StylePresetId = 'current',
+  stylePreset: StylePresetId = DEFAULT_STYLE_PRESET,
 ): cytoscape.StylesheetJsonBlock[] {
+  const glyphInk = stylePresetOf(stylePreset).glyph
   // What an edge says is decided in one place (ADR 0147): the relationship's
   // name, or its reading in this layout's voice - "serves" in a layout that
   // draws the server above, "served by" in one that draws it below - or
@@ -322,7 +325,7 @@ export function buildStylesheet(
       `\u0000${String(ele.data('kindLabel'))}\u0000${String(ele.data('openQuestions'))}`
     const cached = badgeStyleCache.get(key)
     if (cached !== undefined) return cached
-    const layers = badgeLayersFor(ele, showLifecycle, showEvidence, showOwnership, showNudges)
+    const layers = badgeLayersFor(ele, showLifecycle, showEvidence, showOwnership, showNudges, glyphInk)
     const built: BadgeStyleArrays = {
       images: layers.map((layer) => layer.image),
       positionsX: layers.map((layer) => layer.positionX),
@@ -659,7 +662,7 @@ export function buildStylesheet(
     ...baseStylesheet,
     ...archimateNodeShapes,
     ...archimateEdgeStyles,
-    // LAB: a style preset dresses the notation; the marks still win last.
+    // The style preset dresses the notation (ADR 0148); the marks still win last.
     ...presetBlocks(stylePreset),
     ...markStylesheet,
   ]
@@ -1473,7 +1476,7 @@ interface GraphCanvasProps {
   readonly layout: LayoutMode
   /** Whether an unnamed relationship is labelled with its reading (ADR 0147). */
   readonly showKindLabels: boolean
-  /** LAB: which dress the canvas wears. */
+  /** Which dress the canvas wears (ADR 0148). */
   readonly stylePreset: StylePresetId
   /** Saved layout for the active view, or undefined when it has none yet. */
   readonly savedPositions: VisualLayoutPositions | undefined

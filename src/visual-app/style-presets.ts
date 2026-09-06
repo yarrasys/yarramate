@@ -1,11 +1,13 @@
 /**
- * Style presets for the canvas: LAB ONLY, on branch `lab/style-presets`.
+ * The dresses the canvas can wear (ADR 0148).
  *
- * Four directions for how subjects and edges could look, drawn over the same
- * notation (shapes by aspect, arrowheads by kind, glyphs, badges) so only the
- * dress changes. Each preset is a list of stylesheet blocks appended after the
- * base and notation rules, so it wins on the properties it names and inherits
- * everything else. `current` appends nothing.
+ * Five looks for how subjects and edges draw, all over the same notation -
+ * shapes by aspect, arrowheads by kind, glyphs, badges - so only the dress
+ * changes and never what a shape means. Each preset is a list of stylesheet
+ * blocks appended after the base and notation rules, so it wins on the
+ * properties it names and inherits everything else; `current` appends
+ * nothing. A style is the reviewer's, not the view's: it is remembered in the
+ * browser and never written into a projection.
  */
 import type cytoscape from 'cytoscape'
 import { LAYER_COLORS } from '../notation/archimate.js'
@@ -19,15 +21,44 @@ export interface StylePreset {
   readonly blurb: string
   /** The canvas ground behind the drawing; undefined keeps the shell's paper. */
   readonly canvas?: string
+  /** The stroke the kind glyphs draw with; undefined keeps the notation's ink. */
+  readonly glyph?: string
 }
 
 export const STYLE_PRESETS: readonly StylePreset[] = [
-  { id: 'current', title: 'Current', blurb: 'What ships: ArchiMate pastels, 2px borders, Helvetica, grey edges with boxed labels.' },
+  { id: 'current', title: 'Current', blurb: 'ArchiMate pastels, 2px borders, grey edges with boxed labels.' },
   { id: 'drafting', title: 'Drafting', blurb: "The shell's own vocabulary on the canvas: paper-tinted fills, hairline ink rules, the body face, monospace edge readings with a paper halo." },
   { id: 'ink', title: 'Ink', blurb: 'Line-first and print-ready: white subjects, the layer carried by a coloured 1.5px border, ink edges, no boxes anywhere.' },
   { id: 'tinted', title: 'Tinted', blurb: 'A contemporary muted palette in place of the pastels, 8px corners, slate edges, edge readings on small pills.' },
-  { id: 'dark', title: 'Dark', blurb: 'A dark ground with deep layer tints and light ink; glyphs stay ink-coloured and would need a light variant.', canvas: '#12161b' },
+  { id: 'dark', title: 'Dark', blurb: 'A dark ground with deep layer tints, light ink and light glyphs.', canvas: '#12161b', glyph: '#e5e9ed' },
 ]
+
+export const DEFAULT_STYLE_PRESET: StylePresetId = 'current'
+
+/**
+ * Where the browser remembers the reviewer's pick. A style is a preference
+ * about looking, not a fact about the model, so it lives with the browser
+ * rather than in a projection or the layout sidecar; a fresh browser opens
+ * on `current`. Every access is guarded: storage can be absent or refused.
+ */
+export const STYLE_STORAGE_KEY = 'yarramate-visual.style'
+
+export const readStoredStylePreset = (): StylePresetId => {
+  try {
+    const held = globalThis.localStorage?.getItem(STYLE_STORAGE_KEY)
+    return isStylePresetId(held) ? held : DEFAULT_STYLE_PRESET
+  } catch {
+    return DEFAULT_STYLE_PRESET
+  }
+}
+
+export const storeStylePreset = (preset: StylePresetId): void => {
+  try {
+    globalThis.localStorage?.setItem(STYLE_STORAGE_KEY, preset)
+  } catch {
+    // A browser that refuses storage still draws the pick for this session.
+  }
+}
 
 export const stylePresetOf = (id: StylePresetId): StylePreset =>
   STYLE_PRESETS.find((preset) => preset.id === id) ?? STYLE_PRESETS[0]!

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### The canvas has five dresses, and the reviewer picks
+
+A **Style** select joins Layout and Direction on the canvas: `current` (what
+shipped), `drafting`, `ink`, `tinted` and `dark`, all over the same notation,
+so a dress changes colour, weight, face and radius and never what a shape
+means. The pick is the reviewer's own: remembered by the browser, never
+written into a view, untouched by a view switch. The notation's glyphs take a
+stroke colour so the dark ground gets light glyphs. ADR 0148.
+
 ### Two residues of the routed modes, measured away
 
 Two labelled edges running side by side could still lay their readings over

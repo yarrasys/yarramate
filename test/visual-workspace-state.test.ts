@@ -437,6 +437,20 @@ describe("visualWorkspaceReducer presentation", () => {
     expect(workspaceState.showKindLabels).toBe(true);
   });
 
+  // The dress is the reviewer's (ADR 0148): it changes through its own
+  // action, restating it mints no new state, and no view switch touches it.
+  it("wears the current dress until the reviewer picks another, whatever the view says", () => {
+    expect(workspaceState.stylePreset).toBe("current");
+    const dark = visualWorkspaceReducer(workspaceState, { type: "style.set", preset: "dark" });
+    expect(dark.stylePreset).toBe("dark");
+    expect(visualWorkspaceReducer(dark, { type: "style.set", preset: "dark" })).toBe(dark);
+    const afterSwitch = presentationActionsFor({ layout: "layered" }).reduce(
+      visualWorkspaceReducer,
+      dark,
+    );
+    expect(afterSwitch.stylePreset).toBe("dark");
+  });
+
   it("adopts a view's kind-label flag and leaves it alone when undeclared", () => {
     const off = presentationActionsFor({ showKindLabels: false }).reduce(
       visualWorkspaceReducer,

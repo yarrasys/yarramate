@@ -39,7 +39,7 @@ import { foldTree } from "../fold-tree.js";
 import type { LayoutDirection } from "../layout-direction.js";
 import type { LayoutMode } from "../layout-mode.js";
 import { LayoutControls } from "./layout-controls.js";
-import type { StylePresetId } from "./style-presets.js";
+import { storeStylePreset, type StylePresetId } from "./style-presets.js";
 import type { ProjectionQuery } from "../projection.js";
 import type { VisualRenderedModel } from "../adapters/visual/wire.js";
 import type { YarramateOperation } from "../operations.js";
@@ -316,7 +316,7 @@ const DiagramWorkspace = ({
   /** The reviewer's picks from the canvas selects (ADR 0147). */
   readonly onLayoutChange: (layout: LayoutMode) => void;
   readonly onDirectionChange: (direction: LayoutDirection) => void;
-  /** LAB: the dress the canvas wears. */
+  /** The dress the canvas wears (ADR 0148). */
   readonly stylePreset: StylePresetId;
   readonly onStyleChange: (preset: StylePresetId) => void;
   readonly showLifecycle: boolean;
@@ -2085,9 +2085,12 @@ export const App = ({
             dispatchWorkspace({ type: "direction.set", direction })
           }
           stylePreset={workspace.stylePreset}
-          onStyleChange={(preset) =>
-            dispatchWorkspace({ type: "style.set", preset })
-          }
+          onStyleChange={(preset) => {
+            // Remembered by the browser before it is drawn: a style is the
+            // reviewer's, and a reload should open on it (ADR 0148).
+            storeStylePreset(preset);
+            dispatchWorkspace({ type: "style.set", preset });
+          }}
           decorations={decorations}
           connection={workspace.connection}
           onConnectTarget={(id) =>

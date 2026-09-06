@@ -51,11 +51,11 @@ const KIND_SHAPE_OVERRIDES: Readonly<Partial<Record<string, Partial<ShapeMeta>>>
   grouping: { borderStyle: 'dashed' },
 }
 
-function svg(body: string): string {
+function svg(body: string, ink: string = INK): string {
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${ICON_SIZE}" height="${ICON_SIZE}" ` +
     `viewBox="0 0 ${ICON_SIZE} ${ICON_SIZE}">` +
-    `<g fill="none" stroke="${INK}" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">${body}</g>` +
+    `<g fill="none" stroke="${ink}" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">${body}</g>` +
     `</svg>`
   )
 }
@@ -245,9 +245,14 @@ export function conceptNotationOf(kindLabel: string): ConceptNotation | null {
   return CONCEPT_NOTATION_BY_ID[kindLabel] ?? null
 }
 
-export function kindGlyphDataUriOf(kindLabel: string): string | null {
+/**
+ * The glyph as a data URI, drawn in `ink` - the notation's own by default, or
+ * the light stroke a dark ground needs (ADR 0148). The stroke is the only
+ * thing that varies; the strokes themselves are the notation's.
+ */
+export function kindGlyphDataUriOf(kindLabel: string, ink: string = INK): string | null {
   const glyph = CONCEPT_NOTATION_BY_ID[kindLabel]?.glyph
-  return glyph == null ? null : toDataUri(svg(glyph))
+  return glyph == null ? null : toDataUri(svg(glyph, ink))
 }
 
 export interface ArrowNotation {

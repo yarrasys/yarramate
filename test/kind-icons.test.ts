@@ -42,6 +42,17 @@ describe('kind icon URIs', () => {
     }
   })
 
+  // A dark ground asks for a light stroke (ADR 0148); the strokes themselves
+  // stay the notation's, only the colour moves.
+  it('draws the glyph in the ink it is asked for', () => {
+    const decode = (uri: string) => decodeURIComponent(uri.slice(uri.indexOf(',') + 1))
+    const ink = decode(kindIconUriOf('businessActor') ?? '')
+    const light = decode(kindIconUriOf('businessActor', '#e5e9ed') ?? '')
+    expect(ink).toContain('stroke="#182228"')
+    expect(light).toContain('stroke="#e5e9ed"')
+    expect(light.replace('#e5e9ed', '#182228')).toBe(ink)
+  })
+
   it('returns null for an unmapped label', () => {
     expect(kindIconUriOf('notAKind')).toBeNull()
   })

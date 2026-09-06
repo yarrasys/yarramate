@@ -35,6 +35,7 @@
     "test/elk-layout.test.ts",
     "test/edge-routes.test.ts",
     "test/layout-controls.test.ts",
+    "test/style-presets.test.ts",
     "test/graph-canvas-nesting.test.ts",
     "test/kind-palette-patterns.test.ts",
     "test/instance-draft-panel.test.ts",

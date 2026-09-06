@@ -10,7 +10,7 @@ import {
   type LayoutDirection,
 } from "../layout-direction.js";
 import { DEFAULT_LAYOUT, type LayoutMode } from "../layout-mode.js";
-import type { StylePresetId } from "./style-presets.js";
+import { readStoredStylePreset, type StylePresetId } from "./style-presets.js";
 import type { DecorationMap } from "./graph-canvas.js";
 import type { ContextMenuTarget } from "./context-menu-model.js";
 import type { BottomPanelTabId } from "./query-panel.js";
@@ -412,7 +412,10 @@ export interface VisualWorkspaceState {
   /** Whether an unnamed relationship is labelled with its reading (ADR 0147). */
   readonly showKindLabels: boolean;
   readonly showNudges: boolean;
-  /** LAB: the dress the canvas wears; workspace-only, never written. */
+  /**
+   * The dress the canvas wears (ADR 0148). The reviewer's own: remembered by
+   * the browser, never written into a view, untouched by a view switch.
+   */
   readonly stylePreset: StylePresetId;
 }
 
@@ -729,7 +732,8 @@ export const createVisualWorkspaceState = (
   // On by default: the chip is the canvas half of the interview (#292), and
   // it only draws where a count is non-zero, so a finished model stays calm.
   showNudges: true,
-  stylePreset: "current",
+  // Whatever this browser remembered; `current` on a fresh one.
+  stylePreset: readStoredStylePreset(),
 });
 
 export const visualWorkspaceReducer = (

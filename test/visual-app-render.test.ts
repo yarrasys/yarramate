@@ -517,6 +517,8 @@ describe('canvas layout controls', () => {
 
     expect(markup).toContain('aria-label="Layout"')
     expect(markup).toContain('aria-label="Direction"')
+    expect(markup).toContain('aria-label="Style"')
+    expect(markup).toContain('<option value="current" selected="">Current</option>')
     expect(markup).toContain('<option value="served-by" selected="">Served-by</option>')
     expect(markup).toContain('<option value="top-down" selected="">Top-down</option>')
     expect(markup).toContain('>Layer bands<')
