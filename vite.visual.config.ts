@@ -11,6 +11,12 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   root: fileURLToPath(new URL('./src/visual-app/', import.meta.url)),
   base: './',
+  // The layout worker (#490): `main.tsx` imports `elkjs/lib/elk-worker.min.js?worker`
+  // and vite emits it as one more flat, hashed asset under `assets/`, which the
+  // session server's asset route serves like the rest. As a module worker the
+  // file is bundled the way the page is; the classic (iife) form built the
+  // same file behind a warning about an export name it does not have.
+  worker: { format: 'es' },
   build: {
     outDir: fileURLToPath(new URL('./dist/visual-app/', import.meta.url)),
     // Only this directory: `build:node` writes the rest of `dist`.

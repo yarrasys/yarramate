@@ -13,7 +13,7 @@
  * and return plain data, so a test can state what ELK is asked and what is
  * made of its answer without a canvas.
  */
-import ELK from 'elkjs/lib/elk.bundled.js'
+import ELKApi from 'elkjs/lib/elk-api.js'
 import type {
   ElkEdgeSection,
   ElkExtendedEdge,
@@ -407,11 +407,68 @@ export function readElkLayout(laid: ElkNode, reversed: ReadonlySet<string>): Elk
   return { nodes: centres, edges: routes }
 }
 
-// One engine for the page. `elk.bundled.js` runs ELK on the calling thread
-// behind a promise, in the browser and under vitest alike; a Web Worker for
-// the served page is tracked separately (ADR 0147).
-type ElkConstructor = new () => { layout: (graph: ElkNode) => Promise<ElkNode> }
-const ElkEngine = ((ELK as unknown as { default?: ElkConstructor }).default ?? ELK) as ElkConstructor
-const engine = new ElkEngine()
+/**
+ * What lays a graph out. The bundled engine runs ELK on the calling thread
+ * behind a promise, in the browser and under vitest alike, and it is what
+ * every page starts with. A page that can serve a worker file installs an
+ * engine over a Web Worker instead (#490), and the canvas never knows which
+ * it is talking to: `layoutWithElk` is the one door.
+ */
+export interface LayoutEngine {
+  readonly layout: (graph: ElkNode) => Promise<ElkNode>
+  /** Lets go of whatever the engine holds; the bundled one holds nothing. */
+  readonly terminate?: () => void
+}
 
-export const layoutWithElk = (graph: ElkNode): Promise<ElkNode> => engine.layout(graph)
+/**
+ * The worker a page constructs for `workerLayoutEngine`: anything that can be
+ * posted to. elk-api installs `onmessage` on it and speaks its own protocol
+ * to `elkjs/lib/elk-worker.min.js` at the other end, so a host hands over a
+ * `new Worker(url)` of that file and nothing else.
+ */
+export interface LayoutWorker {
+  postMessage(message: unknown): void
+}
+
+type ElkConstructor = new (options?: {
+  readonly workerFactory?: () => Worker
+}) => { layout: (graph: ElkNode) => Promise<ElkNode>; terminateWorker?: () => void }
+const constructorOf = (module: unknown): ElkConstructor =>
+  ((module as { default?: ElkConstructor }).default ?? module) as ElkConstructor
+const WorkerEngine = constructorOf(ELKApi)
+
+// The bundled engine is loaded the first time something asks for it and not
+// before: `elk.bundled.js` is 1.6 MB, and a page that installed a worker
+// engine before its first layout never needs it. Vite splits the dynamic
+// import into a chunk of its own, so the served page ships ELK once, in the
+// worker; the library bundle inlines it, so a host still gets one file.
+let bundled: Promise<LayoutEngine> | undefined
+const bundledEngine = (): Promise<LayoutEngine> =>
+  (bundled ??= import('elkjs/lib/elk.bundled.js').then((module) => new (constructorOf(module))()))
+let installed: LayoutEngine | undefined
+
+/**
+ * An engine that runs ELK in the worker `workerFactory` constructs. The
+ * served page installs one over the worker file vite emits beside its other
+ * assets (#490); a host mounting the library passes its own factory when its
+ * policy lets it serve that file, and leaves the bundled engine otherwise.
+ */
+export function workerLayoutEngine(workerFactory: () => LayoutWorker): LayoutEngine {
+  const api = new WorkerEngine({ workerFactory: () => workerFactory() as unknown as Worker })
+  return {
+    layout: (graph) => api.layout(graph),
+    terminate: () => api.terminateWorker?.(),
+  }
+}
+
+/**
+ * Makes `next` the engine every layout goes through; `undefined` restores the
+ * bundled one. Installing never terminates the engine being replaced: the
+ * page that made it owns it.
+ */
+export function installLayoutEngine(next: LayoutEngine | undefined): void {
+  installed = next
+}
+
+export const layoutWithElk = async (graph: ElkNode): Promise<ElkNode> =>
+  (installed ?? (await bundledEngine())).layout(graph)

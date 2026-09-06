@@ -65,5 +65,14 @@ export default defineConfig({
       fileName: () => 'editor.js',
       cssFileName: 'styles',
     },
+    rolldownOptions: {
+      output: {
+        // The engine is a dynamic import so the served page can leave it to
+        // its worker (#490). Here it is inlined: a host copies `editor.js`
+        // and nothing beside it, and a second chunk would be the one file it
+        // does not copy.
+        codeSplitting: false,
+      },
+    },
   },
 })

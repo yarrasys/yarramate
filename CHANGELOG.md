@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+### The served page lays out in a Web Worker (#490)
+
+A routed layout of a large view takes most of a second, and on the calling
+thread that was a frozen page: 805 ms for `served-by` on the 157-subject
+reference Landscape, 1181 ms for `bands`, and 4.3 s on this repository's
+366-subject "All subjects" view. The page `yarramate-visual` serves now runs
+ELK in a Web Worker, and that same 366-subject layout leaves the page's
+longest main-thread task at 95 ms (measured in Chrome, the two builds side by
+side): vite emits the worker as one more flat asset the
+session server already serves, the page's policy admits it as a same-origin
+worker, and the engine ships once, in the worker, rather than also in the
+chunk the page loads first. The library bundle a host mounts cannot promise
+what its host's policy admits, so it keeps the engine on the calling thread;
+a host that can serve `elkjs/lib/elk-worker.min.js` from its own origin passes
+`workerFactory: () => new Worker(thatUrl)` to `mountEditor` and gets the same.
+The bundled engine is loaded the first time a layout asks for it, so the
+served page never fetches it. ADR 0147 amended.
+
 ### A saved layout keeps its routes, and the fold state the browser sends
 
 Dragging one subject on a routed canvas saved every subject's position, and

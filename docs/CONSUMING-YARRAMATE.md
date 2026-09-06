@@ -420,6 +420,15 @@ defaults to `['properties', 'questions']`. This is a UI posture only — pair it
 with a store that refuses writes; the two defenses are independent.
 `mountEditorWith` takes the same flag as its trailing parameter.
 
+Pass `workerFactory` to run the layout engine in a Web Worker (#490). The
+bundle runs ELK on the calling thread by default, and a routed layout of a
+large view freezes the page for most of a second; it cannot ship a worker of
+its own, because an inline worker needs a `blob:` allowance in YOUR policy.
+Serve `elkjs/lib/elk-worker.min.js` from your own origin and pass
+`workerFactory: () => new Worker(thatUrl)`; every layout then runs there. One
+engine per page: the mount that passed a factory owns the worker, and its
+`unmount()` terminates the worker and restores the bundled engine.
+
 The returned handle can also point at the canvas
 (ADR 0118):
 `select(subjectId)` selects a concept or relationship exactly as a canvas tap

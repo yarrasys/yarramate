@@ -6,13 +6,16 @@ import {
   buildElkGraph,
   edgeLabelSize,
   edgeLabelText,
+  installLayoutEngine,
   layoutWithElk,
+  workerLayoutEngine,
   readElkLayout,
   rootLayoutOptions,
   spacingFor,
 } from '../src/visual-app/elk-layout.js'
 import type { ElkNode } from 'elkjs/lib/elk.bundled.js'
 import { LAYOUT_MODES } from '../src/layout-mode.js'
+import type { LayoutWorker } from '../src/visual-app/elk-layout.js'
 
 // Two boxes with a member each, one loose subject, and three relationships:
 // an unnamed serving, a named flow, and an association from the application
@@ -348,5 +351,78 @@ describe('with the engine', () => {
       expect(route.points.length).toBeGreaterThanOrEqual(2)
       expect(route.labelAt).not.toBeNull()
     }
+  })
+})
+
+// The one door the canvas lays out through (#490). Whatever engine a page
+// installs answers every layout; nothing installed, the bundled engine does.
+describe('the layout engine seam', () => {
+  it('routes every layout through the installed engine, and back to the bundled one when it is removed', async () => {
+    const asked: ElkNode[] = []
+    installLayoutEngine({
+      layout: (graph) => {
+        asked.push(graph)
+        return Promise.resolve({ id: 'answered', x: 1, y: 2 })
+      },
+    })
+    try {
+      const graph: ElkNode = { id: 'root', children: [{ id: 'n', width: 170, height: 50 }] }
+      expect(await layoutWithElk(graph)).toEqual({ id: 'answered', x: 1, y: 2 })
+      expect(asked).toEqual([graph])
+    } finally {
+      installLayoutEngine(undefined)
+    }
+    // The bundled engine really lays out: a node gets a place.
+    const laid = await layoutWithElk({
+      id: 'root',
+      layoutOptions: { 'elk.algorithm': 'layered' },
+      children: [{ id: 'n', width: 170, height: 50 }],
+    })
+    expect(typeof laid.children?.[0]?.x).toBe('number')
+  })
+
+  // A stand-in for `elk-worker.min.js` at the other end of elk-api's
+  // protocol: every message carries an id and is answered with that id; a
+  // layout is answered with the graph it was sent, marked.
+  class FakeWorker implements LayoutWorker {
+    onmessage: ((event: { readonly data: unknown }) => void) | null = null
+    readonly posted: { id: number; cmd: string; graph?: ElkNode }[] = []
+    terminated = false
+    postMessage(message: unknown): void {
+      const posted = message as { id: number; cmd: string; graph?: ElkNode }
+      this.posted.push(posted)
+      queueMicrotask(() =>
+        this.onmessage?.({
+          data: {
+            id: posted.id,
+            data: posted.cmd === 'layout' ? { ...posted.graph, laidBy: 'worker' } : [],
+          },
+        }),
+      )
+    }
+    terminate(): void {
+      this.terminated = true
+    }
+  }
+
+  it('speaks elk-api\'s protocol to the worker the factory constructs, once, and terminates it', async () => {
+    const workers: FakeWorker[] = []
+    const engine = workerLayoutEngine(() => {
+      const worker = new FakeWorker()
+      workers.push(worker)
+      return worker
+    })
+    expect(workers.length).toBe(1)
+    const worker = workers[0] as FakeWorker
+    // Construction registers the algorithms before anything is asked.
+    expect(worker.posted[0]?.cmd).toBe('register')
+    const graph: ElkNode = { id: 'root', children: [{ id: 'n', width: 170, height: 50 }] }
+    const laid = (await engine.layout(graph)) as ElkNode & { laidBy?: string }
+    expect(laid.laidBy).toBe('worker')
+    expect(worker.posted.at(-1)?.cmd).toBe('layout')
+    expect(worker.posted.at(-1)?.graph).toEqual(graph)
+    expect(workers.length).toBe(1)
+    engine.terminate?.()
+    expect(worker.terminated).toBe(true)
   })
 })
