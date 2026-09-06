@@ -88,6 +88,44 @@ describe('layout drag-save and position pinning', () => {
     expect(cy.getElementById('hidden').position()).toEqual({ x: 2, y: 2 })
   })
 
+  // A box's centre is derived from its members, and positioning a box moves
+  // them. The sidecar's box entry is a few pixels off the centre its pinned
+  // members derive, so pinning it undid the members' pin by that much and
+  // dropped their routes (#507: 7.8 px, 28 routes on the reference API tiers).
+  it('pins leaves only, so a stale box centre in the sidecar cannot move the members off theirs (#507)', () => {
+    const cy = cytoscape({
+      styleEnabled: true,
+      layout: { name: 'preset' },
+      style: [{ selector: 'node', style: { width: 170, height: 50 } }],
+      // The box AFTER its members, as the canvas holds them: the pin then
+      // reaches the box last, and a box pinned last has the final word.
+      elements: [
+        { data: { id: 'a', parent: 'box' }, position: { x: 0, y: 0 }, group: 'nodes' as const },
+        { data: { id: 'b', parent: 'box' }, position: { x: 200, y: 0 }, group: 'nodes' as const },
+        { data: { id: 'c' }, position: { x: 500, y: 0 }, group: 'nodes' as const },
+        // What a folded box is by the time the pin runs: its members detached,
+        // an ordinary node drawn as the whole (#473).
+        { data: { id: 'folded-box' }, position: { x: 900, y: 0 }, group: 'nodes' as const, classes: 'folded' },
+        { data: { id: 'box' }, group: 'nodes' as const },
+      ],
+    })
+    applySavedPositions(cy, {
+      a: { x: 0, y: 100 },
+      b: { x: 200, y: 100 },
+      // The centre the members derive is (100, 100); the sidecar says 7.8 px more.
+      box: { x: 107.8, y: 100 },
+      c: { x: 600, y: 0 },
+      'folded-box': { x: 950, y: 50 },
+    })
+    expect(cy.getElementById('a').position()).toEqual({ x: 0, y: 100 })
+    expect(cy.getElementById('b').position()).toEqual({ x: 200, y: 100 })
+    expect(cy.getElementById('c').position()).toEqual({ x: 600, y: 0 })
+    ;(cy.nodes() as unknown as { updateCompoundBounds(force: boolean): void }).updateCompoundBounds(true)
+    expect(cy.getElementById('box').position()).toEqual({ x: 100, y: 100 })
+    // Not a parent, so pinned like any leaf.
+    expect(cy.getElementById('folded-box').position()).toEqual({ x: 950, y: 50 })
+  })
+
   it('discard unpins: a discarded view yields nothing to pin, so a fresh layout stands (#273)', () => {
     const cy = canvasWith([['node1', 1, 1]])
     const saved: VisualLayoutPositions = { node1: { x: 100, y: 100 } }

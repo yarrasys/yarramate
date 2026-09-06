@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+### Restoring a saved layout pins the leaves and lets the boxes follow (#507)
+
+Restoring a saved layout positioned the boxes too. A box's centre is derived
+from its members, and cytoscape answers a box being positioned by moving every
+member by the difference between the derived centre and the asked one; the
+sidecar's box entry was read off the canvas when the drag had already changed
+the box's extent, so it differed from the centre the pinned members derive by
+a few pixels, and pinning the box moved every member by exactly that, off
+their saved places and out of their routes. Found by ApertureX on 1.25.1: on
+the reference API tiers, 11 members sat 7.8 px off and 28 routes beyond the
+dragged subject's own were dropped. The pin now places leaves only, and a box
+sits where its members put it. A folded box is a plain node by then and is
+pinned like one.
+
 ## 1.25.1
 
 ### The mounted host reads the layout sidecar back, and a commit forgets neither folds nor routes (#503)
