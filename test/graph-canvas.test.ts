@@ -184,7 +184,7 @@ describe('relayoutVisible', () => {
     const visibleBefore = { ...cy.getElementById('node1').position() }
     const settled = new Promise<void>((resolve) => cy.one('layoutstop', () => resolve()))
 
-    relayoutVisible(cy, 'top-down')
+    await relayoutVisible(cy, 'top-down', 'layered')
     await settled
 
     expect(cy.getElementById('node3').position()).toEqual(hiddenBefore)
@@ -664,5 +664,60 @@ describe('applyDecorations', () => {
     expect(cy.$id('bc').style('line-color')).toBe('rgb(65,111,101)')
     // A mark never repaints what it did not name.
     expect(cy.$id('a').style('border-style')).toBe('solid')
+  })
+})
+
+// An edge between a box and one of its own members is implied by the nesting
+// and is not drawn (ADR 0147, superseding ADR 0139's "never from the graph").
+// cytoscape files a parent-to-member edge as a compound loop and computes no
+// geometry for it, so these had been vanishing without anyone deciding so;
+// now the filter hides them on purpose and the relationship stays in the graph.
+describe('box-to-member edges (ADR 0147)', () => {
+  const buildNested = () =>
+    cytoscape({
+      styleEnabled: true,
+      layout: { name: 'preset' },
+      elements: [
+        { data: { id: 'box' }, group: 'nodes' },
+        {
+          data: { id: 'member', parent: 'box', compositionParent: 'box' },
+          position: { x: 0, y: 0 },
+          group: 'nodes',
+        },
+        { data: { id: 'outside' }, position: { x: 300, y: 0 }, group: 'nodes' },
+        { data: { id: 'box-member', source: 'box', target: 'member' }, group: 'edges' },
+        { data: { id: 'member-outside', source: 'member', target: 'outside' }, group: 'edges' },
+      ],
+    })
+
+  it('hides an edge between a box and its own member, and keeps it in the graph', () => {
+    const cy = buildNested()
+    applyFilter(cy, null, '')
+    expect(cy.getElementById('box-member').nonempty()).toBe(true)
+    expect(cy.getElementById('box-member').style('display')).toBe('none')
+    expect(cy.getElementById('member-outside').style('display')).toBe('element')
+  })
+
+  // A view's match set names relationships too (`between`, `connected`), and
+  // a named edge is seeded visible before any edge rule runs. The seed must
+  // not smuggle a box-to-member edge back in: measured on API tiers, 20 of 24
+  // came back exactly that way before this was pinned.
+  it('hides a box-to-member edge even when the match set names it', () => {
+    const cy = buildNested()
+    applyFilter(cy, ['box', 'member', 'outside', 'box-member', 'member-outside'], '')
+    expect(cy.getElementById('box-member').style('display')).toBe('none')
+    expect(cy.getElementById('member-outside').style('display')).toBe('element')
+  })
+
+  it('draws the same edge once the nesting it crossed is gone', () => {
+    // A filter that hides the box detaches the member (see `applyFilter`), and
+    // an edge that no longer crosses a nesting boundary is an ordinary edge.
+    const cy = buildNested()
+    applyFilter(cy, ['member', 'outside', 'box'], '')
+    expect(cy.getElementById('box-member').style('display')).toBe('none')
+    cy.getElementById('member').move({ parent: null })
+    cy.getElementById('member').removeData('compositionParent')
+    applyFilter(cy, ['member', 'outside', 'box'], '')
+    expect(cy.getElementById('box-member').style('display')).toBe('element')
   })
 })

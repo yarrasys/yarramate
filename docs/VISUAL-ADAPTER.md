@@ -178,11 +178,71 @@ session.
 
 ### Layout
 
-One backend: **`layered`** (`elk layered`), selected by `presentation.layout`,
-which now admits only that value. It honours `presentation.direction`
-(`top-down` → `elk.direction: DOWN`, `left-right` → `RIGHT`), which a view that
-declares none runs as `top-down`, and measured 112 ms on this repository's
-258-node graph.
+One algorithm, ELK's `layered`, spoken to directly (elkjs, no extension), and
+four ways of running it, chosen by `presentation.layout`
+([ADR 0147](adr/0147-a-layout-is-a-way-of-reading-and-the-reviewer-picks-it.md)).
+A ladder, each mode keeping everything below it:
+
+- **`layered`** - ELK places the nodes; cytoscape draws its own orthogonal
+  lines between them, through whatever sits in the way. What shipped before
+  1.24; measured on the ApertureX reference Landscape, 127 of 206 drawn edges
+  cut through a box that was not one of theirs.
+- **`routed`** - ELK also routes every edge around the nodes
+  (`INCLUDE_CHILDREN`, `ORTHOGONAL`) and reserves room for each label. The
+  routes are drawn with cytoscape's `segments`, projected onto the line between
+  manual endpoints, and the label sits as a source label at the arc position
+  ELK reserved. Zero edges through boxes, zero labels on boxes, on every view
+  measured.
+- **`served-by`** - routed, and serving, realization and specialization are
+  layered UPWARD: the served, realized or general element sits above what
+  serves, realizes or specializes it. Only the layering turns; the arrowhead
+  keeps its ArchiMate form. **A view that declares no `layout` runs this.**
+- **`bands`** - served-by, and every element is pinned to its ArchiMate
+  layer's band (motivation at the top, physical at the bottom) through ELK's
+  partitioning; a box takes the highest band of its members.
+
+It honours `presentation.direction` (`top-down` → `elk.direction: DOWN`,
+`left-right` → `RIGHT`), which a view that declares none runs as `top-down`.
+Both have selects on the canvas, beside the quick filter: the view declares,
+a view switch restates the declaration (a view that omits `layout` is restored
+to `served-by`, the rule nesting and direction follow), and **Save view**
+writes what is in force. Measured on the 157-subject reference Landscape in a
+browser: `layered` 278 ms, `routed` 815 ms, `served-by` 805 ms, `bands`
+1181 ms, on the main thread; the 65-subject API tiers view runs `served-by`
+in about 200 ms. A routed Landscape draws roughly three times the area of
+today's, which was compact only by drawing through things.
+
+**A route belongs to the placement ELK made.** An edge keeps its route only
+while both ends sit exactly where ELK put them. A saved position (the sidecar
+above) or a drag hands that node's edges, and its box's, back to the
+stylesheet's straight line; a fold translates the whole graph, and a route
+survives that intact. Layout is awaited - it always resolved asynchronously,
+and the canvas now says so - and overlapping runs resolve last-request-wins,
+so a view switch during a slow layout never lays the previous view's geometry
+over the current one. Every layout, the first included, is scoped to what the
+filter leaves visible.
+
+**An edge between a box and one of its own members is not drawn.** cytoscape
+files a parent-to-member edge as a compound loop and computes no geometry for
+it, so these had been vanishing without anyone deciding so (36 of the
+Landscape's 242, 24 of API tiers' 96). They are now withheld from the layout
+AND hidden, deliberately; the relationship stays in the model and the fact
+panel. [ADR 0139](adr/0139-an-edge-across-a-nesting-boundary-is-not-laid-out.md)
+is superseded in that respect.
+
+**An unnamed relationship is labelled with its reading**, the table the brief
+speaks from (`src/relationship-reading.ts`): "serves", "realizes", "accesses",
+"is assigned to". Where the layering turns a kind, the label reads from the
+element drawn above - "served by", "realized by", "specialized by". An
+extension kind is spelled out from its own name. `presentation.showKindLabels`
+(below) turns the words off for unnamed relationships; a named one keeps its
+name either way.
+
+Known residue: two labelled edges running side by side can still overlap their
+labels (`elk.spacing.edgeEdge` is 30 for it; widening the between-layer lanes
+measured as canvas height for no gain), and an edge ELK ends on a container's
+top border stops 22 px above the drawn box, in the label band. ELK's
+`postCompaction` is never asked for: it throws on a nested graph.
 
 Node placement is `NETWORK_SIMPLEX` rather than ELK's `BRANDES_KOEPF` default
 ([ADR 0121](adr/0121-a-view-says-which-way-it-runs.md)), adopted on a sweep of
@@ -202,8 +262,9 @@ instance, `layered` produced 79 crossings and 16,349px of edge at a fit zoom of
 0.94, against `radial`'s 86 / 18,634 / 0.75 and `force`'s 73 / 25,783 / 0.71.
 `force` also cost seconds of blocked main thread and the whole apparatus that
 went with it: a busy notice, a two-pass chain, and an in-flight guard so a
-newer request could supersede a running one. None of that has anything left to
-guard now.
+newer request could supersede a running one. The routed modes brought back one
+line of that guard - a generation stamp, last request wins - because a routed
+layout of a large view takes long enough for a view switch to land inside it.
 
 `presentation.seed` went with them. Only `force` ever read it, yet the
 projection schema had required a seed of every view that declared a layout at
@@ -212,8 +273,8 @@ obliges a view to invent a seed it has no use for.
 
 [ADR 0086](adr/0086-radial-is-concentric-and-force-is-stress-then-spore.md)
 recorded what those two backends mapped onto and why the obvious ELK choices
-were rejected; it is superseded here. A future layout mechanism is expected,
-and `presentation.layout` stays an enum so it has somewhere to land.
+were rejected; it is superseded here. The layout mechanism it expected is the
+four modes above (ADR 0147).
 
 ### Deleting
 
@@ -412,12 +473,12 @@ the model: `applicationComponent -assignment-> applicationService` is permitted
 by the ArchiMate 3.2 table and stays drawn as a line. Composition is
 unaffected, because a composed service is a part.
 
-Unlike the toggles below, `nesting` is restored to the default by a view that
-does not declare it, rather than carried across. The toggles are things a
-reviewer changes on screen, so their choice should survive a view switch;
-nesting has no control and is a property of the view, and inheriting one view's
+Like `direction` and `layout`, `nesting` is restored to the default by a view
+that does not declare it, rather than carried across: inheriting one view's
 containment meaning into a view that never asked for it is the ambiguity this
-is meant to prevent.
+is meant to prevent. The badge toggles below are the other way round - a flag
+a view does not declare keeps the reviewer's choice - because a badge says
+nothing about what the view means.
 
 ### Folding
 
@@ -482,13 +543,16 @@ every member.
 
 ### Presentation toggles
 
-Three presentation state fields ride alongside layout in `presentation`, staged with the view and persisted in the projection document:
+Four presentation state fields ride alongside layout in `presentation`, staged with the view and persisted in the projection document:
 
 - `showLifecycle` — renders a status badge (lifecycle: `planned` / `current` / `retired`) on each node's top-left, using the existing CSS tokens from `src/visual-app/styles.css`.
 - `showEvidence` — renders a checkmark badge on each node's bottom-left, only when the node has attestations (`hasAttestations: boolean`). Binary presence, never a graded state.
 - `showOwnership` — renders the owner's initials in a coloured circle on each node's bottom-right, hashing the owner ref onto a four-colour palette from `styles.css` (eucalyptus, ochre, cobalt, ink) deterministically and stably across reloads and machines. Colour is only informative here; initials identify the owner at a glance.
+- `showKindLabels` — whether an unnamed relationship is labelled with its reading ("serves", "served by", "realizes"). Off, the line style and arrowhead alone say the kind; a named relationship keeps its name either way. On when absent (ADR 0147).
 
-The three checkboxes live in the query panel's **View query** tab, beside the facets and above the document they are written into. None of them toggles a projection query or composes a `filter.query` event; toggling a checkbox dispatches `onTogglePresentation` and updates local state only. They are presentation, not semantic queries, so they save without consulting the model, reload without validating against the model, and appear in no changeset. Switching views triggers a relayout; toggling a badge does not, since badges are derived from existing node data.
+The four checkboxes live in the query panel's **View query** tab, beside the facets and above the document they are written into. None of them toggles a projection query or composes a `filter.query` event; toggling a checkbox dispatches `onTogglePresentation` and updates local state only. They are presentation, not semantic queries, so they save without consulting the model, reload without validating against the model, and appear in no changeset. Switching views triggers a relayout; toggling a badge or the kind labels does not - labels repaint in place, and the room ELK reserved for them stays as it was until the next layout.
+
+The **Layout** and **Direction** selects on the canvas are presentation too, and are saved the same way, but a view switch restates them from the view's declaration rather than keeping the reviewer's pick, because which way a diagram reads is part of what the view means (ADR 0147).
 
 A fourth toggle, `showNudges`, sits beside them but is workspace presentation only — never written into a view's `presentation`, because a saved view does not decide whether a reviewer sees the interview.
 
@@ -502,9 +566,8 @@ The overlay is recomputed per landed commit and never stored, so a drafted-but-u
 
 The canvas draws ArchiMate. The stylesheet shapes nodes by aspect (resolved
 from each concept kind's inheritance), applies line-notation conventions by
-core relationship kind (derived kinds resolve through lineage), draws each
-kind's glyph, and lays out `DOWN` because ArchiMate's layer bands only read
-top-down.
+core relationship kind (derived kinds resolve through lineage), and draws each
+kind's glyph.
 
 This is not a mode: there is no picker and no second renderer to pick.
 `presentation.notation` stays in the projection format, admitting `archimate`
@@ -517,9 +580,11 @@ ArchiMate.
 [ADR 0121](adr/0121-a-view-says-which-way-it-runs.md)). The canvas was pinned
 `DOWN` on the reasoning that ArchiMate's layer bands only read top-down, which
 is right for a layer-band view and wrong for a deployment realization chain or
-a fan-out; the bands keep the default and stop being the only answer. There is
-still no on-screen direction control: the view declares it, the same as
-`nesting`, and a save carries a declared direction through untouched.
+a fan-out; the bands keep the default and stop being the only answer. Since
+1.24 the direction has a select on the canvas beside the layout mode (ADR
+0147): the view declares it, a view switch restates it, and a save writes the
+direction in force. The `bands` layout mode is what actually draws ArchiMate's
+layer bands, top-down or left-right.
 
 The kind colours, aspect shapes, glyphs, and relationship line styles are
 defined once in the published `yarramate/notation/archimate` module; this app

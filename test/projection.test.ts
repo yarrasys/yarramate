@@ -886,6 +886,65 @@ presentation:
     expect(withNative.diagnostics[0]?.pointer).toBe('/presentation/notation')
   })
 
+  // The layout mode and the kind-label flag (ADR 0147) travel the whole way:
+  // loaded, canonicalised, echoed by an evaluation, and admitted by the result
+  // schema. Each list is written by hand, so each is asserted.
+  it('round-trips the layout mode and the kind-label flag through canonical form and the echo', () => {
+    const loaded = loadProjection({
+      path: 'layout.projection.yaml',
+      source: `format: yarramate/projection/v1
+id: layout-test
+version: "1.0"
+query: {}
+presentation:
+  layout: bands
+  showKindLabels: false
+`,
+    })
+    expect(loaded.ok).toBe(true)
+    if (!loaded.ok) return
+    expect(canonicalProjection(loaded.projection).presentation).toEqual({
+      layout: 'bands',
+      showKindLabels: false,
+    })
+    const compilation = compileWorkspace([
+      { path: 'projection-model.yaml', source },
+    ])
+    expect(compilation.ok).toBe(true)
+    if (!compilation.ok) return
+    const result = evaluateProjection(compilation.graph, loaded.projection)
+    expect(result.presentation).toEqual({ layout: 'bands', showKindLabels: false })
+    const schema = JSON.parse(
+      readFileSync(
+        fileURLToPath(
+          new URL(
+            '../schema/yarramate-projection-result.schema.json',
+            import.meta.url,
+          ),
+        ),
+        'utf8',
+      ),
+    )
+    const validate = new Ajv2020({ allErrors: true }).compile(schema)
+    expect(validate(result), JSON.stringify(validate.errors ?? [])).toBe(true)
+  })
+
+  it('refuses a layout the canvas cannot draw', () => {
+    const radial = loadProjection({
+      path: 'radial.projection.yaml',
+      source: `format: yarramate/projection/v1
+id: radial-test
+version: "1.0"
+query: {}
+presentation:
+  layout: radial
+`,
+    })
+    expect(radial.ok).toBe(false)
+    if (radial.ok) return
+    expect(radial.diagnostics[0]?.pointer).toBe('/presentation/layout')
+  })
+
   it('rejects unknown notation values in schema validation', () => {
     const invalid = loadProjection({
       path: 'invalid.projection.yaml',

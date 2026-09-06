@@ -488,11 +488,10 @@ describe('visual conversation rendering', () => {
   })
 })
 
-// ArchiMate is the notation and it lays out top-down, so neither a notation
-// picker nor a direction toggle has anything to offer. Asserted on the rendered
-// markup rather than on state, because a control is gone when it stops being
-// drawn - a reducer with no field behind it would still pass a state assertion
-// while the strip carried a dead button.
+// ArchiMate is the only notation, so a notation picker has nothing to offer.
+// Asserted on the rendered markup rather than on state, because a control is
+// gone when it stops being drawn - a reducer with no field behind it would
+// still pass a state assertion while the strip carried a dead button.
 describe('command strip', () => {
   it('offers no notation picker', () => {
     const markup = renderSession()
@@ -502,12 +501,29 @@ describe('command strip', () => {
     expect(markup).not.toContain('>Native<')
   })
 
-  it('offers no direction control, and no notice explaining one', () => {
+  it('carries no direction notice, since the direction has a control now', () => {
     const markup = renderSession()
 
-    expect(markup).not.toContain('Top-Down')
-    expect(markup).not.toContain('Left-Right')
     expect(markup).not.toContain('direction-notice')
+  })
+})
+
+// The layout and direction selects sit on the canvas (ADR 0147), beside the
+// quick filter, and open on what the workspace holds: served-by top-down for a
+// view that declares nothing.
+describe('canvas layout controls', () => {
+  it('offers the layout and direction selects once there is a model to arrange', () => {
+    const markup = renderSession({ model: renderedModel })
+
+    expect(markup).toContain('aria-label="Layout"')
+    expect(markup).toContain('aria-label="Direction"')
+    expect(markup).toContain('<option value="served-by" selected="">Served-by</option>')
+    expect(markup).toContain('<option value="top-down" selected="">Top-down</option>')
+    expect(markup).toContain('>Layer bands<')
+  })
+
+  it('draws no selects over an empty canvas', () => {
+    expect(renderSession()).not.toContain('aria-label="Layout"')
   })
 })
 

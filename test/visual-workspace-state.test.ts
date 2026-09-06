@@ -310,16 +310,27 @@ describe("selected diagram subjects", () => {
 describe("visualWorkspaceReducer layout", () => {
   const workspaceState = createVisualWorkspaceState(1280);
 
-  it("starts on the layered backend", () => {
-    expect(workspaceState.layout).toBe("layered");
+  // Served-by is what a view gets when it declares none (ADR 0147): the mode
+  // that read correctly the first time anyone looked at real tiers.
+  it("starts on served-by, the layout a silent view gets", () => {
+    expect(workspaceState.layout).toBe("served-by");
   });
 
   it("carries the layout through layout.set", () => {
     const next = visualWorkspaceReducer(workspaceState, {
       type: "layout.set",
-      layout: "layered",
+      layout: "bands",
     });
-    expect(next.layout).toBe("layered");
+    expect(next.layout).toBe("bands");
+  });
+
+  it("returns the same state when a view restates the layout in force", () => {
+    expect(
+      visualWorkspaceReducer(workspaceState, {
+        type: "layout.set",
+        layout: "served-by",
+      }),
+    ).toBe(workspaceState);
   });
 
   it("adopts a selected view declared layout", () => {
@@ -377,10 +388,20 @@ describe("visualWorkspaceReducer layout", () => {
     );
   });
 
-  it("leaves layout untouched when a view declares none", () => {
-    const actions = presentationActionsFor({});
-    const next = actions.reduce(visualWorkspaceReducer, workspaceState);
-    expect(next).toBe(workspaceState);
+  // The rule `direction` and `nesting` follow (ADR 0147): a view that says
+  // nothing gets the default, and a reviewer's pick for the previous view
+  // must not follow them into a view that never asked for it.
+  it("restores the default layout for a view that declares none", () => {
+    const layered = presentationActionsFor({ layout: "layered" }).reduce(
+      visualWorkspaceReducer,
+      workspaceState,
+    );
+    expect(layered.layout).toBe("layered");
+    const back = presentationActionsFor({}).reduce(
+      visualWorkspaceReducer,
+      layered,
+    );
+    expect(back.layout).toBe("served-by");
   });
 
   // `nesting` is the one field a view always states, declared or not. The
@@ -412,10 +433,25 @@ describe("visualWorkspaceReducer presentation", () => {
     expect(workspaceState.showOwnership).toBe(false);
   });
 
+  it("starts with kind labels on (ADR 0147)", () => {
+    expect(workspaceState.showKindLabels).toBe(true);
+  });
+
+  it("adopts a view's kind-label flag and leaves it alone when undeclared", () => {
+    const off = presentationActionsFor({ showKindLabels: false }).reduce(
+      visualWorkspaceReducer,
+      workspaceState,
+    );
+    expect(off.showKindLabels).toBe(false);
+    const silent = presentationActionsFor({}).reduce(visualWorkspaceReducer, off);
+    expect(silent.showKindLabels).toBe(false);
+  });
+
   it.each([
     ["showLifecycle", false] as const,
     ["showEvidence", false] as const,
     ["showOwnership", true] as const,
+    ["showKindLabels", false] as const,
   ])("sets %s to %s on presentation.toggled", (flag, value) => {
     const next = visualWorkspaceReducer(workspaceState, {
       type: "presentation.toggled",
@@ -456,6 +492,9 @@ describe("visualWorkspaceReducer presentation", () => {
   it("adopts only the presentation flag a view actually declares", () => {
     const actions = presentationActionsFor({ showOwnership: true });
     expect(actions).toEqual([
+      // Unconditional since ADR 0147, the rule direction follows: a silent
+      // view gets the default layout rather than the previous view's pick.
+      { type: "layout.set", layout: "served-by" },
       { type: "nesting.set", nesting: ["composition"] },
       // Unconditional, the rule `nesting.set` and `direction.set` follow: a
       // view that omits `fold` folds nothing and must not inherit the folded

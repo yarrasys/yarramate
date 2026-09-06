@@ -10,6 +10,10 @@ Status: accepted
 > true of the code it described: `radial` was cytoscape `concentric`, not ELK
 > radial, and `force` was `stress` followed by `sporeOverlap`. A future layout
 > mechanism will be recorded in its own ADR.
+>
+> That ADR is [0147](0147-a-layout-is-a-way-of-reading-and-the-reviewer-picks-it.md)
+> (1.24): `presentation.layout` admits `layered`, `routed`, `served-by` and
+> `bands`, all on ELK's layered algorithm spoken to directly.
 
 [ADR 0085](0085-a-dragged-position-is-presentation-the-repository-keeps.md)
 settled where a layout's *output* lives once a reviewer touches it by hand.

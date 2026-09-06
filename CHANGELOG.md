@@ -1,5 +1,70 @@
 # Changelog
 
+## Unreleased
+
+### Four ways to lay a view out, and the reviewer picks (#489)
+
+Edges were drawn through boxes. The `cytoscape-elk` extension handed ELK only
+node ids and edge endpoints, applied node positions only, and threw away the
+routes and label positions ELK computed; cytoscape's `round-taxi` then drew a
+straight line from source to target through whatever sat between them.
+Measured on the ApertureX reference Landscape: 127 of 206 drawn edges cut
+through a box that was not one of their endpoints. And a top-down layered
+layout put the source above the target for every kind, so API tiers drew the
+system API above the experience API and said `serving` where a reader expects
+"served by".
+
+The canvas now talks to elkjs directly and `presentation.layout` admits four
+modes, a ladder where each keeps everything below it: `layered` (what shipped),
+`routed` (ELK routes every edge around the nodes and reserves room for each
+label), `served-by` (routed, and serving, realization and specialization
+layered upward so the served element sits above what serves it; arrowheads
+unchanged) and `bands` (served-by, and every element pinned to its ArchiMate
+layer's band). Two selects on the canvas, **Layout** and **Direction**, let a
+reviewer pick; a view switch restates the view's declaration; **Save view**
+writes what is in force. The routed modes measure zero edges through boxes on
+every view tried, crossings roughly halved. ADR 0147.
+
+**Which way this cuts.** Readers: every existing projection stays valid.
+Constructors: nothing required was added. Rendering: **a view that declares no
+`layout` now draws `served-by`**, routed edges and all; declare
+`layout: layered` to keep the old picture. A host on an older yarramate
+refuses a projection saved with one of the new values, since its schema does
+not know them. `cytoscape-elk` is no longer a dependency.
+
+### An unnamed relationship says its reading, and the words can be turned off (#489)
+
+An edge used to be labelled with its kind id, `serving`. It now says the same
+thing the brief says, "serves", from one shared table; where the layout draws
+the served element above, it reads from that end, "served by", "realized by",
+"specialized by". An extension kind is spelled out from its own name. New
+`presentation.showKindLabels` (default on) turns the words off for unnamed
+relationships, since the line style and arrowhead already say the kind; a
+named relationship keeps its name either way. The checkbox sits with the
+badge toggles.
+
+### An edge from a box to one of its own members is hidden on purpose (#489)
+
+cytoscape files a parent-to-member edge as a compound loop and computes no
+geometry for it, so 36 of the Landscape's 242 relationships had been vanishing
+without anyone deciding so, while ADR 0139 said they stayed on the canvas.
+They are now withheld from the layout and hidden deliberately; the
+relationship stays in the model and the fact panel. ADR 0139 is superseded in
+that respect.
+
+### A route belongs to the placement ELK made (#489)
+
+An edge keeps its route only while both ends sit exactly where ELK put them. A
+saved position or a drag hands that node's edges back to the stylesheet's
+straight line; a fold translates the whole graph and routes survive it.
+Layout is awaited (it always resolved asynchronously; the fold anchor from
+ADR 0143 read its position before ELK had run and never fired - it works
+now), overlapping runs resolve last-request-wins, and every layout, the first
+included, is scoped to what the filter leaves visible. A saved direction is
+written on every save now that the direction has a control, so a re-saved
+view that declared none exports to LikeC4 as `TopBottom` where it used to
+fall to the exporter's `LeftRight` default.
+
 ## 1.23.2
 
 ### A kind states its display name beside its id (#473)

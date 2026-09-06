@@ -9,6 +9,7 @@ import {
   DEFAULT_DIRECTION,
   type LayoutDirection,
 } from "../layout-direction.js";
+import { DEFAULT_LAYOUT, type LayoutMode } from "../layout-mode.js";
 import type { DecorationMap } from "./graph-canvas.js";
 import type { ContextMenuTarget } from "./context-menu-model.js";
 import type { BottomPanelTabId } from "./query-panel.js";
@@ -398,10 +399,17 @@ export interface VisualWorkspaceState {
    * answer across.
    */
   readonly direction: LayoutDirection;
-  readonly layout: "layered";
+  /**
+   * How the active view arranges itself (ADR 0147). A view that says nothing
+   * lays out `DEFAULT_LAYOUT`, the rule `direction` follows; a reviewer picks
+   * another on the canvas, and a save writes what is in force.
+   */
+  readonly layout: LayoutMode;
   readonly showLifecycle: boolean;
   readonly showEvidence: boolean;
   readonly showOwnership: boolean;
+  /** Whether an unnamed relationship is labelled with its reading (ADR 0147). */
+  readonly showKindLabels: boolean;
   readonly showNudges: boolean;
 }
 
@@ -493,7 +501,7 @@ export type VisualWorkspaceAction =
     }
   | {
       readonly type: "layout.set";
-      readonly layout: "layered";
+      readonly layout: LayoutMode;
     }
   | {
       readonly type: "presentation.toggled";
@@ -501,6 +509,7 @@ export type VisualWorkspaceAction =
         | "showLifecycle"
         | "showEvidence"
         | "showOwnership"
+        | "showKindLabels"
         | "showNudges";
       readonly value: boolean;
     }
@@ -531,20 +540,25 @@ const sameNesting = (
 export const presentationActionsFor = (
   presentation:
     | {
-        readonly layout?: "layered";
+        readonly layout?: LayoutMode;
         readonly nesting?: readonly NestingKind[];
         readonly fold?: FoldMode;
         readonly direction?: LayoutDirection;
         readonly showLifecycle?: boolean;
         readonly showEvidence?: boolean;
         readonly showOwnership?: boolean;
+        readonly showKindLabels?: boolean;
       }
     | undefined,
 ): readonly VisualWorkspaceAction[] => {
   const actions: VisualWorkspaceAction[] = [];
-  if (presentation?.layout !== undefined) {
-    actions.push({ type: "layout.set", layout: presentation.layout });
-  }
+  // Unconditional, the rule `direction.set` follows (ADR 0147): a view that
+  // omits `layout` runs the default, and must not inherit the mode the
+  // reviewer picked for the view they came from.
+  actions.push({
+    type: "layout.set",
+    layout: presentation?.layout ?? DEFAULT_LAYOUT,
+  });
   // A view that omits `nesting` is restored to the default rather than left
   // holding the previous view's vocabulary: switching views must not carry a
   // containment meaning across into one that never asked for it.
@@ -588,6 +602,13 @@ export const presentationActionsFor = (
       type: "presentation.toggled",
       flag: "showOwnership",
       value: presentation.showOwnership,
+    });
+  }
+  if (presentation?.showKindLabels !== undefined) {
+    actions.push({
+      type: "presentation.toggled",
+      flag: "showKindLabels",
+      value: presentation.showKindLabels,
     });
   }
   return actions;
@@ -688,9 +709,12 @@ export const createVisualWorkspaceState = (
   folded: [],
   unfolded: [],
   direction: DEFAULT_DIRECTION,
-  layout: "layered",
+  layout: DEFAULT_LAYOUT,
   showLifecycle: true,
   showEvidence: true,
+  // On: an unnamed relationship says what it is. The line style and arrowhead
+  // say it too, which is why a reviewer may turn the words off (ADR 0147).
+  showKindLabels: true,
   // This repo declares exactly one owner across all 102
   // `yarramate/ownership/owner` claims, so every chip would render
   // identically - uniform noise until real ownership diversity exists.
@@ -989,7 +1013,11 @@ export const visualWorkspaceReducer = (
         ? state
         : { ...state, direction: action.direction };
     case "layout.set":
-      return { ...state, layout: action.layout };
+      // Restating the mode in force is not a change, for the reason
+      // `direction.set` gives: every view switch states one.
+      return state.layout === action.layout
+        ? state
+        : { ...state, layout: action.layout };
     case "presentation.toggled":
       return { ...state, [action.flag]: action.value };
     case "model.replaced": {

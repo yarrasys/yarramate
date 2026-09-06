@@ -235,13 +235,14 @@ export type PresentationFlag =
   | 'showLifecycle'
   | 'showEvidence'
   | 'showOwnership'
+  | 'showKindLabels'
   | 'showNudges'
 
 /** The checkbox's onChange handler, extracted so it is directly testable in
  * isolation from rendering: it calls `onTogglePresentation` and nothing
- * else — never `composeQuery`/`scheduleApply`. These three flags are
- * presentation state, not one of the 13 `ProjectionQuery` dimensions, so
- * toggling one must never compose a query or arm the debounced apply. */
+ * else — never `composeQuery`/`scheduleApply`. These flags are presentation
+ * state, not one of the 13 `ProjectionQuery` dimensions, so toggling one
+ * must never compose a query or arm the debounced apply. */
 export const presentationToggleHandler =
   (onTogglePresentation: (flag: PresentationFlag, value: boolean) => void, flag: PresentationFlag) =>
   (value: boolean): void =>
@@ -349,20 +350,23 @@ export function QueryFacets({
 }
 
 /**
- * The three badge toggles. Presentation, not query: they are written into the
- * view document's `presentation` and never composed into a `ProjectionQuery`,
- * which is why they take their own handler rather than sharing `onChange`.
+ * The badge toggles and the kind-label toggle. Presentation, not query: they
+ * are written into the view document's `presentation` and never composed into
+ * a `ProjectionQuery`, which is why they take their own handler rather than
+ * sharing `onChange`.
  */
 export function PresentationToggles({
   showLifecycle,
   showEvidence,
   showOwnership,
+  showKindLabels,
   showNudges,
   onTogglePresentation,
 }: {
   readonly showLifecycle: boolean
   readonly showEvidence: boolean
   readonly showOwnership: boolean
+  readonly showKindLabels: boolean
   readonly showNudges: boolean
   readonly onTogglePresentation: (flag: PresentationFlag, value: boolean) => void
 }) {
@@ -405,7 +409,22 @@ export function PresentationToggles({
         />
         Ownership badges
       </label>
-      {/* Workspace presentation only: unlike the three above, this flag is
+      {/* Whether an unnamed relationship says its reading - "serves", "served
+          by" - or leaves the kind to its line style and arrowhead (ADR 0147).
+          Written into the view like the three badges above. */}
+      <label className="filter-checkbox-option">
+        <input
+          type="checkbox"
+          checked={showKindLabels}
+          onChange={(event) =>
+            presentationToggleHandler(onTogglePresentation, 'showKindLabels')(
+              event.currentTarget.checked,
+            )
+          }
+        />
+        Kind labels
+      </label>
+      {/* Workspace presentation only: unlike the four above, this flag is
           never written into a view document's `presentation` - a saved view
           does not decide whether a reviewer sees the interview's nudges. */}
       <label className="filter-checkbox-option">

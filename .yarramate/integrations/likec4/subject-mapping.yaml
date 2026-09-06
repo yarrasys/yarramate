@@ -2088,6 +2088,12 @@ mappings:
   - native: layout-direction-source
     external: layoutDirectionSource
     type: concept
+  - native: layout-mode-source
+    external: layoutModeSource
+    type: concept
+  - native: relationship-reading-source
+    external: relationshipReadingSource
+    type: concept
   - native: nesting-source
     external: nestingSource
     type: concept
@@ -2121,8 +2127,14 @@ mappings:
   - native: visual-context-menu-source
     external: visualContextMenuSource
     type: concept
-  - native: visual-cytoscape-elk-types-source
-    external: visualCytoscapeElkTypesSource
+  - native: visual-elk-layout-source
+    external: visualElkLayoutSource
+    type: concept
+  - native: visual-edge-routes-source
+    external: visualEdgeRoutesSource
+    type: concept
+  - native: visual-layout-controls-source
+    external: visualLayoutControlsSource
     type: concept
   - native: visual-describe-query-source
     external: visualDescribeQuerySource
@@ -2310,6 +2322,12 @@ mappings:
   - native: layout-direction-realizes-visual-model
     external: layoutDirectionRealizesVisualModel
     type: relationship
+  - native: layout-mode-realizes-visual-model
+    external: layoutModeRealizesVisualModel
+    type: relationship
+  - native: relationship-reading-realizes-visual-model
+    external: relationshipReadingRealizesVisualModel
+    type: relationship
   - native: nesting-realizes-visual-model
     external: nestingRealizesVisualModel
     type: relationship
@@ -2343,8 +2361,14 @@ mappings:
   - native: visual-context-menu-realizes-browser
     external: visualContextMenuRealizesBrowser
     type: relationship
-  - native: visual-cytoscape-elk-types-realizes-browser
-    external: visualCytoscapeElkTypesRealizesBrowser
+  - native: visual-elk-layout-realizes-browser
+    external: visualElkLayoutRealizesBrowser
+    type: relationship
+  - native: visual-edge-routes-realizes-browser
+    external: visualEdgeRoutesRealizesBrowser
+    type: relationship
+  - native: visual-layout-controls-realizes-browser
+    external: visualLayoutControlsRealizesBrowser
     type: relationship
   - native: visual-describe-query-realizes-browser
     external: visualDescribeQueryRealizesBrowser

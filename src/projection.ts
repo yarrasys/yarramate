@@ -78,7 +78,13 @@ export interface ProjectionDefinition {
   readonly presentation?: {
     readonly title?: string
     readonly description?: string
-    readonly layout?: 'layered'
+    /**
+     * How this view arranges itself: `layered`, `routed`, `served-by` or
+     * `bands`, a ladder where each keeps everything below it (ADR 0147). A
+     * view that says nothing lays out `served-by`. The canvas offers the
+     * choice on screen and a save writes what is in force.
+     */
+    readonly layout?: LayoutMode
     /**
      * Which way this view runs its layers. Read by the LikeC4 export for its
      * `autoLayout` and by the canvas for ELK's `elk.direction` (ADR 0121); a
@@ -105,6 +111,13 @@ export interface ProjectionDefinition {
     readonly showLifecycle?: boolean
     readonly showEvidence?: boolean
     readonly showOwnership?: boolean
+    /**
+     * Whether an unnamed relationship is labelled with its reading - "serves",
+     * "served by", "realizes" - or left to its line style and arrowhead
+     * (ADR 0147). A named relationship keeps its name either way. On when
+     * absent, which is what shipped.
+     */
+    readonly showKindLabels?: boolean
     /**
      * The folder this view files itself under in an editor's rail: a label the
      * author declares, nested with `/`, never the directory the projection
@@ -147,6 +160,12 @@ import { kindLabelOf } from './kind-label.js'
  */
 export { DEFAULT_DIRECTION, type LayoutDirection } from './layout-direction.js'
 import type { LayoutDirection } from './layout-direction.js'
+/**
+ * How a view arranges itself, and the default. Same split, same terms
+ * (ADR 0147).
+ */
+export { DEFAULT_LAYOUT, LAYOUT_MODES, type LayoutMode } from './layout-mode.js'
+import type { LayoutMode } from './layout-mode.js'
 import { validateProjection } from './schema-validation.js'
 
 export type ProjectionQuery = ProjectionDefinition['query']
@@ -213,6 +232,7 @@ export function canonicalProjection(
             ...(presentation.showLifecycle === undefined ? {} : { showLifecycle: presentation.showLifecycle }),
             ...(presentation.showEvidence === undefined ? {} : { showEvidence: presentation.showEvidence }),
             ...(presentation.showOwnership === undefined ? {} : { showOwnership: presentation.showOwnership }),
+            ...(presentation.showKindLabels === undefined ? {} : { showKindLabels: presentation.showKindLabels }),
             ...(presentation.notation === undefined ? {} : { notation: presentation.notation }),
           },
         }),
@@ -989,6 +1009,9 @@ export function evaluateProjection(
             ...(projection.presentation.showOwnership === undefined
               ? {}
               : { showOwnership: projection.presentation.showOwnership }),
+            ...(projection.presentation.showKindLabels === undefined
+              ? {}
+              : { showKindLabels: projection.presentation.showKindLabels }),
             ...(projection.presentation.notation === undefined
               ? {}
               : { notation: projection.presentation.notation }),

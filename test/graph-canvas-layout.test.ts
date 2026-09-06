@@ -2,8 +2,8 @@ import cytoscape from 'cytoscape'
 import { describe, expect, it, vi } from 'vitest'
 import {
   applySavedPositions,
-  buildLayoutConfig,
   buildPositionMap,
+  relayoutAfterFold,
   buildStylesheet,
   DRAG_SAVE_DEBOUNCE_MS,
   effectiveSavedPositions,
@@ -13,10 +13,9 @@ import {
   steppedZoom,
 } from '../src/visual-app/graph-canvas.js'
 import { ASPECT_SHAPES, RELATIONSHIP_NOTATION } from '../src/notation/archimate.js'
-import {
-  DEFAULT_DIRECTION,
-  type LayoutDirection,
-} from '../src/layout-direction.js'
+import { DEFAULT_DIRECTION } from '../src/layout-direction.js'
+import { LAYOUT_MODES } from '../src/layout-mode.js'
+import { rootLayoutOptions } from '../src/visual-app/elk-layout.js'
 import type {
   VisualLayoutPositions,
   VisualLayoutSavePayload,
@@ -285,15 +284,6 @@ const buildDisconnectedFixture = (count: number) =>
     })),
   })
 
-// elk-backed layouts (layered, force) resolve asynchronously; the built-in
-// concentric layout (radial) resolves synchronously but still fires
-// `layoutstop`, so one helper covers all three.
-const runLayout = (cy: cytoscape.Core, options: cytoscape.LayoutOptions): Promise<void> =>
-  new Promise((resolve) => {
-    cy.one('layoutstop', () => resolve())
-    cy.layout(options).run()
-  })
-
 const countOverlappingPairs = (cy: cytoscape.Core): number => {
   const boxes = cy.nodes().map((node) => node.boundingBox())
   let overlaps = 0
@@ -307,63 +297,86 @@ const countOverlappingPairs = (cy: cytoscape.Core): number => {
   return overlaps
 }
 
-describe('buildLayoutConfig', () => {
-  it('lays out with zero overlapping node bounding boxes', async () => {
+// A leaf-only fixture drawn with the production stylesheet, so an edge's
+// resting `curve-style` is the stylesheet's `round-taxi` and not headless
+// cytoscape's default. `a serves b`, unnamed, so the label is the reading.
+const buildStyledPair = (mode: Parameters<typeof buildStylesheet>[5] = 'routed') =>
+  cytoscape({
+    styleEnabled: true,
+    style: buildStylesheet(true, true, false, true, true, mode),
+    layout: { name: 'null' },
+    elements: [
+      { data: { id: 'a', label: 'a', wrapLabel: 'a' }, group: 'nodes' as const },
+      { data: { id: 'b', label: 'b', wrapLabel: 'b' }, group: 'nodes' as const },
+      { data: { id: 'c', label: 'c', wrapLabel: 'c' }, group: 'nodes' as const },
+      {
+        data: {
+          id: 'ab',
+          source: 'a',
+          target: 'b',
+          name: null,
+          kindLabel: 'serving',
+          coreKindLabel: 'serving',
+        },
+        group: 'edges' as const,
+      },
+      {
+        data: {
+          id: 'bc',
+          source: 'b',
+          target: 'c',
+          name: 'hands over',
+          kindLabel: 'flow',
+          coreKindLabel: 'flow',
+        },
+        group: 'edges' as const,
+      },
+    ],
+  })
+
+describe('layout runs', () => {
+  it.each(LAYOUT_MODES)('lays out %s with zero overlapping node bounding boxes', async (mode) => {
     const cy = buildLayoutFixture()
-    await runLayout(cy, buildLayoutConfig('top-down'))
+    await relayoutVisible(cy, 'top-down', mode)
     expect(countOverlappingPairs(cy)).toBe(0)
   })
 
   // The view says which way it runs (#274, ADR 0121). The DOWN pin was right
   // for a layer-band view and wrong for the others, and the format has
-  // declared `presentation.direction` all along - honoured by the LikeC4
-  // export and, until now, by nothing on the canvas.
-  const elkOf = (direction: LayoutDirection): Record<string, unknown> =>
-    (buildLayoutConfig(direction) as unknown as { elk: Record<string, unknown> })
-      .elk
-
+  // declared `presentation.direction` all along.
   it('runs the direction the view declares', () => {
-    expect(elkOf('top-down')['elk.direction']).toBe('DOWN')
-    expect(elkOf('left-right')['elk.direction']).toBe('RIGHT')
-    // The default is the format's, not a second opinion held here: a view that
-    // declares nothing is handed DEFAULT_DIRECTION by the caller and lands on
-    // the top-down the layer bands earned.
-    expect(elkOf(DEFAULT_DIRECTION)['elk.direction']).toBe('DOWN')
+    expect(rootLayoutOptions('top-down', 'layered')['elk.direction']).toBe('DOWN')
+    expect(rootLayoutOptions('left-right', 'layered')['elk.direction']).toBe('RIGHT')
+    // The default is the format's, not a second opinion held here.
+    expect(rootLayoutOptions(DEFAULT_DIRECTION, 'layered')['elk.direction']).toBe('DOWN')
   })
 
-  // Adopted on a sweep of every authored view in this repository rather than
-  // on the single 8-subject view #274 opened with: holding direction DOWN,
-  // NETWORK_SIMPLEX cut total edge length across the 28 views by a third and
-  // moved crossings 1888 to 1821. Direction-independent, so it is stated once
-  // for both.
-  it('places with NETWORK_SIMPLEX whichever way the view runs (#274)', () => {
+  // Adopted on a sweep of every authored view in this repository (ADR 0121)
+  // and kept by every mode: the modes differ in what happens to edges and to
+  // which end sits above, never in how a layer is placed.
+  it('places with NETWORK_SIMPLEX whichever way the view runs, in every mode (#274)', () => {
     for (const direction of ['top-down', 'left-right'] as const) {
-      expect(elkOf(direction)['elk.layered.nodePlacement.strategy']).toBe(
-        'NETWORK_SIMPLEX',
-      )
+      for (const mode of LAYOUT_MODES) {
+        expect(rootLayoutOptions(direction, mode)['elk.layered.nodePlacement.strategy']).toBe(
+          'NETWORK_SIMPLEX',
+        )
+      }
     }
   })
 
   // Nine subjects, no relationships (#308). Before the packing ratio was
-  // pinned, cytoscape-elk's injected `aspectRatio` (the viewport's momentary
-  // shape - NaN headless) let ELK's component packing emit one 172x1092
-  // column: w/h 0.16, every node in the same 250px-wide lane. A grid has
-  // several lanes in both axes and bounded elongation either way.
-  //
-  // Asserted for BOTH directions since #274: the packer breaks rows in the
-  // pre-rotation frame, so the same requested ratio lands differently under
-  // DOWN and RIGHT, and a left-right view must not be the one that gets the
-  // column back.
+  // pinned, the viewport's momentary shape (NaN headless) let ELK's component
+  // packing emit one 172x1092 column. A grid has several lanes in both axes
+  // and bounded elongation either way; asserted for both directions because
+  // the packer breaks rows in the pre-rotation frame.
   it.each(['top-down', 'left-right'] as const)(
     'packs disconnected subjects into a grid, never one column, running %s (#308)',
     async (direction) => {
       const cy = buildDisconnectedFixture(9)
-      await runLayout(cy, buildLayoutConfig(direction))
+      await relayoutVisible(cy, direction, 'layered')
       const bb = cy.nodes().boundingBox()
       expect(bb.w / bb.h).toBeGreaterThan(0.5)
       expect(bb.w / bb.h).toBeLessThan(4)
-      // Grid-ish, stated structurally as well as proportionally: more than one
-      // distinct column of node centres, and more than one distinct row.
       const xs = new Set(cy.nodes().map((node) => Math.round(node.position().x)))
       const ys = new Set(cy.nodes().map((node) => Math.round(node.position().y)))
       expect(xs.size).toBeGreaterThan(1)
@@ -372,23 +385,154 @@ describe('buildLayoutConfig', () => {
     },
   )
 
-  // The packing ratio is this config's own, stated on the bare `aspectRatio`
-  // key on purpose: cytoscape-elk injects `aspectRatio: cy.width() /
-  // cy.height()` into the very bag it forwards to ELK, and only the same
-  // spelling replaces that injection instead of racing it as a second key.
-  it('pins the component packing ratio, replacing the injected viewport shape (#308)', () => {
-    expect(elkOf('top-down')['aspectRatio']).toBe(2.5)
+  // The packing ratio is this canvas's own, under ELK's own key. The bare
+  // `aspectRatio` spelling existed only to overwrite the viewport ratio the
+  // cytoscape-elk extension injected, and went with the extension (ADR 0147).
+  it('pins the component packing ratio under its qualified key (#308)', () => {
+    expect(rootLayoutOptions('top-down', 'layered')['elk.aspectRatio']).toBe('2.5')
+    expect(rootLayoutOptions('top-down', 'layered')).not.toHaveProperty('aspectRatio')
   })
 
-  // `layered` is the only backend, so a layout run is one synchronous elk
-  // pass. Nothing can still be in flight when the next request arrives, which
-  // is what retired the busy notice, the two-pass chain and the in-flight
-  // guard that `force` needed.
-  it('relayouts the visible subgraph in one synchronous pass', () => {
+  // Layout has always resolved asynchronously - ELK answers behind a promise
+  // even on the calling thread - and the canvas now says so in its types
+  // (ADR 0147). Positions land when the promise does, through cytoscape's own
+  // `preset` layout, which is what fires `layoutstop` for the saved-position
+  // pin exactly once per run.
+  it('resolves asynchronously and applies positions exactly once', async () => {
     const cy = buildHubFixture()
-    relayoutVisible(cy, 'top-down')
-    expect(buildPositionMap(cy.nodes()).size ?? Object.keys(buildPositionMap(cy.nodes())).length)
-      .toBeGreaterThan(0)
+    const before = buildPositionMap(cy.nodes())
+    let stops = 0
+    cy.on('layoutstop', () => {
+      stops += 1
+    })
+    const run = relayoutVisible(cy, 'top-down', 'layered')
+    expect(buildPositionMap(cy.nodes())).toEqual(before)
+    await run
+    expect(buildPositionMap(cy.nodes())).not.toEqual(before)
+    expect(stops).toBe(1)
+  })
+
+  // A view switch during a slow layout: the first run's answer describes a
+  // graph the reviewer has left. The last request wins and the superseded
+  // one applies nothing - not positions, not a fit, not a `layoutstop`.
+  it('applies only the last of two overlapping runs', async () => {
+    const cy = buildHubFixture()
+    let stops = 0
+    cy.on('layoutstop', () => {
+      stops += 1
+    })
+    const first = relayoutVisible(cy, 'top-down', 'layered')
+    const second = relayoutVisible(cy, 'left-right', 'layered')
+    await Promise.all([first, second])
+    expect(stops).toBe(1)
+    // The hub's sixteen leaves stack in one layer beside it under RIGHT, so
+    // the surviving layout is taller than it is wide; DOWN would be the
+    // other way round.
+    const bb = cy.nodes().boundingBox()
+    expect(bb.h).toBeGreaterThan(bb.w)
+  })
+
+  it('resolves at once when nothing is visible, asking ELK nothing', async () => {
+    const cy = buildLayoutFixture()
+    cy.elements().style('display', 'none')
+    let stops = 0
+    cy.on('layoutstop', () => {
+      stops += 1
+    })
+    await expect(relayoutVisible(cy, 'top-down', 'routed')).resolves.toBeUndefined()
+    expect(stops).toBe(0)
+  })
+
+  // A fold relayouts, and the reader's eye is on the box they just clicked
+  // (#473, ADR 0143). The anchor is read from the FINISHED layout - layout has
+  // always resolved asynchronously, and reading it before ELK ran left the
+  // translation a no-op - so the toggled node ends where it started, and the
+  // rest of the graph moves around it.
+  it('keeps the toggled box where the reader last saw it after a fold relayout', async () => {
+    const cy = buildLayoutFixture()
+    await relayoutVisible(cy, 'top-down', 'layered')
+    const eye = { x: 1234, y: 567 }
+    cy.getElementById('a').position(eye)
+    // Settled through cytoscape's own event as well as the returned promise:
+    // an implementation that forgot to await would resolve before ELK did,
+    // and an assertion made in that gap would read the anchor before the
+    // layout had moved it - green for the wrong reason.
+    const settled = new Promise<void>((resolve) => cy.one('layoutstop', () => resolve()))
+    await relayoutAfterFold(cy, 'left-right', 'layered', true, 'a')
+    await settled
+    expect(cy.getElementById('a').position()).toEqual(eye)
+    // Everything else was placed relative to it, not left where it was.
+    expect(countOverlappingPairs(cy)).toBe(0)
+  })
+
+  describe('routed modes (ADR 0147)', () => {
+    it("draws every edge on ELK's route, and layered gives them back to the stylesheet", async () => {
+      const cy = buildStyledPair('routed')
+      await relayoutVisible(cy, 'top-down', 'routed')
+      cy.edges().forEach((edge) => {
+        expect(edge.hasClass('routed')).toBe(true)
+        expect(['segments', 'straight']).toContain(edge.style('curve-style'))
+      })
+      await relayoutVisible(cy, 'top-down', 'layered')
+      cy.edges().forEach((edge) => {
+        expect(edge.hasClass('routed')).toBe(false)
+        expect(edge.style('curve-style')).toBe('round-taxi')
+      })
+    })
+
+    // A route belongs to the placement ELK made. The saved-position pin lands
+    // on `layoutstop`, before routes are drawn, so an edge with a pinned end
+    // is never drawn on a route computed for where that end was.
+    it('leaves an edge on the stylesheet when a saved position moved one of its ends', async () => {
+      const cy = buildStyledPair('routed')
+      cy.on('layoutstop', () => applySavedPositions(cy, { a: { x: 5000, y: 5000 } }))
+      await relayoutVisible(cy, 'top-down', 'routed')
+      expect(cy.getElementById('ab').hasClass('routed')).toBe(false)
+      expect(cy.getElementById('ab').style('curve-style')).toBe('round-taxi')
+      expect(cy.getElementById('bc').hasClass('routed')).toBe(true)
+    })
+
+    it('says the routed label as a source label where ELK reserved room for it', async () => {
+      const cy = buildStyledPair('routed')
+      await relayoutVisible(cy, 'top-down', 'routed')
+      const edge = cy.getElementById('ab')
+      expect(edge.style('label')).toBe('')
+      expect(edge.style('source-label')).toBe('serves')
+      expect(edge.numericStyle('source-text-offset')).toBeGreaterThan(0)
+      // A named relationship says its name, routed or not.
+      expect(cy.getElementById('bc').style('source-label')).toBe('hands over')
+    })
+
+    // The served element sits ABOVE what serves it under served-by; the
+    // arrow still points at it, since only the layering turned.
+    it('puts the served element above what serves it under served-by', async () => {
+      const routed = buildStyledPair('routed')
+      await relayoutVisible(routed, 'top-down', 'routed')
+      expect(routed.getElementById('a').position().y).toBeLessThan(
+        routed.getElementById('b').position().y,
+      )
+      const served = buildStyledPair('served-by')
+      await relayoutVisible(served, 'top-down', 'served-by')
+      expect(served.getElementById('b').position().y).toBeLessThan(
+        served.getElementById('a').position().y,
+      )
+      expect(served.getElementById('ab').style('target-arrow-shape')).toBe('vee')
+    })
+  })
+
+  // What an edge says is decided in one place, and the stylesheet asks it in
+  // the layout's voice: the same unnamed serving reads "serves" where the
+  // server is drawn above and "served by" where it is drawn below. Off, an
+  // unnamed edge says nothing and a named one keeps its name.
+  it("labels an unnamed edge with its reading in the layout's voice", () => {
+    const cy = buildStyledPair('routed')
+    expect(cy.getElementById('ab').style('label')).toBe('serves')
+    expect(cy.getElementById('bc').style('label')).toBe('hands over')
+    cy.style(buildStylesheet(true, true, false, true, true, 'served-by'))
+    expect(cy.getElementById('ab').style('label')).toBe('served by')
+    cy.style(buildStylesheet(true, true, false, true, false, 'served-by'))
+    expect(cy.getElementById('ab').style('label')).toBe('')
+    expect(cy.getElementById('bc').style('label')).toBe('hands over')
   })
 })
 
