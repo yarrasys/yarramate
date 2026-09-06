@@ -12,7 +12,11 @@
  */
 import type cytoscape from 'cytoscape'
 import type { Core, EdgeCollection, EdgeSingular, NodeSingular } from 'cytoscape'
-import type { ElkPlacement } from './elk-layout.js'
+import type { ElkPlacement, ElkRoute } from './elk-layout.js'
+import type {
+  VisualLayoutPositions,
+  VisualLayoutRoutes,
+} from '../adapters/visual/protocol-contract.js'
 
 export interface Point {
   readonly x: number
@@ -134,6 +138,9 @@ export function applyEdgeRoutes(
           route.labelAt,
         ) as unknown as cytoscape.Css.Edge,
       )
+      // The route itself, kept on the edge so a drag-save can write it beside
+      // the positions it was computed for (ADR 0147).
+      edge.scratch(ROUTE_SCRATCH, route)
       edge.addClass('routed')
       applied += 1
     }
@@ -147,6 +154,61 @@ export function applyEdgeRoutes(
 export function clearEdgeRoutes(edges: EdgeCollection): void {
   edges.removeClass('routed')
   edges.removeStyle(ROUTE_STYLE_PROPERTIES.join(' '))
+  // `removeScratch` is cytoscape's, absent from its type declarations.
+  ;(edges as unknown as { removeScratch(namespace: string): void }).removeScratch(ROUTE_SCRATCH)
+}
+
+const ROUTE_SCRATCH = '_route'
+
+/**
+ * The routes currently drawn, keyed by relationship id, in the shape the
+ * layout sidecar keeps (ADR 0147). Only routed edges appear: an edge a moved
+ * endpoint handed back to the stylesheet has no route worth saving, which is
+ * exactly what lets a saved layout keep every other edge's route.
+ */
+export function buildRouteMap(edges: EdgeCollection): VisualLayoutRoutes {
+  const routes: Record<string, VisualLayoutRoutes[string]> = {}
+  edges.forEach((edge) => {
+    if (!edge.hasClass('routed')) return
+    const route = edge.scratch(ROUTE_SCRATCH) as ElkRoute | undefined
+    if (route === undefined) return
+    routes[edge.id()] = {
+      points: route.points.map((point) => ({ x: point.x, y: point.y })),
+      labelAt: route.labelAt,
+    }
+  })
+  return routes
+}
+
+/**
+ * Draws the routes a saved layout kept, on every edge that is not already
+ * routed and whose two ends still sit where the saved positions say. The
+ * saved positions are the placement those routes were computed for, so the
+ * same eligibility ELK's own routes get applies verbatim; an end the reader
+ * has since moved leaves its edges on the stylesheet's straight line.
+ */
+export function applySavedRoutes(
+  cy: Core,
+  routes: VisualLayoutRoutes,
+  positions: VisualLayoutPositions,
+): number {
+  const placement: ElkPlacement = {
+    nodes: new Map(Object.entries(positions).map(([id, at]) => [id, { x: at.x, y: at.y }])),
+    edges: new Map(
+      Object.entries(routes).map(([id, route]) => [
+        id,
+        { points: route.points.map((point) => ({ x: point.x, y: point.y })), labelAt: route.labelAt },
+      ]),
+    ),
+  }
+  return applyEdgeRoutes(
+    cy,
+    placement,
+    (edge) =>
+      !edge.hasClass('routed') &&
+      placedByElk(edge.source(), placement) &&
+      placedByElk(edge.target(), placement),
+  )
 }
 
 /**

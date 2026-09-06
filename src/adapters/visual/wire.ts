@@ -13,6 +13,7 @@ import type {
   VisualKindOption,
   VisualPatternOption,
   VisualLayoutPositions,
+  VisualLayoutRoutes,
   VisualLayoutSaveResultPayload,
   VisualResponse,
   VisualTerminationReason,
@@ -95,6 +96,14 @@ export interface VisualRenderedModel {
       readonly folded: readonly string[]
       readonly unfolded: readonly string[]
     }
+  }
+  /**
+   * The routes each saved layout was drawing (ADR 0147), keyed by projection
+   * id. A sibling of `layouts` for the reason `folds` is: a layout entry is
+   * positions, and widening it would reach every reader of it.
+   */
+  readonly routes?: {
+    readonly [projectionId: string]: VisualLayoutRoutes
   }
   /**
    * Which subject fills which slot of which instance (ADR 0131), and which

@@ -23,6 +23,10 @@
     "unfolded": {
       "description": "The instances this view draws OPEN even though `presentation.fold` says to fold them (#473). Two lists rather than one, because a reader who opened a box must not have it close again the moment the view's default is read back.",
       "$ref": "#/$defs/subjectIds"
+    },
+    "routes": {
+      "description": "The routes the canvas was drawing when the positions were saved (ADR 0147), keyed by relationship id, in absolute canvas coordinates from the source end. A route is applied only while both of its ends still sit where `positions` says; an edge whose end has moved draws straight. Absent means the layout recomputes every route.",
+      "$ref": "#/$defs/routes"
     }
   },
   "$defs": {
@@ -51,6 +55,33 @@
       "properties": {
         "x": { "type": "number" },
         "y": { "type": "number" }
+      }
+    },
+    "routes": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/route"
+      }
+    },
+    "route": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["points", "labelAt"],
+      "properties": {
+        "points": {
+          "description": "Source end first, both endpoints included, so a route is never fewer than two points.",
+          "type": "array",
+          "minItems": 2,
+          "items": { "$ref": "#/$defs/position" }
+        },
+        "labelAt": {
+          "description": "How far along the route, in px from the source end, the label's centre sits; null for a route with no label.",
+          "type": ["number", "null"]
+        }
       }
     }
   }

@@ -21,6 +21,7 @@ import { DEFAULT_LAYOUT, routesEdges, type LayoutMode } from '../layout-mode.js'
 import { DEFAULT_STYLE_PRESET, presetBlocks, stylePresetOf, type StylePresetId } from './style-presets.js'
 import type {
   VisualLayoutPositions,
+  VisualLayoutRoutes,
   VisualLayoutSavePayload,
 } from '../adapters/visual/protocol-contract.js'
 import {
@@ -51,6 +52,8 @@ import {
 } from './elk-layout.js'
 import {
   applyEdgeRoutes,
+  applySavedRoutes,
+  buildRouteMap,
   clearEdgeRoutes,
   placedByElk,
   registerRouteInvalidation,
@@ -1101,11 +1104,18 @@ const LAYOUT_GENERATION = '_layoutGeneration'
  * drops its answer, positions, routes and fit alike, rather than laying a
  * previous view's geometry over the current one's ids.
  */
+/** What a saved layout holds for the active view, as the canvas honours it. */
+export interface SavedLayout {
+  readonly positions?: VisualLayoutPositions
+  readonly routes?: VisualLayoutRoutes
+}
+
 async function runLayout(
   eles: Core | CollectionReturnValue,
   direction: LayoutDirection,
   mode: LayoutMode,
   showKindLabels: boolean,
+  saved?: SavedLayout,
 ): Promise<void> {
   const cy: Core = 'elements' in eles ? eles : eles.cy()
   const collection = 'elements' in eles ? eles.elements() : eles
@@ -1148,6 +1158,13 @@ async function runLayout(
     placement,
     (edge) => placedByElk(edge.source(), placement) && placedByElk(edge.target(), placement),
   )
+  // Then the routes the saved layout kept, on the edges the pin left
+  // unrouted: an edge between two pinned subjects draws the route it was
+  // saved with, and only an edge touching a subject the reader has since
+  // moved stays on the straight line (ADR 0147).
+  if (saved?.routes !== undefined) {
+    applySavedRoutes(cy, saved.routes, saved.positions ?? {})
+  }
 }
 
 /**
@@ -1204,8 +1221,9 @@ export function relayoutVisible(
   direction: LayoutDirection,
   mode: LayoutMode = DEFAULT_LAYOUT,
   showKindLabels: boolean = true,
+  saved?: SavedLayout,
 ): Promise<void> {
-  return runLayout(cy.elements(':visible'), direction, mode, showKindLabels)
+  return runLayout(cy.elements(':visible'), direction, mode, showKindLabels, saved)
 }
 
 /**
@@ -1234,6 +1252,7 @@ export async function relayoutAfterFold(
   mode: LayoutMode,
   showKindLabels: boolean,
   anchorId: string | null,
+  saved?: SavedLayout,
 ): Promise<boolean> {
   const anchor = anchorId === null ? null : cy.getElementById(anchorId)
   const before =
@@ -1241,7 +1260,7 @@ export async function relayoutAfterFold(
   // Awaited, so the anchor is read from the finished layout. Layout has
   // always resolved asynchronously, and before ADR 0147 this read it before
   // ELK had run: the translation below never fired.
-  await relayoutVisible(cy, direction, mode, showKindLabels)
+  await relayoutVisible(cy, direction, mode, showKindLabels, saved)
   if (cy.destroyed()) return false
   if (before !== null && anchor !== null && anchor.nonempty()) {
     const after = anchor.position()
@@ -1346,6 +1365,15 @@ export function effectiveSavedPositions(
   return discardedViews.has(viewId) ? undefined : saved
 }
 
+/** The same session-local discard, for the routes saved beside the positions. */
+export function effectiveSavedRoutes(
+  saved: VisualLayoutRoutes | undefined,
+  viewId: string,
+  discardedViews: ReadonlySet<string>,
+): VisualLayoutRoutes | undefined {
+  return discardedViews.has(viewId) ? undefined : saved
+}
+
 // Whether a saved layout is actually in force for what is on screen: the
 // sidecar names at least one subject the active view draws. Derived from the
 // view's own match set (`matchedIds ?? every node` - the same base
@@ -1408,7 +1436,15 @@ export function registerDragSave(
       // The unfiltered pseudo-view is not a saved projection; the server
       // rejects a save aimed at it.
       if (projectionId === '') return
-      onSaveLayout({ projectionId, positions: buildPositionMap(cy.nodes()) })
+      // The routes in force beside the positions they were computed for
+      // (ADR 0147); a canvas drawing none writes none, so a `layered` save
+      // produces the bytes it always did.
+      const routes = buildRouteMap(cy.edges())
+      onSaveLayout({
+        projectionId,
+        positions: buildPositionMap(cy.nodes()),
+        ...(Object.keys(routes).length === 0 ? {} : { routes }),
+      })
     }, DRAG_SAVE_DEBOUNCE_MS)
   }
   cy.on('dragfree', 'node', handler)
@@ -1480,6 +1516,8 @@ interface GraphCanvasProps {
   readonly stylePreset: StylePresetId
   /** Saved layout for the active view, or undefined when it has none yet. */
   readonly savedPositions: VisualLayoutPositions | undefined
+  /** The routes that layout was drawing when saved (ADR 0147), if it kept any. */
+  readonly savedRoutes?: VisualLayoutRoutes
   readonly onSaveLayout: (payload: VisualLayoutSavePayload) => void
   /**
    * A kind dropped from the palette (#295): the kind's label and the model
@@ -1526,6 +1564,7 @@ export function GraphCanvas({
   showKindLabels,
   stylePreset,
   savedPositions,
+  savedRoutes,
   onSaveLayout,
   onKindDrop,
   onCanvasReady,
@@ -1552,6 +1591,11 @@ export function GraphCanvas({
     activeViewId,
     discardedViews,
   )
+  const effectiveRoutes = effectiveSavedRoutes(
+    savedRoutes,
+    activeViewId,
+    discardedViews,
+  )
   const onSelectRef = useRef(onSelect)
   const onCanvasReadyRef = useRef(onCanvasReady)
   onCanvasReadyRef.current = onCanvasReady
@@ -1571,6 +1615,7 @@ export function GraphCanvas({
   // Keep latest onSaveLayout and savedPositions for the drag-save handler
   const onSaveLayoutRef = useRef(onSaveLayout)
   const savedPositionsRef = useRef(effectiveSaved)
+  const savedRoutesRef = useRef(effectiveRoutes)
   const dragSaveHandleRef = useRef<DragSaveHandle | null>(null)
   // The viewport a layout (or a resize refit) last left behind. Anything else
   // on screen is the reviewer's own pan/zoom, which a resize must not discard.
@@ -1599,6 +1644,9 @@ export function GraphCanvas({
   useEffect(() => {
     savedPositionsRef.current = effectiveSaved
   }, [effectiveSaved])
+  useEffect(() => {
+    savedRoutesRef.current = effectiveRoutes
+  }, [effectiveRoutes])
 
   // Cancel pending drag-save when the active view changes, so a queued save
   // never lands against a different view's sidecar. Also cleared on unmount.
@@ -1838,6 +1886,7 @@ export function GraphCanvas({
       direction,
       layout,
       showKindLabels,
+      { positions: savedPositionsRef.current, routes: savedRoutesRef.current },
     )
     // EVERY input passed to `graphToElements` above, because an input this
     // effect reads and does not depend on cannot rebuild anything: the
@@ -1904,6 +1953,7 @@ export function GraphCanvas({
       layout,
       showKindLabels,
       changed.length === 1 ? changed[0]! : null,
+      { positions: savedPositionsRef.current, routes: savedRoutesRef.current },
     )
   }, [folded])
 
@@ -1998,7 +2048,10 @@ export function GraphCanvas({
     quickFilterTextRef.current = quickFilterText
     if (pendingViewFitRef.current || matchedChanged) {
       pendingViewFitRef.current = false
-      void relayoutVisible(cyRef.current, direction, layout, showKindLabels)
+      void relayoutVisible(cyRef.current, direction, layout, showKindLabels, {
+        positions: savedPositionsRef.current,
+        routes: savedRoutesRef.current,
+      })
     } else if (quickFilterChanged && fitVisible(cyRef.current)) {
       // A quick-filter keystroke never relayouts - the survivors keep their
       // positions (a reviewer's drags included) and the viewport re-frames
@@ -2027,6 +2080,7 @@ export function GraphCanvas({
   const discardSavedLayout = (): void => {
     setDiscardedViews((prev) => new Set(prev).add(activeViewId))
     savedPositionsRef.current = undefined
+    savedRoutesRef.current = undefined
     dragSaveHandleRef.current?.cancelPending()
     if (cyRef.current !== null) {
       void relayoutVisible(cyRef.current, direction, layout, showKindLabels)

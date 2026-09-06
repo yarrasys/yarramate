@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   applySavedPositions,
   buildPositionMap,
+  effectiveSavedRoutes,
   relayoutAfterFold,
   buildStylesheet,
   DRAG_SAVE_DEBOUNCE_MS,
@@ -16,6 +17,7 @@ import { ASPECT_SHAPES, RELATIONSHIP_NOTATION } from '../src/notation/archimate.
 import { DEFAULT_DIRECTION } from '../src/layout-direction.js'
 import { LAYOUT_MODES } from '../src/layout-mode.js'
 import { rootLayoutOptions } from '../src/visual-app/elk-layout.js'
+import { buildRouteMap } from '../src/visual-app/edge-routes.js'
 import type {
   VisualLayoutPositions,
   VisualLayoutSavePayload,
@@ -126,6 +128,34 @@ describe('layout drag-save and position pinning', () => {
       positions: { node1: { x: 10, y: 20 }, node2: { x: 30, y: 40 } },
     })
 
+    handle.dispose()
+    vi.useRealTimers()
+  })
+
+  it('carries the routes the canvas is drawing beside the positions (ADR 0147)', async () => {
+    const cy = cytoscape({
+      styleEnabled: true,
+      style: buildStylesheet(true, true, false, true, true, 'routed'),
+      layout: { name: 'null' },
+      elements: buildLayoutFixture().elements().jsons() as cytoscape.ElementDefinition[],
+    })
+    await relayoutVisible(cy, 'top-down', 'routed')
+    const routed = cy.edges().filter((edge) => edge.hasClass('routed'))
+    expect(routed.length).toBe(6)
+    vi.useFakeTimers()
+    let saved: VisualLayoutSavePayload | null = null
+    const handle = registerDragSave(cy, () => 'view1', (payload) => {
+      saved = payload
+    })
+    cy.getElementById('a').emit('dragfree')
+    vi.advanceTimersByTime(DRAG_SAVE_DEBOUNCE_MS)
+    const payload = saved as VisualLayoutSavePayload | null
+    expect(Object.keys(payload?.routes ?? {}).sort()).toEqual(routed.map((edge) => edge.id()).sort())
+    Object.values(payload?.routes ?? {}).forEach((route) => {
+      expect(route.points.length).toBeGreaterThanOrEqual(2)
+    })
+    // The positions the routes were computed for ride in the same save.
+    expect(Object.keys(payload?.positions ?? {}).sort()).toEqual(['a', 'b', 'c', 'd', 'e', 'f'])
     handle.dispose()
     vi.useRealTimers()
   })
@@ -541,6 +571,59 @@ describe('layout runs', () => {
       const parsed = edge as unknown as { pstyle(name: string): { bypass?: boolean } | null }
       expect(parsed.pstyle('segment-radii')?.bypass ?? false).toBe(false)
     })
+  })
+
+  // A saved layout keeps the routes it was drawing (ADR 0147). On the next
+  // run the pin moves every subject to its saved place, so none sits where
+  // ELK just put it and ELK's fresh routes fit nothing; the saved routes then
+  // draw between every pair of pinned ends, and only the edges of the subject
+  // the reader moved after the save fall back to the stylesheet.
+  it('keeps the saved routes on every edge the reader did not disturb', async () => {
+    const cy = cytoscape({
+      styleEnabled: true,
+      style: buildStylesheet(true, true, false, true, true, 'routed'),
+      layout: { name: 'null' },
+      elements: buildLayoutFixture().elements().jsons() as cytoscape.ElementDefinition[],
+    })
+    await relayoutVisible(cy, 'top-down', 'routed')
+    // The snapshot a drag-save takes, shifted wholesale so the saved layout is
+    // not ELK's own answer; the routes touching `a` were dropped by that drag.
+    const shift = 1000
+    const routes = Object.fromEntries(
+      Object.entries(buildRouteMap(cy.edges()))
+        .filter(([id]) => !cy.getElementById(id).connectedNodes().contains(cy.getElementById('a')))
+        .map(([id, route]) => [
+          id,
+          { points: route.points.map((p) => ({ x: p.x + shift, y: p.y + shift })), labelAt: route.labelAt },
+        ]),
+    )
+    expect(Object.keys(routes).length).toBe(4)
+    const positions = Object.fromEntries(
+      Object.entries(buildPositionMap(cy.nodes())).map(([id, p]) => [
+        id,
+        // `a` was moved after the save: its saved place is off its old routes.
+        { x: p.x + shift + (id === 'a' ? 400 : 0), y: p.y + shift },
+      ]),
+    )
+    // What the mount handler does on every layoutstop: pin the saved layout.
+    cy.on('layoutstop', () => applySavedPositions(cy, positions))
+    await relayoutVisible(cy, 'top-down', 'routed', true, { positions, routes })
+    const touchingA = cy.getElementById('a').connectedEdges()
+    expect(touchingA.length).toBe(2)
+    touchingA.forEach((edge) => {
+      expect(edge.hasClass('routed')).toBe(false)
+      expect(edge.style('curve-style')).toBe('taxi')
+    })
+    cy.edges()
+      .difference(touchingA)
+      .forEach((edge) => {
+        expect(edge.hasClass('routed')).toBe(true)
+        // A two-point route is drawn straight, a bent one as segments.
+        expect(['segments', 'straight']).toContain(edge.style('curve-style'))
+      })
+    // A discarded view yields no routes to pin, as it yields no positions.
+    expect(effectiveSavedRoutes(routes, 'v', new Set(['v']))).toBeUndefined()
+    expect(effectiveSavedRoutes(routes, 'v', new Set())).toBe(routes)
   })
 
   // A container's title sits in the band above its children, where a route

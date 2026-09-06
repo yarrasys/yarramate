@@ -167,7 +167,10 @@ a button that claimed otherwise would be lying about the lifecycle.
 
 Dragging a node saves absolute positions to an adapter-owned sidecar,
 `.yarramate/visual-layout/<projectionId>.yaml` — one
-`yarramate/visual-layout/v1` document per saved projection. It is validated by
+`yarramate/visual-layout/v1` document per saved projection. In a routed mode
+the same save carries the routes the canvas was drawing, as optional `routes`
+keyed by relationship id, each a list of points and where along it the label
+sat, and it carries the fold state (below). It is validated by
 the adapter, never by Core, never routed through `apply`, and never
 `git commit`ed by the runtime. It lives under `.yarramate/` because a
 hand-arranged layout cannot be regenerated from the model, so it is a
@@ -212,11 +215,14 @@ browser: `layered` 278 ms, `routed` 815 ms, `served-by` 805 ms, `bands`
 in about 200 ms. A routed Landscape draws roughly three times the area of
 today's, which was compact only by drawing through things.
 
-**A route belongs to the placement ELK made.** An edge keeps its route only
-while both ends sit exactly where ELK put them. A saved position (the sidecar
-above) or a drag hands that node's edges, and its box's, back to the
-stylesheet's straight line; a fold translates the whole graph, and a route
-survives that intact. Layout is awaited - it always resolved asynchronously,
+**A route belongs to the placement it was computed for.** An edge keeps its
+route only while both ends sit exactly where that placement put them: ELK's
+own, or the saved layout's, whose routes ride in the sidecar beside its
+positions. So a reader who moved one subject keeps every other edge's route on
+the next visit, and only the edges of the moved subject, and of its box, go
+back to the stylesheet's straight line, as they do the moment it is dragged. A
+fold translates the whole graph, and a route survives that intact. Layout is
+awaited - it always resolved asynchronously,
 and the canvas now says so - and overlapping runs resolve last-request-wins,
 so a view switch during a slow layout never lays the previous view's geometry
 over the current one. Every layout, the first included, is scoped to what the
@@ -547,7 +553,10 @@ query tab rather than a refusal: a diagnostic has no warning severity, and this
 is not an error.
 
 Fold state saves beside the positions in the same layout sidecar, as optional
-`folded` and `unfolded` lists, in full every time. Two lists rather than one,
+`folded` and `unfolded` lists, in full every time (the browser sends both with
+every layout save, and the event schema names the sidecar's own definitions
+for them, so what the browser may send and what the file may hold are one
+shape). Two lists rather than one,
 because a view's `fold` is a DEFAULT: a reader who opened a box must not have it
 shut again the moment that default is read back on the next view switch.
 

@@ -2,6 +2,14 @@
 
 Status: accepted
 
+> Amended after 1.24.0: the route ownership rule below reads "the placement
+> it was computed for", not "the placement ELK made". A drag-save writes the
+> routes the canvas was drawing beside the positions they were computed for
+> (`routes` in the layout sidecar), and a saved route is drawn again wherever
+> both ends still sit at their saved place. Without this one drag pinned every
+> subject and handed every edge back to the straight line for good, which was
+> seen on the reference model. A drag still clears the moved subject's routes.
+
 Two things were reported on the ApertureX reference model on 2026-09-06
 (#489): edges were drawn through boxes, and serving read the wrong way. A
 layout lab built on that model, six treatments side by side with collision

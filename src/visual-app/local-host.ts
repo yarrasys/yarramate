@@ -563,7 +563,7 @@ export const createLocalHost = (options: LocalHostOptions): LocalEditorHost => {
           commit(input)
           return
         case 'layout.save': {
-          const { projectionId, positions, folded, unfolded } = input.payload
+          const { projectionId, positions, folded, unfolded, routes: savedRoutes } = input.payload
           if (!views.some((view) => view.id === projectionId)) {
             deliver?.frame({
               kind: 'layout-save-result',
@@ -589,6 +589,9 @@ export const createLocalHost = (options: LocalHostOptions): LocalEditorHost => {
                 // means a reload can land between them.
                 ...(folded === undefined ? {} : { folded }),
                 ...(unfolded === undefined ? {} : { unfolded }),
+                // The routes in force beside the positions they were computed
+                // for (ADR 0147); the session server writes the same bytes.
+                ...(savedRoutes === undefined ? {} : { routes: savedRoutes }),
               }),
               expected: held?.revision ?? null,
             },
@@ -606,6 +609,9 @@ export const createLocalHost = (options: LocalHostOptions): LocalEditorHost => {
           model = {
             ...model,
             layouts: { ...model.layouts, [projectionId]: positions },
+            ...(savedRoutes === undefined
+              ? {}
+              : { routes: { ...model.routes, [projectionId]: savedRoutes } }),
             ...(folded === undefined && unfolded === undefined
               ? {}
               : {

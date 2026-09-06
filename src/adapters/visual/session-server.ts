@@ -38,6 +38,7 @@ import {
   type VisualFreezeReason,
   type VisualHandoff,
   type VisualLayoutPositions,
+  type VisualLayoutRoutes,
   type VisualLifecycle,
   type VisualResponse,
   type VisualSessionRequest,
@@ -732,17 +733,19 @@ export const startVisualServer = async (
   // like a broken saved view above — presentation state must never fail a
   // session.
   const layoutDir = resolve(options.cwd, ".yarramate/visual-layout");
-  const { layouts, folds } = ((): {
+  const { layouts, folds, routes } = ((): {
     layouts: Record<string, VisualLayoutPositions>;
     folds: Record<string, { folded: string[]; unfolded: string[] }>;
+    routes: Record<string, VisualLayoutRoutes>;
   } => {
     const layouts: Record<string, VisualLayoutPositions> = {};
     const folds: Record<string, { folded: string[]; unfolded: string[] }> = {};
+    const routes: Record<string, VisualLayoutRoutes> = {};
     let entries: readonly string[];
     try {
       entries = readdirSync(layoutDir);
     } catch {
-      return { layouts, folds };
+      return { layouts, folds, routes };
     }
     for (const entry of entries) {
       if (extname(entry) !== ".yaml" && extname(entry) !== ".yml") continue;
@@ -755,8 +758,12 @@ export const startVisualServer = async (
           readonly positions: VisualLayoutPositions;
           readonly folded?: readonly string[];
           readonly unfolded?: readonly string[];
+          readonly routes?: VisualLayoutRoutes;
         };
         layouts[sidecar.projectionId] = sidecar.positions;
+        // The routes the canvas was drawing when it saved (ADR 0147). A
+        // sidecar written before them says nothing, and the layout recomputes.
+        if (sidecar.routes !== undefined) routes[sidecar.projectionId] = sidecar.routes;
         // A sidecar written before #473 has neither list, and says nothing
         // about folding rather than saying "fold nothing" - the view's own
         // default decides for it. Only a sidecar that STATES a fold overrides.
@@ -770,7 +777,7 @@ export const startVisualServer = async (
         // Skipped sidecar: presentation state must never fail a session.
       }
     }
-    return { layouts, folds };
+    return { layouts, folds, routes };
   })();
 
   // `request.initialModel.graph` is the caller's compile (`buildVisualModelGraph`,
@@ -786,6 +793,7 @@ export const startVisualServer = async (
     vocabulary: { conceptKinds: [], relationshipKinds: [] },
     layouts,
     ...(Object.keys(folds).length === 0 ? {} : { folds }),
+    ...(Object.keys(routes).length === 0 ? {} : { routes }),
     sourceDigests: request.initialModel.sourceDigests,
     // The request's model has no projections in it - `visual-model/v1` carries
     // a graph, not a workspace - so the fallback states nothing rather than
@@ -1888,7 +1896,7 @@ export const startVisualServer = async (
         // never `git commit`ed. It never asks the agent anything, so it is
         // answered here directly rather than through the pending queue a
         // poll would drain.
-        const { projectionId, positions, folded, unfolded } = event.payload;
+        const { projectionId, positions, folded, unfolded, routes: savedRoutes } = event.payload;
         if (!views.some((view) => view.id === projectionId)) {
           sendFrame(socket, {
             kind: "layout-save-result",
@@ -1912,12 +1920,18 @@ export const startVisualServer = async (
             // sidecar written by one host is read by the other.
             ...(folded === undefined ? {} : { folded }),
             ...(unfolded === undefined ? {} : { unfolded }),
+            // The routes in force, beside the positions they were computed
+            // for (ADR 0147); a save with nothing routed writes none.
+            ...(savedRoutes === undefined ? {} : { routes: savedRoutes }),
           }),
           "utf8",
         );
         rendered = {
           ...rendered,
           layouts: { ...rendered.layouts, [projectionId]: positions },
+          ...(savedRoutes === undefined
+            ? {}
+            : { routes: { ...rendered.routes, [projectionId]: savedRoutes } }),
           ...(folded === undefined && unfolded === undefined
             ? {}
             : {
