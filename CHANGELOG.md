@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.24.0
 
 ### Four ways to lay a view out, and the reviewer picks (#489)
 
