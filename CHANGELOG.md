@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+### The mounted host reads the layout sidecar back, and a commit forgets neither folds nor routes (#503)
+
+A drag on a host that mounts the editor wrote `.yarramate/visual-layout/<id>.yaml`
+faithfully and never read it again: the local host started every session with
+no layouts and only the session server read the sidecar directory, so on the
+next visit the dragged subject was back at ELK's place and every edge routed
+afresh. Found by ApertureX on 1.25.0; the line is the same at 1.23.2. Both
+hosts now read the sidecars through one reader, the local host asking its
+store for whatever it lists under the directory and for every view's own
+sidecar path by name, so a store that cannot enumerate still restores. The
+sidecar validator is precompiled with the others, since the browser-side host
+runs under policies that forbid Ajv's code generation.
+
+Found on the way: both hosts rebuilt the model after a commit with the
+positions carried and the fold state and routes forgotten, so a commit in a
+routed view sent every edge back to the stylesheet. Both are carried now.
+
 ## 1.25.0
 
 ### The served page lays out in a Web Worker (#490)

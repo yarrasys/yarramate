@@ -177,7 +177,13 @@ hand-arranged layout cannot be regenerated from the model, so it is a
 reviewable input rather than a reproducible artifact
 ([ADR 0085](adr/0085-a-dragged-position-is-presentation-the-repository-keeps.md)).
 An unreadable or invalid sidecar is skipped: presentation must never fail a
-session.
+session. Both hosts read the sidecars back through one reader
+(`src/adapters/visual/layout-sidecar.ts`, #503): the session server hands it
+the directory's files, the mounted host hands it what its store lists under
+the directory plus every view's own sidecar path asked for by name, so a store
+that cannot enumerate still restores what it holds. What a sidecar said, or a
+save set, is carried across every recompile, positions, fold state and routes
+alike.
 
 ### Layout
 

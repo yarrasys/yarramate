@@ -104,13 +104,18 @@ import {
   loadWorkspaceManifest,
   type ResolvedWorkspace,
 } from "../../workspace.js";
+import {
+  LAYOUT_SIDECAR_DIR,
+  isLayoutSidecarPath,
+  layoutSidecarPath,
+  readLayoutSidecars,
+} from "./layout-sidecar.js";
 import type {
   VisualRenderedModel,
   VisualServerFrame,
   VisualSessionSnapshot,
   VisualTranscriptRecord,
 } from "./wire.js";
-import visualLayoutSchema from "../../../schema/yarramate-visual-layout.schema.json" with { type: "json" };
 import visualProjectionSchema from "../../../schema/yarramate-projection.schema.json" with { type: "json" };
 
 // The layout sidecar is adapter-owned presentation state (ADR 0023) that
@@ -119,9 +124,6 @@ import visualProjectionSchema from "../../../schema/yarramate-projection.schema.
 // reaches this module — so this file compiles its own single-purpose
 // validator for the sidecar files it reads directly off disk.
 const Ajv2020 = Ajv2020Module.default;
-const layoutAjv = new Ajv2020({ allErrors: true });
-layoutAjv.addSchema(visualProjectionSchema);
-const validateVisualLayout = layoutAjv.compile(visualLayoutSchema);
 
 // The browser application imports these from `./wire.js`; the server keeps
 // publishing them so one import still covers the whole transport for an
@@ -731,54 +733,29 @@ export const startVisualServer = async (
   // Drag positions are adapter-owned presentation state (ADR 0023): never
   // validated by Core. An invalid or unreadable sidecar is skipped exactly
   // like a broken saved view above — presentation state must never fail a
-  // session.
-  const layoutDir = resolve(options.cwd, ".yarramate/visual-layout");
-  const { layouts, folds, routes } = ((): {
-    layouts: Record<string, VisualLayoutPositions>;
-    folds: Record<string, { folded: string[]; unfolded: string[] }>;
-    routes: Record<string, VisualLayoutRoutes>;
-  } => {
-    const layouts: Record<string, VisualLayoutPositions> = {};
-    const folds: Record<string, { folded: string[]; unfolded: string[] }> = {};
-    const routes: Record<string, VisualLayoutRoutes> = {};
-    let entries: readonly string[];
-    try {
-      entries = readdirSync(layoutDir);
-    } catch {
-      return { layouts, folds, routes };
-    }
-    for (const entry of entries) {
-      if (extname(entry) !== ".yaml" && extname(entry) !== ".yml") continue;
+  // session. The reading itself is shared with the local host (#503): this
+  // host can read a directory, so it hands the bytes over.
+  const layoutDir = resolve(options.cwd, LAYOUT_SIDECAR_DIR);
+  const { layouts, folds, routes } = readLayoutSidecars(
+    ((): { readonly path: string; readonly source: string }[] => {
+      let entries: readonly string[];
       try {
-        const source = readFileSync(join(layoutDir, entry), "utf8");
-        const parsed: unknown = parse(source);
-        if (!validateVisualLayout(parsed)) continue;
-        const sidecar = parsed as {
-          readonly projectionId: string;
-          readonly positions: VisualLayoutPositions;
-          readonly folded?: readonly string[];
-          readonly unfolded?: readonly string[];
-          readonly routes?: VisualLayoutRoutes;
-        };
-        layouts[sidecar.projectionId] = sidecar.positions;
-        // The routes the canvas was drawing when it saved (ADR 0147). A
-        // sidecar written before them says nothing, and the layout recomputes.
-        if (sidecar.routes !== undefined) routes[sidecar.projectionId] = sidecar.routes;
-        // A sidecar written before #473 has neither list, and says nothing
-        // about folding rather than saying "fold nothing" - the view's own
-        // default decides for it. Only a sidecar that STATES a fold overrides.
-        if (sidecar.folded !== undefined || sidecar.unfolded !== undefined) {
-          folds[sidecar.projectionId] = {
-            folded: [...(sidecar.folded ?? [])],
-            unfolded: [...(sidecar.unfolded ?? [])],
-          };
-        }
+        entries = readdirSync(layoutDir);
       } catch {
-        // Skipped sidecar: presentation state must never fail a session.
+        return [];
       }
-    }
-    return { layouts, folds, routes };
-  })();
+      return entries.flatMap((entry) => {
+        const path = `${LAYOUT_SIDECAR_DIR}/${entry}`;
+        if (!isLayoutSidecarPath(path)) return [];
+        try {
+          return [{ path, source: readFileSync(join(layoutDir, entry), "utf8") }];
+        } catch {
+          // Skipped sidecar: presentation state must never fail a session.
+          return [];
+        }
+      });
+    })(),
+  );
 
   // `request.initialModel.graph` is the caller's compile (`buildVisualModelGraph`,
   // before invoking `yarramate-visual start`) and is only the fallback below:
@@ -974,6 +951,11 @@ export const startVisualServer = async (
         initialView: rendered.initialView,
         documents: resolvedWorkspace.documents,
         layouts: rendered.layouts,
+        // The fold state and the routes the sidecars said, or a save set,
+        // carried across the recompile like the positions are (#503): a
+        // commit is not a reason to forget how the reviewer arranged things.
+        ...(rendered.folds === undefined ? {} : { folds: rendered.folds }),
+        ...(rendered.routes === undefined ? {} : { routes: rendered.routes }),
         // Minted from the bytes this compile just read, so what the browser
         // renders and what it can later claim it rendered are the same read.
         sourceDigests: Object.fromEntries(
@@ -1907,7 +1889,7 @@ export const startVisualServer = async (
           });
           return;
         }
-        const path = `.yarramate/visual-layout/${projectionId}.yaml`;
+        const path = layoutSidecarPath(projectionId);
         mkdirSync(layoutDir, { recursive: true });
         writeFileSync(
           resolve(options.cwd, path),

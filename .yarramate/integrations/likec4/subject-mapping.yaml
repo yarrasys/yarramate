@@ -2061,6 +2061,9 @@ mappings:
   - native: visual-wire-source
     external: visualWireSource
     type: concept
+  - native: visual-layout-sidecar-source
+    external: visualLayoutSidecarSource
+    type: concept
   - native: visual-workspace-model-source
     external: visualWorkspaceModelSource
     type: concept
@@ -2294,6 +2297,9 @@ mappings:
     type: relationship
   - native: visual-wire-realizes-protocol
     external: visualWireRealizesProtocol
+    type: relationship
+  - native: visual-layout-sidecar-realizes-runtime
+    external: visualLayoutSidecarRealizesRuntime
     type: relationship
   - native: visual-workspace-model-realizes-runtime
     external: visualWorkspaceModelRealizesRuntime

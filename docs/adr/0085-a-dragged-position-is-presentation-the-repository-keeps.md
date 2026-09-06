@@ -2,6 +2,14 @@
 
 Status: accepted
 
+> Amended after 1.25.0 (#503): both hosts read the sidecar back through one
+> reader, `src/adapters/visual/layout-sidecar.ts`. The session server had a
+> reader from the start and the mounted host had none, so on a product's host
+> a drag was kept in the repository and never applied again. The reader takes
+> sources and returns positions, fold state and routes; the server hands it
+> the directory's files, the mounted host what its store lists under the
+> directory plus each view's own sidecar path by name.
+
 [ADR 0023](0023-state-comparison-visualization-is-adapter-presentation.md)
 settled that visualization is adapter presentation: Core classifies, the
 adapter colors, and derived styles are "presentation, not semantic claims."
