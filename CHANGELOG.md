@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.25.1
 
 ### The mounted host reads the layout sidecar back, and a commit forgets neither folds nor routes (#503)
 
