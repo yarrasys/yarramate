@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest'
 import {
   ROUTE_STYLE_PROPERTIES,
   applyEdgeRoutes,
+  applySavedRoutes,
+  buildRouteMap,
   clearEdgeRoutes,
   placedByElk,
   registerRouteInvalidation,
@@ -199,5 +201,48 @@ describe('registerRouteInvalidation', () => {
     cy.getElementById('a').emit('dragfree')
     expect(cy.getElementById('boxc').hasClass('routed')).toBe(false)
     expect(cy.getElementById('bc').hasClass('routed')).toBe(true)
+  })
+})
+
+// A saved layout keeps the routes beside the positions (ADR 0147), so a
+// reader who moved one subject keeps every other edge's route: the snapshot
+// holds routed edges only, and a saved route is drawn only between two ends
+// that still sit where the saved positions say.
+describe('buildRouteMap and applySavedRoutes', () => {
+  it('snapshots the routed edges and nothing else', () => {
+    const cy = buildCanvas()
+    applyEdgeRoutes(cy, placementOf(cy, twoRoutes()), (edge) => edge.id() === 'ab')
+    const snapshot = buildRouteMap(cy.edges())
+    expect(Object.keys(snapshot)).toEqual(['ab'])
+    expect(snapshot['ab']).toEqual({ points: L_ROUTE, labelAt: 40 })
+    clearEdgeRoutes(cy.edges())
+    expect(buildRouteMap(cy.edges())).toEqual({})
+  })
+
+  it('draws a saved route only between two ends still at their saved positions', () => {
+    const cy = buildCanvas()
+    const applied = applySavedRoutes(cy, Object.fromEntries(twoRoutes()), {
+      a: { x: 0, y: 0 },
+      b: { x: 300, y: 0 },
+      // c was moved after the save: its saved place is not where it sits.
+      c: { x: 900, y: 0 },
+    })
+    expect(applied).toBe(1)
+    expect(cy.getElementById('ab').hasClass('routed')).toBe(true)
+    expect(cy.getElementById('ab').style('curve-style')).toBe('segments')
+    expect(cy.getElementById('bc').hasClass('routed')).toBe(false)
+  })
+
+  it('leaves an edge ELK already routed alone', () => {
+    const cy = buildCanvas()
+    applyEdgeRoutes(cy, placementOf(cy, twoRoutes()), () => true)
+    const before = cy.getElementById('ab').style('segment-distances')
+    const applied = applySavedRoutes(
+      cy,
+      { ab: { points: [{ x: 0, y: -25 }, { x: 0, y: -100 }, { x: 300, y: -100 }, { x: 300, y: -25 }], labelAt: 40 } },
+      { a: { x: 0, y: 0 }, b: { x: 300, y: 0 }, c: { x: 600, y: 0 } },
+    )
+    expect(applied).toBe(0)
+    expect(cy.getElementById('ab').style('segment-distances')).toBe(before)
   })
 })

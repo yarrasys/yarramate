@@ -258,6 +258,7 @@
       }
     },
     "layoutSavePayload": {
+      "description": "What a drag-save carries: the positions, and beside them the fold state (#473) and the routes (ADR 0147) the sidecar keeps. The three optional halves are the sidecar's own definitions, so what the browser may send and what the file may hold cannot drift apart.",
       "type": "object",
       "additionalProperties": false,
       "required": ["projectionId", "positions"],
@@ -267,6 +268,15 @@
         },
         "positions": {
           "$ref": "https://yarramate.org/schema/visual-layout/v1#/$defs/positions"
+        },
+        "folded": {
+          "$ref": "https://yarramate.org/schema/visual-layout/v1#/$defs/subjectIds"
+        },
+        "unfolded": {
+          "$ref": "https://yarramate.org/schema/visual-layout/v1#/$defs/subjectIds"
+        },
+        "routes": {
+          "$ref": "https://yarramate.org/schema/visual-layout/v1#/$defs/routes"
         }
       }
     },

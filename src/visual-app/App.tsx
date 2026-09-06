@@ -623,6 +623,7 @@ const DiagramWorkspace = ({
             showKindLabels={showKindLabels}
             stylePreset={stylePreset}
             savedPositions={state.model.layouts[state.activeView]}
+            savedRoutes={state.model.routes?.[state.activeView]}
             // A read-only drag still moves the node - arranging what is on
             // screen is reading - but the debounced save it would queue goes
             // nowhere: nothing a viewer does may write. The saved-layout pill
@@ -2156,7 +2157,17 @@ export const App = ({
             )
           }
           onClearFilter={clearFilter}
-          onSaveLayout={saveLayout}
+          onSaveLayout={(payload) =>
+            // The reader's fold overrides ride with every save, in full, the
+            // way the sidecar is documented to hold them (#473). The canvas
+            // knows positions and routes; which boxes the reader opened or
+            // shut is workspace state, so it joins here.
+            saveLayout({
+              ...payload,
+              folded: [...workspace.folded],
+              unfolded: [...workspace.unfolded],
+            })
+          }
           onCanvasReady={(png) => {
             canvasPngRef.current = png;
           }}

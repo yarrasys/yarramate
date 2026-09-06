@@ -293,6 +293,21 @@ export interface VisualLayoutPositions {
 }
 
 /**
+ * The routes the canvas was drawing when a layout was saved (ADR 0147), keyed
+ * by relationship id: absolute canvas coordinates from the source end, both
+ * endpoints included, and where along the route the label sits. Saved WITH
+ * the positions, because a route is only right for the positions it was
+ * computed for: a reader who moved one subject keeps every other edge's
+ * route, and only the moved subject's edges fall back to a straight line.
+ */
+export interface VisualLayoutRoutes {
+  readonly [relationshipId: string]: {
+    readonly points: readonly { readonly x: number; readonly y: number }[];
+    readonly labelAt: number | null;
+  };
+}
+
+/**
  * A change to a projection document, staged rather than written (ADR 0103).
  *
  * These ride beside the model's operations rather than inside them: Core holds
@@ -358,6 +373,8 @@ export interface VisualLayoutSavePayload {
    */
   readonly folded?: readonly string[];
   readonly unfolded?: readonly string[];
+  /** The routes in force at save time (ADR 0147); absent when nothing was routed. */
+  readonly routes?: VisualLayoutRoutes;
 }
 
 /**

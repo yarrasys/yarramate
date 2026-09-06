@@ -55,6 +55,28 @@ describe('#473: the layout sidecar carries fold state', () => {
     expect(validate({ ...base, folded: ['checkout', 'checkout'] })).toBe(false)
   })
 
+  // ADR 0147: the routes the canvas was drawing ride beside the positions
+  // they were computed for, so a reader who moved one subject keeps every
+  // other edge's route.
+  it('accepts the routes beside the positions', () => {
+    expect(
+      validate({
+        ...base,
+        routes: {
+          'a-serves-b': { points: [{ x: 0, y: 25 }, { x: 0, y: 100 }, { x: 300, y: 100 }], labelAt: 40 },
+          'b-flows-c': { points: [{ x: 85, y: 0 }, { x: 215, y: 0 }], labelAt: null },
+        },
+      }),
+    ).toBe(true)
+  })
+
+  it('refuses a route with fewer than two points, a stray key, or a non-numeric label position', () => {
+    expect(validate({ ...base, routes: { e: { points: [{ x: 0, y: 0 }], labelAt: null } } })).toBe(false)
+    expect(validate({ ...base, routes: { e: { points: [{ x: 0, y: 0 }, { x: 1, y: 1 }], labelAt: null, bend: true } } })).toBe(false)
+    expect(validate({ ...base, routes: { e: { points: [{ x: 0, y: 0 }, { x: 1, y: 1 }], labelAt: 'mid' } } })).toBe(false)
+    expect(validate({ ...base, routes: { e: { points: [{ x: 0, y: 0 }, { x: 1, y: 1 }] } } })).toBe(false)
+  })
+
   it('still refuses an unknown key', () => {
     expect(validate({ ...base, collapsed: ['checkout'] })).toBe(false)
   })

@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+### A saved layout keeps its routes, and the fold state the browser sends
+
+Dragging one subject on a routed canvas saved every subject's position, and
+on the next visit the pin put every subject at its saved place, so no edge's
+ends sat where ELK had just put them and every route fell back to the
+stylesheet's straight line: one drag undid the routed layout for good. Seen
+on the reference model. The layout sidecar now carries `routes` beside the
+positions they were computed for, and a route is drawn again wherever both
+ends still sit at their saved place; only the moved subject's edges, and its
+box's, stay straight. A `layered` save writes the bytes it always did.
+
+The same save now actually carries the fold state. The sidecar could hold
+`folded` and `unfolded` since #473 and both hosts wrote them, but the browser
+never sent them and the event schema would have refused them if it had. The
+schema names the sidecar's own definitions for folds and routes, so what the
+browser may send and what the file may hold are one shape.
+
 ### The canvas has five dresses, and the reviewer picks
 
 A **Style** select joins Layout and Direction on the canvas: `current` (what

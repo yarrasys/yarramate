@@ -384,6 +384,27 @@ concepts:
     })
   })
 
+  it('writes the routes beside the positions, and the next model frame carries them (ADR 0147)', () => {
+    const { store, frames, send } = openHost()
+    const routes = {
+      'checkout-serves-ledger': {
+        points: [{ x: 86, y: 2 }, { x: 150, y: 2 }, { x: 150, y: 60 }, { x: 215, y: 60 }],
+        labelAt: 64,
+      },
+    }
+    send(
+      input('layout.save', {
+        projectionId: 'apps',
+        positions: { checkout: { x: 1, y: 2 }, ledger: { x: 300, y: 60 } },
+        routes,
+      }),
+    )
+    expect(frames.at(-1)?.kind).toBe('layout-save-result')
+    const sidecar = parse(store.held.get('.yarramate/visual-layout/apps.yaml') ?? '') as Record<string, unknown>
+    expect(sidecar['routes']).toEqual(routes)
+    expect('folded' in sidecar).toBe(false)
+  })
+
   it('writes no fold keys at all when the host sends none', () => {
     // Every sidecar written before #473 has neither list, and a host that
     // never folds should keep producing exactly those bytes.
