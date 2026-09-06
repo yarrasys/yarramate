@@ -1,3 +1,4 @@
+import { validateProjection } from "../src/schema-validation.js";
 import { describe, expect, it } from "vitest";
 import {
   VISUAL_LIMITS,
@@ -1949,6 +1950,46 @@ describe("visualAppReducer view membership", () => {
       "ledger",
       "fraud-screening",
     ]);
+  });
+
+  // Five of the six ApertureX reference views declare no description, and
+  // the editor reads that back as "". Writing "" into the document made the
+  // membership write a schema violation (YM201) and the commit dead (#509).
+  it("stages a document the schema accepts for a view that declares no description (#509)", () => {
+    const undescribed: VisualViewSummary = {
+      id: "api-tiers",
+      title: "API tiers",
+      description: "",
+      query: { subjects: ["checkout", "ledger"] },
+      presentation: {
+        title: "API tiers",
+        layout: "layered",
+        nesting: ["composition", "assignment"],
+      },
+      path: ".yarramate/projections/api-tiers.yaml",
+      subjectCount: 2,
+    };
+    const state = visualAppReducer(
+      { ...initialVisualAppState, activeView: "api-tiers", views: [undescribed] },
+      {
+        type: "changeset.viewMembership",
+        viewId: "api-tiers",
+        subjectId: "fraud-screening",
+        membership: "add",
+      },
+    );
+    const operation = state.pendingChangeset.viewOperations[0];
+    expect(operation?.op).toBe("write-view");
+    if (operation?.op !== "write-view") return;
+    expect(validateProjection(operation.projection), JSON.stringify(validateProjection.errors)).toBe(true);
+    expect("description" in (operation.projection.presentation ?? {})).toBe(false);
+    // The declaration rides through untouched apart from the membership.
+    expect(operation.projection.presentation).toEqual({
+      title: "API tiers",
+      layout: "layered",
+      nesting: ["composition", "assignment"],
+    });
+    expect(operation.projection.query.subjects).toEqual(["checkout", "ledger", "fraud-screening"]);
   });
 
   it("composes a second edit on top of the first, not on the saved document", () => {

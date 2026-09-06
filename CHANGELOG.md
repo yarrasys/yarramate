@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+### A subject added to an undescribed view can be committed again (#509)
+
+Adding a subject to a view staged a rewrite of the view's document with
+`description: ""`, because the editor reads an undeclared description back as
+an empty string and the composition wrote it back as one. The schema's
+`presentation.description` is non-empty text, so the staged document was
+refused (YM201) and **Commit changes** went nowhere. Found by ApertureX on
+1.25.1; the write dates from 1.0.0. Five of their six reference views declare
+no description, so a consultant could not add a subject to any of them.
+An empty title or description is now written as no field at all, wherever a
+view is composed: the membership write, Save view, the query tab's Stage and
+Duplicate. Clearing a description in Save view removes it rather than keeping
+the declared one.
+
 ### Restoring a saved layout pins the leaves and lets the boxes follow (#507)
 
 Restoring a saved layout positioned the boxes too. A box's centre is derived
