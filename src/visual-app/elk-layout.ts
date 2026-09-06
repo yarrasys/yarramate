@@ -98,14 +98,17 @@ const BASE_SPACING: LayoutOptions = {
 
 /**
  * The spacing a mode asks for. A routed mode draws two labelled edges side by
- * side, and at 20px their labels ("serv served by") lay over each other;
- * 30px clears a ten-character reading. `edgeEdgeBetweenLayers` stays at 20 on
- * purpose: it spaces the horizontal channels between layers, and widening it
- * measured as canvas height (8020px to 11624px on the Landscape) for no gain
- * against the overlap it was tried for.
+ * side, and their labels lay over each other unless the lanes are wider than
+ * a reading. Measured on the reference Landscape under served-by, labels
+ * on another label: 20px 14, 30px 3, 60px 0, at a width cost of 5% for the
+ * last step (12,346 to 12,943px); `elk.spacing.labelLabel`, `edgeLabel`, and
+ * placing labels beside the edge instead of on it all left the 3 standing.
+ * `edgeEdgeBetweenLayers` stays at 20 on purpose: it spaces the horizontal
+ * channels between layers, and widening it measured as canvas height (8,020
+ * to 11,624px) for no gain against the same overlap.
  */
 export const spacingFor = (mode: LayoutMode): LayoutOptions =>
-  routesEdges(mode) ? { ...BASE_SPACING, 'elk.spacing.edgeEdge': '30' } : { ...BASE_SPACING }
+  routesEdges(mode) ? { ...BASE_SPACING, 'elk.spacing.edgeEdge': '60' } : { ...BASE_SPACING }
 
 /**
  * The root graph's options for a mode and a direction.
