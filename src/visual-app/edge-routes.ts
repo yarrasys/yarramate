@@ -31,8 +31,6 @@ export const ROUTE_STYLE_PROPERTIES = [
   'target-endpoint',
   'segment-weights',
   'segment-distances',
-  'segment-radii',
-  'radius-type',
   'source-text-offset',
 ] as const
 
@@ -72,6 +70,8 @@ export function routeStyle(
     distances.push((vx * nx + vy * ny).toFixed(2))
   }
   const style: Record<string, string | number> = {
+    // Square corners, the same as layered's `taxi`: rounded bends were tried
+    // and read as edges swerving where they meet a container's border.
     'curve-style': inner.length > 0 ? 'segments' : 'straight',
     // Weights and distances measured against the manual endpoints, not the
     // node centres or cytoscape's own intersections.
@@ -83,8 +83,6 @@ export function routeStyle(
   if (inner.length > 0) {
     style['segment-weights'] = weights.join(' ')
     style['segment-distances'] = distances.join(' ')
-    style['segment-radii'] = '10'
-    style['radius-type'] = 'arc-radius'
   }
   return style
 }

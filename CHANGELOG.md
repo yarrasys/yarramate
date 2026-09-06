@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Every orthogonal edge turns a square corner
+
+Layered drew its taxi bends with a 25px radius and the routed modes drew
+square corners; the difference was noticed on the reference model. Rounding
+the routed corners was tried first and withdrawn: at a container's border a
+rounded bend reads as the edge swerving into or out of the box. Layered now
+draws plain `taxi`, the routed modes plain `segments`, and neither asks for a
+radius.
+
 ### Save view keeps what the view already declares (#493)
 
 Overwriting a view through **Save view** rebuilt its presentation block from
