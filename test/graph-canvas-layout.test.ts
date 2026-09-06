@@ -476,7 +476,7 @@ describe('layout runs', () => {
       await relayoutVisible(cy, 'top-down', 'layered')
       cy.edges().forEach((edge) => {
         expect(edge.hasClass('routed')).toBe(false)
-        expect(edge.style('curve-style')).toBe('round-taxi')
+        expect(edge.style('curve-style')).toBe('taxi')
       })
     })
 
@@ -488,7 +488,7 @@ describe('layout runs', () => {
       cy.on('layoutstop', () => applySavedPositions(cy, { a: { x: 5000, y: 5000 } }))
       await relayoutVisible(cy, 'top-down', 'routed')
       expect(cy.getElementById('ab').hasClass('routed')).toBe(false)
-      expect(cy.getElementById('ab').style('curve-style')).toBe('round-taxi')
+      expect(cy.getElementById('ab').style('curve-style')).toBe('taxi')
       expect(cy.getElementById('bc').hasClass('routed')).toBe(true)
     })
 
@@ -517,6 +517,29 @@ describe('layout runs', () => {
         served.getElementById('a').position().y,
       )
       expect(served.getElementById('ab').style('target-arrow-shape')).toBe('vee')
+    })
+  })
+
+  // Square corners in every mode, by looking at the reference model: rounded
+  // bends read as edges swerving where they meet a container's border. So
+  // neither the stylesheet's taxi nor a routed edge asks for a radius.
+  it('turns square corners, layered and routed alike', async () => {
+    const cy = cytoscape({
+      styleEnabled: true,
+      style: buildStylesheet(true, true, false, true, true, 'routed'),
+      layout: { name: 'null' },
+      elements: buildLayoutFixture().elements().jsons() as cytoscape.ElementDefinition[],
+    })
+    expect(cy.edges().first().style('curve-style')).toBe('taxi')
+    await relayoutVisible(cy, 'top-down', 'routed')
+    const bent = cy.edges().filter((edge) => edge.style('curve-style') === 'segments')
+    expect(bent.length).toBeGreaterThan(0)
+    // Plain `segments` draws square corners whatever radius the defaults hold;
+    // only `round-segments` would round them, and no route asks for it.
+    expect(cy.edges().filter((edge) => edge.style('curve-style').startsWith('round')).length).toBe(0)
+    bent.forEach((edge) => {
+      const parsed = edge as unknown as { pstyle(name: string): { bypass?: boolean } | null }
+      expect(parsed.pstyle('segment-radii')?.bypass ?? false).toBe(false)
     })
   })
 

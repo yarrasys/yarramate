@@ -513,8 +513,8 @@ describe('parallel relationships between the same pair', () => {
 
   it('resolves parallel edges to a curve style cytoscape separates', () => {
     // The real stylesheet against the real elements, headless: parallel
-    // members leave `round-taxi` for `bezier` with a nonzero step, which is
-    // the mechanism that fans them apart; a single edge keeps `round-taxi`.
+    // members leave `taxi` for `bezier` with a nonzero step, which is
+    // the mechanism that fans them apart; a single edge keeps `taxi`.
     const cy = cytoscape({
       styleEnabled: true,
       elements,
@@ -525,7 +525,7 @@ describe('parallel relationships between the same pair', () => {
     expect(cy.$id('e2').style('curve-style')).toBe('bezier')
     expect(cy.$id('e4').style('curve-style')).toBe('bezier')
     expect(cy.$id('e1').style('control-point-step-size')).toBe('40px')
-    expect(cy.$id('e5').style('curve-style')).toBe('round-taxi')
+    expect(cy.$id('e5').style('curve-style')).toBe('taxi')
   })
 
   it('does not count an edge consumed into nesting as a parallel member', () => {

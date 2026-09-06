@@ -468,9 +468,10 @@ export function buildStylesheet(
         width: 1.5,
         // What an edge draws as when nothing routes it: every edge under
         // `layered`, and any edge whose route a moved endpoint invalidated. A
-        // routed edge carries its own geometry as a bypass over this.
-        'curve-style': 'round-taxi',
-        'taxi-radius': 25,
+        // routed edge carries its own geometry as a bypass over this. Square
+        // corners in both cases, by looking: rounded bends read as edges
+        // swerving where they meet a container's border.
+        'curve-style': 'taxi',
         'target-arrow-shape': 'triangle',
         'target-arrow-color': '#999999',
         label: edgeText,
@@ -495,7 +496,7 @@ export function buildStylesheet(
       // exists but cannot be seen or tapped (#306). Bezier is the one curve
       // family cytoscape separates automatically for multi-edges:
       // `control-point-step-size` fans them out, so each stays visible and
-      // individually selectable. Single edges keep `round-taxi` untouched.
+      // individually selectable. Single edges keep `taxi` untouched.
       selector: 'edge.parallel',
       style: {
         'curve-style': 'bezier',
