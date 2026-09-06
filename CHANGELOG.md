@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Save view keeps what the view already declares (#493)
+
+Overwriting a view through **Save view** rebuilt its presentation block from
+the form's own fields and dropped every other one: `nesting`, `fold` and
+`notation`. Found by ApertureX on 1.24.0, where a saved API tiers view lost
+`nesting: [composition, assignment]` and went from 69 subjects and 72 edges to
+65 and 105, because nothing contained the members any more. The defect
+predates 1.24.0; 1.24.0 made it bite, since Save is now the way to keep a
+layout pick. The overwritten view's declaration is now carried underneath
+what the form owns; a brand new view still carries nothing.
+
 ## 1.24.0
 
 ### Four ways to lay a view out, and the reviewer picks (#489)

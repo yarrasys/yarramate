@@ -34,6 +34,7 @@ const build = (
     id: 'existing-view',
     taken: new Set<string>(),
     path: '.yarramate/projections/existing-view.yaml',
+    declared: undefined,
     folder: undefined,
     title: 'My View',
     description: 'desc',
@@ -142,6 +143,39 @@ describe('buildPayload', () => {
       projectionOf(build({ id: undefined, path: undefined, direction: 'left-right' }))
         .presentation?.direction,
     ).toBe('left-right')
+  })
+
+  // The form composes only the fields it has controls for. Everything else the
+  // view declares - the nesting vocabulary, the fold default, the notation -
+  // is carried underneath, or an overwrite silently strips the view of its
+  // own opinions (found by ApertureX on 1.24.0: a dropped `nesting` turned 69
+  // subjects and 72 edges into 65 and 105).
+  it('carries every field the overwritten view declares and the form does not own', () => {
+    const presentation = projectionOf(
+      build({
+        declared: {
+          nesting: ['composition', 'assignment'],
+          fold: 'instances',
+          notation: 'archimate',
+          layout: 'layered',
+          showLifecycle: false,
+        },
+      }),
+    ).presentation
+    expect(presentation?.nesting).toEqual(['composition', 'assignment'])
+    expect(presentation?.fold).toBe('instances')
+    expect(presentation?.notation).toBe('archimate')
+    // What the form owns is written from the form, over the declaration.
+    expect(presentation?.layout).toBe('layered')
+    expect(presentation?.showLifecycle).toBe(true)
+  })
+
+  it('carries nothing into a brand new view', () => {
+    const presentation = projectionOf(
+      build({ id: undefined, path: undefined, declared: undefined }),
+    ).presentation
+    expect(presentation).not.toHaveProperty('nesting')
+    expect(presentation).not.toHaveProperty('fold')
   })
 
   it('carries the layout mode in force, whichever it is', () => {
