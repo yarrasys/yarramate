@@ -1,6 +1,7 @@
 import cytoscape from 'cytoscape'
 import { describe, expect, it } from 'vitest'
 import {
+  EDGE_CORNER_RADIUS,
   ROUTE_STYLE_PROPERTIES,
   applyEdgeRoutes,
   clearEdgeRoutes,
@@ -66,7 +67,9 @@ const twoRoutes = (): Map<string, ElkRoute> =>
 describe('routeStyle', () => {
   it('projects an L-route onto the endpoint line as segments', () => {
     const style = routeStyle(L_ROUTE, { x: 0, y: 0 }, { x: 300, y: 0 }, 40)
-    expect(style['curve-style']).toBe('segments')
+    // `round-segments`, because cytoscape rounds a corner only under the
+    // curve style that says so; plain `segments` ignores the radius.
+    expect(style['curve-style']).toBe('round-segments')
     expect(style['edge-distances']).toBe('endpoints')
     // Offsets from each node's centre, not absolute coordinates: both ends
     // leave and arrive 25px below their node's centre, on its bottom border.
@@ -77,7 +80,7 @@ describe('routeStyle', () => {
     // which for a rightward line points down the page.
     expect(style['segment-weights']).toBe('0.0000 1.0000')
     expect(style['segment-distances']).toBe('75.00 75.00')
-    expect(style['segment-radii']).toBe('10')
+    expect(style['segment-radii']).toBe(String(EDGE_CORNER_RADIUS))
     expect(style['radius-type']).toBe('arc-radius')
     expect(style['source-text-offset']).toBe(40)
   })
@@ -142,7 +145,7 @@ describe('applyEdgeRoutes and clearEdgeRoutes', () => {
     const applied = applyEdgeRoutes(cy, placementOf(cy, twoRoutes()), () => true)
     expect(applied).toBe(2)
     expect(cy.getElementById('ab').hasClass('routed')).toBe(true)
-    expect(cy.getElementById('ab').style('curve-style')).toBe('segments')
+    expect(cy.getElementById('ab').style('curve-style')).toBe('round-segments')
     expect(cy.getElementById('bc').style('curve-style')).toBe('straight')
   })
 

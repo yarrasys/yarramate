@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Routed edges turn their corners like layered ones do
+
+A routed edge asked cytoscape for `segments` with a 10px radius, and cytoscape
+rounds a corner only under `round-segments`, so every routed mode drew square
+corners beside `layered`'s 25px `round-taxi` bends. Routed edges now draw as
+`round-segments`, and both modes take their radius from one constant.
+
 ### Save view keeps what the view already declares (#493)
 
 Overwriting a view through **Save view** rebuilt its presentation block from

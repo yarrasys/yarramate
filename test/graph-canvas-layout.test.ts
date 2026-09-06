@@ -16,6 +16,7 @@ import { ASPECT_SHAPES, RELATIONSHIP_NOTATION } from '../src/notation/archimate.
 import { DEFAULT_DIRECTION } from '../src/layout-direction.js'
 import { LAYOUT_MODES } from '../src/layout-mode.js'
 import { rootLayoutOptions } from '../src/visual-app/elk-layout.js'
+import { EDGE_CORNER_RADIUS } from '../src/visual-app/edge-routes.js'
 import type {
   VisualLayoutPositions,
   VisualLayoutSavePayload,
@@ -471,7 +472,7 @@ describe('layout runs', () => {
       await relayoutVisible(cy, 'top-down', 'routed')
       cy.edges().forEach((edge) => {
         expect(edge.hasClass('routed')).toBe(true)
-        expect(['segments', 'straight']).toContain(edge.style('curve-style'))
+        expect(['round-segments', 'straight']).toContain(edge.style('curve-style'))
       })
       await relayoutVisible(cy, 'top-down', 'layered')
       cy.edges().forEach((edge) => {
@@ -517,6 +518,28 @@ describe('layout runs', () => {
         served.getElementById('a').position().y,
       )
       expect(served.getElementById('ab').style('target-arrow-shape')).toBe('vee')
+    })
+  })
+
+  // A routed corner and a taxi corner turn with the same radius, whichever
+  // mode drew them: the two drifted to 25 against 10 once, and the routed
+  // modes read as square-cornered beside layered.
+  it('turns routed and taxi corners with one radius', async () => {
+    // The six-node cycle, dressed with the production stylesheet: a routed
+    // cycle bends, where a two-node pair routes straight and would have
+    // nothing to round.
+    const cy = cytoscape({
+      styleEnabled: true,
+      style: buildStylesheet(true, true, false, true, true, 'routed'),
+      layout: { name: 'null' },
+      elements: buildLayoutFixture().elements().jsons() as cytoscape.ElementDefinition[],
+    })
+    expect(cy.edges().first().numericStyle('taxi-radius')).toBe(EDGE_CORNER_RADIUS)
+    await relayoutVisible(cy, 'top-down', 'routed')
+    const turned = cy.edges().filter((edge) => edge.style('curve-style') === 'round-segments')
+    expect(turned.length).toBeGreaterThan(0)
+    turned.forEach((edge) => {
+      expect(edge.numericStyle('segment-radii')).toEqual([EDGE_CORNER_RADIUS])
     })
   })
 

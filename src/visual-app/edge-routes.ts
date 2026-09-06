@@ -20,6 +20,15 @@ export interface Point {
 }
 
 /**
+ * The corner radius every orthogonal edge turns with, routed or not. One
+ * number for `round-taxi` (the stylesheet's `taxi-radius`, drawn under
+ * `layered` and on any edge a moved endpoint handed back) and for a routed
+ * edge's `segment-radii`, so the two modes cannot drift apart: they did, at
+ * 25 against 10, and the routed modes read as square-cornered beside layered.
+ */
+export const EDGE_CORNER_RADIUS = 25
+
+/**
  * Every property a route sets. Cleared by name, never by a bare
  * `removeStyle()`: `applyFilter` hides elements through a `display` bypass,
  * and a bare clear would un-hide every filtered edge along with the route.
@@ -72,7 +81,9 @@ export function routeStyle(
     distances.push((vx * nx + vy * ny).toFixed(2))
   }
   const style: Record<string, string | number> = {
-    'curve-style': inner.length > 0 ? 'segments' : 'straight',
+    // `round-segments`, not `segments`: cytoscape rounds a corner only under
+    // the curve style that says so, and ignores `segment-radii` otherwise.
+    'curve-style': inner.length > 0 ? 'round-segments' : 'straight',
     // Weights and distances measured against the manual endpoints, not the
     // node centres or cytoscape's own intersections.
     'edge-distances': 'endpoints',
@@ -83,7 +94,7 @@ export function routeStyle(
   if (inner.length > 0) {
     style['segment-weights'] = weights.join(' ')
     style['segment-distances'] = distances.join(' ')
-    style['segment-radii'] = '10'
+    style['segment-radii'] = String(EDGE_CORNER_RADIUS)
     style['radius-type'] = 'arc-radius'
   }
   return style
