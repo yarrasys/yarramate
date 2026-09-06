@@ -139,23 +139,42 @@ export interface SavedView {
   readonly path: string;
 }
 
+/**
+ * The saved document for a view, from what the editor holds of it.
+ *
+ * An EMPTY title or description is written as no field at all (#509). The
+ * schema's `presentation.title` and `.description` are non-empty text, and
+ * the editor reads an undeclared description back as `""`; writing that
+ * string back made every membership edit to an undescribed view a document
+ * the schema refuses (YM201), so a subject added to five of the six
+ * ApertureX reference views could not be committed, since 1.0.0. The
+ * declared presentation is spread first and its own `title`/`description`
+ * set aside, so an emptied field is removed rather than kept from the
+ * declaration: the caller's value is the whole truth about those two.
+ */
 export const composeProjection = (input: {
   readonly id: string;
   readonly title: string;
   readonly description: string;
   readonly query: ProjectionQuery;
   readonly presentation: ProjectionDefinition["presentation"];
-}): ProjectionDefinition => ({
-  format: "yarramate/projection/v1",
-  id: input.id,
-  version: "1.0",
-  query: input.query,
-  presentation: {
-    ...(input.presentation ?? {}),
-    title: input.title,
-    description: input.description,
-  },
-});
+}): ProjectionDefinition => {
+  const { title: _title, description: _description, ...declared } =
+    input.presentation ?? {};
+  return {
+    format: "yarramate/projection/v1",
+    id: input.id,
+    version: "1.0",
+    query: input.query,
+    presentation: {
+      ...declared,
+      ...(input.title.trim() === "" ? {} : { title: input.title }),
+      ...(input.description.trim() === ""
+        ? {}
+        : { description: input.description }),
+    },
+  };
+};
 
 /**
  * Whether a view can be told which subjects it holds.

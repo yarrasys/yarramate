@@ -54,6 +54,22 @@ const projectionOf = (operation: ReturnType<typeof buildPayload>) => {
   return operation.projection
 }
 
+// An empty description is no description (#509): the schema refuses "", and
+// clearing the field in this form means removing it, not keeping the one the
+// view declared.
+describe('buildPayload and an empty description', () => {
+  it('writes no description when the field is empty, and drops a declared one that was cleared', () => {
+    const projection = projectionOf(
+      build({
+        description: '',
+        declared: { title: 'Existing', description: 'The old one', nesting: ['composition'] },
+      }),
+    )
+    expect('description' in (projection.presentation ?? {})).toBe(false)
+    expect(projection.presentation).toMatchObject({ title: 'My View', nesting: ['composition'] })
+  })
+})
+
 describe('buildPayload', () => {
   it('writes the document the view already occupies when overwriting', () => {
     const operation = build()
