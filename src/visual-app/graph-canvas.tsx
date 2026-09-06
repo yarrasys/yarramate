@@ -18,6 +18,7 @@ import {
 } from '../fold-tree.js'
 import { DEFAULT_DIRECTION, type LayoutDirection } from '../layout-direction.js'
 import { DEFAULT_LAYOUT, routesEdges, type LayoutMode } from '../layout-mode.js'
+import { presetBlocks, stylePresetOf, type StylePresetId } from './style-presets.js'
 import type {
   VisualLayoutPositions,
   VisualLayoutSavePayload,
@@ -297,6 +298,7 @@ export function buildStylesheet(
   showNudges: boolean,
   showKindLabels: boolean = true,
   layout: LayoutMode = DEFAULT_LAYOUT,
+  stylePreset: StylePresetId = 'current',
 ): cytoscape.StylesheetJsonBlock[] {
   // What an edge says is decided in one place (ADR 0147): the relationship's
   // name, or its reading in this layout's voice - "serves" in a layout that
@@ -657,6 +659,8 @@ export function buildStylesheet(
     ...baseStylesheet,
     ...archimateNodeShapes,
     ...archimateEdgeStyles,
+    // LAB: a style preset dresses the notation; the marks still win last.
+    ...presetBlocks(stylePreset),
     ...markStylesheet,
   ]
 }
@@ -1469,6 +1473,8 @@ interface GraphCanvasProps {
   readonly layout: LayoutMode
   /** Whether an unnamed relationship is labelled with its reading (ADR 0147). */
   readonly showKindLabels: boolean
+  /** LAB: which dress the canvas wears. */
+  readonly stylePreset: StylePresetId
   /** Saved layout for the active view, or undefined when it has none yet. */
   readonly savedPositions: VisualLayoutPositions | undefined
   readonly onSaveLayout: (payload: VisualLayoutSavePayload) => void
@@ -1515,6 +1521,7 @@ export function GraphCanvas({
   direction,
   layout,
   showKindLabels,
+  stylePreset,
   savedPositions,
   onSaveLayout,
   onKindDrop,
@@ -1622,6 +1629,7 @@ export function GraphCanvas({
         showNudges,
         showKindLabels,
         layout,
+        stylePreset,
       ),
       wheelSensitivity: 0.1,
       layout: { name: 'null' },
@@ -1789,11 +1797,12 @@ export function GraphCanvas({
         showNudges,
         showKindLabels,
         layout,
+        stylePreset,
       ),
     )
     // `showKindLabels` and `layout` are here for the LABEL WORDING they
     // change; the relayout a layout change needs is armed below.
-  }, [showLifecycle, showEvidence, showOwnership, showNudges, showKindLabels, layout])
+  }, [showLifecycle, showEvidence, showOwnership, showNudges, showKindLabels, layout, stylePreset])
 
   // Update elements whenever the graph itself changes. Keyed on the graph and
   // nothing else: a full remove/re-add plus an unscoped layout over every
@@ -2076,7 +2085,14 @@ export function GraphCanvas({
         // cytoscape UI extension and finds it mispositioned with the reason
         // already printed and ignored. Rendering is unaffected: the layer
         // holder cytoscape creates inside is already relative.
-        style={{ position: 'relative', width: '100%', height: '100%' }}
+        style={{
+          position: 'relative',
+          width: '100%',
+          height: '100%',
+          ...(stylePresetOf(stylePreset).canvas === undefined
+            ? {}
+            : { background: stylePresetOf(stylePreset).canvas }),
+        }}
         onContextMenu={(event) => event.preventDefault()}
         // A kind dragged from the palette (#295). Accepted on the container
         // rather than on any cytoscape element: a new subject belongs to no

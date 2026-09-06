@@ -1,5 +1,6 @@
 import type { LayoutDirection } from "../layout-direction.js";
 import { LAYOUT_MODES, type LayoutMode } from "../layout-mode.js";
+import { STYLE_PRESETS, type StylePresetId } from "./style-presets.js";
 
 /**
  * What each layout mode is called on the canvas. Iterated by the test against
@@ -32,11 +33,16 @@ export function LayoutControls({
   direction,
   onLayoutChange,
   onDirectionChange,
+  stylePreset = "current",
+  onStyleChange,
 }: {
   readonly layout: LayoutMode;
   readonly direction: LayoutDirection;
   readonly onLayoutChange: (layout: LayoutMode) => void;
   readonly onDirectionChange: (direction: LayoutDirection) => void;
+  /** LAB: the dress select; absent draws no third select. */
+  readonly stylePreset?: StylePresetId;
+  readonly onStyleChange?: (preset: StylePresetId) => void;
 }) {
   return (
     <>
@@ -66,6 +72,20 @@ export function LayoutControls({
           </option>
         ))}
       </select>
+      {onStyleChange === undefined ? null : (
+        <select
+          className="canvas-select"
+          aria-label="Style"
+          value={stylePreset}
+          onChange={(event) => onStyleChange(event.currentTarget.value as StylePresetId)}
+        >
+          {STYLE_PRESETS.map((preset) => (
+            <option key={preset.id} value={preset.id}>
+              {preset.title}
+            </option>
+          ))}
+        </select>
+      )}
     </>
   );
 }
