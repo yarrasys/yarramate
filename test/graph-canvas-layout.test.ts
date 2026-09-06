@@ -543,6 +543,19 @@ describe('layout runs', () => {
     })
   })
 
+  // A container's title sits in the band above its children, where a route
+  // entering the box from above crosses it. An opaque ground under the title
+  // keeps it legible; without one the route cuts through the letters.
+  it('grounds a container title so a route entering the box does not cut through it', () => {
+    const styleOf = (block: unknown): Record<string, unknown> =>
+      ((block as { style?: Record<string, unknown> }).style ?? {})
+    const parent = buildStylesheet(true, true, false, true).find(
+      (block) => (block as { selector: string }).selector === 'node:parent',
+    )
+    expect(styleOf(parent)['text-background-opacity']).toBe(1)
+    expect(styleOf(parent)['text-background-color']).toBe('#FFFFFF')
+  })
+
   // What an edge says is decided in one place, and the stylesheet asks it in
   // the layout's voice: the same unnamed serving reads "serves" where the
   // server is drawn above and "served by" where it is drawn below. Off, an

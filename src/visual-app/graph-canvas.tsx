@@ -409,6 +409,14 @@ export function buildStylesheet(
         'text-valign': 'top',
         'text-margin-y': -8,
         color: '#333333',
+        // The title sits in the band ELK reserves above the children, and an
+        // edge entering the box from above crosses that band on its way in.
+        // The same opaque ground the edge labels use keeps the title legible
+        // where a route passes under it; the route reads as interrupted by a
+        // label, which is what it is.
+        'text-background-color': '#FFFFFF',
+        'text-background-opacity': 1,
+        'text-background-padding': '3px',
       },
     },
     {

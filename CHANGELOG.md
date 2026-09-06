@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Two residues of the routed modes, measured away
+
+Two labelled edges running side by side could still lay their readings over
+each other: the lanes between parallel edges go from 30 to 60px in the routed
+modes, which measured 0 labels on another label on the reference Landscape
+(from 3) for 5% more width; label spacing and placing labels beside the edge
+were tried and moved nothing. And a container's title, which sits in the band
+above its members, is grounded the way edge labels are, so a route entering
+the box from above no longer cuts through the letters.
+
 ### Every orthogonal edge turns a square corner
 
 Layered drew its taxi bends with a 25px radius and the routed modes drew

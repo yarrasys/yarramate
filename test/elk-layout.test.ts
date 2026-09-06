@@ -86,7 +86,9 @@ describe('rootLayoutOptions', () => {
       expect(options['elk.hierarchyHandling']).toBe('INCLUDE_CHILDREN')
       expect(options['elk.edgeRouting']).toBe('ORTHOGONAL')
       expect(options['elk.edgeLabels.inline']).toBe('true')
-      expect(options['elk.spacing.edgeEdge']).toBe('30')
+      // 60, not 30: measured as the lane width that leaves no label on
+      // another label on the reference Landscape.
+      expect(options['elk.spacing.edgeEdge']).toBe('60')
       expect(options['elk.layered.spacing.edgeEdgeBetweenLayers']).toBe('20')
     }
   })
