@@ -473,6 +473,111 @@ concepts:
     expect(model.model.layouts.apps).toEqual(positions)
   })
 
+  // The sidecar the store already holds is read back on the mounted host the
+  // way the session server reads it from disk (#503). Until then a drag was
+  // saved faithfully and never applied again on the next visit.
+  it('restores the saved layout, its routes and its fold state from the store on open (#503)', () => {
+    const routes = {
+      'checkout-serves-ledger': {
+        points: [{ x: 86, y: 2 }, { x: 150, y: 2 }, { x: 150, y: 60 }],
+        labelAt: 64,
+      },
+    }
+    const { frames } = openHost({
+      'architecture/main.yaml': document,
+      'projections/apps.yaml': projection,
+      '.yarramate/visual-layout/apps.yaml': [
+        'format: yarramate/visual-layout/v1',
+        'projectionId: apps',
+        'positions:',
+        '  checkout: { x: 120, y: 80 }',
+        '  ledger: { x: 360, y: 240 }',
+        'folded: [checkout]',
+        'unfolded: []',
+        'routes:',
+        '  checkout-serves-ledger:',
+        '    points: [{ x: 86, y: 2 }, { x: 150, y: 2 }, { x: 150, y: 60 }]',
+        '    labelAt: 64',
+        '',
+      ].join('\n'),
+    })
+    // The opening model rides inside `ready`, the way the server's does.
+    const ready = frames[0]
+    expect(ready?.kind).toBe('ready')
+    if (ready?.kind !== 'ready') return
+    expect(ready.snapshot.model.layouts).toEqual({
+      apps: { checkout: { x: 120, y: 80 }, ledger: { x: 360, y: 240 } },
+    })
+    expect(ready.snapshot.model.routes).toEqual({ apps: routes })
+    expect(ready.snapshot.model.folds).toEqual({ apps: { folded: ['checkout'], unfolded: [] } })
+  })
+
+  // A product's store need not enumerate: one that answers `read` for the
+  // sidecar path by name and never lists it still restores the layout, since
+  // the host asks for every view's own sidecar path, the path it wrote to.
+  it('restores a sidecar the store serves by name but does not list (#503)', () => {
+    const listed = memoryStore({
+      'architecture/main.yaml': document,
+      'projections/apps.yaml': projection,
+      '.yarramate/visual-layout/apps.yaml':
+        'format: yarramate/visual-layout/v1\nprojectionId: apps\npositions:\n  checkout: { x: 5, y: 6 }\n',
+    })
+    const store: SourceStore = {
+      ...listed,
+      list: () => listed.list().filter((path) => !path.startsWith('.yarramate/visual-layout/')),
+    }
+    const host = createLocalHost({ store, workspace })
+    const frames: VisualServerFrame[] = []
+    const stop = host.open({
+      frame: (frame) => frames.push(frame),
+      connected: () => {},
+      lost: () => {},
+      session: () => ({ lastSequence: 0, closed: false }),
+    })
+    const ready = frames[0]
+    expect(ready?.kind).toBe('ready')
+    if (ready?.kind === 'ready') expect(ready.snapshot.model.layouts).toEqual({ apps: { checkout: { x: 5, y: 6 } } })
+    stop()
+  })
+
+  // A commit recompiles, and the recompile used to rebuild the model with the
+  // positions carried and the fold state and routes forgotten (#503).
+  it('keeps the fold state and the routes a save set across a commit (#503)', () => {
+    const { frames, send } = openHost()
+    const routes = {
+      'checkout-serves-ledger': { points: [{ x: 86, y: 2 }, { x: 215, y: 2 }], labelAt: null },
+    }
+    send(
+      input('layout.save', {
+        projectionId: 'apps',
+        positions: { checkout: { x: 120, y: 80 }, ledger: { x: 360, y: 240 } },
+        folded: ['checkout'],
+        unfolded: [],
+        routes,
+      }),
+    )
+    expect(frames.at(-1)?.kind).toBe('layout-save-result')
+    send(
+      input('changeset.commit', {
+        operations: [
+          {
+            op: 'add-concept',
+            document: 'architecture/main.yaml',
+            concept: { id: 'settlement', kind: 'applicationComponent', name: 'Settlement' },
+          },
+        ],
+        viewOperations: [],
+        sourceDigests: {},
+      }),
+    )
+    const model = frames.at(-1)
+    expect(model?.kind).toBe('model')
+    if (model?.kind !== 'model') return
+    expect(model.model.layouts.apps).toEqual({ checkout: { x: 120, y: 80 }, ledger: { x: 360, y: 240 } })
+    expect(model.model.routes).toEqual({ apps: routes })
+    expect(model.model.folds).toEqual({ apps: { folded: ['checkout'], unfolded: [] } })
+  })
+
   it('refuses an unknown view layout without changing the store', () => {
     const { store, frames, send } = openHost()
     const before = [...store.held.entries()]

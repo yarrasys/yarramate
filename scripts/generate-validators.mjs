@@ -68,6 +68,9 @@ const SHARED = {
   validateCoreContract: 'yarramate-core-contract',
   validateAdapterMapping: 'yarramate-adapter-mapping',
   validateCatalogue: 'yarramate-question-catalogue',
+  // The layout sidecar (#503): read back by BOTH hosts through one reader,
+  // and the browser-side one runs under a policy that forbids Ajv's codegen.
+  validateVisualLayout: 'yarramate-visual-layout',
 }
 const DISCRIMINATED = { validateOperations: 'yarramate-operations' }
 

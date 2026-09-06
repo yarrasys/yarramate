@@ -2906,6 +2906,61 @@ presentation:
     return body.views;
   };
 
+  // The sidecar is read back through the reader both hosts share (#503), and
+  // what it said survives the recompile a commit triggers: positions, fold
+  // state and routes alike. Before this the server carried the positions and
+  // forgot the other two on every commit.
+  it("hands the sidecar's positions, folds and routes to the browser, and keeps them across a commit (#503)", async () => {
+    await withWorkspace();
+    await mkdir(join(baseDir, ".yarramate/visual-layout"), { recursive: true });
+    await writeFile(
+      join(baseDir, ".yarramate/visual-layout/seeded.yaml"),
+      [
+        "format: yarramate/visual-layout/v1",
+        "projectionId: seeded",
+        "positions:",
+        "  user: { x: 120, y: 80 }",
+        "folded: []",
+        "unfolded: [user]",
+        "routes:",
+        "  user-serves-user:",
+        "    points: [{ x: 0, y: 0 }, { x: 10, y: 0 }]",
+        "    labelAt: null",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    const server = await start();
+    const { cookie } = await bootstrap(server);
+    const socket = await openBrowserSocket(server, cookie);
+
+    const expected = {
+      layouts: { seeded: { user: { x: 120, y: 80 } } },
+      folds: { seeded: { folded: [], unfolded: ["user"] } },
+      routes: {
+        seeded: {
+          "user-serves-user": { points: [{ x: 0, y: 0 }, { x: 10, y: 0 }], labelAt: null },
+        },
+      },
+    };
+    const ready = await nextFrame(socket, "ready");
+    expect(ready.snapshot.model).toMatchObject(expected);
+
+    const committed = await sendCommit(socket, {
+      viewOperations: [
+        {
+          op: "write-view",
+          path: ".yarramate/projections/my-view.yaml",
+          projection: projection("my-view", "My View"),
+        },
+      ],
+    });
+    expect(committed.result).toMatchObject({ ok: true });
+    const model = await nextFrame(socket, "model");
+    expect(model.model).toMatchObject(expected);
+    socket.close();
+  });
+
   it("writes a projection a commit staged", async () => {
     await withWorkspace();
     const server = await start();

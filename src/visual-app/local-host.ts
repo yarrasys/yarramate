@@ -21,6 +21,11 @@ import type {
   VisualServerFrame,
 } from '../adapters/visual/wire.js'
 import {
+  isLayoutSidecarPath,
+  layoutSidecarPath,
+  readLayoutSidecars,
+} from '../adapters/visual/layout-sidecar.js'
+import {
   adoptLandedViews,
   exclusionsOf,
   matchedIdsOf,
@@ -175,7 +180,6 @@ export const createLocalHost = (options: LocalHostOptions): LocalEditorHost => {
         readonly patternVacancies?: readonly PatternVacancy[]
       }
     | undefined
-  let model: VisualRenderedModel = EMPTY_MODEL
   const readViewSummary = (path: string): VisualViewSummary | undefined => {
     const held = store.read(path)
     if (held === undefined) return undefined
@@ -192,6 +196,39 @@ export const createLocalHost = (options: LocalHostOptions): LocalEditorHost => {
       return summary === undefined ? [] : [summary]
     },
   )
+  /**
+   * The saved layouts the store already holds, read back the same way the
+   * session server reads them from disk (#503). Two ways to find them, because
+   * a store need not be able to enumerate: whatever `list()` shows under the
+   * sidecar directory, plus every view's own sidecar path asked for by name,
+   * which is the path this host wrote it to. A store that answers `read` for
+   * a path it never listed still restores its layouts. `list` is asked for
+   * only if the store has one: this host never called it before, so a store
+   * built against an older contract may not carry it, and losing the listing
+   * costs at most a sidecar no view names.
+   */
+  const sidecarsOf = () => {
+    const listed = typeof store.list === 'function' ? store.list() : []
+    const paths = new Set<string>([
+      ...listed.filter(isLayoutSidecarPath),
+      ...views.map((view) => layoutSidecarPath(view.id)),
+    ])
+    return readLayoutSidecars(
+      [...paths].flatMap((path) => {
+        const held = store.read(path)
+        return held === undefined ? [] : [{ path, source: held.source }]
+      }),
+    )
+  }
+  let model: VisualRenderedModel = ((): VisualRenderedModel => {
+    const { layouts, folds, routes } = sidecarsOf()
+    return {
+      ...EMPTY_MODEL,
+      layouts,
+      ...(Object.keys(folds).length === 0 ? {} : { folds }),
+      ...(Object.keys(routes).length === 0 ? {} : { routes }),
+    }
+  })()
   let deliver: EditorHostEvents | undefined
 
   /**
@@ -250,6 +287,10 @@ export const createLocalHost = (options: LocalHostOptions): LocalEditorHost => {
       initialView: views[0]?.id ?? '',
       documents: workspace.documents,
       layouts: model.layouts,
+      // The fold state and the routes, carried across the recompile like the
+      // positions are (#503); a commit is not a reason to forget them.
+      ...(model.folds === undefined ? {} : { folds: model.folds }),
+      ...(model.routes === undefined ? {} : { routes: model.routes }),
       // THE STORE'S OWN REVISIONS, not a sha256 of the bytes. A revision is
       // opaque and only the store that minted it may compare two (ADR 0100),
       // which is exactly what `planOperations` does at commit time - so the
@@ -574,7 +615,7 @@ export const createLocalHost = (options: LocalHostOptions): LocalEditorHost => {
             })
             return
           }
-          const path = `.yarramate/visual-layout/${projectionId}.yaml`
+          const path = layoutSidecarPath(projectionId)
           const held = store.read(path)
           const written = store.writeAll([
             {

@@ -574,6 +574,10 @@ concepts:
     kind: repository-file
     name: src/adapters/visual/wire.ts
     status: current
+  - id: visual-layout-sidecar-source
+    kind: repository-file
+    name: src/adapters/visual/layout-sidecar.ts
+    status: current
   - id: visual-workspace-model-source
     kind: repository-file
     name: src/adapters/visual/workspace-model.ts
@@ -1411,6 +1415,10 @@ relationships:
     kind: realization
     from: visual-wire-source
     to: visual-session-protocol
+  - id: visual-layout-sidecar-realizes-runtime
+    kind: realization
+    from: visual-layout-sidecar-source
+    to: visual-runtime
   - id: visual-workspace-model-realizes-runtime
     kind: realization
     from: visual-workspace-model-source

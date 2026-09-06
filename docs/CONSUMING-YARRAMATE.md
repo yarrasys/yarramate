@@ -420,6 +420,13 @@ defaults to `['properties', 'questions']`. This is a UI posture only — pair it
 with a store that refuses writes; the two defenses are independent.
 `mountEditorWith` takes the same flag as its trailing parameter.
 
+A drag writes a layout sidecar to `.yarramate/visual-layout/<viewId>.yaml`
+through your store's `writeAll`, and the host reads it back on the next mount
+(#503): it asks `read` for that path for every view, and reads whatever
+`list()` shows under `.yarramate/visual-layout/` as well. A store that serves
+the path by name without listing it is enough; a store that refuses the path
+loses the drag, silently, since presentation never fails a session.
+
 Pass `workerFactory` to run the layout engine in a Web Worker (#490). The
 bundle runs ELK on the calling thread by default, and a routed layout of a
 large view freezes the page for most of a second; it cannot ship a worker of

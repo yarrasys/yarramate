@@ -45,5 +45,7 @@ export const validateCoreContract =
 export const validateAdapterMapping =
   generated.validateAdapterMapping as ValidateFunction
 export const validateCatalogue = generated.validateCatalogue as ValidateFunction
+export const validateVisualLayout =
+  generated.validateVisualLayout as ValidateFunction
 export const validateOperations =
   generatedOperations.validateOperations as ValidateFunction

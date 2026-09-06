@@ -467,7 +467,13 @@ describe('mountEditor with a workerFactory', () => {
     evidence: [],
     contracts: [],
   }
-  const store = {} as SourceStore
+  // Enough of a store to construct a host over: nothing to list, nothing
+  // to read, and no write ever reaches it because `App` is never rendered.
+  const store: SourceStore = {
+    list: () => [],
+    read: () => undefined,
+    writeAll: () => ({ ok: true, revisions: new Map() }),
+  }
 
   it('constructs the worker once, lays out through it, and terminates it on unmount', async () => {
     const posted: { id: number; cmd: string }[] = []
