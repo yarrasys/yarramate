@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { LayoutDirection } from "../layout-direction.js";
 import type { LayoutMode } from "../layout-mode.js";
-import type { ProjectionQuery } from "../projection.js";
+import type { ProjectionDefinition, ProjectionQuery } from "../projection.js";
 import type {
   VisualViewOperation,
   VisualViewSummary,
@@ -53,10 +53,19 @@ export interface BuildPayloadParams {
   /** Where the overwritten view's document already lives, if there is one. */
   readonly path: string | undefined;
   /**
-   * The folder this document declares. Carried rather than composed: this
-   * builds the presentation block from scratch, so a field it is not given is
-   * a field the save DROPS - and a reviewer who overwrote a view would find it
-   * had left its folder.
+   * Everything the view being overwritten already declares, carried through
+   * in full underneath what this form owns. The form composes the fields it
+   * has controls for; every other field - `nesting`, `fold`, `notation` - is
+   * the view's own opinion and must survive a save that never asked about it.
+   * Measured by ApertureX on 1.24.0: an overwrite that dropped
+   * `nesting: [composition, assignment]` turned 69 subjects and 72 edges into
+   * 65 and 105, because nothing contained the members any more. A new view
+   * has nothing to carry.
+   */
+  readonly declared: ProjectionDefinition["presentation"] | undefined;
+  /**
+   * The folder this document declares, for a NEW view. An overwrite carries
+   * its folder through `declared`; this names the one the opener chose.
    */
   readonly folder: string | undefined;
   readonly title: string;
@@ -92,6 +101,7 @@ export const buildPayload = ({
   id,
   taken,
   path,
+  declared,
   folder,
   title,
   description,
@@ -113,6 +123,10 @@ export const buildPayload = ({
       description,
       query: query ?? {},
       presentation: {
+        // The view's own declaration first, so a field this form has no
+        // control for is kept rather than dropped; what the form owns is
+        // written over it.
+        ...(declared ?? {}),
         layout,
         direction,
         // A folder is written only where there is one to write: an empty
@@ -295,9 +309,9 @@ export function SaveViewDialog({
           id === undefined
             ? undefined
             : activeView?.path,
-        // A new view takes the folder the caller named; an overwrite carries
-        // the one the view already declares, which is not the same thing as
-        // the one this control happens to be holding.
+        // An overwrite carries everything the view already declares; a new
+        // view carries nothing and takes the folder the caller named.
+        declared: id === undefined ? undefined : activeView?.presentation,
         folder: id === undefined ? folder : (activeView?.presentation?.folder),
         title,
         description,
