@@ -163,8 +163,12 @@ diff — merging is the human acceptance step, not yours.
   verdicts, and attestations, with a `path:line` citation per cell.
 - `init` writes the discovery pointer into both `AGENTS.md` and
   `CLAUDE.md`, so this section finds you rather than the reverse.
-- `yarramate-mcp` exposes four read-only tools (ask/design/check/reconcile)
-  over MCP stdio.
+- `yarramate-mcp` exposes the whole loop over MCP stdio: `yarramate_ask`,
+  `yarramate_design`, `yarramate_apply`, `yarramate_check`,
+  `yarramate_reconcile` and `yarramate_export`. Every tool call runs the same
+  CLI; `apply` is the one write and lands the same atomic batch. Start it
+  inside the repository, or anywhere with `--workspace <path>`, and the
+  `workspace` argument becomes optional (#514).
 - In Claude Code, this repository is its own plugin marketplace:
 
   ```sh
