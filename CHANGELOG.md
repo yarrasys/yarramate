@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.26.0
 
 ### The MCP server lands answers and derives deliverables (#514)
 
