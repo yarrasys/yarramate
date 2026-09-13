@@ -254,7 +254,7 @@ later session recovers the refactoring that a diff alone does not explain.
 | `evidence` | removed as a surface; `reconcile` reports, `check --strict` gates (settled — see open questions) |
 | `reconcile` | `reconcile` (unchanged) |
 | adapter binaries (`yarramate-likec4`, `yarramate-graphify`) | `export likec4` fronts the likec4 adapter as a separate process; direct binaries remain for advanced use |
-| MCP adapter | four read-only tools: `ask`, `design`, `check`, `reconcile` |
+| MCP adapter | the loop's six tools: `ask`, `design`, `apply`, `check`, `reconcile`, `export`; `workspace` optional (ADR 0149) |
 
 Core contract, skill, MCP, README, and docs are rewritten to the seven
 verbs. No aliases: old names are removed, and the release notes carry

@@ -718,11 +718,23 @@ Harnesses that load MCP servers can connect the bundled read-only adapter:
 }
 ```
 
-It exposes `yarramate_ask` (orientation, free text, subject ids, or a
-projection path, with an optional token budget), `yarramate_design`,
-`yarramate_check`, and `yarramate_reconcile`. Every tool call executes the
-same stable CLI in the server's working directory; nothing mutates native
-documents, and authoring stays with the CLI and Git review.
+It exposes the whole loop: `yarramate_ask` (orientation, free text, subject
+ids, or a projection path, with an optional token budget), `yarramate_design`
+(the top open question with its answer skeleton), `yarramate_apply` (one
+`yarramate/operations/v1` document, landed as the same atomic batch the CLI
+lands, refused whole on any invalid operation), `yarramate_check`,
+`yarramate_reconcile`, and `yarramate_export` (markdown, rtm, graph and briefs
+come back as text; xlsx and likec4 write where `out` says). Every tool call
+executes the same stable CLI in the repository; `apply` is the only write, and
+it changes exactly what the CLI would (ADR 0149).
+
+`workspace` is optional on every tool. It defaults to the `--workspace` the
+server was started with, then to `.yarramate/workspace.yaml` under the working
+directory. A desktop app starts the server outside the repository, so give it
+`--workspace /full/path/to/.yarramate/workspace.yaml`; the CLI then runs at
+that repository's root, as a person would run it. Every tool description
+carries the loop in two sentences, because a desktop-app agent has never read
+the skill file.
 
 ## Continuous drift signal in CI
 

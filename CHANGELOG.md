@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+### The MCP server lands answers and derives deliverables (#514)
+
+`yarramate-mcp` served four read tools, and `yarramate_design` told the agent
+to land answers "through the CLI apply command, not through this server". A
+command-line agent could, a desktop app cannot run a command, and the
+filesystem-only launch of yarramate.dev names the desktop apps as supported
+platforms. So the server now serves the whole loop: `yarramate_apply` takes
+one `yarramate/operations/v1` document (YAML or JSON text, or an object) and
+lands it as the same atomic batch the CLI lands, refused whole on any invalid
+operation; `yarramate_export` returns markdown, the RTM, the graph and briefs
+as text and writes xlsx and likec4 where `out` says. `workspace` is optional
+on every tool: it falls back to the server's new `--workspace <path>` and
+then to `.yarramate/workspace.yaml` under the working directory, and a
+workspace named from elsewhere runs the CLI at that repository's root, as a
+person would. Every tool description carries the loop in two sentences.
+ADR 0149 amends ADR 0044's read-only clause.
+
 ## 1.25.2
 
 ### A subject added to an undescribed view can be committed again (#509)

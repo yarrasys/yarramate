@@ -59,7 +59,7 @@ concepts:
   - id: mcp-adapter
     kind: applicationComponent
     name: MCP adapter
-    description: Exposes the read-only stable CLI surface over stdio Model Context Protocol without adding semantics of its own.
+    description: Exposes the stable CLI surface over stdio Model Context Protocol without adding semantics of its own; since ADR 0149 that surface is the whole loop, with apply as the one write and export for deliverables.
     status: current
     owner: yarramate-maintainers
   - id: architecture-state-engine
@@ -798,7 +798,7 @@ concepts:
   - id: expose-cli-over-mcp
     kind: applicationFunction
     name: Expose the CLI over MCP
-    description: Advertises the read-only CLI verbs as stdio Model Context Protocol tools and forwards each call to the same command surface a human runs.
+    description: Advertises the loop's CLI verbs, ask, design, apply, check, reconcile and export, as stdio Model Context Protocol tools and forwards each call to the same command surface a human runs, at the repository root, with the workspace optional.
     status: current
   - id: visual-changeset-submitted
     kind: applicationEvent
