@@ -56,6 +56,7 @@ const NEWLINE = 0x0a
 const ACTIONABLE_EVENT_TYPES: Readonly<Record<string, true>> = {
   'chat.message': true,
   'choice.selected': true,
+  'question.delegate': true,
   'session.end': true,
 }
 

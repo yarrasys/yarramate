@@ -34,6 +34,19 @@ kind preselected; or open the properties. The connection tool learned
 drafts the edge that way round. Viewers and hosts without the gestures see
 no verbs. ADR 0150.
 
+### A question can be answered via the agent, who proposes and the reviewer commits (#515)
+
+Every question row now has a second button. With an agent on the socket it
+reads "Answer via agent": the question goes to the agent as a chat turn by
+another door, the transcript shows the hand-over as the reviewer's line, and
+the agent answers with a new `operations.propose` response whose operations
+are staged into the changeset for the reviewer to commit. The agent never
+writes (ADR 0084, 0088); it proposes. A mounted host may pass
+`onDelegateQuestion` to route the question to its own assistant ("Answer via
+assistant"); a host that passes nothing gets "Copy for my assistant", which
+puts the question, why it matters, what closes it and the operations
+skeleton the trigger implies on the clipboard. ADR 0151.
+
 ## 1.25.2
 
 ### A subject added to an undescribed view can be committed again (#509)

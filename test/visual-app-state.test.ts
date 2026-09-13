@@ -1192,15 +1192,28 @@ describe("visualBrowserInputFor", () => {
         acknowledged,
       ),
       visualBrowserInputFor({ kind: "end" }, acknowledged),
+      // #515, ADR 0151: a delegated question is a chat turn by another door.
+      visualBrowserInputFor(
+        {
+          kind: "delegate",
+          payload: {
+            questionId: "core-enrichment#stakeholder-unconcerned",
+            subjectId: "operations-director",
+            question: "What does Operations director care about here?",
+          },
+        },
+        acknowledged,
+      ),
     ];
     expect(frames.map((frame) => frame.lastAcknowledgedSequence)).toEqual([
-      7, 7, 7, 7,
+      7, 7, 7, 7, 7,
     ]);
     expect(frames.map((frame) => frame.type)).toEqual([
       "chat.message",
       "choice.selected",
       "view.navigate",
       "session.end",
+      "question.delegate",
     ]);
   });
 
@@ -1229,6 +1242,40 @@ describe("visualBrowserInputFor", () => {
 describe("visualAppActionsForFrame", () => {
   const actionsFor = (frame: VisualServerFrame) =>
     visualAppActionsForFrame(frame);
+
+  // #515, ADR 0151: the agent answers a delegated question by proposing, and
+  // the browser stages what it proposed for the reviewer to commit.
+  it("stages a proposed batch as rows and shows the note", () => {
+    const operations = [
+      {
+        op: "add-relationship",
+        document: ".yarramate/architecture/main.yaml",
+        relationship: {
+          id: "director-influences-fleet",
+          kind: "influence",
+          from: "operations-director",
+          to: "ageing-meter-fleet",
+        },
+      },
+    ] as const;
+    expect(
+      actionsFor({
+        kind: "response",
+        response: {
+          format: "yarramate/visual-response/v1",
+          sessionId: "s",
+          responseId: "r1",
+          eventId: "e1",
+          type: "operations.propose",
+          timestamp: "2026-09-13T00:00:00.000Z",
+          payload: { note: "The director cares about billing accuracy.", operations },
+        },
+      }),
+    ).toEqual([
+      { type: "chat.received", id: "r1", text: "The director cares about billing accuracy." },
+      { type: "changeset.staged", operation: operations[0] },
+    ]);
+  });
 
   it("loads the session from a ready frame", () => {
     expect(actionsFor({ kind: "ready", snapshot: serverSnapshot })).toEqual([

@@ -138,6 +138,31 @@ export interface VisualChoiceSelectedPayload {
   readonly optionId: string;
 }
 
+/**
+ * The reviewer hands one open question to the agent (#515, ADR 0151). The
+ * phrasing rides along so the transcript, the journal and the agent read the
+ * same words; the agent still computes the step from the record, because the
+ * question is a reading of the model at one moment and the model may have
+ * moved since the row was drawn.
+ */
+export interface VisualQuestionDelegatePayload {
+  readonly questionId: string;
+  /** Null for a workspace-scoped question, which names no subject. */
+  readonly subjectId: string | null;
+  readonly question: string;
+}
+
+/**
+ * The agent's answer to a delegated question: operations it PROPOSES, which
+ * the browser stages into the reviewer's changeset and the reviewer commits
+ * (ADR 0151). The agent never writes (ADR 0084, ADR 0088); this is how it
+ * answers without doing so. `note` is the line the transcript shows.
+ */
+export interface VisualOperationsProposePayload {
+  readonly note: string;
+  readonly operations: readonly YarramateOperation[];
+}
+
 export interface VisualViewNavigatePayload {
   readonly viewId: string;
   readonly requiresAttention: boolean;
@@ -446,6 +471,11 @@ export type VisualBrowserInput =
       readonly type: "session.end";
       readonly lastAcknowledgedSequence: number;
       readonly payload: VisualBrowserSessionEndPayload;
+    }
+  | {
+      readonly type: "question.delegate";
+      readonly lastAcknowledgedSequence: number;
+      readonly payload: VisualQuestionDelegatePayload;
     };
 
 interface VisualEventEnvelope<Type extends string, Payload> {
@@ -461,6 +491,7 @@ interface VisualEventEnvelope<Type extends string, Payload> {
 export type VisualEvent =
   | VisualEventEnvelope<"chat.message", VisualChatMessagePayload>
   | VisualEventEnvelope<"choice.selected", VisualChoiceSelectedPayload>
+  | VisualEventEnvelope<"question.delegate", VisualQuestionDelegatePayload>
   | VisualEventEnvelope<"view.navigate", VisualViewNavigatePayload>
   | VisualEventEnvelope<"session.end", VisualSessionEndPayload>
   | VisualEventEnvelope<"browser.connected", VisualBrowserConnectedPayload>
@@ -556,6 +587,7 @@ export type VisualResponse =
   | VisualResponseEnvelope<"chat.response", VisualChatResponsePayload>
   | VisualResponseEnvelope<"agent.status", VisualAgentStatusPayload>
   | VisualResponseEnvelope<"choice.present", VisualChoicePresentPayload>
+  | VisualResponseEnvelope<"operations.propose", VisualOperationsProposePayload>
   | VisualResponseEnvelope<"handoff.complete", VisualHandoffSummary>
   | VisualResponseEnvelope<"diagnostic", VisualDiagnosticPayload>;
 

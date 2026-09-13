@@ -31,6 +31,7 @@
       "enum": [
         "chat.message",
         "choice.selected",
+        "question.delegate",
         "view.navigate",
         "filter.query",
         "changeset.commit",
@@ -50,74 +51,152 @@
   "oneOf": [
     {
       "type": "object",
-      "required": ["type", "payload"],
+      "required": [
+        "type",
+        "payload"
+      ],
       "properties": {
-        "type": { "const": "chat.message" },
-        "payload": { "$ref": "#/$defs/chatMessagePayload" }
+        "type": {
+          "const": "chat.message"
+        },
+        "payload": {
+          "$ref": "#/$defs/chatMessagePayload"
+        }
       }
     },
     {
       "type": "object",
-      "required": ["type", "payload"],
+      "required": [
+        "type",
+        "payload"
+      ],
       "properties": {
-        "type": { "const": "choice.selected" },
-        "payload": { "$ref": "#/$defs/choiceSelectedPayload" }
+        "type": {
+          "const": "choice.selected"
+        },
+        "payload": {
+          "$ref": "#/$defs/choiceSelectedPayload"
+        }
       }
     },
     {
       "type": "object",
-      "required": ["type", "payload"],
+      "required": [
+        "type",
+        "payload"
+      ],
       "properties": {
-        "type": { "const": "view.navigate" },
-        "payload": { "$ref": "#/$defs/viewNavigatePayload" }
+        "type": {
+          "const": "question.delegate"
+        },
+        "payload": {
+          "$ref": "#/$defs/questionDelegatePayload"
+        }
       }
     },
     {
       "type": "object",
-      "required": ["type", "payload"],
+      "required": [
+        "type",
+        "payload"
+      ],
       "properties": {
-        "type": { "const": "filter.query" },
-        "payload": { "$ref": "#/$defs/filterQueryPayload" }
+        "type": {
+          "const": "view.navigate"
+        },
+        "payload": {
+          "$ref": "#/$defs/viewNavigatePayload"
+        }
       }
     },
     {
       "type": "object",
-      "required": ["type", "payload"],
+      "required": [
+        "type",
+        "payload"
+      ],
       "properties": {
-        "type": { "const": "changeset.commit" },
-        "payload": { "$ref": "#/$defs/changesetCommitPayload" }
+        "type": {
+          "const": "filter.query"
+        },
+        "payload": {
+          "$ref": "#/$defs/filterQueryPayload"
+        }
       }
     },
     {
       "type": "object",
-      "required": ["type", "payload"],
+      "required": [
+        "type",
+        "payload"
+      ],
       "properties": {
-        "type": { "const": "layout.save" },
-        "payload": { "$ref": "#/$defs/layoutSavePayload" }
+        "type": {
+          "const": "changeset.commit"
+        },
+        "payload": {
+          "$ref": "#/$defs/changesetCommitPayload"
+        }
       }
     },
     {
       "type": "object",
-      "required": ["type", "payload"],
+      "required": [
+        "type",
+        "payload"
+      ],
       "properties": {
-        "type": { "const": "session.end" },
-        "payload": { "$ref": "#/$defs/sessionEndPayload" }
+        "type": {
+          "const": "layout.save"
+        },
+        "payload": {
+          "$ref": "#/$defs/layoutSavePayload"
+        }
       }
     },
     {
       "type": "object",
-      "required": ["type", "payload"],
+      "required": [
+        "type",
+        "payload"
+      ],
       "properties": {
-        "type": { "const": "browser.connected" },
-        "payload": { "$ref": "#/$defs/browserConnectedPayload" }
+        "type": {
+          "const": "session.end"
+        },
+        "payload": {
+          "$ref": "#/$defs/sessionEndPayload"
+        }
       }
     },
     {
       "type": "object",
-      "required": ["type", "payload"],
+      "required": [
+        "type",
+        "payload"
+      ],
       "properties": {
-        "type": { "const": "browser.disconnected" },
-        "payload": { "$ref": "#/$defs/browserDisconnectedPayload" }
+        "type": {
+          "const": "browser.connected"
+        },
+        "payload": {
+          "$ref": "#/$defs/browserConnectedPayload"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "payload"
+      ],
+      "properties": {
+        "type": {
+          "const": "browser.disconnected"
+        },
+        "payload": {
+          "$ref": "#/$defs/browserDisconnectedPayload"
+        }
       }
     }
   ],
@@ -146,7 +225,9 @@
     "chatMessagePayload": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["text"],
+      "required": [
+        "text"
+      ],
       "properties": {
         "text": {
           "type": "string",
@@ -158,27 +239,41 @@
     "choiceSelectedPayload": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["choiceId", "optionId"],
+      "required": [
+        "choiceId",
+        "optionId"
+      ],
       "properties": {
-        "choiceId": { "$ref": "#/$defs/shortId" },
-        "optionId": { "$ref": "#/$defs/shortId" }
+        "choiceId": {
+          "$ref": "#/$defs/shortId"
+        },
+        "optionId": {
+          "$ref": "#/$defs/shortId"
+        }
       }
     },
     "viewNavigatePayload": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["viewId", "requiresAttention"],
+      "required": [
+        "viewId",
+        "requiresAttention"
+      ],
       "properties": {
         "viewId": {
           "$ref": "https://yarramate.org/schema/visual-model/v1#/$defs/viewId"
         },
-        "requiresAttention": { "type": "boolean" }
+        "requiresAttention": {
+          "type": "boolean"
+        }
       }
     },
     "filterQueryPayload": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["query"],
+      "required": [
+        "query"
+      ],
       "properties": {
         "query": {
           "$ref": "https://yarramate.org/schema/projection/v1#/$defs/query"
@@ -187,7 +282,12 @@
           "description": "The nesting the canvas is drawing with, when the browser knows it (#473). Only `query.instances` reads it, and it must: an instance's closure IS the containment tree, so resolving it under a different nesting than the canvas answers a different question. Optional, so a browser that does not send it behaves exactly as before.",
           "type": "array",
           "uniqueItems": true,
-          "items": { "enum": ["composition", "assignment"] }
+          "items": {
+            "enum": [
+              "composition",
+              "assignment"
+            ]
+          }
         }
       }
     },
@@ -197,9 +297,15 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["op", "path", "projection"],
+          "required": [
+            "op",
+            "path",
+            "projection"
+          ],
           "properties": {
-            "op": { "const": "write-view" },
+            "op": {
+              "const": "write-view"
+            },
             "path": {
               "$ref": "https://yarramate.org/schema/visual-model/v1#/$defs/relativePath"
             },
@@ -211,9 +317,14 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["op", "path"],
+          "required": [
+            "op",
+            "path"
+          ],
           "properties": {
-            "op": { "const": "delete-view" },
+            "op": {
+              "const": "delete-view"
+            },
             "path": {
               "$ref": "https://yarramate.org/schema/visual-model/v1#/$defs/relativePath"
             }
@@ -224,13 +335,27 @@
     "changesetCommitPayload": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["operations", "viewOperations", "sourceDigests"],
+      "required": [
+        "operations",
+        "viewOperations",
+        "sourceDigests"
+      ],
       "anyOf": [
         {
-          "properties": { "operations": { "type": "array", "minItems": 1 } }
+          "properties": {
+            "operations": {
+              "type": "array",
+              "minItems": 1
+            }
+          }
         },
         {
-          "properties": { "viewOperations": { "type": "array", "minItems": 1 } }
+          "properties": {
+            "viewOperations": {
+              "type": "array",
+              "minItems": 1
+            }
+          }
         }
       ],
       "properties": {
@@ -243,7 +368,9 @@
         "viewOperations": {
           "type": "array",
           "maxItems": 4096,
-          "items": { "$ref": "#/$defs/viewOperation" }
+          "items": {
+            "$ref": "#/$defs/viewOperation"
+          }
         },
         "sourceDigests": {
           "type": "object",
@@ -261,7 +388,10 @@
       "description": "What a drag-save carries: the positions, and beside them the fold state (#473) and the routes (ADR 0147) the sidecar keeps. The three optional halves are the sidecar's own definitions, so what the browser may send and what the file may hold cannot drift apart.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["projectionId", "positions"],
+      "required": [
+        "projectionId",
+        "positions"
+      ],
       "properties": {
         "projectionId": {
           "$ref": "https://yarramate.org/schema/projection/v1#/$defs/id"
@@ -295,34 +425,51 @@
       "description": "Terminal event the runtime journals. Every termination reason is the runtime's to choose; the browser may only request the user-ended one.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["reason"],
+      "required": [
+        "reason"
+      ],
       "properties": {
-        "reason": { "$ref": "#/$defs/terminationReason" }
+        "reason": {
+          "$ref": "#/$defs/terminationReason"
+        }
       }
     },
     "browserSessionEndPayload": {
       "description": "End as an untrusted browser may ask for it. A browser cannot claim a timeout, a child failure, or a cancellation it does not own.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["reason"],
+      "required": [
+        "reason"
+      ],
       "properties": {
-        "reason": { "const": "user-ended" }
+        "reason": {
+          "const": "user-ended"
+        }
       }
     },
     "browserConnectedPayload": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["connectionId"],
+      "required": [
+        "connectionId"
+      ],
       "properties": {
-        "connectionId": { "$ref": "#/$defs/shortId" }
+        "connectionId": {
+          "$ref": "#/$defs/shortId"
+        }
       }
     },
     "browserDisconnectedPayload": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["connectionId", "code"],
+      "required": [
+        "connectionId",
+        "code"
+      ],
       "properties": {
-        "connectionId": { "$ref": "#/$defs/shortId" },
+        "connectionId": {
+          "$ref": "#/$defs/shortId"
+        },
         "code": {
           "type": "integer",
           "minimum": 1000,
@@ -336,88 +483,192 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["type", "lastAcknowledgedSequence", "payload"],
+          "required": [
+            "type",
+            "lastAcknowledgedSequence",
+            "payload"
+          ],
           "properties": {
-            "type": { "const": "chat.message" },
+            "type": {
+              "const": "chat.message"
+            },
             "lastAcknowledgedSequence": {
               "$ref": "#/$defs/acknowledgedSequence"
             },
-            "payload": { "$ref": "#/$defs/chatMessagePayload" }
+            "payload": {
+              "$ref": "#/$defs/chatMessagePayload"
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["type", "lastAcknowledgedSequence", "payload"],
+          "required": [
+            "type",
+            "lastAcknowledgedSequence",
+            "payload"
+          ],
           "properties": {
-            "type": { "const": "choice.selected" },
+            "type": {
+              "const": "choice.selected"
+            },
             "lastAcknowledgedSequence": {
               "$ref": "#/$defs/acknowledgedSequence"
             },
-            "payload": { "$ref": "#/$defs/choiceSelectedPayload" }
+            "payload": {
+              "$ref": "#/$defs/choiceSelectedPayload"
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["type", "lastAcknowledgedSequence", "payload"],
+          "required": [
+            "type",
+            "lastAcknowledgedSequence",
+            "payload"
+          ],
           "properties": {
-            "type": { "const": "view.navigate" },
+            "type": {
+              "const": "question.delegate"
+            },
             "lastAcknowledgedSequence": {
               "$ref": "#/$defs/acknowledgedSequence"
             },
-            "payload": { "$ref": "#/$defs/viewNavigatePayload" }
+            "payload": {
+              "$ref": "#/$defs/questionDelegatePayload"
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["type", "lastAcknowledgedSequence", "payload"],
+          "required": [
+            "type",
+            "lastAcknowledgedSequence",
+            "payload"
+          ],
           "properties": {
-            "type": { "const": "filter.query" },
+            "type": {
+              "const": "view.navigate"
+            },
             "lastAcknowledgedSequence": {
               "$ref": "#/$defs/acknowledgedSequence"
             },
-            "payload": { "$ref": "#/$defs/filterQueryPayload" }
+            "payload": {
+              "$ref": "#/$defs/viewNavigatePayload"
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["type", "lastAcknowledgedSequence", "payload"],
+          "required": [
+            "type",
+            "lastAcknowledgedSequence",
+            "payload"
+          ],
           "properties": {
-            "type": { "const": "changeset.commit" },
+            "type": {
+              "const": "filter.query"
+            },
             "lastAcknowledgedSequence": {
               "$ref": "#/$defs/acknowledgedSequence"
             },
-            "payload": { "$ref": "#/$defs/changesetCommitPayload" }
+            "payload": {
+              "$ref": "#/$defs/filterQueryPayload"
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["type", "lastAcknowledgedSequence", "payload"],
+          "required": [
+            "type",
+            "lastAcknowledgedSequence",
+            "payload"
+          ],
           "properties": {
-            "type": { "const": "layout.save" },
+            "type": {
+              "const": "changeset.commit"
+            },
             "lastAcknowledgedSequence": {
               "$ref": "#/$defs/acknowledgedSequence"
             },
-            "payload": { "$ref": "#/$defs/layoutSavePayload" }
+            "payload": {
+              "$ref": "#/$defs/changesetCommitPayload"
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["type", "lastAcknowledgedSequence", "payload"],
+          "required": [
+            "type",
+            "lastAcknowledgedSequence",
+            "payload"
+          ],
           "properties": {
-            "type": { "const": "session.end" },
+            "type": {
+              "const": "layout.save"
+            },
             "lastAcknowledgedSequence": {
               "$ref": "#/$defs/acknowledgedSequence"
             },
-            "payload": { "$ref": "#/$defs/browserSessionEndPayload" }
+            "payload": {
+              "$ref": "#/$defs/layoutSavePayload"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "lastAcknowledgedSequence",
+            "payload"
+          ],
+          "properties": {
+            "type": {
+              "const": "session.end"
+            },
+            "lastAcknowledgedSequence": {
+              "$ref": "#/$defs/acknowledgedSequence"
+            },
+            "payload": {
+              "$ref": "#/$defs/browserSessionEndPayload"
+            }
           }
         }
       ]
+    },
+    "questionDelegatePayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "questionId",
+        "subjectId",
+        "question"
+      ],
+      "properties": {
+        "questionId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 400
+        },
+        "subjectId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 400
+        },
+        "question": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        }
+      }
     }
   }
 }
