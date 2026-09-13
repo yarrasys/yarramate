@@ -39,7 +39,12 @@ concepts:
 relationships: []
 `)
 
-const render = (draft: { from: string; to: string | null }) =>
+const render = (draft: {
+  from: string
+  to: string | null
+  kinds?: readonly string[]
+  direction?: 'outgoing' | 'incoming'
+}) =>
   renderToStaticMarkup(
     createElement(ConnectionPanel, {
       draft,
@@ -119,6 +124,93 @@ describe('ConnectionPanel', () => {
 
     expect(markup).toContain('outside the ArchiMate vocabulary')
     expect(markup).not.toContain('connection-kinds')
+  })
+
+  // #515, ADR 0150: a question arms the tool with a direction and its kinds.
+  describe('armed by a question', () => {
+    const permittedIn = connectableKinds(graph, 'settle', 'orders')
+    const permittedOut = connectableKinds(graph, 'orders', 'settle')
+
+    it('consults the table the other way round for an incoming question and says so', () => {
+      const markup = render({ from: 'orders', to: 'settle', direction: 'incoming' })
+      // The prompt reads source to sink: the target first, the subject last.
+      expect(markup).toMatch(/<strong>Settle<\/strong> to <strong>Orders<\/strong>/)
+      for (const kind of permittedIn) expect(markup, kind).toContain(`>${kind}<`)
+      const onlyOut = permittedOut.filter((kind) => !permittedIn.includes(kind))
+      for (const kind of onlyOut) expect(markup, kind).not.toContain(`>${kind}<`)
+    })
+
+    it('offers the asked kinds first and the rest under a rule', () => {
+      const asked = permittedOut[0]!
+      const markup = render({
+        from: 'orders',
+        to: 'settle',
+        kinds: [`yarramate/core@0.1#${asked}`],
+        direction: 'outgoing',
+      })
+      const main = markup.split('connection-others')[0]!
+      expect(main).toContain(`>${asked}<`)
+      for (const kind of permittedOut.filter((kind) => kind !== asked)) {
+        expect(main, kind).not.toContain(`>${kind}<`)
+      }
+      expect(markup).toContain('Other relationships the table permits')
+      expect(markup).not.toContain('connection-note')
+    })
+
+    it('says when the asked kind is not permitted here, and offers what is', () => {
+      const refused = ['specialization', 'composition', 'aggregation'].find(
+        (kind) => !permittedOut.includes(kind as never),
+      )!
+      const markup = render({
+        from: 'orders',
+        to: 'settle',
+        kinds: [`yarramate/core@0.1#${refused}`],
+        direction: 'outgoing',
+      })
+      expect(markup).toContain('connection-note')
+      expect(markup).toContain(`asked for ${refused}`)
+      for (const kind of permittedOut) expect(markup, kind).toContain(`>${kind}<`)
+      expect(markup).not.toContain('connection-others')
+    })
+
+    it('drafts the edge the way round the question meant', () => {
+      const staged: YarramateOperation[] = []
+      const firstButtonIn = (node: unknown): (() => void) | undefined => {
+        if (Array.isArray(node)) {
+          for (const child of node) {
+            const found = firstButtonIn(child)
+            if (found !== undefined) return found
+          }
+          return undefined
+        }
+        if (typeof node !== 'object' || node === null) return undefined
+        const element = node as {
+          type?: unknown
+          props?: { className?: string; onClick?: () => void; children?: unknown }
+        }
+        if (element.type === 'button' && element.props?.onClick !== undefined && element.props.className === undefined) {
+          return element.props.onClick
+        }
+        return firstButtonIn(element.props?.children)
+      }
+      const tree = ConnectionPanel({
+        draft: { from: 'orders', to: 'settle', direction: 'incoming' },
+        graph,
+        reservedIds: [],
+        onTarget: () => undefined,
+        onStage: (operation) => staged.push(operation),
+        onCancel: () => undefined,
+      }) as unknown
+      // The first plain button in the panel is the first offered kind.
+      const click = firstButtonIn((tree as { props: { children: unknown } }).props.children)
+      expect(click).toBeDefined()
+      click!()
+      expect(staged).toHaveLength(1)
+      expect(staged[0]).toMatchObject({
+        op: 'add-relationship',
+        relationship: { from: 'settle', to: 'orders' },
+      })
+    })
   })
 
   it('can always be backed out of', () => {

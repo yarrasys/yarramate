@@ -952,6 +952,34 @@ body {
   max-height: 45%;
 }
 
+/* The questions share the slack with properties (#515). Without a rule the
+   section had no flex of its own and shrank to its header the moment the
+   palette and the tray had taken theirs: measured at 3px of body with one
+   question open, next to a 167px tray holding nothing. A section with rows
+   never collapses to its header; one with nothing open, and a tray with
+   nothing staged, yield their space instead of holding it. A shut section is
+   its header whatever it would take when open. */
+.stack-section-questions {
+  /* Basis 0, not auto: with auto, flex-shrink took from each section in
+     proportion to its content, and a short list beside a long form was
+     shrunk to nothing first. From 0 the section grows into a share of the
+     room and the floor below guarantees a row or two of it. */
+  flex: 1 1 0;
+  min-height: calc(var(--step) * 16);
+  max-height: 50%;
+}
+
+/* Nothing open, or shut, or nothing staged: size to content. The tray
+   renders no body at all when it has nothing to show and no history, hence
+   `:empty` beside the note. */
+.stack-section-questions:has(.section-empty),
+.stack-section-questions:has(> .section-body[hidden]),
+.stack-section-changes:has(> .section-body:empty),
+.stack-section-changes:has(> .section-body > .section-empty) {
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
 .kind-palette {
   padding: calc(var(--step) * 0.5) 0 calc(var(--step) * 0.75);
 }
@@ -2832,6 +2860,40 @@ body {
   display: flex;
   gap: var(--step);
   align-items: baseline;
+  flex-wrap: wrap;
+}
+
+/* The verb that would answer the question (#515): the same control anatomy
+   as the panels' buttons, quiet until hovered, because a row is read far
+   more often than it is answered. */
+.question-verb {
+  margin-left: auto;
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0 calc(var(--step) * 0.75);
+  min-height: calc(var(--step) * 3);
+  color: var(--cobalt);
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.question-verb:hover,
+.question-verb:focus-visible {
+  border-color: var(--cobalt);
+  outline: none;
+}
+
+.connection-note,
+.connection-others summary {
+  font-size: 0.85rem;
+  color: var(--quiet);
+  margin: 0 0 calc(var(--step) * 0.5);
+}
+
+.connection-others summary {
+  cursor: pointer;
 }
 
 .question-authority {

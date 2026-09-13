@@ -27,6 +27,11 @@ const overlay: VisualInterrogationOverlay = {
         question: 'Who is accountable for Teller?',
         authority: 'human',
         since: '0.7',
+        scope: 'subject',
+        materiality: 'An unowned actor has nobody to answer for it.',
+        trigger: [
+          { condition: 'missing-claim', predicate: 'yarramate/ownership/owner' },
+        ],
       },
       {
         questionId: 'actor-unassigned',
@@ -37,8 +42,13 @@ const overlay: VisualInterrogationOverlay = {
   },
 }
 
-const render = (selectedId: string | null): string =>
-  renderToStaticMarkup(createElement(OpenQuestions, { overlay, selectedId }))
+const render = (
+  selectedId: string | null,
+  extra: { readonly readOnly?: boolean; readonly onVerb?: () => void } = {},
+): string =>
+  renderToStaticMarkup(
+    createElement(OpenQuestions, { overlay, selectedId, ...extra }),
+  )
 
 describe('OpenQuestions', () => {
   it('shows the workspace-scoped questions when nothing is selected', () => {
@@ -69,5 +79,21 @@ describe('OpenQuestions', () => {
     // renders no input of its own.
     expect(html).not.toContain('<input')
     expect(html).not.toContain('<textarea')
+  })
+
+  // #515, ADR 0150: a row with a trigger offers the verb that would answer
+  // it, and the materiality rides as the question's title.
+  it('offers a verb from the trigger, with the materiality as the title', () => {
+    const html = render('teller', { onVerb: () => undefined })
+    expect(html).toContain('Fill it in under properties…')
+    expect(html).toContain('question-verb-describe')
+    expect(html).toContain('title="An unowned actor has nobody to answer for it."')
+    // The row without a trigger keeps reading as a question and nothing more.
+    expect(html.match(/question-verb-/g)?.length).toBe(1)
+  })
+
+  it('offers no verb to a viewer, or to a host that passed no way to run one', () => {
+    expect(render('teller', { readOnly: true, onVerb: () => undefined })).not.toContain('question-verb')
+    expect(render('teller')).not.toContain('question-verb')
   })
 })

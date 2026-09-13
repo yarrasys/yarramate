@@ -537,6 +537,28 @@ describe("visualWorkspaceReducer connection", () => {
     expect(start("orders").connection).toEqual({ from: "orders", to: null });
   });
 
+  // #515, ADR 0150: a question arms the tool with its answer shape, and a
+  // start by hand carries neither field.
+  it("keeps the kinds and the direction a question armed it with", () => {
+    const armed = visualWorkspaceReducer(workspaceState, {
+      type: "connection.started",
+      from: "orders",
+      kinds: ["yarramate/core@0.1#realization"],
+      direction: "incoming",
+    });
+    expect(armed.connection).toEqual({
+      from: "orders",
+      to: null,
+      kinds: ["yarramate/core@0.1#realization"],
+      direction: "incoming",
+    });
+    // Targeting keeps them: the panel reads them when the target is known.
+    expect(
+      visualWorkspaceReducer(armed, { type: "connection.targeted", to: "settle" })
+        .connection,
+    ).toMatchObject({ to: "settle", direction: "incoming" });
+  });
+
   it("takes a target", () => {
     const next = visualWorkspaceReducer(start("orders"), {
       type: "connection.targeted",
