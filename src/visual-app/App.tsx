@@ -54,7 +54,7 @@ import type {
 import type { EditorHost } from "./editor-host.js";
 import { Section, SectionSplitter, stackRows } from "./section-stack.js";
 import { useVisualSession } from "./session-client.js";
-import { assistantBrief } from "./question-verbs.js";
+import { assistantBrief, type QuestionVerb } from "./question-verbs.js";
 import type { VisualQuestionDelegatePayload } from "../adapters/visual/protocol-contract.js";
 import { activeViewMembership, focusReturnLabelOf } from "./state.js";
 import type { VisualAppRecord, VisualAppState } from "./state.js";
@@ -1699,6 +1699,14 @@ export const App = ({
     ({ id }) => id === state.activeView,
   )?.title;
 
+  // Three doors for "answer via agent" (ADR 0151), one label each: the agent
+  // on the socket, the host's own assistant, or the clipboard.
+  const delegateLabel = state.chatEnabled
+    ? "Answer via agent"
+    : onDelegateQuestion !== undefined
+      ? "Answer via assistant"
+      : "Copy for my assistant";
+
   const menuGroups =
     workspace.contextMenu === null
       ? []
@@ -1727,7 +1735,66 @@ export const App = ({
             ? {}
             : { focusReturnLabel: focusReturnLabelOf(state)! }),
           readOnly,
+          // The interview, where the right-click happens (#516).
+          ...(interrogation === undefined ? {} : { questions: interrogation }),
+          delegateLabel,
         });
+
+  /**
+   * A question's verb, run (#515, ADR 0150). Shared by the Open questions
+   * pane and the context menu, so both doors reach exactly the gestures a
+   * reviewer reaches by hand and neither is a second write path.
+   */
+  const runQuestionVerb = (verb: QuestionVerb | null, subjectId: string | null) => {
+    if (verb?.kind === "connect" && subjectId !== null) {
+      dispatchWorkspace({
+        type: "connection.started",
+        from: subjectId,
+        kinds: verb.kinds,
+        direction: verb.direction,
+      });
+      return;
+    }
+    if (verb?.kind === "add") {
+      setDraftKind(verb.subjectKind);
+      dispatchWorkspace({ type: "subject.draft.opened" });
+      return;
+    }
+    // Describe, or no verb at all: the subject's properties, in front.
+    if (subjectId !== null) {
+      const node = state.model?.graph.nodes.find((candidate) => candidate.id === subjectId);
+      if (node !== undefined) {
+        dispatchWorkspace({ type: "subject.selected", subject: normalizeSelectedElement(node) });
+      }
+    }
+    if (!sectionOpen("properties")) {
+      dispatchWorkspace({ type: "section.toggled", section: "properties" });
+    }
+  };
+
+  /** The delegate door, by whichever route this host has (ADR 0151). */
+  const delegateQuestion = (payload: VisualQuestionDelegatePayload, subjectName: string | null) => {
+    if (state.chatEnabled) {
+      delegate(payload);
+      return;
+    }
+    if (onDelegateQuestion !== undefined) {
+      onDelegateQuestion(payload);
+      return;
+    }
+    const entry = (
+      payload.subjectId === null
+        ? interrogation?.workspace
+        : interrogation?.subjects[payload.subjectId]
+    )?.find((candidate) => candidate.questionId === payload.questionId);
+    const subject =
+      payload.subjectId === null
+        ? null
+        : { id: payload.subjectId, name: subjectName ?? payload.subjectId };
+    void navigator.clipboard?.writeText(
+      assistantBrief(entry ?? { questionId: payload.questionId, question: payload.question, authority: "human" }, subject),
+    );
+  };
 
   /**
    * Every menu item ends here. The menu itself decides nothing about what an
@@ -1737,6 +1804,17 @@ export const App = ({
   const runIntent = (intent: ContextMenuIntent) => {
     const graph = state.model?.graph ?? null;
     switch (intent.type) {
+      case "question.answer":
+        runQuestionVerb(intent.verb, intent.subjectId);
+        return;
+      case "question.delegate": {
+        const node = graph?.nodes.find((candidate) => candidate.id === intent.subjectId);
+        delegateQuestion(
+          { questionId: intent.questionId, subjectId: intent.subjectId, question: intent.question },
+          node?.name ?? null,
+        );
+        return;
+      }
       case "subject.inspect": {
         const node = graph?.nodes.find(
           (candidate) => candidate.id === intent.id,
@@ -2345,63 +2423,16 @@ export const App = ({
                           overlay={interrogation}
                           selectedId={selectedElementId}
                           readOnly={readOnly}
-                          onVerb={(_entry, verb, subjectId) => {
-                            // Each verb is a gesture the surface already has
-                            // (#515): nothing here is a second write path.
-                            if (verb.kind === "connect" && subjectId !== null) {
-                              dispatchWorkspace({
-                                type: "connection.started",
-                                from: subjectId,
-                                kinds: verb.kinds,
-                                direction: verb.direction,
-                              });
-                              return;
-                            }
-                            if (verb.kind === "add") {
-                              setDraftKind(verb.subjectKind);
-                              dispatchWorkspace({ type: "subject.draft.opened" });
-                              return;
-                            }
-                            if (verb.kind === "describe" && !sectionOpen("properties")) {
-                              dispatchWorkspace({ type: "section.toggled", section: "properties" });
-                            }
-                          }}
-                          // Three doors for "answer via agent" (ADR 0151), one label
-                          // each: the agent on the socket, the host's own assistant,
-                          // or the clipboard for an assistant that is elsewhere.
-                          delegateLabel={
-                            state.chatEnabled
-                              ? "Answer via agent"
-                              : onDelegateQuestion !== undefined
-                                ? "Answer via assistant"
-                                : "Copy for my assistant"
+                          onVerb={(_entry, verb, subjectId) => runQuestionVerb(verb, subjectId)}
+                          delegateLabel={delegateLabel}
+                          onDelegate={(entry, subjectId) =>
+                            delegateQuestion(
+                              { questionId: entry.questionId, subjectId, question: entry.question },
+                              workspace.selectedSubject?.type === "element"
+                                ? workspace.selectedSubject.title
+                                : null,
+                            )
                           }
-                          onDelegate={(entry, subjectId) => {
-                            const payload: VisualQuestionDelegatePayload = {
-                              questionId: entry.questionId,
-                              subjectId,
-                              question: entry.question,
-                            };
-                            if (state.chatEnabled) {
-                              delegate(payload);
-                              return;
-                            }
-                            if (onDelegateQuestion !== undefined) {
-                              onDelegateQuestion(payload);
-                              return;
-                            }
-                            const subject =
-                              subjectId === null
-                                ? null
-                                : {
-                                    id: subjectId,
-                                    name:
-                                      workspace.selectedSubject?.type === "element"
-                                        ? workspace.selectedSubject.title
-                                        : subjectId,
-                                  };
-                            void navigator.clipboard?.writeText(assistantBrief(entry, subject));
-                          }}
                         />
                       )}
                     </Section>

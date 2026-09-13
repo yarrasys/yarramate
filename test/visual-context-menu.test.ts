@@ -753,3 +753,127 @@ describe("#473 phase 2: the rail can reach it too", () => {
     ).not.toContain("focus");
   });
 });
+
+// #516, ADR 0150/0151: the interview, where the right-click happens.
+describe("the questions group", () => {
+  const questions = {
+    workspace: [
+      {
+        questionId: "core-enrichment#outcome-missing",
+        question: "What outcome justifies this system's existence? Name it.",
+        authority: "human" as const,
+        scope: "workspace" as const,
+        trigger: [
+          {
+            condition: "no-subject-of-kind" as const,
+            kinds: ["yarramate/core@0.1#goal", "yarramate/core@0.1#outcome"],
+          },
+        ],
+      },
+    ],
+    subjects: {
+      api: [
+        {
+          questionId: "core-enrichment#component-unrealized",
+          question: "What does API realize? A component with no service is a box.",
+          authority: "either" as const,
+          scope: "subject" as const,
+          trigger: [
+            {
+              condition: "missing-relationship" as const,
+              kinds: ["yarramate/core@0.1#realization"],
+              direction: "outgoing" as const,
+            },
+          ],
+        },
+        {
+          questionId: "core-enrichment#owner-missing",
+          question: "Who is accountable for API?",
+          authority: "human" as const,
+          scope: "subject" as const,
+          trigger: [{ condition: "missing-claim" as const, predicate: "yarramate/ownership/owner" }],
+        },
+      ],
+    },
+  };
+
+  it("lists a subject's open questions between the view and model groups, one row each, first sentence only", () => {
+    const groups = contextMenuFor(
+      { kind: "subject", id: "api" },
+      context({ questions, delegateLabel: "Answer via agent" }),
+    );
+    const group = groups.find((candidate) => candidate.key === "questions");
+    expect(group?.label).toBe("Questions · 2 open");
+    expect(group?.scope).toBe("model");
+    const index = groups.indexOf(group!);
+    expect(groups.slice(0, index).every((candidate) => candidate.scope === "view")).toBe(true);
+    expect(groups[index + 1]?.key).toBe("model");
+    expect(group?.items.map((item) => item.label)).toEqual([
+      "What does API realize?",
+      "Who is accountable for API?",
+      "Answer via agent: What does API realize?",
+    ]);
+  });
+
+  it("carries the verb the trigger implies on each row, resolved in the model", () => {
+    const groups = contextMenuFor({ kind: "subject", id: "api" }, context({ questions }));
+    const items = groups.find((candidate) => candidate.key === "questions")!.items;
+    expect(items[0]?.intent).toEqual({
+      type: "question.answer",
+      questionId: "core-enrichment#component-unrealized",
+      subjectId: "api",
+      verb: {
+        kind: "connect",
+        label: "Connect what it realizes…",
+        kinds: ["yarramate/core@0.1#realization"],
+        direction: "outgoing",
+      },
+    });
+    expect(items[1]?.intent).toMatchObject({ type: "question.answer", verb: { kind: "describe" } });
+    // No delegate label, no door.
+    expect(items.map((item) => item.intent.type)).not.toContain("question.delegate");
+  });
+
+  it("puts the whole-model questions on the canvas menu, and shows no group at zero", () => {
+    const canvas = contextMenuFor({ kind: "canvas" }, context({ questions, delegateLabel: "Copy for my assistant" }));
+    const group = canvas.find((candidate) => candidate.key === "questions");
+    expect(group?.label).toBe("Questions · 1 open");
+    expect(group?.items[0]?.intent).toMatchObject({
+      type: "question.answer",
+      subjectId: null,
+      verb: { kind: "add", subjectKind: "goal" },
+    });
+    expect(group?.items[1]?.label).toMatch(/^Copy for my assistant: What outcome justifies this system.*…$/);
+    // A subject with nothing open gets no group, and no "0 open".
+    const quiet = contextMenuFor({ kind: "subject", id: "ui" }, context({ questions }));
+    expect(quiet.some((candidate) => candidate.key === "questions")).toBe(false);
+    expect(JSON.stringify(quiet)).not.toContain("0 open");
+  });
+
+  it("gives the rail's model row the same group, for the keyboard", () => {
+    const groups = contextMenuFor({ kind: "model-row", id: "api" }, context({ questions }));
+    expect(groups.find((candidate) => candidate.key === "questions")?.label).toBe("Questions · 2 open");
+  });
+
+  it("offers nothing of it to a viewer", () => {
+    const groups = contextMenuFor(
+      { kind: "subject", id: "api" },
+      context({ questions, delegateLabel: "Answer via agent", readOnly: true }),
+    );
+    expect(groups.some((candidate) => candidate.key === "questions")).toBe(false);
+  });
+
+  it("renders the group as a group, named", () => {
+    const groups = contextMenuFor({ kind: "subject", id: "api" }, context({ questions }));
+    const markup = renderToStaticMarkup(
+      createElement(ContextMenu, {
+        groups,
+        x: 10,
+        y: 10,
+        onChoose: () => undefined,
+        onDismiss: () => undefined,
+      }),
+    );
+    expect(markup).toContain('role="group" aria-label="Questions · 2 open"');
+  });
+});

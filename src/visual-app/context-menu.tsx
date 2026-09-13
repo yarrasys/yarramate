@@ -110,6 +110,8 @@ export function ContextMenu({
           className={`context-menu-group context-menu-${group.scope}${
             group.destructive ? " context-menu-destructive" : ""
           }`}
+          role={group.label === null ? undefined : "group"}
+          aria-label={group.label ?? undefined}
         >
           {group.label === null ? null : (
             <p className="context-menu-heading">{group.label}</p>
