@@ -32,6 +32,7 @@
         "chat.response",
         "agent.status",
         "choice.present",
+        "operations.propose",
         "handoff.complete",
         "diagnostic",
         "filter.result",
@@ -50,74 +51,152 @@
   "oneOf": [
     {
       "type": "object",
-      "required": ["type", "payload"],
+      "required": [
+        "type",
+        "payload"
+      ],
       "properties": {
-        "type": { "const": "chat.response" },
-        "payload": { "$ref": "#/$defs/chatResponsePayload" }
+        "type": {
+          "const": "chat.response"
+        },
+        "payload": {
+          "$ref": "#/$defs/chatResponsePayload"
+        }
       }
     },
     {
       "type": "object",
-      "required": ["type", "payload"],
+      "required": [
+        "type",
+        "payload"
+      ],
       "properties": {
-        "type": { "const": "agent.status" },
-        "payload": { "$ref": "#/$defs/agentStatusPayload" }
+        "type": {
+          "const": "agent.status"
+        },
+        "payload": {
+          "$ref": "#/$defs/agentStatusPayload"
+        }
       }
     },
     {
       "type": "object",
-      "required": ["type", "payload"],
+      "required": [
+        "type",
+        "payload"
+      ],
       "properties": {
-        "type": { "const": "choice.present" },
-        "payload": { "$ref": "#/$defs/choicePresentPayload" }
+        "type": {
+          "const": "choice.present"
+        },
+        "payload": {
+          "$ref": "#/$defs/choicePresentPayload"
+        }
       }
     },
     {
       "type": "object",
-      "required": ["type", "payload"],
+      "required": [
+        "type",
+        "payload"
+      ],
       "properties": {
-        "type": { "const": "handoff.complete" },
-        "payload": { "$ref": "#/$defs/handoffSummary" }
+        "type": {
+          "const": "operations.propose"
+        },
+        "payload": {
+          "$ref": "#/$defs/operationsProposePayload"
+        }
       }
     },
     {
       "type": "object",
-      "required": ["type", "payload"],
+      "required": [
+        "type",
+        "payload"
+      ],
       "properties": {
-        "type": { "const": "diagnostic" },
-        "payload": { "$ref": "#/$defs/diagnosticPayload" }
+        "type": {
+          "const": "handoff.complete"
+        },
+        "payload": {
+          "$ref": "#/$defs/handoffSummary"
+        }
       }
     },
     {
       "type": "object",
-      "required": ["type", "payload"],
+      "required": [
+        "type",
+        "payload"
+      ],
       "properties": {
-        "type": { "const": "filter.result" },
-        "payload": { "$ref": "#/$defs/filterResultPayload" }
+        "type": {
+          "const": "diagnostic"
+        },
+        "payload": {
+          "$ref": "#/$defs/diagnosticPayload"
+        }
       }
     },
     {
       "type": "object",
-      "required": ["type", "payload"],
+      "required": [
+        "type",
+        "payload"
+      ],
       "properties": {
-        "type": { "const": "view.save.result" },
-        "payload": { "$ref": "#/$defs/viewSaveResultPayload" }
+        "type": {
+          "const": "filter.result"
+        },
+        "payload": {
+          "$ref": "#/$defs/filterResultPayload"
+        }
       }
     },
     {
       "type": "object",
-      "required": ["type", "payload"],
+      "required": [
+        "type",
+        "payload"
+      ],
       "properties": {
-        "type": { "const": "apply.result" },
-        "payload": { "$ref": "#/$defs/applyResultPayload" }
+        "type": {
+          "const": "view.save.result"
+        },
+        "payload": {
+          "$ref": "#/$defs/viewSaveResultPayload"
+        }
       }
     },
     {
       "type": "object",
-      "required": ["type", "payload"],
+      "required": [
+        "type",
+        "payload"
+      ],
       "properties": {
-        "type": { "const": "layout.save.result" },
-        "payload": { "$ref": "#/$defs/layoutSaveResultPayload" }
+        "type": {
+          "const": "apply.result"
+        },
+        "payload": {
+          "$ref": "#/$defs/applyResultPayload"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "payload"
+      ],
+      "properties": {
+        "type": {
+          "const": "layout.save.result"
+        },
+        "payload": {
+          "$ref": "#/$defs/layoutSaveResultPayload"
+        }
       }
     }
   ],
@@ -150,7 +229,10 @@
     "filterResultPayload": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["query", "matchedIds"],
+      "required": [
+        "query",
+        "matchedIds"
+      ],
       "properties": {
         "query": {
           "$ref": "https://yarramate.org/schema/projection/v1#/$defs/query"
@@ -168,7 +250,9 @@
       "description": "The filter a chat turn resolved to. The agent states the query; the runtime evaluates it against the same graph a filter.query event is evaluated against, and fills matchedIds in before the response is journaled or streamed. matchedIds is optional here so a resolved response round-trips through the transcript, not so an agent may assert one.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["query"],
+      "required": [
+        "query"
+      ],
       "properties": {
         "query": {
           "$ref": "https://yarramate.org/schema/projection/v1#/$defs/query"
@@ -185,23 +269,34 @@
     "chatResponsePayload": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["text"],
+      "required": [
+        "text"
+      ],
       "properties": {
         "text": {
           "type": "string",
           "minLength": 1,
           "maxLength": 65536
         },
-        "appliedQuery": { "$ref": "#/$defs/chatAppliedQuery" }
+        "appliedQuery": {
+          "$ref": "#/$defs/chatAppliedQuery"
+        }
       }
     },
     "agentStatusPayload": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["state"],
+      "required": [
+        "state"
+      ],
       "properties": {
         "state": {
-          "enum": ["thinking", "compiling", "waiting", "idle"]
+          "enum": [
+            "thinking",
+            "compiling",
+            "waiting",
+            "idle"
+          ]
         },
         "detail": {
           "type": "string",
@@ -213,9 +308,15 @@
     "choicePresentPayload": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["choiceId", "question", "options"],
+      "required": [
+        "choiceId",
+        "question",
+        "options"
+      ],
       "properties": {
-        "choiceId": { "$ref": "#/$defs/shortId" },
+        "choiceId": {
+          "$ref": "#/$defs/shortId"
+        },
         "question": {
           "type": "string",
           "minLength": 1,
@@ -228,9 +329,14 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["id", "label"],
+            "required": [
+              "id",
+              "label"
+            ],
             "properties": {
-              "id": { "$ref": "#/$defs/shortId" },
+              "id": {
+                "$ref": "#/$defs/shortId"
+              },
               "label": {
                 "type": "string",
                 "minLength": 1,
@@ -257,17 +363,29 @@
         "finalViews"
       ],
       "properties": {
-        "summary": { "$ref": "#/$defs/summaryText" },
-        "confirmedDecisions": { "$ref": "#/$defs/statementList" },
-        "requestedChanges": { "$ref": "#/$defs/statementList" },
-        "unresolvedQuestions": { "$ref": "#/$defs/statementList" },
-        "finalViews": { "$ref": "#/$defs/viewList" }
+        "summary": {
+          "$ref": "#/$defs/summaryText"
+        },
+        "confirmedDecisions": {
+          "$ref": "#/$defs/statementList"
+        },
+        "requestedChanges": {
+          "$ref": "#/$defs/statementList"
+        },
+        "unresolvedQuestions": {
+          "$ref": "#/$defs/statementList"
+        },
+        "finalViews": {
+          "$ref": "#/$defs/viewList"
+        }
       }
     },
     "diagnosticPayload": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["diagnostics"],
+      "required": [
+        "diagnostics"
+      ],
       "properties": {
         "diagnostics": {
           "type": "array",
@@ -285,10 +403,18 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["ok", "id", "path"],
+          "required": [
+            "ok",
+            "id",
+            "path"
+          ],
           "properties": {
-            "ok": { "const": true },
-            "id": { "$ref": "https://yarramate.org/schema/projection/v1#/$defs/id" },
+            "ok": {
+              "const": true
+            },
+            "id": {
+              "$ref": "https://yarramate.org/schema/projection/v1#/$defs/id"
+            },
             "path": {
               "type": "string",
               "minLength": 1,
@@ -299,9 +425,14 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["ok", "diagnostics"],
+          "required": [
+            "ok",
+            "diagnostics"
+          ],
           "properties": {
-            "ok": { "const": false },
+            "ok": {
+              "const": false
+            },
             "diagnostics": {
               "type": "array",
               "minItems": 1,
@@ -320,9 +451,14 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["ok", "result"],
+          "required": [
+            "ok",
+            "result"
+          ],
           "properties": {
-            "ok": { "const": true },
+            "ok": {
+              "const": true
+            },
             "result": {
               "$ref": "https://yarrasys.dev/schema/yarramate-apply-result.schema.json"
             }
@@ -331,9 +467,14 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["ok", "diagnostics"],
+          "required": [
+            "ok",
+            "diagnostics"
+          ],
           "properties": {
-            "ok": { "const": false },
+            "ok": {
+              "const": false
+            },
             "diagnostics": {
               "type": "array",
               "minItems": 1,
@@ -352,9 +493,14 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["ok", "path"],
+          "required": [
+            "ok",
+            "path"
+          ],
           "properties": {
-            "ok": { "const": true },
+            "ok": {
+              "const": true
+            },
             "path": {
               "type": "string",
               "minLength": 1,
@@ -365,9 +511,14 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["ok", "message"],
+          "required": [
+            "ok",
+            "message"
+          ],
           "properties": {
-            "ok": { "const": false },
+            "ok": {
+              "const": false
+            },
             "message": {
               "type": "string",
               "minLength": 1,
@@ -376,6 +527,29 @@
           }
         }
       ]
+    },
+    "operationsProposePayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "note",
+        "operations"
+      ],
+      "properties": {
+        "note": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "operations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 256,
+          "items": {
+            "$ref": "https://yarrasys.dev/schema/yarramate-operations.schema.json#/$defs/operation"
+          }
+        }
+      }
     }
   }
 }

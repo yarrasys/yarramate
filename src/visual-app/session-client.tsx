@@ -1,3 +1,4 @@
+import type { VisualQuestionDelegatePayload } from '../adapters/visual/protocol-contract.js'
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import type { ProjectionQuery } from '../projection.js'
 import type { NestingKind } from '../nesting.js'
@@ -35,6 +36,8 @@ export interface VisualSession {
   readonly connected: boolean
   readonly ask: (text: string) => void
   readonly choose: (optionId: string) => void
+  /** Hands one open question to the agent on the socket (#515, ADR 0151). */
+  readonly delegate: (payload: VisualQuestionDelegatePayload) => void
   readonly navigate: (viewId: string) => void
   readonly filter: (
     query: ProjectionQuery,
@@ -131,6 +134,22 @@ export const useVisualSession = (host: EditorHost): VisualSession => {
     (text: string) => {
       dispatch({ type: 'chat.sent', text })
       send({ kind: 'chat', text })
+    },
+    [send],
+  )
+
+  /**
+   * Hands one open question to the agent (#515, ADR 0151): the transcript
+   * shows the hand-over as the reviewer's own line, the runtime journals it
+   * as a chat turn, and the agent answers by proposing operations.
+   */
+  const delegate = useCallback(
+    (payload: VisualQuestionDelegatePayload) => {
+      dispatch({
+        type: 'chat.sent',
+        text: `Answer via your agent: ${payload.question}`,
+      })
+      send({ kind: 'delegate', payload })
     },
     [send],
   )
@@ -241,6 +260,7 @@ export const useVisualSession = (host: EditorHost): VisualSession => {
     connected,
     ask,
     choose,
+    delegate,
     navigate,
     filter,
     clearFilter,

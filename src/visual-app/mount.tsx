@@ -1,3 +1,4 @@
+import type { VisualQuestionDelegatePayload } from '../adapters/visual/protocol-contract.js'
 import { createRoot } from 'react-dom/client'
 import { App } from './App.js'
 import {
@@ -88,6 +89,13 @@ export interface MountOptions extends LocalHostOptions {
    * unmounting it terminates the worker and restores the bundled engine.
    */
   readonly workerFactory?: () => LayoutWorker
+  /**
+   * Where a delegated question goes on a host with no agent on the socket
+   * (#515, ADR 0151): a product with its own assistant routes it there. A host
+   * that passes nothing gets "Copy for my assistant" on every row instead, so
+   * the question still leaves the pane in a shape an assistant can answer.
+   */
+  readonly onDelegateQuestion?: (question: VisualQuestionDelegatePayload) => void
 }
 
 /**
@@ -200,6 +208,7 @@ export const mountEditor = (
       (options.readOnly === true ? READ_SECTIONS : RIGHT_SECTIONS),
     options.readOnly,
     options.decorations,
+    options.onDelegateQuestion,
   )
   if (engine === undefined) return mounted
   return {
@@ -228,6 +237,7 @@ export const mountEditorWith = (
   sections: readonly RightSectionId[] = RIGHT_SECTIONS,
   readOnly = false,
   decorations?: DecorationMap,
+  onDelegateQuestion?: (question: VisualQuestionDelegatePayload) => void,
 ): MountedEditor => {
   // No StrictMode: its double mount would open the host twice, and a host with
   // a socket behind it would open two.
@@ -244,6 +254,7 @@ export const mountEditorWith = (
       sections={sections}
       readOnly={readOnly}
       decorations={decorations}
+      onDelegateQuestion={onDelegateQuestion}
       onReady={(pointer) => {
         bridge.current = pointer
       }}

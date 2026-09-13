@@ -682,7 +682,7 @@ concepts:
     // and a host that swallowed them would leave the reviewer waiting on a
     // reply that is never coming.
     const { frames, send } = openHost()
-    for (const type of ['chat.message', 'choice.selected', 'session.end'] as const) {
+    for (const type of ['chat.message', 'choice.selected', 'question.delegate', 'session.end'] as const) {
       send(input(type, {}))
       const refused = frames.at(-1)
       expect(refused?.kind).toBe('rejected')

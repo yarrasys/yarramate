@@ -598,7 +598,7 @@ A fourth toggle, `showNudges`, sits beside them but is workspace presentation on
 
 ### Open questions (ADR 0111)
 
-Each host evaluates the shipped question catalogue against the compile the graph came from and ships the result beside it as `VisualRenderedModel.interrogation`: workspace-scoped question entries, per-subject entries (phrasings already interpolated), the catalogue `id@version`, and the engine `semantics` stamp (ADR 0106). The app draws a quiet count chip on each node with open questions — bottom-right, inset from the corner, stepping left when the ownership chip is drawn on that corner (zero draws nothing; the chip never borrows the failure palette — an open question is the catalogue deepening honestly, not a defect) and an **Open questions** section that scopes to the selected subject, showing the workspace-scoped list when nothing is selected. Since ADR 0150 (#515) each row also carries the question's answer shape — `scope`, `materiality`, `resolution` and the catalogue `trigger` — and offers one verb derived from it: a `missing-relationship` or `missing-linkage` arms the connection tool with the trigger's kinds and direction (an `incoming` question drafts the edge from the target to the subject, and the kinds the question named are offered first), `no-subject-of-kind` opens the Add-subject form with that kind, and the field-shaped conditions put the properties panel in front. A viewer (`readOnly`) sees no verbs, and a host that mounts the pane without `onVerb` gets the same. Answers still land only through the changeset, or through an agent running the interview; the verbs are the pane's own gestures, not a second write path.
+Each host evaluates the shipped question catalogue against the compile the graph came from and ships the result beside it as `VisualRenderedModel.interrogation`: workspace-scoped question entries, per-subject entries (phrasings already interpolated), the catalogue `id@version`, and the engine `semantics` stamp (ADR 0106). The app draws a quiet count chip on each node with open questions — bottom-right, inset from the corner, stepping left when the ownership chip is drawn on that corner (zero draws nothing; the chip never borrows the failure palette — an open question is the catalogue deepening honestly, not a defect) and an **Open questions** section that scopes to the selected subject, showing the workspace-scoped list when nothing is selected. Since ADR 0150 (#515) each row also carries the question's answer shape — `scope`, `materiality`, `resolution` and the catalogue `trigger` — and offers one verb derived from it: a `missing-relationship` or `missing-linkage` arms the connection tool with the trigger's kinds and direction (an `incoming` question drafts the edge from the target to the subject, and the kinds the question named are offered first), `no-subject-of-kind` opens the Add-subject form with that kind, and the field-shaped conditions put the properties panel in front. A viewer (`readOnly`) sees no verbs, and a host that mounts the pane without `onVerb` gets the same. Answers still land only through the changeset; the verbs are the pane's own gestures, not a second write path. Each row also carries one more button (ADR 0151, #515): "Answer via agent" when an agent is on the socket, which sends `question.delegate` and gets back an `operations.propose` the browser stages; "Answer via assistant" when the host passed `onDelegateQuestion`; and otherwise "Copy for my assistant", which puts the question, its materiality, its resolution and the operations skeleton the trigger implies on the clipboard.
 
 The overlay is recomputed per landed commit and never stored, so a drafted-but-uncommitted edit moves no badge — the stateless-interview rule as the canvas sees it. The field is optional: a host that computes no overlay ships none, and the app hides the chips, the section, and nothing else changes. Embedded hosts get the same overlay from the catalogue bundled into the browser build; `mountEditorWith` hosts that speak the protocol themselves may simply omit it.
 
@@ -764,11 +764,14 @@ exactly the one that cannot detect a concurrent change, so the precondition
 cannot be optional — see
 [ADR 0093](adr/0093-a-commit-states-what-it-was-staged-against.md).
 
-The journal carries ten event kinds. Eight are the browser's to send —
-`chat.message`, `choice.selected`, `view.navigate`, `view.save`,
-`filter.query`, `changeset.commit`, `layout.save`, `session.end` — and
-`browser.connected` / `browser.disconnected` are the runtime's own. Frames
-back to the browser carry nine response types.
+The journal carries eleven event kinds. Nine are the browser's to send —
+`chat.message`, `choice.selected`, `question.delegate`, `view.navigate`,
+`view.save`, `filter.query`, `changeset.commit`, `layout.save`,
+`session.end` — and `browser.connected` / `browser.disconnected` are the
+runtime's own. Frames back to the browser carry ten response types, the
+tenth being `operations.propose`, the agent's answer to a delegated
+question: operations the browser stages for the reviewer to commit, never a
+write of the agent's own (ADR 0151).
 `changeset.commit` and `layout.save` are answered synchronously, by an
 `apply-result` or `layout-save-result` frame, and never wake the agent: a
 mechanical edit is not a question. A successful commit is followed by a fresh

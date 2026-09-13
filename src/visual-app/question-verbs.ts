@@ -139,3 +139,100 @@ const verbForCondition = (
 
 const articleFor = (word: string): string =>
   /^[aeiou]/i.test(word) ? 'an' : 'a'
+
+/**
+ * The question, ready to paste into an assistant that is not on the socket
+ * (#515, ADR 0151): claude.ai in a tab, a desktop app with no session, any
+ * chat. It carries what the design step would have given an agent - the
+ * phrasing, why it matters, what closes it - and the operations skeleton the
+ * trigger implies, so the answer comes back as a document `apply` accepts
+ * rather than as prose someone has to translate.
+ */
+export const assistantBrief = (
+  entry: VisualQuestionEntry,
+  subject: { readonly id: string; readonly name: string } | null,
+): string => {
+  const lines: string[] = [
+    'A question from the architecture record, asked by yarramate.',
+    '',
+    `Question: ${entry.question}`,
+  ]
+  if (subject !== null) lines.push(`About: ${subject.name} (${subject.id})`)
+  if (entry.materiality !== undefined) lines.push(`Why it matters: ${entry.materiality}`)
+  if (entry.resolution !== undefined) lines.push(`What closes it: ${entry.resolution}`)
+  const skeleton = skeletonFor(entry, subject)
+  if (skeleton !== null) {
+    lines.push(
+      '',
+      'Answer as a yarramate/operations/v1 document I can apply. The shape the question implies:',
+      '',
+      skeleton,
+    )
+  }
+  lines.push(
+    '',
+    'If the question does not apply here, say so in one sentence instead.',
+  )
+  return lines.join('\n')
+}
+
+const skeletonFor = (
+  entry: VisualQuestionEntry,
+  subject: { readonly id: string; readonly name: string } | null,
+): string | null => {
+  const first = entry.trigger?.[0]
+  if (first === undefined) return null
+  const doc = '.yarramate/architecture/<document>.yaml'
+  switch (first.condition) {
+    case 'no-subject-of-kind': {
+      const kind = first.kinds[0]
+      if (kind === undefined) return null
+      return [
+        'format: yarramate/operations/v1',
+        'operations:',
+        '  - op: add-concept',
+        `    document: ${doc}`,
+        '    concept:',
+        '      id: <local-id>',
+        `      kind: ${kindLabelOf(kind)}`,
+        '      name: <name>',
+        '      description: <one sentence>',
+      ].join('\n')
+    }
+    case 'missing-relationship':
+    case 'missing-linkage': {
+      if (subject === null) return null
+      const kind = first.kinds[0]
+      const incoming = first.direction === 'incoming'
+      return [
+        'format: yarramate/operations/v1',
+        'operations:',
+        '  - op: add-relationship',
+        `    document: ${doc}`,
+        '    relationship:',
+        '      id: <local-id>',
+        `      kind: ${kind === undefined ? '<kind>' : kindLabelOf(kind)}`,
+        `      from: ${incoming ? '<the other subject>' : subject.id}`,
+        `      to: ${incoming ? subject.id : '<the other subject>'}`,
+      ].join('\n')
+    }
+    case 'missing-claim':
+    case 'missing-reference':
+    case 'missing-constraint':
+    case 'missing-attestation':
+    case 'missing-part': {
+      if (subject === null) return null
+      return [
+        'format: yarramate/operations/v1',
+        'operations:',
+        '  - op: update-concept',
+        `    document: ${doc}`,
+        '    concept:',
+        `      id: ${subject.id}`,
+        '      <the field the question names>: <value>',
+      ].join('\n')
+    }
+    default:
+      return null
+  }
+}

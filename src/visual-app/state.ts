@@ -9,6 +9,7 @@ import {
   type VisualDiagnostic,
   type VisualHandoffSummary,
   type VisualLayoutSavePayload,
+  type VisualQuestionDelegatePayload,
   type VisualLayoutSaveResultPayload,
   type VisualViewSummary,
 } from "../adapters/visual/protocol-contract.js";
@@ -922,7 +923,8 @@ export type VisualAppIntent =
       readonly nesting?: readonly NestingKind[];
     }
   | { readonly kind: "commit-changeset" }
-  | { readonly kind: "save-layout"; readonly payload: VisualLayoutSavePayload };
+  | { readonly kind: "save-layout"; readonly payload: VisualLayoutSavePayload }
+  | { readonly kind: "delegate"; readonly payload: VisualQuestionDelegatePayload };
 
 /**
  * One intent as the frame the server admits. Every frame carries the sequence
@@ -960,6 +962,12 @@ export const visualBrowserInputFor = (
         type: "session.end",
         lastAcknowledgedSequence,
         payload: { reason: "user-ended" },
+      };
+    case "delegate":
+      return {
+        type: "question.delegate",
+        lastAcknowledgedSequence,
+        payload: intent.payload,
       };
     case "filter":
       return {
@@ -1176,6 +1184,23 @@ export const visualAppActionsForFrame = (
           return [{ type: "status.received", status: frame.response.payload }];
         case "choice.present":
           return [{ type: "choice.presented", choice: frame.response.payload }];
+        case "operations.propose":
+          // The agent answered a delegated question by proposing (ADR 0151):
+          // its note is a transcript line, its operations become staged rows
+          // the reviewer reads and commits, exactly as if drafted by hand.
+          return [
+            {
+              type: "chat.received",
+              id: frame.response.responseId,
+              text: frame.response.payload.note,
+            },
+            ...frame.response.payload.operations.map(
+              (operation): VisualAppAction => ({
+                type: "changeset.staged",
+                operation,
+              }),
+            ),
+          ];
         case "handoff.complete":
           return [
             {

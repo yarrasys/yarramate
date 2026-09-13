@@ -54,6 +54,8 @@ import type {
 import type { EditorHost } from "./editor-host.js";
 import { Section, SectionSplitter, stackRows } from "./section-stack.js";
 import { useVisualSession } from "./session-client.js";
+import { assistantBrief } from "./question-verbs.js";
+import type { VisualQuestionDelegatePayload } from "../adapters/visual/protocol-contract.js";
 import { activeViewMembership, focusReturnLabelOf } from "./state.js";
 import type { VisualAppRecord, VisualAppState } from "./state.js";
 import {
@@ -1322,11 +1324,17 @@ export const App = ({
   sections = RIGHT_SECTIONS,
   readOnly = false,
   decorations: initialDecorations,
+  onDelegateQuestion,
   onReady,
 }: {
   readonly host: EditorHost;
   readonly sections?: readonly RightSectionId[];
   readonly readOnly?: boolean;
+  /**
+   * Where a delegated question goes when the host has no agent on the socket
+   * (#515, ADR 0151). See `MountOptions.onDelegateQuestion`.
+   */
+  readonly onDelegateQuestion?: (question: VisualQuestionDelegatePayload) => void;
   /**
    * The host's per-subject marks at mount time (#314, ADR 0119) - the
    * initial value only, the way React means an initial value: later
@@ -1350,6 +1358,7 @@ export const App = ({
     connected,
     ask,
     choose,
+    delegate,
     navigate,
     filter,
     clearFilter,
@@ -2356,6 +2365,42 @@ export const App = ({
                             if (verb.kind === "describe" && !sectionOpen("properties")) {
                               dispatchWorkspace({ type: "section.toggled", section: "properties" });
                             }
+                          }}
+                          // Three doors for "answer via agent" (ADR 0151), one label
+                          // each: the agent on the socket, the host's own assistant,
+                          // or the clipboard for an assistant that is elsewhere.
+                          delegateLabel={
+                            state.chatEnabled
+                              ? "Answer via agent"
+                              : onDelegateQuestion !== undefined
+                                ? "Answer via assistant"
+                                : "Copy for my assistant"
+                          }
+                          onDelegate={(entry, subjectId) => {
+                            const payload: VisualQuestionDelegatePayload = {
+                              questionId: entry.questionId,
+                              subjectId,
+                              question: entry.question,
+                            };
+                            if (state.chatEnabled) {
+                              delegate(payload);
+                              return;
+                            }
+                            if (onDelegateQuestion !== undefined) {
+                              onDelegateQuestion(payload);
+                              return;
+                            }
+                            const subject =
+                              subjectId === null
+                                ? null
+                                : {
+                                    id: subjectId,
+                                    name:
+                                      workspace.selectedSubject?.type === "element"
+                                        ? workspace.selectedSubject.title
+                                        : subjectId,
+                                  };
+                            void navigator.clipboard?.writeText(assistantBrief(entry, subject));
                           }}
                         />
                       )}

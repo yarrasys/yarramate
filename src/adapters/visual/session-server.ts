@@ -192,6 +192,7 @@ const CONTENT_TYPES: Readonly<Record<string, string>> = {
 const TURN_COMPLETING: Readonly<Record<string, true>> = {
   "chat.response": true,
   "choice.present": true,
+  "operations.propose": true,
   "handoff.complete": true,
   diagnostic: true,
 };
@@ -519,6 +520,8 @@ const eventFrom = (
     case "chat.message":
       return { ...envelope, type: input.type, payload: input.payload };
     case "choice.selected":
+      return { ...envelope, type: input.type, payload: input.payload };
+    case "question.delegate":
       return { ...envelope, type: input.type, payload: input.payload };
     case "view.navigate":
       return { ...envelope, type: input.type, payload: input.payload };
@@ -1195,7 +1198,11 @@ export const startVisualServer = async (
   const recordEvent = (event: VisualEvent) => {
     // A session on its way out waits on nobody, and asking past the question
     // is how a reviewer declines to answer it.
-    if (event.type === "chat.message" || event.type === "session.end") {
+    if (
+      event.type === "chat.message" ||
+      event.type === "question.delegate" ||
+      event.type === "session.end"
+    ) {
       pendingChoice = null;
     }
     if (event.type === "session.end") choicesClosed = true;
@@ -1204,6 +1211,15 @@ export const startVisualServer = async (
         id: event.eventId,
         speaker: "reviewer",
         text: event.payload.text,
+      });
+      return;
+    }
+    if (event.type === "question.delegate") {
+      // The line the reviewer sees for handing a question over (#515).
+      transcript.push({
+        id: event.eventId,
+        speaker: "reviewer",
+        text: `Answer via your agent: ${event.payload.question}`,
       });
       return;
     }
@@ -1237,9 +1253,11 @@ export const startVisualServer = async (
     const text =
       response.type === "chat.response"
         ? response.payload.text
-        : response.type === "handoff.complete"
-          ? response.payload.summary
-          : undefined;
+        : response.type === "operations.propose"
+          ? response.payload.note
+          : response.type === "handoff.complete"
+            ? response.payload.summary
+            : undefined;
     if (text === undefined) return;
     transcript.push({ id: response.responseId, speaker: "agent", text });
   };
@@ -1562,8 +1580,11 @@ export const startVisualServer = async (
       }
       // A session that was started without a conversation has no chat and no
       // choices to make; the diagram, and moving around it, is all it granted.
+      // Delegating a question is a chat turn by another door (#515): it
+      // needs the same agent the composer needs.
       const granted =
-        input.value.type === "chat.message"
+        input.value.type === "chat.message" ||
+        input.value.type === "question.delegate"
           ? capabilities.chat
           : input.value.type === "choice.selected"
             ? capabilities.choices
@@ -2177,7 +2198,9 @@ export const startVisualServer = async (
     // offered; the browser has nowhere to show one.
     if (
       !capabilities.chat &&
-      (response.type === "chat.response" || response.type === "choice.present")
+      (response.type === "chat.response" ||
+        response.type === "choice.present" ||
+        response.type === "operations.propose")
     ) {
       respondJson(server, 409, {
         accepted: false,

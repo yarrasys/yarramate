@@ -44,7 +44,12 @@ const overlay: VisualInterrogationOverlay = {
 
 const render = (
   selectedId: string | null,
-  extra: { readonly readOnly?: boolean; readonly onVerb?: () => void } = {},
+  extra: {
+    readonly readOnly?: boolean
+    readonly onVerb?: () => void
+    readonly onDelegate?: () => void
+    readonly delegateLabel?: string
+  } = {},
 ): string =>
   renderToStaticMarkup(
     createElement(OpenQuestions, { overlay, selectedId, ...extra }),
@@ -95,5 +100,17 @@ describe('OpenQuestions', () => {
   it('offers no verb to a viewer, or to a host that passed no way to run one', () => {
     expect(render('teller', { readOnly: true, onVerb: () => undefined })).not.toContain('question-verb')
     expect(render('teller')).not.toContain('question-verb')
+  })
+
+  // #515, ADR 0151: the second door on every row, labelled by the host.
+  it('offers the delegate door with the label the host gave it', () => {
+    expect(render('teller', { onDelegate: () => undefined })).toContain('Answer via agent')
+    expect(render('teller', { onDelegate: () => undefined, delegateLabel: 'Copy for my assistant' })).toContain(
+      'Copy for my assistant',
+    )
+    // Every row gets it, trigger or not: delegating needs no answer shape.
+    expect(render('teller', { onDelegate: () => undefined }).match(/question-verb-delegate/g)?.length).toBe(2)
+    expect(render('teller', { readOnly: true, onDelegate: () => undefined })).not.toContain('question-verb-delegate')
+    expect(render('teller')).not.toContain('question-verb-delegate')
   })
 })

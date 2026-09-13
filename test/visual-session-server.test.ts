@@ -1528,6 +1528,112 @@ describe("startVisualServer limit failures", () => {
   }, 120_000);
 });
 
+describe("startVisualServer delegated questions (#515, ADR 0151)", () => {
+  const delegated = {
+    questionId: "core-enrichment#stakeholder-unconcerned",
+    subjectId: "operations-director",
+    question: "What does Operations director care about here?",
+  };
+
+  it("journals the hand-over as the reviewer's line and releases it to the agent", async () => {
+    const server = await start();
+    const capability = await capabilityOf(server);
+    const { cookie } = await bootstrap(server);
+    const socket = await openBrowserSocket(server, cookie);
+
+    const polled = agentFetch(server, capability, "/api/agent/events?after=0");
+    const accepted = nextFrame(socket, "accepted");
+    socket.send(
+      JSON.stringify({
+        type: "question.delegate",
+        lastAcknowledgedSequence: 0,
+        payload: delegated,
+      }),
+    );
+    await accepted;
+    const body = (await (await polled).json()) as {
+      readonly waiting: boolean;
+      readonly event: VisualEvent;
+    };
+    expect(body.waiting).toBe(false);
+    expect(body.event).toMatchObject({
+      type: "question.delegate",
+      payload: delegated,
+    });
+    // The reviewer's transcript shows the hand-over in their own words.
+    const journaled = await journalOf(server);
+    expect(
+      journaled.some(
+        (record) =>
+          record.format === "yarramate/visual-event/v1" &&
+          (record as { type: string }).type === "question.delegate",
+      ),
+    ).toBe(true);
+    // A browser that joins afterwards reads the hand-over in the transcript,
+    // in the reviewer's own words.
+    const later = await openBrowserSocket(server, cookie);
+    const ready = await nextFrame(later, "ready");
+    expect(
+      ready.snapshot.transcript.map((record) => record.text),
+    ).toContain(`Answer via your agent: ${delegated.question}`);
+    later.close();
+    expect(server.status().lifecycle).toBe("running");
+    socket.close();
+  });
+
+  it("accepts the agent's proposal, completes the turn, and hands it to the browser", async () => {
+    const server = await start();
+    const capability = await capabilityOf(server);
+    const { cookie } = await bootstrap(server);
+    const socket = await openBrowserSocket(server, cookie);
+    const accepted = nextFrame(socket, "accepted");
+    socket.send(
+      JSON.stringify({
+        type: "question.delegate",
+        lastAcknowledgedSequence: 0,
+        payload: delegated,
+      }),
+    );
+    const event = await accepted;
+    // The agent polls, so the turn is in flight and a response can retire it.
+    await agentFetch(server, capability, "/api/agent/events?after=0");
+
+    const broadcast = nextFrame(socket, "response");
+    const posted = await postResponse(server, capability, {
+      format: "yarramate/visual-response/v1",
+      sessionId: server.started.sessionId,
+      responseId: identifier(41),
+      eventId: event.eventId,
+      type: "operations.propose",
+      timestamp: "2026-09-13T00:00:02.000Z",
+      payload: {
+        note: "The director cares about billing accuracy; proposing the link.",
+        operations: [
+          {
+            op: "add-relationship",
+            document: ".yarramate/architecture/main.yaml",
+            relationship: {
+              id: "director-influences-fleet",
+              kind: "influence",
+              from: "operations-director",
+              to: "ageing-meter-fleet",
+            },
+          },
+        ],
+      },
+    });
+    expect(posted.status).toBe(200);
+    await expect(posted.json()).resolves.toMatchObject({ accepted: true });
+    expect((await broadcast).response).toMatchObject({
+      type: "operations.propose",
+      payload: { operations: [{ op: "add-relationship" }] },
+    });
+    // The proposal completed the turn: nothing is in flight any more.
+    expect(JSON.stringify(server.status())).toContain('"inFlightEventId":null');
+    socket.close();
+  });
+});
+
 describe("startVisualServer agent responses", () => {
   it("journals and broadcasts an agent response to the browser", async () => {
     const server = await start();

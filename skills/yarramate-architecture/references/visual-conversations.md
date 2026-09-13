@@ -163,8 +163,25 @@ On session.end or any terminal diagnostic, publish handoff.complete and exit.
 ```
 
 Add the user's question, the descriptor path, and the workspace the session
-renders. The child sees only the conversational events - `chat.message` and
-`choice.selected`; the four mechanical events never reach it.
+renders. The child sees only the conversational events - `chat.message`,
+`choice.selected` and `question.delegate`; the four mechanical events never
+reach it.
+
+A `question.delegate` event is the reviewer handing one open question to
+you from the Open questions panel (ADR 0151). Its payload carries
+`questionId`, `subjectId` (null for a workspace question) and the phrasing.
+Run `yarramate design <workspace> --subject <subjectId> --json` (or
+`yarramate ask <workspace> --open --json` for a workspace question) to read
+the step: its `materiality`, `resolution`, `trigger` and `authority`. If the
+authority is `human`, ask the reviewer what you need with a `chat.response`
+or a `choice.present`; you do not decide for them. If it is `agent` or
+`either`, you may answer from the rendered model and the evidence, and your
+note says so. Then answer with an `operations.propose` response: a `note`
+(one line the transcript shows) and `operations`, a `yarramate/operations/v1`
+list built to the step's skeleton. You never run `apply`: the browser stages
+your operations into the reviewer's changeset and the reviewer commits them,
+which is where any mistake in them is caught, in front of the reviewer, with
+the diagnostics pinned to the rows. `operations.propose` completes the turn.
 
 The child loops on one event at a time:
 
@@ -197,7 +214,8 @@ The child loops on one event at a time:
    own identifier, `eventId` is the event being answered, `responseId` is a
    fresh 32 lowercase hex string, and `timestamp` is an ISO instant with
    exactly three millisecond digits. The type is `chat.response`,
-   `agent.status`, `choice.present`, `handoff.complete`, or `diagnostic`. A
+   `agent.status`, `choice.present`, `operations.propose`,
+   `handoff.complete`, or `diagnostic`. A
    response for another session is rejected.
 4. Advance `--after` to that event's `sequence`.
 

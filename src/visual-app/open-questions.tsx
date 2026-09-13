@@ -19,6 +19,8 @@ export function OpenQuestions({
   selectedId,
   readOnly = false,
   onVerb,
+  onDelegate,
+  delegateLabel,
 }: {
   readonly overlay: VisualInterrogationOverlay
   readonly selectedId: string | null
@@ -34,6 +36,16 @@ export function OpenQuestions({
     verb: QuestionVerb,
     subjectId: string | null,
   ) => void
+  /**
+   * Hands the question to whoever answers questions for this host (#515,
+   * ADR 0151): the agent on the socket, the host's own assistant, or the
+   * clipboard for an assistant that is elsewhere. The label says which.
+   */
+  readonly onDelegate?: (
+    entry: VisualQuestionEntry,
+    subjectId: string | null,
+  ) => void
+  readonly delegateLabel?: string
 }) {
   const entries =
     selectedId === null
@@ -62,6 +74,10 @@ export function OpenQuestions({
               entry={entry}
               verb={readOnly || onVerb === undefined ? null : verbFor(entry)}
               onVerb={(verb) => onVerb?.(entry, verb, selectedId)}
+              delegateLabel={
+                readOnly || onDelegate === undefined ? null : (delegateLabel ?? 'Answer via agent')
+              }
+              onDelegate={() => onDelegate?.(entry, selectedId)}
             />
           ))}
         </ul>
@@ -78,10 +94,14 @@ const QuestionRow = ({
   entry,
   verb,
   onVerb,
+  delegateLabel,
+  onDelegate,
 }: {
   readonly entry: VisualQuestionEntry
   readonly verb: QuestionVerb | null
   readonly onVerb: (verb: QuestionVerb) => void
+  readonly delegateLabel: string | null
+  readonly onDelegate: () => void
 }) => (
   <li className="question-row">
     <span className="question-text" title={entry.materiality}>
@@ -101,6 +121,15 @@ const QuestionRow = ({
           onClick={() => onVerb(verb)}
         >
           {verb.label}
+        </button>
+      )}
+      {delegateLabel === null ? null : (
+        <button
+          type="button"
+          className="question-verb question-verb-delegate"
+          onClick={onDelegate}
+        >
+          {delegateLabel}
         </button>
       )}
     </span>

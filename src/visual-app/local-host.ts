@@ -678,6 +678,7 @@ export const createLocalHost = (options: LocalHostOptions): LocalEditorHost => {
           return
         case 'chat.message':
         case 'choice.selected':
+        case 'question.delegate':
         case 'session.end':
           noAgent(input)
           return

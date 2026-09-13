@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { verbFor } from '../src/visual-app/question-verbs.js'
+import { assistantBrief, verbFor } from '../src/visual-app/question-verbs.js'
 import type { VisualQuestionEntry } from '../src/adapters/visual/wire.js'
 import type { CatalogueCondition } from '../src/interrogate-command.js'
 
@@ -169,5 +169,49 @@ describe('verbFor', () => {
         ]),
       ),
     ).toMatchObject({ kind: 'connect' })
+  })
+
+  // #515, ADR 0151: what leaves the pane for an assistant that is elsewhere.
+  describe('assistantBrief', () => {
+    it('carries the question, why it matters, what closes it, and a skeleton with the subject on the right end for an incoming question', () => {
+      const brief = assistantBrief(
+        {
+          ...row([
+            {
+              condition: 'missing-relationship',
+              kinds: ['yarramate/core@0.1#realization'],
+              direction: 'incoming',
+            },
+          ]),
+          question: 'What realizes Bill from actual reads?',
+          materiality: 'A goal nothing realizes is a wish.',
+          resolution: 'Relate a requirement or a capability to it.',
+        },
+        { id: 'bill-from-actual-reads', name: 'Bill from actual reads' },
+      )
+      expect(brief).toContain('Question: What realizes Bill from actual reads?')
+      expect(brief).toContain('About: Bill from actual reads (bill-from-actual-reads)')
+      expect(brief).toContain('Why it matters: A goal nothing realizes is a wish.')
+      expect(brief).toContain('What closes it: Relate a requirement or a capability to it.')
+      expect(brief).toContain('format: yarramate/operations/v1')
+      expect(brief).toContain('op: add-relationship')
+      expect(brief).toContain('kind: realization')
+      expect(brief).toContain('to: bill-from-actual-reads')
+      expect(brief).toContain('from: <the other subject>')
+    })
+
+    it('asks for a concept of the named kind on a workspace question, and for nothing it cannot shape', () => {
+      const add = assistantBrief(
+        row([{ condition: 'no-subject-of-kind', kinds: ['yarramate/core@0.1#outcome'] }], 'workspace'),
+        null,
+      )
+      expect(add).toContain('op: add-concept')
+      expect(add).toContain('kind: outcome')
+      expect(add).not.toContain('About:')
+      const plain = assistantBrief(row([{ condition: 'near-duplicate' }]), null)
+      expect(plain).toContain('Question: A question')
+      expect(plain).not.toContain('operations/v1')
+      expect(plain).toContain('does not apply')
+    })
   })
 })
