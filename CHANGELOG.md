@@ -47,6 +47,16 @@ assistant"); a host that passes nothing gets "Copy for my assistant", which
 puts the question, why it matters, what closes it and the operations
 skeleton the trigger implies on the clipboard. ADR 0151.
 
+### The right-click menu lists a subject's open questions, each with its verb (#516)
+
+Right-click a subject and a "Questions · n open" group sits between the
+View and Model groups: one row per open question, first sentence only,
+running the gesture its trigger implies; and one door at the foot that
+hands the top question to the agent or the assistant, labelled the way the
+pane labels it. The canvas menu carries the whole-model questions the same
+way. Nothing shows at zero, and a viewer sees none of it. A labelled menu
+group now renders as a named group.
+
 ## 1.25.2
 
 ### A subject added to an undescribed view can be committed again (#509)

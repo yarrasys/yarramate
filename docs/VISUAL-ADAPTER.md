@@ -421,6 +421,19 @@ puts on screen is something a test can read. It is rebuilt on every render
 rather than captured when it opened: a commit landing underneath an open menu
 redraws it instead of leaving items pointing at a subject that has gone.
 
+Since #516 a subject's menu carries a **Questions · n open** group between
+the View and Model groups: one row per open question the overlay holds
+about that subject, phrased by its first sentence, whose intent
+(`question.answer`) carries the verb resolved from the trigger (ADR 0150);
+and, when the host has a delegate door, one row that hands the top
+question over (`question.delegate`, ADR 0151) labelled as the pane labels
+it. The canvas menu carries the whole-model questions the same way. The
+group is absent at zero and under `readOnly`. The count chip on a node is
+a background image on the canvas node, not a DOM element, so it does not
+open the list itself: a click on the node selects it, which scopes the Open
+questions section, and a right-click opens this group.
+
+
 ### View membership
 
 A view that ENUMERATES `subjects:` is the only kind that can be told which

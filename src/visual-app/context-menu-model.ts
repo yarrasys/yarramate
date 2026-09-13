@@ -22,6 +22,8 @@
  * Pure, and outside any component, because this repo renders React through
  * `renderToStaticMarkup` and has no DOM test environment.
  */
+import type { VisualQuestionEntry } from "../adapters/visual/wire.js";
+import { verbFor, type QuestionVerb } from "./question-verbs.js";
 import type { CanvasGraph } from "../graph-projection.js";
 import type { VisualKindOption } from "../adapters/visual/protocol-contract.js";
 import { relationshipKindOffer } from "./relationship-kind-options.js";
@@ -108,7 +110,26 @@ export type ContextMenuIntent =
    * that enumerates `subjects:` has one — see `ContextMenuContext.membership`.
    */
   | { readonly type: "view.add-subject"; readonly id: string }
-  | { readonly type: "view.remove-subject"; readonly id: string };
+  | { readonly type: "view.remove-subject"; readonly id: string }
+  /**
+   * Answer an open question with the gesture its trigger implies (#516,
+   * ADR 0150). The verb is resolved here, in the pure model, so the menu's
+   * reduction is a lookup and a test can read it; `null` means the row has
+   * no gesture and the shell puts the subject's properties in front instead.
+   */
+  | {
+      readonly type: "question.answer";
+      readonly questionId: string;
+      readonly subjectId: string | null;
+      readonly verb: QuestionVerb | null;
+    }
+  /** Hand the question to whoever answers questions for this host (ADR 0151). */
+  | {
+      readonly type: "question.delegate";
+      readonly questionId: string;
+      readonly subjectId: string | null;
+      readonly question: string;
+    };
 
 /** Which half of the split an operation belongs to. */
 export type ContextMenuScope = "view" | "model";
@@ -137,6 +158,21 @@ export interface ContextMenuGroup {
 
 export interface ContextMenuContext {
   readonly graph: CanvasGraph | null;
+  /**
+   * The interview overlay (#516): a subject's open questions become a group
+   * in its menu, and the workspace's become a group in the canvas menu.
+   * Absent on a host that ships no overlay, and the menus are as they were.
+   */
+  readonly questions?: {
+    readonly workspace: readonly VisualQuestionEntry[];
+    readonly subjects: Readonly<Record<string, readonly VisualQuestionEntry[]>>;
+  };
+  /**
+   * The label of the delegate door for this host (ADR 0151): "Answer via
+   * agent", "Answer via assistant" or "Copy for my assistant". Absent, the
+   * group offers no door.
+   */
+  readonly delegateLabel?: string;
   readonly relationshipKinds: readonly VisualKindOption[];
   /** The view the canvas is showing, or `ALL_SUBJECTS_VIEW`. */
   readonly activeViewId: string;
@@ -440,6 +476,62 @@ const foldGroup = (
   ];
 };
 
+/** A question's first sentence, short enough for a menu row. */
+const menuPhrase = (question: string, cap: number): string => {
+  const sentence = question.split(/(?<=[.?!])\s/)[0] ?? question;
+  return sentence.length <= cap ? sentence : `${sentence.slice(0, cap - 1).trimEnd()}…`;
+};
+
+/**
+ * The open questions about one subject, or about the whole model, as a menu
+ * group (#516). One row per question, carrying the verb its trigger implies,
+ * so answering starts where the eye already is; and one door at the foot
+ * that hands the top question to the host's agent or assistant. Absent when
+ * nothing is open: the group never shows a count of zero.
+ */
+const questionsGroup = (
+  entries: readonly VisualQuestionEntry[],
+  subjectId: string | null,
+  context: ContextMenuContext,
+): readonly ContextMenuGroup[] => {
+  if (entries.length === 0) return [];
+  const top = entries[0]!;
+  return [
+    {
+      key: "questions",
+      scope: "model",
+      label: `Questions · ${entries.length} open`,
+      destructive: false,
+      items: [
+        ...entries.map((entry) => ({
+          key: `question:${entry.questionId}`,
+          label: menuPhrase(entry.question, 72),
+          intent: {
+            type: "question.answer" as const,
+            questionId: entry.questionId,
+            subjectId,
+            verb: verbFor(entry),
+          },
+        })),
+        ...(context.delegateLabel === undefined
+          ? []
+          : [
+              {
+                key: "question-delegate",
+                label: `${context.delegateLabel}: ${menuPhrase(top.question, 40)}`,
+                intent: {
+                  type: "question.delegate" as const,
+                  questionId: top.questionId,
+                  subjectId,
+                  question: top.question,
+                },
+              },
+            ]),
+      ],
+    },
+  ];
+};
+
 const subjectMenu = (
   id: string,
   context: ContextMenuContext,
@@ -456,6 +548,9 @@ const subjectMenu = (
       context,
     ),
     ...foldGroup(id, context),
+    // The questions sit between the view and the model groups (#516): they
+    // are about the model, and they come before the tools that change it.
+    ...questionsGroup(context.questions?.subjects[id] ?? [], id, context),
     {
       key: "model",
       scope: "model",
@@ -582,6 +677,9 @@ const canvasMenu = (
           : []),
       ],
     },
+    // The whole-model questions, which name no subject and would otherwise
+    // have no menu at all (#516).
+    ...questionsGroup(context.questions?.workspace ?? [], null, context),
     {
       key: "model",
       scope: "model",
@@ -702,6 +800,9 @@ const modelRowMenu = (
           },
         ]),
     ...foldGroup(id, context),
+    // The rail is DOM and the canvas is not (#473): the same group here is
+    // how a keyboard or screen-reader user reaches a question at all (#516).
+    ...questionsGroup(context.questions?.subjects[id] ?? [], id, context),
     {
       key: "model",
       scope: "model",
