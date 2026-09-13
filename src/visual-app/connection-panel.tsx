@@ -8,6 +8,7 @@ import {
   draftRelationship,
 } from '../relationship-drafting.js'
 import type { ConnectionDraft } from './workspace-state.js'
+import { kindLabelOf } from '../kind-label.js'
 
 export interface TargetMatch {
   readonly id: string
@@ -160,14 +161,42 @@ export const ConnectionPanel = ({
   }
 
   const target = draft.to
-  const kinds = connectableKinds(graph, draft.from, target)
+  // A question armed the tool with a direction (#515): `incoming` means the
+  // relationship runs from the target to the subject the question was about,
+  // so the table is consulted that way round and the edge is drafted that
+  // way round. By hand, and by default, it runs from `from` to the target.
+  const incoming = draft.direction === 'incoming'
+  const source = incoming ? target : draft.from
+  const sink = incoming ? draft.from : target
+  const permitted = connectableKinds(graph, source, sink)
+  // The kinds the question named come first; the rest of what the table
+  // permits stays reachable below a rule, because the question is one reading
+  // of the gap and the reviewer may know better.
+  const asked = new Set((draft.kinds ?? []).map(kindLabelOf))
+  const narrowed = permitted.filter((kind) => asked.has(kind))
+  const others = permitted.filter((kind) => !asked.has(kind))
+  const kinds = narrowed.length === 0 ? permitted : narrowed
+  const stage = (kind: RelationshipKind): void => {
+    const operation = draftRelationship(graph, source, kind, sink, reservedIds)
+    // Null here would mean this panel offered a kind the table does not
+    // permit, which `connectableKinds` cannot produce. Staging nothing is
+    // the safe reading of an impossible state.
+    if (operation !== null) onStage(operation)
+    onCancel()
+  }
 
   return (
     <section className="connection-panel" aria-label="Connect subjects">
       <p className="connection-prompt">
-        <strong>{titleOf(draft.from)}</strong> to{' '}
-        <strong>{titleOf(target)}</strong>
+        <strong>{titleOf(source)}</strong> to{' '}
+        <strong>{titleOf(sink)}</strong>
       </p>
+      {asked.size > 0 && narrowed.length === 0 && permitted.length > 0 ? (
+        <p className="connection-note">
+          The question asked for {[...asked].join(' or ')}, which the table
+          does not permit between these two. What it does permit:
+        </p>
+      ) : null}
       {kinds.length === 0 ? (
         <p className="connection-empty">
           No relationship is defined between these kinds. One of them is
@@ -177,29 +206,27 @@ export const ConnectionPanel = ({
         <ul className="connection-kinds">
           {kinds.map((kind: RelationshipKind) => (
             <li key={kind}>
-              <button
-                type="button"
-                onClick={() => {
-                  const operation = draftRelationship(
-                    graph,
-                    draft.from,
-                    kind,
-                    target,
-                    reservedIds,
-                  )
-                  // Null here would mean this panel offered a kind the table
-                  // does not permit, which `connectableKinds` cannot produce.
-                  // Staging nothing is the safe reading of an impossible state.
-                  if (operation !== null) onStage(operation)
-                  onCancel()
-                }}
-              >
+              <button type="button" onClick={() => stage(kind)}>
                 {kind}
               </button>
             </li>
           ))}
         </ul>
       )}
+      {narrowed.length > 0 && others.length > 0 ? (
+        <details className="connection-others">
+          <summary>Other relationships the table permits</summary>
+          <ul className="connection-kinds">
+            {others.map((kind: RelationshipKind) => (
+              <li key={kind}>
+                <button type="button" onClick={() => stage(kind)}>
+                  {kind}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
       <button type="button" onClick={onCancel}>
         Cancel
       </button>

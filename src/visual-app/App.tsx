@@ -2335,6 +2335,28 @@ export const App = ({
                         <OpenQuestions
                           overlay={interrogation}
                           selectedId={selectedElementId}
+                          readOnly={readOnly}
+                          onVerb={(_entry, verb, subjectId) => {
+                            // Each verb is a gesture the surface already has
+                            // (#515): nothing here is a second write path.
+                            if (verb.kind === "connect" && subjectId !== null) {
+                              dispatchWorkspace({
+                                type: "connection.started",
+                                from: subjectId,
+                                kinds: verb.kinds,
+                                direction: verb.direction,
+                              });
+                              return;
+                            }
+                            if (verb.kind === "add") {
+                              setDraftKind(verb.subjectKind);
+                              dispatchWorkspace({ type: "subject.draft.opened" });
+                              return;
+                            }
+                            if (verb.kind === "describe" && !sectionOpen("properties")) {
+                              dispatchWorkspace({ type: "section.toggled", section: "properties" });
+                            }
+                          }}
                         />
                       )}
                     </Section>

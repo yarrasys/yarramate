@@ -19,6 +19,21 @@ workspace named from elsewhere runs the CLI at that repository's root, as a
 person would. Every tool description carries the loop in two sentences.
 ADR 0149 amends ADR 0044's read-only clause.
 
+### The Open questions section has room, and every question offers its verb (#515)
+
+With four sections mounted, the right column gave the palette a third of its
+height, an empty Changes tray a fixed fifth, and the Open questions body
+3 px, so a question was there and read as missing. The questions now share
+the slack with properties; a section with nothing open, a shut section and a
+tray with nothing staged size to their content. Each question row also
+carries its answer shape (`scope`, `materiality`, `resolution`, `trigger`)
+and offers one verb derived from the trigger: connect, with the kinds the
+question named first and the direction the question meant; add, with the
+kind preselected; or open the properties. The connection tool learned
+`direction` and `kinds` for it, so a question that asks what realizes a goal
+drafts the edge that way round. Viewers and hosts without the gestures see
+no verbs. ADR 0150.
+
 ## 1.25.2
 
 ### A subject added to an undescribed view can be committed again (#509)

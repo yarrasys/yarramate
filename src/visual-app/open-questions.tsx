@@ -2,6 +2,7 @@ import type {
   VisualInterrogationOverlay,
   VisualQuestionEntry,
 } from '../adapters/visual/wire.js'
+import { verbFor, type QuestionVerb } from './question-verbs.js'
 
 /**
  * The interview, where the drawing happens (#292).
@@ -16,9 +17,23 @@ import type {
 export function OpenQuestions({
   overlay,
   selectedId,
+  readOnly = false,
+  onVerb,
 }: {
   readonly overlay: VisualInterrogationOverlay
   readonly selectedId: string | null
+  /** A viewer has no pen (#298): rows read, and offer nothing. */
+  readonly readOnly?: boolean
+  /**
+   * Runs a row's verb (#515): the gesture that would answer it, derived from
+   * the trigger. Absent, rows carry no button, which is how a host without
+   * the gestures mounts the pane.
+   */
+  readonly onVerb?: (
+    entry: VisualQuestionEntry,
+    verb: QuestionVerb,
+    subjectId: string | null,
+  ) => void
 }) {
   const entries =
     selectedId === null
@@ -42,7 +57,12 @@ export function OpenQuestions({
       ) : (
         <ul className="question-list">
           {entries.map((entry) => (
-            <QuestionRow key={entry.questionId} entry={entry} />
+            <QuestionRow
+              key={entry.questionId}
+              entry={entry}
+              verb={readOnly || onVerb === undefined ? null : verbFor(entry)}
+              onVerb={(verb) => onVerb?.(entry, verb, selectedId)}
+            />
           ))}
         </ul>
       )}
@@ -54,15 +74,34 @@ export function OpenQuestions({
   )
 }
 
-const QuestionRow = ({ entry }: { readonly entry: VisualQuestionEntry }) => (
+const QuestionRow = ({
+  entry,
+  verb,
+  onVerb,
+}: {
+  readonly entry: VisualQuestionEntry
+  readonly verb: QuestionVerb | null
+  readonly onVerb: (verb: QuestionVerb) => void
+}) => (
   <li className="question-row">
-    <span className="question-text">{entry.question}</span>
+    <span className="question-text" title={entry.materiality}>
+      {entry.question}
+    </span>
     <span className="question-meta">
       <span className={`question-authority question-authority-${entry.authority}`}>
         {entry.authority}
       </span>
       {entry.since === undefined ? null : (
         <span className="question-since">since {entry.since}</span>
+      )}
+      {verb === null ? null : (
+        <button
+          type="button"
+          className={`question-verb question-verb-${verb.kind}`}
+          onClick={() => onVerb(verb)}
+        >
+          {verb.label}
+        </button>
       )}
     </span>
   </li>

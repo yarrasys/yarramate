@@ -246,9 +246,18 @@ export const interrogationOverlayOf = (
         questionId: question.id,
         authority: question.authority,
         ...(question.since === undefined ? {} : { since: question.since }),
+        // The answer shape rides along (#515, ADR 0110): materiality for the
+        // row's own words, the trigger for the verb that would close it.
+        materiality: question.materiality,
+        resolution: question.resolution,
+        trigger: question.trigger,
       };
       if (question.subjects === undefined) {
-        workspace.push({ ...base, question: question.question });
+        workspace.push({
+          ...base,
+          scope: "workspace",
+          question: question.question,
+        });
         continue;
       }
       for (const subject of question.subjects) {
@@ -257,6 +266,7 @@ export const interrogationOverlayOf = (
         }
         (subjects[subject.id] ??= []).push({
           ...base,
+          scope: "subject",
           question: subject.question,
         });
       }

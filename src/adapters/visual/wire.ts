@@ -1,3 +1,4 @@
+import type { CatalogueCondition } from '../../interrogate-command.js'
 import type { CanvasGraph } from '../../graph-projection.js'
 import type { PatternMembership, PatternVacancy } from '../../compiler.js'
 import type {
@@ -38,6 +39,23 @@ export interface VisualQuestionEntry {
   readonly question: string
   readonly authority: 'human' | 'agent' | 'either'
   readonly since?: string
+  /**
+   * Which list the row came from (#515): a workspace row names no subject
+   * and has no panel to open, a subject row is keyed under its subject.
+   * Optional so a host that constructs rows by hand is not broken by a
+   * field only the pane's verbs read.
+   */
+  readonly scope?: 'workspace' | 'subject'
+  /** Why the question matters, in the catalogue's words (ADR 0110). */
+  readonly materiality?: string
+  /** What would close it, in prose. */
+  readonly resolution?: string
+  /**
+   * The catalogue conditions that opened it, verbatim (#515, ADR 0110): the
+   * machine-readable answer shape a row, a menu entry or a chip turns into
+   * a verb. Optional for the same reason as `scope`.
+   */
+  readonly trigger?: readonly CatalogueCondition[]
 }
 
 /**

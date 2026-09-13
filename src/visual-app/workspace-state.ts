@@ -50,6 +50,17 @@ export type SelectedDiagramSubject = SelectedElement | SelectedRelationship;
 export interface ConnectionDraft {
   readonly from: string;
   readonly to: string | null;
+  /**
+   * A question's answer shape, when the tool was armed from one (#515):
+   * the relationship kinds the trigger names, qualified, narrowing what the
+   * panel offers first; and which end the subject is. `incoming` means the
+   * drawn relationship runs from the target TO `from`, because the question
+   * asked what realizes, influences or serves this subject, not what it
+   * reaches. Absent on a tool armed by hand, which offers everything the
+   * table permits, from `from` to the target.
+   */
+  readonly kinds?: readonly string[];
+  readonly direction?: "outgoing" | "incoming";
 }
 
 const optionalText = (value: string | null | undefined): string | null => {
@@ -441,6 +452,8 @@ export type VisualWorkspaceAction =
   | {
       readonly type: "connection.started";
       readonly from: string;
+      readonly kinds?: readonly string[];
+      readonly direction?: "outgoing" | "incoming";
     }
   | {
       readonly type: "connection.targeted";
@@ -863,7 +876,14 @@ export const visualWorkspaceReducer = (
     case "connection.started":
       return {
         ...state,
-        connection: { from: action.from, to: null },
+        connection: {
+          from: action.from,
+          to: null,
+          ...(action.kinds === undefined ? {} : { kinds: action.kinds }),
+          ...(action.direction === undefined
+            ? {}
+            : { direction: action.direction }),
+        },
         draftingSubject: false,
         contextMenu: null,
       };

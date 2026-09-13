@@ -105,6 +105,16 @@ describe('interrogationOverlayOf', () => {
     )
     expect(overlay!.subjects['teller']![0]!.since).toBe('0.7')
     expect(overlay!.subjects['teller']![0]!.authority).toBe('human')
+    // #515, ADR 0150: the row carries its answer shape, copied from the
+    // report question, so a pane, a menu or a chip can act on it.
+    const subjectRow = overlay!.subjects['teller']![0]!
+    expect(subjectRow.scope).toBe('subject')
+    expect(subjectRow.materiality?.length).toBeGreaterThan(0)
+    expect(subjectRow.resolution?.length).toBeGreaterThan(0)
+    expect(subjectRow.trigger?.[0]?.condition).toBe('missing-claim')
+    const workspaceRow = overlay!.workspace[0]!
+    expect(workspaceRow.scope).toBe('workspace')
+    expect(workspaceRow.trigger?.[0]?.condition).toBe('no-subject-of-kind')
   })
 
   it('names the catalogue and the engine semantics that answered', () => {
