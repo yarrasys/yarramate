@@ -84,3 +84,12 @@ binary kinds name what they need. Four mutations were run and each turned a
 test red: dropping the conventional fallback, running the CLI in the server's
 directory instead of the repository root, never writing the operations file,
 and letting xlsx run without `out`.
+
+A real client closed the loop: Claude Code with the built server started from
+a scratch directory and `--workspace` pointing into a fresh `yarramate init`,
+never allowed a shell. Its first `yarramate_apply` was refused, `must have
+required property 'concept'`, because it wrote the fields flat instead of
+under the key the operation names. The server was right and the description
+was thin, which is ADR 0110's finding one surface over. With the shape spelt
+out in the `operations` description, the same client landed the concept on
+its first call, checked it, and exported the RTM.

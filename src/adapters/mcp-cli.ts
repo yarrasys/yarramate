@@ -241,7 +241,7 @@ const tools: readonly ToolDefinition[] = [
         ...workspaceProperty,
         operations: {
           description:
-            'The operations document: `format: yarramate/operations/v1` with an `operations` list (add-concept, add-relationship, update-concept, update-relationship, delete-concept, delete-relationship, rename-concept, rename-relationship, and the evidence and projection operations of the same format). YAML or JSON text, or the equivalent JSON object.',
+            'The operations document: `format: yarramate/operations/v1` with an `operations` list. Each operation names its `op` and its `document` (the native document path, for example .yarramate/architecture/main.yaml) and nests the record under the key its op names: add-concept carries `concept: { id, kind, name, description?, status?, ... }`, add-relationship carries `relationship: { id, kind, from, to, description? }`, update-concept and update-relationship carry the same key with only the fields that change, delete-* and rename-* carry the id (and `to` for a rename). Shape, as JSON: {"format":"yarramate/operations/v1","operations":[{"op":"add-concept","document":".yarramate/architecture/main.yaml","concept":{"id":"ops-portal","kind":"applicationComponent","name":"Operations portal"}}]}. YAML or JSON text, or the equivalent JSON object.',
           oneOf: [{ type: 'string' }, { type: 'object' }],
         },
       },
