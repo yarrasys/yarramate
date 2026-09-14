@@ -96,6 +96,15 @@ export interface MountOptions extends LocalHostOptions {
    * the question still leaves the pane in a shape an assistant can answer.
    */
   readonly onDelegateQuestion?: (question: VisualQuestionDelegatePayload) => void
+  /**
+   * The view to open on once the model arrives (#523, ADR 0152): a projection
+   * id from the workspace. Applied once, through the same navigation the rail
+   * runs, so the host is told where the reviewer starts. An id the model
+   * lists no view under is ignored and the editor opens where it always has.
+   * A page deep-linking into the editor passes what its URL says here rather
+   * than reaching for the rail.
+   */
+  readonly view?: string
 }
 
 /**
@@ -131,6 +140,13 @@ export interface MountedEditor {
    * kinds on offer are derived from the two endpoints.
    */
   readonly startConnection: (fromSubjectId: string) => boolean
+  /**
+   * Opens the named view exactly as picking it in the rail does (#523,
+   * ADR 0152). Reading, so a viewer accepts it. False for an id the model
+   * lists no view under, and before the model arrives - a host that wants
+   * the opening view chosen for it passes `view` at mount instead.
+   */
+  readonly showView: (viewId: string) => boolean
   /**
    * Replaces the per-subject marks wholesale (#314, ADR 0119) - never a
    * merge: the map handed here is the map drawn, and `{}` clears every mark.
@@ -209,6 +225,7 @@ export const mountEditor = (
     options.readOnly,
     options.decorations,
     options.onDelegateQuestion,
+    options.view,
   )
   if (engine === undefined) return mounted
   return {
@@ -238,6 +255,7 @@ export const mountEditorWith = (
   readOnly = false,
   decorations?: DecorationMap,
   onDelegateQuestion?: (question: VisualQuestionDelegatePayload) => void,
+  view?: string,
 ): MountedEditor => {
   // No StrictMode: its double mount would open the host twice, and a host with
   // a socket behind it would open two.
@@ -255,6 +273,7 @@ export const mountEditorWith = (
       readOnly={readOnly}
       decorations={decorations}
       onDelegateQuestion={onDelegateQuestion}
+      initialView={view}
       onReady={(pointer) => {
         bridge.current = pointer
       }}
@@ -269,6 +288,7 @@ export const mountEditorWith = (
     openDraft: (options) => bridge.current?.openDraft(options) ?? false,
     startConnection: (fromSubjectId) =>
       bridge.current?.startConnection(fromSubjectId) ?? false,
+    showView: (viewId) => bridge.current?.showView(viewId) ?? false,
     setDecorations: (decorations) =>
       bridge.current?.setDecorations(decorations) ?? false,
     refresh: () => {

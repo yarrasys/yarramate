@@ -137,6 +137,12 @@ export interface EditorPointerContext {
    * the staleness question is answered host-side.
    */
   readonly stagedPins: Readonly<Record<string, string>>;
+  /**
+   * The views the model lists (#523, ADR 0152), so `showView` can refuse an
+   * id that names none of them the way `select` refuses an unknown subject.
+   * Empty until the model arrives.
+   */
+  readonly views: readonly { readonly id: string }[];
 }
 
 /**
@@ -151,6 +157,13 @@ export interface EditorPointer {
   readonly select: (subjectId: string) => boolean;
   readonly openDraft: (options?: { readonly kind?: string }) => boolean;
   readonly startConnection: (fromSubjectId: string) => boolean;
+  /**
+   * Opens the named view exactly as picking it in the rail does (#523,
+   * ADR 0152): the local navigation and the word to the host, together.
+   * Reading, so a viewer accepts it. False for an id the model lists no view
+   * under, and before the model arrives.
+   */
+  readonly showView: (viewId: string) => boolean;
   /**
    * Replaces the host's per-subject marks wholesale (#314, ADR 0119) - the
    * map is the unit of exchange, never merged into what stood. Unlike its
@@ -179,7 +192,17 @@ export const editorPointerFor = (
   dispatch: (action: VisualWorkspaceAction) => void,
   seedDraftKind: (kind: string | undefined) => void,
   replaceDecorations: (decorations: DecorationMap) => void,
+  navigate: (viewId: string) => void,
 ): EditorPointer => ({
+  showView: (viewId) => {
+    const { views } = context();
+    // The rail offers only the views the model lists, so the twin does too.
+    if (!views.some((view) => view.id === viewId)) return false;
+    // The rail's own move: navigate locally and tell the host where the
+    // reviewer went, in that order, through the one function the rail calls.
+    navigate(viewId);
+    return true;
+  },
   select: (subjectId) => {
     const { graph } = context();
     if (graph === null) return false;

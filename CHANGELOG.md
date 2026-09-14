@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### A host can choose the view (#523)
+
+`mountEditor` opens on the view its host names: `view: 'current-state'`
+is applied once, when the first model lands, through the same navigation
+the rail runs, and ignored when the model lists no such view. The handle
+gains `showView(viewId)`, the twin of picking a view in the rail, which
+answers `false` for an unlisted id and before the model arrives. A page
+that deep-links into the editor passes what its URL says instead of
+reaching for the rail's DOM. ADR 0152.
+
 ## 1.26.0
 
 ### The MCP server lands answers and derives deliverables (#514)
