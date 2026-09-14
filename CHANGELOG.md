@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.28.0
 
 ### reconcile speaks to a person behind `--text` (#526)
 
