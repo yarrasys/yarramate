@@ -364,6 +364,10 @@ concepts:
     kind: repository-file
     name: src/visual-app/graph-canvas.tsx
     status: current
+  - id: visual-instance-draft-panel-source
+    kind: repository-file
+    name: src/visual-app/instance-draft-panel.tsx
+    status: current
   - id: visual-inspector-source
     kind: repository-file
     name: src/visual-app/subject-form.tsx
@@ -380,6 +384,10 @@ concepts:
     kind: repository-file
     name: src/adapters/visual/likec4-compiler.ts
     status: retired
+  - id: fold-tree-source
+    kind: repository-file
+    name: src/fold-tree.ts
+    status: current
   - id: graph-projection-source
     kind: repository-file
     name: src/graph-projection.ts
@@ -726,6 +734,10 @@ concepts:
     kind: repository-file
     name: src/visual-app/prompt-dialog.tsx
     status: current
+  - id: visual-question-verbs-source
+    kind: repository-file
+    name: src/visual-app/question-verbs.ts
+    status: current
   - id: visual-query-fields-source
     kind: repository-file
     name: src/visual-app/query-fields.tsx
@@ -758,6 +770,10 @@ concepts:
     kind: repository-file
     name: src/visual-app/session-client.tsx
     status: current
+  - id: visual-slots-model-source
+    kind: repository-file
+    name: src/visual-app/slots-model.ts
+    status: current
   - id: visual-shipped-catalogue-source
     kind: repository-file
     name: src/visual-app/shipped-catalogue.ts
@@ -769,6 +785,10 @@ concepts:
   - id: visual-state-source
     kind: repository-file
     name: src/visual-app/state.ts
+    status: current
+  - id: visual-style-presets-source
+    kind: repository-file
+    name: src/visual-app/style-presets.ts
     status: current
   - id: visual-subject-draft-panel-source
     kind: repository-file
@@ -1205,6 +1225,10 @@ relationships:
     kind: realization
     from: graph-projection-source
     to: render-visual-model
+  - id: fold-tree-realizes-render
+    kind: realization
+    from: fold-tree-source
+    to: render-visual-model
   - id: visual-protocol-source-realizes-protocol
     kind: realization
     from: visual-protocol-source
@@ -1555,6 +1579,10 @@ relationships:
     kind: realization
     from: visual-main-source
     to: visual-browser
+  - id: visual-instance-draft-panel-realizes-browser
+    kind: realization
+    from: visual-instance-draft-panel-source
+    to: visual-browser
   - id: visual-mount-realizes-browser
     kind: realization
     from: visual-mount-source
@@ -1566,6 +1594,10 @@ relationships:
   - id: visual-prompt-dialog-realizes-browser
     kind: realization
     from: visual-prompt-dialog-source
+    to: visual-browser
+  - id: visual-question-verbs-realizes-browser
+    kind: realization
+    from: visual-question-verbs-source
     to: visual-browser
   - id: visual-query-fields-realizes-browser
     kind: realization
@@ -1599,6 +1631,10 @@ relationships:
     kind: realization
     from: visual-session-client-source
     to: visual-browser
+  - id: visual-slots-model-realizes-browser
+    kind: realization
+    from: visual-slots-model-source
+    to: visual-browser
   - id: visual-shipped-catalogue-realizes-catalogue
     kind: realization
     from: visual-shipped-catalogue-source
@@ -1610,6 +1646,10 @@ relationships:
   - id: visual-state-realizes-browser
     kind: realization
     from: visual-state-source
+    to: visual-browser
+  - id: visual-style-presets-realizes-browser
+    kind: realization
+    from: visual-style-presets-source
     to: visual-browser
   - id: visual-subject-draft-panel-realizes-browser
     kind: realization

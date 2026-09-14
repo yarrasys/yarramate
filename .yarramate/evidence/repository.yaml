@@ -1207,6 +1207,26 @@ observations:
     result: confirmed
     evidence:
       uri: repo:src/visual-app/mount.tsx
+  - subject: visual-instance-draft-panel-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/instance-draft-panel.tsx
+  - subject: visual-question-verbs-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/question-verbs.ts
+  - subject: visual-slots-model-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/slots-model.ts
+  - subject: visual-style-presets-source
+    result: confirmed
+    evidence:
+      uri: repo:src/visual-app/style-presets.ts
+  - subject: fold-tree-source
+    result: confirmed
+    evidence:
+      uri: repo:src/fold-tree.ts
   - subject: visual-open-questions-source
     result: confirmed
     evidence:

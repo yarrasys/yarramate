@@ -2160,6 +2160,36 @@ mappings:
   - native: visual-mount-source
     external: visualMountSource
     type: concept
+  - native: visual-instance-draft-panel-source
+    external: visualInstanceDraftPanelSource
+    type: concept
+  - native: visual-question-verbs-source
+    external: visualQuestionVerbsSource
+    type: concept
+  - native: visual-slots-model-source
+    external: visualSlotsModelSource
+    type: concept
+  - native: visual-style-presets-source
+    external: visualStylePresetsSource
+    type: concept
+  - native: fold-tree-source
+    external: foldTreeSource
+    type: concept
+  - native: visual-instance-draft-panel-realizes-browser
+    external: visualInstanceDraftPanelRealizesBrowser
+    type: relationship
+  - native: visual-question-verbs-realizes-browser
+    external: visualQuestionVerbsRealizesBrowser
+    type: relationship
+  - native: visual-slots-model-realizes-browser
+    external: visualSlotsModelRealizesBrowser
+    type: relationship
+  - native: visual-style-presets-realizes-browser
+    external: visualStylePresetsRealizesBrowser
+    type: relationship
+  - native: fold-tree-realizes-render
+    external: foldTreeRealizesRender
+    type: relationship
   - native: visual-open-questions-source
     external: visualOpenQuestionsSource
     type: concept
