@@ -108,6 +108,23 @@ describe('OpenQuestions', () => {
     expect(html).toContain('No open questions name this subject.')
   })
 
+  it('names every catalogue in a composed set, and the one catalogue otherwise (#530)', () => {
+    const composed: VisualInterrogationOverlay = {
+      ...overlay,
+      catalogues: ['fixture@1.0', 'water-utility@1.0'],
+    }
+    const html = renderToStaticMarkup(
+      createElement(OpenQuestions, { overlay: composed, selectedId: null }),
+    )
+    expect(html).toContain('Catalogues fixture@1.0, water-utility@1.0')
+    expect(html).not.toContain('Catalogue fixture@1.0 ')
+    // A single-entry list is not a composition; the plain reading stands.
+    const single = renderToStaticMarkup(
+      createElement(OpenQuestions, { overlay: { ...overlay, catalogues: ['fixture@1.0'] }, selectedId: null }),
+    )
+    expect(single).toContain('Catalogue fixture@1.0')
+  })
+
   it('names the catalogue and keeps the answer path out of the panel', () => {
     const html = render(null)
     expect(html).toContain('Catalogue fixture@1.0')

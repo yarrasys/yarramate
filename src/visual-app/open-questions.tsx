@@ -92,8 +92,10 @@ export function OpenQuestions({
         </ul>
       )}
       <p className="open-questions-catalogue">
-        Catalogue {overlay.catalogue} · answers land through the changeset,
-        never here.
+        {overlay.catalogues === undefined || overlay.catalogues.length < 2
+          ? `Catalogue ${overlay.catalogue}`
+          : `Catalogues ${overlay.catalogues.join(', ')}`}{' '}
+        · answers land through the changeset, never here.
       </p>
     </div>
   )

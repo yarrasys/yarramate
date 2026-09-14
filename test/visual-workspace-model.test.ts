@@ -155,6 +155,34 @@ describe('interrogationOverlayOf', () => {
     expect('next' in overlay).toBe(false)
   })
 
+  it('carries every catalogue of a composed set, and none for a single one (#530)', () => {
+    const sector = {
+      path: 'sector-catalogue.yaml',
+      source: `format: yarramate/question-catalogue/v1
+id: sector
+version: "1.0"
+profile: yarramate/core@0.1
+waves: []
+questions:
+  - id: outcome-missing
+    wave: motivation
+    scope: workspace
+    trigger:
+      - condition: no-subject-of-kind
+        kinds: ["yarramate/core@0.1#outcome"]
+    question: What number will show the board it worked?
+    materiality: Without a measure nothing is finished.
+    authority: human
+    resolution: Add an outcome.
+`,
+    }
+    const composed = interrogationOverlayOf(compiled(), [catalogue, sector])!
+    expect(composed.catalogues).toEqual(['fixture@1.0', 'sector@1.0'])
+    expect(composed.workspace.map(({ questionId }) => questionId)).toContain('sector#outcome-missing')
+    const single = interrogationOverlayOf(compiled(), catalogue)!
+    expect('catalogues' in single).toBe(false)
+  })
+
   it('names the catalogue and the engine semantics that answered', () => {
     const overlay = interrogationOverlayOf(compiled(), catalogue)!
     expect(overlay.catalogue).toBe('fixture@1.0')

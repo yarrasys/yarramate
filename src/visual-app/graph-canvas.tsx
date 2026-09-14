@@ -1097,6 +1097,57 @@ export function applyFilter(
 // The scratch key a layout run stamps its generation under, so a run that
 // resolves after a later one was requested applies nothing.
 const LAYOUT_GENERATION = '_layoutGeneration'
+// The band at the top of the canvas the toolbar overlays (#533), in CSS px,
+// kept in cytoscape's scratch so every fit - the first placement, the Fit
+// button, a filter's reframe, a resize - reads the same number without each
+// call site being handed it. Zero means no band.
+const RESERVED_TOP = '_reservedTop'
+
+/**
+ * The viewport that fits `box` into a canvas of `width` x `height` below a
+ * reserved band at the top (#533): cytoscape's own fit arithmetic, with the
+ * band subtracted from the height and the result pushed down by it, so the
+ * top row of a fitted graph lands under the toolbar's lower edge rather than
+ * under the toolbar. Null when the box has no area; the caller falls back to
+ * cytoscape's fit, which handles a single node the way it always has.
+ */
+export function fitViewport(
+  box: { readonly x1: number; readonly y1: number; readonly x2: number; readonly y2: number },
+  width: number,
+  height: number,
+  padding: number,
+  reservedTop: number,
+  limits: { readonly minZoom: number; readonly maxZoom: number },
+): { readonly zoom: number; readonly pan: { readonly x: number; readonly y: number } } | null {
+  const w = box.x2 - box.x1
+  const h = box.y2 - box.y1
+  if (!(w > 0) || !(h > 0)) return null
+  const band = Math.max(0, Math.min(reservedTop, height))
+  const usableHeight = height - band
+  const zoomRaw = Math.min((width - 2 * padding) / w, (usableHeight - 2 * padding) / h)
+  const zoom = Math.max(limits.minZoom, Math.min(limits.maxZoom, zoomRaw))
+  return {
+    zoom,
+    pan: {
+      x: (width - zoom * (box.x1 + box.x2)) / 2,
+      y: band + (usableHeight - zoom * (box.y1 + box.y2)) / 2,
+    },
+  }
+}
+
+/** Fits `eles` below the toolbar band the canvas has recorded (#533). */
+function fitReserved(cy: Core, eles: CollectionReturnValue, padding: number): void {
+  const reservedTop = (cy.scratch(RESERVED_TOP) as number | undefined) ?? 0
+  const viewport = fitViewport(eles.boundingBox(), cy.width(), cy.height(), padding, reservedTop, {
+    minZoom: cy.minZoom(),
+    maxZoom: cy.maxZoom(),
+  })
+  if (viewport === null) {
+    cy.fit(eles, padding)
+    return
+  }
+  cy.viewport(viewport)
+}
 
 /**
  * One layout run (ADR 0147): build the ELK graph for the collection, wait for
@@ -1155,11 +1206,13 @@ async function runLayout(
       // A node ELK did not place (a container, whose box cytoscape derives
       // from its children) is left alone: `preset` skips a null.
       positions: (node: NodeSingular) => placement.nodes.get(node.id()) ?? null,
-      fit: true,
-      padding: FIT_PADDING,
+      // Fitted below, not here: the layout's own fit knows nothing of the
+      // toolbar band (#533).
+      fit: false,
       animate: false,
     } as unknown as cytoscape.LayoutOptions)
     .run()
+  fitReserved(cy, forLayout, FIT_PADDING)
   if (!routesEdges(mode)) return
   // A compound's own position refreshes lazily; every endpoint offset below is
   // measured against the box that will actually be drawn.
@@ -1301,7 +1354,7 @@ export async function relayoutAfterFold(
     box.y2 < extent.y1 ||
     box.y1 > extent.y2
   if (!outside) return false
-  cy.fit(visible, 40)
+  fitReserved(cy, visible, 40)
   return true
 }
 
@@ -1319,7 +1372,7 @@ export async function relayoutAfterFold(
 export function fitVisible(cy: Core): boolean {
   const visible = cy.elements(':visible')
   if (visible.empty()) return false
-  cy.fit(visible, FIT_PADDING)
+  fitReserved(cy, visible, FIT_PADDING)
   return true
 }
 
@@ -1516,6 +1569,12 @@ interface GraphCanvasProps {
   /** The subject the next question is open for (#534); null marks nothing. */
   readonly nextQuestionSubjectId?: string | null
   /**
+   * The band at the top of the canvas the host's toolbar overlays (#533), in
+   * CSS px from the canvas's top edge to the toolbar's lower edge plus a
+   * margin. Every fit keeps the graph below it. Zero when nothing overlays.
+   */
+  readonly reservedTop?: number
+  /**
    * Which instances draw folded, and the memberships that let the canvas know
    * what is inside them (#473). Absent draws everything, which is what every
    * caller did before folding existed.
@@ -1599,6 +1658,7 @@ export function GraphCanvas({
   showNudges,
   openQuestionCounts,
   nextQuestionSubjectId = null,
+  reservedTop = 0,
   folded,
   memberships,
 }: GraphCanvasProps): React.ReactElement {
@@ -1680,6 +1740,13 @@ export function GraphCanvas({
     dragSaveHandleRef.current?.cancelPending()
   }, [activeViewId])
 
+  // The toolbar band, kept current on the instance (#533). The next fit reads
+  // it; nothing is re-fitted here, because a band that grows by a few pixels
+  // is not a reason to move the reader's viewport.
+  useEffect(() => {
+    cyRef.current?.scratch(RESERVED_TOP, reservedTop)
+  }, [reservedTop])
+
   // Mount effect: create cytoscape instance once on mount, wire tap and
   // layoutstop handlers, setup drag-save, cleanup on unmount.
   useEffect(() => {
@@ -1712,6 +1779,9 @@ export function GraphCanvas({
       wheelSensitivity: 0.1,
       layout: { name: 'null' },
     })
+    // The band is read by every fit, so it goes on the instance before the
+    // first layout can run (#533); the prop effect above keeps it current.
+    cy.scratch(RESERVED_TOP, reservedTop)
 
     cyRef.current = cy
 
@@ -1837,7 +1907,7 @@ export function GraphCanvas({
         if (!framingIsOurs) return
         const visible = cy.elements(':visible')
         if (visible.empty()) return
-        cy.fit(visible, FIT_PADDING)
+        fitReserved(cy, visible, FIT_PADDING)
         rememberFraming()
       })
     })

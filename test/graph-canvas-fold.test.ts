@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { graphToElements } from '../src/visual-app/graph-canvas.js'
+import { fitViewport, graphToElements } from '../src/visual-app/graph-canvas.js'
 import type { CanvasEdge, CanvasGraph, CanvasNode } from '../src/graph-projection.js'
 
 // #473 item 1.6, headless through `graphToElements`. The canvas rules that
@@ -85,6 +85,41 @@ const elementsFor = (
 
 const nodeData = (elements: ReturnType<typeof elementsFor>, id: string) =>
   elements.find((el: Element) => el.group === 'nodes' && el.data.id === id)
+
+/**
+ * Every fit keeps the graph below the toolbar band (#533): cytoscape's own
+ * centring arithmetic over the height that is left, pushed down by the band.
+ */
+describe('#533: fitting below the toolbar band', () => {
+  const box = { x1: 0, y1: 0, x2: 200, y2: 100 }
+  const limits = { minZoom: 0.1, maxZoom: 10 }
+
+  it('is cytoscape centring when there is no band', () => {
+    const v = fitViewport(box, 640, 400, 20, 0, limits)!
+    // Width-bound: (640 - 40) / 200 = 3; height would allow (400 - 40) / 100 = 3.6.
+    expect(v.zoom).toBe(3)
+    expect(v.pan).toEqual({ x: (640 - 3 * 200) / 2, y: (400 - 3 * 100) / 2 })
+  })
+
+  it('pushes the graph down by the band and fits the height that is left', () => {
+    const v = fitViewport(box, 640, 400, 20, 44, limits)!
+    // Still width-bound at 3, so the box is centred in the 356 px below the band.
+    expect(v.zoom).toBe(3)
+    expect(v.pan.y).toBe(44 + (356 - 3 * 100) / 2)
+    expect(v.pan.y).toBeGreaterThan(44)
+    // A tall box becomes height-bound on the reduced height.
+    const tall = fitViewport({ x1: 0, y1: 0, x2: 100, y2: 400 }, 640, 400, 20, 44, limits)!
+    expect(tall.zoom).toBe((356 - 40) / 400)
+  })
+
+  it('clamps to the zoom limits and refuses a box with no area', () => {
+    expect(fitViewport(box, 640, 400, 20, 0, { minZoom: 0.1, maxZoom: 1 })!.zoom).toBe(1)
+    expect(fitViewport({ x1: 5, y1: 5, x2: 5, y2: 5 }, 640, 400, 20, 44, limits)).toBeNull()
+    // A band taller than the canvas is capped at the canvas: no negative height.
+    const capped = fitViewport(box, 640, 400, 20, 900, limits)!
+    expect(capped.zoom).toBe(limits.minZoom)
+  })
+})
 
 /**
  * The subject the next question is open for wears its count chip ringed
