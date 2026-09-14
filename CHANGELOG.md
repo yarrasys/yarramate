@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.30.0
 
 ### The fitted map stays below the toolbar (#533)
 
