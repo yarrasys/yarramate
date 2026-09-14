@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { CanvasEdge, CanvasNode } from '../src/graph-projection.js'
 import {
+  REFERENCE_HINT,
+  REFERENCE_PATTERN,
   overlayConceptFields,
   overlayRelationshipFields,
   stageConceptListChange,
@@ -170,5 +172,29 @@ describe('overlayRelationshipFields', () => {
   it("reflects a staged 'to' change", () => {
     const ops = stageRelationshipScalarChange(edge.document, edge.localId, 'to', edge.to, 'yarramate/gateway')
     expect(overlayRelationshipFields(edge, ops).to).toBe('yarramate/gateway')
+  })
+})
+
+/**
+ * The owner field says what shape an owner has before the commit refuses it
+ * (#531): the document schema's `reference`, an id optionally qualified by
+ * its document.
+ */
+describe('the reference shape the owner field states (#531)', () => {
+  it('accepts an id and a document-qualified id', () => {
+    for (const ok of ['finance-it', 'main#finance-it', 'a', 'x1#y2']) {
+      expect(REFERENCE_PATTERN.test(ok), ok).toBe(true)
+    }
+  })
+
+  it('refuses what YM201 would refuse', () => {
+    for (const bad of ['Finance IT', 'finance--it', '-finance', '#finance', 'main#', 'Finance', 'finance it']) {
+      expect(REFERENCE_PATTERN.test(bad), bad).toBe(false)
+    }
+  })
+
+  it('says the shape in words a consultant can act on', () => {
+    expect(REFERENCE_HINT).toContain('finance-it')
+    expect(REFERENCE_HINT).toContain('main#finance-it')
   })
 })

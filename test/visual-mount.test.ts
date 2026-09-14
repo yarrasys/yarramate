@@ -109,6 +109,15 @@ describe('mountEditorWith', () => {
     })
   })
 
+  it('threads the first-model callback to the shell (#532)', () => {
+    const onFirstModel = vi.fn()
+    mountEditorWith({} as Element, host, sections, false, undefined, undefined, undefined, onFirstModel)
+    const rendered = root.render.mock.calls[0]![0] as { props: { onFirstModel?: () => void } }
+    expect(rendered.props.onFirstModel).toBe(onFirstModel)
+    // Threaded, not called: the shell calls it when the first model lands.
+    expect(onFirstModel).not.toHaveBeenCalled()
+  })
+
   it('threads the opening view to the shell, and nothing when none is asked for (#523)', () => {
     mountEditorWith({} as Element, host, sections, false, undefined, undefined, 'current-state')
     const opened = root.render.mock.calls[0]![0] as { props: { initialView?: string } }

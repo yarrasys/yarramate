@@ -410,6 +410,29 @@ const DiagramWorkspace = ({
    * the canvas strip's Add-subject button stands down. */
   readonly paletteReachable: boolean;
 }) => {
+  // The toolbar's band, measured rather than assumed (#533): the canvas keeps
+  // every fit below the controls' lower edge, whatever the controls are made
+  // of. Re-measured when they resize, which is when the band could change.
+  const controlsRef = useRef<HTMLDivElement>(null);
+  const [reservedTop, setReservedTop] = useState(0);
+  const controlsMounted = state.model !== null;
+  useEffect(() => {
+    const controls = controlsRef.current;
+    if (controls === null) return;
+    const measure = () => {
+      const parent = controls.parentElement;
+      const bottom =
+        parent === null
+          ? controls.getBoundingClientRect().bottom
+          : controls.getBoundingClientRect().bottom - parent.getBoundingClientRect().top;
+      setReservedTop(Math.max(0, Math.round(bottom + 8)));
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(controls);
+    return () => observer.disconnect();
+  }, [controlsMounted]);
   // An edge names its endpoints by node id; the reviewer reads titles. The
   // rendering model the renderer itself draws answers that, so nothing here
   // reaches into the compiled document.
@@ -481,7 +504,7 @@ const DiagramWorkspace = ({
           // On the canvas, because the canvas is what it narrows. It used to
           // sit in the command strip, as far from the diagram as the window
           // allows, next to controls that had nothing to do with it (#249).
-          <div className="canvas-controls">
+          <div className="canvas-controls" ref={controlsRef}>
             <QuickFilterBox
               value={state.quickFilterText}
               onChange={onQuickFilterChange}
@@ -635,6 +658,7 @@ const DiagramWorkspace = ({
             showNudges={showNudges}
             openQuestionCounts={openQuestionCounts}
             nextQuestionSubjectId={nextQuestionSubjectId}
+            reservedTop={reservedTop}
             activeViewId={state.activeView}
             direction={direction}
             layout={layout}
@@ -1348,6 +1372,7 @@ export const App = ({
   onDelegateQuestion,
   onReady,
   initialView,
+  onFirstModel,
 }: {
   readonly host: EditorHost;
   readonly sections?: readonly RightSectionId[];
@@ -1358,6 +1383,8 @@ export const App = ({
    * model lists no such view - the editor then opens where it always has.
    */
   readonly initialView?: string;
+  /** Called once when the first model lands (#532, ADR 0155). */
+  readonly onFirstModel?: () => void;
   /**
    * Where a delegated question goes when the host has no agent on the socket
    * (#515, ADR 0151). See `MountOptions.onDelegateQuestion`.
@@ -1472,6 +1499,17 @@ export const App = ({
       ),
     );
   }, [onReady, navigate]);
+
+  // The first model, signalled once (#532, ADR 0155). Declared before the
+  // opening view's effect so it runs first in the same commit; the view is
+  // applied in the same tick, so a host reading the view in the callback on
+  // the next frame reads the opened one.
+  const firstModelSignalled = useRef(false);
+  useEffect(() => {
+    if (firstModelSignalled.current || state.model === null) return;
+    firstModelSignalled.current = true;
+    onFirstModel?.();
+  }, [state.model, onFirstModel]);
 
   // The host's opening view (#523, ADR 0152): once, when the first model
   // lands, and only if the model lists it. The same navigation the rail runs,

@@ -451,6 +451,12 @@ programmatic twins of tap, palette and Connect, never a second write path:
 anything they lead to still stages through the changeset and commits through
 the same validated batch.
 
+A host that wants to act as soon as the handle answers for a graph passes
+`onFirstModel` (#532, ADR 0155): it is called once, when the first model has
+landed, which is the moment `select`, `startConnection` and `showView` stop
+answering `false` for want of a model. Wait on it rather than polling the
+handle.
+
 A host can also choose the view (#523, ADR 0152). `showView(viewId)` opens
 the named projection exactly as picking it in the rail does, the local move
 and the word to the host together; it returns `false` for an id the model

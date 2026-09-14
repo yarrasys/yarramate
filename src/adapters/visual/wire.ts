@@ -84,6 +84,13 @@ export interface VisualNextQuestion extends VisualQuestionEntry {
 export interface VisualInterrogationOverlay {
   /** `id@version` of the catalogue that asked. */
   readonly catalogue: string
+  /**
+   * Every catalogue in the composed set, `id@version` each, in resolution
+   * order (#530, ADR 0129) - present only when composition happened, the way
+   * the report carries it. The footer names them all; `catalogue` alone is
+   * the base and stays for readers that predate this.
+   */
+  readonly catalogues?: readonly string[]
   /** Engine condition-semantics version (ADR 0106), carried so a consumer
    * can tell "the model moved" from "the engine moved". */
   readonly semantics: string

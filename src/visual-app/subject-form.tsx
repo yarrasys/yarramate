@@ -395,17 +395,36 @@ const SelectRow = ({
   </label>
 )
 
+/**
+ * The shape a reference has (#531): the document schema's `reference` -
+ * an id, optionally qualified by its document (`finance-it`,
+ * `main#finance-it`). Said at input time, so the form does not accept a
+ * name the commit will refuse with YM201.
+ */
+export const REFERENCE_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:#[a-z][a-z0-9]*(?:-[a-z0-9]+)*)?$/
+export const REFERENCE_HINT = 'An id, like finance-it or main#finance-it: lowercase letters, digits and single hyphens.'
+
 const TextRow = ({
   label,
   value,
   onCommit,
+  shape,
 }: {
   readonly label: string
   readonly value: string
   readonly onCommit: (next: string) => void
+  /**
+   * What the field accepts, when the commit gate is stricter than free text:
+   * the hint is shown under the field and the input is marked invalid while
+   * the draft does not match. Staging is not withheld - the changeset's own
+   * refusal stays the authority - but the reader learns the shape before it.
+   */
+  readonly shape?: { readonly pattern: RegExp; readonly hint: string }
 }) => {
   const [draft, setDraft] = useState(value)
   useEffect(() => setDraft(value), [value])
+  const invalid = shape !== undefined && draft !== '' && !shape.pattern.test(draft)
+  const hintId = `${fieldNameOf(label)}-hint`
   return (
     <label className="subject-form-field">
       <span className="subject-form-label">{label}</span>
@@ -415,7 +434,13 @@ const TextRow = ({
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
         onBlur={() => onCommit(draft)}
+        {...(shape === undefined ? {} : { 'aria-describedby': hintId, 'aria-invalid': invalid })}
       />
+      {shape === undefined ? null : (
+        <span id={hintId} className={invalid ? 'subject-form-hint subject-form-hint-invalid' : 'subject-form-hint'}>
+          {shape.hint}
+        </span>
+      )}
     </label>
   )
 }
@@ -758,6 +783,7 @@ export const ConceptForm = ({ node, model, operations, onStageChange }: ConceptF
       <TextRow
         label="Owner"
         value={effective.owner ?? ''}
+        shape={{ pattern: REFERENCE_PATTERN, hint: REFERENCE_HINT }}
         onCommit={(next) => stage(stageConceptScalarChange(document, id, 'owner', effective.owner, next))}
       />
       <StringRows

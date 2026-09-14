@@ -1,5 +1,40 @@
 # Changelog
 
+## Unreleased
+
+### The fitted map stays below the toolbar (#533)
+
+Every fit the canvas performs, the first placement included, put the top row
+of a view under the canvas toolbar, so the first thing a visitor saw of the
+Halcyon landscape was its second row. The app now measures the controls'
+lower edge and every fit keeps the graph below that band: the first paint of
+a view shows every node, and since 1.29.0 the ringed next-question chip with
+it.
+
+### The Open questions footer names every catalogue (#530)
+
+With a workspace catalogue composed onto the shipped one, the footer still
+read "Catalogue core-enrichment@2.0". The overlay now carries the composed
+set (`catalogues`) when composition happened, and the footer names them all.
+
+### The owner field says what shape an owner has (#531)
+
+The properties form took any text as an owner and the commit refused it with
+YM201. The field now says the shape under it (an id, optionally qualified by
+its document) and marks the draft while it does not match; the changeset
+stays the authority.
+
+### Rail rows and zoom buttons meet the 24 px target (#529)
+
+The last half of #529: rail rows and the zoom cluster's buttons no longer
+dip under the 24 px hit target.
+
+### The mount says when the first model has landed (#532)
+
+`onFirstModel` on the mount options is called once when the first model
+frame has landed, after the opening view is applied, so a host acts on the
+handle then instead of polling `select()`. ADR 0155.
+
 ## 1.29.0
 
 ### The editor shows the next question (#534)

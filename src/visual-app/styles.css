@@ -486,6 +486,10 @@ body {
   align-items: center;
   gap: calc(var(--step) * 0.75);
   width: 100%;
+  /* The smallest hit target a finger or a pointer audit accepts (#529);
+     the padding below keeps the rows as dense as they were, this only
+     stops a short row from dipping under it. */
+  min-height: 24px;
   /* Tighter than it was: a list you can see beats a list you must scroll, and
      four more rows on screen is worth more than any tint applied to the rows
      already there. */
@@ -2976,6 +2980,8 @@ body {
 }
 
 .zoom-controls button {
+  min-width: 24px;
+  min-height: 24px;
   padding: 0.3rem 0.6rem;
   border: none;
   background: none;
@@ -3100,4 +3106,23 @@ body {
   border: 1px solid var(--cobalt);
   border-radius: 2px;
   padding: 0 4px;
+}
+
+/* What a field accepts, said under it (#531): quiet until the draft does not
+   match, then the same ochre the open-question surfaces use, never the
+   failure red - the changeset is the authority, this is the warning. */
+.subject-form-hint {
+  display: block;
+  margin-top: calc(var(--step) * 0.25);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--quiet);
+}
+
+.subject-form-hint-invalid {
+  color: var(--ochre);
+}
+
+.subject-form-field input[aria-invalid='true'] {
+  border-color: var(--ochre);
 }

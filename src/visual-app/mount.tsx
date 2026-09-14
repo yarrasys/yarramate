@@ -97,6 +97,13 @@ export interface MountOptions extends LocalHostOptions {
    */
   readonly onDelegateQuestion?: (question: VisualQuestionDelegatePayload) => void
   /**
+   * Called once, when the first model has landed (#532, ADR 0155): the moment
+   * `select`, `startConnection` and `showView` start answering for a graph.
+   * The handle's methods still answer false before it; a host that wants to
+   * act as soon as it can waits on this rather than polling them.
+   */
+  readonly onFirstModel?: () => void
+  /**
    * The view to open on once the model arrives (#523, ADR 0152): a projection
    * id from the workspace. Applied once, through the same navigation the rail
    * runs, so the host is told where the reviewer starts. An id the model
@@ -226,6 +233,7 @@ export const mountEditor = (
     options.decorations,
     options.onDelegateQuestion,
     options.view,
+    options.onFirstModel,
   )
   if (engine === undefined) return mounted
   return {
@@ -256,6 +264,7 @@ export const mountEditorWith = (
   decorations?: DecorationMap,
   onDelegateQuestion?: (question: VisualQuestionDelegatePayload) => void,
   view?: string,
+  onFirstModel?: () => void,
 ): MountedEditor => {
   // No StrictMode: its double mount would open the host twice, and a host with
   // a socket behind it would open two.
@@ -274,6 +283,7 @@ export const mountEditorWith = (
       decorations={decorations}
       onDelegateQuestion={onDelegateQuestion}
       initialView={view}
+      onFirstModel={onFirstModel}
       onReady={(pointer) => {
         bridge.current = pointer
       }}

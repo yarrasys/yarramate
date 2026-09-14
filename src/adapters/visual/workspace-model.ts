@@ -288,6 +288,7 @@ export const interrogationOverlayOf = (
   }
   return {
     catalogue: report.catalogue,
+    ...(report.catalogues === undefined ? {} : { catalogues: report.catalogues }),
     semantics: report.semantics,
     workspace,
     subjects,
