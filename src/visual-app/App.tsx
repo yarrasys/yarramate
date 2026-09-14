@@ -1326,10 +1326,17 @@ export const App = ({
   decorations: initialDecorations,
   onDelegateQuestion,
   onReady,
+  initialView,
 }: {
   readonly host: EditorHost;
   readonly sections?: readonly RightSectionId[];
   readonly readOnly?: boolean;
+  /**
+   * The view to open on once the model arrives (#523, ADR 0152): applied
+   * once, through the same navigation the rail runs, and ignored when the
+   * model lists no such view - the editor then opens where it always has.
+   */
+  readonly initialView?: string;
   /**
    * Where a delegated question goes when the host has no agent on the socket
    * (#515, ADR 0151). See `MountOptions.onDelegateQuestion`.
@@ -1423,6 +1430,7 @@ export const App = ({
     graph: null,
     readOnly,
     stagedPins: {},
+    views: [],
   });
   pointerContext.current = {
     graph: state.model?.graph ?? null,
@@ -1430,6 +1438,7 @@ export const App = ({
     // Read at call time like the graph is, so a host asking just before a
     // refresh sees what is staged now rather than at mount (#444).
     stagedPins: state.pendingChangeset.sourceDigests,
+    views: state.views,
   };
   useEffect(() => {
     onReady?.(
@@ -1438,9 +1447,23 @@ export const App = ({
         dispatchWorkspace,
         setDraftKind,
         setDecorations,
+        navigate,
       ),
     );
-  }, [onReady]);
+  }, [onReady, navigate]);
+
+  // The host's opening view (#523, ADR 0152): once, when the first model
+  // lands, and only if the model lists it. The same navigation the rail runs,
+  // so the host is told where the reviewer starts as it is told where they go.
+  const initialViewApplied = useRef(false);
+  useEffect(() => {
+    if (initialViewApplied.current || initialView === undefined) return;
+    if (state.model === null) return;
+    initialViewApplied.current = true;
+    if (state.views.some((view) => view.id === initialView)) {
+      navigate(initialView);
+    }
+  }, [initialView, state.model, state.views, navigate]);
 
   useEffect(() => {
     const resized = () =>

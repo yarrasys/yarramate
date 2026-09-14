@@ -451,6 +451,16 @@ programmatic twins of tap, palette and Connect, never a second write path:
 anything they lead to still stages through the changeset and commits through
 the same validated batch.
 
+A host can also choose the view (#523, ADR 0152). `showView(viewId)` opens
+the named projection exactly as picking it in the rail does, the local move
+and the word to the host together; it returns `false` for an id the model
+lists no view under, and before the model has arrived. For the opening view
+pass `view: 'current-state'` at mount instead: it is applied once, when the
+first model lands, and ignored when the model lists no such view, so the
+editor opens where it always has. A page that deep-links into the editor
+(`/editor?view=current-state`) passes what its URL says here rather than
+reaching for the rail.
+
 The viewer also accepts per-subject marks
 (ADR 0119): pass
 `decorations: { [subjectId]: 'added' | 'removed' | 'changed' }` — concepts and
