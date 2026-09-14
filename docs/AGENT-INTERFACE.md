@@ -147,6 +147,8 @@ recorder is part of that gate.
 
 - Harness use: trust assessment before relying on a model; the CI
   drift Action's substance.
+- `--text` says the same report to a person (ADR 0153); the JSON stays
+  the default and the contract.
 
 ### `yarramate export` — derive artifacts
 

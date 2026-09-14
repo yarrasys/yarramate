@@ -28,6 +28,7 @@ import {
 import { deriveArtifactCoverage } from './artifact-coverage.js'
 import { deriveAttestationStaleness } from './attestation-staleness.js'
 import { reconcileEvidenceReports } from './reconciliation.js'
+import { reconciliationReportText } from './reconciliation-text.js'
 import { loadWorkspaceManifest } from './workspace.js'
 
 export type { CliResult } from './cli-support.js'
@@ -39,12 +40,19 @@ const runReconciliation = (
   // Bare reconcile already emits JSON, so --json changes nothing — but a
   // harness scripting "add --json to every verb" must not hit exit 2 on
   // the one verb that treats it as unknown (#275). Accepted as a no-op.
-  const positional = options.filter((option) => option !== '--json')
+  // --text is the same report for a person (#526, ADR 0153); asking for
+  // both shapes at once names no output, so it is refused like any other
+  // malformed call.
+  const text = options.includes('--text')
+  const positional = options.filter(
+    (option) => option !== '--json' && option !== '--text',
+  )
   const [workspacePath] = positional
   if (
     positional.length !== 1 ||
     workspacePath === undefined ||
-    workspacePath.startsWith('-')
+    workspacePath.startsWith('-') ||
+    (text && options.includes('--json'))
   ) {
     return { exitCode: 2, stdout: '', stderr: usage }
   }
@@ -128,19 +136,18 @@ const runReconciliation = (
       dirname(resolve(cwd, workspacePath)),
       loadedWorkspace.manifest.coverage,
     )
+    const report = reconcileEvidenceReports(
+      loadedWorkspace.workspace.id,
+      evaluation.reports,
+      compilation.graph,
+      staleness,
+      coverage,
+    )
     return {
       exitCode: 0,
-      stdout: `${JSON.stringify(
-        reconcileEvidenceReports(
-          loadedWorkspace.workspace.id,
-          evaluation.reports,
-          compilation.graph,
-          staleness,
-          coverage,
-        ),
-        null,
-        2,
-      )}\n`,
+      stdout: text
+        ? reconciliationReportText(report)
+        : `${JSON.stringify(report, null, 2)}\n`,
       stderr: '',
     }
   } catch (error) {

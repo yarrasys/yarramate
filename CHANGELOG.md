@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### reconcile speaks to a person behind `--text` (#526)
+
+`yarramate reconcile` printed its report as JSON and nothing else, which is
+the contract a harness parses and the wrong thing to put in front of a
+person. `--text` says the same report in lines: the summary as labelled
+rows, one line per finding with its message beneath, then the subjects
+without evidence, the unclaimed artifacts and the notes, each only when it
+holds something. The JSON stays the default, `--json` stays the accepted
+no-op, and asking for both at once is refused. ADR 0153.
+
 ## 1.27.0
 
 ### A host can choose the view (#523)

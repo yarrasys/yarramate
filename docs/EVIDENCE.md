@@ -115,6 +115,13 @@ This command evaluates every evidence overlay declared by the manifest and
 emits deterministic `yarramate/reconciliation-report/v1` JSON. Its normative
 schema is `schema/yarramate-reconciliation-report.schema.json`.
 
+`--text` says the same report to a person (ADR 0153): the summary as
+labelled rows, one line per finding with its message beneath, then the
+subjects without evidence, the unclaimed artifacts and the notes, each only
+when it holds something. Nothing is added or judged; the order is the
+report's. The JSON stays the default, and `--json` stays the accepted no-op
+it has been; asking for both at once is refused.
+
 The summary counts all observations. The `findings` array contains only
 `contradicted`, `unknown`, and `not-observed` results, ordered by target and
 provider, plus the `stale-attestation` and `unconfirmed-attestation`

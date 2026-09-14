@@ -157,6 +157,10 @@ concepts:
     kind: repository-file
     name: src/evidence.ts
     status: current
+  - id: reconciliation-text-source
+    kind: repository-file
+    name: src/reconciliation-text.ts
+    status: current
   - id: reconciliation-source
     kind: repository-file
     name: src/reconciliation.ts
@@ -1055,6 +1059,10 @@ relationships:
   - id: reconciliation-source-realizes-function
     kind: realization
     from: reconciliation-source
+    to: reconcile-evidence
+  - id: reconciliation-text-realizes-reconcile-evidence
+    kind: realization
+    from: reconciliation-text-source
     to: reconcile-evidence
   - id: graphify-source-realizes-adapter
     kind: realization
