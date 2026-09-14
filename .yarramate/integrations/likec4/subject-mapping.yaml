@@ -102,6 +102,12 @@ mappings:
   - native: reconciliation-source
     external: reconciliationSource
     type: concept
+  - native: reconciliation-text-source
+    external: reconciliationTextSource
+    type: concept
+  - native: reconciliation-text-realizes-reconcile-evidence
+    external: reconciliationTextRealizesReconcileEvidence
+    type: relationship
   - native: reconciliation-report-schema-source
     external: reconciliationReportSchemaSource
     type: concept

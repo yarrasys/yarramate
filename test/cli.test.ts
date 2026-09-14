@@ -638,6 +638,68 @@ describe('YarraMate CLI', () => {
     ).toEqual(bare)
   })
 
+  it('says the same report to a person with --text (#526)', () => {
+    const result = runCli(
+      [
+        'reconcile',
+        'test/fixtures/journeys/discovery/.yarramate/workspace.yaml',
+        '--text',
+      ],
+      repositoryRoot,
+    )
+
+    expect(result.exitCode).toBe(0)
+    expect(result.stderr).toBe('')
+    expect(result.stdout).toBe(
+      [
+        'reconciliation  orders-discovery',
+        'observations    4  confirmed 3  contradicted 1  unknown 0  not observed 0  unsupported absences 0',
+        'attestations    stale 0  unconfirmed 0',
+        'expectations    compared 0  without observation 0',
+        'subjects        without evidence 1',
+        'artifacts       not assessed',
+        'findings        1',
+        '',
+        'Findings',
+        '  contradicted            customer  repository-inspection, orders-repository@1.0  repo:test/fixtures/journeys/discovery/src/customer.ts',
+        '    No customer integration was observed in the repository',
+        '',
+        'Subjects without evidence',
+        '  order-service',
+        '',
+        'Notes',
+        '  Artifact coverage was not assessed: the workspace manifest declares no coverage scope.',
+        '',
+      ].join('\n'),
+    )
+    // The flag goes anywhere the other one does.
+    expect(
+      runCli(
+        [
+          'reconcile',
+          '--text',
+          'test/fixtures/journeys/discovery/.yarramate/workspace.yaml',
+        ],
+        repositoryRoot,
+      ),
+    ).toEqual(result)
+  })
+
+  it('refuses --json and --text together, which names no output (#526)', () => {
+    const result = runCli(
+      [
+        'reconcile',
+        'test/fixtures/journeys/discovery/.yarramate/workspace.yaml',
+        '--json',
+        '--text',
+      ],
+      repositoryRoot,
+    )
+    expect(result.exitCode).toBe(2)
+    expect(result.stdout).toBe('')
+    expect(result.stderr).toContain('yarramate reconcile <workspace.yaml> [--json | --text]')
+  })
+
   it('renders the asserted relationship inside contradicted claim findings', () => {
     const schema = JSON.parse(
       readFileSync(

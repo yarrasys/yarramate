@@ -87,6 +87,10 @@ observations:
     result: confirmed
     evidence:
       uri: repo:src/reconciliation.ts
+  - subject: reconciliation-text-source
+    result: confirmed
+    evidence:
+      uri: repo:src/reconciliation-text.ts
   - subject: graphify-evidence-adapter
     result: confirmed
     evidence:
