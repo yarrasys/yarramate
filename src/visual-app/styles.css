@@ -3022,3 +3022,82 @@ body {
   border-color: currentColor;
   opacity: 0.75;
 }
+
+/* The next question (#534): the tab strip's own tablist, the strip's summary
+   when it carries the question, the tab's body, and the row tag in the
+   questions section. Quiet, like every interview surface. */
+.bottom-panel-tablist {
+  display: flex;
+  align-items: stretch;
+}
+
+.bottom-panel-summary-next {
+  /* A block, not the flex box the count summary is: an ellipsis only draws
+     on block text, and the strip has one line to say the question in. */
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 32px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--body);
+  font-size: 13px;
+  letter-spacing: 0;
+  color: var(--ink);
+}
+
+.next-question-tab {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--step) * 0.75);
+  padding: calc(var(--step) * 1.5) calc(var(--step) * 2);
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.next-question-eyebrow {
+  margin: 0;
+  font-family: var(--utility);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--quiet);
+}
+
+.next-question-text {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 1.15rem;
+  line-height: 1.3;
+}
+
+.next-question-why,
+.next-question-how {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--quiet);
+}
+
+.next-question-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--step);
+  margin-top: calc(var(--step) * 0.5);
+}
+
+.next-question-actions .question-verb {
+  margin-left: 0;
+}
+
+.question-next {
+  font-family: var(--utility);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cobalt);
+  border: 1px solid var(--cobalt);
+  border-radius: 2px;
+  padding: 0 4px;
+}

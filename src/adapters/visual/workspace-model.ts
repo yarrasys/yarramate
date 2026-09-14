@@ -37,6 +37,7 @@ import type {
 } from "./protocol-contract.js";
 import type {
   VisualInterrogationOverlay,
+  VisualNextQuestion,
   VisualQuestionEntry,
   VisualRenderedModel,
 } from "./wire.js";
@@ -238,6 +239,10 @@ export const interrogationOverlayOf = (
   );
   const workspace: VisualQuestionEntry[] = [];
   const subjects: Record<string, VisualQuestionEntry[]> = {};
+  // The first row kept is the next question (#534): the loop already walks
+  // waves in order and questions in catalogue order, which is `design`'s
+  // rule, so "first kept" is the rule and not a second one.
+  let next: VisualNextQuestion | undefined;
   for (const wave of report.waves) {
     for (const question of wave.questions) {
       if (!question.open) continue;
@@ -253,22 +258,31 @@ export const interrogationOverlayOf = (
         trigger: question.trigger,
       };
       if (question.subjects === undefined) {
-        workspace.push({
+        const row: VisualQuestionEntry = {
           ...base,
           scope: "workspace",
           question: question.question,
-        });
+        };
+        workspace.push(row);
+        next ??= { ...row, wave: wave.id };
         continue;
       }
       for (const subject of question.subjects) {
         if (dismissedForSubject.has(`${question.id}\u0000${subject.id}`)) {
           continue;
         }
-        (subjects[subject.id] ??= []).push({
+        const row: VisualQuestionEntry = {
           ...base,
           scope: "subject",
           question: subject.question,
-        });
+        };
+        (subjects[subject.id] ??= []).push(row);
+        next ??= {
+          ...row,
+          wave: wave.id,
+          subjectId: subject.id,
+          ...(subject.name === undefined ? {} : { subjectName: subject.name }),
+        };
       }
     }
   }
@@ -277,6 +291,7 @@ export const interrogationOverlayOf = (
     semantics: report.semantics,
     workspace,
     subjects,
+    ...(next === undefined ? {} : { next }),
   };
 };
 

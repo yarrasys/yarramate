@@ -168,7 +168,8 @@ renders. The child sees only the conversational events - `chat.message`,
 reach it.
 
 A `question.delegate` event is the reviewer handing one open question to
-you from the Open questions panel (ADR 0151). Its payload carries
+you from the Open questions panel or from the Next question tab in the
+bottom panel (ADR 0151, ADR 0154). Its payload carries
 `questionId`, `subjectId` (null for a workspace question) and the phrasing.
 Run `yarramate design <workspace> --subject <subjectId> --json` (or
 `yarramate ask <workspace> --open --json` for a workspace question) to read

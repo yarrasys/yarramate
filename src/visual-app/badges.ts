@@ -136,17 +136,24 @@ export function ownerBadgeUri(owner: string, initials: string): string {
 // the glyph stays legible at BADGE_SIZE; the caller never invokes this at
 // zero (badgeLayersFor gates on count > 0 - no chip is how "nothing open"
 // is drawn).
-function openQuestionsBadgeSvg(count: number): string {
+function openQuestionsBadgeSvg(count: number, next: boolean): string {
   const glyph = count > 9 ? '9+' : String(count)
   const fontSize = glyph.length > 1 ? 6.5 : 8
+  // The subject the next question is open for wears the same chip inside an
+  // ink ring (#534): still quiet, still a count, and one of them marked as
+  // where the interview goes next.
+  const ring = next
+    ? `<circle cx="6" cy="6" r="5.5" fill="none" stroke="${INK}" stroke-width="1"/>`
+    : ''
   return svg(
-    `<circle cx="6" cy="6" r="5" fill="${QUIET}"/>` +
+    ring +
+      `<circle cx="6" cy="6" r="${next ? 4.5 : 5}" fill="${QUIET}"/>` +
       `<text x="6" y="7.5" font-size="${fontSize}" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">${glyph}</text>`,
   )
 }
 
-export function openQuestionsBadgeUri(count: number): string {
-  return toDataUri(openQuestionsBadgeSvg(count))
+export function openQuestionsBadgeUri(count: number, next = false): string {
+  return toDataUri(openQuestionsBadgeSvg(count, next))
 }
 
 /**

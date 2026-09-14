@@ -59,6 +59,21 @@ export interface VisualQuestionEntry {
 }
 
 /**
+ * The next load-bearing open question (#534, ADR 0154): the row `design`
+ * would serve first, by design's own rule (the first open question in wave
+ * order, then catalogue order within the wave; a subject-scoped question
+ * names the first open subject it is open for). Computed host-side beside
+ * the overlay so both hosts and the browser agree on which row it is, and
+ * nobody re-derives the rule from the lists.
+ */
+export interface VisualNextQuestion extends VisualQuestionEntry {
+  readonly wave: string
+  /** The subject it is open for; absent for a workspace-scoped question. */
+  readonly subjectId?: string
+  readonly subjectName?: string
+}
+
+/**
  * The interrogation report, folded for drawing (#292).
  *
  * Derived per successful recompile from the same compile the graph came
@@ -77,6 +92,12 @@ export interface VisualInterrogationOverlay {
   readonly workspace: readonly VisualQuestionEntry[]
   /** Open questions per qualified subject id — `CanvasNode.id`'s space. */
   readonly subjects: Readonly<Record<string, readonly VisualQuestionEntry[]>>
+  /**
+   * The one to ask next (#534). Absent when nothing is open, or when the
+   * host that built this overlay predates the field: a reader treats absence
+   * as "no next question", never as a fault.
+   */
+  readonly next?: VisualNextQuestion
 }
 
 /** The resolved graph a session renders, as the browser receives it. */

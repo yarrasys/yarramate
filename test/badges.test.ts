@@ -292,6 +292,18 @@ describe('openQuestionsBadgeUri (#292)', () => {
   it('never borrows the failure palette - an open question is not a defect', () => {
     expect(decodeURIComponent(openQuestionsBadgeUri(3))).not.toContain('#A3403A')
   })
+
+  it('rings the chip of the subject the next question is open for (#534)', () => {
+    const plain = decodeURIComponent(openQuestionsBadgeUri(3))
+    const next = decodeURIComponent(openQuestionsBadgeUri(3, true))
+    expect(next).not.toBe(plain)
+    expect(next).toContain('stroke="#182228"')
+    expect(plain).not.toContain('stroke=')
+    // Still the count, still quiet: the ring marks, it does not shout.
+    expect(next).toContain('>3<')
+    expect(next).not.toContain('#a3403a')
+    expect(openQuestionsBadgeUri(3, false)).toBe(openQuestionsBadgeUri(3))
+  })
 })
 
 describe('open-question badge layer (#292)', () => {

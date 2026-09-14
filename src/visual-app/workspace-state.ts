@@ -742,7 +742,9 @@ export const createVisualWorkspaceState = (
   selectedSubject: null,
   descriptionExpanded: false,
   detailsOpen: false,
-  bottomPanel: { open: false, tab: "view-query" },
+  // Shut, on the next question (#534): the strip says it without the panel
+  // taking any room, and a model with nothing open falls back to the query.
+  bottomPanel: { open: false, tab: "next-question" },
   tree: { filterText: "", collapsed: [] },
   connection: null,
   draftingSubject: false,

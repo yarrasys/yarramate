@@ -5,6 +5,7 @@ import {
 } from "./graph-canvas.js";
 import type { PresentationFlag } from "./query-fields.js";
 import { QueryPanel, type BottomPanelTabId } from "./query-panel.js";
+import type { VisualNextQuestion } from "../adapters/visual/wire.js";
 import { QuickFilterBox } from "./quick-filter.js";
 import { ViewTree } from "./view-tree.js";
 import { SaveViewDialog } from "./save-view.js";
@@ -270,6 +271,12 @@ const DiagramWorkspace = ({
   showKindLabels,
   showNudges,
   openQuestionCounts,
+  nextQuestionSubjectId,
+  nextQuestion,
+  delegateLabel,
+  onNextVerb,
+  onNextDelegate,
+  onNextGo,
   decorations,
   connection,
   onConnectTarget,
@@ -327,6 +334,14 @@ const DiagramWorkspace = ({
   readonly showKindLabels: boolean;
   readonly showNudges: boolean;
   readonly openQuestionCounts: ReadonlyMap<string, number>;
+  /** The subject the next question is open for (#534), for the canvas. */
+  readonly nextQuestionSubjectId: string | null;
+  /** The next question itself (#534), for the bottom panel. */
+  readonly nextQuestion: VisualNextQuestion | undefined;
+  readonly delegateLabel: string;
+  readonly onNextVerb: (verb: QuestionVerb, subjectId: string | null) => void;
+  readonly onNextDelegate: (next: VisualNextQuestion) => void;
+  readonly onNextGo: (next: VisualNextQuestion) => void;
   /** The host's per-subject marks (#314, ADR 0119), for the canvas. */
   readonly decorations: DecorationMap;
   readonly connection: ConnectionDraft | null;
@@ -619,6 +634,7 @@ const DiagramWorkspace = ({
             showOwnership={showOwnership}
             showNudges={showNudges}
             openQuestionCounts={openQuestionCounts}
+            nextQuestionSubjectId={nextQuestionSubjectId}
             activeViewId={state.activeView}
             direction={direction}
             layout={layout}
@@ -695,6 +711,11 @@ const DiagramWorkspace = ({
         onTogglePresentation={onTogglePresentation}
         onToggleOpen={onToggleBottomPanel}
         onSelectTab={onSelectBottomTab}
+        next={nextQuestion}
+        delegateLabel={delegateLabel}
+        onNextVerb={onNextVerb}
+        onNextDelegate={onNextDelegate}
+        onNextGo={onNextGo}
         onApply={onApplyFilter}
         onStage={onStageView}
         readOnly={readOnly}
@@ -1580,6 +1601,9 @@ export const App = ({
       ),
     [interrogation],
   );
+  // The next question rides the same frame (#534): one subject wears the
+  // ringed chip, and the bottom panel says the question.
+  const nextQuestionSubjectId = interrogation?.next?.subjectId ?? null;
   // What contains what, and therefore which boxes CAN fold and what is inside
   // each (#473). Derived here, once, from the same frame the canvas and the
   // rail both read.
@@ -1792,6 +1816,26 @@ export const App = ({
     }
     if (!sectionOpen("properties")) {
       dispatchWorkspace({ type: "section.toggled", section: "properties" });
+    }
+  };
+
+  /**
+   * Go to where the next question is open (#534): the subject selected as a
+   * tap would select it, so the questions section scopes to it; or, for a
+   * whole-record question, the selection cleared so the section lists the
+   * whole-record rows. Either way the section is opened.
+   */
+  const goToQuestion = (next: VisualNextQuestion) => {
+    if (next.subjectId === undefined) {
+      dispatchWorkspace({ type: "subject.cleared" });
+    } else {
+      const node = state.model?.graph.nodes.find((candidate) => candidate.id === next.subjectId);
+      if (node !== undefined) {
+        dispatchWorkspace({ type: "subject.selected", subject: normalizeSelectedElement(node) });
+      }
+    }
+    if (!sectionOpen("questions")) {
+      dispatchWorkspace({ type: "section.toggled", section: "questions" });
     }
   };
 
@@ -2286,6 +2330,17 @@ export const App = ({
             state.views.find((candidate) => candidate.id === state.activeView) ??
             null
           }
+          nextQuestionSubjectId={nextQuestionSubjectId}
+          nextQuestion={interrogation?.next}
+          delegateLabel={delegateLabel}
+          onNextVerb={(verb, subjectId) => runQuestionVerb(verb, subjectId)}
+          onNextDelegate={(next) =>
+            delegateQuestion(
+              { questionId: next.questionId, subjectId: next.subjectId ?? null, question: next.question },
+              next.subjectName ?? null,
+            )
+          }
+          onNextGo={goToQuestion}
           bottomPanel={workspace.bottomPanel}
           onTogglePresentation={(flag, value) =>
             dispatchWorkspace({ type: "presentation.toggled", flag, value })

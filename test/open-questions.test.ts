@@ -56,6 +56,37 @@ const render = (
   )
 
 describe('OpenQuestions', () => {
+  /**
+   * The row the interview would serve first wears a tag (#534): the overlay
+   * names it, the list only marks it, in the scope it is open for.
+   */
+  it('tags the next question in the scope it is open for', () => {
+    const workspaceNext: VisualInterrogationOverlay = {
+      ...overlay,
+      next: { ...overlay.workspace[0]!, wave: 'motivation' },
+    }
+    const whole = renderToStaticMarkup(
+      createElement(OpenQuestions, { overlay: workspaceNext, selectedId: null }),
+    )
+    expect(whole).toContain('question-row-next')
+    expect(whole).toContain('>next<')
+    const teller = renderToStaticMarkup(
+      createElement(OpenQuestions, { overlay: workspaceNext, selectedId: 'teller' }),
+    )
+    expect(teller).not.toContain('question-row-next')
+
+    const subjectNext: VisualInterrogationOverlay = {
+      ...overlay,
+      next: { ...overlay.subjects['teller']![0]!, wave: 'motivation', subjectId: 'teller', subjectName: 'Teller' },
+    }
+    const tagged = renderToStaticMarkup(
+      createElement(OpenQuestions, { overlay: subjectNext, selectedId: 'teller' }),
+    )
+    expect(tagged.split('question-row-next').length - 1).toBe(1)
+    expect(tagged.indexOf('question-row-next')).toBeLessThan(tagged.indexOf('Who is accountable for Teller?'))
+    expect(render(null)).not.toContain('question-row-next')
+  })
+
   it('shows the workspace-scoped questions when nothing is selected', () => {
     const html = render(null)
     expect(html).toContain('What outcome justifies this system?')

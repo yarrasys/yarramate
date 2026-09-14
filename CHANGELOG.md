@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+### The editor shows the next question (#534)
+
+The interview's first question, the one `design` serves, now shows inside
+the editor. The overlay names it (`interrogation.next`, computed beside the
+lists by the same walk, so every host agrees), the bottom panel gains a
+Next question tab that is the default and whose strip line says the
+question while the panel stays shut, the subject it is open for wears its
+count chip ringed on the canvas, and the row carries a "next" tag in the
+Open questions section. The tab offers the way there, the row's verb and
+the assistant door; a viewer keeps only the way there. No mount option:
+every host gets it by default. The bottom panel's default tab id moves
+from `view-query` to `next-question`, and the strip's status line and
+collapse control leave the tablist (the tablist half of #529). ADR 0154.
+
 ## 1.28.0
 
 ### reconcile speaks to a person behind `--text` (#526)
