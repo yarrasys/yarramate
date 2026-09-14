@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### The connection dialog clears the toolbar, and the owner hint sits under its field (#540)
+
+The connection dialog opened at the top of the canvas with its first line
+under the toolbar band that every fit now respects; it opens below that row,
+as the Add-subject panel does. The owner field's shape hint landed in the
+form's label column and wrapped to a dozen short lines; it sits under the
+field.
+
 ## 1.30.0
 
 ### The fitted map stays below the toolbar (#533)
