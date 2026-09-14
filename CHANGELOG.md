@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.30.1
 
 ### The connection dialog clears the toolbar, and the owner hint sits under its field (#540)
 
