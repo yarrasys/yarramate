@@ -1358,7 +1358,10 @@ body {
 .connection-panel {
   position: absolute;
   z-index: 2;
-  top: calc(var(--step) * 1.5);
+  /* Below the canvas toolbar's row, the way the Add-subject panel opens
+     (#296) and every fit now frames (#533): step + 28px controls + step,
+     so the dialog's first line is never under the filter (#540). */
+  top: calc(var(--step) * 2 + 28px);
   left: 50%;
   transform: translateX(-50%);
   max-width: min(560px, calc(100% - var(--step) * 4));
@@ -3113,6 +3116,9 @@ body {
    failure red - the changeset is the authority, this is the warning. */
 .subject-form-hint {
   display: block;
+  /* The field's column, not the label's: the hint belongs under what it
+     describes, and the label column is too narrow to say it (#540). */
+  grid-column: 2;
   margin-top: calc(var(--step) * 0.25);
   font-size: 0.78rem;
   line-height: 1.35;
