@@ -86,6 +86,38 @@ const elementsFor = (
 const nodeData = (elements: ReturnType<typeof elementsFor>, id: string) =>
   elements.find((el: Element) => el.group === 'nodes' && el.data.id === id)
 
+/**
+ * The subject the next question is open for wears its count chip ringed
+ * (#534); a folded box answers for a member the way it does for counts.
+ */
+describe('#534: the next question on the canvas', () => {
+  const withNext = (folded: readonly string[], nextQuestionSubjectId: string | null) =>
+    graphToElements(graph, ['composition', 'assignment'], new Map([['fn', 1]]), {
+      folded: new Set(folded),
+      nextQuestionSubjectId,
+    })
+
+  it('marks the named subject and nothing else', () => {
+    const elements = withNext([], 'fn')
+    expect(nodeData(elements, 'fn')!.data.nextQuestion).toBe(true)
+    expect(nodeData(elements, 'app')!.data.nextQuestion).toBe(false)
+  })
+
+  it('marks a folded box that hides the subject', () => {
+    const elements = withNext(['app'], 'fn')
+    expect(nodeData(elements, 'app')!.data.nextQuestion).toBe(true)
+  })
+
+  it('marks nothing when the overlay named no subject', () => {
+    for (const el of withNext([], null)) {
+      if (el.group === 'nodes') expect(el.data.nextQuestion).toBe(false)
+    }
+    for (const el of elementsFor([])) {
+      if (el.group === 'nodes') expect(el.data.nextQuestion).toBe(false)
+    }
+  })
+})
+
 describe('#473: a folded box on the canvas', () => {
   it('keeps its own node and says what it stands for', () => {
     const app = nodeData(elementsFor(['app']), 'app')

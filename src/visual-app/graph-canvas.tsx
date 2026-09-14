@@ -220,7 +220,7 @@ function badgeLayersFor(
     openQuestions > 0
   ) {
     layers.push({
-      image: openQuestionsBadgeUri(openQuestions),
+      image: openQuestionsBadgeUri(openQuestions, ele.data('nextQuestion') === true),
       positionX: ownershipDrawn ? '84%' : '96%',
       positionY: ownershipDrawn ? '100%' : '88%',
       size: BADGE_SIZE,
@@ -727,6 +727,12 @@ export function graphToElements(
     readonly folded: ReadonlySet<string>
     /** From the model frame; without them only view nesting contains anything. */
     readonly memberships?: readonly FoldMembership[]
+    /**
+     * The subject the next question is open for (#534), from the overlay;
+     * the node wears its count chip ringed. A folded box answers for a
+     * member the way it does for counts.
+     */
+    readonly nextQuestionSubjectId?: string | null
   }
 ): ElementDefinition[] {
   // CORE kinds, not the authored ones (#473). The rule that decides whether an
@@ -804,6 +810,12 @@ export function graphToElements(
               0
             )
           : (openQuestionCounts.get(node.id) ?? 0),
+        nextQuestion:
+          fold?.nextQuestionSubjectId !== undefined &&
+          fold.nextQuestionSubjectId !== null &&
+          (isFolded
+            ? [node.id, ...inside].includes(fold.nextQuestionSubjectId)
+            : node.id === fold.nextQuestionSubjectId),
         // What the box is standing in for. Drawn as a chip only when folded,
         // and `applyFilter` narrows it to what this VIEW shows - a box with
         // nothing inside it in this view draws no chip at all.
@@ -1501,6 +1513,8 @@ interface GraphCanvasProps {
   /** Open-question count per subject id, from the model's interrogation
    * overlay; an empty map (host shipped no overlay) draws no chips. */
   readonly openQuestionCounts: ReadonlyMap<string, number>
+  /** The subject the next question is open for (#534); null marks nothing. */
+  readonly nextQuestionSubjectId?: string | null
   /**
    * Which instances draw folded, and the memberships that let the canvas know
    * what is inside them (#473). Absent draws everything, which is what every
@@ -1584,6 +1598,7 @@ export function GraphCanvas({
   showOwnership,
   showNudges,
   openQuestionCounts,
+  nextQuestionSubjectId = null,
   folded,
   memberships,
 }: GraphCanvasProps): React.ReactElement {
@@ -1673,6 +1688,7 @@ export function GraphCanvas({
     const cy = cytoscape({
       container: containerRef.current,
       elements: graphToElements(graph, nesting, openQuestionCounts, {
+        nextQuestionSubjectId,
         folded: folded ?? new Set(),
         memberships,
       }),
@@ -1879,6 +1895,7 @@ export function GraphCanvas({
       isInitialSyncRef.current = false
     } else {
       const elements = graphToElements(graph, nesting, openQuestionCounts, {
+        nextQuestionSubjectId,
         folded: folded ?? new Set(),
         memberships,
       })
@@ -1922,7 +1939,7 @@ export function GraphCanvas({
     // just clicked; routing it here would relayout the whole canvas instead,
     // and a rebuild here does not re-apply the fold or the filter at all.
     // `test/graph-canvas-effect-deps.test.ts` pins both halves.
-  }, [graph, openQuestionCounts, nesting, memberships])
+  }, [graph, openQuestionCounts, nextQuestionSubjectId, nesting, memberships])
 
   // A FOLD change is an element-set change, so a fit alone will not do: the
   // graph has to be placed again (#473). But the reader's eye is on the box
@@ -1951,6 +1968,7 @@ export function GraphCanvas({
     cy.elements().remove()
     cy.add(
       graphToElements(graph, nesting, openQuestionCounts, {
+        nextQuestionSubjectId,
         folded: current,
         memberships,
       })

@@ -12,6 +12,8 @@ import type {
   VisualViewSummary,
 } from "../adapters/visual/protocol-contract.js";
 import { composeProjection } from "../adapters/visual/view-identity.js";
+import type { VisualNextQuestion } from "../adapters/visual/wire.js";
+import { verbFor, type QuestionVerb } from "./question-verbs.js";
 import type { ActiveFilter } from "./state.js";
 import {
   PresentationToggles,
@@ -50,6 +52,9 @@ export const APPLY_DEBOUNCE_MS = 300;
 export const EXCLUSION_PREVIEW = 12;
 
 export const BOTTOM_PANEL_TABS = [
+  // First, because it is what a reader meets first (#534): the panel opens
+  // shut, and the strip says which question the interview would ask next.
+  { id: "next-question", label: "Next question" },
   { id: "view-query", label: "View query" },
 ] as const;
 
@@ -319,7 +324,89 @@ export interface QueryPanelProps {
    * view change is absent. The document still shows, because it is a fact.
    */
   readonly readOnly?: boolean;
+  /**
+   * The next load-bearing open question (#534, ADR 0154), from the overlay.
+   * Absent, the Next question tab is not offered and the panel is the query
+   * panel it was. Present, the collapsed strip says the question and the tab
+   * carries it with the same verb and assistant door the questions pane
+   * draws, plus a way to go to its subject.
+   */
+  readonly next?: VisualNextQuestion;
+  readonly delegateLabel?: string;
+  readonly onNextVerb?: (verb: QuestionVerb, subjectId: string | null) => void;
+  readonly onNextDelegate?: (next: VisualNextQuestion) => void;
+  readonly onNextGo?: (next: VisualNextQuestion) => void;
 }
+
+/**
+ * The next question, as a tab (#534). Reading first: the question, where it
+ * is open, why it matters and what would close it; then the three doors a
+ * questions row has - go there, do the verb, hand it over - each absent when
+ * this mount has no such door.
+ */
+const NextQuestionTab = ({
+  next,
+  readOnly,
+  delegateLabel,
+  onVerb,
+  onDelegate,
+  onGo,
+}: {
+  readonly next: VisualNextQuestion;
+  readonly readOnly: boolean;
+  readonly delegateLabel: string | undefined;
+  readonly onVerb: QueryPanelProps["onNextVerb"];
+  readonly onDelegate: QueryPanelProps["onNextDelegate"];
+  readonly onGo: QueryPanelProps["onNextGo"];
+}) => {
+  const verb = readOnly || onVerb === undefined ? null : verbFor(next);
+  const where =
+    next.subjectId === undefined ? null : (next.subjectName ?? next.subjectId);
+  return (
+    <div className="next-question-tab">
+      <p className="next-question-eyebrow">
+        Next question · {next.wave} ·{" "}
+        {where === null ? "the whole record" : `about ${where}`}
+      </p>
+      <h3 className="next-question-text">{next.question}</h3>
+      {next.materiality === undefined ? null : (
+        <p className="next-question-why">{next.materiality}</p>
+      )}
+      {next.resolution === undefined ? null : (
+        <p className="next-question-how">{next.resolution}</p>
+      )}
+      <div className="next-question-actions">
+        {onGo === undefined ? null : (
+          <button
+            type="button"
+            className="question-verb question-verb-go"
+            onClick={() => onGo(next)}
+          >
+            {where === null ? "Open the questions" : `Go to ${where}`}
+          </button>
+        )}
+        {verb === null ? null : (
+          <button
+            type="button"
+            className={`question-verb question-verb-${verb.kind}`}
+            onClick={() => onVerb?.(verb, next.subjectId ?? null)}
+          >
+            {verb.label}
+          </button>
+        )}
+        {readOnly || onDelegate === undefined ? null : (
+          <button
+            type="button"
+            className="question-verb question-verb-delegate"
+            onClick={() => onDelegate(next)}
+          >
+            {delegateLabel ?? "Answer via agent"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export function QueryPanel({
   nodes,
@@ -338,7 +425,19 @@ export function QueryPanel({
   onApply,
   onStage,
   readOnly = false,
+  next,
+  delegateLabel,
+  onNextVerb,
+  onNextDelegate,
+  onNextGo,
 }: QueryPanelProps) {
+  // A remembered tab that this model cannot show falls back to the query,
+  // so a panel never opens on nothing.
+  const shown: BottomPanelTabId =
+    tab === "next-question" && next === undefined ? "view-query" : tab;
+  const tabs = BOTTOM_PANEL_TABS.filter(
+    (entry) => entry.id !== "next-question" || next !== undefined,
+  );
   const debounceHandle = useRef<number | null>(null);
   // The VIEW's own query first, and the standing filter only when no view is
   // active. A session opens its first view before that view's filter has been
@@ -404,54 +503,84 @@ export function QueryPanel({
 
   return (
     <section className="bottom-panel" aria-label="Canvas panels">
-      <div className="bottom-panel-tabs" role="tablist" aria-label="Canvas panels">
-        {BOTTOM_PANEL_TABS.map((entry) => (
-          <button
-            key={entry.id}
-            type="button"
-            role="tab"
-            id={`bottom-tab-${entry.id}`}
-            className="bottom-panel-tab"
-            aria-selected={open && tab === entry.id}
-            aria-controls={`bottom-panel-${entry.id}`}
-            onClick={() => {
-              if (open && tab === entry.id) {
-                onToggleOpen();
-                return;
-              }
-              onSelectTab(entry.id);
-            }}
-          >
-            {entry.label}
-          </button>
-        ))}
+      <div className="bottom-panel-tabs">
+        {/* Only the tabs sit in the tablist (#529): the status line and the
+            collapse control are beside it, not among its children. */}
+        <div className="bottom-panel-tablist" role="tablist" aria-label="Canvas panels">
+          {tabs.map((entry) => (
+            <button
+              key={entry.id}
+              type="button"
+              role="tab"
+              id={`bottom-tab-${entry.id}`}
+              className="bottom-panel-tab"
+              aria-selected={open && shown === entry.id}
+              aria-controls={`bottom-panel-${entry.id}`}
+              onClick={() => {
+                if (open && shown === entry.id) {
+                  onToggleOpen();
+                  return;
+                }
+                onSelectTab(entry.id);
+              }}
+            >
+              {entry.label}
+            </button>
+          ))}
+        </div>
         {/* A collapsed panel still answers the question it was opened for. */}
-        <span className="bottom-panel-summary" role="status">
-          {count} {count === 1 ? "subject" : "subjects"}
-          {groups.length === 0
-            ? ""
-            : ` · ${groups.reduce(
-                (total, group) => total + group.subjects.length,
-                0,
-              )} excluded`}
-        </span>
+        {shown === "next-question" && next !== undefined ? (
+          <span
+            className="bottom-panel-summary bottom-panel-summary-next"
+            role="status"
+            title={next.materiality}
+          >
+            {next.question}
+          </span>
+        ) : (
+          <span className="bottom-panel-summary" role="status">
+            {count} {count === 1 ? "subject" : "subjects"}
+            {groups.length === 0
+              ? ""
+              : ` · ${groups.reduce(
+                  (total, group) => total + group.subjects.length,
+                  0,
+                )} excluded`}
+          </span>
+        )}
         <button
           type="button"
           className="bottom-panel-collapse"
           aria-expanded={open}
-          aria-controls={`bottom-panel-${tab}`}
+          aria-controls={`bottom-panel-${shown}`}
           aria-label={open ? "Collapse panel" : "Expand panel"}
           onClick={onToggleOpen}
         >
           {open ? "▾" : "▴"}
         </button>
       </div>
-      {!open ? null : (
+      {!open ? null : shown === "next-question" && next !== undefined ? (
         <div
           className="bottom-panel-body"
-          id={`bottom-panel-${tab}`}
+          id="bottom-panel-next-question"
           role="tabpanel"
-          aria-labelledby={`bottom-tab-${tab}`}
+          aria-labelledby="bottom-tab-next-question"
+        >
+          <NextQuestionTab
+            next={next}
+            readOnly={readOnly}
+            delegateLabel={delegateLabel}
+            onVerb={onNextVerb}
+            onDelegate={onNextDelegate}
+            onGo={onNextGo}
+          />
+        </div>
+      ) : (
+        <div
+          className="bottom-panel-body"
+          id={`bottom-panel-${shown}`}
+          role="tabpanel"
+          aria-labelledby={`bottom-tab-${shown}`}
         >
           <div className="query-tab">
             <div className="query-tab-fields">

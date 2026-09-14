@@ -55,6 +55,14 @@ export function OpenQuestions({
     selectedId === null
       ? 'Whole-model questions. Select a subject to see what names it.'
       : null
+  // The row the interview would serve first (#534): the overlay names it,
+  // the list only marks it, so the pane and the bottom panel cannot disagree.
+  const isNext = (entry: VisualQuestionEntry): boolean =>
+    overlay.next !== undefined &&
+    overlay.next.questionId === entry.questionId &&
+    (selectedId === null
+      ? overlay.next.subjectId === undefined
+      : overlay.next.subjectId === selectedId)
   return (
     <div className="open-questions">
       {scopeNote === null ? null : (
@@ -72,6 +80,7 @@ export function OpenQuestions({
             <QuestionRow
               key={entry.questionId}
               entry={entry}
+              next={isNext(entry)}
               verb={readOnly || onVerb === undefined ? null : verbFor(entry)}
               onVerb={(verb) => onVerb?.(entry, verb, selectedId)}
               delegateLabel={
@@ -92,22 +101,25 @@ export function OpenQuestions({
 
 const QuestionRow = ({
   entry,
+  next,
   verb,
   onVerb,
   delegateLabel,
   onDelegate,
 }: {
   readonly entry: VisualQuestionEntry
+  readonly next: boolean
   readonly verb: QuestionVerb | null
   readonly onVerb: (verb: QuestionVerb) => void
   readonly delegateLabel: string | null
   readonly onDelegate: () => void
 }) => (
-  <li className="question-row">
+  <li className={next ? 'question-row question-row-next' : 'question-row'}>
     <span className="question-text" title={entry.materiality}>
       {entry.question}
     </span>
     <span className="question-meta">
+      {next ? <span className="question-next">next</span> : null}
       <span className={`question-authority question-authority-${entry.authority}`}>
         {entry.authority}
       </span>

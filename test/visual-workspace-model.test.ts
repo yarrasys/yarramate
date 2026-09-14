@@ -117,6 +117,44 @@ describe('interrogationOverlayOf', () => {
     expect(workspaceRow.trigger?.[0]?.condition).toBe('no-subject-of-kind')
   })
 
+  /**
+   * The next question (#534, ADR 0154) is `design`'s rule applied to the
+   * rows the overlay keeps: the first open question in wave order, then
+   * catalogue order; a subject-scoped one names its first open subject.
+   */
+  it('names the next question: the first row kept, with its wave', () => {
+    const overlay = interrogationOverlayOf(compiled(), catalogue)!
+    expect(overlay.next).toEqual({
+      ...overlay.workspace[0]!,
+      wave: 'motivation',
+    })
+    expect(overlay.next?.subjectId).toBeUndefined()
+  })
+
+  it('moves the next question past a dismissed row to the first subject row', () => {
+    const overlay = interrogationOverlayOf(compiled(), catalogue, [
+      { questionId: 'fixture#goal-missing' },
+    ])!
+    expect(overlay.workspace).toEqual([])
+    expect(overlay.next).toEqual({
+      ...overlay.subjects['teller']![0]!,
+      wave: 'motivation',
+      subjectId: 'teller',
+      subjectName: 'Teller',
+    })
+  })
+
+  it('names no next question when every row is dismissed', () => {
+    const overlay = interrogationOverlayOf(compiled(), catalogue, [
+      { questionId: 'fixture#goal-missing' },
+      { questionId: 'fixture#actor-owner-missing' },
+    ])!
+    expect(overlay.workspace).toEqual([])
+    expect(overlay.subjects).toEqual({})
+    expect(overlay.next).toBeUndefined()
+    expect('next' in overlay).toBe(false)
+  })
+
   it('names the catalogue and the engine semantics that answered', () => {
     const overlay = interrogationOverlayOf(compiled(), catalogue)!
     expect(overlay.catalogue).toBe('fixture@1.0')

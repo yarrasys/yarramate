@@ -339,12 +339,108 @@ describe('QueryPanel', () => {
   })
 
   it('names its tabs so a second one can land beside the first', () => {
-    expect(BOTTOM_PANEL_TABS.map(({ id }) => id)).toEqual(['view-query'])
+    expect(BOTTOM_PANEL_TABS.map(({ id }) => id)).toEqual(['next-question', 'view-query'])
     const markup = render()
 
     expect(markup).toContain('role="tablist"')
     expect(markup).toContain('id="bottom-tab-view-query"')
     expect(markup).toContain('aria-selected="true"')
+    // Without a next question there is no tab for it (#534).
+    expect(markup).not.toContain('id="bottom-tab-next-question"')
+  })
+
+  /**
+   * The next question (#534, ADR 0154): offered only when the overlay named
+   * one; the strip says it while the panel is shut; the tab carries the same
+   * doors a questions row has, and a viewer keeps only the way there.
+   */
+  describe('the next question', () => {
+    const next = {
+      questionId: 'fixture#actor-owner-missing',
+      question: 'Who is accountable for Teller?',
+      authority: 'human' as const,
+      scope: 'subject' as const,
+      materiality: 'Unowned work is re-litigated in every review.',
+      resolution: 'Add an ownership claim.',
+      trigger: [{ condition: 'missing-claim' as const, predicate: 'yarramate/ownership/owner' }],
+      wave: 'motivation',
+      subjectId: 'teller',
+      subjectName: 'Teller',
+    }
+
+    it('says the question in the strip while the panel is shut', () => {
+      const markup = render({ open: false, tab: 'next-question', next })
+      expect(markup).toContain('id="bottom-tab-next-question"')
+      expect(markup).toContain('Who is accountable for Teller?')
+      expect(markup).toContain('bottom-panel-summary-next')
+      expect(markup).not.toContain('1 subject')
+      expect(markup).not.toContain('role="tabpanel"')
+    })
+
+    it('keeps the status line and the collapse control out of the tablist (#529)', () => {
+      const markup = render({ open: false, tab: 'next-question', next })
+      const tablist = markup.slice(markup.indexOf('role="tablist"'))
+      const inside = tablist.slice(0, tablist.indexOf('</div>'))
+      expect(inside).not.toContain('role="status"')
+      expect(inside).not.toContain('aria-expanded')
+    })
+
+    it('falls back to the query when the remembered tab has no question', () => {
+      const markup = render({ open: false, tab: 'next-question' })
+      expect(markup).not.toContain('id="bottom-tab-next-question"')
+      expect(markup).toContain('1 subject')
+      const opened = render({ open: true, tab: 'next-question' })
+      expect(opened).toContain('id="bottom-panel-view-query"')
+      expect(opened).toContain('aria-selected="true"')
+    })
+
+    it('carries where it is open, why, what would close it, and the three doors', () => {
+      const onNextGo = vi.fn()
+      const markup = render({
+        open: true,
+        tab: 'next-question',
+        next,
+        delegateLabel: 'Answer via agent',
+        onNextVerb: vi.fn(),
+        onNextDelegate: vi.fn(),
+        onNextGo,
+      })
+      expect(markup).toContain('id="bottom-panel-next-question"')
+      expect(markup).toContain('about Teller')
+      expect(markup).toContain('motivation')
+      expect(markup).toContain('Unowned work is re-litigated in every review.')
+      expect(markup).toContain('Add an ownership claim.')
+      expect(markup).toContain('Go to Teller')
+      expect(markup).toContain('question-verb-describe')
+      expect(markup).toContain('Answer via agent')
+    })
+
+    it('names the whole record for a workspace-scoped question', () => {
+      const markup = render({
+        open: true,
+        tab: 'next-question',
+        next: { ...next, subjectId: undefined, subjectName: undefined, scope: 'workspace' },
+        onNextGo: vi.fn(),
+      })
+      expect(markup).toContain('the whole record')
+      expect(markup).toContain('Open the questions')
+    })
+
+    it('leaves a viewer the way there and nothing that stages (#298)', () => {
+      const markup = render({
+        open: true,
+        tab: 'next-question',
+        next,
+        readOnly: true,
+        delegateLabel: 'Answer via agent',
+        onNextVerb: vi.fn(),
+        onNextDelegate: vi.fn(),
+        onNextGo: vi.fn(),
+      })
+      expect(markup).toContain('Go to Teller')
+      expect(markup).not.toContain('question-verb-describe')
+      expect(markup).not.toContain('Answer via agent')
+    })
   })
 
   it('shows the facets, the count, the excluded list and the document together', () => {

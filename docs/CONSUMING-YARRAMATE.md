@@ -439,7 +439,7 @@ engine per page: the mount that passed a factory owns the worker, and its
 The returned handle can also point at the canvas
 (ADR 0118):
 `select(subjectId)` selects a concept or relationship exactly as a canvas tap
-would, which also scopes the Open questions section to it;
+would, which also scopes the Open questions section to it (the editor also shows the interview's next question on its own since ADR 0154: a Next question tab in the bottom panel, a ringed count chip on the subject it is open for, and a "next" tag on the row, with nothing for a host to pass);
 `openDraft({ kind })` opens the Add-subject dialog with the kind preselected
 the way a palette pick seeds it (omit `kind` for the plain no-default form);
 and `startConnection(fromSubjectId)` arms the Connect flow from that subject —

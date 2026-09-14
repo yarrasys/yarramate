@@ -890,9 +890,11 @@ describe("the canvas column's bottom panel", () => {
 
   it("is collapsed at rest, on the tab it will open on", () => {
     // The canvas keeps the room until the reviewer asks for the panel.
+    // On the next question (#534): the strip says it without the panel
+    // taking any room; the panel falls back to the query when nothing is open.
     expect(workspaceState.bottomPanel).toEqual({
       open: false,
-      tab: "view-query",
+      tab: "next-question",
     });
   });
 
@@ -937,7 +939,7 @@ describe("the canvas column's bottom panel", () => {
     expect(
       visualWorkspaceReducer(opened, {
         type: "bottomPanel.tabSelected",
-        tab: "view-query",
+        tab: opened.bottomPanel.tab,
       }),
     ).toBe(opened);
   });
