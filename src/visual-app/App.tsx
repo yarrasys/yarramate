@@ -139,7 +139,13 @@ const connectionOf = (state: VisualAppState, connected: boolean): string => {
 
 const endTransitionStatus = (state: VisualAppState): string => {
   if (state.lifecycle === "closed") {
-    return "Visual conversation ended. Continue in the main agent.";
+    // The host's own sentence when the closing frame carried one (#545);
+    // the session server's sessions end into an agent, so that stays the
+    // default.
+    return (
+      state.closedMessage ??
+      "Visual conversation ended. Continue in the main agent."
+    );
   }
   if (state.lifecycle !== "ending") return "";
   if (state.handoff !== null) {

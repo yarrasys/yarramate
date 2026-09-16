@@ -407,6 +407,16 @@ its frames to every attached socket, forwards each `VisualBrowserInput` to
 `send`, and calls `refresh` after a write that did not come through the
 editor.
 
+`mountEditorWith` takes the same options `mountEditor` does, minus the
+store's (ADR 0157): `mountEditorWith(element, host, { sections, readOnly,
+decorations, workerFactory, view, onFirstModel, onDelegateQuestion })`. Pass
+`workerFactory` here as you would to `mountEditor`, or every layout on the
+hosted page runs on the main thread. The positional form,
+`mountEditorWith(element, host, sections, readOnly, ...)`, stands for the
+callers that have it. When the server ends a session for good, it closes the
+socket with a code in 4000 to 4999 and its sentence as the close reason; the
+shell shows that sentence, and the host does not retry.
+
 ### Reading a workspace's patterns
 
 A host that never renders can still offer patterns, because the pattern

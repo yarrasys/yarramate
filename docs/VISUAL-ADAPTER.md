@@ -809,6 +809,15 @@ mechanical edit is not a question. A successful commit is followed by a fresh
 `model` frame, so the browser renders what actually landed rather than an
 optimistic local guess.
 
+A `closing` frame ends the session for good. Its `reason` is the session
+server's vocabulary (`user-ended`, `browser-timeout`, and the failure kinds)
+or `host-ended`, and it may carry a `message`: the host's own sentence, shown
+in the shell in place of the fixed one (#545, ADR 0157). `lost` on the host
+seam means "may come back" and retries; `closing` means it will not. The
+socket host maps a WebSocket close code in 4000 to 4999 to a `closing` frame
+with the close frame's reason text, so a server that refuses a ninth window
+or ends a removed member's session says so in words and is not retried.
+
 ## A failed recompile keeps the picture and names what broke
 
 A session recompiles the workspace at start and after every landed

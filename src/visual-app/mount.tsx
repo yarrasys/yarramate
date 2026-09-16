@@ -215,21 +215,100 @@ export type MountRefreshOutcome =
  */
 const READ_SECTIONS: readonly RightSectionId[] = ['properties', 'questions']
 
+/**
+ * What a mount over a caller-built host takes (#545, ADR 0157): every
+ * `MountOptions` field that is not the local host's. The same names as
+ * `mountEditor`, so a page that grows a server keeps its options and swaps
+ * the host.
+ */
+export type MountWithOptions = Omit<MountOptions, keyof LocalHostOptions>
+
 export const mountEditor = (
   element: Element,
   options: MountOptions,
+): MountedEditor =>
+  mountOver(element, createLocalHost(options), {
+    ...options,
+    sections:
+      options.sections ??
+      (options.readOnly === true ? READ_SECTIONS : RIGHT_SECTIONS),
+  })
+
+/**
+ * The same editor over a host the caller built.
+ *
+ * Exported for the case `mountEditor` does not cover: a product that already
+ * speaks the visual protocol - to its own server, over its own transport - and
+ * wants the editor in front of it. The protocol is the contract (ADR 0081), so
+ * anything that answers it is a host. `readOnly` composes: a custom host gets
+ * the same viewer posture `mountEditor` offers, and stays free to refuse
+ * writes on its own side of the seam as well.
+ *
+ * Two forms (#545). The options form takes every `MountOptions` field that
+ * is not the local host's, `workerFactory` included, so a host-built mount
+ * runs its layouts in a worker exactly as `mountEditor` does. The positional
+ * form is the 1.1.0 signature and stands for its callers; it has no worker
+ * slot, which is why the options form exists.
+ */
+export function mountEditorWith(
+  element: Element,
+  host: EditorHost,
+  options?: MountWithOptions,
+): MountedEditor
+export function mountEditorWith(
+  element: Element,
+  host: EditorHost,
+  sections?: readonly RightSectionId[],
+  readOnly?: boolean,
+  decorations?: DecorationMap,
+  onDelegateQuestion?: (question: VisualQuestionDelegatePayload) => void,
+  view?: string,
+  onFirstModel?: () => void,
+): MountedEditor
+export function mountEditorWith(
+  element: Element,
+  host: EditorHost,
+  third?: MountWithOptions | readonly RightSectionId[],
+  readOnly = false,
+  decorations?: DecorationMap,
+  onDelegateQuestion?: (question: VisualQuestionDelegatePayload) => void,
+  view?: string,
+  onFirstModel?: () => void,
+): MountedEditor {
+  if (third !== undefined && !Array.isArray(third)) {
+    return mountOver(element, host, third as MountWithOptions)
+  }
+  return mountOver(element, host, {
+    sections: (third as readonly RightSectionId[] | undefined) ?? RIGHT_SECTIONS,
+    readOnly,
+    decorations,
+    onDelegateQuestion,
+    view,
+    onFirstModel,
+  })
+}
+
+/**
+ * The one mount both entry points run: the worker, when the host wants one
+ * (#490), then the shell over the host. One engine per page: the mount that
+ * passed a factory owns the worker, and unmounting it terminates the worker
+ * and restores the bundled engine.
+ */
+const mountOver = (
+  element: Element,
+  host: EditorHost,
+  options: MountWithOptions,
 ): MountedEditor => {
   const engine =
     options.workerFactory === undefined
       ? undefined
       : workerLayoutEngine(options.workerFactory)
   if (engine !== undefined) installLayoutEngine(engine)
-  const mounted = mountEditorWith(
+  const mounted = renderShell(
     element,
-    createLocalHost(options),
-    options.sections ??
-      (options.readOnly === true ? READ_SECTIONS : RIGHT_SECTIONS),
-    options.readOnly,
+    host,
+    options.sections ?? RIGHT_SECTIONS,
+    options.readOnly ?? false,
     options.decorations,
     options.onDelegateQuestion,
     options.view,
@@ -246,21 +325,11 @@ export const mountEditor = (
   }
 }
 
-/**
- * The same editor over a host the caller built.
- *
- * Exported for the case `mountEditor` does not cover: a product that already
- * speaks the visual protocol - to its own server, over its own transport - and
- * wants the editor in front of it. The protocol is the contract (ADR 0081), so
- * anything that answers it is a host. `readOnly` composes: a custom host gets
- * the same viewer posture `mountEditor` offers, and stays free to refuse
- * writes on its own side of the seam as well.
- */
-export const mountEditorWith = (
+const renderShell = (
   element: Element,
   host: EditorHost,
-  sections: readonly RightSectionId[] = RIGHT_SECTIONS,
-  readOnly = false,
+  sections: readonly RightSectionId[],
+  readOnly: boolean,
   decorations?: DecorationMap,
   onDelegateQuestion?: (question: VisualQuestionDelegatePayload) => void,
   view?: string,

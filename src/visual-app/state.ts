@@ -158,6 +158,13 @@ export interface VisualAppState {
   readonly quickFilterText: string;
   readonly closedReason: string | null;
   /**
+   * What the host said when it ended the session for good, or null for the
+   * shell's own sentence (#545). A hosted workspace refusing a ninth window,
+   * a member removed while connected, a deleted workspace: the reader sees
+   * the reason, not a fixed line about an agent that is not there.
+   */
+  readonly closedMessage: string | null;
+  /**
    * Operations staged for commit; replaces on same-field re-edit. Typed as the
    * commit payload itself, so the tray holds exactly what the wire takes and
    * `sourceDigests` cannot drift from the rows it vouches for: each row pins the
@@ -283,7 +290,12 @@ export type VisualAppAction =
     }
   | { readonly type: "end.requested" }
   | { readonly type: "connection.lost" }
-  | { readonly type: "session.closed"; readonly reason: string };
+  | {
+      readonly type: "session.closed";
+      readonly reason: string;
+      /** The host's own sentence, when the closing frame carried one (#545). */
+      readonly message?: string;
+    };
 
 /**
  * A changeset with nothing in it. Named rather than repeated, because the day
@@ -329,6 +341,7 @@ export const initialVisualAppState: VisualAppState = {
   focusReturn: null,
   quickFilterText: "",
   closedReason: null,
+  closedMessage: null,
   pendingChangeset: EMPTY_CHANGESET,
   undoStack: [],
   redoStack: [],
@@ -650,7 +663,12 @@ const transition = (
     case "connection.lost":
       return { ...state, lifecycle: "disconnected" };
     case "session.closed":
-      return { ...state, lifecycle: "closed", closedReason: action.reason };
+      return {
+        ...state,
+        lifecycle: "closed",
+        closedReason: action.reason,
+        closedMessage: action.message ?? null,
+      };
     case "filter.applied":
       return {
         ...state,
@@ -1143,7 +1161,13 @@ export const visualAppActionsForFrame = (
     case "model":
       return [{ type: "model.received", model: frame.model, views: frame.views }];
     case "closing":
-      return [{ type: "session.closed", reason: frame.reason }];
+      return [
+        {
+          type: "session.closed",
+          reason: frame.reason,
+          ...(frame.message === undefined ? {} : { message: frame.message }),
+        },
+      ];
     case "filter-result":
       return [
         {

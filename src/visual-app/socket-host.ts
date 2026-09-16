@@ -114,10 +114,23 @@ export const createSocketHost = (options: SocketHostOptions = {}): EditorHost =>
             // A frame this browser cannot parse is one it cannot act on.
           }
         })
-        opened.addEventListener('close', () => {
+        opened.addEventListener('close', (event: CloseEvent) => {
           events.connected(false)
           socket = null
           if (stopped || events.session().closed) return
+          // A close code in the application range is the server ending the
+          // session for good, with its reason in the close frame (#545,
+          // ADR 0157): a connection cap, a member removed, a workspace
+          // deleted. That is a `closing`, not a drop, and there is nothing
+          // to retry. Every other code stays a drop that may come back.
+          if (event.code >= 4000 && event.code <= 4999) {
+            events.frame({
+              kind: 'closing',
+              reason: 'host-ended',
+              ...(event.reason === '' ? {} : { message: event.reason }),
+            })
+            return
+          }
           events.lost()
           reconnect()
         })

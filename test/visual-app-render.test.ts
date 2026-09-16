@@ -41,6 +41,7 @@ const session = vi.hoisted(() => {
     lastSequence: 1,
     frozen: false,
     closedReason: null,
+    closedMessage: null,
     pendingChangeset: { operations: [], viewOperations: [], sourceDigests: {} },
     undoStack: [],
     redoStack: [],
@@ -159,6 +160,27 @@ const renderSession = (
   session.state = { ...session.baseState, ...overrides }
   return renderToStaticMarkup(createElement(App, { host: idleHost, ...props }))
 }
+
+describe('the closed session sentence (#545)', () => {
+  it('shows the host\'s sentence when the closing frame carried one', () => {
+    const markup = renderSession({
+      lifecycle: 'closed',
+      closedReason: 'host-ended',
+      closedMessage: 'You were removed from this workspace.',
+    })
+    expect(markup).toContain('You were removed from this workspace.')
+    expect(markup).not.toContain('Continue in the main agent')
+  })
+
+  it('keeps its own sentence when the frame carried none', () => {
+    const markup = renderSession({
+      lifecycle: 'closed',
+      closedReason: 'user-ended',
+      closedMessage: null,
+    })
+    expect(markup).toContain('Visual conversation ended. Continue in the main agent.')
+  })
+})
 
 const subject = (
   id: string,

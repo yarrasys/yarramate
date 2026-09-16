@@ -323,6 +323,7 @@ const baseState: VisualAppState = {
   lastSequence: 0,
   frozen: false,
   closedReason: null,
+  closedMessage: null,
   pendingChangeset: { operations: [], viewOperations: [], sourceDigests: {} },
   undoStack: [],
   redoStack: [],

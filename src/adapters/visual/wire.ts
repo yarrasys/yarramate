@@ -271,4 +271,18 @@ export type VisualServerFrame =
       readonly kind: 'layout-save-result'
       readonly result: VisualLayoutSaveResultPayload
     }
-  | { readonly kind: 'closing'; readonly reason: VisualTerminationReason }
+  | {
+      readonly kind: 'closing'
+      /**
+       * The session server's own reasons, or `host-ended` (#545, ADR 0157):
+       * a host that ends the session for good, with nothing to reconnect to,
+       * says so here rather than through `lost`, which means "may come back".
+       */
+      readonly reason: VisualTerminationReason | 'host-ended'
+      /**
+       * The host's own sentence, shown in place of the shell's fixed one
+       * (#545): why the connection was refused or ended. Optional and
+       * additive, so every frame the session server sends stands.
+       */
+      readonly message?: string
+    }
