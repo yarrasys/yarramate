@@ -870,6 +870,10 @@ concepts:
     kind: repository-file
     name: src/tools-entry.ts
     status: current
+  - id: branding-source
+    kind: repository-file
+    name: src/branding.ts
+    status: current
   - id: digest-source
     kind: repository-file
     name: src/digest.ts
@@ -1799,6 +1803,10 @@ relationships:
     kind: realization
     from: tools-entry-source
     to: tools-entry
+  - id: branding-source-realizes-branding
+    kind: realization
+    from: branding-source
+    to: branding
   - id: digest-realizes-tools-entry
     kind: realization
     from: digest-source

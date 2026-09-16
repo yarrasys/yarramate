@@ -74,6 +74,24 @@ concepts:
     description: The editor's local host and its seam without the editor bundle, published as yarramate/host (ADR 0156), so a server can run the host the browser runs and fan its frames to sockets.
     status: current
     owner: yarramate-maintainers
+  - id: branding
+    kind: applicationComponent
+    name: Branding
+    description: One value a host sets once that names its product on every surface a consumer's users see - the editor strip, the tool list an agent reads, the workbook's cover sheet and the LikeC4 banner - while the record formats, the diagnostic codes and the wire protocol stay the engine's (ADR 0158). Pure, so it sits under every published entry without weight, and absent it leaves every surface exactly as it was.
+    status: current
+    owner: yarramate-maintainers
+  - id: resolve-branding
+    kind: applicationFunction
+    name: Resolve the host's branding
+    description: Applies the defaults once - short name, vendor line, tool prefix - and hands every surface the names, the mark, the accent and the prefix it reads; refuses a blank product name or a prefix no MCP client could publish at mount or serve time, where a host's configuration error belongs (ADR 0158).
+    status: current
+    owner: yarramate-maintainers
+  - id: branding-value
+    kind: dataObject
+    name: Branding value
+    description: What a host sets once - product name, short name, logo, accent, docs address, vendor line, tool prefix - as a plain value, optional on every surface that reads it. Presentation only; nothing on the wire and nothing in the record carries it (ADR 0158).
+    status: current
+    owner: yarramate-maintainers
   - id: architecture-state-engine
     kind: compiler-module
     name: Architecture state engine
@@ -953,6 +971,36 @@ relationships:
     kind: serving
     from: check-command
     to: check-core-contract
+  - id: branding-resolves-branding
+    kind: assignment
+    from: branding
+    to: resolve-branding
+  - id: branding-resolution-reads-branding-value
+    kind: access
+    from: resolve-branding
+    to: branding-value
+    mode: read
+    status: current
+  - id: branding-resolution-serves-tools-entry
+    kind: serving
+    from: resolve-branding
+    to: tools-entry
+    description: The tool catalogue, the loop sentence and the initialize instructions under the host's prefix and product name.
+  - id: branding-resolution-serves-visual-browser
+    kind: serving
+    from: resolve-branding
+    to: visual-browser
+    description: The authority mark, the brand mark, the accent and the vendor line on the command strip.
+  - id: branding-resolution-serves-likec4-export
+    kind: serving
+    from: resolve-branding
+    to: likec4-export-adapter
+    description: The model banner and the generated project's name.
+  - id: branding-resolution-serves-workbook
+    kind: serving
+    from: resolve-branding
+    to: derive-architecture-workbook
+    description: The cover sheet's title, vendor line and Built-by row.
   - id: state-engine-performs-comparison
     kind: assignment
     from: architecture-state-engine

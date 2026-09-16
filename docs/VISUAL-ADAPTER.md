@@ -123,6 +123,17 @@ views, ending the session to the chat section that owns the conversation. The
 `Details` disclosure went with them: it only ever revealed a sentence, and a
 sentence about what the session *is* belongs beside the name.
 
+**The strip is where a host's branding lands** (#546,
+[ADR 0158](adr/0158-one-branding-value-names-the-product-on-every-surface-a-host-embeds.md)):
+`mountEditor({ branding })` draws the host's mark (logo and short name, a
+link when it gave the mark somewhere to go) before the title, names the
+product in the authority line, and ends the strip with the vendor line.
+`branding.accent` is one CSS custom property, `--accent`, set on
+`.visual-shell` and read by the chrome that emphasises (the authority mark,
+the notices, the changeset controls); the notation and the comparison marks
+read the named tokens, so the colour never reaches a node. Without
+`branding` the strip is byte for byte what it was.
+
 **The right column is a stack of collapsible sections**, split by handles a
 pointer or the arrow keys can drag:
 

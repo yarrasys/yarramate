@@ -1,4 +1,5 @@
 import Ajv2020Module from 'ajv/dist/2020.js'
+import type { Branding } from '../branding.js'
 import type { WorkspaceSource } from '../compiler.js'
 import type { ProjectionResult } from '../projection.js'
 import { loadSourceDocument } from '../source-document.js'
@@ -410,6 +411,8 @@ const reviewChangesView = (
 
 export interface LikeC4ProjectExportOptions {
   readonly gitChange?: GitChangeOverlay
+  /** Names the product in the model banner (#546, ADR 0158). */
+  readonly branding?: Branding
 }
 
 export function exportLikeC4Project(
@@ -425,9 +428,10 @@ export function exportLikeC4Project(
     unionProjection(project, views),
     first.prepared.subjectMapping,
     first.prepared.kindMapping,
-    options.gitChange === undefined
-      ? {}
-      : { gitChange: options.gitChange },
+    {
+      ...(options.gitChange === undefined ? {} : { gitChange: options.gitChange }),
+      ...(options.branding === undefined ? {} : { branding: options.branding }),
+    },
   )
   if (!model.ok) return model
   const startToken = '\nviews {\n'

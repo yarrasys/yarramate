@@ -1,5 +1,6 @@
 import { parseDocument } from 'yaml'
 import type { WorkspaceSource } from '../compiler.js'
+import { brandSlug, resolveBranding, type Branding } from '../branding.js'
 import { sha256Hex } from '../digest.js'
 import { LIKEC4_SPECIFICATION_SOURCE } from '../likec4-specification.generated.js'
 import { locateSourcePath } from '../source-document.js'
@@ -40,6 +41,12 @@ export interface LikeC4ProjectExportInput {
   readonly requireMappedRelationships: boolean
   /** The git-derived review overlay, when the CLI derived one. */
   readonly gitChange?: GitChangeOverlay
+  /**
+   * The host's branding (#546, ADR 0158): the model banner and the project
+   * name in `likec4.config.json`. The marker file and its digests are
+   * machinery and keep their names.
+   */
+  readonly branding?: Branding
 }
 
 export interface LikeC4ProjectExported {
@@ -53,6 +60,8 @@ export interface LikeC4ProjectExported {
   readonly kindMappingIdentity?: string
   /** Every source that fed the export, for the marker's input digests. */
   readonly inputs: readonly WorkspaceSource[]
+  /** Echoed from the input so `generatedProjectFiles` names the project for it. */
+  readonly branding?: Branding
 }
 
 export type LikeC4ProjectExportResult =
@@ -316,11 +325,10 @@ export const exportLikeC4ProjectFromSources = (
     renderedViewIds.add(renderedId)
   }
 
-  const exported = exportLikeC4Project(
-    definition,
-    successfulViews,
-    input.gitChange === undefined ? {} : { gitChange: input.gitChange },
-  )
+  const exported = exportLikeC4Project(definition, successfulViews, {
+    ...(input.gitChange === undefined ? {} : { gitChange: input.gitChange }),
+    ...(input.branding === undefined ? {} : { branding: input.branding }),
+  })
   if (!exported.ok) return { ok: false, diagnostics: exported.diagnostics }
   const first = successfulViews[0]!
   return {
@@ -336,6 +344,7 @@ export const exportLikeC4ProjectFromSources = (
           kindMappingIdentity: `${first.prepared.kindMapping.id}@${first.prepared.kindMapping.version}`,
         }),
     inputs: [projectSource, ...sources, ...referencedSources.values()],
+    ...(input.branding === undefined ? {} : { branding: input.branding }),
   }
 }
 
@@ -387,8 +396,14 @@ export const inputDigestsOf = (
       .sort(([left], [right]) => left.localeCompare(right)),
   )
 
-export const projectNameOf = (projectIdentity: string): string =>
-  `yarramate-${projectIdentity}`.replaceAll(/[^A-Za-z0-9_-]/g, '-')
+export const projectNameOf = (
+  projectIdentity: string,
+  branding?: Branding,
+): string =>
+  `${brandSlug(resolveBranding(branding))}-${projectIdentity}`.replaceAll(
+    /[^A-Za-z0-9_-]/g,
+    '-',
+  )
 
 /**
  * The four files a generated project holds, exactly as the CLI writes them
@@ -402,7 +417,7 @@ export const generatedProjectFiles = (
   const configSource = `${JSON.stringify(
     {
       $schema: 'https://likec4.dev/schemas/config.json',
-      name: projectNameOf(exported.projectIdentity),
+      name: projectNameOf(exported.projectIdentity, exported.branding),
       title: exported.project.title,
     },
     null,

@@ -13,9 +13,9 @@ import { runCli, type CliResult } from '../cli.js'
 import { createFileSystemStore } from '../source-store.js'
 import { loadWorkspaceManifest } from '../workspace.js'
 import {
-  LOOP,
   STDIO_PROPERTIES,
   TOOL_CATALOGUE,
+  instructionsFor,
   runTool,
   type ToolDefinition,
   type ToolName,
@@ -368,7 +368,7 @@ export const handleRequest = (
       protocolVersion: '2025-06-18',
       capabilities: { tools: {} },
       serverInfo: { name: 'yarramate', version: packageVersion },
-      instructions: `The architecture record of a YarraMate workspace. The native documents in the repository are canonical; every read renders them, and yarramate_apply is the one write, the same atomic batch the CLI lands. ${LOOP} ${WORKSPACE_SENTENCE}`,
+      instructions: `${instructionsFor()} ${WORKSPACE_SENTENCE}`,
     })
     return
   }

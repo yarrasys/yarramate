@@ -63,6 +63,8 @@ const STATE_AFTER_PREDICATE = 'yarramate/state/after'
 const KIND_PREDICATE = 'yarramate/concept/kind'
 const NAME_PREDICATE = 'yarramate/concept/name'
 
+import { resolveBranding, type Branding } from './branding.js'
+
 export interface WorkbookProvenance {
   readonly workspace: string
   readonly yarramateVersion: string
@@ -98,6 +100,7 @@ const relationshipClaims = (
 export const buildWorkbookSheets = (
   result: ProjectionResult,
   provenance: WorkbookProvenance,
+  branding?: Branding,
 ): readonly WorkbookSheet[] => {
   const conceptIds = new Set(
     result.subjects.filter(({ type }) => type === 'concept').map(({ id }) => id),
@@ -272,12 +275,26 @@ export const buildWorkbookSheets = (
     ])
   }
 
+  // The cover sheet is the one a person reads, so it carries the host's
+  // branding (#546, ADR 0158); `~Meta` beneath is machinery and keeps its
+  // keys. A removed vendor line removes the engine's name from the cover
+  // entirely; the engine version then lives in `~Meta` alone.
+  const brand = resolveBranding(branding)
+  const engine = `yarramate ${provenance.yarramateVersion}`
   const readMe: string[][] = [
-    ['YarraMate workbook'],
+    [`${brand.productName} workbook`],
+    ...(brand.vendorLine === null ? [] : [[brand.vendorLine]]),
     [],
     ['Workspace', provenance.workspace],
     ['Projection', result.projection],
-    ['Built by', `yarramate ${provenance.yarramateVersion}`],
+    [
+      'Built by',
+      !brand.branded
+        ? engine
+        : brand.vendorLine === null
+          ? brand.productName
+          : `${brand.productName} (${engine})`,
+    ],
     [],
     ['How to use this'],
     ['1.', 'Edit the numbered sheets. Column A is the identity of the row and is what the model is keyed on.'],
@@ -361,4 +378,5 @@ export const buildWorkbookSheets = (
 export const workbookFrom = (
   result: ProjectionResult,
   provenance: WorkbookProvenance,
-): Uint8Array => writeXlsx(buildWorkbookSheets(result, provenance))
+  branding?: Branding,
+): Uint8Array => writeXlsx(buildWorkbookSheets(result, provenance, branding))

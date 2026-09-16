@@ -2649,6 +2649,39 @@ mappings:
   - native: tools-entry-realizes-tools-entry
     external: toolsEntryRealizesToolsEntry
     type: relationship
+  - native: branding
+    external: branding
+    type: concept
+  - native: branding-source
+    external: brandingSource
+    type: concept
+  - native: branding-source-realizes-branding
+    external: brandingSourceRealizesBranding
+    type: relationship
+  - native: resolve-branding
+    external: resolveBranding
+    type: concept
+  - native: branding-value
+    external: brandingValue
+    type: concept
+  - native: branding-resolves-branding
+    external: brandingResolvesBranding
+    type: relationship
+  - native: branding-resolution-reads-branding-value
+    external: brandingResolutionReadsBrandingValue
+    type: relationship
+  - native: branding-resolution-serves-tools-entry
+    external: brandingResolutionServesToolsEntry
+    type: relationship
+  - native: branding-resolution-serves-visual-browser
+    external: brandingResolutionServesVisualBrowser
+    type: relationship
+  - native: branding-resolution-serves-likec4-export
+    external: brandingResolutionServesLikec4Export
+    type: relationship
+  - native: branding-resolution-serves-workbook
+    external: brandingResolutionServesWorkbook
+    type: relationship
   - native: digest-source
     external: digestSource
     type: concept

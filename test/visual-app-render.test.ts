@@ -2,6 +2,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { VisualAppState } from '../src/visual-app/state.js'
+import type { Branding } from '../src/branding.js'
 import type { CanvasNode } from '../src/graph-projection.js'
 import type { VisualRenderedModel } from '../src/adapters/visual/wire.js'
 import type { EditorHost } from '../src/visual-app/editor-host.js'
@@ -155,6 +156,7 @@ const renderSession = (
   props: {
     readonly sections?: readonly RightSectionId[]
     readonly readOnly?: boolean
+    readonly branding?: Branding
   } = {},
 ): string => {
   session.state = { ...session.baseState, ...overrides }
@@ -1312,5 +1314,70 @@ describe('#473: folding reaches the DOM the app actually renders', () => {
   it('marks nothing in the rail when nothing is folded', () => {
     const markup = renderSession({ model: instance() })
     expect(markup).not.toContain('tree-fold')
+  })
+})
+
+describe('the strip under a host\'s branding (#546)', () => {
+  it('reads exactly as before when nothing is set', () => {
+    const html = renderSession()
+    expect(html).toContain('<span class="authority">Checked YarraMate model</span>')
+    expect(html).not.toContain('class="brand')
+    expect(html).not.toContain('vendor-line')
+    expect(html).not.toContain('--accent')
+  })
+  it('names the product, marks the host and carries the vendor line', () => {
+    const html = renderSession(
+      {},
+      {
+        branding: {
+          productName: 'Halcyon Architecture',
+          shortName: 'Halcyon',
+          logo: { url: 'https://example.test/logo.svg' },
+          accent: '#123456',
+          docsUrl: 'https://example.test/docs',
+        },
+      },
+    )
+    expect(html).toContain('<span class="authority">Checked Halcyon model</span>')
+    expect(html).toContain(
+      '<a class="brand" href="https://example.test/docs" target="_blank" rel="noreferrer" aria-label="Halcyon Architecture"><img class="brand-logo" src="https://example.test/logo.svg" alt=""/><span class="brand-name">Halcyon</span></a>',
+    )
+    expect(html).toContain('<span class="vendor-line">Powered by yarramate</span>')
+    expect(html).toMatch(/<main class="visual-shell" style="[^"]*--accent:#123456/)
+  })
+  it('renders an SVG logo as the host wrote it, as text without a docs address', () => {
+    const html = renderSession(
+      {},
+      {
+        branding: {
+          productName: 'ApertureX',
+          logo: { svg: '<svg viewBox="0 0 1 1"><rect width="1" height="1"/></svg>' },
+          vendorLine: null,
+        },
+      },
+    )
+    expect(html).toContain(
+      '<span class="brand" aria-label="ApertureX"><span class="brand-logo" aria-hidden="true"><svg viewBox="0 0 1 1"><rect width="1" height="1"/></svg></span><span class="brand-name">ApertureX</span></span>',
+    )
+    expect(html).toContain('Checked ApertureX model')
+    expect(html).not.toContain('vendor-line')
+    expect(html).not.toContain('--accent')
+  })
+  it('draws a wordmark alone when the host passes no short name, and no mark without a logo either', () => {
+    const wordmark = renderSession(
+      {},
+      { branding: { productName: 'ApertureX', shortName: null, logo: { url: '/mark.svg' } } },
+    )
+    expect(wordmark).toContain(
+      '<span class="brand" aria-label="ApertureX"><img class="brand-logo" src="/mark.svg" alt=""/></span>',
+    )
+    expect(wordmark).not.toContain('brand-name')
+    expect(wordmark).toContain('<span class="authority">Checked ApertureX model</span>')
+    const bare = renderSession({}, { branding: { productName: 'ApertureX', shortName: null } })
+    expect(bare).not.toContain('class="brand')
+    expect(bare).toContain('Checked ApertureX model')
+  })
+  it('refuses a blank product name at render, where the host\'s error belongs', () => {
+    expect(() => renderSession({}, { branding: { productName: ' ' } })).toThrow(/productName/)
   })
 })

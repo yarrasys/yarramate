@@ -428,3 +428,42 @@ describe('the xlsx container', () => {
     ).toThrow(/distinct/)
   })
 })
+
+describe('the cover sheet under a host\'s branding (#546)', () => {
+  const cover = (branding?: Parameters<typeof buildWorkbookSheets>[2]) => {
+    const { result } = sheetsFor({})
+    return buildWorkbookSheets(result, provenance, branding).find(
+      (sheet) => sheet.name === '00 Read Me',
+    )!.rows
+  }
+  it('reads exactly as before when nothing is set', () => {
+    const rows = cover()
+    expect(rows[0]).toEqual(['YarraMate workbook'])
+    expect(rows[1]).toEqual([])
+    expect(rows.find((row) => row[0] === 'Built by')).toEqual(['Built by', 'yarramate 0.0.0-test'])
+    expect(rows).toEqual(cover(undefined))
+  })
+  it('names the product, keeps the engine under the vendor line', () => {
+    const rows = cover({ productName: 'ApertureX' })
+    expect(rows[0]).toEqual(['ApertureX workbook'])
+    expect(rows[1]).toEqual(['Powered by yarramate'])
+    expect(rows[2]).toEqual([])
+    expect(rows.find((row) => row[0] === 'Built by')).toEqual([
+      'Built by',
+      'ApertureX (yarramate 0.0.0-test)',
+    ])
+  })
+  it('drops every mention of the engine from the cover when the vendor line is removed', () => {
+    const rows = cover({ productName: 'ApertureX', vendorLine: null })
+    expect(rows[0]).toEqual(['ApertureX workbook'])
+    expect(rows[1]).toEqual([])
+    expect(rows.find((row) => row[0] === 'Built by')).toEqual(['Built by', 'ApertureX'])
+    expect(JSON.stringify(rows).toLowerCase()).not.toContain('yarramate')
+    // The hidden machinery sheet keeps the engine version regardless.
+    const { result } = sheetsFor({})
+    const meta = buildWorkbookSheets(result, provenance, { productName: 'ApertureX', vendorLine: null }).find(
+      (sheet) => sheet.name === '~Meta',
+    )!.rows
+    expect(meta).toContainEqual(['YarraMate version', '0.0.0-test'])
+  })
+})

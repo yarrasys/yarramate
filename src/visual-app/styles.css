@@ -14,6 +14,10 @@
   --ochre: #8c4d18;
   --cobalt: #2457a6;
   --failure: #a3403a;
+  /* The chrome's one accent (#546): the authority mark, the notices, the
+     changeset controls. A host's branding overrides it on `.visual-shell`;
+     the notation and the comparison marks read the named tokens, never this. */
+  --accent: var(--eucalyptus);
 
   --sheet: color-mix(in oklab, var(--paper) 55%, white);
   --rule: color-mix(in oklab, var(--ink) 16%, transparent);
@@ -266,7 +270,7 @@ body {
   font-size: 11px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--eucalyptus);
+  color: var(--accent);
 }
 
 .authority::before {
@@ -277,6 +281,52 @@ body {
   margin-right: 0.5rem;
   vertical-align: 0;
   background: currentColor;
+}
+
+/* The host's mark (#546): logo and short name before the title, in the
+   authority mark's voice so it reads as identity rather than as a control. */
+.brand {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: calc(var(--step) * 0.75);
+  color: var(--accent);
+  font-family: var(--utility);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-decoration: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+a.brand:hover,
+a.brand:focus-visible {
+  text-decoration: underline;
+}
+
+.brand-logo {
+  display: inline-block;
+  flex: none;
+  width: auto;
+  height: 20px;
+}
+
+.brand-logo > svg {
+  display: block;
+  width: auto;
+  height: 100%;
+}
+
+/* The vendor line (#546): the last thing on the strip, quiet, and gone when a
+   host removed it. */
+.vendor-line {
+  flex: none;
+  margin-left: auto;
+  font-family: var(--utility);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--quiet);
+  white-space: nowrap;
 }
 
 /* A static claim about the feature, not a live status — bordered like a tag
@@ -1566,7 +1616,7 @@ body {
 }
 
 .said-agent {
-  border-left-color: var(--eucalyptus);
+  border-left-color: var(--accent);
 }
 
 .said-session {
@@ -2287,8 +2337,8 @@ body {
   align-items: center;
   gap: calc(var(--step) * 0.75);
   padding: calc(var(--step) * 0.75) calc(var(--step) * 1.5);
-  background: color-mix(in oklab, var(--eucalyptus) 15%, var(--sheet));
-  border: 1px solid var(--eucalyptus);
+  background: color-mix(in oklab, var(--accent) 15%, var(--sheet));
+  border: 1px solid var(--accent);
   border-radius: 4px;
   font-size: 13px;
   color: var(--ink);
@@ -2299,7 +2349,7 @@ body {
   padding: 0 calc(var(--step) * 0.5);
   border: none;
   background: none;
-  color: var(--eucalyptus);
+  color: var(--accent);
   font-size: 11px;
   cursor: pointer;
   text-decoration: underline;
@@ -2381,7 +2431,7 @@ body {
   padding: 0;
   border: none;
   background: none;
-  color: var(--eucalyptus);
+  color: var(--accent);
   font-size: 12px;
   cursor: pointer;
   text-decoration: underline;
@@ -2398,7 +2448,7 @@ body {
   padding: 0;
   border: none;
   background: none;
-  color: var(--eucalyptus);
+  color: var(--accent);
   font-size: 12px;
   cursor: pointer;
   text-decoration: underline;
@@ -2461,7 +2511,7 @@ body {
   padding: 0;
   border: none;
   background: none;
-  color: var(--eucalyptus);
+  color: var(--accent);
   font-size: 11px;
   cursor: pointer;
   text-decoration: underline;
@@ -2516,9 +2566,9 @@ body {
 .changeset-notice {
   margin-top: var(--step);
   padding: calc(var(--step) * 0.75) calc(var(--step) * 1);
-  border: 1px solid var(--eucalyptus);
+  border: 1px solid var(--accent);
   border-radius: 4px;
-  background: color-mix(in oklab, var(--eucalyptus) 15%, var(--sheet));
+  background: color-mix(in oklab, var(--accent) 15%, var(--sheet));
   font-size: 12px;
   color: var(--ink);
 }
