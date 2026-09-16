@@ -8,6 +8,14 @@ updates:
       time: "09:00"
       timezone: Australia/Melbourne
     open-pull-requests-limit: 5
+    ignore:
+      # vitest 5 pulls tinybench 6, whose type declarations reference the DOM
+      # lib the root program deliberately does not load, so the group PR that
+      # carried it failed typecheck (#522, 2026-09-16). Lift this when tinybench
+      # declares its own lib reference, or when the vitest major is taken on
+      # purpose with the tsconfig change it needs.
+      - dependency-name: vitest
+        update-types: ["version-update:semver-major"]
     groups:
       development:
         dependency-type: development
