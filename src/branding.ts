@@ -133,9 +133,13 @@ export const resolveBranding = (branding?: Branding): ResolvedBranding => {
  */
 export const brandSlug = (branding: ResolvedBranding): string => {
   if (!branding.branded) return YARRAMATE_TOOL_PREFIX
+  // Split on the runs and join what is left: linear, where a trim by
+  // `^-+|-+$` is polynomial on a name that is mostly hyphens (CodeQL
+  // js/polynomial-redos, the rule that bit #547's walker too).
   const slug = (branding.shortName ?? branding.productName)
     .toLowerCase()
-    .replaceAll(/[^a-z0-9]+/g, '-')
-    .replaceAll(/^-+|-+$/g, '')
+    .split(/[^a-z0-9]+/)
+    .filter((part) => part !== '')
+    .join('-')
   return slug === '' ? YARRAMATE_TOOL_PREFIX : slug
 }

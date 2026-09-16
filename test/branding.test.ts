@@ -98,6 +98,7 @@ describe('resolveBranding (#546)', () => {
     )
     expect(brandSlug(resolveBranding({ productName: 'A/B  Co.', shortName: 'A/B Co.' }))).toBe('a-b-co')
     expect(brandSlug(resolveBranding({ productName: '***' }))).toBe('yarramate')
+    expect(brandSlug(resolveBranding({ productName: `--${'-'.repeat(20_000)}x--` }))).toBe('x')
     expect(brandSlug(resolveBranding({ productName: 'Halcyon Architecture', shortName: null }))).toBe(
       'halcyon-architecture',
     )
