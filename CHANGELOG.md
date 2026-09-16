@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### A host-built mount takes options, and a closing frame carries the host's sentence (#545)
+
+`mountEditorWith(element, host, options)` is the second form of the
+host-built mount (ADR 0157): every `MountOptions` field that is not the
+local host's, `workerFactory` included, so a page that runs its engine on a
+server lays out in a worker exactly as the store-backed mount does. The
+positional form stands for its callers. The `closing` frame gains
+`reason: 'host-ended'` and an optional `message`; the shell shows the host's
+sentence in place of its fixed one, and `createSocketHost` treats a close
+code in 4000 to 4999 as the server ending the session for good, delivering
+`closing` with the close frame's reason text and retrying nothing. Every
+other close code stays a drop that reconnects.
+
 ### The engine's verbs as path-free functions: `yarramate/tools`, `yarramate/host`, and a socket host with options (#543)
 
 `yarramate/tools` is the engine's path-free entry (ADR 0156): `designStep`,

@@ -27,9 +27,9 @@ class FakeSocket {
   emit(type: string, event: unknown = {}): void {
     for (const listener of this.listeners.get(type) ?? []) listener(event)
   }
-  close(): void {
+  close(code = 1005, reason = ''): void {
     this.readyState = 3
-    this.emit('close', {})
+    this.emit('close', { code, reason })
   }
   send(): void {}
 }
@@ -132,6 +132,46 @@ describe('createSocketHost', () => {
         kind: 'closing',
         reason: 'browser-timeout',
       })
+      stop()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('treats a close code in the application range as the host ending the session, with its sentence (#545)', async () => {
+    vi.useFakeTimers()
+    try {
+      const host = createSocketHost({ retryMs: 10 })
+      const delivered = events()
+      const stop = host.open(delivered)
+      await vi.advanceTimersByTimeAsync(0)
+      expect(FakeSocket.opened).toHaveLength(1)
+      FakeSocket.opened[0]!.close(4001, 'This workspace has eight windows open already.')
+      await vi.advanceTimersByTimeAsync(50)
+      // A closing frame with the host's words, and no retry.
+      expect(delivered.frames.at(-1)).toEqual({
+        kind: 'closing',
+        reason: 'host-ended',
+        message: 'This workspace has eight windows open already.',
+      })
+      expect(FakeSocket.opened).toHaveLength(1)
+      stop()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('keeps every other close code a drop that retries', async () => {
+    vi.useFakeTimers()
+    try {
+      const host = createSocketHost({ retryMs: 10 })
+      const delivered = events()
+      const stop = host.open(delivered)
+      await vi.advanceTimersByTimeAsync(0)
+      FakeSocket.opened[0]!.close(1006)
+      await vi.advanceTimersByTimeAsync(10)
+      expect(FakeSocket.opened).toHaveLength(2)
+      expect(delivered.frames.some((frame) => (frame as { kind: string }).kind === 'closing')).toBe(false)
       stop()
     } finally {
       vi.useRealTimers()

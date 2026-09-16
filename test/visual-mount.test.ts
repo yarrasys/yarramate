@@ -10,6 +10,7 @@ vi.mock('react-dom/client', () => ({ createRoot }))
 import {
   mountEditor,
   mountEditorWith,
+  RIGHT_SECTIONS,
   type DecorationMap,
   type EditorHost,
   type RightSectionId,
@@ -575,5 +576,87 @@ describe('mountEditor with a workerFactory', () => {
     expect(root.render).toHaveBeenCalledOnce()
     editor.unmount()
     expect(root.unmount).toHaveBeenCalledOnce()
+  })
+})
+
+// A host-built mount takes the same options (#545, ADR 0157): the page that
+// runs its engine on a server had no worker slot and laid out on the main
+// thread, the freeze #490 removed for the store-backed mount.
+describe('mountEditorWith, options form', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('threads every option to the shell as mountEditor does', () => {
+    const onFirstModel = vi.fn()
+    const onDelegateQuestion = vi.fn()
+    mountEditorWith({} as Element, host, {
+      sections: ['properties'],
+      readOnly: true,
+      decorations: { 'app.checkout': 'added' },
+      view: 'current-state',
+      onFirstModel,
+      onDelegateQuestion,
+    })
+    const rendered = (
+      root.render.mock.calls[0]![0] as {
+        props: {
+          sections: readonly string[]
+          readOnly: boolean
+          decorations: Record<string, string>
+          initialView?: string
+          onFirstModel?: () => void
+          onDelegateQuestion?: () => void
+        }
+      }
+    ).props
+    expect(rendered.sections).toEqual(['properties'])
+    expect(rendered.readOnly).toBe(true)
+    expect(rendered.decorations).toEqual({ 'app.checkout': 'added' })
+    expect(rendered.initialView).toBe('current-state')
+    expect(rendered.onFirstModel).toBe(onFirstModel)
+    expect(rendered.onDelegateQuestion).toBe(onDelegateQuestion)
+  })
+
+  it('defaults to every section and an author, like the positional form with no arguments', () => {
+    mountEditorWith({} as Element, host, {})
+    mountEditorWith({} as Element, host)
+    for (const call of root.render.mock.calls) {
+      const rendered = (call[0] as { props: { sections: readonly string[]; readOnly: boolean } }).props
+      expect(rendered.sections).toEqual(RIGHT_SECTIONS)
+      expect(rendered.readOnly).toBe(false)
+    }
+  })
+
+  it('constructs the worker once, lays out through it, and terminates it on unmount', async () => {
+    const posted: { id: number; cmd: string }[] = []
+    let terminated = 0
+    const worker = {
+      onmessage: null as ((event: { readonly data: unknown }) => void) | null,
+      postMessage(message: unknown) {
+        const sent = message as { id: number; cmd: string; graph?: unknown }
+        posted.push(sent)
+        queueMicrotask(() =>
+          this.onmessage?.({ data: { id: sent.id, data: sent.cmd === 'layout' ? sent.graph : [] } }),
+        )
+      },
+      terminate() {
+        terminated += 1
+      },
+    }
+    const workerFactory = vi.fn(() => worker)
+
+    const editor = mountEditorWith({} as Element, host, { workerFactory })
+    expect(workerFactory).toHaveBeenCalledOnce()
+    const laid = await layoutWithElk({ id: 'root' })
+    expect(laid).toEqual({ id: 'root' })
+    expect(posted.at(-1)?.cmd).toBe('layout')
+
+    editor.unmount()
+    expect(root.unmount).toHaveBeenCalledOnce()
+    expect(terminated).toBe(1)
+    const before = posted.length
+    await layoutWithElk({ id: 'root', children: [{ id: 'n', width: 170, height: 50 }] })
+    expect(posted.length).toBe(before)
   })
 })

@@ -1353,6 +1353,31 @@ describe("visualAppActionsForFrame", () => {
     ]);
   });
 
+  it("carries the host's sentence from a closing frame into the closed state (#545)", () => {
+    const actions = actionsFor({
+      kind: "closing",
+      reason: "host-ended",
+      message: "You were removed from this workspace.",
+    });
+    expect(actions).toEqual([
+      {
+        type: "session.closed",
+        reason: "host-ended",
+        message: "You were removed from this workspace.",
+      },
+    ]);
+    const closed = visualAppReducer(initialVisualAppState, actions[0]!);
+    expect(closed.lifecycle).toBe("closed");
+    expect(closed.closedReason).toBe("host-ended");
+    expect(closed.closedMessage).toBe("You were removed from this workspace.");
+    // A frame with no sentence leaves the shell its own.
+    const plain = visualAppReducer(initialVisualAppState, {
+      type: "session.closed",
+      reason: "user-ended",
+    });
+    expect(plain.closedMessage).toBeNull();
+  });
+
   it("turns each agent response into the record it belongs to", () => {
     expect(
       actionsFor({
