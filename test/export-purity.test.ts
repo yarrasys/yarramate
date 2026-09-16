@@ -36,8 +36,10 @@ function runtimeImportGraph(
       )
       // `import { type A, type B } from` is elided by tsc just like
       // `import type`, so it reaches nothing at runtime either.
+      // Written without an ambiguous repetition (a comma is required between
+      // specifiers), so the match cannot backtrack exponentially (CodeQL js/redos).
       .replace(
-        /^\s*import\s*\{\s*(?:type\s+\w+(?:\s+as\s+\w+)?\s*,?\s*)+\}\s*from\s+['"][^'"]+['"]\s*;?\s*$/gm,
+        /^[ \t]*import[ \t]*\{[ \t\n]*type[ \t]+\w+(?:[ \t]+as[ \t]+\w+)?(?:[ \t\n]*,[ \t\n]*type[ \t]+\w+(?:[ \t]+as[ \t]+\w+)?)*[ \t\n]*,?[ \t\n]*\}[ \t]*from[ \t]+['"][^'"]+['"][ \t]*;?[ \t]*$/gm,
         '',
       )
     for (const match of withoutTypeImports.matchAll(/from\s+['"]([^'"]+)['"]/g)) {
