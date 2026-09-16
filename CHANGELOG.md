@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.31.0
 
 ### A host-built mount takes options, and a closing frame carries the host's sentence (#545)
 
