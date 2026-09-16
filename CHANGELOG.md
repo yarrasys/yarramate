@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.32.0
 
 ### White-labelling: one branding value for the editor, the tool list and the exports (#546)
 
