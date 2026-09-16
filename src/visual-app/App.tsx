@@ -3,6 +3,11 @@ import {
   GraphCanvas,
   type DecorationMap,
 } from "./graph-canvas.js";
+import {
+  resolveBranding,
+  type Branding,
+  type ResolvedBranding,
+} from "../branding.js";
 import type { PresentationFlag } from "./query-fields.js";
 import { QueryPanel, type BottomPanelTabId } from "./query-panel.js";
 import type { VisualNextQuestion } from "../adapters/visual/wire.js";
@@ -167,18 +172,54 @@ const endTransitionStatus = (state: VisualAppState): string => {
  * one line about what this session IS, which is identity - and a button that
  * only ever revealed a sentence was a control the strip had no reason to keep.
  */
+/**
+ * The host's mark (#546, ADR 0158): logo and short name, a link when the host
+ * gave the mark somewhere to go. The SVG form is the host's own markup,
+ * rendered as written; a host that would rather not trust its own string
+ * passes a URL. Drawn only when a host set branding, so an unbranded strip
+ * is byte for byte what it was.
+ */
+const BrandMark = ({ brand }: { readonly brand: ResolvedBranding }) => {
+  const logo =
+    brand.logo === undefined ? null : "url" in brand.logo ? (
+      <img className="brand-logo" src={brand.logo.url} alt="" />
+    ) : (
+      <span
+        className="brand-logo"
+        aria-hidden="true"
+        dangerouslySetInnerHTML={{ __html: brand.logo.svg }}
+      />
+    );
+  const body = (
+    <>
+      {logo}
+      <span className="brand-name">{brand.shortName}</span>
+    </>
+  );
+  return brand.docsUrl === undefined ? (
+    <span className="brand">{body}</span>
+  ) : (
+    <a className="brand" href={brand.docsUrl} target="_blank" rel="noreferrer">
+      {body}
+    </a>
+  );
+};
+
 const CommandStrip = ({
   state,
   connection,
+  brand,
 }: {
   readonly state: VisualAppState;
   readonly connection: string;
+  readonly brand: ResolvedBranding;
 }) => (
   <header className="command-strip">
     <div className="command-identity">
+      {brand.branded ? <BrandMark brand={brand} /> : null}
       <h1>{state.title === "" ? "Opening the session" : state.title}</h1>
       <span className="beta-badge">Beta</span>
-      <span className="authority">Checked YarraMate model</span>
+      <span className="authority">{`Checked ${brand.productName} model`}</span>
       <span className="connection-state" role="status">
         {connection}
       </span>
@@ -187,6 +228,9 @@ const CommandStrip = ({
       <p className="session-description" title={state.description}>
         {state.description}
       </p>
+    )}
+    {brand.vendorLine === null ? null : (
+      <span className="vendor-line">{brand.vendorLine}</span>
     )}
   </header>
 );
@@ -1379,10 +1423,13 @@ export const App = ({
   onReady,
   initialView,
   onFirstModel,
+  branding,
 }: {
   readonly host: EditorHost;
   readonly sections?: readonly RightSectionId[];
   readonly readOnly?: boolean;
+  /** The host's branding (#546, ADR 0158). See `MountOptions.branding`. */
+  readonly branding?: Branding;
   /**
    * The view to open on once the model arrives (#523, ADR 0152): applied
    * once, through the same navigation the rail runs, and ignored when the
@@ -1435,6 +1482,11 @@ export const App = ({
     commitChangeset,
     end,
   } = useVisualSession(host);
+
+  // Resolved once per mount: the strip reads the names, the shell style the
+  // accent. A blank name or an unpublishable prefix throws here, at mount,
+  // which is where a host's configuration error belongs.
+  const brand = useMemo(() => resolveBranding(branding), [branding]);
 
   const [workspace, dispatchWorkspace] = useReducer(
     visualWorkspaceReducer,
@@ -1756,6 +1808,8 @@ export const App = ({
     "--chat-height": sectionOpen("chat")
       ? `${workspace.conversation.chatHeight}px`
       : "auto",
+    // The host's one colour for the chrome (#546); the notation never reads it.
+    ...(brand.accent === undefined ? {} : { "--accent": brand.accent }),
   } as CSSProperties;
 
   // Every palette gesture ends here (#295): the kind rides along to seed the
@@ -2182,7 +2236,11 @@ export const App = ({
 
   return (
     <main className="visual-shell" style={shellStyle}>
-      <CommandStrip state={state} connection={connectionOf(state, connected)} />
+      <CommandStrip
+        state={state}
+        connection={connectionOf(state, connected)}
+        brand={brand}
+      />
       <div
         className="workspace"
         data-rail={workspace.railHidden ? "hidden" : undefined}

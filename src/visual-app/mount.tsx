@@ -51,6 +51,9 @@ import './styles.css'
  * `readOnly: true` mounts a viewer (#298): the same canvas, tree, questions
  * and properties, with every staging and committing affordance absent.
  */
+import type { Branding } from '../branding.js'
+export type { Branding, BrandingLogo } from '../branding.js'
+
 export interface MountOptions extends LocalHostOptions {
   /**
    * Which sections the right column carries, in the stack's own order however
@@ -112,6 +115,14 @@ export interface MountOptions extends LocalHostOptions {
    * than reaching for the rail.
    */
   readonly view?: string
+  /**
+   * The host's branding (#546, ADR 0158): the product name in the authority
+   * mark, a logo and short name beside the title, one accent colour for the
+   * chrome, and the vendor line. Absent, the shell reads as it always has.
+   * Presentation only: nothing on the wire and nothing in the record carries
+   * it.
+   */
+  readonly branding?: Branding
 }
 
 /**
@@ -313,6 +324,7 @@ const mountOver = (
     options.onDelegateQuestion,
     options.view,
     options.onFirstModel,
+    options.branding,
   )
   if (engine === undefined) return mounted
   return {
@@ -334,6 +346,7 @@ const renderShell = (
   onDelegateQuestion?: (question: VisualQuestionDelegatePayload) => void,
   view?: string,
   onFirstModel?: () => void,
+  branding?: Branding,
 ): MountedEditor => {
   // No StrictMode: its double mount would open the host twice, and a host with
   // a socket behind it would open two.
@@ -353,6 +366,7 @@ const renderShell = (
       onDelegateQuestion={onDelegateQuestion}
       initialView={view}
       onFirstModel={onFirstModel}
+      branding={branding}
       onReady={(pointer) => {
         bridge.current = pointer
       }}

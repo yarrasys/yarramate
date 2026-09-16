@@ -260,6 +260,7 @@ export const exportLikeC4 = (
         return held === undefined ? undefined : { path, source: held.source }
       },
       requireMappedRelationships: false,
+      ...(workspace.branding === undefined ? {} : { branding: workspace.branding }),
     })
     if (!exported.ok) return failed(exported.diagnostics)
     return { ok: true, result: { files: generatedProjectFiles(exported) } }
@@ -292,7 +293,7 @@ export const exportWorkbook = (
         ...compiled.profileContext.relationshipKindLineages.keys(),
       ].sort(),
       statuses: ['planned', 'current', 'retired'],
-    })
+    }, workspace.branding)
     const stem = evaluated.result.projection.split('@')[0] ?? 'workbook'
     return {
       ok: true,

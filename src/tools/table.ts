@@ -22,6 +22,7 @@ import {
   exportWorkbook,
 } from './export.js'
 import type { ToolResult, ToolWorkspace } from './workspace.js'
+import { resolveBranding, type Branding } from '../branding.js'
 
 /**
  * The tool surface, once (ADR 0156). The stdio adapter and a hosted server
@@ -31,13 +32,35 @@ import type { ToolResult, ToolWorkspace } from './workspace.js'
  * and get the same text back.
  */
 
-export type ToolName =
-  | 'yarramate_ask'
-  | 'yarramate_design'
-  | 'yarramate_apply'
-  | 'yarramate_check'
-  | 'yarramate_reconcile'
-  | 'yarramate_export'
+export const TOOL_VERBS = [
+  'ask',
+  'design',
+  'apply',
+  'check',
+  'reconcile',
+  'export',
+] as const
+export type ToolVerb = (typeof TOOL_VERBS)[number]
+
+/**
+ * A published name: the prefix a host chose, an underscore, the verb. The
+ * prefix is branding (#546, ADR 0158); the verb is the contract, and
+ * `runTool` dispatches on it alone.
+ */
+export type ToolNameFor<P extends string> = `${P}_${ToolVerb}`
+export type ToolName = ToolNameFor<typeof YARRAMATE_PREFIX>
+
+const YARRAMATE_PREFIX = 'yarramate'
+
+/** The verb behind a name of any prefix; `undefined` for a name that is not a tool's. */
+export const toolVerbOf = (name: string): ToolVerb | undefined => {
+  const cut = name.lastIndexOf('_')
+  if (cut <= 0) return undefined
+  const verb = name.slice(cut + 1)
+  return (TOOL_VERBS as readonly string[]).includes(verb)
+    ? (verb as ToolVerb)
+    : undefined
+}
 
 /**
  * One row per tool. Generic over the name so a host that adds tools of its
@@ -65,8 +88,24 @@ export interface ToolDefinition<N extends string = ToolName> {
  * for the first time has never seen the skill file; the tool list is the
  * only place it learns that design asks, apply lands, and design asks again.
  */
-export const LOOP =
-  'The loop: call yarramate_design for the top open question, answer it with the person, land the answer with yarramate_apply, then call yarramate_design again.'
+export const loopFor = (branding?: Branding): string => {
+  const { toolPrefix } = resolveBranding(branding)
+  return `The loop: call ${toolPrefix}_design for the top open question, answer it with the person, land the answer with ${toolPrefix}_apply, then call ${toolPrefix}_design again.`
+}
+
+export const LOOP = loopFor()
+
+/**
+ * The `initialize` instructions a server publishes, without the stdio
+ * adapter's sentence about `workspace`: the record, the one write, the loop.
+ */
+export const instructionsFor = (branding?: Branding): string => {
+  const { productName, toolPrefix } = resolveBranding(branding)
+  return `The architecture record of a ${productName} workspace. The native documents in the repository are canonical; every read renders them, and ${toolPrefix}_apply is the one write, the same atomic batch the CLI lands. ${loopFor(branding)}`
+}
+
+const reconcileUnavailable = (name: string): string =>
+  `${name} is not served here: reconciliation evaluates evidence against a repository on disk, which this workspace does not have. Run yarramate reconcile beside the code.`
 
 /**
  * The two argument properties that exist only where a filesystem does:
@@ -90,10 +129,13 @@ export const STDIO_PROPERTIES: Readonly<
   },
 }
 
-export const TOOL_CATALOGUE: readonly ToolDefinition<ToolName>[] = [
+const catalogueFor = <P extends string>(
+  prefix: P,
+  loop: string,
+): readonly ToolDefinition<ToolNameFor<P>>[] => [
   {
-    name: 'yarramate_ask',
-    description: `The consumed-now read surface. Without a query: orientation — check verdict, drift summary, open-question count, and the backlog in dependency order. With a query: free text matches concept ids, names, and descriptions and returns the connected slice; exact subject ids (document-id#local-id) and projection paths address precisely. Set mode for the roster (subjects), declarable vocabulary (kinds), build order (next), or the full open-questions report (open). ${LOOP}`,
+    name: `${prefix}_ask`,
+    description: `The consumed-now read surface. Without a query: orientation — check verdict, drift summary, open-question count, and the backlog in dependency order. With a query: free text matches concept ids, names, and descriptions and returns the connected slice; exact subject ids (document-id#local-id) and projection paths address precisely. Set mode for the roster (subjects), declarable vocabulary (kinds), build order (next), or the full open-questions report (open). ${loop}`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -120,8 +162,8 @@ export const TOOL_CATALOGUE: readonly ToolDefinition<ToolName>[] = [
     served: 'everywhere',
   },
   {
-    name: 'yarramate_design',
-    description: `The design interview, one stateless step: the top open question with its subject slice, materiality, progress, and the operations skeleton that would answer it. Ask the person, land their answer with yarramate_apply, then call this again; the next question is computed from the record, never remembered. A question whose authority is human is for the person to decide, not the agent. ${LOOP}`,
+    name: `${prefix}_design`,
+    description: `The design interview, one stateless step: the top open question with its subject slice, materiality, progress, and the operations skeleton that would answer it. Ask the person, land their answer with ${prefix}_apply, then call this again; the next question is computed from the record, never remembered. A question whose authority is human is for the person to decide, not the agent. ${loop}`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -136,8 +178,8 @@ export const TOOL_CATALOGUE: readonly ToolDefinition<ToolName>[] = [
     served: 'everywhere',
   },
   {
-    name: 'yarramate_apply',
-    description: `Lands answers in the record: one yarramate/operations/v1 document, applied as an atomic batch by the same engine a person's CLI runs. Any invalid operation refuses the whole batch and nothing is written; the result names each diagnostic with its source location. Writes are spliced into the native documents, never re-serialized, so the diff is exactly the answer. ${LOOP}`,
+    name: `${prefix}_apply`,
+    description: `Lands answers in the record: one yarramate/operations/v1 document, applied as an atomic batch by the same engine a person's CLI runs. Any invalid operation refuses the whole batch and nothing is written; the result names each diagnostic with its source location. Writes are spliced into the native documents, never re-serialized, so the diff is exactly the answer. ${loop}`,
     inputSchema: {
       type: 'object',
       required: ['operations'],
@@ -153,24 +195,23 @@ export const TOOL_CATALOGUE: readonly ToolDefinition<ToolName>[] = [
     served: 'everywhere',
   },
   {
-    name: 'yarramate_check',
-    description: `Deterministic correctness check of a workspace; returns the machine-readable check result. Never a quality or completeness judgement. Run it after every apply. ${LOOP}`,
+    name: `${prefix}_check`,
+    description: `Deterministic correctness check of a workspace; returns the machine-readable check result. Never a quality or completeness judgement. Run it after every apply. ${loop}`,
     inputSchema: { type: 'object', properties: {} },
     access: 'read',
     served: 'everywhere',
   },
   {
-    name: 'yarramate_reconcile',
-    description: `Compare declared architecture with evaluated evidence; returns the reconciliation report with contradicted, unknown, and not-observed findings. ${LOOP}`,
+    name: `${prefix}_reconcile`,
+    description: `Compare declared architecture with evaluated evidence; returns the reconciliation report with contradicted, unknown, and not-observed findings. ${loop}`,
     inputSchema: { type: 'object', properties: {} },
     access: 'read',
     served: 'stdio-only',
-    unavailable:
-      'yarramate_reconcile is not served here: reconciliation evaluates evidence against a repository on disk, which this workspace does not have. Run yarramate reconcile beside the code.',
+    unavailable: reconcileUnavailable(`${prefix}_reconcile`),
   },
   {
-    name: 'yarramate_export',
-    description: `Derives a deliverable from the record and returns it as text: markdown (a projection rendered as prose; needs projection), rtm (the requirements traceability matrix), graph (the compiled semantic graph as JSON), briefs (one brief per subject of a projection; needs projection). xlsx (needs projection) and likec4 (needs project) produce binary or multi-file output, which comes back as files for the caller to store. ${LOOP}`,
+    name: `${prefix}_export`,
+    description: `Derives a deliverable from the record and returns it as text: markdown (a projection rendered as prose; needs projection), rtm (the requirements traceability matrix), graph (the compiled semantic graph as JSON), briefs (one brief per subject of a projection; needs projection). xlsx (needs projection) and likec4 (needs project) produce binary or multi-file output, which comes back as files for the caller to store. ${loop}`,
     inputSchema: {
       type: 'object',
       required: ['kind'],
@@ -199,6 +240,19 @@ export const TOOL_CATALOGUE: readonly ToolDefinition<ToolName>[] = [
     served: 'everywhere',
   },
 ]
+
+/**
+ * The rows for a host's branding: the prefix in every name, in the loop
+ * sentence and wherever a description names a sibling tool. Unbranded, or
+ * branded without a `toolPrefix`, this is `TOOL_CATALOGUE` row for row.
+ */
+export const toolCatalogueFor = (
+  branding?: Branding,
+): readonly ToolDefinition<string>[] =>
+  catalogueFor(resolveBranding(branding).toolPrefix, loopFor(branding))
+
+export const TOOL_CATALOGUE: readonly ToolDefinition<ToolName>[] =
+  catalogueFor(YARRAMATE_PREFIX, LOOP)
 
 export interface ToolFile {
   /** Relative, `/`-separated, as the CLI would write it under `out`. */
@@ -303,14 +357,21 @@ const isOperationsInput = (value: unknown): value is OperationsInput =>
  * the function the row names, renders exactly the text the stdio adapter
  * returns for the same call. `yarramate_reconcile` answers `ok: false`
  * with the row's `unavailable` line.
+ *
+ * `name` may carry any prefix (#546): the verb after the last underscore is
+ * what dispatches, and a refusal names the tool by the name it was called
+ * by, so an agent reading `acme_export` in its tool list reads `acme_export`
+ * in the refusal. A name with no tool verb is refused, never thrown.
  */
 export const runTool = (
-  name: ToolName,
+  name: string,
   input: Record<string, unknown>,
   workspace: ToolWorkspace,
 ): ToolOutcome => {
-  switch (name) {
-    case 'yarramate_ask': {
+  const verb = toolVerbOf(name)
+  if (verb === undefined) return refuse(`Unknown tool "${name}".`)
+  switch (verb) {
+    case 'ask': {
       if (typeof input.mode === 'string') {
         switch (input.mode) {
           case 'subjects':
@@ -323,7 +384,7 @@ export const runTool = (
             return answer(askOpen(workspace))
           default:
             return refuse(
-              `yarramate_ask mode must be one of subjects, kinds, next, open; got "${input.mode}".`,
+              `${name} mode must be one of subjects, kinds, next, open; got "${input.mode}".`,
             )
         }
       }
@@ -345,17 +406,17 @@ export const runTool = (
       }
       return answer(askOrientation(workspace))
     }
-    case 'yarramate_design':
+    case 'design':
       return answer(
         designStep(
           workspace,
           typeof input.subject === 'string' ? { subject: input.subject } : {},
         ),
       )
-    case 'yarramate_apply': {
+    case 'apply': {
       if (!isOperationsInput(input.operations)) {
         return refuse(
-          'yarramate_apply needs `operations`: a yarramate/operations/v1 document as YAML or JSON text, or as an object.',
+          `${name} needs \`operations\`: a yarramate/operations/v1 document as YAML or JSON text, or as an object.`,
         )
       }
       const operations: OperationsInput =
@@ -364,23 +425,20 @@ export const runTool = (
           : { document: input.operations as Record<string, unknown> }
       return answer(applyBatch(workspace, operations))
     }
-    case 'yarramate_check': {
+    case 'check': {
       const result = checkWorkspace(workspace)
       return { kind: 'text', ok: result.ok, text: json(result), result }
     }
-    case 'yarramate_reconcile':
-      return refuse(
-        TOOL_CATALOGUE.find((tool) => tool.name === name)?.unavailable ??
-          'yarramate_reconcile is not served here.',
-      )
-    case 'yarramate_export': {
+    case 'reconcile':
+      return refuse(reconcileUnavailable(name))
+    case 'export': {
       const kind = typeof input.kind === 'string' ? input.kind : ''
       const projection =
         typeof input.projection === 'string' ? input.projection : undefined
       if (kind === 'markdown') {
         if (projection === undefined) {
           return refuse(
-            'yarramate_export markdown needs `projection`: the path of the view to render.',
+            `${name} markdown needs \`projection\`: the path of the view to render.`,
           )
         }
         return answer(exportMarkdown(workspace, projection), ({ markdown }) => markdown)
@@ -394,7 +452,7 @@ export const runTool = (
       if (kind === 'briefs') {
         if (projection === undefined) {
           return refuse(
-            'yarramate_export briefs needs `projection`: the path of the view whose subjects get a brief each.',
+            `${name} briefs needs \`projection\`: the path of the view whose subjects get a brief each.`,
           )
         }
         const budget = typeof input.budget === 'number' ? input.budget : undefined
@@ -413,7 +471,7 @@ export const runTool = (
       if (kind === 'xlsx') {
         if (projection === undefined) {
           return refuse(
-            'yarramate_export xlsx needs `projection`: the view to export as a workbook.',
+            `${name} xlsx needs \`projection\`: the view to export as a workbook.`,
           )
         }
         const exported = exportWorkbook(workspace, projection)
@@ -438,12 +496,12 @@ export const runTool = (
         const project = typeof input.project === 'string' ? input.project : undefined
         if (project === undefined) {
           return refuse(
-            'yarramate_export likec4 needs `project` (the likec4-project.yaml).',
+            `${name} likec4 needs \`project\` (the likec4-project.yaml).`,
           )
         }
         if (!isProjectDefinitionInStore(workspace, project)) {
           return refuse(
-            `yarramate_export likec4: "${project}" is not a yarramate/likec4-project/v1 document in this workspace.`,
+            `${name} likec4: "${project}" is not a yarramate/likec4-project/v1 document in this workspace.`,
           )
         }
         const exported = exportLikeC4(workspace, project)
@@ -463,7 +521,7 @@ export const runTool = (
         }
       }
       return refuse(
-        'yarramate_export needs `kind`: one of markdown, rtm, graph, briefs, xlsx, likec4.',
+        `${name} needs \`kind\`: one of markdown, rtm, graph, briefs, xlsx, likec4.`,
       )
     }
   }

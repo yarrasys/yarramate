@@ -9,6 +9,7 @@ import {
   composeCatalogues,
   type CatalogueCompositionResult,
 } from '../interrogate-command.js'
+import type { Branding } from '../branding.js'
 import type { SourceStore } from '../source-store.js'
 import type { ResolvedWorkspace } from '../workspace-resolution.js'
 import { SHIPPED_CATALOGUE_SOURCE } from '../shipped-catalogue.generated.js'
@@ -52,6 +53,11 @@ export interface ToolWorkspace {
    * Default: the package's own version.
    */
   readonly yarramateVersion?: string
+  /**
+   * The host's branding (#546, ADR 0158): the workbook's cover sheet and the
+   * LikeC4 banner name the product. Absent: the unbranded exports.
+   */
+  readonly branding?: Branding
 }
 
 /**

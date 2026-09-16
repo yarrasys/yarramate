@@ -18,6 +18,7 @@ export {
   WORKBOOK_FORMAT,
   type WorkbookProvenance,
 } from './workbook.js'
+export { resolveBranding, type Branding, type BrandingLogo } from './branding.js'
 export {
   writeXlsx,
   columnName,

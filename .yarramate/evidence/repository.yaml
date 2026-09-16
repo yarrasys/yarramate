@@ -1364,6 +1364,10 @@ observations:
     result: confirmed
     evidence:
       uri: repo:src/tools-entry.ts
+  - subject: branding-source
+    result: confirmed
+    evidence:
+      uri: repo:src/branding.ts
   - subject: digest-source
     result: confirmed
     evidence:
@@ -1404,3 +1408,7 @@ observations:
     result: confirmed
     evidence:
       uri: repo:src/host-entry.ts
+  - subject: branding
+    result: confirmed
+    evidence:
+      uri: repo:src/branding.ts

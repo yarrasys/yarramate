@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+### White-labelling: one branding value for the editor, the tool list and the exports (#546)
+
+`Branding` is one value a host sets once (ADR 0158): `productName`,
+`shortName`, `logo`, `accent`, `docsUrl`, `vendorLine` and `toolPrefix`.
+`mountEditor` and `mountEditorWith` take it: the command strip draws the
+brand mark before the title, says "Checked <product> model", and ends with
+the vendor line; `accent` sets `--accent` on the shell, which the chrome's
+emphasis reads and the notation never does. `yarramate/tools` gains
+`toolCatalogueFor(branding)`, `loopFor`, `instructionsFor` and `toolVerbOf`;
+`runTool` accepts a name of any prefix and names the tool in a refusal by
+the name it was called by. `ToolWorkspace.branding` reaches the two exports
+that carry a name: the workbook's cover sheet and the LikeC4 banner and
+project name. `workbookFrom` and `buildWorkbookSheets` take `branding` as a
+third argument. Absent, every surface reads exactly as before; the CLI
+binaries and the `init` pointer are out of scope by decision.
+
 ## 1.31.0
 
 ### A host-built mount takes options, and a closing frame carries the host's sentence (#545)
