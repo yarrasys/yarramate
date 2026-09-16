@@ -19,8 +19,12 @@ export type BrandingLogo =
 export interface Branding {
   /** "ApertureX", "Halcyon Architecture". Required: a brand without a name is not one. */
   readonly productName: string
-  /** For tight chrome, beside the logo. Defaults to `productName`. */
-  readonly shortName?: string
+  /**
+   * For tight chrome: beside the logo in the brand mark, and in the
+   * authority line ("Checked Halcyon model"). Defaults to `productName`.
+   * `null` draws the logo alone, for a wordmark that already says the name.
+   */
+  readonly shortName?: string | null
   /** Beside the title in the editor shell. Nothing is drawn without one. */
   readonly logo?: BrandingLogo
   /**
@@ -51,7 +55,8 @@ export interface Branding {
 /** `Branding` with every default applied, which is what the surfaces read. */
 export interface ResolvedBranding {
   readonly productName: string
-  readonly shortName: string
+  /** `null` when the mark is the logo alone; the authority line then says `productName`. */
+  readonly shortName: string | null
   readonly logo?: BrandingLogo
   readonly accent?: string
   readonly docsUrl?: string
@@ -95,7 +100,8 @@ export const resolveBranding = (branding?: Branding): ResolvedBranding => {
       `branding.toolPrefix "${toolPrefix}" must be letters, digits and hyphens, starting with a letter or digit`,
     )
   }
-  const shortName = branding.shortName?.trim()
+  const shortName =
+    branding.shortName === null ? null : branding.shortName?.trim()
   const vendorLine =
     branding.vendorLine === undefined
       ? DEFAULT_VENDOR_LINE
@@ -104,7 +110,12 @@ export const resolveBranding = (branding?: Branding): ResolvedBranding => {
         : branding.vendorLine.trim()
   return {
     productName,
-    shortName: shortName === undefined || shortName === '' ? productName : shortName,
+    shortName:
+      shortName === null
+        ? null
+        : shortName === undefined || shortName === ''
+          ? productName
+          : shortName,
     ...(branding.logo === undefined ? {} : { logo: branding.logo }),
     ...(branding.accent === undefined ? {} : { accent: branding.accent }),
     ...(branding.docsUrl === undefined ? {} : { docsUrl: branding.docsUrl }),
@@ -122,7 +133,7 @@ export const resolveBranding = (branding?: Branding): ResolvedBranding => {
  */
 export const brandSlug = (branding: ResolvedBranding): string => {
   if (!branding.branded) return YARRAMATE_TOOL_PREFIX
-  const slug = branding.shortName
+  const slug = (branding.shortName ?? branding.productName)
     .toLowerCase()
     .replaceAll(/[^a-z0-9]+/g, '-')
     .replaceAll(/^-+|-+$/g, '')

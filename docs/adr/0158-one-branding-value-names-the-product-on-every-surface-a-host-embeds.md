@@ -24,7 +24,7 @@ under every published entry, and optional everywhere it is read:
 ```ts
 interface Branding {
   productName: string          // "ApertureX"
-  shortName?: string           // beside the logo; defaults to productName
+  shortName?: string | null    // tight chrome; defaults to productName; null = logo alone
   logo?: { svg } | { url }     // the brand mark in the editor strip
   accent?: string              // one CSS colour for the chrome
   docsUrl?: string             // where the brand mark links
@@ -66,8 +66,11 @@ yarramate is not a line anyone wrote.
   CLI recognises its own output, not what a person reads.
 - `mountEditor` and `mountEditorWith` take `branding`. The command strip
   draws the brand mark (logo and short name, a link when `docsUrl` is set)
-  before the title, says "Checked ApertureX model", and ends with the vendor
-  line. The accent is one CSS custom property, `--accent`, set on
+  before the title, says "Checked <short name> model", and ends with the
+  vendor line. The strip is tight chrome: the authority line never wraps or
+  shrinks (the title ellipsises instead), so it reads the short name, and a
+  wordmark that already says the name passes `shortName: null` to draw the
+  logo alone; the mark carries the product name as its accessible name. The accent is one CSS custom property, `--accent`, set on
   `.visual-shell`; the chrome that read `--eucalyptus` for emphasis (the
   authority mark, the notices, the changeset controls) reads `--accent` now,
   and the notation and the comparison marks read the named tokens as before,

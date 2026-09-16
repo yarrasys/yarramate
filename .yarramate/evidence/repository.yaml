@@ -1412,3 +1412,11 @@ observations:
     result: confirmed
     evidence:
       uri: repo:src/branding.ts
+  - subject: resolve-branding
+    result: confirmed
+    evidence:
+      uri: repo:src/branding.ts
+  - subject: branding-value
+    result: confirmed
+    evidence:
+      uri: repo:src/branding.ts

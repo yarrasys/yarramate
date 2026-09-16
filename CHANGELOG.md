@@ -7,8 +7,8 @@
 `Branding` is one value a host sets once (ADR 0158): `productName`,
 `shortName`, `logo`, `accent`, `docsUrl`, `vendorLine` and `toolPrefix`.
 `mountEditor` and `mountEditorWith` take it: the command strip draws the
-brand mark before the title, says "Checked <product> model", and ends with
-the vendor line; `accent` sets `--accent` on the shell, which the chrome's
+brand mark before the title, says "Checked <short name> model", and ends
+with the vendor line; `accent` sets `--accent` on the shell, which the chrome's
 emphasis reads and the notation never does. `yarramate/tools` gains
 `toolCatalogueFor(branding)`, `loopFor`, `instructionsFor` and `toolVerbOf`;
 `runTool` accepts a name of any prefix and names the tool in a refusal by

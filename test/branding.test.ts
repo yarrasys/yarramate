@@ -77,6 +77,8 @@ describe('resolveBranding (#546)', () => {
       toolPrefix: 'halcyon',
       branded: true,
     })
+    expect(resolveBranding({ productName: 'X', shortName: null }).shortName).toBeNull()
+    expect(resolveBranding({ productName: 'X', shortName: ' ' }).shortName).toBe('X')
     expect(resolveBranding({ productName: 'X', vendorLine: '' }).vendorLine).toBeNull()
     expect(resolveBranding({ productName: 'X', vendorLine: ' Built on yarramate ' }).vendorLine).toBe(
       'Built on yarramate',
@@ -96,6 +98,9 @@ describe('resolveBranding (#546)', () => {
     )
     expect(brandSlug(resolveBranding({ productName: 'A/B  Co.', shortName: 'A/B Co.' }))).toBe('a-b-co')
     expect(brandSlug(resolveBranding({ productName: '***' }))).toBe('yarramate')
+    expect(brandSlug(resolveBranding({ productName: 'Halcyon Architecture', shortName: null }))).toBe(
+      'halcyon-architecture',
+    )
   })
 })
 

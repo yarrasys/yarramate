@@ -640,16 +640,15 @@ A product that embeds yarramate shows it to people who have never heard the
 name. `Branding` is one value, set once by the host, that names the product
 on every surface they see, and it changes nothing else: record formats,
 diagnostic codes and the wire protocol are contracts, not branding, and stay
-`yarramate/...` and `YM...`
-([ADR 0158](adr/0158-one-branding-value-names-the-product-on-every-surface-a-host-embeds.md)).
-Absent, every surface reads exactly as it always has.
+`yarramate/...` and `YM...` (ADR 0158). Absent, every surface reads exactly
+as it always has.
 
 ```ts
 import type { Branding } from 'yarramate/tools' // also yarramate/visual-app, yarramate/workbook
 
 const branding: Branding = {
   productName: 'Halcyon Architecture',
-  shortName: 'Halcyon',                       // beside the logo; defaults to productName
+  shortName: 'Halcyon',                       // beside the logo and in the authority line; null for a wordmark alone
   logo: { url: '/halcyon.svg' },              // or { svg: '<svg …>' }, rendered as written
   accent: '#1f5c4d',                          // one colour for the chrome, never the notation
   docsUrl: 'https://halcyon.example/help',    // where the brand mark links
@@ -662,10 +661,12 @@ Where it is read:
 
 - **The editor.** `mountEditor({ …, branding })` and
   `mountEditorWith(element, host, { branding })`. The command strip draws the
-  brand mark before the title, says "Checked Halcyon Architecture model",
-  and ends with the vendor line; `accent` sets `--accent` on the shell, which
-  the authority mark, the notices and the changeset controls read. A blank
-  `productName` throws at mount.
+  brand mark before the title, says "Checked Halcyon model", and ends with
+  the vendor line; `accent` sets `--accent` on the shell, which the authority
+  mark, the notices and the changeset controls read. A wordmark that already
+  says the name passes `shortName: null` and gets the logo alone; the mark's
+  accessible name is the product's either way. A blank `productName` throws
+  at mount.
 - **The tool list.** `toolCatalogueFor(branding)` is `TOOL_CATALOGUE` with
   the prefix in every name, in the loop sentence and wherever a description
   names a sibling tool; `instructionsFor(branding)` is the `initialize`

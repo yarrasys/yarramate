@@ -431,7 +431,7 @@ describe('the xlsx container', () => {
 
 describe('the cover sheet under a host\'s branding (#546)', () => {
   const cover = (branding?: Parameters<typeof buildWorkbookSheets>[2]) => {
-    const { result } = sheetsFor({ include: [{ concept: '*' }] })
+    const { result } = sheetsFor({})
     return buildWorkbookSheets(result, provenance, branding).find(
       (sheet) => sheet.name === '00 Read Me',
     )!.rows
@@ -460,7 +460,7 @@ describe('the cover sheet under a host\'s branding (#546)', () => {
     expect(rows.find((row) => row[0] === 'Built by')).toEqual(['Built by', 'ApertureX'])
     expect(JSON.stringify(rows).toLowerCase()).not.toContain('yarramate')
     // The hidden machinery sheet keeps the engine version regardless.
-    const { result } = sheetsFor({ include: [{ concept: '*' }] })
+    const { result } = sheetsFor({})
     const meta = buildWorkbookSheets(result, provenance, { productName: 'ApertureX', vendorLine: null }).find(
       (sheet) => sheet.name === '~Meta',
     )!.rows

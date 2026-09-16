@@ -176,10 +176,13 @@ const endTransitionStatus = (state: VisualAppState): string => {
  * The host's mark (#546, ADR 0158): logo and short name, a link when the host
  * gave the mark somewhere to go. The SVG form is the host's own markup,
  * rendered as written; a host that would rather not trust its own string
- * passes a URL. Drawn only when a host set branding, so an unbranded strip
- * is byte for byte what it was.
+ * passes a URL. A wordmark that already says the name passes
+ * `shortName: null` and gets the logo alone; the mark's accessible name is
+ * the product's either way. Drawn only when a host set branding, so an
+ * unbranded strip is byte for byte what it was.
  */
 const BrandMark = ({ brand }: { readonly brand: ResolvedBranding }) => {
+  if (brand.logo === undefined && brand.shortName === null) return null;
   const logo =
     brand.logo === undefined ? null : "url" in brand.logo ? (
       <img className="brand-logo" src={brand.logo.url} alt="" />
@@ -193,13 +196,23 @@ const BrandMark = ({ brand }: { readonly brand: ResolvedBranding }) => {
   const body = (
     <>
       {logo}
-      <span className="brand-name">{brand.shortName}</span>
+      {brand.shortName === null ? null : (
+        <span className="brand-name">{brand.shortName}</span>
+      )}
     </>
   );
   return brand.docsUrl === undefined ? (
-    <span className="brand">{body}</span>
+    <span className="brand" aria-label={brand.productName}>
+      {body}
+    </span>
   ) : (
-    <a className="brand" href={brand.docsUrl} target="_blank" rel="noreferrer">
+    <a
+      className="brand"
+      href={brand.docsUrl}
+      target="_blank"
+      rel="noreferrer"
+      aria-label={brand.productName}
+    >
       {body}
     </a>
   );
@@ -219,7 +232,9 @@ const CommandStrip = ({
       {brand.branded ? <BrandMark brand={brand} /> : null}
       <h1>{state.title === "" ? "Opening the session" : state.title}</h1>
       <span className="beta-badge">Beta</span>
-      <span className="authority">{`Checked ${brand.productName} model`}</span>
+      <span className="authority">
+        {`Checked ${brand.shortName ?? brand.productName} model`}
+      </span>
       <span className="connection-state" role="status">
         {connection}
       </span>
