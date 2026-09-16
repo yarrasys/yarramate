@@ -1,6 +1,6 @@
 # The MCP adapter serves the whole loop
 
-Status: accepted
+Status: accepted. Amended by ADR 0156: the adapter executes the path-free tool functions the CLI also executes, not the CLI itself.
 
 Amends ADR 0044, whose last paragraph kept writes out of `yarramate-mcp`
 "until read-only usage proves itself". It has: the adapter has run in every

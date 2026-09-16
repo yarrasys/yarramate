@@ -181,6 +181,10 @@
         "mode": {
           "const": "slice"
         },
+        "rendered": {
+          "type": "string",
+          "description": "The text the CLI prints for the same call: the brief, or the budgeted context when a budget was given. Present when the slice was produced by the tools entry (ADR 0156); absent from the git-derived review slice."
+        },
         "addressing": {
           "enum": [
             "free-text",

@@ -59,7 +59,19 @@ concepts:
   - id: mcp-adapter
     kind: applicationComponent
     name: MCP adapter
-    description: Exposes the stable CLI surface over stdio Model Context Protocol without adding semantics of its own; since ADR 0149 that surface is the whole loop, with apply as the one write and export for deliverables.
+    description: Exposes the tool surface over stdio Model Context Protocol without adding semantics of its own; since ADR 0149 that surface is the whole loop, with apply as the one write and export for deliverables, and since ADR 0156 every call runs the same path-free tool functions the CLI runs, over a filesystem store.
+    status: current
+    owner: yarramate-maintainers
+  - id: tools-entry
+    kind: applicationComponent
+    name: Path-free tools entry
+    description: The engine's verbs as functions over a SourceStore and a resolved workspace, importing no Node built-in, published as yarramate/tools (ADR 0156). The CLI commands and the stdio adapter are thin over it, and a hosted workspace runs it inside a Durable Object, so one semantics serves every surface.
+    status: current
+    owner: yarramate-maintainers
+  - id: host-entry
+    kind: applicationComponent
+    name: Host entry
+    description: The editor's local host and its seam without the editor bundle, published as yarramate/host (ADR 0156), so a server can run the host the browser runs and fan its frames to sockets.
     status: current
     owner: yarramate-maintainers
   - id: architecture-state-engine
@@ -2071,3 +2083,63 @@ relationships:
     mode: read
     description: The command reads the file a reviewer sends back; the merge reads the sheets inside it.
     status: current
+  - id: tools-entry-realizes-design-command
+    kind: realization
+    from: tools-entry
+    to: design-command
+  - id: tools-entry-realizes-ask-command
+    kind: realization
+    from: tools-entry
+    to: ask-command
+  - id: tools-entry-realizes-check-command
+    kind: realization
+    from: tools-entry
+    to: check-command
+  - id: tools-entry-realizes-apply-command
+    kind: realization
+    from: tools-entry
+    to: apply-command
+  - id: tools-entry-realizes-export-command
+    kind: realization
+    from: tools-entry
+    to: export-command
+  - id: tools-entry-composes-subject-brief
+    kind: assignment
+    from: tools-entry
+    to: compose-subject-brief
+  - id: tools-entry-composes-question-catalogues
+    kind: assignment
+    from: tools-entry
+    to: compose-question-catalogues
+  - id: tools-entry-derives-architecture-workbook
+    kind: assignment
+    from: tools-entry
+    to: derive-architecture-workbook
+  - id: tools-entry-assembles-likec4-project
+    kind: assignment
+    from: tools-entry
+    to: assemble-likec4-project
+  - id: tools-entry-serves-mcp-adapter
+    kind: serving
+    from: tools-entry
+    to: mcp-adapter
+  - id: tools-entry-serves-cli
+    kind: serving
+    from: tools-entry
+    to: cli
+  - id: host-entry-renders-visual-model
+    kind: assignment
+    from: host-entry
+    to: render-visual-model
+  - id: host-entry-commits-visual-changeset
+    kind: assignment
+    from: host-entry
+    to: commit-visual-changeset
+  - id: host-entry-saves-visual-layout
+    kind: assignment
+    from: host-entry
+    to: save-visual-layout
+  - id: host-entry-serves-visual-browser
+    kind: serving
+    from: host-entry
+    to: visual-browser

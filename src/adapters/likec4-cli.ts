@@ -29,15 +29,16 @@ import {
   loadAdapterMapping,
   validateAdapterMapping,
 } from '../adapter-mapping.js'
-import { locateSourcePath } from '../source-document.js'
 import {
   prepareLikeC4Export,
   type LikeC4PreparationDiagnostic,
 } from './likec4-prepare.js'
 import {
-  exportLikeC4Project,
-  loadLikeC4ProjectDefinition,
-} from './likec4-project.js'
+  exportLikeC4ProjectFromSources,
+  inputDigestsOf,
+  ownershipOf,
+  projectNameOf,
+} from './likec4-project-export.js'
 import generatedProjectSchema from '../../schema/yarramate-likec4-generated-project.schema.json' with {
   type: 'json',
 }
@@ -665,15 +666,6 @@ const checkGeneratedProject = (
   }
 }
 
-const inputDigestsOf = (
-  inputs: readonly { readonly path: string; readonly source: string }[],
-): Readonly<Record<string, string>> =>
-  Object.fromEntries(
-    inputs
-      .map(({ path, source }) => [path, sha256(source)] as const)
-      .sort(([left], [right]) => left.localeCompare(right)),
-  )
-
 export function runLikeC4Cli(
   args: readonly string[],
   cwd: string = process.cwd(),
@@ -830,387 +822,10 @@ export function runLikeC4Cli(
         path: projectionPath,
         source: readFileSync(resolve(cwd, projectionPath), 'utf8'),
       }
-      const loadedProject = loadLikeC4ProjectDefinition(projectSource)
-      if (!loadedProject.ok) {
-        return {
-          exitCode: 1,
-          stdout: diagnosticOutput(loadedProject.diagnostics),
-          stderr: '',
-        }
-      }
       const projectDirectory = dirname(resolve(cwd, projectionPath))
-      const referencedSources = new Map<string, {
-        readonly path: string
-        readonly source: string
-      }>()
-      const referenceDiagnostics: LikeC4PreparationDiagnostic[] = []
-      const readProjectReference = (
-        path: string,
-        label: 'mapping' | 'kind mapping' | 'projection',
-        yamlPath: readonly (string | number)[],
-        pointer: string,
-      ) => {
-        const existing = referencedSources.get(path)
-        if (existing !== undefined) return existing
-        try {
-          const source = {
-            path,
-            source: readFileSync(resolve(projectDirectory, path), 'utf8'),
-          }
-          referencedSources.set(path, source)
-          return source
-        } catch (error) {
-          const location = locateSourcePath(
-            projectSource.path,
-            loadedProject.document.yaml,
-            loadedProject.document.lineCounter,
-            yamlPath,
-            pointer,
-          )
-          const absent =
-            error instanceof Error &&
-            'code' in error &&
-            error.code === 'ENOENT'
-          referenceDiagnostics.push({
-            severity: 'error',
-            code: 'YMLC110',
-            message: absent
-              ? `LikeC4 project ${label} "${path}" does not exist`
-              : `LikeC4 project ${label} "${path}" cannot be read`,
-            ...location,
-          })
-          return undefined
-        }
-      }
-      const subjectMapping = readProjectReference(
-        loadedProject.document.value.mapping,
-        'mapping',
-        ['mapping'],
-        '/mapping',
-      )
-      const kindMapping =
-        loadedProject.document.value.kindMapping === undefined
-          ? undefined
-          : readProjectReference(
-              loadedProject.document.value.kindMapping,
-              'kind mapping',
-              ['kindMapping'],
-              '/kindMapping',
-            )
-      const projections = loadedProject.document.value.views.map(
-        (view, index) =>
-          readProjectReference(
-            view.projection,
-            'projection',
-            ['views', index, 'projection'],
-            `/views/${index}/projection`,
-          ),
-      )
-      if (
-        referenceDiagnostics.length > 0 ||
-        subjectMapping === undefined
-      ) {
-        return {
-          exitCode: 1,
-          stdout: diagnosticOutput(
-            referenceDiagnostics.sort((left, right) =>
-              left.path.localeCompare(right.path) ||
-              left.line - right.line ||
-              left.column - right.column ||
-              left.code.localeCompare(right.code) ||
-              left.message.localeCompare(right.message),
-            ),
-          ),
-          stderr: '',
-        }
-      }
-      const preparedViews = loadedProject.document.value.views.map(
-        (view, index) => ({
-          view,
-          prepared: prepareLikeC4Export({
-            sources,
-            projection: projections[index]!,
-            subjectMapping,
-            ...(loadedProject.document.value.kindMapping === undefined
-              ? {}
-              : {
-                  kindMapping: kindMapping!,
-                }),
-            ...(view.compare === undefined
-              ? {}
-              : { comparison: view.compare }),
-            vocabulary: 'bundled',
-            requireMappedRelationships: command === 'check',
-          }),
-        }),
-      )
-      const failed = preparedViews.find(({ prepared }) => !prepared.ok)
-      if (failed !== undefined && !failed.prepared.ok) {
-        return {
-          exitCode: 1,
-          stdout: diagnosticOutput(failed.prepared.diagnostics),
-          stderr: '',
-        }
-      }
-      const successfulViews = preparedViews.flatMap(
-        ({ view, prepared }) =>
-          prepared.ok
-            ? [
-                {
-                  ...(view.id === undefined ? {} : { id: view.id }),
-                  ...(view.folder === undefined
-                    ? {}
-                    : { folder: view.folder }),
-                  prepared,
-                  ...(view.compare === undefined
-                    ? {}
-                    : { comparison: view.compare }),
-                  ...(view.dynamic === undefined
-                    ? {}
-                    : { dynamic: view.dynamic }),
-                  ...(view.deployment === undefined
-                    ? {}
-                    : { deployment: view.deployment }),
-                },
-              ]
-            : [],
-      )
-      const renderedViewIds = new Set<string>()
-      const deploymentIdentities = new Set<string>()
-      for (const [index, view] of successfulViews.entries()) {
-        const deployment = view.deployment
-        if (deployment !== undefined) {
-          const nodeIds = new Set<string>()
-          for (const [nodeIndex, node] of deployment.nodes.entries()) {
-            const problem =
-              nodeIds.has(node.id)
-                ? `Deployment node "${node.id}" is duplicated`
-                : deploymentIdentities.has(node.id)
-                  ? `Deployment identity "${node.id}" is duplicated`
-                : node.parent === node.id
-                  ? `Deployment node "${node.id}" cannot parent itself`
-                  : undefined
-            if (problem !== undefined) {
-              const field =
-                nodeIds.has(node.id) || deploymentIdentities.has(node.id)
-                  ? 'id'
-                  : 'parent'
-              const pointer =
-                `/views/${index}/deployment/nodes/${nodeIndex}/${field}`
-              const location = locateSourcePath(
-                projectSource.path,
-                loadedProject.document.yaml,
-                loadedProject.document.lineCounter,
-                ['views', index, 'deployment', 'nodes', nodeIndex, field],
-                pointer,
-              )
-              return {
-                exitCode: 1,
-                stdout: diagnosticOutput([{
-                  severity: 'error',
-                  code: 'YMLC109',
-                  message: problem,
-                  ...location,
-                }]),
-                stderr: '',
-              }
-            }
-            nodeIds.add(node.id)
-            deploymentIdentities.add(node.id)
-          }
-          for (const [nodeIndex, node] of deployment.nodes.entries()) {
-            if (
-              node.parent !== undefined &&
-              !nodeIds.has(node.parent)
-            ) {
-              const pointer =
-                `/views/${index}/deployment/nodes/${nodeIndex}/parent`
-              const location = locateSourcePath(
-                projectSource.path,
-                loadedProject.document.yaml,
-                loadedProject.document.lineCounter,
-                [
-                  'views',
-                  index,
-                  'deployment',
-                  'nodes',
-                  nodeIndex,
-                  'parent',
-                ],
-                pointer,
-              )
-              return {
-                exitCode: 1,
-                stdout: diagnosticOutput([{
-                  severity: 'error',
-                  code: 'YMLC109',
-                  message: `Deployment parent "${node.parent}" does not exist`,
-                  ...location,
-                }]),
-                stderr: '',
-              }
-            }
-            const nodeById = new Map(
-              deployment.nodes.map((candidate) => [
-                candidate.id,
-                candidate,
-              ]),
-            )
-            const ancestors = new Set([node.id])
-            let parent = node.parent
-            while (parent !== undefined) {
-              if (ancestors.has(parent)) {
-                const pointer =
-                  `/views/${index}/deployment/nodes/${nodeIndex}/parent`
-                const location = locateSourcePath(
-                  projectSource.path,
-                  loadedProject.document.yaml,
-                  loadedProject.document.lineCounter,
-                  [
-                    'views',
-                    index,
-                    'deployment',
-                    'nodes',
-                    nodeIndex,
-                    'parent',
-                  ],
-                  pointer,
-                )
-                return {
-                  exitCode: 1,
-                  stdout: diagnosticOutput([{
-                    severity: 'error',
-                    code: 'YMLC109',
-                    message: `Deployment node "${node.id}" participates in a parent cycle`,
-                    ...location,
-                  }]),
-                  stderr: '',
-                }
-              }
-              ancestors.add(parent)
-              parent = nodeById.get(parent)?.parent
-            }
-          }
-          const instanceIds = new Set<string>()
-          for (const [instanceIndex, instance] of (
-            deployment.instances
-          ).entries()) {
-            const projected = view.prepared.projection.subjects.find(
-              ({ id }) => id === instance.subject,
-            )
-            const problem =
-              instanceIds.has(instance.id)
-                ? `Deployment instance "${instance.id}" is duplicated`
-                : deploymentIdentities.has(instance.id)
-                  ? `Deployment identity "${instance.id}" is duplicated`
-                : !nodeIds.has(instance.node)
-                  ? `Deployment instance node "${instance.node}" does not exist`
-                  : projected?.type !== 'concept'
-                    ? `Deployment instance subject "${instance.subject}" is not selected as a concept by its projection`
-                    : undefined
-            if (problem !== undefined) {
-              const field =
-                instanceIds.has(instance.id) ||
-                deploymentIdentities.has(instance.id)
-                  ? 'id'
-                  : !nodeIds.has(instance.node)
-                    ? 'node'
-                    : 'subject'
-              const pointer =
-                `/views/${index}/deployment/instances/${instanceIndex}/${field}`
-              const location = locateSourcePath(
-                projectSource.path,
-                loadedProject.document.yaml,
-                loadedProject.document.lineCounter,
-                [
-                  'views',
-                  index,
-                  'deployment',
-                  'instances',
-                  instanceIndex,
-                  field,
-                ],
-                pointer,
-              )
-              return {
-                exitCode: 1,
-                stdout: diagnosticOutput([{
-                  severity: 'error',
-                  code: 'YMLC109',
-                  message: problem,
-                  ...location,
-                }]),
-                stderr: '',
-              }
-            }
-            instanceIds.add(instance.id)
-            deploymentIdentities.add(instance.id)
-          }
-        }
-        for (const [stepIndex, step] of (
-          view.dynamic?.steps ?? []
-        ).entries()) {
-          const projected = view.prepared.projection.subjects.find(
-            ({ id }) => id === step.relationship,
-          )
-          if (projected?.type !== 'relationship') {
-            const pointer =
-              `/views/${index}/dynamic/steps/${stepIndex}/relationship`
-            const location = locateSourcePath(
-              projectSource.path,
-              loadedProject.document.yaml,
-              loadedProject.document.lineCounter,
-              [
-                'views',
-                index,
-                'dynamic',
-                'steps',
-                stepIndex,
-                'relationship',
-              ],
-              pointer,
-            )
-            return {
-              exitCode: 1,
-              stdout: diagnosticOutput([
-                {
-                  severity: 'error',
-                  code: 'YMLC108',
-                  message: `Dynamic step relationship "${step.relationship}" is not selected as a relationship by its projection`,
-                  ...location,
-                },
-              ]),
-              stderr: '',
-            }
-          }
-        }
-        const renderedId =
-          view.id ?? view.prepared.projection.projection.split('@')[0]!
-        if (renderedViewIds.has(renderedId)) {
-          const field = view.id === undefined ? 'projection' : 'id'
-          const pointer = `/views/${index}/${field}`
-          const location = locateSourcePath(
-            projectSource.path,
-            loadedProject.document.yaml,
-            loadedProject.document.lineCounter,
-            ['views', index, field],
-            pointer,
-          )
-          return {
-            exitCode: 1,
-            stdout: diagnosticOutput([
-              {
-                severity: 'error',
-                code: 'YMLC107',
-                message: `LikeC4 view identity "${renderedId}" is duplicated`,
-                ...location,
-              },
-            ]),
-            stderr: '',
-          }
-        }
-        renderedViewIds.add(renderedId)
-      }
+      // The git-derived review overlay is the CLI's own: it needs a
+      // repository. Everything after it runs the same pure pipeline the
+      // path-free entry runs (ADR 0156).
       let gitChange
       if (changedRange !== undefined) {
         const modelDocuments = sources.flatMap((candidate) => {
@@ -1241,11 +856,22 @@ export function runLikeC4Cli(
           ),
         }
       }
-      const exported = exportLikeC4Project(
-        loadedProject.document.value,
-        successfulViews,
-        gitChange === undefined ? {} : { gitChange },
-      )
+      const exported = exportLikeC4ProjectFromSources({
+        project: projectSource,
+        sources,
+        readReference: (path) => {
+          try {
+            return {
+              path,
+              source: readFileSync(resolve(projectDirectory, path), 'utf8'),
+            }
+          } catch {
+            return undefined
+          }
+        },
+        requireMappedRelationships: command === 'check',
+        ...(gitChange === undefined ? {} : { gitChange }),
+      })
       if (!exported.ok) {
         return {
           exitCode: 1,
@@ -1254,55 +880,26 @@ export function runLikeC4Cli(
         }
       }
       if (command === 'check') {
-        const identity = `${loadedProject.document.value.id}@${loadedProject.document.value.version}`
         return {
           exitCode: 0,
           stdout: json
             ? checkJson(true, [])
-            : `Checked LikeC4 project ${identity}: no errors\n`,
+            : `Checked LikeC4 project ${exported.projectIdentity}: no errors\n`,
           stderr: '',
         }
       }
-      const first = successfulViews[0]!
-      const mappingIdentity = `${first.prepared.subjectMapping.id}@${first.prepared.subjectMapping.version}`
-      const kindMappingIdentity =
-        first.prepared.kindMapping === undefined
-          ? undefined
-          : `${first.prepared.kindMapping.id}@${first.prepared.kindMapping.version}`
-      const projectIdentity = `${loadedProject.document.value.id}@${loadedProject.document.value.version}`
-      const inputDigests = inputDigestsOf([
-        projectSource,
-        ...sources,
-        ...referencedSources.values(),
-      ])
+      const inputDigests = inputDigestsOf(exported.inputs)
       if (checkFreshness) {
         return checkGeneratedProject(cwd, outputDirectory!, {
-          modelSource: exported.source,
+          modelSource: exported.modelSource,
           inputDigests,
         })
       }
       return publishGeneratedProject(cwd, outputDirectory!, {
-        projectName: `yarramate-${projectIdentity}`.replaceAll(
-          /[^A-Za-z0-9_-]/g,
-          '-',
-        ),
-        title: loadedProject.document.value.title,
-        modelSource: exported.source,
-        ownership: {
-          format: 'yarramate/likec4-generated-project/v2',
-          project: projectIdentity,
-          mapping: mappingIdentity,
-          ...(kindMappingIdentity === undefined
-            ? {}
-            : { kindMapping: kindMappingIdentity }),
-          views: successfulViews.map(({ id, prepared, comparison }) => ({
-            ...(id === undefined ? {} : { id }),
-            projection: prepared.projection.projection,
-            ...(comparison === undefined
-              ? {}
-              : { comparison }),
-          })),
-        },
+        projectName: projectNameOf(exported.projectIdentity),
+        title: exported.project.title,
+        modelSource: exported.modelSource,
+        ownership: { ...ownershipOf(exported) },
         inputDigests,
       })
     }

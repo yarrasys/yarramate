@@ -1,5 +1,35 @@
 # Changelog
 
+## Unreleased
+
+### The engine's verbs as path-free functions: `yarramate/tools`, `yarramate/host`, and a socket host with options (#543)
+
+`yarramate/tools` is the engine's path-free entry (ADR 0156): `designStep`,
+`askOrientation`, `askSlice`, `askRoster`, `askKinds`, `askNext`, `askOpen`,
+`checkWorkspace`, `applyBatch`, `exportMarkdown`, `exportGraph`,
+`exportBriefs`, `exportRtm`, `exportLikeC4` and `exportWorkbook`, each over a
+`SourceStore` and a resolved workspace, importing no Node built-in, so a
+hosted workspace runs them inside a Durable Object. `resolveWorkspaceFrom`
+resolves a manifest over a store's file list with the same YM701/YM702/YM703
+the filesystem loader reports. The CLI commands `design`, `ask`, `check`,
+`export` and `apply` are thin over the same functions, and the stdio adapter
+publishes one shared tool table (`TOOL_CATALOGUE`, `runTool`,
+`STDIO_PROPERTIES`) and dispatches to it, so the CLI, `yarramate-mcp` and a
+hosted server have one semantics by construction. The slice document gains
+an additive `rendered` text; the CLI's `--json` output is unchanged.
+
+`yarramate/host` ships `createLocalHost` and the `EditorHost` seam without
+the editor bundle. `createSocketHost(options?)` takes its session route, its
+socket route (a string, a URL, or a function of the sequence to resume from),
+its retry delay and its reconnect window; with no argument it is what
+`yarramate-visual` mounts, byte for byte.
+
+The shipped question catalogue and the LikeC4 specification travel as
+generated text modules (`pnpm generate:assets`, guarded like the validators),
+and `sha256Hex` is a pure SHA-256 pinned to `node:crypto` by test, so a
+workbook's provenance and a generated LikeC4 project's marker carry the same
+digests from any entry.
+
 ## 1.30.1
 
 ### The connection dialog clears the toolbar, and the owner hint sits under its field (#540)

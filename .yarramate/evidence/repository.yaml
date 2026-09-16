@@ -1332,3 +1332,75 @@ observations:
     evidence:
       uri: repo:schema/yarramate-pattern.schema.json
       message: the yarramate/pattern/v1 shape is published here; the behavior that expands it is not yet modelled
+  - subject: tools-workspace-source
+    result: confirmed
+    evidence:
+      uri: repo:src/tools/workspace.ts
+  - subject: tools-design-source
+    result: confirmed
+    evidence:
+      uri: repo:src/tools/design.ts
+  - subject: tools-ask-source
+    result: confirmed
+    evidence:
+      uri: repo:src/tools/ask.ts
+  - subject: tools-check-source
+    result: confirmed
+    evidence:
+      uri: repo:src/tools/check.ts
+  - subject: tools-apply-source
+    result: confirmed
+    evidence:
+      uri: repo:src/tools/apply.ts
+  - subject: tools-export-source
+    result: confirmed
+    evidence:
+      uri: repo:src/tools/export.ts
+  - subject: tools-table-source
+    result: confirmed
+    evidence:
+      uri: repo:src/tools/table.ts
+  - subject: tools-entry-source
+    result: confirmed
+    evidence:
+      uri: repo:src/tools-entry.ts
+  - subject: digest-source
+    result: confirmed
+    evidence:
+      uri: repo:src/digest.ts
+  - subject: workspace-resolution-source
+    result: confirmed
+    evidence:
+      uri: repo:src/workspace-resolution.ts
+  - subject: shipped-catalogue-generated-source
+    result: confirmed
+    evidence:
+      uri: repo:src/shipped-catalogue.generated.ts
+  - subject: likec4-specification-generated-source
+    result: confirmed
+    evidence:
+      uri: repo:src/likec4-specification.generated.ts
+  - subject: likec4-project-export-source
+    result: confirmed
+    evidence:
+      uri: repo:src/adapters/likec4-project-export.ts
+  - subject: host-entry-source
+    result: confirmed
+    evidence:
+      uri: repo:src/host-entry.ts
+  - subject: host-local-host-source
+    result: confirmed
+    evidence:
+      uri: repo:src/host/local-host.ts
+  - subject: host-editor-host-source
+    result: confirmed
+    evidence:
+      uri: repo:src/host/editor-host.ts
+  - subject: tools-entry
+    result: confirmed
+    evidence:
+      uri: repo:src/tools-entry.ts
+  - subject: host-entry
+    result: confirmed
+    evidence:
+      uri: repo:src/host-entry.ts

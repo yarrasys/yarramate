@@ -28,10 +28,10 @@ import {
   type SubjectReferenceGroup,
 } from './subject-references.js'
 import type { ResolvedWorkspace } from './workspace.js'
-import {
-  type PendingWrite,
-  type SourceStore,
-  type WriteConflict,
+import type {
+  PendingWrite,
+  SourceStore,
+  WriteConflict,
 } from './source-store.js'
 
 /**

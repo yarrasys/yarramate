@@ -35,6 +35,18 @@ mount it. An asynchronous product fetches into a synchronous in-memory store
 and flushes writes itself, as [ADR 0100](adr/0100-sources-come-from-a-store-and-a-batch-lands-by-compare-and-swap.md)
 decides.
 
+Both hosts are published (ADR 0156). `yarramate/visual-app` exports
+`createSocketHost(options?)`: with no argument it is the host `yarramate-visual`
+mounts; with `session` and `socket` it is the same host over a server's own
+routes (a string or URL resolved against the page, or a function of the
+sequence to resume from), with `retryMs` and `reconnectWindowMs` for the
+reconnect loop. The protocol does not move: `VisualBrowserInput` out,
+`VisualServerFrame` in, the snapshot as the `ready` frame, `after` on
+reconnect. `yarramate/host` exports `createLocalHost` and the `EditorHost`
+seam without the editor bundle, so a server can run the host the browser
+runs over its own store and fan the frames to sockets; after an out-of-band
+write it calls `refresh` and every attached browser gets a `model` frame.
+
 [...]
 
 ## Editing is mechanical, and it lands through `apply`

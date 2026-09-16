@@ -838,6 +838,70 @@ concepts:
     kind: repository-file
     name: src/yaml-emission.ts
     status: current
+  - id: tools-workspace-source
+    kind: repository-file
+    name: src/tools/workspace.ts
+    status: current
+  - id: tools-design-source
+    kind: repository-file
+    name: src/tools/design.ts
+    status: current
+  - id: tools-ask-source
+    kind: repository-file
+    name: src/tools/ask.ts
+    status: current
+  - id: tools-check-source
+    kind: repository-file
+    name: src/tools/check.ts
+    status: current
+  - id: tools-apply-source
+    kind: repository-file
+    name: src/tools/apply.ts
+    status: current
+  - id: tools-export-source
+    kind: repository-file
+    name: src/tools/export.ts
+    status: current
+  - id: tools-table-source
+    kind: repository-file
+    name: src/tools/table.ts
+    status: current
+  - id: tools-entry-source
+    kind: repository-file
+    name: src/tools-entry.ts
+    status: current
+  - id: digest-source
+    kind: repository-file
+    name: src/digest.ts
+    status: current
+  - id: workspace-resolution-source
+    kind: repository-file
+    name: src/workspace-resolution.ts
+    status: current
+  - id: shipped-catalogue-generated-source
+    kind: repository-file
+    name: src/shipped-catalogue.generated.ts
+    status: current
+  - id: likec4-specification-generated-source
+    kind: repository-file
+    name: src/likec4-specification.generated.ts
+    status: current
+  - id: likec4-project-export-source
+    kind: repository-file
+    name: src/adapters/likec4-project-export.ts
+    status: current
+  - id: host-entry-source
+    kind: repository-file
+    name: src/host-entry.ts
+    status: current
+  - id: host-local-host-source
+    kind: repository-file
+    name: src/host/local-host.ts
+    status: current
+  - id: host-editor-host-source
+    kind: repository-file
+    name: src/host/editor-host.ts
+    status: current
 relationships:
   - id: backlog-disposition-qualifies-roadmap
     kind: association
@@ -1703,3 +1767,67 @@ relationships:
     kind: realization
     from: yaml-emission-source
     to: apply-command
+  - id: tools-workspace-realizes-tools-entry
+    kind: realization
+    from: tools-workspace-source
+    to: tools-entry
+  - id: tools-design-realizes-tools-entry
+    kind: realization
+    from: tools-design-source
+    to: tools-entry
+  - id: tools-ask-realizes-tools-entry
+    kind: realization
+    from: tools-ask-source
+    to: tools-entry
+  - id: tools-check-realizes-tools-entry
+    kind: realization
+    from: tools-check-source
+    to: tools-entry
+  - id: tools-apply-realizes-tools-entry
+    kind: realization
+    from: tools-apply-source
+    to: tools-entry
+  - id: tools-export-realizes-tools-entry
+    kind: realization
+    from: tools-export-source
+    to: tools-entry
+  - id: tools-table-realizes-tools-entry
+    kind: realization
+    from: tools-table-source
+    to: tools-entry
+  - id: tools-entry-realizes-tools-entry
+    kind: realization
+    from: tools-entry-source
+    to: tools-entry
+  - id: digest-realizes-tools-entry
+    kind: realization
+    from: digest-source
+    to: tools-entry
+  - id: workspace-resolution-realizes-workspace-loader
+    kind: realization
+    from: workspace-resolution-source
+    to: workspace-loader
+  - id: shipped-catalogue-generated-realizes-tools-entry
+    kind: realization
+    from: shipped-catalogue-generated-source
+    to: tools-entry
+  - id: likec4-specification-generated-realizes-assemble-likec4-project
+    kind: realization
+    from: likec4-specification-generated-source
+    to: assemble-likec4-project
+  - id: likec4-project-export-realizes-assemble-likec4-project
+    kind: realization
+    from: likec4-project-export-source
+    to: assemble-likec4-project
+  - id: host-entry-realizes-host-entry
+    kind: realization
+    from: host-entry-source
+    to: host-entry
+  - id: host-local-host-realizes-host-entry
+    kind: realization
+    from: host-local-host-source
+    to: host-entry
+  - id: host-editor-host-realizes-host-entry
+    kind: realization
+    from: host-editor-host-source
+    to: host-entry
