@@ -301,6 +301,80 @@ re-deriving the shape from its own catalogue copy. The field is required and
 the published report schema uses `additionalProperties: false`, so upgrade a
 separately pinned schema together with the package.
 
+## The verbs off Node: `yarramate/tools`
+
+Every verb the CLI runs is a function over a store and a resolved workspace
+(ADR 0156), importing no Node built-in, so a Worker or a Durable Object
+serves `design`, `ask`, `check`, `apply` and `export` without a filesystem
+and without the CLI:
+
+```ts
+import {
+  applyBatch,
+  askOrientation,
+  askSlice,
+  checkWorkspace,
+  designStep,
+  exportRtm,
+  resolveWorkspaceFrom,
+  runTool,
+  TOOL_CATALOGUE,
+  type ToolWorkspace,
+} from 'yarramate/tools'
+
+// The manifest over the store's file list: what the filesystem loader does
+// over a directory, with the same YM701/YM702/YM703 diagnostics.
+const resolved = resolveWorkspaceFrom(
+  { path: '.yarramate/workspace.yaml', source: store.read('.yarramate/workspace.yaml')!.source },
+  store.list(),
+)
+if (!resolved.ok) throw new Error(JSON.stringify(resolved.diagnostics))
+
+const workspace: ToolWorkspace = {
+  store,                          // list / read / writeAll (ADR 0100)
+  workspace: resolved.workspace,
+  manifestDirectory: '.yarramate', // where the manifest sits under the store root
+}
+
+const step = designStep(workspace)            // yarramate/design-step/v1
+const verdict = checkWorkspace(workspace)     // yarramate/check-result/v1, ok:false is an answer
+const landed = applyBatch(workspace, operationsYaml)  // one compare-and-swap batch
+const slice = askSlice(workspace, { text: 'billing' }, { budget: 800 })
+```
+
+Every function but `checkWorkspace` answers a `ToolResult<T>`: `ok` with the
+published document, or a refusal as `diagnostics` (the engine's, with
+locations) or `refused` (an argument, in one sentence). The exports answer
+text (`exportMarkdown`, `exportGraph`, `exportRtm`, `exportBriefs`), files
+(`exportLikeC4`, the four files a generated project holds) or bytes
+(`exportWorkbook`); nothing writes, and the caller decides where they go.
+
+Store paths are the strings `store.read` answers to. A store rooted at the
+repository holds `.yarramate/architecture/...` with `manifestDirectory:
+'.yarramate'`, which is how the CLI runs and how a record exported as a
+folder lays out; a store rooted at the `.yarramate` directory holds
+`architecture/...` with `manifestDirectory: ''`. `catalogue` replaces the
+shipped base catalogue, as `--catalogue` does; the catalogues the workspace
+lists under `questions:` are read from the store and composed on top, always.
+
+**The tool table is the package's.** `TOOL_CATALOGUE` holds the six MCP
+rows (name, description ending in the loop, input schema, `access`,
+`served`), and `runTool(name, input, workspace)` answers a call with exactly
+the text `yarramate-mcp` returns for it. A server that exposes the record
+over MCP publishes the rows and dispatches to `runTool`; `yarramate_reconcile`
+is `served: 'stdio-only'` (it reads a repository) and its row carries the one
+line to show instead. `STDIO_PROPERTIES` holds the two argument properties
+that exist only where a filesystem does (`workspace`, `out`); the stdio
+adapter spreads them in, a hosted server never sees them. The `kind: 'files'`
+outcome (xlsx, likec4) is for the caller to store behind an address; a stdio
+reply carries text and nothing else.
+
+`yarramate/tools` is pinned free of Node built-ins by the purity test, with
+the compiler allowed at runtime, since compiling is the point. The CLI
+commands are thin over the same functions, and `test/tools-entry.test.ts`
+compares every one with the CLI on this repository's own record, byte for
+byte.
+
 ### Mount the visual editor
 
 Mount the packaged editor when the consuming product owns the sources and
@@ -319,6 +393,19 @@ const editor = mountEditor(document.querySelector('#editor')!, {
 // Later, when the owning screen is removed:
 editor.unmount()
 ```
+
+A page whose engine runs on a server mounts over the socket host instead
+(ADR 0156): `createSocketHost({ session: 'session', socket: 'socket' })`
+fetches the snapshot from the first route, connects the second with
+`?after=<lastSequence>`, and hands both to `mountEditorWith`; with no
+options it is what `yarramate-visual` mounts. `retryMs` and
+`reconnectWindowMs` tune the reconnect loop (`Infinity` for a workspace that
+never hands off). The server side runs the same host the browser runs:
+`yarramate/host` exports `createLocalHost` and the `EditorHost` seam with no
+React behind them, so an object holding the store opens the host once, fans
+its frames to every attached socket, forwards each `VisualBrowserInput` to
+`send`, and calls `refresh` after a write that did not come through the
+editor.
 
 ### Reading a workspace's patterns
 
@@ -741,14 +828,19 @@ ids, or a projection path, with an optional token budget), `yarramate_design`
 lands, refused whole on any invalid operation), `yarramate_check`,
 `yarramate_reconcile`, and `yarramate_export` (markdown, rtm, graph and briefs
 come back as text; xlsx and likec4 write where `out` says). Every tool call
-executes the same stable CLI in the repository; `apply` is the only write, and
-it changes exactly what the CLI would (ADR 0149).
+runs the same path-free tool functions the CLI runs (`yarramate/tools`,
+ADR 0156) over a store rooted at the repository; `reconcile` alone still runs
+the CLI, because it reads the repository. `apply` is the only write, and it
+changes exactly what the CLI would (ADR 0149). The rows this server publishes
+are the package's `TOOL_CATALOGUE` with the two filesystem-only properties
+(`workspace`, `out`) spread in, so an agent connected to a hosted workspace
+reads the same names, schemas and sentences.
 
 `workspace` is optional on every tool. It defaults to the `--workspace` the
 server was started with, then to `.yarramate/workspace.yaml` under the working
 directory. A desktop app starts the server outside the repository, so give it
-`--workspace /full/path/to/.yarramate/workspace.yaml`; the CLI then runs at
-that repository's root, as a person would run it. Every tool description
+`--workspace /full/path/to/.yarramate/workspace.yaml`; the tools then run at
+that repository's root, as a person's CLI would. Every tool description
 carries the loop in two sentences, because a desktop-app agent has never read
 the skill file.
 

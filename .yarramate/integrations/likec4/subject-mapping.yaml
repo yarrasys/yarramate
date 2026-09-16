@@ -2595,3 +2595,150 @@ mappings:
   - native: schema-validators-operations-generated-source
     external: schemaValidatorsOperationsGeneratedSource
     type: concept
+  - native: tools-entry
+    external: toolsEntry
+    type: concept
+  - native: host-entry
+    external: hostEntry
+    type: concept
+  - native: tools-workspace-source
+    external: toolsWorkspaceSource
+    type: concept
+  - native: tools-workspace-realizes-tools-entry
+    external: toolsWorkspaceRealizesToolsEntry
+    type: relationship
+  - native: tools-design-source
+    external: toolsDesignSource
+    type: concept
+  - native: tools-design-realizes-tools-entry
+    external: toolsDesignRealizesToolsEntry
+    type: relationship
+  - native: tools-ask-source
+    external: toolsAskSource
+    type: concept
+  - native: tools-ask-realizes-tools-entry
+    external: toolsAskRealizesToolsEntry
+    type: relationship
+  - native: tools-check-source
+    external: toolsCheckSource
+    type: concept
+  - native: tools-check-realizes-tools-entry
+    external: toolsCheckRealizesToolsEntry
+    type: relationship
+  - native: tools-apply-source
+    external: toolsApplySource
+    type: concept
+  - native: tools-apply-realizes-tools-entry
+    external: toolsApplyRealizesToolsEntry
+    type: relationship
+  - native: tools-export-source
+    external: toolsExportSource
+    type: concept
+  - native: tools-export-realizes-tools-entry
+    external: toolsExportRealizesToolsEntry
+    type: relationship
+  - native: tools-table-source
+    external: toolsTableSource
+    type: concept
+  - native: tools-table-realizes-tools-entry
+    external: toolsTableRealizesToolsEntry
+    type: relationship
+  - native: tools-entry-source
+    external: toolsEntrySource
+    type: concept
+  - native: tools-entry-realizes-tools-entry
+    external: toolsEntryRealizesToolsEntry
+    type: relationship
+  - native: digest-source
+    external: digestSource
+    type: concept
+  - native: digest-realizes-tools-entry
+    external: digestRealizesToolsEntry
+    type: relationship
+  - native: workspace-resolution-source
+    external: workspaceResolutionSource
+    type: concept
+  - native: workspace-resolution-realizes-workspace-loader
+    external: workspaceResolutionRealizesWorkspaceLoader
+    type: relationship
+  - native: shipped-catalogue-generated-source
+    external: shippedCatalogueGeneratedSource
+    type: concept
+  - native: shipped-catalogue-generated-realizes-tools-entry
+    external: shippedCatalogueGeneratedRealizesToolsEntry
+    type: relationship
+  - native: likec4-specification-generated-source
+    external: likec4SpecificationGeneratedSource
+    type: concept
+  - native: likec4-specification-generated-realizes-assemble-likec4-project
+    external: likec4SpecificationGeneratedRealizesAssembleLikec4Project
+    type: relationship
+  - native: likec4-project-export-source
+    external: likec4ProjectExportSource
+    type: concept
+  - native: likec4-project-export-realizes-assemble-likec4-project
+    external: likec4ProjectExportRealizesAssembleLikec4Project
+    type: relationship
+  - native: host-entry-source
+    external: hostEntrySource
+    type: concept
+  - native: host-entry-realizes-host-entry
+    external: hostEntryRealizesHostEntry
+    type: relationship
+  - native: host-local-host-source
+    external: hostLocalHostSource
+    type: concept
+  - native: host-local-host-realizes-host-entry
+    external: hostLocalHostRealizesHostEntry
+    type: relationship
+  - native: host-editor-host-source
+    external: hostEditorHostSource
+    type: concept
+  - native: host-editor-host-realizes-host-entry
+    external: hostEditorHostRealizesHostEntry
+    type: relationship
+  - native: tools-entry-realizes-design-command
+    external: toolsEntryRealizesDesignCommand
+    type: relationship
+  - native: tools-entry-realizes-ask-command
+    external: toolsEntryRealizesAskCommand
+    type: relationship
+  - native: tools-entry-realizes-check-command
+    external: toolsEntryRealizesCheckCommand
+    type: relationship
+  - native: tools-entry-realizes-apply-command
+    external: toolsEntryRealizesApplyCommand
+    type: relationship
+  - native: tools-entry-realizes-export-command
+    external: toolsEntryRealizesExportCommand
+    type: relationship
+  - native: tools-entry-composes-subject-brief
+    external: toolsEntryComposesSubjectBrief
+    type: relationship
+  - native: tools-entry-composes-question-catalogues
+    external: toolsEntryComposesQuestionCatalogues
+    type: relationship
+  - native: tools-entry-derives-architecture-workbook
+    external: toolsEntryDerivesArchitectureWorkbook
+    type: relationship
+  - native: tools-entry-assembles-likec4-project
+    external: toolsEntryAssemblesLikec4Project
+    type: relationship
+  - native: tools-entry-serves-mcp-adapter
+    external: toolsEntryServesMcpAdapter
+    type: relationship
+  - native: tools-entry-serves-cli
+    external: toolsEntryServesCli
+    type: relationship
+  - native: host-entry-renders-visual-model
+    external: hostEntryRendersVisualModel
+    type: relationship
+  - native: host-entry-commits-visual-changeset
+    external: hostEntryCommitsVisualChangeset
+    type: relationship
+  - native: host-entry-saves-visual-layout
+    external: hostEntrySavesVisualLayout
+    type: relationship
+  - native: host-entry-serves-visual-browser
+    external: hostEntryServesVisualBrowser
+    type: relationship

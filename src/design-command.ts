@@ -1,6 +1,5 @@
 import { readFileSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { resolve } from 'node:path'
 import { parseDocument } from 'yaml'
 import {
   diagnosticJson,
@@ -8,129 +7,16 @@ import {
   usage,
   type CliResult,
 } from './cli-support.js'
-import {
-  compileWorkspaceWithProfileContext,
-  type Diagnostic,
-} from './compiler.js'
-import { loadEvidence, type EvidenceObservation } from './evidence.js'
-import {
-  composeCatalogues,
-  evaluateCatalogue,
-  renderQuestion,
-  type CatalogueCondition,
-  type InterrogationReport,
-} from './interrogate-command.js'
-import { evaluateProjection } from './projection.js'
-import { renderBrief } from './brief.js'
+import { createFileSystemStore } from './source-store.js'
+import { posixDirectoryOf } from './apply-command.js'
 import { loadWorkspaceManifest } from './workspace.js'
+import { designStepDetailed, type DesignStep } from './tools/design.js'
+import type { ToolWorkspace } from './tools/workspace.js'
 
-// The catalogue is internal to design: it ships inside the package,
-// versioned with it, and harnesses never pass catalogue paths. The
-// relative hop works from both src/ (dev) and dist/ (shipped).
-const here = dirname(fileURLToPath(import.meta.url))
-const shippedCataloguePath = join(
-  here,
-  '..',
-  'catalogues',
-  'core-enrichment.yaml',
-)
-
-interface DesignStep {
-  readonly questionId: string
-  readonly wave: string
-  readonly scope: 'workspace' | 'subject'
-  readonly authority: 'human' | 'agent' | 'either'
-  readonly question: string
-  readonly askPlain?: string
-  readonly materiality: string
-  readonly resolution: string
-  /** The catalogue trigger, verbatim: the question's answer shape (#289). */
-  readonly trigger: readonly CatalogueCondition[]
-  readonly subject?: { readonly id: string; readonly name?: string }
-  readonly remainingSubjects?: number
-  readonly openSubjects?: readonly string[]
-  readonly since?: string
-}
-
-interface DesignStepResult {
-  readonly format: 'yarramate/design-step/v1'
-  readonly workspace: string
-  readonly catalogue: string
-  readonly progress: {
-    readonly questions: number
-    readonly openQuestions: number
-    readonly open: number
-    readonly waves: readonly { readonly id: string; readonly open: number }[]
-  }
-  readonly step: DesignStep | null
-  readonly slice?: string
-}
-
-// The top step is the first open question in wave order, then catalogue
-// order within the wave; a subject-scoped question serves its first open
-// subject and reports how many more share it. One question at a time is
-// the discipline; everything else is a read (ask --open).
-const selectStep = (
-  report: Omit<InterrogationReport, 'workspace'>,
-  subjectFilter: string | undefined,
-  askPlainById: ReadonlyMap<string, string>,
-): DesignStep | null => {
-  for (const wave of report.waves) {
-    for (const question of wave.questions) {
-      if (!question.open) continue
-      const askPlainTemplate = askPlainById.get(question.id)
-      if (question.subjects === undefined) {
-        if (subjectFilter !== undefined) continue
-        return {
-          questionId: question.id,
-          wave: wave.id,
-          scope: 'workspace',
-          authority: question.authority,
-          question: question.question,
-          ...(askPlainTemplate === undefined
-            ? {}
-            : { askPlain: askPlainTemplate.trim() }),
-          materiality: question.materiality,
-          resolution: question.resolution,
-          trigger: question.trigger,
-          ...(question.since === undefined ? {} : { since: question.since }),
-        }
-      }
-      const subjects =
-        subjectFilter === undefined
-          ? question.subjects
-          : question.subjects.filter(({ id }) => id === subjectFilter)
-      const first = subjects[0]
-      if (first === undefined) continue
-      return {
-        questionId: question.id,
-        wave: wave.id,
-        scope: 'subject',
-        authority: question.authority,
-        question: first.question,
-        ...(askPlainTemplate === undefined
-          ? {}
-          : { askPlain: renderQuestion(askPlainTemplate, first.id, first.name) }),
-        materiality: question.materiality,
-        resolution: question.resolution,
-        trigger: question.trigger,
-        ...(question.since === undefined ? {} : { since: question.since }),
-        subject: {
-          id: first.id,
-          ...(first.name === undefined ? {} : { name: first.name }),
-        },
-        ...(subjects.length > 1
-          ? { remainingSubjects: subjects.length - 1 }
-          : {}),
-        // The full roster sharing this question (#116): when one policy
-        // answer covers many subjects, the harness can collect it once
-        // and land one apply batch instead of interviewing N times.
-        openSubjects: subjects.map(({ id }) => id),
-      }
-    }
-  }
-  return null
-}
+// The interview itself lives in `tools/design.ts` (ADR 0156): this command
+// parses arguments, resolves the manifest against the filesystem, hands the
+// same store-backed core the hosted server calls, and renders the human
+// form. The JSON form is the core's result, printed.
 
 const localKind = (qualified: string): string => {
   const hash = qualified.lastIndexOf('#')
@@ -306,152 +192,54 @@ export function runDesignCommand(
           'design requires an explicit workspace manifest (yarramate/workspace/v1)\n',
       }
     }
-    const failed = (diagnostics: readonly Diagnostic[]): CliResult => ({
-      exitCode: 1,
-      stdout: json
-        ? diagnosticJson(diagnostics)
-        : humanDiagnostics(diagnostics),
-      stderr: '',
-    })
     const loadedWorkspace = loadWorkspaceManifest(
       { path: workspacePath, source: manifestSource },
       cwd,
     )
-    if (!loadedWorkspace.ok) return failed(loadedWorkspace.diagnostics)
-    const workspace = loadedWorkspace.workspace
-
-    const resolvedCataloguePath =
-      cataloguePath === undefined
-        ? shippedCataloguePath
-        : resolve(cwd, cataloguePath)
-    // Compiled BEFORE the catalogue loads, so the catalogue can be checked
-    // against the vocabulary its kinds are written against (#351). A
-    // catalogue naming a kind its own profile does not have loads clean
-    // otherwise, and the question it names is dead on arrival.
-    const compilation = compileWorkspaceWithProfileContext(
-      [
-        ...workspace.profiles,
-        ...workspace.patterns,
-        ...workspace.documents,
-      ].map((path) => ({
-        path,
-        source: readFileSync(resolve(cwd, path), 'utf8'),
-      })),
-    )
-    if (!compilation.ok) return failed(compilation.diagnostics)
-
-    // The base, then whatever the workspace carries (#345, ADR 0129). The
-    // base is REPLACED by `--catalogue` and ADDED TO by `questions:`, which is
-    // what lets a consultant author a question mid-engagement with no product
-    // release while a host still controls the catalogue that is not in the
-    // workspace.
-    const composed = composeCatalogues(
-      [
-        {
-          path: cataloguePath ?? resolvedCataloguePath,
-          source: readFileSync(resolvedCataloguePath, 'utf8'),
-        },
-        ...(workspace.questions ?? []).map((path) => ({
-          path,
-          source: readFileSync(resolve(cwd, path), 'utf8'),
-        })),
-      ],
-      compilation.profileContext,
-    )
-    if (!composed.ok) return failed(composed.diagnostics)
-
-    // The evidence overlay rides along for the one condition that reads
-    // it (unchallenged-evidence). A workspace declaring no evidence
-    // passes an empty overlay — known to be empty, which keeps that
-    // condition quiet — rather than an absent one.
-    const evidenceObservations: EvidenceObservation[] = []
-    for (const path of workspace.evidence) {
-      const loadedEvidence = loadEvidence({
-        path,
-        source: readFileSync(resolve(cwd, path), 'utf8'),
-      })
-      if (!loadedEvidence.ok) return failed(loadedEvidence.diagnostics)
-      evidenceObservations.push(...loadedEvidence.evidence.observations)
-    }
-
-    if (subjectFilter !== undefined) {
-      const known = new Set(compilation.graph.subjects.map(({ id }) => id))
-      if (!known.has(subjectFilter)) {
-        return {
-          exitCode: 1,
-          stdout: '',
-          stderr: `Unknown subject identity: ${subjectFilter} (the compiled workspace declares ${known.size} subjects)\n`,
-        }
+    if (!loadedWorkspace.ok) {
+      return {
+        exitCode: 1,
+        stdout: json
+          ? diagnosticJson(loadedWorkspace.diagnostics)
+          : humanDiagnostics(loadedWorkspace.diagnostics),
+        stderr: '',
       }
     }
+    const workspace = loadedWorkspace.workspace
 
-    const report = evaluateCatalogue(
-      composed.composed.catalogue,
-      compilation.graph,
-      compilation.profileContext,
-      evidenceObservations,
-      composed.composed.catalogues,
-      compilation.patternMemberships,
-      compilation.patternVacancies,
-    )
-    // Keyed by the QUALIFIED id, matching what the report now carries.
-    const askPlainById = new Map(
-      composed.composed.catalogue.questions.flatMap((question) =>
-        question.askPlain === undefined
-          ? []
-          : [[question.id, question.askPlain] as const],
-      ),
-    )
-    const step = selectStep(report, subjectFilter, askPlainById)
-
-    let slice: string | undefined
-    if (step?.subject !== undefined) {
-      const projection = evaluateProjection(
-        compilation.graph,
-        {
-          format: 'yarramate/projection/v1',
-          id: 'design-step',
-          version: '0.0',
-          query: {
-            subjects: [step.subject.id],
-            relationships: 'connected',
-          },
-          presentation: {
-            title: step.subject.name ?? step.subject.id,
-            description: `The neighbourhood of ${step.subject.id} as declared today.`,
-          },
-        },
-        compilation.profileContext,
-      )
-      slice = renderBrief(
-        projection,
-        compilation.profileContext,
-        undefined,
-        compilation.graph.claims,
-      )
+    // The base is REPLACED by `--catalogue` and ADDED TO by `questions:`
+    // (#345, ADR 0129); the core composes the two.
+    const tool: ToolWorkspace = {
+      store: createFileSystemStore(cwd),
+      workspace,
+      manifestDirectory: posixDirectoryOf(workspacePath),
+      ...(cataloguePath === undefined
+        ? {}
+        : {
+            catalogue: {
+              path: cataloguePath,
+              source: readFileSync(resolve(cwd, cataloguePath), 'utf8'),
+            },
+          }),
     }
-
-    const result: DesignStepResult = {
-      format: 'yarramate/design-step/v1',
-      workspace: workspace.id,
-      catalogue: report.catalogue,
-      progress: {
-        questions: report.summary.questions,
-        openQuestions: report.summary.openQuestions,
-        open: report.summary.open,
-        waves: report.waves.map((wave) => ({
-          id: wave.id,
-          open: wave.questions.reduce(
-            (total, question) =>
-              total +
-              (question.open ? (question.subjects?.length ?? 1) : 0),
-            0,
-          ),
-        })),
-      },
-      step,
-      ...(slice === undefined ? {} : { slice }),
+    const stepped = designStepDetailed(
+      tool,
+      subjectFilter === undefined ? {} : { subject: subjectFilter },
+    )
+    if (!stepped.ok) {
+      if (stepped.reason === 'refused') {
+        return { exitCode: 1, stdout: '', stderr: `${stepped.message}\n` }
+      }
+      return {
+        exitCode: 1,
+        stdout: json
+          ? diagnosticJson(stepped.diagnostics)
+          : humanDiagnostics(stepped.diagnostics),
+        stderr: '',
+      }
     }
+    const { result, report } = stepped.result
+    const { step, slice } = result
 
     if (json) {
       return {

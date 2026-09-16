@@ -326,4 +326,7 @@ export type {
   RefreshOutcome,
 } from './local-host.js'
 export { createLocalHost } from './local-host.js'
+// The published socket host, parameterised (ADR 0156): a page that mounts
+// over its own server's routes keeps the protocol and changes the URLs.
+export { createSocketHost, type SocketHostOptions } from './socket-host.js'
 export { RIGHT_SECTIONS, type RightSectionId } from './workspace-state.js'

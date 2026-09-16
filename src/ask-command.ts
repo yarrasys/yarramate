@@ -1,330 +1,67 @@
 import { existsSync, readFileSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { resolve } from 'node:path'
 import { parseDocument } from 'yaml'
-import {
-  compareArchitectureStates,
-  type StateComparison,
-} from './architecture-state.js'
-import { coreLocalKind, renderBrief } from './brief.js'
+import { compareArchitectureStates } from './architecture-state.js'
+import { renderBrief } from './brief.js'
 import { deriveChangedSubjects } from './changed.js'
-import { runCheckCommand } from './check-command.js'
 import {
   diagnosticJson,
   humanDiagnostics,
   usage,
   type CliResult,
 } from './cli-support.js'
-import {
-  compileWorkspaceWithProfileContext,
-  type Diagnostic,
-  type GraphClaim,
-  type SemanticGraph,
-} from './compiler.js'
-import {
-  evaluateEvidenceWorkspace,
-  loadEvidence,
-  type EvidenceDocument,
-  type EvidenceObservation,
-  type EvidenceResult,
-} from './evidence.js'
-import { catalogueSources } from './catalogue-sources.js'
+import type { Diagnostic } from './compiler.js'
+import { evaluateEvidenceWorkspace, type EvidenceObservation } from './evidence.js'
 import {
   evaluateCatalogue,
-  composeCatalogues,
   renderInterrogationReport,
-  type InterrogationReport,
 } from './interrogate-command.js'
-import {
-  buildNextSubjects,
-  coverageClause,
-  type NextSubject,
-} from './next-command.js'
-import {
-  conceptKinds,
-  relationshipPolicies,
-  type ConceptKind,
-} from './profile.js'
+import { coverageClause, type NextSubject } from './next-command.js'
+import { conceptKinds, relationshipPolicies } from './profile.js'
 import {
   ARCHIMATE_RELATIONSHIPS_VERSION,
   CORE_CONCEPT_KIND_ORDER,
-  PERMITTED_RELATIONSHIP_LETTERS,
-  RELATIONSHIP_LETTERS,
 } from './archimate-relationships.generated.js'
 import { matrixEndpointAspects } from './relationship-matrix.js'
-import {
-  evaluateProjection,
-  loadProjection,
-  renderBudgetedContext,
-  type ProjectionResult,
-} from './projection.js'
+import { evaluateProjection, loadProjection } from './projection.js'
 import {
   reconcileEvidenceReports,
   type ReconciliationFinding,
   type ReconciliationReport,
 } from './reconciliation.js'
+import { createFileSystemStore } from './source-store.js'
+import { posixDirectoryOf } from './apply-command.js'
 import { loadWorkspaceManifest } from './workspace.js'
+import {
+  askKinds,
+  askNext,
+  askOpen,
+  askOrientationDetailed,
+  askRosterDetailed,
+  askSlice,
+  conceptEntries,
+  defaultNeighbourCap,
+  renderSlice,
+  resolveSeeds,
+  sliceProjection,
+  type AskResult,
+  type NeighbourhoodOmission,
+  type OpenQuestionRef,
+} from './tools/ask.js'
+import {
+  compileOf,
+  composedCatalogueOf,
+  evidenceDocumentsOf,
+  readSource,
+  type ToolFailure,
+  type ToolWorkspace,
+} from './tools/workspace.js'
 
-// The same internal catalogue design interviews from: ask reads what
-// design asks, so both must see identical open questions.
-const here = dirname(fileURLToPath(import.meta.url))
-const shippedCataloguePath = join(
-  here,
-  '..',
-  'catalogues',
-  'core-enrichment.yaml',
-)
-
-interface ConceptEntry {
-  readonly id: string
-  readonly kind: string
-  readonly name?: string
-  readonly status?: string
-  readonly description?: string
-  readonly aka?: readonly string[]
-}
-
-interface OpenQuestionRef {
-  readonly wave: string
-  readonly id: string
-  readonly authority: 'human' | 'agent' | 'either'
-  readonly question: string
-  readonly materiality: string
-  readonly subject?: string
-}
-
-interface AskResultBase {
-  readonly format: 'yarramate/ask-result/v1'
-  readonly workspace: string
-}
-
-type AskResult = AskResultBase &
-  (
-    | {
-        readonly mode: 'orientation'
-        readonly ok: boolean
-        readonly check: {
-          readonly ok: boolean
-          readonly diagnostics: readonly Diagnostic[]
-          readonly counted?: {
-            readonly documents: number
-            readonly concepts: number
-            readonly relationships: number
-            readonly states: number
-          }
-        }
-        readonly reconciliation?: ReconciliationReport['summary']
-        readonly design?: { readonly catalogue: string; readonly open: number }
-        readonly backlog: {
-          readonly planned: readonly NextSubject[]
-          readonly current: readonly ConceptEntry[]
-          readonly retired: readonly ConceptEntry[]
-        }
-      }
-    | {
-        readonly mode: 'roster'
-        readonly total: number
-        readonly subjects: readonly ConceptEntry[]
-      }
-    | {
-        readonly mode: 'slice'
-        readonly addressing: 'free-text' | 'subjects' | 'projection' | 'changed'
-        readonly topic?: string
-        readonly seeds?: readonly string[]
-        readonly matched?: number
-        readonly changed?: {
-          readonly range: string
-          readonly concepts: readonly string[]
-          readonly relationships: readonly string[]
-        }
-        readonly coverage?: {
-          readonly projections: number
-          readonly uncovered: readonly string[]
-        }
-        readonly neighbourhood?: NeighbourhoodOmission
-        readonly result: ProjectionResult
-      }
-    | {
-        readonly mode: 'advice'
-        readonly topic: string
-        readonly seeds: readonly string[]
-        readonly matched: number
-        readonly slice: string
-        readonly neighbourhood?: NeighbourhoodOmission
-        readonly openQuestions: readonly OpenQuestionRef[]
-        readonly reconciliation?: {
-          readonly summary: ReconciliationReport['summary']
-          readonly findings: readonly ReconciliationFinding[]
-        }
-      }
-    | {
-        readonly mode: 'where'
-        readonly addressing: 'free-text' | 'subjects'
-        readonly topic: string
-        readonly seeds: readonly string[]
-        readonly matched: number
-        readonly located: readonly {
-          readonly subject: string
-          readonly observations: readonly {
-            readonly uri: string
-            readonly result: EvidenceResult
-            readonly provider: string
-            readonly message?: string
-          }[]
-        }[]
-        readonly coverage: {
-          readonly unobserved: readonly string[]
-          readonly note: string
-        }
-      }
-    | { readonly mode: 'next'; readonly subjects: readonly NextSubject[] }
-    | { readonly mode: 'open'; readonly report: InterrogationReport }
-    | { readonly mode: 'compare'; readonly comparison: StateComparison }
-    | {
-        readonly mode: 'kinds'
-        readonly conceptKinds: readonly ConceptKind[]
-        readonly relationshipKinds: readonly RelationshipKindSummary[]
-        readonly relationshipMatrix: RelationshipMatrixSummary
-        readonly extensions: readonly {
-          readonly id: string
-          readonly type: 'concept' | 'relationship'
-          readonly lineage: readonly string[]
-        }[]
-      }
-  )
-
-/**
- * One relationship kind as `--kinds` reports it. The aspect lists are the
- * shadow the ArchiMate table casts on the aspect axis - a necessary
- * condition, never the rule; the rule is `relationshipMatrix`.
- */
-interface RelationshipKindSummary {
-  readonly id: string
-  readonly intent: string
-  readonly sourceAspects: readonly string[]
-  readonly targetAspects: readonly string[]
-}
-
-/** The vendored table itself, packed exactly as the generated module holds it (ADR 0097). */
-interface RelationshipMatrixSummary {
-  readonly standard: string
-  readonly letters: Readonly<Record<string, string>>
-  readonly kinds: readonly string[]
-  readonly rows: Readonly<Record<string, string>>
-}
-
-const claimValue = (
-  claims: readonly GraphClaim[],
-  subject: string,
-  predicate: string,
-): string | undefined => {
-  const object = claims.find(
-    (claim) => claim.subject === subject && claim.predicate === predicate,
-  )?.object
-  return object !== undefined && 'value' in object ? object.value : undefined
-}
-
-// The roster index: every model concept (never the planning states) with
-// the fields free-text seeding matches against.
-const conceptEntries = (graph: SemanticGraph): readonly ConceptEntry[] => {
-  const stateIds = new Set(
-    graph.claims
-      .filter(({ predicate }) => predicate === 'yarramate/state/type')
-      .map(({ subject }) => subject),
-  )
-  return graph.subjects
-    .filter(({ id, type }) => type === 'concept' && !stateIds.has(id))
-    .map(({ id }) => {
-      const name = claimValue(graph.claims, id, 'yarramate/concept/name')
-      const status = claimValue(
-        graph.claims,
-        id,
-        'yarramate/lifecycle/status',
-      )
-      const description = claimValue(
-        graph.claims,
-        id,
-        'yarramate/concept/description',
-      )
-      // Alternative labels (ADR 0076) are matchable, not renderable: they
-      // widen what free-text seeding finds without changing the name any
-      // renderer prints.
-      const aka = graph.claims
-        .filter(
-          (claim) =>
-            claim.subject === id &&
-            claim.predicate === 'yarramate/concept/alias' &&
-            'value' in claim.object,
-        )
-        .map((claim) => ('value' in claim.object ? claim.object.value : ''))
-      return {
-        id,
-        kind:
-          claimValue(graph.claims, id, 'yarramate/concept/kind') ?? 'unknown',
-        ...(name === undefined ? {} : { name }),
-        ...(status === undefined ? {} : { status }),
-        ...(description === undefined ? {} : { description }),
-        ...(aka.length === 0 ? {} : { aka }),
-      }
-    })
-    .sort((left, right) => left.id.localeCompare(right.id))
-}
-
-const seedLimit = 5
-
-interface SeedResolution {
-  readonly addressing: 'free-text' | 'subjects'
-  readonly seeds: readonly string[]
-  readonly matched: number
-}
-
-// Free text is the default addressing mode: terms match concept ids,
-// names, alternative labels, and descriptions; matching concepts seed the
-// slice. Exact subject ids short-circuit to precise addressing: the
-// seeding finds what an explicit --subject flag would have named.
-//
-// Aliases join the same flat haystack the id, name, and description
-// already share, so they score at equal weight (ADR 0076). Weighting only
-// aliases would be the one graded field in an otherwise ungraded match,
-// and the whole point of recording the team's actual word for a subject is
-// that it should find it.
-const resolveSeeds = (
-  terms: readonly string[],
-  entries: readonly ConceptEntry[],
-): SeedResolution => {
-  const known = new Set(entries.map(({ id }) => id))
-  const unique = [...new Set(terms)]
-  if (unique.every((term) => known.has(term))) {
-    return { addressing: 'subjects', seeds: unique, matched: unique.length }
-  }
-  const lowered = [
-    ...new Set(
-      terms
-        .flatMap((term) => term.split(/\s+/))
-        .filter((term) => term.length > 0)
-        .map((term) => term.toLowerCase()),
-    ),
-  ]
-  const scored = entries
-    .map((entry) => {
-      const text =
-        `${entry.id} ${entry.name ?? ''} ${(entry.aka ?? []).join(' ')} ${entry.description ?? ''}`.toLowerCase()
-      return {
-        id: entry.id,
-        score: lowered.filter((term) => text.includes(term)).length,
-      }
-    })
-    .filter(({ score }) => score > 0)
-    .sort(
-      (left, right) =>
-        right.score - left.score || left.id.localeCompare(right.id),
-    )
-  return {
-    addressing: 'free-text',
-    seeds: scored.slice(0, seedLimit).map(({ id }) => id),
-    matched: scored.length,
-  }
-}
+// The modes live in `tools/ask.ts` (ADR 0156): this command parses
+// arguments, resolves the manifest against the filesystem, runs the same
+// store-backed cores the hosted server runs, and renders the human forms.
+// The git-derived review slice, `--advise`, `--where` and `--compare` are
+// the CLI's own and compose the same helpers.
 
 const plural = (count: number, singular: string) =>
   `${count} ${count === 1 ? singular : `${singular}s`}`
@@ -359,166 +96,6 @@ const plannedLines = (subjects: readonly NextSubject[]): readonly string[] => {
   })
 }
 
-// On a dense graph, hub seeds make 1-hop connected expansion reach most
-// of the model (a focused ask on a 248-concept model reached 243). The
-// cap keeps each seed's most material neighbours and announces the rest
-// (ADR 0070); --neighbours overrides it, 0 lifts it.
-const defaultNeighbourCap = 12
-
-interface NeighbourhoodOmission {
-  readonly cap: number
-  readonly kept: number
-  readonly omitted: number
-  readonly omittedBySeed: readonly {
-    readonly seed: string
-    readonly omitted: number
-  }[]
-}
-
-interface SliceEvaluation {
-  readonly result: ProjectionResult
-  readonly neighbourhood?: NeighbourhoodOmission
-}
-
-const motivationKindIds = new Set(
-  conceptKinds
-    .filter(({ layer }) => layer === 'motivation')
-    .map(({ id }) => id),
-)
-
-// Neighbours rank by the same reading the brief ranks paragraphs with
-// under a budget (ADR 0042/0055): motivation first, then planned,
-// current, retired. Ties break on seed affinity (a neighbour touching
-// more seeds is more material to the slice), then id — deterministic.
-const materialityRank = (
-  graph: SemanticGraph,
-  profileContext: Parameters<typeof evaluateProjection>[2],
-  id: string,
-): number => {
-  const kind = claimValue(graph.claims, id, 'yarramate/concept/kind')
-  const core =
-    kind === undefined
-      ? undefined
-      : coreLocalKind(kind, profileContext?.conceptKindLineages)
-  if (core !== undefined && motivationKindIds.has(core)) return 0
-  const status = claimValue(graph.claims, id, 'yarramate/lifecycle/status')
-  return status === 'planned' ? 1 : status === 'retired' ? 3 : 2
-}
-
-// The one-hop connected neighbourhood every slice and advice mode uses:
-// the same machinery context --subject exposed, now seeded by matching.
-// The capped result is always a subset of the uncapped one — the cap
-// drops neighbours and their edges, never seeds, and never adds edges
-// the connected expansion would not have selected.
-const sliceProjection = (
-  graph: SemanticGraph,
-  seeds: readonly string[],
-  title: string,
-  profileContext: Parameters<typeof evaluateProjection>[2],
-  neighbourCap: number,
-): SliceEvaluation => {
-  const full = evaluateProjection(
-    graph,
-    {
-      format: 'yarramate/projection/v1',
-      id: 'ask-slice',
-      version: '0.0',
-      query: { subjects: [...seeds], relationships: 'connected' },
-      presentation: {
-        title,
-        description: `Connected neighbourhood of ${seeds.join(', ')}`,
-      },
-    },
-    profileContext,
-  )
-  if (neighbourCap === 0) return { result: full }
-
-  const seedSet = new Set(seeds)
-  const relationshipIds = new Set(
-    full.subjects
-      .filter(({ type }) => type === 'relationship')
-      .map(({ id }) => id),
-  )
-  const endpointsById = new Map<string, readonly [string, string]>()
-  for (const claim of full.claims) {
-    if (relationshipIds.has(claim.id) && 'ref' in claim.object) {
-      endpointsById.set(claim.id, [claim.subject, claim.object.ref])
-    }
-  }
-  const neighboursOf = new Map<string, string[]>(
-    seeds.map((seed) => [seed, []]),
-  )
-  const affinity = new Map<string, number>()
-  for (const [from, to] of endpointsById.values()) {
-    for (const [seed, neighbour] of [
-      [from, to],
-      [to, from],
-    ] as const) {
-      if (!seedSet.has(seed) || seedSet.has(neighbour)) continue
-      const list = neighboursOf.get(seed)
-      if (list !== undefined && !list.includes(neighbour)) {
-        list.push(neighbour)
-        affinity.set(neighbour, (affinity.get(neighbour) ?? 0) + 1)
-      }
-    }
-  }
-
-  const keptNeighbours = new Set<string>()
-  for (const list of neighboursOf.values()) {
-    const ordered = [...list].sort(
-      (left, right) =>
-        materialityRank(graph, profileContext, left) -
-          materialityRank(graph, profileContext, right) ||
-        (affinity.get(right) ?? 0) - (affinity.get(left) ?? 0) ||
-        left.localeCompare(right),
-    )
-    for (const neighbour of ordered.slice(0, neighbourCap)) {
-      keptNeighbours.add(neighbour)
-    }
-  }
-  const allNeighbours = new Set([...neighboursOf.values()].flat())
-  const omitted = allNeighbours.size - keptNeighbours.size
-  if (omitted === 0) return { result: full }
-
-  const keptConcepts = new Set([...seedSet, ...keptNeighbours])
-  const keptRelationships = new Set(
-    [...endpointsById]
-      .filter(
-        ([, [from, to]]) => keptConcepts.has(from) && keptConcepts.has(to),
-      )
-      .map(([id]) => id),
-  )
-  const keptSubjects = new Set([...keptConcepts, ...keptRelationships])
-  const keptDocuments = new Set(
-    [...keptConcepts].map((id) => id.slice(0, id.indexOf('#'))),
-  )
-  const result: ProjectionResult = {
-    ...full,
-    documents: full.documents.filter(({ id }) => keptDocuments.has(id)),
-    subjects: full.subjects.filter(({ id }) => keptSubjects.has(id)),
-    claims: full.claims.filter(
-      (claim) =>
-        (keptConcepts.has(claim.subject) && !relationshipIds.has(claim.id)) ||
-        keptRelationships.has(claim.subject) ||
-        keptRelationships.has(claim.id),
-    ),
-  }
-  return {
-    result,
-    neighbourhood: {
-      cap: neighbourCap,
-      kept: keptNeighbours.size,
-      omitted,
-      omittedBySeed: seeds.flatMap((seed) => {
-        const dropped = (neighboursOf.get(seed) ?? []).filter(
-          (neighbour) => !keptNeighbours.has(neighbour),
-        ).length
-        return dropped > 0 ? [{ seed, omitted: dropped }] : []
-      }),
-    },
-  }
-}
-
 // The honesty line, in the budgeted-ladder voice (ADR 0042): what was
 // dropped is named, and so is the way to widen.
 const neighbourhoodLine = (
@@ -527,6 +104,17 @@ const neighbourhoodLine = (
   `[neighbours ${neighbourhood.cap}: ${neighbourhood.omitted} of ` +
   `${neighbourhood.kept + neighbourhood.omitted} neighbours omitted — ` +
   `raise --neighbours or pass --neighbours 0 for the full neighbourhood]`
+
+/**
+ * The JSON the CLI prints is the published document without the tool
+ * entry's additive `rendered` text (ADR 0156): the CLI has a human form
+ * for that, and its `--json` stays what it was.
+ */
+const withoutRendered = (result: AskResult): AskResult => {
+  if (result.mode !== 'slice' || result.rendered === undefined) return result
+  const { rendered: _rendered, ...rest } = result
+  return rest
+}
 
 export function runAskCommand(
   options: readonly string[],
@@ -702,24 +290,39 @@ export function runAskCommand(
         : humanDiagnostics(diagnostics),
       stderr: '',
     })
+    const failedTool = (failure: ToolFailure): CliResult =>
+      failure.reason === 'diagnostics'
+        ? failed(failure.diagnostics)
+        : { exitCode: 2, stdout: '', stderr: `${failure.message}\n` }
     const loadedWorkspace = loadWorkspaceManifest(
       { path: workspacePath, source: manifestSource },
       cwd,
     )
     if (!loadedWorkspace.ok) return failed(loadedWorkspace.diagnostics)
     const workspace = loadedWorkspace.workspace
+    const tool: ToolWorkspace = {
+      store: createFileSystemStore(cwd),
+      workspace,
+      manifestDirectory: posixDirectoryOf(workspacePath),
+      ...(cataloguePath === undefined
+        ? {}
+        : {
+            catalogue: {
+              path: cataloguePath,
+              source: readFileSync(resolve(cwd, cataloguePath), 'utf8'),
+            },
+          }),
+    }
 
     const emit = (result: AskResult, human: string, exitCode: 0 | 1 = 0) =>
       json
         ? {
             exitCode,
-            stdout: `${JSON.stringify(result, null, 2)}\n`,
+            stdout: `${JSON.stringify(withoutRendered(result), null, 2)}\n`,
             stderr: '',
           }
         : { exitCode, stdout: human, stderr: '' }
 
-    // Orientation is the only mode that reports on a failing model rather
-    // than failing with it: the verdict is the content.
     if (
       query.length === 0 &&
       !subjects &&
@@ -730,129 +333,19 @@ export function runAskCommand(
       compare === undefined &&
       changed === undefined
     ) {
-      const checked = runCheckCommand([workspacePath, '--json'], cwd)
-      const checkPayload = JSON.parse(checked.stdout) as {
-        readonly ok: boolean
-        readonly diagnostics: readonly Diagnostic[]
-        readonly counted?: {
-          readonly documents: number
-          readonly concepts: number
-          readonly relationships: number
-          readonly states: number
-        }
-      }
-      if (!checkPayload.ok) {
-        const result: AskResult = {
-          format: 'yarramate/ask-result/v1',
-          workspace: workspace.id,
-          mode: 'orientation',
-          ok: false,
-          check: { ok: false, diagnostics: checkPayload.diagnostics },
-          backlog: { planned: [], current: [], retired: [] },
-        }
+      const oriented = askOrientationDetailed(tool)
+      if (!oriented.ok) return failedTool(oriented)
+      const { result, report } = oriented.result
+      if (!result.ok || report === undefined) {
         return emit(
           result,
           `Workspace ${workspace.id}: check failing\n` +
-            `Diagnostics: ${plural(checkPayload.diagnostics.length, 'error')}; run \`yarramate check ${workspacePath}\` for details\n`,
+            `Diagnostics: ${plural(result.check.diagnostics.length, 'error')}; run \`yarramate check ${workspacePath}\` for details\n`,
           1,
         )
       }
-
-      const compilation = compileWorkspaceWithProfileContext(
-        [
-          ...workspace.profiles,
-          ...workspace.patterns,
-          ...workspace.documents,
-        ].map((path) => ({
-          path,
-          source: readFileSync(resolve(cwd, path), 'utf8'),
-        })),
-      )
-      if (!compilation.ok) return failed(compilation.diagnostics)
-      const entries = conceptEntries(compilation.graph)
-
-      const evidenceDocuments = []
-      for (const path of workspace.evidence) {
-        const loaded = loadEvidence({
-          path,
-          source: readFileSync(resolve(cwd, path), 'utf8'),
-        })
-        if (!loaded.ok) return failed(loaded.diagnostics)
-        evidenceDocuments.push(loaded.evidence)
-      }
-      const evaluation = evaluateEvidenceWorkspace(
-        compilation.graph,
-        evidenceDocuments,
-      )
-      if (!evaluation.ok) return failed(evaluation.diagnostics)
-      const reconciliation =
-        workspace.evidence.length > 0
-          ? reconcileEvidenceReports(
-              workspace.id,
-              evaluation.reports,
-              compilation.graph,
-            ).summary
-          : undefined
-
-      const wholeWorkspace = evaluateProjection(
-        compilation.graph,
-        {
-          format: 'yarramate/projection/v1',
-          id: 'ask-orientation',
-          version: '0.0',
-          query: {},
-        },
-        compilation.profileContext,
-      )
-      const planned = buildNextSubjects(
-        wholeWorkspace,
-        compilation.graph,
-        compilation.profileContext,
-        evaluation.reports,
-      )
-      const current = entries.filter(({ status }) => status === 'current')
-      const retired = entries.filter(({ status }) => status === 'retired')
-
-      const composed = composeCatalogues(
-        catalogueSources(
-          {
-            path: shippedCataloguePath,
-            source: readFileSync(shippedCataloguePath, 'utf8'),
-          },
-          workspace,
-          cwd,
-        ),
-        compilation.profileContext,
-      )
-      if (!composed.ok) return failed(composed.diagnostics)
-      const report = evaluateCatalogue(
-        composed.composed.catalogue,
-        compilation.graph,
-        compilation.profileContext,
-        evidenceDocuments.flatMap(({ observations }) => observations),
-        composed.composed.catalogues,
-        compilation.patternMemberships,
-        compilation.patternVacancies,
-      )
-
-      const result: AskResult = {
-        format: 'yarramate/ask-result/v1',
-        workspace: workspace.id,
-        mode: 'orientation',
-        ok: true,
-        check: {
-          ok: true,
-          diagnostics: [],
-          ...(checkPayload.counted === undefined
-            ? {}
-            : { counted: checkPayload.counted }),
-        },
-        ...(reconciliation === undefined ? {} : { reconciliation }),
-        design: { catalogue: report.catalogue, open: report.summary.open },
-        backlog: { planned, current, retired },
-      }
-
-      const counted = checkPayload.counted
+      const { planned, current, retired } = result.backlog
+      const counted = result.check.counted
       const lines: string[] = [
         `Workspace ${workspace.id}: check ok` +
           (counted === undefined
@@ -862,13 +355,11 @@ export function runAskCommand(
               `${plural(counted.states, 'state')}, ` +
               `${plural(counted.documents, 'document')})`),
       ]
-      if (reconciliation !== undefined) {
-        lines.push(reconciliationLine(reconciliation))
+      if (result.reconciliation !== undefined) {
+        lines.push(reconciliationLine(result.reconciliation))
       }
-      // Zero open has two causes and only one is complete (#334): a
-      // catalogue whose waves are all gated shut has asked nothing, and
-      // reporting that as a finished interview is the same empty-set
-      // flattery the wave rail carried.
+      // "No open questions" and "no wave has opened" are different facts
+      // (#334): only the first is completion.
       const askedAnything = report.waves.some(
         (wave) => wave.questions.length > 0,
       )
@@ -888,35 +379,16 @@ export function runAskCommand(
       return emit(result, `${lines.join('\n')}\n`)
     }
 
-    // Every other mode reads the compiled model directly.
-    const compilation = compileWorkspaceWithProfileContext(
-      [
-          ...workspace.profiles,
-          ...workspace.patterns,
-          ...workspace.documents,
-        ].map((path) => ({
-        path,
-        source: readFileSync(resolve(cwd, path), 'utf8'),
-      })),
-    )
-    if (!compilation.ok) return failed(compilation.diagnostics)
-    const graph = compilation.graph
-    const entries = conceptEntries(graph)
-
     if (subjects) {
-      const filtered = entries.filter(
-        (entry) =>
-          (kindFilter === undefined ||
-            entry.kind.toLowerCase().includes(kindFilter.toLowerCase())) &&
-          (statusFilter === undefined || entry.status === statusFilter),
-      )
-      const result: AskResult = {
-        format: 'yarramate/ask-result/v1',
-        workspace: workspace.id,
-        mode: 'roster',
-        total: entries.length,
-        subjects: filtered,
-      }
+      const rostered = askRosterDetailed(tool, {
+        ...(kindFilter === undefined ? {} : { kind: kindFilter }),
+        ...(statusFilter === undefined
+          ? {}
+          : { status: statusFilter as 'planned' | 'current' | 'retired' }),
+      })
+      if (!rostered.ok) return failedTool(rostered)
+      const { result, entries } = rostered.result
+      const filtered = result.subjects
       const lines = [
         `Subjects in workspace ${workspace.id}: ${filtered.length} of ${entries.length}`,
       ]
@@ -948,57 +420,10 @@ export function runAskCommand(
       return emit(result, `${lines.join('\n')}\n`)
     }
 
-    // --kinds: the declarable vocabulary (#89) — what agents previously
-    // learned by reading src/profile.ts. Core kinds ship with the engine;
-    // extensions come from the workspace's resolved profiles.
     if (kinds) {
-      const coreConceptIds = new Set<string>(conceptKinds.map(({ id }) => id))
-      const coreRelationshipIds = new Set<string>(
-        relationshipPolicies.map(({ id }) => id),
-      )
-      const extensions: {
-        readonly id: string
-        readonly type: 'concept' | 'relationship'
-        readonly lineage: readonly string[]
-      }[] = []
-      const lineagePairs: ReadonlyArray<
-        readonly ['concept' | 'relationship', ReadonlyMap<string, readonly string[]>]
-      > = [
-        ['concept', compilation.profileContext.conceptKindLineages],
-        ['relationship', compilation.profileContext.relationshipKindLineages],
-      ]
-      for (const [type, lineages] of lineagePairs) {
-        for (const [id, lineage] of [...lineages.entries()].sort(([a], [b]) =>
-          a.localeCompare(b),
-        )) {
-          const local = id.slice(id.indexOf('#') + 1)
-          const isCore =
-            id.startsWith('yarramate/core@') &&
-            (type === 'concept'
-              ? coreConceptIds.has(local)
-              : coreRelationshipIds.has(local))
-          if (!isCore) extensions.push({ id, type, lineage })
-        }
-      }
-      const result: AskResult = {
-        format: 'yarramate/ask-result/v1',
-        workspace: workspace.id,
-        mode: 'kinds',
-        conceptKinds,
-        relationshipKinds: relationshipPolicies.map((policy) => ({
-          id: policy.id,
-          intent: policy.intent,
-          sourceAspects: [...matrixEndpointAspects(policy.id, 'source')],
-          targetAspects: [...matrixEndpointAspects(policy.id, 'target')],
-        })),
-        relationshipMatrix: {
-          standard: `ArchiMate ${ARCHIMATE_RELATIONSHIPS_VERSION}`,
-          letters: RELATIONSHIP_LETTERS,
-          kinds: CORE_CONCEPT_KIND_ORDER,
-          rows: PERMITTED_RELATIONSHIP_LETTERS,
-        },
-        extensions,
-      }
+      const kinded = askKinds(tool)
+      if (!kinded.ok) return failedTool(kinded)
+      const result = kinded.result
       const lines: string[] = [
         `Declarable kinds — core profile yarramate/core@0.1`,
         '',
@@ -1023,9 +448,9 @@ export function runAskCommand(
         '',
         `Relationship admissibility: ArchiMate ${ARCHIMATE_RELATIONSHIPS_VERSION} kind-to-kind table (${CORE_CONCEPT_KIND_ORDER.length} kinds; see relationshipMatrix in --json)`,
       )
-      if (extensions.length > 0) {
+      if (result.extensions.length > 0) {
         lines.push('', 'Profile extensions in this workspace:')
-        for (const extension of extensions) {
+        for (const extension of result.extensions) {
           lines.push(
             `  ${extension.id} (${extension.type})` +
               (extension.lineage.length > 0
@@ -1036,6 +461,34 @@ export function runAskCommand(
       }
       return emit(result, `${lines.join('\n')}\n`)
     }
+
+    if (next) {
+      const nexted = askNext(tool)
+      if (!nexted.ok) return failedTool(nexted)
+      const result = nexted.result
+      const ordered = result.subjects
+      const human =
+        ordered.length === 0
+          ? `No planned subjects in workspace ${workspace.id}.\n`
+          : `${[
+              `Planned subjects in workspace ${workspace.id} (dependency order):`,
+              ...plannedLines(ordered),
+            ].join('\n')}\n`
+      return emit(result, human)
+    }
+
+    if (open) {
+      const opened = askOpen(tool)
+      if (!opened.ok) return failedTool(opened)
+      return emit(opened.result, renderInterrogationReport(opened.result.report))
+    }
+
+    // Everything below compiles once and reads the graph directly.
+    const compilation = compileOf(tool)
+    if (!compilation.ok) return failedTool(compilation)
+    const { compiled } = compilation
+    const graph = compiled.graph
+    const entries = conceptEntries(graph)
 
     if (compare !== undefined) {
       const comparison = compareArchitectureStates(graph, ...compare)
@@ -1069,122 +522,11 @@ export function runAskCommand(
       return emit(result, `${lines.join('\n')}\n`)
     }
 
-    if (next) {
-      const evidenceDocuments = []
-      for (const path of workspace.evidence) {
-        const loaded = loadEvidence({
-          path,
-          source: readFileSync(resolve(cwd, path), 'utf8'),
-        })
-        if (!loaded.ok) return failed(loaded.diagnostics)
-        evidenceDocuments.push(loaded.evidence)
-      }
-      const evaluation = evaluateEvidenceWorkspace(graph, evidenceDocuments)
-      if (!evaluation.ok) return failed(evaluation.diagnostics)
-      const wholeWorkspace = evaluateProjection(
-        graph,
-        {
-          format: 'yarramate/projection/v1',
-          id: 'ask-next',
-          version: '0.0',
-          query: {},
-        },
-        compilation.profileContext,
-      )
-      const ordered = buildNextSubjects(
-        wholeWorkspace,
-        graph,
-        compilation.profileContext,
-        evaluation.reports,
-      )
-      const result: AskResult = {
-        format: 'yarramate/ask-result/v1',
-        workspace: workspace.id,
-        mode: 'next',
-        subjects: ordered,
-      }
-      const human =
-        ordered.length === 0
-          ? `No planned subjects in workspace ${workspace.id}.\n`
-          : `${[
-              `Planned subjects in workspace ${workspace.id} (dependency order):`,
-              ...plannedLines(ordered),
-            ].join('\n')}\n`
-      return emit(result, human)
-    }
-
-    if (open) {
-      const resolvedCataloguePath =
-        cataloguePath === undefined
-          ? shippedCataloguePath
-          : resolve(cwd, cataloguePath)
-      const composed = composeCatalogues(
-        catalogueSources(
-          {
-            path: cataloguePath ?? resolvedCataloguePath,
-            source: readFileSync(resolvedCataloguePath, 'utf8'),
-          },
-          workspace,
-          cwd,
-        ),
-        compilation.profileContext,
-      )
-      if (!composed.ok) return failed(composed.diagnostics)
-      // The evidence overlay rides along for the one condition that
-      // reads it (unchallenged-evidence); a workspace declaring no
-      // evidence passes an overlay known to be empty.
-      const evidenceObservations = []
-      for (const path of workspace.evidence) {
-        const loaded = loadEvidence({
-          path,
-          source: readFileSync(resolve(cwd, path), 'utf8'),
-        })
-        if (!loaded.ok) return failed(loaded.diagnostics)
-        evidenceObservations.push(...loaded.evidence.observations)
-      }
-      const report: InterrogationReport = {
-        ...evaluateCatalogue(
-          composed.composed.catalogue,
-          graph,
-          compilation.profileContext,
-          evidenceObservations,
-          composed.composed.catalogues,
-          compilation.patternMemberships,
-          compilation.patternVacancies,
-        ),
-        workspace: workspace.id,
-      }
-      // Field by field, to fix key ORDER in the emitted JSON. Every optional
-      // field has to be threaded through explicitly, which is why `catalogues`
-      // is here: a copier like this drops a new field silently and the only
-      // symptom is an absent one, which reads as "did not apply" rather than
-      // as "was lost".
-      const ordered: InterrogationReport = {
-        format: report.format,
-        workspace: report.workspace,
-        catalogue: report.catalogue,
-        ...(report.catalogues === undefined
-          ? {}
-          : { catalogues: report.catalogues }),
-        semantics: report.semantics,
-        inputs: report.inputs,
-        summary: report.summary,
-        waves: report.waves,
-      }
-      const result: AskResult = {
-        format: 'yarramate/ask-result/v1',
-        workspace: workspace.id,
-        mode: 'open',
-        report: ordered,
-      }
-      return emit(result, renderInterrogationReport(ordered))
-    }
-
-    // --changed: the review slice (ADR 0065). Git says what changed; the
-    // engine maps changed lines to subjects and renders their connected
-    // neighbourhood, plus a coverage note when a changed subject appears
-    // in no authored projection.
     if (changed !== undefined) {
+      // --changed: the review slice (ADR 0065). Git says what changed; the
+      // engine maps changed lines to subjects and renders their connected
+      // neighbourhood, plus a coverage note when a changed subject appears
+      // in no authored projection.
       const documentIdByPath = new Map(
         graph.documents.map(({ id, source }) => [source, id]),
       )
@@ -1192,8 +534,7 @@ export function runAskCommand(
         cwd,
         changed,
         workspace.documents.map((path) => ({
-          path,
-          source: readFileSync(resolve(cwd, path), 'utf8'),
+          ...readSource(tool, path),
           documentId: documentIdByPath.get(path) ?? path,
         })),
       )
@@ -1221,16 +562,13 @@ export function runAskCommand(
 
       const covered = new Set<string>()
       for (const projectionPath of workspace.projections) {
-        const loaded = loadProjection({
-          path: projectionPath,
-          source: readFileSync(resolve(cwd, projectionPath), 'utf8'),
-        })
+        const loaded = loadProjection(readSource(tool, projectionPath))
         if (!loaded.ok) continue
         const membership = evaluateProjection(
           graph,
           loaded.projection,
-          compilation.profileContext,
-          compilation.patternMemberships,
+          compiled.profileContext,
+          compiled.patternMemberships,
         )
         for (const subject of membership.subjects) {
           covered.add(subject.id)
@@ -1246,7 +584,7 @@ export function runAskCommand(
         graph,
         seeds,
         `Review slice ${changed}`,
-        compilation.profileContext,
+        compiled.profileContext,
         neighbours ?? defaultNeighbourCap,
       )
       const result: AskResult = {
@@ -1266,10 +604,7 @@ export function runAskCommand(
           `No model subjects changed in ${changed}.\n`,
         )
       }
-      const rendered =
-        budget === undefined
-          ? renderBrief(evaluated, compilation.profileContext, undefined, compilation.graph.claims)
-          : renderBudgetedContext(evaluated, budget)
+      const rendered = renderSlice(evaluated, compiled, budget)
       const lines = [
         `Review slice ${changed} — ${plural(derived.changed.concepts.length, 'concept')}, ` +
           `${plural(derived.changed.relationships.length, 'relationship')} changed (workspace ${workspace.id})`,
@@ -1287,9 +622,8 @@ export function runAskCommand(
       return emit(result, `${lines.join('\n')}\n`)
     }
 
-    // Slice and advice both start from seeds. A single query term that
-    // names a projection file is precise addressing; anything else runs
-    // through free-text seeding, where exact subject ids win.
+    // A single term that names a projection file is that projection's
+    // slice; everything else is free text or subject ids.
     const soleTerm = query.length === 1 ? query[0] : undefined
     const projectionCandidate =
       soleTerm !== undefined &&
@@ -1304,42 +638,16 @@ export function runAskCommand(
         'format',
       ) === 'yarramate/projection/v1'
     ) {
-      // A projection file defines its own query; there is no seeded
-      // expansion to cap, so an explicit --neighbours is a contradiction
-      // rather than something to ignore silently.
-      if (neighbours !== undefined) {
-        return {
-          exitCode: 2,
-          stdout: '',
-          stderr:
-            `--neighbours applies to seeded slices; ${soleTerm} is a ` +
-            'projection that defines its own query\n',
-        }
-      }
-      const loaded = loadProjection({
-        path: soleTerm!,
-        source: readFileSync(projectionCandidate, 'utf8'),
-      })
-      if (!loaded.ok) return failed(loaded.diagnostics)
-      const evaluated = evaluateProjection(
-        graph,
-        loaded.projection,
-        compilation.profileContext,
-        compilation.patternMemberships,
+      const sliced = askSlice(
+        tool,
+        { projection: soleTerm! },
+        {
+          ...(budget === undefined ? {} : { budget }),
+          ...(neighbours === undefined ? {} : { neighbours }),
+        },
       )
-      const result: AskResult = {
-        format: 'yarramate/ask-result/v1',
-        workspace: workspace.id,
-        mode: 'slice',
-        addressing: 'projection',
-        result: evaluated,
-      }
-      return emit(
-        result,
-        budget === undefined
-          ? renderBrief(evaluated, compilation.profileContext, undefined, compilation.graph.claims)
-          : renderBudgetedContext(evaluated, budget),
-      )
+      if (!sliced.ok) return failedTool(sliced)
+      return emit(sliced.result, sliced.result.rendered ?? '')
     }
 
     const topic = query.join(' ')
@@ -1354,27 +662,14 @@ export function runAskCommand(
           `List the roster: yarramate ask ${workspacePath} --subjects\n`,
       }
     }
-    // --where: evidence-backed pointing (ADR 0068). Verified locations for
-    // the matched subjects, an explicit list of matched-but-unobserved
-    // subjects, and a hand-off note for everything outside the model —
-    // authority follows epistemic status, so the routing is stated in the
-    // output rather than assumed by the reader.
     if (where) {
-      const evidenceDocuments: EvidenceDocument[] = []
-      for (const path of workspace.evidence) {
-        const loaded = loadEvidence({
-          path,
-          source: readFileSync(resolve(cwd, path), 'utf8'),
-        })
-        if (!loaded.ok) return failed(loaded.diagnostics)
-        evidenceDocuments.push(loaded.evidence)
-      }
+      const evidence = evidenceDocumentsOf(tool)
+      if (!evidence.ok) return failedTool(evidence)
+      const evidenceDocuments = evidence.documents
       const subjectOf = (observation: EvidenceObservation): string =>
         'subject' in observation
           ? observation.subject
           : (observation.claim.split('~')[0] ?? observation.claim)
-      // Subject- and claim-level observations often share a locator; the
-      // pointer is the same either way, so identical entries collapse.
       const entriesBySeed = resolution.seeds.map((seed) => ({
         subject: seed,
         observations: [
@@ -1463,7 +758,7 @@ export function runAskCommand(
       graph,
       resolution.seeds,
       topic,
-      compilation.profileContext,
+      compiled.profileContext,
       neighbours ?? defaultNeighbourCap,
     )
 
@@ -1479,10 +774,7 @@ export function runAskCommand(
         ...(neighbourhood === undefined ? {} : { neighbourhood }),
         result: evaluated,
       }
-      const rendered =
-        budget === undefined
-          ? renderBrief(evaluated, compilation.profileContext, undefined, compilation.graph.claims)
-          : renderBudgetedContext(evaluated, budget)
+      const rendered = renderSlice(evaluated, compiled, budget)
       const header =
         resolution.addressing === 'free-text'
           ? `Slice for "${topic}" — ${plural(resolution.matched, 'concept')} matched` +
@@ -1499,52 +791,26 @@ export function runAskCommand(
       )
     }
 
-    // --advise: the expert composition. The engine assembles ground
-    // truth — slice, open questions, drift — and stops; the reading and
-    // the advice belong to the LLM on top (ADR 0054).
-    const brief = renderBrief(evaluated, compilation.profileContext, budget, compilation.graph.claims)
+    const brief = renderBrief(evaluated, compiled.profileContext, budget, graph.claims)
     const sliceIds = new Set(
       evaluated.subjects
         .filter(({ type }) => type === 'concept')
         .map(({ id }) => id),
     )
 
-    const resolvedCataloguePath =
-      cataloguePath === undefined
-        ? shippedCataloguePath
-        : resolve(cwd, cataloguePath)
-    const composed = composeCatalogues(
-      catalogueSources(
-        {
-          path: cataloguePath ?? resolvedCataloguePath,
-          source: readFileSync(resolvedCataloguePath, 'utf8'),
-        },
-        workspace,
-        cwd,
-      ),
-      compilation.profileContext,
-    )
+    const composed = composedCatalogueOf(tool, compiled)
     if (!composed.ok) return failed(composed.diagnostics)
-    // Loaded ahead of evaluation so the overlay feeds the one condition
-    // that reads it (unchallenged-evidence), then reused for the
-    // reconciliation summary below.
-    const evidenceDocuments: EvidenceDocument[] = []
-    for (const path of workspace.evidence) {
-      const loaded = loadEvidence({
-        path,
-        source: readFileSync(resolve(cwd, path), 'utf8'),
-      })
-      if (!loaded.ok) return failed(loaded.diagnostics)
-      evidenceDocuments.push(loaded.evidence)
-    }
+    const evidence = evidenceDocumentsOf(tool)
+    if (!evidence.ok) return failedTool(evidence)
+    const evidenceDocuments = evidence.documents
     const report = evaluateCatalogue(
       composed.composed.catalogue,
       graph,
-      compilation.profileContext,
+      compiled.profileContext,
       evidenceDocuments.flatMap(({ observations }) => observations),
       composed.composed.catalogues,
-      compilation.patternMemberships,
-      compilation.patternVacancies,
+      compiled.patternMemberships,
+      compiled.patternVacancies,
     )
     const openQuestions: OpenQuestionRef[] = []
     for (const wave of report.waves) {

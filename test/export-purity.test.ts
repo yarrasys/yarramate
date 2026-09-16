@@ -6,7 +6,13 @@ const root = join(process.cwd(), 'src')
 
 const FORBIDDEN = /^(node:|ws$|fs$|path$|os$|child_process$|crypto$|net$|http$|https$)/
 
-function runtimeImportGraph(entryRelative: string): { files: string[]; hits: string[] } {
+function runtimeImportGraph(
+  entryRelative: string,
+  options: {
+    readonly allowCompiler?: boolean
+    readonly allowVisualAdapter?: boolean
+  } = {},
+): { files: string[]; hits: string[] } {
   const seen = new Set<string>()
   const queue = [entryRelative]
   const hits: string[] = []
@@ -17,23 +23,49 @@ function runtimeImportGraph(entryRelative: string): { files: string[]; hits: str
     const full = join(root, rel)
     if (!existsSync(full)) continue
     const text = readFileSync(full, 'utf8')
-    // Strip type-only imports so `import type` from compiler.js is allowed.
-    const withoutTypeImports = text.replace(
-      /^\s*import\s+type\s+[\s\S]*?from\s+['"][^'"]+['"]\s*;?\s*$/gm,
-      '',
-    )
+    // Strip type-only imports and re-exports so `import type` and
+    // `export type { } from` reach nothing at runtime.
+    const withoutTypeImports = text
+      .replace(
+        /^\s*import\s+type\s+[\s\S]*?from\s+['"][^'"]+['"]\s*;?\s*$/gm,
+        '',
+      )
+      .replace(
+        /^\s*export\s+type\s+[\s\S]*?from\s+['"][^'"]+['"]\s*;?\s*$/gm,
+        '',
+      )
+      // `import { type A, type B } from` is elided by tsc just like
+      // `import type`, so it reaches nothing at runtime either.
+      // Written without an ambiguous repetition (a comma is required between
+      // specifiers), so the match cannot backtrack exponentially (CodeQL js/redos).
+      .replace(
+        /^[ \t]*import[ \t]*\{[ \t\n]*type[ \t]+\w+(?:[ \t]+as[ \t]+\w+)?(?:[ \t\n]*,[ \t\n]*type[ \t]+\w+(?:[ \t]+as[ \t]+\w+)?)*[ \t\n]*,?[ \t\n]*\}[ \t]*from[ \t]+['"][^'"]+['"][ \t]*;?[ \t]*$/gm,
+        '',
+      )
     for (const match of withoutTypeImports.matchAll(/from\s+['"]([^'"]+)['"]/g)) {
       const spec = match[1]!
       if (FORBIDDEN.test(spec) || spec === 'ws') {
         hits.push(`${rel} -> ${spec}`)
         continue
       }
-      if (spec.includes('adapters/visual/') || spec.endsWith('/visual/session-server.js')) {
+      // The visual adapter directory holds the session server (Node, ws)
+      // beside the pure protocol, model and sidecar modules the host needs;
+      // an entry that may reach the pure ones is still refused the Node ones.
+      const nodeVisualModule = /adapters\/visual\/(client|request|session-store|session-server|protocol)\.js$/
+      if (
+        nodeVisualModule.test(spec) ||
+        (!options.allowVisualAdapter && spec.includes('adapters/visual/'))
+      ) {
         hits.push(`${rel} -> ${spec}`)
         continue
       }
-      // Disallow runtime import of compiler.js (Node/Ajv).
-      if (spec.endsWith('/compiler.js') || spec === './compiler.js' || spec === '../compiler.js') {
+      // Disallow runtime import of compiler.js (Node/Ajv) unless the entry
+      // exists to compile: `yarramate/tools` and `yarramate/host` run the
+      // engine inside a Worker and reach it on purpose (ADR 0156).
+      if (
+        !options.allowCompiler &&
+        (spec.endsWith('/compiler.js') || spec === './compiler.js' || spec === '../compiler.js')
+      ) {
         hits.push(`${rel} -> ${spec} (runtime)`)
         continue
       }
@@ -108,6 +140,62 @@ describe('package export purity', () => {
     // out of its import graph. The compiler is reached for types only.
     const { hits } = runtimeImportGraph('interrogation-entry.ts')
     expect(hits).toEqual([])
+  })
+
+  it('tools import graph stays free of Node, ws and the session server, and reaches every verb', () => {
+    // The path-free entry (ADR 0156): the compiler is allowed, since running
+    // it is the point, and everything else that needs a filesystem - the
+    // manifest loader, the filesystem store, git, the CLI - must stay out.
+    const { files, hits } = runtimeImportGraph('tools-entry.ts', {
+      allowCompiler: true,
+    })
+    expect(hits).toEqual([])
+    expect(files).toEqual(
+      expect.arrayContaining([
+        'tools/design.ts',
+        'tools/ask.ts',
+        'tools/check.ts',
+        'tools/apply.ts',
+        'tools/export.ts',
+        'tools/table.ts',
+        'workspace-resolution.ts',
+        'adapters/likec4-project-export.ts',
+        'shipped-catalogue.generated.ts',
+        'digest.ts',
+      ]),
+    )
+    for (const forbidden of [
+      'workspace.ts',
+      'source-store.ts',
+      'changed.ts',
+      'cli.ts',
+      'cli-support.ts',
+      'catalogue-sources.ts',
+      'attestation-staleness.ts',
+      'artifact-coverage.ts',
+    ]) {
+      expect(files, forbidden).not.toContain(forbidden)
+    }
+  })
+
+  it('host import graph stays free of Node, ws, the session server and the editor', () => {
+    // `yarramate/host` is the local host with no React behind it: a server
+    // fans its frames to sockets and must not carry 4 MB of UI to do so.
+    const { files, hits } = runtimeImportGraph('host-entry.ts', {
+      allowCompiler: true,
+      allowVisualAdapter: true,
+    })
+    expect(hits).toEqual([])
+    // The seam (`editor-host.ts`) is types only, so it never joins the
+    // runtime graph; the host and the model it renders do.
+    expect(files).toEqual(
+      expect.arrayContaining([
+        'host/local-host.ts',
+        'adapters/visual/workspace-model.ts',
+        'adapters/visual/layout-sidecar.ts',
+      ]),
+    )
+    expect(files.filter((file) => file.startsWith('visual-app/'))).toEqual([])
   })
 })
 

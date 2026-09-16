@@ -64,6 +64,14 @@
       "types": "./dist/interrogation-entry.d.ts",
       "import": "./dist/interrogation-entry.js"
     },
+    "./tools": {
+      "types": "./dist/tools-entry.d.ts",
+      "import": "./dist/tools-entry.js"
+    },
+    "./host": {
+      "types": "./dist/host-entry.d.ts",
+      "import": "./dist/host-entry.js"
+    },
     "./workbook": {
       "types": "./dist/workbook-entry.d.ts",
       "import": "./dist/workbook-entry.js"
@@ -138,6 +146,7 @@
     "format": "likec4 format assets/likec4",
     "generate:archimate": "node scripts/generate-archimate-relationships.mjs",
     "generate:validators": "node scripts/generate-validators.mjs",
+    "generate:assets": "node scripts/generate-assets.mjs",
     "self:check": "pnpm build && node dist/cli.js check .yarramate/workspace.yaml",
     "self:check:json": "pnpm build && node dist/cli.js check .yarramate/workspace.yaml --json",
     "self:ask": "pnpm build && node dist/cli.js ask .yarramate/workspace.yaml",

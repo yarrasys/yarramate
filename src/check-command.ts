@@ -1,44 +1,18 @@
 import { existsSync, readFileSync } from 'node:fs'
-import {
-  catalogueSources,
-  shippedCatalogueSource,
-} from './catalogue-sources.js'
-import { composeCatalogues } from './interrogate-command.js'
 import { resolve } from 'node:path'
 import Ajv2020Module from 'ajv/dist/2020.js'
-import { parseDocument } from 'yaml'
+import { shippedCatalogueSource } from './catalogue-sources.js'
 import {
-  loadAdapterMapping,
-  validateAdapterMappings,
-} from './adapter-mapping.js'
-import {
-  checkResultJson,
   humanDiagnostics,
   resolveCliWorkspaceSources,
-  sortDiagnostics,
   usage,
   type CliResult,
 } from './cli-support.js'
-import {
-  compileWorkspaceWithProfileContext,
-  withDiagnosticSubjects,
-} from './compiler.js'
-import {
-  checkCoreContract,
-  loadCoreContract,
-} from './core-contract.js'
-import {
-  evaluateEvidenceWorkspace,
-  loadEvidence,
-} from './evidence.js'
-import {
-  loadProjection,
-  projectionReferenceDiagnostics,
-} from './projection.js'
-import {
-  reconcileEvidenceReports,
-  type EvidenceFinding,
-} from './reconciliation.js'
+import { checkSources } from './tools/check.js'
+
+// The check itself is `checkSources` in `tools/check.ts` (ADR 0156): this
+// command resolves the sources against the filesystem, lends the core Ajv
+// for the schemas a Core contract names, and renders the two outputs.
 
 // `.default ?? module`, not a bare `.default`: NodeNext sees the raw CJS
 // `module.exports` and a bundler the unwrapped class. One shape for all of
@@ -49,31 +23,13 @@ const ajv2020Module = Ajv2020Module as unknown as {
 } & typeof Ajv2020Module
 const Ajv2020 = ajv2020Module.default ?? ajv2020Module
 
-const strictFindingMessage = (finding: EvidenceFinding): string => {
-  const observed =
-    finding.evidence.message === undefined
-      ? finding.evidence.uri
-      : `${finding.evidence.uri}: ${finding.evidence.message}`
-  // A contradicted expectation is gated exactly like any other contradicted
-  // finding (ADR 0075); only the wording differs, because both sides of the
-  // disagreement are known values worth naming.
-  if (finding.expectation !== undefined) {
-    const { key, expected, observed: observedValue } = finding.expectation
-    return (
-      `Evidence contradicts expectation "${finding.target.id}": the model expects ` +
-      `${key} to be "${expected}", but provider "${finding.provider}" observed ` +
-      `"${observedValue}" (${observed}); align the model or the evidence to pass --strict`
-    )
+const schemaCompiles = (schema: object): boolean => {
+  try {
+    new Ajv2020({ strict: false }).compile(schema)
+    return true
+  } catch {
+    return false
   }
-  const assertion =
-    finding.asserted === undefined
-      ? `Evidence contradicts ${finding.target.type} "${finding.target.id}"`
-      : `Evidence contradicts claim "${finding.target.id}": the model asserts ` +
-        `${finding.asserted.from} -> ${finding.asserted.to} (${finding.asserted.kind})`
-  return (
-    `${assertion}, but provider "${finding.provider}" observed otherwise ` +
-    `(${observed}); align the model or the evidence to pass --strict`
-  )
 }
 
 export function runCheckCommand(
@@ -96,450 +52,103 @@ export function runCheckCommand(
     })
     if (!resolved.ok) {
       const output = json
-        ? checkResultJson(false, resolved.diagnostics)
+        ? `${JSON.stringify(
+            {
+              format: 'yarramate/check-result/v1',
+              ok: false,
+              diagnostics: resolved.diagnostics,
+            },
+            null,
+            2,
+          )}\n`
         : humanDiagnostics(resolved.diagnostics)
       return { exitCode: 1, stdout: output, stderr: '' }
     }
-    const contractDiagnostics = sortDiagnostics(
-      resolved.contracts.flatMap((path) => {
-        const source = {
-          path,
-          source: readFileSync(resolve(cwd, path), 'utf8'),
-        }
-        const loaded = loadCoreContract(source)
-        if (!loaded.ok) return loaded.diagnostics
-        let packageManifest: unknown
-        try {
-          packageManifest = JSON.parse(
-            readFileSync(
-              resolve(cwd, loaded.contract.packageManifest),
-              'utf8',
-            ),
-          )
-        } catch {
-          packageManifest = undefined
-        }
-        const packageRecord =
-          typeof packageManifest === 'object' &&
-          packageManifest !== null &&
-          !Array.isArray(packageManifest)
-            ? (packageManifest as Record<string, unknown>)
-            : undefined
-        const exportsRecord =
-          typeof packageRecord?.exports === 'object' &&
-          packageRecord.exports !== null
-            ? Object.fromEntries(
-                Object.entries(
-                  packageRecord.exports as Record<string, unknown>,
-                ).filter(
-                  (entry): entry is [string, string] =>
-                    typeof entry[1] === 'string',
-                ),
-              )
-            : {}
-        const binaries =
-          typeof packageRecord?.bin === 'object' &&
-          packageRecord.bin !== null
-            ? Object.keys(packageRecord.bin)
-            : typeof packageRecord?.bin === 'string' &&
-                typeof packageRecord.name === 'string'
-              ? [packageRecord.name]
-              : []
-        const schemas: Record<
-          string,
-          { readonly ok: false } | {
-            readonly ok: true
-            readonly format?: string
-            readonly validSchema: boolean
-          }
-        > = {}
-        for (const { schema } of loaded.contract.formats) {
-          if (!existsSync(resolve(cwd, schema))) continue
-          try {
-            const value = JSON.parse(
-              readFileSync(resolve(cwd, schema), 'utf8'),
-            ) as unknown
-            const record =
-              typeof value === 'object' && value !== null
-                ? (value as Record<string, unknown>)
-                : undefined
-            const properties =
-              typeof record?.properties === 'object' &&
-              record.properties !== null
-                ? (record.properties as Record<string, unknown>)
-                : undefined
-            const format =
-              typeof properties?.format === 'object' &&
-              properties.format !== null
-                ? (properties.format as Record<string, unknown>)
-                : undefined
-            let validSchema = true
-            try {
-              new Ajv2020({ strict: false }).compile(value as object)
-            } catch {
-              validSchema = false
-            }
-            schemas[schema] = {
-              ok: true,
-              validSchema,
-              ...(typeof format?.const === 'string'
-                ? { format: format.const }
-                : {}),
-            }
-          } catch {
-            schemas[schema] = { ok: false }
-          }
-        }
-        const checked = checkCoreContract(source, {
-          files: [
-            loaded.contract.packageManifest,
-            ...loaded.contract.formats.map(({ schema }) => schema),
-          ].filter((file) => existsSync(resolve(cwd, file))),
-          packageManifestValid: packageRecord !== undefined,
-          packageExports: exportsRecord,
-          packageBinaries: binaries,
-          schemas,
-        })
-        return checked.ok ? [] : checked.diagnostics
-      }),
-    )
-    if (contractDiagnostics.length > 0) {
-      const output = json
-        ? checkResultJson(false, contractDiagnostics)
-        : humanDiagnostics(contractDiagnostics)
-      return { exitCode: 1, stdout: output, stderr: '' }
-    }
-    const projectionSources = resolved.projections.map((path) => ({
-      path,
-      source: readFileSync(resolve(cwd, path), 'utf8'),
-    }))
-    const loadedProjections = projectionSources.map((source) => ({
-      source,
-      loaded: loadProjection(source),
-    }))
-    const projectionDiagnostics = sortDiagnostics(
-      loadedProjections.flatMap(({ loaded }) =>
-        loaded.ok ? [] : loaded.diagnostics,
-      ),
-    )
-    if (projectionDiagnostics.length > 0) {
-      const output = json
-        ? checkResultJson(false, projectionDiagnostics)
-        : humanDiagnostics(projectionDiagnostics)
-      return { exitCode: 1, stdout: output, stderr: '' }
-    }
-    const loadedEvidence = resolved.evidence.map((path) =>
-      loadEvidence({
-        path,
-        source: readFileSync(resolve(cwd, path), 'utf8'),
-      }),
-    )
-    const evidenceLoadDiagnostics = sortDiagnostics(
-      loadedEvidence.flatMap((loaded) =>
-        loaded.ok ? [] : loaded.diagnostics,
-      ),
-    )
-    if (evidenceLoadDiagnostics.length > 0) {
-      const output = json
-        ? checkResultJson(false, evidenceLoadDiagnostics)
-        : humanDiagnostics(evidenceLoadDiagnostics)
-      return { exitCode: 1, stdout: output, stderr: '' }
-    }
-    const sources = resolved.paths.map((path) => ({
-      path,
-      source: readFileSync(resolve(cwd, path), 'utf8'),
-    }))
-    const mappingSources = sources.filter(
-      ({ source }) =>
-        parseDocument(source).get('format') ===
-        'yarramate/adapter-mapping/v1',
-    )
-    const coreSources = sources.filter(
-      (source) => !mappingSources.includes(source),
-    )
-    const loadedMappings = mappingSources.map((source) =>
-      loadAdapterMapping(source),
-    )
-    const mappingLoadDiagnostics = sortDiagnostics(
-      loadedMappings.flatMap((loaded) =>
-        loaded.ok ? [] : loaded.diagnostics,
-      ),
-    )
-    if (mappingLoadDiagnostics.length > 0) {
-      const output = json
-        ? checkResultJson(false, mappingLoadDiagnostics)
-        : humanDiagnostics(mappingLoadDiagnostics)
-      return { exitCode: 1, stdout: output, stderr: '' }
-    }
-
-    const result = compileWorkspaceWithProfileContext(coreSources)
-    const mappingValidation = result.ok
-      ? validateAdapterMappings(
-          result.graph,
-          loadedMappings.flatMap((loaded) =>
-            loaded.ok ? [loaded.mapping] : [],
-          ),
-        )
-      : undefined
-    const mappingDiagnostics =
-      mappingValidation === undefined || mappingValidation.ok
-        ? []
-        : mappingValidation.diagnostics
-    const evidenceEvaluation = result.ok
-      ? evaluateEvidenceWorkspace(
-          result.graph,
-          loadedEvidence.flatMap((loaded) =>
-            loaded.ok ? [loaded.evidence] : [],
-          ),
-        )
-      : undefined
-    const evidenceDiagnostics =
-      evidenceEvaluation === undefined || evidenceEvaluation.ok
-        ? []
-        : evidenceEvaluation.diagnostics
-    // A catalogue the manifest declares is workspace content, so `check`
-    // refuses a broken one (#345, ADR 0129). Composed rather than checked one
-    // by one, because the refusals that matter are CROSS-catalogue: a wave
-    // declared twice, and a question naming a wave nothing in the set
-    // declares. Checking each file alone would miss both and would refuse the
-    // one thing the feature exists to allow, a question joining a wave another
-    // catalogue declared.
-    const catalogueDiagnostics =
-      result.ok && resolved.questions.length > 0
-        ? (() => {
-            const composed = composeCatalogues(
-              catalogueSources(shippedCatalogueSource(), resolved, cwd),
-              result.profileContext,
-            )
-            return composed.ok ? [] : composed.diagnostics
-          })()
-        : []
-
-    // A projection is a document, and a query holds references the same way a
-    // relationship does. Checked HERE rather than with the projection's own
-    // schema load above, because a reference can only be resolved against a
-    // model that compiled: reporting dangling names out of a workspace that
-    // does not build would bury the real failure under its consequences.
-    const referenceDiagnostics = result.ok
-      ? loadedProjections.flatMap(({ source, loaded }) =>
-          loaded.ok
-            ? projectionReferenceDiagnostics(
-                source,
-                loaded.projection,
-                result.graph,
-                result.profileContext,
-                // Instance-hood from BOTH lists. A membership row exists only
-                // for a BOUND slot, so an instance whose slots are all empty
-                // has none - and judging it by bindings alone would call a real
-                // instance "not an instance" on the day it was authored, before
-                // anything was wired into it. The honest question is not "did
-                // it bind anything" but "does the model know it as an
-                // instance" (rule 2).
-                new Set([
-                  ...(result.patternMemberships ?? []).map(
-                    ({ instance }) => instance,
-                  ),
-                  ...(result.patternVacancies ?? []).map(
-                    ({ instance }) => instance,
-                  ),
-                ]),
-              )
-            : [],
-        )
-      : []
-    const optionalDiagnostics = sortDiagnostics([
-      ...mappingDiagnostics,
-      ...evidenceDiagnostics,
-      ...referenceDiagnostics,
-      ...catalogueDiagnostics,
-    ])
-    const ok = result.ok && optionalDiagnostics.length === 0
-    // Published results name the subject a diagnostic is about wherever its
-    // pointer identifies one, so a consumer that draws the model can put the
-    // refusal on the element rather than on a byte offset. Derived here, at
-    // the boundary that publishes the document, so the compiler's own
-    // diagnostics stay a pure function of the model.
-    const diagnostics = withDiagnosticSubjects(
-      result.ok ? optionalDiagnostics : result.diagnostics,
-      sources,
-    )
-
-    // Strict only tightens a passing check: base diagnostics already fail
-    // the gate, so contradictions are folded in only once everything else
-    // holds, and each one is anchored at the claim the model declares.
-    const strictEvaluation =
-      strict && result.ok && ok
-        ? (() => {
-            const reports =
-              evidenceEvaluation !== undefined && evidenceEvaluation.ok
-                ? evidenceEvaluation.reports
-                : []
-            const graph = result.graph
-            // Stale attestations never reach this gate: staleness is a
-            // freshness signal, not a contradiction (ADR 0074), and the
-            // gate derives no attestation staleness in the first place.
-            const contradicted = reconcileEvidenceReports(
-              'strict',
-              reports,
-              graph,
-            ).findings.filter(
-              (finding): finding is EvidenceFinding =>
-                finding.result === 'contradicted',
-            )
-            return {
-              observations: reports.reduce(
-                (total, report) => total + report.observations.length,
-                0,
-              ),
-              diagnostics: sortDiagnostics(
-                contradicted.map((finding) => {
-                  const anchor =
-                    graph.claims.find(({ id }) => id === finding.target.id) ??
-                    graph.claims.find(
-                      ({ subject, predicate }) =>
-                        subject === finding.target.id &&
-                        predicate === 'yarramate/concept/kind',
-                    ) ??
-                    graph.claims.find(
-                      ({ subject }) => subject === finding.target.id,
-                    )
-                  return {
-                    severity: 'error' as const,
-                    code: 'YM901',
-                    message: strictFindingMessage(finding),
-                    path: anchor?.source.path ?? finding.evidenceDocument,
-                    pointer: anchor?.source.pointer ?? '/',
-                    line: anchor?.source.line ?? 1,
-                    column: anchor?.source.column ?? 1,
-                  }
-                }),
-              ),
-            }
-          })()
-        : undefined
-    const strictSummary =
-      strictEvaluation === undefined
-        ? undefined
-        : {
-            observations: strictEvaluation.observations,
-            contradicted: strictEvaluation.diagnostics.length,
-          }
-    const strictOk = strictEvaluation === undefined
-      ? true
-      : strictEvaluation.diagnostics.length === 0
-    const finalOk = ok && strictOk
-
-    const counted = result.ok
-      ? (() => {
-          const states = new Set(
-            result.graph.claims
-              .filter(
-                ({ predicate }) =>
-                  predicate === 'yarramate/state/type',
-              )
-              .map(({ subject }) => subject),
-          )
-          return {
-            documents: result.graph.documents.length,
-            concepts: result.graph.subjects.filter(
-              ({ id, type }) => type === 'concept' && !states.has(id),
-            ).length,
-            relationships: result.graph.subjects.filter(
-              ({ type }) => type === 'relationship',
-            ).length,
-            states: states.size,
-          }
-        })()
-      : undefined
+    const evaluation = checkSources({
+      read: (path) => readFileSync(resolve(cwd, path), 'utf8'),
+      exists: (path) => existsSync(resolve(cwd, path)),
+      paths: resolved.paths,
+      projections: resolved.projections,
+      evidence: resolved.evidence,
+      contracts: resolved.contracts,
+      patterns: resolved.patterns,
+      questions: resolved.questions,
+      catalogueBase: shippedCatalogueSource(),
+      strict,
+      schemaCompiles,
+    })
+    const { result } = evaluation
 
     if (json) {
       return {
-        exitCode: finalOk ? 0 : 1,
-        stdout: checkResultJson(
-          finalOk,
-          finalOk ? [] : ok ? strictEvaluation!.diagnostics : diagnostics,
-          finalOk ? counted : undefined,
-          strictSummary,
-        ),
+        exitCode: result.ok ? 0 : 1,
+        stdout: `${JSON.stringify(result, null, 2)}\n`,
         stderr: '',
       }
     }
 
-    if (ok && !strictOk) {
+    if (!result.ok || evaluation.checked === undefined) {
       return {
         exitCode: 1,
-        stdout: humanDiagnostics(strictEvaluation!.diagnostics),
+        stdout: humanDiagnostics(evaluation.shown),
         stderr: '',
       }
     }
 
-    if (ok && result.ok) {
-      const successfulCounts = counted!
-      const documentCount = result.graph.documents.length
-      const patternCount = resolved.patterns.length
-      // Everything in `coreSources` that is not a document was a profile until
-      // patterns joined the source list (#268), and counting them as profiles
-      // said "2 profiles" about a workspace with one.
-      const profileCount = coreSources.length - documentCount - patternCount
-      const mappingCount = mappingSources.length
-      const projectionCount = resolved.projections.length
-      const evidenceCount = resolved.evidence.length
-      const contractCount = resolved.contracts.length
-      const checked = [
-        `${documentCount} ${documentCount === 1 ? 'document' : 'documents'}`,
-        ...(profileCount > 0
-          ? [
-              `${profileCount} ${profileCount === 1 ? 'profile' : 'profiles'}`,
-            ]
-          : []),
-        ...(patternCount > 0
-          ? [
-              `${patternCount} ${patternCount === 1 ? 'pattern' : 'patterns'}`,
-            ]
-          : []),
-        ...(mappingCount > 0
-          ? [
-              `${mappingCount} ${mappingCount === 1 ? 'adapter mapping' : 'adapter mappings'}`,
-            ]
-          : []),
-        ...(projectionCount > 0
-          ? [
-              `${projectionCount} ${projectionCount === 1 ? 'projection' : 'projections'}`,
-            ]
-          : []),
-        ...(evidenceCount > 0
-          ? [
-              `${evidenceCount} ${evidenceCount === 1 ? 'evidence document' : 'evidence documents'}`,
-            ]
-          : []),
-        ...(contractCount > 0
-          ? [
-              `${contractCount} ${contractCount === 1 ? 'Core contract' : 'Core contracts'}`,
-            ]
-          : []),
-      ].join(' and ')
-      const strictLine =
-        strictSummary === undefined
-          ? ''
-          : strictSummary.observations === 0
-            ? 'Strict: no evidence observations to evaluate\n'
-            : `Strict: ${strictSummary.observations} ${strictSummary.observations === 1 ? 'observation' : 'observations'}, 0 contradicted\n`
-      return {
-        exitCode: 0,
-        stdout:
-          `Checked ${checked} (` +
-          `${successfulCounts.concepts} ${successfulCounts.concepts === 1 ? 'concept' : 'concepts'}, ` +
-          `${successfulCounts.relationships} ${successfulCounts.relationships === 1 ? 'relationship' : 'relationships'}, ` +
-          `${successfulCounts.states} ${successfulCounts.states === 1 ? 'state' : 'states'}` +
-          '): no errors\n' +
-          strictLine,
-        stderr: '',
-      }
-    }
-
+    const counts = result.counted!
+    const {
+      documents: documentCount,
+      profiles: profileCount,
+      patterns: patternCount,
+      mappings: mappingCount,
+      projections: projectionCount,
+      evidence: evidenceCount,
+      contracts: contractCount,
+    } = evaluation.checked
+    const checked = [
+      `${documentCount} ${documentCount === 1 ? 'document' : 'documents'}`,
+      ...(profileCount > 0
+        ? [`${profileCount} ${profileCount === 1 ? 'profile' : 'profiles'}`]
+        : []),
+      ...(patternCount > 0
+        ? [`${patternCount} ${patternCount === 1 ? 'pattern' : 'patterns'}`]
+        : []),
+      ...(mappingCount > 0
+        ? [
+            `${mappingCount} ${mappingCount === 1 ? 'adapter mapping' : 'adapter mappings'}`,
+          ]
+        : []),
+      ...(projectionCount > 0
+        ? [
+            `${projectionCount} ${projectionCount === 1 ? 'projection' : 'projections'}`,
+          ]
+        : []),
+      ...(evidenceCount > 0
+        ? [
+            `${evidenceCount} ${evidenceCount === 1 ? 'evidence document' : 'evidence documents'}`,
+          ]
+        : []),
+      ...(contractCount > 0
+        ? [
+            `${contractCount} ${contractCount === 1 ? 'Core contract' : 'Core contracts'}`,
+          ]
+        : []),
+    ].join(' and ')
+    const strictLine =
+      result.strict === undefined
+        ? ''
+        : result.strict.observations === 0
+          ? 'Strict: no evidence observations to evaluate\n'
+          : `Strict: ${result.strict.observations} ${result.strict.observations === 1 ? 'observation' : 'observations'}, 0 contradicted\n`
     return {
-      exitCode: 1,
-      stdout: humanDiagnostics(diagnostics),
+      exitCode: 0,
+      stdout:
+        `Checked ${checked} (` +
+        `${counts.concepts} ${counts.concepts === 1 ? 'concept' : 'concepts'}, ` +
+        `${counts.relationships} ${counts.relationships === 1 ? 'relationship' : 'relationships'}, ` +
+        `${counts.states} ${counts.states === 1 ? 'state' : 'states'}` +
+        '): no errors\n' +
+        strictLine,
       stderr: '',
     }
   } catch (error) {

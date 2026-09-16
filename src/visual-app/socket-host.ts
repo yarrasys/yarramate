@@ -9,7 +9,8 @@ import type { EditorHost, EditorHostEvents } from './editor-host.js'
 import { canReconnect } from './state.js'
 
 /**
- * The session server, as one host (#252).
+ * The session server, as one host (#252), and any server that speaks the
+ * same protocol over its own routes (ADR 0156).
  *
  * Everything the socket used to do inside `session-client.tsx` is here, and
  * nothing else moved: same two same-origin routes, same reconnect grace, same
@@ -21,6 +22,10 @@ import { canReconnect } from './state.js'
  * the reducer already reads, rather than as a second kind of event. A host has
  * one way to say things, which is what lets a host with no wire at all
  * (`local-host.ts`) be the same shape.
+ *
+ * With no options this is byte for byte what `yarramate-visual` mounts. A
+ * hosted page passes where its snapshot and its socket live; the protocol
+ * does not move.
  */
 
 const SESSION_ROUTE = '/api/session'
@@ -29,8 +34,38 @@ const SOCKET_ROUTE = '/socket'
 /** Long enough not to hammer a restarting socket, short enough to feel live. */
 const RETRY_MS = 1000
 
-export const createSocketHost = (): EditorHost => {
+export interface SocketHostOptions {
+  /**
+   * Where the opening `VisualSessionSnapshot` is fetched (GET, same-origin
+   * credentials, `Accept: application/json`). Resolved against the page.
+   * Default `/api/session`.
+   */
+  readonly session?: string | URL
+  /**
+   * Where the socket connects. A string or URL is resolved against the page
+   * and its scheme flipped to ws/wss; `after` is appended as a query
+   * parameter. A function receives `after` and returns the URL itself, for a
+   * server that wants it on the path. Default `/socket`.
+   */
+  readonly socket?: string | URL | ((after: number) => string | URL)
+  /** Delay before a reconnect attempt. Default 1000 ms. */
+  readonly retryMs?: number
+  /**
+   * How long a lost socket keeps retrying before the host reports a
+   * `closing` frame with reason `browser-timeout`. Default: the reducer's
+   * published grace (`canReconnect`). A hosted workspace that never hands
+   * off may pass `Infinity`.
+   */
+  readonly reconnectWindowMs?: number
+}
+
+export const createSocketHost = (options: SocketHostOptions = {}): EditorHost => {
   let socket: WebSocket | null = null
+  const retryMs = options.retryMs ?? RETRY_MS
+  const mayReconnect = (lostAt: number, now: number): boolean =>
+    options.reconnectWindowMs === undefined
+      ? canReconnect(lostAt, now)
+      : now - lostAt < options.reconnectWindowMs
 
   return {
     open: (events: EditorHostEvents) => {
@@ -39,11 +74,15 @@ export const createSocketHost = (): EditorHost => {
       let lostAt: number | null = null
 
       const socketUrl = () => {
-        const url = new URL(SOCKET_ROUTE, window.location.href)
-        url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
         // Read at connect time rather than captured: a reconnect bootstraps
         // from what has landed since, not from where the last one started.
-        url.searchParams.set('after', String(events.session().lastSequence))
+        const after = events.session().lastSequence
+        if (typeof options.socket === 'function') {
+          return new URL(String(options.socket(after)), window.location.href)
+        }
+        const url = new URL(options.socket ?? SOCKET_ROUTE, window.location.href)
+        url.protocol = url.protocol === 'https:' ? 'wss:' : url.protocol === 'http:' ? 'ws:' : url.protocol
+        url.searchParams.set('after', String(after))
         return url
       }
 
@@ -52,11 +91,11 @@ export const createSocketHost = (): EditorHost => {
         lostAt ??= Date.now()
         // Past the grace the server has already recovered the handoff, so
         // there is nothing left to reconnect to.
-        if (!canReconnect(lostAt, Date.now())) {
+        if (!mayReconnect(lostAt, Date.now())) {
           events.frame({ kind: 'closing', reason: 'browser-timeout' })
           return
         }
-        timer = setTimeout(connect, RETRY_MS)
+        timer = setTimeout(connect, retryMs)
       }
 
       const connect = () => {
@@ -86,10 +125,13 @@ export const createSocketHost = (): EditorHost => {
       }
 
       const load = async () => {
-        const response = await fetch(SESSION_ROUTE, {
-          credentials: 'same-origin',
-          headers: { Accept: 'application/json' },
-        })
+        const response = await fetch(
+          new URL(options.session ?? SESSION_ROUTE, window.location.href),
+          {
+            credentials: 'same-origin',
+            headers: { Accept: 'application/json' },
+          },
+        )
         if (!response.ok) {
           throw new Error(`Session request answered ${response.status}`)
         }

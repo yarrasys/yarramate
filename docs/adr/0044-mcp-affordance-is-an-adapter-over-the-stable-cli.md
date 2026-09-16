@@ -1,6 +1,6 @@
 # MCP affordance is an adapter over the stable CLI
 
-Status: accepted
+Status: accepted. Amended by ADR 0156: the adapter executes the path-free tool functions the CLI also executes, not the CLI itself.
 
 Agent harnesses discover typed tool schemas more reliably than `--help`
 text, and several load MCP servers by default. YarraMate meets them with

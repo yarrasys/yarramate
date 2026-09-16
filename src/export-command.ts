@@ -1,5 +1,4 @@
 import { spawnSync } from 'node:child_process'
-import { createHash } from 'node:crypto'
 import {
   existsSync,
   mkdirSync,
@@ -9,54 +8,40 @@ import {
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseDocument } from 'yaml'
-import { renderBrief } from './brief.js'
 import { deriveChangedSubjects } from './changed.js'
 import {
   humanDiagnostics,
-  packageVersion,
   usage,
   type CliResult,
 } from './cli-support.js'
+import type { Diagnostic } from './compiler.js'
+import { evaluateProjection, renderProjectionMarkdown } from './projection.js'
+import { createFileSystemStore } from './source-store.js'
+import { posixDirectoryOf } from './apply-command.js'
 import {
-  compileWorkspaceWithProfileContext,
-  type Diagnostic,
-  type GraphClaim,
-} from './compiler.js'
-import { serializeSemanticGraph } from './graph.js'
+  briefsFromResult,
+  exportBriefs,
+  exportGraph,
+  exportMarkdown,
+  exportRtm,
+  exportWorkbook,
+} from './tools/export.js'
 import {
-  evaluateEvidenceWorkspace,
-  loadEvidence,
-  type EvidenceDocument,
-} from './evidence.js'
-import {
-  evaluateProjection,
-  loadProjection,
-  renderProjectionMarkdown,
-  type ProjectionResult,
-} from './projection.js'
-import { buildRtm, renderRtmMarkdown } from './rtm.js'
-import { workbookFrom } from './workbook.js'
+  compileOf,
+  readSource,
+  type ToolFailure,
+  type ToolWorkspace,
+} from './tools/workspace.js'
 import { loadWorkspaceManifest } from './workspace.js'
 
-// The adapter stays a separate process behind the verb: the core never
-// imports adapter code (the adapter-runtime-dependency exclusion), it
-// hands the invocation to the sibling binary shipped in the same package.
+// Every kind is derived in `tools/export.ts` (ADR 0156): this command
+// parses arguments, resolves the manifest against the filesystem, and
+// writes what the core hands back where `--out` says. The git-derived
+// review slice (`--changed`) is the CLI's own and reuses the same pieces;
+// the LikeC4 kind delegates to the `yarramate-likec4` binary, as before.
+
 const here = dirname(fileURLToPath(import.meta.url))
 const likec4AdapterEntry = join(here, 'adapters', 'likec4-cli.js')
-
-const claimValue = (
-  claims: readonly GraphClaim[],
-  subject: string,
-  predicate: string,
-): string | undefined => {
-  const object = claims.find(
-    (claim) => claim.subject === subject && claim.predicate === predicate,
-  )?.object
-  return object !== undefined && 'value' in object ? object.value : undefined
-}
-
-const briefFileName = (id: string): string =>
-  `${id.replaceAll('#', '--')}.md`
 
 interface ParsedExport {
   readonly positionals: readonly string[]
@@ -130,7 +115,6 @@ export function runExportCommand(
     return { exitCode: 2, stdout: '', stderr: usage }
   }
 
-  // likec4 delegates whole: <likec4-project.yaml> <output-dir> <workspace>.
   if (kind === 'likec4') {
     const [projectDefinition, outputDirectory, workspacePath] =
       parsed.positionals
@@ -213,62 +197,33 @@ export function runExportCommand(
       stdout: humanDiagnostics(diagnostics),
       stderr: '',
     })
+    const failedTool = (failure: ToolFailure): CliResult =>
+      failure.reason === 'diagnostics'
+        ? failed(failure.diagnostics)
+        : { exitCode: 2, stdout: '', stderr: `${failure.message}\n` }
     const loadedWorkspace = loadWorkspaceManifest(
       { path: workspacePath, source: manifestSource },
       cwd,
     )
     if (!loadedWorkspace.ok) return failed(loadedWorkspace.diagnostics)
     const workspace = loadedWorkspace.workspace
-
-    // Named rather than inlined so the workbook can pin its digests against
-    // exactly the bytes that compiled, the way a visual commit does (#355).
-    const sources = [
-      ...workspace.profiles,
-      ...workspace.patterns,
-      ...workspace.documents,
-    ].map((path) => ({
-      path,
-      source: readFileSync(resolve(cwd, path), 'utf8'),
-    }))
-    const compilation = compileWorkspaceWithProfileContext(sources)
-    if (!compilation.ok) return failed(compilation.diagnostics)
+    const tool: ToolWorkspace = {
+      store: createFileSystemStore(cwd),
+      workspace,
+      manifestDirectory: posixDirectoryOf(workspacePath),
+    }
+    const writeText = (path: string, text: string): void => {
+      const outPath = resolve(cwd, path)
+      mkdirSync(dirname(outPath), { recursive: true })
+      writeFileSync(outPath, text, 'utf8')
+    }
 
     if (kind === 'rtm') {
-      // The RTM is a compliance bundle over the whole workspace: the
-      // evidence overlay supplies the verdict column, so it loads here
-      // exactly as reconcile loads it (ADR 0071).
-      const evidenceDocuments: EvidenceDocument[] = []
-      for (const path of workspace.evidence) {
-        const loaded = loadEvidence({
-          path,
-          source: readFileSync(resolve(cwd, path), 'utf8'),
-        })
-        if (!loaded.ok) return failed(loaded.diagnostics)
-        evidenceDocuments.push(loaded.evidence)
-      }
-      const evaluation = evaluateEvidenceWorkspace(
-        compilation.graph,
-        evidenceDocuments,
-      )
-      if (!evaluation.ok) return failed(evaluation.diagnostics)
-      const rtm = buildRtm(
-        workspace.id,
-        compilation.graph,
-        compilation.profileContext,
-        evaluation.reports,
-      )
-      const outDirectory = resolve(cwd, parsed.out!)
-      mkdirSync(outDirectory, { recursive: true })
-      writeFileSync(
-        join(outDirectory, 'RTM.md'),
-        renderRtmMarkdown(rtm),
-        'utf8',
-      )
-      writeFileSync(
-        join(outDirectory, 'rtm.json'),
-        `${JSON.stringify(rtm, null, 2)}\n`,
-        'utf8',
-      )
+      const exported = exportRtm(tool)
+      if (!exported.ok) return failedTool(exported)
+      const { markdown, rtm } = exported.result
+      writeText(join(parsed.out!, 'RTM.md'), markdown)
+      writeText(join(parsed.out!, 'rtm.json'), `${JSON.stringify(rtm, null, 2)}\n`)
       return {
         exitCode: 0,
         stdout:
@@ -282,13 +237,12 @@ export function runExportCommand(
     }
 
     if (kind === 'graph') {
-      const serialized = serializeSemanticGraph(compilation.graph)
+      const exported = exportGraph(tool)
+      if (!exported.ok) return failedTool(exported)
       if (parsed.out === undefined) {
-        return { exitCode: 0, stdout: serialized, stderr: '' }
+        return { exitCode: 0, stdout: exported.result.json, stderr: '' }
       }
-      const outPath = resolve(cwd, parsed.out)
-      mkdirSync(dirname(outPath), { recursive: true })
-      writeFileSync(outPath, serialized, 'utf8')
+      writeText(parsed.out, exported.result.json)
       return {
         exitCode: 0,
         stdout: `Wrote graph to ${parsed.out}\n`,
@@ -296,97 +250,12 @@ export function runExportCommand(
       }
     }
 
-    let result: ProjectionResult
-    if (parsed.changed !== undefined) {
-      // Review slices derive from git (ADR 0065): changed subjects seed
-      // the connected neighbourhood the reviewer inspects.
-      const documentIdByPath = new Map(
-        compilation.graph.documents.map(({ id, source }) => [source, id]),
-      )
-      const derived = deriveChangedSubjects(
-        cwd,
-        parsed.changed,
-        workspace.documents.map((path) => ({
-          path,
-          source: readFileSync(resolve(cwd, path), 'utf8'),
-          documentId: documentIdByPath.get(path) ?? path,
-        })),
-      )
-      if (!derived.ok) {
-        return { exitCode: 2, stdout: '', stderr: `${derived.message}\n` }
-      }
-      const endpoints = new Set<string>()
-      for (const relationshipId of derived.changed.relationships) {
-        const claim = compilation.graph.claims.find(
-          (candidate) =>
-            candidate.id === relationshipId && 'ref' in candidate.object,
-        )
-        if (claim !== undefined && 'ref' in claim.object) {
-          endpoints.add(claim.subject)
-          endpoints.add(claim.object.ref)
-        }
-      }
-      const seeds = [
-        ...new Set([...derived.changed.concepts, ...endpoints]),
-      ].sort()
-      result = evaluateProjection(
-        compilation.graph,
-        {
-          format: 'yarramate/projection/v1',
-          id: 'review-slice',
-          version: '0.0',
-          query: { subjects: seeds, relationships: 'connected' },
-          presentation: {
-            title: `Review slice ${parsed.changed}`,
-            description:
-              `Connected neighbourhood of the subjects changed in ` +
-              `${parsed.changed}.`,
-          },
-        },
-        compilation.profileContext,
-      )
-    } else {
-      const loadedProjection = loadProjection({
-        path: projectionPath!,
-        source: readFileSync(resolve(cwd, projectionPath!), 'utf8'),
-      })
-      if (!loadedProjection.ok) return failed(loadedProjection.diagnostics)
-      result = evaluateProjection(
-        compilation.graph,
-        loadedProjection.projection,
-        compilation.profileContext,
-        // An AUTHORED projection can name `instances`, and the facet resolves
-        // to the instance alone without these (ADR 0144).
-        compilation.patternMemberships,
-      )
-    }
-
     if (kind === 'xlsx') {
-      // A workbook an architect can work in (#355). It takes a PROJECTION,
-      // like markdown and briefs do, which is what gives it version selection
-      // for free: a projection query already has a `states` facet, so
-      // "export the target state" is an existing capability rather than a
-      // flag competing with it.
-      const bytes = workbookFrom(result, {
-        workspace: workspace.id,
-        yarramateVersion: packageVersion,
-        sourceDigests: Object.fromEntries(
-          sources.map(({ path, source }) => [
-            path,
-            createHash('sha256').update(source, 'utf8').digest('hex'),
-          ]),
-        ),
-        conceptKinds: [
-          ...compilation.profileContext.conceptKindLineages.keys(),
-        ].sort(),
-        relationshipKinds: [
-          ...compilation.profileContext.relationshipKindLineages.keys(),
-        ].sort(),
-        statuses: ['planned', 'current', 'retired'],
-      })
+      const exported = exportWorkbook(tool, projectionPath!)
+      if (!exported.ok) return failedTool(exported)
       const outPath = resolve(cwd, parsed.out!)
       mkdirSync(dirname(outPath), { recursive: true })
-      writeFileSync(outPath, bytes)
+      writeFileSync(outPath, exported.result.bytes)
       return {
         exitCode: 0,
         stdout: `Wrote workbook to ${parsed.out}\n`,
@@ -394,17 +263,13 @@ export function runExportCommand(
       }
     }
 
-    if (kind === 'markdown') {
-      const rendered = renderProjectionMarkdown(
-        result,
-        compilation.profileContext,
-      )
+    if (kind === 'markdown' && parsed.changed === undefined) {
+      const exported = exportMarkdown(tool, projectionPath!)
+      if (!exported.ok) return failedTool(exported)
       if (parsed.out === undefined) {
-        return { exitCode: 0, stdout: rendered, stderr: '' }
+        return { exitCode: 0, stdout: exported.result.markdown, stderr: '' }
       }
-      const outPath = resolve(cwd, parsed.out)
-      mkdirSync(dirname(outPath), { recursive: true })
-      writeFileSync(outPath, rendered, 'utf8')
+      writeText(parsed.out, exported.result.markdown)
       return {
         exitCode: 0,
         stdout: `Wrote markdown to ${parsed.out}\n`,
@@ -412,75 +277,99 @@ export function runExportCommand(
       }
     }
 
-    // briefs: the handoff bundle — one brief per projected concept, each
-    // the concept's one-hop neighbourhood (ADR 0055), plus an index so N
-    // implementers can each pick up one slice.
-    const stateIds = new Set(
-      result.claims
-        .filter(({ predicate }) => predicate === 'yarramate/state/type')
-        .map(({ subject }) => subject),
+    if (kind === 'briefs' && parsed.changed === undefined) {
+      const exported = exportBriefs(
+        tool,
+        projectionPath!,
+        parsed.budget === undefined ? {} : { budget: parsed.budget },
+      )
+      if (!exported.ok) return failedTool(exported)
+      for (const { path, markdown } of exported.result.files) {
+        writeText(join(parsed.out!, path), markdown)
+      }
+      const count = exported.result.concepts
+      return {
+        exitCode: 0,
+        stdout: `Wrote ${count} brief${count === 1 ? '' : 's'} and INDEX.md to ${parsed.out}\n`,
+        stderr: '',
+      }
+    }
+
+    // --changed: the review slice, seeded by what git says moved (ADR
+    // 0065). The CLI's own, because it needs a repository; it renders and
+    // writes through the same pieces the store-backed kinds use.
+    const compilation = compileOf(tool)
+    if (!compilation.ok) return failedTool(compilation)
+    const { compiled } = compilation
+    const documentIdByPath = new Map(
+      compiled.graph.documents.map(({ id, source }) => [source, id]),
     )
-    const concepts = result.subjects
-      .filter(({ id, type }) => type === 'concept' && !stateIds.has(id))
-      .map(({ id }) => id)
-      .sort((left, right) => left.localeCompare(right))
-    const outDirectory = resolve(cwd, parsed.out!)
-    mkdirSync(outDirectory, { recursive: true })
-    const indexLines: string[] = [
-      `# Briefs — ${result.presentation?.title ?? result.projection}`,
-      '',
-      `Derived from projection ${result.projection}; one brief per concept,`,
-      'each the concept\'s connected neighbourhood as declared today.',
-      '',
-    ]
-    for (const id of concepts) {
-      const slice: ProjectionResult = evaluateProjection(
-        compilation.graph,
-        {
-          format: 'yarramate/projection/v1',
-          id: 'export-brief',
-          version: '0.0',
-          query: { subjects: [id], relationships: 'connected' },
-          presentation: {
-            title:
-              claimValue(result.claims, id, 'yarramate/concept/name') ?? id,
-            description: `The neighbourhood of ${id} as declared today.`,
-          },
+    const derived = deriveChangedSubjects(
+      cwd,
+      parsed.changed!,
+      workspace.documents.map((path) => ({
+        ...readSource(tool, path),
+        documentId: documentIdByPath.get(path) ?? path,
+      })),
+    )
+    if (!derived.ok) {
+      return { exitCode: 2, stdout: '', stderr: `${derived.message}\n` }
+    }
+    const endpoints = new Set<string>()
+    for (const relationshipId of derived.changed.relationships) {
+      const claim = compiled.graph.claims.find(
+        (candidate) =>
+          candidate.id === relationshipId && 'ref' in candidate.object,
+      )
+      if (claim !== undefined && 'ref' in claim.object) {
+        endpoints.add(claim.subject)
+        endpoints.add(claim.object.ref)
+      }
+    }
+    const seeds = [
+      ...new Set([...derived.changed.concepts, ...endpoints]),
+    ].sort()
+    const result = evaluateProjection(
+      compiled.graph,
+      {
+        format: 'yarramate/projection/v1',
+        id: 'review-slice',
+        version: '0.0',
+        query: { subjects: seeds, relationships: 'connected' },
+        presentation: {
+          title: `Review slice ${parsed.changed}`,
+          description:
+            `Connected neighbourhood of the subjects changed in ` +
+            `${parsed.changed}.`,
         },
-        compilation.profileContext,
-      )
-      const brief = renderBrief(
-        slice,
-        compilation.profileContext,
-        parsed.budget,
-        compilation.graph.claims,
-      )
-      writeFileSync(join(outDirectory, briefFileName(id)), brief, 'utf8')
-      const name = claimValue(result.claims, id, 'yarramate/concept/name')
-      const conceptKind =
-        claimValue(result.claims, id, 'yarramate/concept/kind') ?? 'unknown'
-      const status = claimValue(
-        result.claims,
-        id,
-        'yarramate/lifecycle/status',
-      )
-      indexLines.push(
-        `- [${name ?? id}](${briefFileName(id)}) — ` +
-          `${conceptKind.split('#')[1] ?? conceptKind}` +
-          `${status === undefined ? '' : ` (${status})`} — \`${id}\``,
-      )
-    }
-    if (concepts.length === 0) {
-      indexLines.push('No concepts selected by this projection.')
-    }
-    writeFileSync(
-      join(outDirectory, 'INDEX.md'),
-      `${indexLines.join('\n')}\n`,
-      'utf8',
+      },
+      compiled.profileContext,
     )
+
+    if (kind === 'markdown') {
+      const rendered = renderProjectionMarkdown(result, compiled.profileContext)
+      if (parsed.out === undefined) {
+        return { exitCode: 0, stdout: rendered, stderr: '' }
+      }
+      writeText(parsed.out, rendered)
+      return {
+        exitCode: 0,
+        stdout: `Wrote markdown to ${parsed.out}\n`,
+        stderr: '',
+      }
+    }
+
+    const briefs = briefsFromResult(
+      compiled,
+      result,
+      parsed.budget === undefined ? {} : { budget: parsed.budget },
+    )
+    for (const { path, markdown } of briefs.files) {
+      writeText(join(parsed.out!, path), markdown)
+    }
     return {
       exitCode: 0,
-      stdout: `Wrote ${concepts.length} brief${concepts.length === 1 ? '' : 's'} and INDEX.md to ${parsed.out}\n`,
+      stdout: `Wrote ${briefs.concepts} brief${briefs.concepts === 1 ? '' : 's'} and INDEX.md to ${parsed.out}\n`,
       stderr: '',
     }
   } catch (error) {
