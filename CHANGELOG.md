@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.34.0
 
 ### Governance: risk and assumption as kinds beside assessment, readings the endpoints decide, and a derived governance log (#560)
 
