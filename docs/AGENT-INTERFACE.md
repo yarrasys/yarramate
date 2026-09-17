@@ -169,6 +169,14 @@ others; graphify analogues: `--wiki` / `--svg` / `--neo4j`.
   `path:line` citation on every cell and unrealized requirements as
   explicit gaps (ADR 0071). Declared non-goals (ADR 0073) leave the
   coverage arithmetic as descoped rows rather than counting against it.
+- `export responsibility <projection>`: the RACI matrix over the
+  projection's subjects (ADR 0159): `RESPONSIBILITY.md` a person reads and
+  a `yarramate/responsibility/v1` JSON, a column per person the model holds,
+  Accountable from the owner claim, Responsible, Consulted and Informed
+  from the `yarramate/policy@0.2` relationship kinds, a derived Consulted
+  from attestation authorities with its topic and date, an authored
+  `path:line` behind every letter, rows with no A or no R as `gaps`, and
+  people with no letter as `idle`.
 - `export likec4` — visualization project (today's adapter surface;
   the adapter binary remains the implementation).
 - Harness use: handoff preparation, CI artifact generation,

@@ -345,7 +345,7 @@ const slice = askSlice(workspace, { text: 'billing' }, { budget: 800 })
 Every function but `checkWorkspace` answers a `ToolResult<T>`: `ok` with the
 published document, or a refusal as `diagnostics` (the engine's, with
 locations) or `refused` (an argument, in one sentence). The exports answer
-text (`exportMarkdown`, `exportGraph`, `exportRtm`, `exportBriefs`), files
+text (`exportMarkdown`, `exportGraph`, `exportRtm`, `exportResponsibility`, `exportBriefs`), files
 (`exportLikeC4`, the four files a generated project holds) or bytes
 (`exportWorkbook`); nothing writes, and the caller decides where they go.
 

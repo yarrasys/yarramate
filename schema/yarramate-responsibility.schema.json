@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yarramate.org/schema/responsibility/v1",
+  "title": "YarraMate responsibility matrix",
+  "description": "RACI over the model, derived and never authored (ADR 0159). Accountable is the owner claim; Responsible, Consulted and Informed are the yarramate/policy@0.2 relationship kinds; a person named as by on an attestation is consulted, derived with its topic and date.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "workspace", "summary", "people", "rows", "gaps", "idle"],
+  "properties": {
+    "format": { "const": "yarramate/responsibility/v1" },
+    "workspace": { "$ref": "#/$defs/id" },
+    "projection": { "type": "string", "minLength": 1 },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rows", "people", "cells", "noAccountable", "noResponsible", "idle"],
+      "properties": {
+        "rows": { "type": "integer", "minimum": 0 },
+        "people": { "type": "integer", "minimum": 0 },
+        "cells": { "type": "integer", "minimum": 0 },
+        "noAccountable": { "type": "integer", "minimum": 0 },
+        "noResponsible": { "type": "integer", "minimum": 0 },
+        "idle": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "people": { "type": "array", "items": { "$ref": "#/$defs/person" } },
+    "rows": { "type": "array", "items": { "$ref": "#/$defs/row" } },
+    "gaps": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["noAccountable", "noResponsible"],
+      "properties": {
+        "noAccountable": { "type": "array", "items": { "$ref": "#/$defs/subject" } },
+        "noResponsible": { "type": "array", "items": { "$ref": "#/$defs/subject" } }
+      }
+    },
+    "idle": { "type": "array", "items": { "$ref": "#/$defs/person" } }
+  },
+  "$defs": {
+    "id": { "type": "string", "minLength": 1 },
+    "subject": { "type": "string", "minLength": 1 },
+    "letter": { "enum": ["A", "R", "C", "I"] },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "line"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "line": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "cellSource": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "source"],
+          "properties": {
+            "kind": { "const": "owner" },
+            "source": { "$ref": "#/$defs/source" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "relationship", "relationshipKind", "source"],
+          "properties": {
+            "kind": { "const": "relationship" },
+            "relationship": { "$ref": "#/$defs/subject" },
+            "relationshipKind": { "type": "string", "minLength": 1 },
+            "source": { "$ref": "#/$defs/source" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "topic", "on", "source"],
+          "properties": {
+            "kind": { "const": "attestation" },
+            "topic": { "type": "string", "minLength": 1 },
+            "on": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+            "source": { "$ref": "#/$defs/source" }
+          }
+        }
+      ]
+    },
+    "cell": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["letters", "sources"],
+      "properties": {
+        "letters": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/letter" } },
+        "sources": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/cellSource" } }
+      }
+    },
+    "person": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "kind", "served"],
+      "properties": {
+        "id": { "$ref": "#/$defs/subject" },
+        "name": { "type": "string" },
+        "kind": { "type": "string" },
+        "served": { "type": "boolean" }
+      }
+    },
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subject", "name", "kind", "cells"],
+      "properties": {
+        "subject": { "$ref": "#/$defs/subject" },
+        "name": { "type": "string" },
+        "kind": { "type": "string" },
+        "cells": {
+          "type": "object",
+          "propertyNames": { "minLength": 1 },
+          "additionalProperties": { "$ref": "#/$defs/cell" }
+        }
+      }
+    }
+  }
+}

@@ -1,5 +1,30 @@
 # Changelog
 
+## Unreleased
+
+### Responsibility: three relationship kinds beside the owner claim, and a derived RACI matrix (#557)
+
+`yarramate/policy@0.2` ships beside 0.1 and extends it (ADR 0159), adding
+`responsible`, `consulted` and `informed`, each a subkind of `association`
+from a person to the subject they answer for; Accountable stays the `owner`
+claim. `extends: yarramate/policy@0.2` is the whole adoption, and the
+compiler brings 0.1 in behind it. `yarramate export responsibility
+<projection> <workspace> --out <dir>` writes `RESPONSIBILITY.md` and
+`responsibility.json` (`yarramate/responsibility/v1`, registered in the
+Core contract): rows from the projection, a column per person, letters with
+the authored line behind each, `gaps` (no A, no R) and `idle` (no letter,
+flagged `served`). A person named as `by` on an attestation is consulted on
+it, derived with the topic and date and never counted toward a gap.
+`yarramate_export` takes `kind: responsibility`, and `yarramate/tools`
+exports `exportResponsibility`, `buildResponsibilityMatrix` and
+`renderResponsibilityMarkdown`. The shipped catalogue gains
+`responsible-missing` and `role-idle`, both guarded by the new
+`profile-loaded` condition so a workspace that never adopted the vocabulary
+is never asked. On the canvas the edges read "is responsible for", "is
+consulted on", "is informed of" and are hidden until a view's new
+`showResponsibility` flag, or the toggle beside the badges, asks for them;
+the subject's properties read the letters either way.
+
 ## 1.32.0
 
 ### White-labelling: one branding value for the editor, the tool list and the exports (#546)

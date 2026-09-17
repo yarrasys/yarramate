@@ -738,6 +738,23 @@ concepts:
     description: Normative structure for the yarramate/rtm/v1 contract.
     owner: yarramate-maintainers
     status: current
+  - id: derive-responsibility-matrix
+    kind: applicationFunction
+    name: Derive responsibility matrix
+    description: "Derives the RACI matrix from compiled claims (ADR 0159): Accountable from the owner claim, Responsible, Consulted and Informed from the yarramate/policy@0.2 relationship kinds read through the lineage, a derived Consulted from attestation authorities with its topic and date, an authored line behind every letter, rows with no A or no R as gaps, and people with no letter as idle, each flagged served. Never authored; identical inputs give identical bytes."
+    status: current
+  - id: responsibility-matrix
+    kind: dataObject
+    name: Responsibility matrix
+    description: "The yarramate/responsibility/v1 two-file bundle: RESPONSIBILITY.md for a reader and responsibility.json for a pipeline, both derived readings of the graph."
+    owner: yarramate-maintainers
+    status: current
+  - id: responsibility-schema
+    kind: artifact
+    name: Responsibility matrix JSON Schema
+    description: Normative structure for the yarramate/responsibility/v1 contract.
+    owner: yarramate-maintainers
+    status: current
   - id: detect-stale-attestations
     kind: applicationFunction
     name: Detect stale attestations
@@ -1750,6 +1767,31 @@ relationships:
     kind: realization
     from: rtm-schema
     to: requirements-traceability-matrix
+  - id: export-command-serves-responsibility-matrix
+    kind: serving
+    from: export-command
+    to: derive-responsibility-matrix
+    description: export responsibility is a derivation mode of the one export verb, not a verb of its own.
+  - id: responsibility-derivation-reads-graph
+    kind: access
+    from: derive-responsibility-matrix
+    to: semantic-graph
+    mode: read
+    status: current
+  - id: responsibility-derivation-produces-matrix
+    kind: access
+    from: derive-responsibility-matrix
+    to: responsibility-matrix
+    mode: write
+    status: current
+  - id: responsibility-schema-describes-matrix
+    kind: realization
+    from: responsibility-schema
+    to: responsibility-matrix
+  - id: tools-entry-derives-responsibility-matrix
+    kind: assignment
+    from: tools-entry
+    to: derive-responsibility-matrix
   - id: traceability-derivation-reads-schema
     kind: access
     from: derive-traceability-matrix

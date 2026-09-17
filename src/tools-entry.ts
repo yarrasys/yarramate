@@ -71,6 +71,7 @@ export {
   exportGraph,
   exportLikeC4,
   exportMarkdown,
+  exportResponsibility,
   exportRtm,
   exportWorkbook,
   type BriefsOptions,
@@ -115,6 +116,25 @@ export {
   type WorkspaceManifestResult,
 } from './workspace-resolution.js'
 export { sha256Hex } from './digest.js'
+export {
+  buildResponsibilityMatrix,
+  renderResponsibilityMarkdown,
+  type RaciLetter,
+  type ResponsibilityCell,
+  type ResponsibilityCellSource,
+  type ResponsibilityMatrix,
+  type ResponsibilityOptions,
+  type ResponsibilityPerson,
+  type ResponsibilityRow,
+  type ResponsibilitySource,
+} from './responsibility.js'
+export {
+  PEOPLE_KINDS,
+  RESPONSIBILITY_KINDS,
+  RESPONSIBILITY_PROFILE,
+  responsibilityLetterOf,
+  type ResponsibilityLetter,
+} from './responsibility-kinds.js'
 export type { NextSubject } from './next-command.js'
 export type {
   PendingWrite,

@@ -179,6 +179,7 @@ yarramate export markdown .yarramate/projections/<target>.yaml .yarramate/worksp
 yarramate export markdown .yarramate/projections/<flow>.yaml .yarramate/workspace.yaml
 yarramate export briefs .yarramate/projections/<target>.yaml .yarramate/workspace.yaml --out <handoff-dir>
 yarramate export rtm .yarramate/workspace.yaml --out <rtm-dir>
+yarramate export responsibility .yarramate/projections/<target>.yaml .yarramate/workspace.yaml --out <raci-dir>
 yarramate ask .yarramate/workspace.yaml --compare <document-id>#<baseline-state> <document-id>#<target-state>
 yarramate-likec4 check .yarramate/likec4-project.yaml --json .yarramate/workspace.yaml
 yarramate-likec4 map --sync .yarramate/integrations/likec4/subject-mapping.yaml .yarramate/workspace.yaml

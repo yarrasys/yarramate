@@ -1596,6 +1596,30 @@ mappings:
   - native: rtm-schema
     external: rtmSchema
     type: concept
+  - native: derive-responsibility-matrix
+    external: deriveResponsibilityMatrix
+    type: concept
+  - native: responsibility-matrix
+    external: responsibilityMatrix
+    type: concept
+  - native: responsibility-schema
+    external: responsibilitySchema
+    type: concept
+  - native: export-command-serves-responsibility-matrix
+    external: exportCommandServesResponsibilityMatrix
+    type: relationship
+  - native: responsibility-derivation-reads-graph
+    external: responsibilityDerivationReadsGraph
+    type: relationship
+  - native: responsibility-derivation-produces-matrix
+    external: responsibilityDerivationProducesMatrix
+    type: relationship
+  - native: responsibility-schema-describes-matrix
+    external: responsibilitySchemaDescribesMatrix
+    type: relationship
+  - native: tools-entry-derives-responsibility-matrix
+    external: toolsEntryDerivesResponsibilityMatrix
+    type: relationship
   - native: rtm-schema-describes-matrix
     external: rtmSchemaDescribesMatrix
     type: relationship
