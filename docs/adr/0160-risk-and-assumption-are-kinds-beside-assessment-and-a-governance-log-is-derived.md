@@ -71,7 +71,10 @@ schema is registered in the Core contract. Whole-workspace, like the RTM.
 
 **Five questions in the shipped catalogue**, dormant on any workspace that
 has not adopted policy@0.3, by the applicability rule ADR 0159 records:
-`risk-threatens-nothing`, `risk-unmitigated` (current risks only),
+`risk-threatens-nothing`, `risk-unmitigated` (current risks only, as first
+shipped; #564 widened it and its four siblings to every subject not retired,
+since a selector's `statuses` matches only a subject that has one and a
+fresh risk has none),
 `risk-unowned`, `assumption-unconfirmed` (authority human) and
 `assumption-bears-on-nothing`, each on planned and current subjects. The
 decision question waits for the kind.

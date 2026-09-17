@@ -19,6 +19,21 @@ browser evaluates as off), the rail counts each view under its own flag, and
 flipping the toggle re-asks the standing filter, so switching the edges on
 brings in the people they lead to. Additive on the wire.
 
+### The unmitigated gap and the five governance questions cover every risk and assumption not retired (#564)
+
+`gaps.unmitigated` in the governance log counted only a risk whose status
+was exactly `current`, so a risk nobody had given a status, which is every
+freshly authored one, was never in it and `summary.unmitigated` read 0 over
+a log where every risk was unmitigated. The five shipped governance
+questions had the same blind spot: a catalogue selector's `statuses` matches
+only a subject that has one, and each of them selected by status. The gap
+and the questions now cover every risk and assumption that is not retired,
+the planned and the unstatused included, which is what the interrogation
+already applies when a question names no status; a planned risk is asked what
+is in place, or planned, to reduce it. The Markdown gap line reads
+"Unmitigated risks". Only ever wider: more subjects counted and asked, never
+fewer.
+
 ## 1.34.0
 
 ### Governance: risk and assumption as kinds beside assessment, readings the endpoints decide, and a derived governance log (#560)

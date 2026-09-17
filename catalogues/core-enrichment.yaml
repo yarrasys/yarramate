@@ -907,9 +907,6 @@ questions:
     subjects:
       kinds:
         - yarramate/policy@0.3#risk
-      statuses:
-        - planned
-        - current
     trigger:
       - condition: missing-linkage
         kinds:
@@ -939,8 +936,6 @@ questions:
     subjects:
       kinds:
         - yarramate/policy@0.3#risk
-      statuses:
-        - current
     trigger:
       - condition: missing-linkage
         kinds:
@@ -955,11 +950,11 @@ questions:
     question: >-
       What mitigates {subject.name}?
     askPlain: >-
-      "{subject.name}" is live. What work, deliverable, rule or decision is in
-      place to reduce it?
+      "{subject.name}" is on the log. What work, deliverable, rule or decision
+      is in place, or planned, to reduce it?
     materiality: >-
-      A live risk with no mitigation is a bet the engagement is making without
-      saying so; the log exists to make that visible.
+      A risk on the log with no mitigation is a bet the engagement is making
+      without saying so; the log exists to make that visible.
     authority: either
     resolution: >-
       Add an `influence` relationship from the work package, deliverable,
@@ -971,9 +966,6 @@ questions:
     subjects:
       kinds:
         - yarramate/policy@0.3#risk
-      statuses:
-        - planned
-        - current
     trigger:
       - condition: missing-claim
         predicate: yarramate/ownership/owner
@@ -995,9 +987,6 @@ questions:
     subjects:
       kinds:
         - yarramate/policy@0.3#assumption
-      statuses:
-        - planned
-        - current
     trigger:
       - condition: missing-attestation
         topic: assumption-confirmed
@@ -1021,9 +1010,6 @@ questions:
     subjects:
       kinds:
         - yarramate/policy@0.3#assumption
-      statuses:
-        - planned
-        - current
     trigger:
       - condition: missing-relationship
         kinds:

@@ -242,7 +242,15 @@ export function buildGovernanceLog(
   const unowned = ids((row) => row.owner === null)
   const unmitigated = ids(
     (row) =>
-      row.type === 'risk' && row.status === 'current' && row.mitigatedBy.length === 0,
+      // Every risk still open, whatever its status says or does not say. The
+      // first cut counted only `status: current`, so a risk nobody had given a
+      // status, which is every freshly authored one, was never here and the
+      // tile read 0 over a log where every risk was unmitigated (#564). The
+      // engine's word for "open" is not-retired: that is what keeps unstatused
+      // subjects in a projection with `excludeStatuses: [retired]` and what
+      // the interrogation applies by default. A planned risk is asked for its
+      // mitigation too; a mitigation can be planned.
+      row.type === 'risk' && row.status !== 'retired' && row.mitigatedBy.length === 0,
   )
   const unconfirmed = ids((row) => row.type === 'assumption' && row.review === null)
   const unreviewed = ids((row) => row.type === 'risk' && row.review === null)
@@ -306,7 +314,7 @@ export function renderGovernanceMarkdown(log: GovernanceLog): string {
     '## Gaps',
     '',
     `- Unowned: ${list(log.gaps.unowned)}`,
-    `- Unmitigated (current risks): ${list(log.gaps.unmitigated)}`,
+    `- Unmitigated risks: ${list(log.gaps.unmitigated)}`,
     `- Unconfirmed assumptions: ${list(log.gaps.unconfirmed)}`,
     `- Unreviewed risks: ${list(log.gaps.unreviewed)}`,
     '',
