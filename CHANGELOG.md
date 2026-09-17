@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+### A responsibility edge carries the `connected` walk only when the view shows it (#563)
+
+`relationships: connected` no longer takes the far end of a `responsible`,
+`consulted` or `informed` edge (or an adopter's subkind of one) unless the
+projection's `presentation.showResponsibility` is `true` (ADR 0161). The
+canvas hides those edges while the flag is off (ADR 0159), so the walk stood
+people in an application landscape with no line to anything; on the ApertureX
+reference a 157-subject view read 161. Between two subjects the query chose
+on their own merits the edge is selected as before under both modes, so
+whole-workspace evaluations, the workbook round trip and the derived matrices
+are unchanged. `ask` slices, brief exports and the design step walk them
+regardless: prose speaks every relationship. The editor sends the flag with
+each filter (`filter.query` gains an optional `showResponsibility`; an older
+browser evaluates as off), the rail counts each view under its own flag, and
+flipping the toggle re-asks the standing filter, so switching the edges on
+brings in the people they lead to. Additive on the wire.
+
 ## 1.34.0
 
 ### Governance: risk and assumption as kinds beside assessment, readings the endpoints decide, and a derived governance log (#560)

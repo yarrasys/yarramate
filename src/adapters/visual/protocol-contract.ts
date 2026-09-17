@@ -281,6 +281,16 @@ export interface VisualFilterQueryPayload {
    * exactly as it did before.
    */
   readonly nesting?: readonly NestingKind[];
+  /**
+   * Whether the view shows responsibility edges (#563, ADR 0161).
+   *
+   * Only the `connected` walk reads it: a responsibility edge the canvas hides
+   * must not bring a person into the picture, and one the canvas shows must.
+   * Optional, so an older browser and every filter that does not send it
+   * evaluate as a view with the flag off, which is what the canvas draws by
+   * default.
+   */
+  readonly showResponsibility?: boolean;
 }
 
 export interface VisualFilterResultPayload {

@@ -47,6 +47,12 @@ export interface VisualSession {
      * and it must: the closure IS the containment tree (#473 phase 2).
      */
     nesting?: readonly NestingKind[],
+    /**
+     * Whether the view shows responsibility edges. The `connected` walk
+     * reads it (#563, ADR 0161): a hidden responsibility edge must not bring
+     * a person into the picture.
+     */
+    showResponsibility?: boolean,
   ) => void
   readonly clearFilter: () => void
   readonly setQuickFilterText: (text: string) => void
@@ -80,6 +86,15 @@ export const useVisualSession = (host: EditorHost): VisualSession => {
   // named view being applied. Panel is the honest default: an unsolicited
   // result is not a view this browser can claim to be showing.
   const filterOriginRef = useRef<FilterSource>('panel')
+  // What the last filter carried beside its query, so a re-ask (below)
+  // evaluates under the same nesting and the same responsibility flag: a
+  // model frame that re-resolved the standing filter without them would draw
+  // a different closure (#473) and drop the people a shown responsibility
+  // edge had walked in (#563).
+  const filterExtrasRef = useRef<{
+    readonly nesting?: readonly NestingKind[]
+    readonly showResponsibility?: boolean
+  }>({})
 
   // The host is opened once. Everything it reports is a frame, so the only
   // thing this has to decide is what a frame means - which `state.ts` already
@@ -110,7 +125,7 @@ export const useVisualSession = (host: EditorHost): VisualSession => {
           filterOriginRef.current = stale.source
           hostRef.current.send(
             visualBrowserInputFor(
-              { kind: 'filter', query: stale.query },
+              { kind: 'filter', query: stale.query, ...filterExtrasRef.current },
               stateRef.current,
             ),
           )
@@ -178,13 +193,14 @@ export const useVisualSession = (host: EditorHost): VisualSession => {
       query: ProjectionQuery,
       origin: FilterSource = 'panel',
       nesting?: readonly NestingKind[],
+      showResponsibility?: boolean,
     ) => {
       filterOriginRef.current = origin
-      send({
-        kind: 'filter',
-        query,
+      filterExtrasRef.current = {
         ...(nesting === undefined ? {} : { nesting }),
-      })
+        ...(showResponsibility === undefined ? {} : { showResponsibility }),
+      }
+      send({ kind: 'filter', query, ...filterExtrasRef.current })
     },
     [send],
   )

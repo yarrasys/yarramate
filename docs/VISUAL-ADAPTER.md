@@ -472,7 +472,8 @@ Three motions stage the same thing, a `write-view` amending that list:
   view rather than nowhere;
 - **Add to this view**, on a subject in the rail's Model tree or on one drawn
   but not listed (`relationships: connected` takes the other end of a
-  relationship with it);
+  relationship with it, of a responsibility edge only when the view shows
+  responsibility, #563);
 - **Remove from view**, which rewrites one projection and leaves every other
   view — and the subject itself — alone. It is a different item, in a different
   group, from **Delete from model…**, which takes every relationship naming the
@@ -737,7 +738,8 @@ that dropdown could not offer:
 - the **excluded, and why** list, grouped by facet. Its SET comes from
   `matchedIds` and its REASONS from `excluded`, so the list can never disagree
   with the diagram beside it. A concept a facet dropped can still be drawn —
-  `relationships: connected` takes the other end of a relationship with it —
+  `relationships: connected` takes the other end of a relationship with it,
+  of a responsibility edge only when the view shows responsibility (#563) —
   and that is reported as a line rather than hidden; a concept no facet reports
   was dropped by `isolatedConcepts: exclude`, which runs after the facets;
 - the **projection document** the query resolves to, serialised with the same

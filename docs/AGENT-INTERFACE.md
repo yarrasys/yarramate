@@ -104,7 +104,9 @@ read; graphify analogues: `query` / `explain` / `path`.
   2026-08-01): terms match concept names, ids, and descriptions to find
   seed subjects, then the existing one-hop connected-neighbourhood
   machinery renders the slice — graphify's query model, deterministic,
-  no LLM in the engine. On dense graphs the expansion keeps at most 12
+  no LLM in the engine. The slice walks responsibility edges too: a brief
+  speaks every relationship, where a view walks them only when it shows
+  them (#563). On dense graphs the expansion keeps at most 12
   materiality-ordered neighbours per seed and announces what it dropped
   (ADR 0070); `--neighbours <n>` widens the cap, `--neighbours 0` lifts
   it.

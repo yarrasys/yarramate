@@ -158,6 +158,7 @@ import type { NestingKind } from './nesting.js'
 import { DEFAULT_NESTING as NESTING_DEFAULT } from './nesting.js'
 import { foldTree, type FoldMembership } from './fold-tree.js'
 import { kindLabelOf } from './kind-label.js'
+import { responsibilityLetterOf } from './responsibility-kinds.js'
 
 /**
  * Which way a view runs, and the default. Split out for the same reason as the
@@ -927,11 +928,27 @@ export function evaluateProjection(
       ) {
         continue
       }
+      const bothSelected = sourceSelected && targetSelected
+      // A responsibility edge does not carry the `connected` walk unless the
+      // view shows responsibility (#563, ADR 0161). The canvas hides these
+      // edges while the flag is off (ADR 0159), so walking one stood a person
+      // in an application landscape with no line to anything: four of them on
+      // the ApertureX reference. Between two subjects the query selected on
+      // their own merits the edge is selected like any other, so a
+      // whole-workspace evaluation, the workbook and the matrix builders keep
+      // seeing every relationship; only the walk reads the flag. Read through
+      // the lineage, so an adopter's subkind of `responsible` is held back
+      // exactly as the shipped kind is.
+      const carriesTheWalk =
+        projection.presentation?.showResponsibility === true ||
+        responsibilityLetterOf(
+          profileContext?.relationshipKindLineages.get(relationship.predicate),
+          relationship.predicate,
+        ) === null
       if (
-        (relationshipMode === 'between' &&
-          sourceSelected &&
-          targetSelected) ||
+        bothSelected ||
         (relationshipMode === 'connected' &&
+          carriesTheWalk &&
           (sourceSelected || targetSelected))
       ) {
         selectedRelationshipIds.add(subject.id)

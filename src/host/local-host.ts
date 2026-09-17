@@ -591,6 +591,7 @@ export const createLocalHost = (options: LocalHostOptions): LocalEditorHost => {
                 compiled.profileContext,
                 compiled.patternMemberships,
                 input.payload.nesting,
+                input.payload.showResponsibility,
               ),
               excluded: exclusionsOf(
                 compiled.graph,
@@ -598,6 +599,7 @@ export const createLocalHost = (options: LocalHostOptions): LocalEditorHost => {
                 compiled.profileContext,
                 compiled.patternMemberships,
                 input.payload.nesting,
+                input.payload.showResponsibility,
               ),
             },
           })

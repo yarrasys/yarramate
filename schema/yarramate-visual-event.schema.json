@@ -288,6 +288,10 @@
               "assignment"
             ]
           }
+        },
+        "showResponsibility": {
+          "description": "Whether the view shows responsibility edges (#563, ADR 0161). Only the `connected` walk reads it: a responsibility edge the canvas hides must not bring a person into the picture, and one the canvas shows must. Optional, so a browser that does not send it evaluates as a view with the flag off, which is what the canvas draws by default.",
+          "type": "boolean"
         }
       }
     },

@@ -1016,6 +1016,7 @@ export const startVisualServer = async (
   const filterMatchedIds = (
     query: ProjectionQuery,
     nesting?: readonly NestingKind[],
+    showResponsibility?: boolean,
   ): readonly string[] =>
     compiledWorkspace === undefined
       ? []
@@ -1029,6 +1030,8 @@ export const startVisualServer = async (
           // And it resolves the WRONG closure without the nesting the canvas is
           // drawing with, which is a wrong number rather than a missing one.
           nesting,
+          // And the walk reads the responsibility flag (#563).
+          showResponsibility,
         );
 
   /**
@@ -1045,6 +1048,7 @@ export const startVisualServer = async (
   const filterExclusions = (
     query: ProjectionQuery,
     nesting?: readonly NestingKind[],
+    showResponsibility?: boolean,
   ): readonly ProjectionExclusion[] =>
     compiledWorkspace === undefined
       ? []
@@ -1054,6 +1058,7 @@ export const startVisualServer = async (
           compiledWorkspace.profileContext,
           compiledWorkspace.patternMemberships,
           nesting,
+          showResponsibility,
         );
 
   let listening = false;
@@ -1675,10 +1680,12 @@ export const startVisualServer = async (
             matchedIds: filterMatchedIds(
               event.payload.query,
               event.payload.nesting,
+              event.payload.showResponsibility,
             ),
             excluded: filterExclusions(
               event.payload.query,
               event.payload.nesting,
+              event.payload.showResponsibility,
             ),
           },
         });
