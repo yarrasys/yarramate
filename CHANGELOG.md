@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.35.0
 
 ### A responsibility edge carries the `connected` walk only when the view shows it (#563)
 
