@@ -95,6 +95,9 @@ concepts:
     kind: risk
     name: Identified, not yet live
     status: planned
+  - id: r-fresh
+    kind: risk
+    name: Just written down, no status yet
   - id: a-api
     kind: assumption
     name: The vendor API is stable
@@ -112,6 +115,10 @@ relationships:
   - id: e1
     kind: influence
     from: r-vendor
+    to: g1
+  - id: e-fresh
+    kind: influence
+    from: r-fresh
     to: g1
   - id: e2
     kind: influence
@@ -232,7 +239,7 @@ describe('the governance log (yarramate/governance/v1)', () => {
     const { graph, profileContext } = compileFixture()
     const log = buildGovernanceLog('fixture', graph, profileContext)
     expect(log.format).toBe('yarramate/governance/v1')
-    expect(log.rows.map(({ subject }) => subject)).toEqual(['a-api', 'a-budget', 'r-data', 'r-idea', 'r-old', 'r-vendor'])
+    expect(log.rows.map(({ subject }) => subject)).toEqual(['a-api', 'a-budget', 'r-data', 'r-fresh', 'r-idea', 'r-old', 'r-vendor'])
     const row = (id: string) => log.rows.find(({ subject }) => subject === id)!
     expect(row('r-vendor')).toEqual({
       subject: 'r-vendor',
@@ -267,14 +274,16 @@ describe('the governance log (yarramate/governance/v1)', () => {
       review: { topic: 'assumption-confirmed', on: '2026-08-30', by: 'pm' },
     })
     expect(row('a-budget')).toMatchObject({ type: 'assumption', status: 'planned', owner: null, bearsOn: [], review: null })
-    // A planned risk is identified, not live: unowned and unreviewed, but not yet a mitigation gap.
+    // Every risk not retired is a mitigation gap until something mitigates it:
+    // the current one, the planned one, and the one nobody has given a status
+    // (#564). The retired one is closed and asked nothing.
     expect(log.gaps).toEqual({
-      unowned: ['a-budget', 'r-data', 'r-idea', 'r-old'],
-      unmitigated: ['r-data'],
+      unowned: ['a-budget', 'r-data', 'r-fresh', 'r-idea', 'r-old'],
+      unmitigated: ['r-data', 'r-fresh', 'r-idea'],
       unconfirmed: ['a-budget'],
-      unreviewed: ['r-data', 'r-idea', 'r-old'],
+      unreviewed: ['r-data', 'r-fresh', 'r-idea', 'r-old'],
     })
-    expect(log.summary).toEqual({ rows: 6, risks: 4, assumptions: 2, unowned: 4, unmitigated: 1, unconfirmed: 1, unreviewed: 3 })
+    expect(log.summary).toEqual({ rows: 7, risks: 5, assumptions: 2, unowned: 5, unmitigated: 3, unconfirmed: 1, unreviewed: 4 })
     expect(validate()(log)).toBe(true)
     expect(JSON.stringify(buildGovernanceLog('fixture', graph, profileContext))).toBe(JSON.stringify(log))
   })
@@ -293,19 +302,24 @@ describe('the governance log (yarramate/governance/v1)', () => {
       '| Vendor slips (`r-vendor`) | risk | current | Project manager | Go live in Q4 | Dual-source the feed, Vendor onboarding | risk-reviewed 2026-09-10 by pm | Severity high |',
     )
     expect(markdown).toContain('| Budget holds (`a-budget`) | assumption | planned |  |  |  |  |  |')
-    expect(markdown).toContain('- Unmitigated (current risks): `r-data`')
-    expect(markdown).toContain('- Unreviewed risks: `r-data`, `r-idea`, `r-old`')
+    expect(markdown).toContain('- Unmitigated risks: `r-data`, `r-fresh`, `r-idea`')
+    expect(markdown).toContain('- Unreviewed risks: `r-data`, `r-fresh`, `r-idea`, `r-old`')
   })
 })
 
 describe('the five governance questions in the shipped catalogue', () => {
-  it('open where the log has gaps, on planned and current subjects only', () => {
+  it('open where the log has gaps, on every subject not retired, the unstatused included', () => {
     const { graph, profileContext } = compileFixture()
     const report = evaluateCatalogue(shippedCatalogue(), graph, profileContext)
     expect(openSubjectsOf(report, 'risk-threatens-nothing')).toEqual([])
-    // Only a live risk is asked what mitigates it; the planned one is asked who owns it.
-    expect(openSubjectsOf(report, 'risk-unmitigated')).toEqual(['r-data'])
-    expect(openSubjectsOf(report, 'risk-unowned')).toEqual(['r-data', 'r-idea'])
+    // A selector's `statuses` matches only a subject that has one, so the
+    // first cut's `statuses: [current]` never asked the risk nobody had
+    // given a status, which is every freshly written one (#564). The
+    // question now asks every risk the interrogation sees, and the
+    // interrogation already leaves the retired one alone. Its four siblings
+    // selected `planned` and `current` and had the same blind spot.
+    expect(openSubjectsOf(report, 'risk-unmitigated')).toEqual(['r-data', 'r-fresh', 'r-idea'])
+    expect(openSubjectsOf(report, 'risk-unowned')).toEqual(['r-data', 'r-fresh', 'r-idea'])
     expect(openSubjectsOf(report, 'assumption-unconfirmed')).toEqual(['a-budget'])
     expect(openSubjectsOf(report, 'assumption-bears-on-nothing')).toEqual(['a-budget'])
   })
@@ -374,9 +388,9 @@ presentation:
     const result = runCli(['export', 'governance', 'workspace.yaml', '--out', 'out'], workspace)
     expect(result.stderr).toBe('')
     expect(result.exitCode).toBe(0)
-    expect(result.stdout).toBe('Wrote GOVERNANCE.md and governance.json (6 rows, 9 gaps) to out\n')
+    expect(result.stdout).toBe('Wrote GOVERNANCE.md and governance.json (7 rows, 13 gaps) to out\n')
     const log = JSON.parse(readFileSync(join(workspace, 'out/governance.json'), 'utf8')) as GovernanceLog
-    expect(log.summary.rows).toBe(6)
+    expect(log.summary.rows).toBe(7)
     expect(readFileSync(join(workspace, 'out/GOVERNANCE.md'), 'utf8')).toContain('# Governance log')
   })
   it('answers yarramate_export governance with the markdown, and a brief speaks the readings', () => {
@@ -390,7 +404,7 @@ presentation:
     const answered = runTool('yarramate_export', { kind: 'governance' }, tool)
     expect(answered.text).toContain('# Governance log')
     expect(answered.ok).toBe(true)
-    expect((answered.result as { log: GovernanceLog }).log.summary.risks).toBe(4)
+    expect((answered.result as { log: GovernanceLog }).log.summary.risks).toBe(5)
     const briefs = exportBriefs(tool, 'risks.yaml')
     if (!briefs.ok) throw new Error('briefs did not export')
     const brief = briefs.result.files.find(({ path }) => path.includes('r-vendor'))!

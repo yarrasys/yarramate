@@ -185,7 +185,7 @@ others; graphify analogues: `--wiki` / `--svg` / `--neo4j`.
   assumption with owner, status, what it threatens or bears on, what
   mitigates it, the latest `risk-reviewed` or `assumption-confirmed`
   attestation, what it supersedes and the groupings that aggregate it, and
-  `gaps` for the unowned, the unmitigated current risks, the unconfirmed
+  `gaps` for the unowned, the unmitigated risks (any not retired), the unconfirmed
   assumptions and the unreviewed risks.
 - `export likec4` — visualization project (today's adapter surface;
   the adapter binary remains the implementation).
