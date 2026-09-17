@@ -235,6 +235,7 @@ export type PresentationFlag =
   | 'showLifecycle'
   | 'showEvidence'
   | 'showOwnership'
+  | 'showResponsibility'
   | 'showKindLabels'
   | 'showNudges'
 
@@ -359,6 +360,7 @@ export function PresentationToggles({
   showLifecycle,
   showEvidence,
   showOwnership,
+  showResponsibility,
   showKindLabels,
   showNudges,
   onTogglePresentation,
@@ -366,6 +368,7 @@ export function PresentationToggles({
   readonly showLifecycle: boolean
   readonly showEvidence: boolean
   readonly showOwnership: boolean
+  readonly showResponsibility: boolean
   readonly showKindLabels: boolean
   readonly showNudges: boolean
   readonly onTogglePresentation: (flag: PresentationFlag, value: boolean) => void
@@ -408,6 +411,22 @@ export function PresentationToggles({
           }
         />
         Ownership badges
+      </label>
+      {/* Responsibility edges (responsible, consulted, informed; ADR 0159) are
+          hidden until asked for: they fan out of one person box, and the
+          subject's properties read the letters either way. Written into the
+          view like the badges above. */}
+      <label className="filter-checkbox-option">
+        <input
+          type="checkbox"
+          checked={showResponsibility}
+          onChange={(event) =>
+            presentationToggleHandler(onTogglePresentation, 'showResponsibility')(
+              event.currentTarget.checked,
+            )
+          }
+        />
+        Responsibility edges
       </label>
       {/* Whether an unnamed relationship says its reading - "serves", "served
           by" - or leaves the kind to its line style and arrowhead (ADR 0147).

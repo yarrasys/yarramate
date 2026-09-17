@@ -1,3 +1,21 @@
+/**
+ * The optional profiles that ship inside the package (ADR 0095; 0.2 per
+ * ADR 0159). The compiler injects one when a document selects it or a
+ * profile extends it, and a shipped profile's own parent follows it in, so
+ * `extends: yarramate/policy@0.2` brings 0.1 along. A workspace file that
+ * declares the same identity wins; the shipped copy is not added beside it.
+ *
+ * Versions are additive contracts: 0.2 extends 0.1 and adds the three
+ * responsibility relationship kinds, so every 0.1 kind keeps its identity
+ * and every catalogue reference to it keeps matching.
+ */
+export interface ShippedProfile {
+  readonly identity: string
+  /** The identity it extends, which may itself be shipped. */
+  readonly extends: string
+  readonly source: string
+}
+
 export const shippedPolicyIdentity = 'yarramate/policy@0.1'
 
 export const shippedPolicySource = `format: yarramate/profile/v1
@@ -19,3 +37,40 @@ conceptKinds:
     parent: yarramate/core@0.1#constraint
 relationshipKinds: []
 `
+
+export const shippedPolicy02Identity = 'yarramate/policy@0.2'
+export const shippedPolicy02Source = `format: yarramate/profile/v1
+id: yarramate/policy
+version: "0.2"
+extends: yarramate/policy@0.1
+conceptKinds: []
+relationshipKinds:
+  - id: responsible
+    name: Responsible
+    parent: yarramate/core@0.1#association
+    sourceAspects: [active-structure, motivation]
+  - id: consulted
+    name: Consulted
+    parent: yarramate/core@0.1#association
+    sourceAspects: [active-structure, motivation]
+  - id: informed
+    name: Informed
+    parent: yarramate/core@0.1#association
+    sourceAspects: [active-structure, motivation]
+`
+
+export const SHIPPED_PROFILES: readonly ShippedProfile[] = [
+  {
+    identity: shippedPolicyIdentity,
+    extends: 'yarramate/core@0.1',
+    source: shippedPolicySource,
+  },
+  {
+    identity: shippedPolicy02Identity,
+    extends: shippedPolicyIdentity,
+    source: shippedPolicy02Source,
+  },
+]
+
+export const shippedProfileOf = (identity: string): ShippedProfile | undefined =>
+  SHIPPED_PROFILES.find((profile) => profile.identity === identity)

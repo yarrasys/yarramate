@@ -333,6 +333,7 @@ const DiagramWorkspace = ({
   showLifecycle,
   showEvidence,
   showOwnership,
+  showResponsibility,
   showKindLabels,
   showNudges,
   openQuestionCounts,
@@ -396,6 +397,7 @@ const DiagramWorkspace = ({
   readonly showLifecycle: boolean;
   readonly showEvidence: boolean;
   readonly showOwnership: boolean;
+  readonly showResponsibility: boolean;
   readonly showKindLabels: boolean;
   readonly showNudges: boolean;
   readonly openQuestionCounts: ReadonlyMap<string, number>;
@@ -720,6 +722,7 @@ const DiagramWorkspace = ({
             showLifecycle={showLifecycle}
             showEvidence={showEvidence}
             showOwnership={showOwnership}
+            showResponsibility={showResponsibility}
             showNudges={showNudges}
             openQuestionCounts={openQuestionCounts}
             nextQuestionSubjectId={nextQuestionSubjectId}
@@ -795,6 +798,7 @@ const DiagramWorkspace = ({
         showLifecycle={showLifecycle}
         showEvidence={showEvidence}
         showOwnership={showOwnership}
+        showResponsibility={showResponsibility}
         showKindLabels={showKindLabels}
         showNudges={showNudges}
         onTogglePresentation={onTogglePresentation}
@@ -2411,6 +2415,7 @@ export const App = ({
           showLifecycle={workspace.showLifecycle}
           showEvidence={workspace.showEvidence}
           showOwnership={workspace.showOwnership}
+          showResponsibility={workspace.showResponsibility}
           showKindLabels={workspace.showKindLabels}
           showNudges={workspace.showNudges}
           openQuestionCounts={openQuestionCounts}

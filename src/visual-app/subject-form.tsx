@@ -741,6 +741,38 @@ export interface ConceptFormProps {
   readonly onStageChange: (operation: YarramateOperation) => void
 }
 
+/**
+ * The letters a subject carries and holds (#557, ADR 0159), read from the
+ * model's edges whether or not the canvas draws them: who is responsible for,
+ * consulted on and informed of THIS subject, and, for a person, what they are
+ * responsible for, consulted on and informed of. Accountable is the Owner row
+ * above. Empty rows render nothing.
+ */
+const LETTER_LABELS = {
+  R: ['Responsible', 'Responsible for'],
+  C: ['Consulted', 'Consulted on'],
+  I: ['Informed', 'Informed of'],
+} as const
+
+export const responsibilityFacts = (
+  node: CanvasNode,
+  model: VisualRenderedModel,
+): readonly { readonly label: string; readonly value: string }[] => {
+  const names = new Map(model.graph.nodes.map((other) => [other.id, other.name]))
+  const carried: Record<'R' | 'C' | 'I', string[]> = { R: [], C: [], I: [] }
+  const held: Record<'R' | 'C' | 'I', string[]> = { R: [], C: [], I: [] }
+  for (const edge of model.graph.edges) {
+    const letter = edge.responsibility ?? null
+    if (letter === null) continue
+    if (edge.to === node.id) carried[letter].push(names.get(edge.from) ?? edge.from)
+    if (edge.from === node.id) held[letter].push(names.get(edge.to) ?? edge.to)
+  }
+  return (['R', 'C', 'I'] as const).flatMap((letter) => [
+    { label: LETTER_LABELS[letter][0], value: carried[letter].join(', ') },
+    { label: LETTER_LABELS[letter][1], value: held[letter].join(', ') },
+  ])
+}
+
 export const ConceptForm = ({ node, model, operations, onStageChange }: ConceptFormProps) => {
   const effective = overlayConceptFields(node, operations)
   const document = node.document
@@ -786,6 +818,9 @@ export const ConceptForm = ({ node, model, operations, onStageChange }: ConceptF
         shape={{ pattern: REFERENCE_PATTERN, hint: REFERENCE_HINT }}
         onCommit={(next) => stage(stageConceptScalarChange(document, id, 'owner', effective.owner, next))}
       />
+      {responsibilityFacts(node, model).map((row) => (
+        <FactRow key={row.label} label={row.label} value={row.value} />
+      ))}
       <StringRows
         label="Aka"
         values={effective.aka}
@@ -862,6 +897,9 @@ export const ConceptFacts = ({
     <FactRow label="Name" value={node.name} />
     <FactRow label="Status" value={node.status ?? ''} />
     <FactRow label="Owner" value={node.owner ?? ''} />
+    {responsibilityFacts(node, model).map((row) => (
+      <FactRow key={row.label} label={row.label} value={row.value} />
+    ))}
     <FactRow label="Aka" value={node.aka.join(', ')} />
     <FactRow label="Distinct from" value={node.distinctFrom.join(', ')} />
     <FactRow label="Supersedes" value={node.supersedes.join(', ')} />

@@ -26,6 +26,34 @@ export const RELATIONSHIP_READING: Readonly<Record<string, string>> = {
   association: 'is associated with',
 }
 
+/**
+ * Readings for the extension kinds the package ships (ADR 0159), keyed by
+ * their full identity: a profile's subkind of one of these reads the same,
+ * which `readingKindOf` resolves through the lineage.
+ */
+export const EXTENSION_READING: Readonly<Record<string, string>> = {
+  'yarramate/policy@0.2#responsible': 'is responsible for',
+  'yarramate/policy@0.2#consulted': 'is consulted on',
+  'yarramate/policy@0.2#informed': 'is informed of',
+}
+
+/**
+ * The kind whose reading an edge speaks: the most specific member of the
+ * lineage (ancestor-first) that has a reading of its own, else the core kind.
+ */
+export const readingKindOf = (
+  lineage: readonly string[] | undefined,
+  coreKind: string,
+): string => {
+  if (lineage !== undefined) {
+    for (let index = lineage.length - 1; index >= 0; index -= 1) {
+      const member = lineage[index]!
+      if (EXTENSION_READING[member] !== undefined) return member
+    }
+  }
+  return coreKind
+}
+
 export const REVERSED_READING: Readonly<Record<string, string>> = {
   serving: 'served by',
   realization: 'realized by',
@@ -50,7 +78,8 @@ export const humanizeKind = (kind: string): string => {
  * and gets it only where one exists; a kind with no passive reading keeps its
  * active one, so a caller can pass the layering's answer straight through.
  */
-export const relationshipReading = (coreKind: string, reversed = false): string =>
-  (reversed ? REVERSED_READING[coreKind] : undefined) ??
-  RELATIONSHIP_READING[coreKind] ??
-  humanizeKind(coreKind)
+export const relationshipReading = (kind: string, reversed = false): string =>
+  (reversed ? REVERSED_READING[kind] : undefined) ??
+  EXTENSION_READING[kind] ??
+  RELATIONSHIP_READING[kind] ??
+  humanizeKind(kind)

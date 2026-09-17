@@ -171,6 +171,10 @@
         "showOwnership": {
           "type": "boolean"
         },
+        "showResponsibility": {
+          "description": "Whether responsibility edges (responsible, consulted, informed; ADR 0159) draw on the canvas. Off when absent: a role responsible for eight applications is eight lines out of one box, and the subject's properties read the letters either way.",
+          "type": "boolean"
+        },
         "showKindLabels": {
           "description": "Whether an unnamed relationship is labelled with its reading (\"serves\", \"served by\", \"realizes\"). Off, the line style and arrowhead alone say the kind; a named relationship keeps its name either way. On when absent.",
           "type": "boolean"

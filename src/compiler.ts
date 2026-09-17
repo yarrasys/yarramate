@@ -27,10 +27,7 @@ import patternSchema from '../schema/yarramate-pattern.schema.json' with {
   type: 'json',
 }
 import { ATTESTATION_PREDICATE_PREFIX, attestationClaimValue } from './graph-claims.js'
-import {
-  shippedPolicyIdentity,
-  shippedPolicySource,
-} from './shipped-profile.js'
+import { shippedProfileOf } from './shipped-profile.js'
 import { validateDocument, validateProfile, validatePattern } from './schema-validation.js'
 
 const coreProfile = 'yarramate/core@0.1'
@@ -1096,61 +1093,71 @@ function compileWorkspaceResolved(
     pendingProfiles.push({ input, value, identity, positionFor })
   }
 
-  const alreadyDeclaresPolicy = pendingProfiles.some(
-    ({ identity }) => identity === shippedPolicyIdentity,
+  // The shipped optional profiles (ADR 0095; policy@0.2 per ADR 0159). Each
+  // is injected when a document selects it or a profile extends it, and a
+  // shipped profile's own parent follows it in, so `extends:
+  // yarramate/policy@0.2` brings 0.1 along. A workspace file that declares
+  // the same identity wins; the shipped copy is not added beside it.
+  //
+  // This probe runs BEFORE the document gate that rejects a source whose
+  // schema check failed, so it has to hold its own precondition: a source
+  // that composes to anything but a mapping - an empty file, a comment-only
+  // one, a bare scalar - selects no profile at all. It used to read
+  // `.profile` through an `as` cast, which is what hid the null from the
+  // typechecker, and an empty document crashed the whole compile with a
+  // `TypeError` instead of the `YM201 must be object` its schema already
+  // produces. Every other consumer of a parsed entry checks its diagnostics
+  // first (the profile walk above, the pattern walk below); this one could
+  // not, because it runs before that gate exists, so it narrows instead.
+  const declaredIdentities = new Set(
+    pendingProfiles.map(({ identity }) => identity),
   )
-  if (!alreadyDeclaresPolicy) {
-    // This probe runs BEFORE the document gate that rejects a source whose
-    // schema check failed, so it has to hold its own precondition: a source
-    // that composes to anything but a mapping - an empty file, a comment-only
-    // one, a bare scalar - selects no profile at all. It used to read
-    // `.profile` through an `as` cast, which is what hid the null from the
-    // typechecker, and an empty document crashed the whole compile with a
-    // `TypeError` instead of the `YM201 must be object` its schema already
-    // produces. Every other consumer of a parsed entry checks its diagnostics
-    // first (the profile walk above, the pattern walk below); this one could
-    // not, because it runs before that gate exists, so it narrows instead.
-    const selected = documentInputs.some(({ entry }) => {
-      const value: unknown = entry.value
-      return (
-        typeof value === 'object' &&
-        value !== null &&
-        (value as { readonly profile?: unknown }).profile ===
-          shippedPolicyIdentity
-      )
-    })
-    const extended = pendingProfiles.some(
-      ({ value }) => value.extends === shippedPolicyIdentity,
-    )
-    if (selected || extended) {
-      const input = {
-        path: 'yarramate:profile:yarramate/policy@0.1',
-        source: shippedPolicySource,
-      }
-      const { entry, fresh } = parseWorkspaceSource(input)
-      const value = entry.value as NativeProfile
-      if (entry.schemaDiagnostics.length > 0) {
-        profileDiagnostics.push(...entry.schemaDiagnostics)
-      } else if (!validateProfile(value)) {
-        for (const error of validateProfile.errors ?? []) {
-          profileDiagnostics.push({
-            severity: 'error',
-            code: 'YM201',
-            message: `Profile schema violation: ${describeSchemaViolation(error)}`,
-            path: input.path,
-            pointer: error.instancePath || '/',
-            line: 1,
-            column: 1,
-          })
-        }
-      } else {
-        pendingProfiles.push({
-          input,
-          value,
-          identity: shippedPolicyIdentity,
-          positionFor: positionReader(input.source, entry.positions, fresh),
+  const requestedIdentities = new Set<string>()
+  for (const { entry } of documentInputs) {
+    const value: unknown = entry.value
+    if (typeof value !== 'object' || value === null) continue
+    const profile = (value as { readonly profile?: unknown }).profile
+    if (typeof profile === 'string') requestedIdentities.add(profile)
+  }
+  for (const { value } of pendingProfiles) requestedIdentities.add(value.extends)
+  const wantedShipped: string[] = []
+  const want = (identity: string): void => {
+    if (declaredIdentities.has(identity) || wantedShipped.includes(identity)) return
+    const shipped = shippedProfileOf(identity)
+    if (shipped === undefined) return
+    wantedShipped.push(identity)
+    want(shipped.extends)
+  }
+  for (const identity of requestedIdentities) want(identity)
+  for (const identity of wantedShipped) {
+    const shipped = shippedProfileOf(identity)!
+    const input = {
+      path: `yarramate:profile:${identity}`,
+      source: shipped.source,
+    }
+    const { entry, fresh } = parseWorkspaceSource(input)
+    const value = entry.value as NativeProfile
+    if (entry.schemaDiagnostics.length > 0) {
+      profileDiagnostics.push(...entry.schemaDiagnostics)
+    } else if (!validateProfile(value)) {
+      for (const error of validateProfile.errors ?? []) {
+        profileDiagnostics.push({
+          severity: 'error',
+          code: 'YM201',
+          message: `Profile schema violation: ${describeSchemaViolation(error)}`,
+          path: input.path,
+          pointer: error.instancePath || '/',
+          line: 1,
+          column: 1,
         })
       }
+    } else {
+      pendingProfiles.push({
+        input,
+        value,
+        identity,
+        positionFor: positionReader(input.source, entry.positions, fresh),
+      })
     }
   }
 

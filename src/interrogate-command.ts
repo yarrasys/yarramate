@@ -191,6 +191,17 @@ export type CatalogueCondition =
   | { readonly condition: 'has-any-subject' }
   | {
       /**
+       * The workspace has loaded the named profile (ADR 0159): a document
+       * selects it or a profile in the lineage extends it. The guard for a
+       * question whose missing-* condition names an optional profile's kinds:
+       * without it, "no responsible edge" holds on every workspace that never
+       * adopted the vocabulary.
+       */
+      readonly condition: 'profile-loaded'
+      readonly profile: string
+    }
+  | {
+      /**
        * The subject fills a slot of a pattern instance (ADR 0131). A GUARD,
        * per the #334 split: it says a question applies here, and an
        * ordinary condition beside it says what would answer it. Bare, it
@@ -765,6 +776,7 @@ const CONDITION_INPUTS: Record<
   CatalogueInput | undefined
 > = {
   'has-any-subject': undefined,
+  'profile-loaded': undefined,
   'no-subject-of-kind': undefined,
   'has-subject-of-kind': undefined,
   'below-subject-count': undefined,
@@ -803,6 +815,7 @@ const CONDITION_SCOPE: Record<
   'workspace' | 'subject'
 > = {
   'has-any-subject': 'workspace',
+  'profile-loaded': 'workspace',
   'no-subject-of-kind': 'workspace',
   'has-subject-of-kind': 'workspace',
   'below-subject-count': 'workspace',
@@ -881,6 +894,10 @@ const conditionHolds = (
       // it has not begun, and asking it how the planned architecture becomes
       // real greets someone ahead of question one.
       return index.concepts.size > 0
+    case 'profile-loaded':
+      // Loaded means a kind of that profile resolves here, which is exactly
+      // what selecting or extending it produces (ADR 0159).
+      return loadedProfilesOf(profileContext).has(condition.profile)
     case 'unchallenged-evidence':
       // Fires where the overlay records observations and every one is a
       // frictionless confirmation: no contradicted, unknown, or
@@ -1509,6 +1526,22 @@ const kindReferencesOf = (
  * no kinds of its own and inherits every one of them is the case a
  * declared-kinds check would call entirely missing.
  */
+/** The identities of every profile a kind resolves through: what is loaded. */
+const loadedProfilesOf = (
+  profileContext: ResolvedProfileContext | undefined,
+): ReadonlySet<string> => {
+  const loaded = new Set<string>()
+  if (profileContext === undefined) return loaded
+  for (const identity of [
+    ...profileContext.conceptKindLineages.keys(),
+    ...profileContext.relationshipKindLineages.keys(),
+  ]) {
+    const hash = identity.indexOf('#')
+    if (hash > 0) loaded.add(identity.slice(0, hash))
+  }
+  return loaded
+}
+
 const unresolvableKinds = (
   catalogue: QuestionCatalogue,
   profileContext: ResolvedProfileContext,
@@ -1517,11 +1550,7 @@ const unresolvableKinds = (
     ...profileContext.conceptKindLineages.keys(),
     ...profileContext.relationshipKindLineages.keys(),
   ])
-  const loadedProfiles = new Set<string>()
-  for (const identity of known) {
-    const hash = identity.indexOf('#')
-    if (hash > 0) loadedProfiles.add(identity.slice(0, hash))
-  }
+  const loadedProfiles = loadedProfilesOf(profileContext)
   return kindReferencesOf(catalogue).filter(({ kind }) => {
     if (known.has(kind)) return false
     const hash = kind.indexOf('#')

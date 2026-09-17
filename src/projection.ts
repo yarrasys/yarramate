@@ -112,6 +112,11 @@ export interface ProjectionDefinition {
     readonly showEvidence?: boolean
     readonly showOwnership?: boolean
     /**
+     * Whether responsibility edges draw on the canvas (#557, ADR 0159). Off
+     * when absent: the subject's properties read the letters either way.
+     */
+    readonly showResponsibility?: boolean
+    /**
      * Whether an unnamed relationship is labelled with its reading - "serves",
      * "served by", "realizes" - or left to its line style and arrowhead
      * (ADR 0147). A named relationship keeps its name either way. On when
@@ -232,6 +237,7 @@ export function canonicalProjection(
             ...(presentation.showLifecycle === undefined ? {} : { showLifecycle: presentation.showLifecycle }),
             ...(presentation.showEvidence === undefined ? {} : { showEvidence: presentation.showEvidence }),
             ...(presentation.showOwnership === undefined ? {} : { showOwnership: presentation.showOwnership }),
+            ...(presentation.showResponsibility === undefined ? {} : { showResponsibility: presentation.showResponsibility }),
             ...(presentation.showKindLabels === undefined ? {} : { showKindLabels: presentation.showKindLabels }),
             ...(presentation.notation === undefined ? {} : { notation: presentation.notation }),
           },
@@ -1009,6 +1015,9 @@ export function evaluateProjection(
             ...(projection.presentation.showOwnership === undefined
               ? {}
               : { showOwnership: projection.presentation.showOwnership }),
+            ...(projection.presentation.showResponsibility === undefined
+              ? {}
+              : { showResponsibility: projection.presentation.showResponsibility }),
             ...(projection.presentation.showKindLabels === undefined
               ? {}
               : { showKindLabels: projection.presentation.showKindLabels }),

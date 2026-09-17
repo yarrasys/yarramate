@@ -704,6 +704,24 @@
         {
           "type": "object",
           "additionalProperties": false,
+          "description": "The workspace has loaded the named profile: a document selects it or a profile in the lineage extends it (ADR 0159). The guard for a question whose missing-* condition names an optional profile's kinds, which would otherwise hold on every workspace that never adopted the vocabulary.",
+          "required": [
+            "condition",
+            "profile"
+          ],
+          "properties": {
+            "condition": {
+              "const": "profile-loaded"
+            },
+            "profile": {
+              "type": "string",
+              "description": "A profile identity, id@version, for example yarramate/policy@0.2."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
           "description": "The workspace's evidence overlay records observations and every one is a frictionless confirmation: no contradicted, unknown, or not-observed result, and no recorded search (ADR 0107). A discovery that never records anything but success never tested a claim it might fail. The one condition that reads the evidence overlay rather than the compiled graph; where the evaluating consumer supplies no overlay it stays quiet (ADR 0120).",
           "required": [
             "condition"

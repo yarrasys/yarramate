@@ -75,6 +75,10 @@ questions. Each question binds:
   instead of re-deriving the shape from a catalogue copy (ADR 0110);
   `has-any-subject` (the workspace holds at least one concept — the guard a
   late wave needs to say "only once the model has substance"; see ADR 0125),
+  `profile-loaded` (the workspace has loaded the named optional profile, by
+  selecting it or extending it — the guard for a question whose `missing-*`
+  condition names that profile's kinds, which would otherwise hold on every
+  workspace that never adopted the vocabulary; ADR 0159),
   `fills-pattern-slot` (the subject is bound into a slot of a pattern
   instance — the membership half of pattern interrogation, ADR 0131. A
   GUARD in the #334 sense: it says a question applies here, and an
