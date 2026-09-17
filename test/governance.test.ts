@@ -91,6 +91,10 @@ concepts:
     kind: risk
     name: Old risk
     status: retired
+  - id: r-idea
+    kind: risk
+    name: Identified, not yet live
+    status: planned
   - id: a-api
     kind: assumption
     name: The vendor API is stable
@@ -133,6 +137,10 @@ relationships:
     kind: aggregation
     from: sev-high
     to: r-vendor
+  - id: e8
+    kind: influence
+    from: r-idea
+    to: g1
 `
 
 const compileFixture = () => {
@@ -224,7 +232,7 @@ describe('the governance log (yarramate/governance/v1)', () => {
     const { graph, profileContext } = compileFixture()
     const log = buildGovernanceLog('fixture', graph, profileContext)
     expect(log.format).toBe('yarramate/governance/v1')
-    expect(log.rows.map(({ subject }) => subject)).toEqual(['a-api', 'a-budget', 'r-data', 'r-old', 'r-vendor'])
+    expect(log.rows.map(({ subject }) => subject)).toEqual(['a-api', 'a-budget', 'r-data', 'r-idea', 'r-old', 'r-vendor'])
     const row = (id: string) => log.rows.find(({ subject }) => subject === id)!
     expect(row('r-vendor')).toEqual({
       subject: 'r-vendor',
@@ -259,13 +267,14 @@ describe('the governance log (yarramate/governance/v1)', () => {
       review: { topic: 'assumption-confirmed', on: '2026-08-30', by: 'pm' },
     })
     expect(row('a-budget')).toMatchObject({ type: 'assumption', status: 'planned', owner: null, bearsOn: [], review: null })
+    // A planned risk is identified, not live: unowned and unreviewed, but not yet a mitigation gap.
     expect(log.gaps).toEqual({
-      unowned: ['a-budget', 'r-data', 'r-old'],
+      unowned: ['a-budget', 'r-data', 'r-idea', 'r-old'],
       unmitigated: ['r-data'],
       unconfirmed: ['a-budget'],
-      unreviewed: ['r-data', 'r-old'],
+      unreviewed: ['r-data', 'r-idea', 'r-old'],
     })
-    expect(log.summary).toEqual({ rows: 5, risks: 3, assumptions: 2, unowned: 3, unmitigated: 1, unconfirmed: 1, unreviewed: 2 })
+    expect(log.summary).toEqual({ rows: 6, risks: 4, assumptions: 2, unowned: 4, unmitigated: 1, unconfirmed: 1, unreviewed: 3 })
     expect(validate()(log)).toBe(true)
     expect(JSON.stringify(buildGovernanceLog('fixture', graph, profileContext))).toBe(JSON.stringify(log))
   })
@@ -285,7 +294,7 @@ describe('the governance log (yarramate/governance/v1)', () => {
     )
     expect(markdown).toContain('| Budget holds (`a-budget`) | assumption | planned |  |  |  |  |  |')
     expect(markdown).toContain('- Unmitigated (current risks): `r-data`')
-    expect(markdown).toContain('- Unreviewed risks: `r-data`, `r-old`')
+    expect(markdown).toContain('- Unreviewed risks: `r-data`, `r-idea`, `r-old`')
   })
 })
 
@@ -294,8 +303,9 @@ describe('the five governance questions in the shipped catalogue', () => {
     const { graph, profileContext } = compileFixture()
     const report = evaluateCatalogue(shippedCatalogue(), graph, profileContext)
     expect(openSubjectsOf(report, 'risk-threatens-nothing')).toEqual([])
+    // Only a live risk is asked what mitigates it; the planned one is asked who owns it.
     expect(openSubjectsOf(report, 'risk-unmitigated')).toEqual(['r-data'])
-    expect(openSubjectsOf(report, 'risk-unowned')).toEqual(['r-data'])
+    expect(openSubjectsOf(report, 'risk-unowned')).toEqual(['r-data', 'r-idea'])
     expect(openSubjectsOf(report, 'assumption-unconfirmed')).toEqual(['a-budget'])
     expect(openSubjectsOf(report, 'assumption-bears-on-nothing')).toEqual(['a-budget'])
   })
@@ -364,9 +374,9 @@ presentation:
     const result = runCli(['export', 'governance', 'workspace.yaml', '--out', 'out'], workspace)
     expect(result.stderr).toBe('')
     expect(result.exitCode).toBe(0)
-    expect(result.stdout).toBe('Wrote GOVERNANCE.md and governance.json (5 rows, 7 gaps) to out\n')
+    expect(result.stdout).toBe('Wrote GOVERNANCE.md and governance.json (6 rows, 9 gaps) to out\n')
     const log = JSON.parse(readFileSync(join(workspace, 'out/governance.json'), 'utf8')) as GovernanceLog
-    expect(log.summary.rows).toBe(5)
+    expect(log.summary.rows).toBe(6)
     expect(readFileSync(join(workspace, 'out/GOVERNANCE.md'), 'utf8')).toContain('# Governance log')
   })
   it('answers yarramate_export governance with the markdown, and a brief speaks the readings', () => {
@@ -380,7 +390,7 @@ presentation:
     const answered = runTool('yarramate_export', { kind: 'governance' }, tool)
     expect(answered.text).toContain('# Governance log')
     expect(answered.ok).toBe(true)
-    expect((answered.result as { log: GovernanceLog }).log.summary.risks).toBe(3)
+    expect((answered.result as { log: GovernanceLog }).log.summary.risks).toBe(4)
     const briefs = exportBriefs(tool, 'risks.yaml')
     if (!briefs.ok) throw new Error('briefs did not export')
     const brief = briefs.result.files.find(({ path }) => path.includes('r-vendor'))!
