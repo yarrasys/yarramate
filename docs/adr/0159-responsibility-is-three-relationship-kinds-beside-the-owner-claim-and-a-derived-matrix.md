@@ -23,7 +23,13 @@ standing role. Responsible and Informed, nothing.
 a subkind of core `association` from a person to the subject they answer
 for.** Source aspects are `active-structure` and `motivation`, so an actor,
 a role, a collaboration or a stakeholder may hold a letter and the
-ArchiMate table bounds the target as it bounds any association. Ids are
+ArchiMate table bounds the target as it bounds any association. The gate
+is by aspect, which is all a profile can say (ADR 0097), so an application
+component, also active structure, may hold a letter too: an application
+"responsible for" a stakeholder compiles, and the `YM404` hint for such a
+pair lists the three kinds among what is permitted. That is the rule
+working as written, not a hole; the matrix lists any holder as a column
+with its kind, and a reviewer sees what the model says. Ids are
 bare words like every other kind (`serving`, `assignment`, `implements`);
 the preposition lives in the reading phrase the canvas and the brief speak:
 "is responsible for", "is consulted on", "is informed of".
