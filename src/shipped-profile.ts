@@ -1,13 +1,14 @@
 /**
  * The optional profiles that ship inside the package (ADR 0095; 0.2 per
- * ADR 0159). The compiler injects one when a document selects it or a
+ * ADR 0159; 0.3 per ADR 0160). The compiler injects one when a document selects it or a
  * profile extends it, and a shipped profile's own parent follows it in, so
  * `extends: yarramate/policy@0.2` brings 0.1 along. A workspace file that
  * declares the same identity wins; the shipped copy is not added beside it.
  *
  * Versions are additive contracts: 0.2 extends 0.1 and adds the three
- * responsibility relationship kinds, so every 0.1 kind keeps its identity
- * and every catalogue reference to it keeps matching.
+ * responsibility relationship kinds; 0.3 extends 0.2 and adds the risk and
+ * assumption concept kinds. Every earlier identity keeps resolving and
+ * every catalogue reference to it keeps matching.
  */
 export interface ShippedProfile {
   readonly identity: string
@@ -59,6 +60,21 @@ relationshipKinds:
     sourceAspects: [active-structure, motivation]
 `
 
+export const shippedPolicy03Identity = 'yarramate/policy@0.3'
+export const shippedPolicy03Source = `format: yarramate/profile/v1
+id: yarramate/policy
+version: "0.3"
+extends: yarramate/policy@0.2
+conceptKinds:
+  - id: risk
+    name: Risk
+    parent: yarramate/core@0.1#assessment
+  - id: assumption
+    name: Assumption
+    parent: yarramate/core@0.1#assessment
+relationshipKinds: []
+`
+
 export const SHIPPED_PROFILES: readonly ShippedProfile[] = [
   {
     identity: shippedPolicyIdentity,
@@ -69,6 +85,11 @@ export const SHIPPED_PROFILES: readonly ShippedProfile[] = [
     identity: shippedPolicy02Identity,
     extends: shippedPolicyIdentity,
     source: shippedPolicy02Source,
+  },
+  {
+    identity: shippedPolicy03Identity,
+    extends: shippedPolicy02Identity,
+    source: shippedPolicy03Source,
   },
 ]
 

@@ -1620,6 +1620,30 @@ mappings:
   - native: tools-entry-derives-responsibility-matrix
     external: toolsEntryDerivesResponsibilityMatrix
     type: relationship
+  - native: derive-governance-log
+    external: deriveGovernanceLog
+    type: concept
+  - native: governance-log
+    external: governanceLog
+    type: concept
+  - native: governance-schema
+    external: governanceSchema
+    type: concept
+  - native: export-command-serves-governance-log
+    external: exportCommandServesGovernanceLog
+    type: relationship
+  - native: governance-derivation-reads-graph
+    external: governanceDerivationReadsGraph
+    type: relationship
+  - native: governance-derivation-produces-log
+    external: governanceDerivationProducesLog
+    type: relationship
+  - native: governance-schema-describes-log
+    external: governanceSchemaDescribesLog
+    type: relationship
+  - native: tools-entry-derives-governance-log
+    external: toolsEntryDerivesGovernanceLog
+    type: relationship
   - native: rtm-schema-describes-matrix
     external: rtmSchemaDescribesMatrix
     type: relationship

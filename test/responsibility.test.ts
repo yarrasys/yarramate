@@ -149,10 +149,11 @@ describe('yarramate/policy@0.2 (#557, ADR 0159)', () => {
     expect(SHIPPED_PROFILES.map(({ identity }) => identity)).toEqual([
       'yarramate/policy@0.1',
       'yarramate/policy@0.2',
+      'yarramate/policy@0.3',
     ])
     expect(shippedProfileOf('yarramate/policy@0.2')?.extends).toBe('yarramate/policy@0.1')
     expect(shippedProfileOf('yarramate/policy@0.1')?.extends).toBe('yarramate/core@0.1')
-    expect(shippedProfileOf('yarramate/policy@0.3')).toBeUndefined()
+    expect(shippedProfileOf('yarramate/policy@0.4')).toBeUndefined()
   })
   it('loads through an adopter profile and keeps every 0.1 identity', () => {
     const { profileContext } = compileFixture()

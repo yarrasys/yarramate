@@ -23,6 +23,7 @@ import {
   exportBriefs,
   exportGraph,
   exportMarkdown,
+  exportGovernance,
   exportResponsibility,
   exportRtm,
   exportWorkbook,
@@ -113,6 +114,7 @@ export function runExportCommand(
       'briefs',
       'rtm',
       'responsibility',
+      'governance',
       'likec4',
       'xlsx',
     ].includes(kind)
@@ -170,23 +172,21 @@ export function runExportCommand(
   }
 
   const usesChanged = parsed.changed !== undefined
-  const expectedPositionals =
-    kind === 'graph' || kind === 'rtm' || usesChanged ? 1 : 2
+  const wholeWorkspace = kind === 'graph' || kind === 'rtm' || kind === 'governance'
+  const expectedPositionals = wholeWorkspace || usesChanged ? 1 : 2
   const workspacePath = parsed.positionals[expectedPositionals - 1]
   const projectionPath =
-    kind === 'graph' || kind === 'rtm' || usesChanged
-      ? undefined
-      : parsed.positionals[0]
+    wholeWorkspace || usesChanged ? undefined : parsed.positionals[0]
   if (
     parsed.positionals.length !== expectedPositionals ||
     workspacePath === undefined ||
     parsed.json ||
-    (usesChanged &&
-      (kind === 'graph' || kind === 'rtm' || kind === 'responsibility')) ||
+    (usesChanged && (wholeWorkspace || kind === 'responsibility')) ||
     (parsed.budget !== undefined && kind !== 'briefs') ||
     ((kind === 'briefs' ||
       kind === 'rtm' ||
       kind === 'responsibility' ||
+      kind === 'governance' ||
       kind === 'xlsx') &&
       parsed.out === undefined)
   ) {
@@ -249,6 +249,22 @@ export function runExportCommand(
       }
     }
 
+    if (kind === 'governance') {
+      const exported = exportGovernance(tool)
+      if (!exported.ok) return failedTool(exported)
+      const { markdown, log } = exported.result
+      writeText(join(parsed.out!, 'GOVERNANCE.md'), markdown)
+      writeText(join(parsed.out!, 'governance.json'), `${JSON.stringify(log, null, 2)}\n`)
+      const gaps =
+        log.summary.unowned + log.summary.unmitigated + log.summary.unconfirmed + log.summary.unreviewed
+      return {
+        exitCode: 0,
+        stdout: `Wrote GOVERNANCE.md and governance.json (${log.summary.rows} row${
+          log.summary.rows === 1 ? '' : 's'
+        }, ${gaps} gap${gaps === 1 ? '' : 's'}) to ${parsed.out}\n`,
+        stderr: '',
+      }
+    }
     if (kind === 'responsibility') {
       const exported = exportResponsibility(tool, projectionPath!)
       if (!exported.ok) return failedTool(exported)

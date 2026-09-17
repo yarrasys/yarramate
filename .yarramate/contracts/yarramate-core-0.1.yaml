@@ -72,6 +72,9 @@ formats:
   - id: yarramate/responsibility/v1
     schema: schema/yarramate-responsibility.schema.json
     packageExport: ./schema/responsibility
+  - id: yarramate/governance/v1
+    schema: schema/yarramate-governance.schema.json
+    packageExport: ./schema/governance
 commands:
   - name: init
     binary: yarramate

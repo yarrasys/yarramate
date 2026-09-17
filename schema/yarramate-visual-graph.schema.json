@@ -215,6 +215,10 @@
           "description": "The responsibility letter the edge carries (#557, ADR 0159): R, C or I for the shipped responsibility kinds and their subkinds, null otherwise. Drawn only when the view's presentation says showResponsibility.",
           "enum": ["R", "C", "I", null]
         },
+        "reading": {
+          "description": "A reading the endpoints decided (ADR 0160): threatens, mitigates, bears on. Absent, the kind's own reading.",
+          "type": "string"
+        },
         "from": {
           "type": "string"
         },

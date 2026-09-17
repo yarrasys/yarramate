@@ -153,6 +153,8 @@ export interface EdgeLabelData {
   readonly coreKindLabel?: string
   /** An extension kind with a reading of its own (ADR 0159), else absent. */
   readonly readingKind?: string
+  /** A reading the endpoints decided (ADR 0160), else absent. */
+  readonly reading?: string
   readonly liftedCount?: number
 }
 
@@ -179,11 +181,13 @@ export const edgeLabelText = (
   const kind = data.kindLabel ?? core
   const readingKind = data.readingKind
   const reading =
-    readingKind !== undefined && readingKind !== core
-      ? relationshipReading(readingKind)
-      : kind !== core && kind !== ''
-        ? humanizeKind(kind)
-        : relationshipReading(core, reversesForLayering(mode) && LAYERING_REVERSED_KINDS.has(core))
+    data.reading !== undefined && data.reading !== ''
+      ? data.reading
+      : readingKind !== undefined && readingKind !== core
+        ? relationshipReading(readingKind)
+        : kind !== core && kind !== ''
+          ? humanizeKind(kind)
+          : relationshipReading(core, reversesForLayering(mode) && LAYERING_REVERSED_KINDS.has(core))
   const count = typeof data.liftedCount === 'number' ? data.liftedCount : 0
   return count > 1 ? `${reading} ×${count}` : reading
 }

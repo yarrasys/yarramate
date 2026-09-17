@@ -755,6 +755,23 @@ concepts:
     description: Normative structure for the yarramate/responsibility/v1 contract.
     owner: yarramate-maintainers
     status: current
+  - id: derive-governance-log
+    kind: applicationFunction
+    name: Derive governance log
+    description: "Derives the RAID log's risks and assumptions from compiled claims (ADR 0160): the yarramate/policy@0.3 kinds read through the lineage, each row with owner, status, what it threatens or bears on, what mitigates it, the latest review attestation, what it supersedes and the groupings that aggregate it, and gaps for the unowned, the unmitigated, the unconfirmed and the unreviewed. Never authored; identical inputs give identical bytes."
+    status: current
+  - id: governance-log
+    kind: dataObject
+    name: Governance log
+    description: "The yarramate/governance/v1 two-file bundle: GOVERNANCE.md for a reader and governance.json for a pipeline, both derived readings of the graph."
+    owner: yarramate-maintainers
+    status: current
+  - id: governance-schema
+    kind: artifact
+    name: Governance log JSON Schema
+    description: Normative structure for the yarramate/governance/v1 contract.
+    owner: yarramate-maintainers
+    status: current
   - id: detect-stale-attestations
     kind: applicationFunction
     name: Detect stale attestations
@@ -1792,6 +1809,31 @@ relationships:
     kind: assignment
     from: tools-entry
     to: derive-responsibility-matrix
+  - id: export-command-serves-governance-log
+    kind: serving
+    from: export-command
+    to: derive-governance-log
+    description: export governance is a derivation mode of the one export verb, not a verb of its own.
+  - id: governance-derivation-reads-graph
+    kind: access
+    from: derive-governance-log
+    to: semantic-graph
+    mode: read
+    status: current
+  - id: governance-derivation-produces-log
+    kind: access
+    from: derive-governance-log
+    to: governance-log
+    mode: write
+    status: current
+  - id: governance-schema-describes-log
+    kind: realization
+    from: governance-schema
+    to: governance-log
+  - id: tools-entry-derives-governance-log
+    kind: assignment
+    from: tools-entry
+    to: derive-governance-log
   - id: traceability-derivation-reads-schema
     kind: access
     from: derive-traceability-matrix

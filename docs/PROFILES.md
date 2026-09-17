@@ -3,13 +3,15 @@
 YarraMate projects extend the bundled vocabulary through explicit profile
 documents. Their normative structure is
 `schema/yarramate-profile.schema.json`. One optional profile also ships
-inside the package, in two versions: `yarramate/policy@0.1` (ADR 0095) and
+inside the package, in three versions: `yarramate/policy@0.1` (ADR 0095);
 `yarramate/policy@0.2`, which extends 0.1 and adds the three responsibility
-relationship kinds `responsible`, `consulted` and `informed` (ADR 0159). A
-document may select either without copying a file; the compiler injects a
-shipped profile when selected or extended, and its shipped parent behind
-it, so `extends: yarramate/policy@0.2` brings 0.1 along and every 0.1 kind
-keeps its identity. It is not an interrogation switch. Webapps that call a system API need `authentication-constraint`
+relationship kinds `responsible`, `consulted` and `informed` (ADR 0159);
+and `yarramate/policy@0.3`, which extends 0.2 and adds the `risk` and
+`assumption` concept kinds beside `assessment` (ADR 0160). A document may
+select any of them without copying a file; the compiler injects a shipped
+profile when selected or extended, and its shipped parents behind it, so
+`extends: yarramate/policy@0.3` brings 0.2 and 0.1 along and every earlier
+kind keeps its identity. It is not an interrogation switch. Webapps that call a system API need `authentication-constraint`
 too. Policy subjects belong in a document that selects this profile;
 other documents may keep an existing org profile and bind with qualified
 `constraints[].ref`. Re-basing an org profile onto policy is allowed and

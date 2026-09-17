@@ -4,7 +4,7 @@ import type {
 } from './compiler.js'
 import { conceptKinds } from './profile.js'
 import type { ProjectionResult } from './projection.js'
-import { EXTENSION_READING, RELATIONSHIP_READING, humanizeKind } from './relationship-reading.js'
+import { EXTENSION_READING, RELATIONSHIP_READING, contextualReading, humanizeKind } from './relationship-reading.js'
 
 const coreKindNames = new Map(
   conceptKinds.map(({ id, name }) => [id, name]),
@@ -185,16 +185,32 @@ export function renderBrief(
       subject.id,
       'yarramate/relationship/description',
     )
+    const coreKind = coreLocalKind(
+      claim.predicate,
+      profileContext?.relationshipKindLineages,
+    )
+    // A reading the endpoints decide (ADR 0160) speaks before the kind's own.
+    const endpointLineage = (id: string): readonly string[] | undefined => {
+      const kind = claimValue(result.claims, id, 'yarramate/concept/kind')
+      return kind === undefined ? undefined : profileContext?.conceptKindLineages.get(kind)
+    }
+    const contextual =
+      coreKind === undefined
+        ? undefined
+        : contextualReading(
+            endpointLineage(claim.subject),
+            endpointLineage(claim.object.ref),
+            coreKind,
+          )
     const entry: BriefRelationship = {
-      phrase: relationshipPhrase(
-        coreLocalKind(
+      phrase:
+        contextual ??
+        relationshipPhrase(
+          coreKind,
           claim.predicate,
-          profileContext?.relationshipKindLineages,
+          claimValue(result.claims, subject.id, 'yarramate/access/mode'),
+          claimValue(result.claims, subject.id, 'yarramate/flow/content'),
         ),
-        claim.predicate,
-        claimValue(result.claims, subject.id, 'yarramate/access/mode'),
-        claimValue(result.claims, subject.id, 'yarramate/flow/content'),
-      ),
       target: claim.object.ref,
       ...(description === undefined ? {} : { description }),
     }

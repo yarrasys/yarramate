@@ -105,6 +105,23 @@ export {
   responsibilityLetterOf,
   type ResponsibilityLetter,
 } from './responsibility-kinds.js'
+export {
+  buildGovernanceLog,
+  renderGovernanceMarkdown,
+  type GovernanceLog,
+  type GovernanceOptions,
+  type GovernanceRef,
+  type GovernanceReview,
+  type GovernanceRow,
+  type GovernanceSource,
+} from './governance.js'
+export {
+  GOVERNANCE_KINDS,
+  GOVERNANCE_PROFILE,
+  REVIEW_TOPICS,
+  governanceTypeOf,
+  type GovernanceType,
+} from './governance-kinds.js'
 export type {
   CompilationCache,
   CompilationResult,
