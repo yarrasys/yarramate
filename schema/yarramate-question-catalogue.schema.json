@@ -633,24 +633,6 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "description": "The workspace has loaded the named profile: a document selects it or a profile in the lineage extends it (ADR 0159). The guard for a question whose missing-* condition names an optional profile's kinds, which would otherwise hold on every workspace that never adopted the vocabulary.",
-          "required": [
-            "condition",
-            "profile"
-          ],
-          "properties": {
-            "condition": {
-              "const": "profile-loaded"
-            },
-            "profile": {
-              "type": "string",
-              "description": "A profile identity, id@version, for example yarramate/policy@0.2."
-            }
-          }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
           "description": "The subject fills a slot of a pattern instance (ADR 0131). A guard, per the #334 split: it says a question applies here, and an ordinary condition beside it says what would answer it. Bare, it means bound into any slot of any instance; patternKinds narrows by the pattern's kind identity (never a document path, ADR 0129) and slots by part name. Evaluation reads pattern memberships from the compilation; a caller that does not supply them gets a condition that never holds.",
           "required": [
             "condition"

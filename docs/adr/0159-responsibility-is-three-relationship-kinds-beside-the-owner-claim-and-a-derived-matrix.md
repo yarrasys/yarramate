@@ -65,18 +65,20 @@ recorded judgement is not a standing role, so the cell carries provenance:
 the markdown marks an attestation-only C with an asterisk, nothing is
 written back as an edge, and a derived C never fills a gap.
 
-**Two questions in the shipped catalogue, guarded by a new condition.**
-`responsible-missing` asks who is responsible for a service, component or
-capability with no incoming `responsible` edge from a person, beside
-`owner-missing`. `role-idle` asks what a business actor, role or
+**Two questions in the shipped catalogue, dormant until the vocabulary is
+adopted.** `responsible-missing` asks who is responsible for a service,
+component or capability with no incoming `responsible` edge from a person,
+beside `owner-missing`. `role-idle` asks what a business actor, role or
 collaboration answers for when nobody's owner claim names them, they hold
 no responsibility edge, and nothing serves them: a served actor is a
-consumer, not a responsibility holder, and is not asked. Both open with
-`profile-loaded: yarramate/policy@0.2`, a new workspace-scope condition,
-because a `missing-*` trigger that names an optional profile's kinds would
-otherwise hold on every workspace that never adopted the vocabulary, the
-self-model included. The condition is the general answer to that trap, not
-a special case for these two.
+consumer, not a responsibility holder, and is not asked. Neither needs a
+guard: a question is applicable only where every kind it names belongs to
+a profile the workspace has loaded (`questionIsApplicable`, the rule that
+already keeps the `yarramate/policy@0.1` constraint questions quiet), and
+both name `yarramate/policy@0.2` kinds. A workspace that never adopted the
+vocabulary, this repository's own included, is never asked. A first draft
+of this decision added a `profile-loaded` condition for the same purpose
+before that rule was found; it was removed rather than shipped twice.
 
 **On the canvas, responsibility edges are hidden by default.** A role
 responsible for eight applications is eight lines out of one box. The
@@ -102,6 +104,6 @@ matrix is owner-based, and an adopter that reads sign-off as accountability
 adds those rows on its side. A per-kind "accountable via" option is a small
 later extension if that proves out; it is not built here.
 
-The interrogation semantics version stays at 1: a condition was added and no
-existing question answers differently for an unchanged model, which is the
-distinction the fingerprint test draws.
+The interrogation semantics version stays at 1 and its fingerprint does
+not move: no condition was added and no existing question answers
+differently for an unchanged model.

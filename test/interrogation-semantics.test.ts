@@ -23,7 +23,7 @@ import {
 // existing question answers.
 
 const EXPECTED_SEMANTICS = '1'
-const EXPECTED_FINGERPRINT = 'ab49f9317e8a1edd'
+const EXPECTED_FINGERPRINT = '4be1f41248e27adb'
 
 const profile = 'yarramate/core@0.1'
 
@@ -127,9 +127,6 @@ const CONDITION_PROBES: Record<
   'unscoped-succession': ['      - condition: unscoped-succession'],
   'unchallenged-evidence': ['      - condition: unchallenged-evidence'],
   'has-any-subject': ['      - condition: has-any-subject'],
-  // Never fires here, deliberately: the fixture's profile is core alone, and
-  // "a vocabulary nobody adopted asks nothing" is the semantic to pin (ADR 0159).
-  'profile-loaded': ['      - condition: profile-loaded', '        profile: yarramate/policy@0.2'],
   'has-subject-of-kind': ['      - condition: has-subject-of-kind', `        kinds: ["${profile}#applicationComponent"]`],
   // Fires: the fixture holds one applicationService and the floor is two.
   'below-subject-count': ['      - condition: below-subject-count', `        kinds: ["${profile}#applicationService"]`, '        atLeast: 2'],

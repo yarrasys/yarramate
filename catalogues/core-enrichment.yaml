@@ -841,8 +841,6 @@ questions:
         - yarramate/core@0.1#applicationComponent
         - yarramate/core@0.1#capability
     trigger:
-      - condition: profile-loaded
-        profile: yarramate/policy@0.2
       - condition: missing-linkage
         kinds:
           - yarramate/policy@0.2#responsible
@@ -875,8 +873,6 @@ questions:
         - yarramate/core@0.1#businessRole
         - yarramate/core@0.1#businessCollaboration
     trigger:
-      - condition: profile-loaded
-        profile: yarramate/policy@0.2
       - condition: missing-reference
         predicate: yarramate/ownership/owner
         direction: incoming

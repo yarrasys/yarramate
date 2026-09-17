@@ -18,9 +18,9 @@ it, derived with the topic and date and never counted toward a gap.
 `yarramate_export` takes `kind: responsibility`, and `yarramate/tools`
 exports `exportResponsibility`, `buildResponsibilityMatrix` and
 `renderResponsibilityMarkdown`. The shipped catalogue gains
-`responsible-missing` and `role-idle`, both guarded by the new
-`profile-loaded` condition so a workspace that never adopted the vocabulary
-is never asked. On the canvas the edges read "is responsible for", "is
+`responsible-missing` and `role-idle`, dormant on any workspace that has not
+adopted `yarramate/policy@0.2`, as every question naming an optional
+profile's kinds already is. On the canvas the edges read "is responsible for", "is
 consulted on", "is informed of" and are hidden until a view's new
 `showResponsibility` flag, or the toggle beside the badges, asks for them;
 the subject's properties read the letters either way.

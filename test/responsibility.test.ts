@@ -276,6 +276,9 @@ describe('responsible-missing and role-idle in the shipped catalogue', () => {
     expect(openSubjectsOf(report, 'responsible-missing')).toEqual([])
   })
   it('stay silent on a workspace that never adopted the vocabulary', () => {
+    // Both questions name yarramate/policy@0.2 kinds, and a question is
+    // applicable only where every kind it names belongs to a loaded profile
+    // (`questionIsApplicable`), so a core-only workspace is never asked.
     const result = compileWorkspaceWithProfileContext([
       {
         path: 'main.yaml',
