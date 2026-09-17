@@ -746,18 +746,20 @@ export interface ConceptFormProps {
  * model's edges whether or not the canvas draws them: who is responsible for,
  * consulted on and informed of THIS subject, and, for a person, what they are
  * responsible for, consulted on and informed of. Accountable is the Owner row
- * above. Empty rows render nothing.
+ * above. The three labels are the same on both sides, short enough for the
+ * label column; the person's side carries the preposition in the value,
+ * "for Portal, API". Empty rows render nothing.
  */
 const LETTER_LABELS = {
-  R: ['Responsible', 'Responsible for'],
-  C: ['Consulted', 'Consulted on'],
-  I: ['Informed', 'Informed of'],
+  R: ['Responsible', 'for'],
+  C: ['Consulted', 'on'],
+  I: ['Informed', 'of'],
 } as const
 
 export const responsibilityFacts = (
   node: CanvasNode,
   model: VisualRenderedModel,
-): readonly { readonly label: string; readonly value: string }[] => {
+): readonly { readonly key: string; readonly label: string; readonly value: string }[] => {
   const names = new Map(model.graph.nodes.map((other) => [other.id, other.name]))
   const carried: Record<'R' | 'C' | 'I', string[]> = { R: [], C: [], I: [] }
   const held: Record<'R' | 'C' | 'I', string[]> = { R: [], C: [], I: [] }
@@ -768,8 +770,12 @@ export const responsibilityFacts = (
     if (edge.from === node.id) held[letter].push(names.get(edge.to) ?? edge.to)
   }
   return (['R', 'C', 'I'] as const).flatMap((letter) => [
-    { label: LETTER_LABELS[letter][0], value: carried[letter].join(', ') },
-    { label: LETTER_LABELS[letter][1], value: held[letter].join(', ') },
+    { key: `${letter}-carried`, label: LETTER_LABELS[letter][0], value: carried[letter].join(', ') },
+    {
+      key: `${letter}-held`,
+      label: LETTER_LABELS[letter][0],
+      value: held[letter].length === 0 ? '' : `${LETTER_LABELS[letter][1]} ${held[letter].join(', ')}`,
+    },
   ])
 }
 
@@ -819,7 +825,7 @@ export const ConceptForm = ({ node, model, operations, onStageChange }: ConceptF
         onCommit={(next) => stage(stageConceptScalarChange(document, id, 'owner', effective.owner, next))}
       />
       {responsibilityFacts(node, model).map((row) => (
-        <FactRow key={row.label} label={row.label} value={row.value} />
+        <FactRow key={row.key} label={row.label} value={row.value} />
       ))}
       <StringRows
         label="Aka"
@@ -898,7 +904,7 @@ export const ConceptFacts = ({
     <FactRow label="Status" value={node.status ?? ''} />
     <FactRow label="Owner" value={node.owner ?? ''} />
     {responsibilityFacts(node, model).map((row) => (
-      <FactRow key={row.label} label={row.label} value={row.value} />
+      <FactRow key={row.key} label={row.label} value={row.value} />
     ))}
     <FactRow label="Aka" value={node.aka.join(', ')} />
     <FactRow label="Distinct from" value={node.distinctFrom.join(', ')} />

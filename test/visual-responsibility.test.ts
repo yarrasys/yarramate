@@ -119,8 +119,15 @@ describe('responsibility edges in the editor (#557, ADR 0159)', () => {
     const hidden = ids(graphToElements(canvas, [], new Map(), { folded: new Set() }))
     expect(hidden.some((id) => id.endsWith('s1'))).toBe(true)
     expect(hidden.some((id) => id.endsWith('r1') || id.endsWith('r4'))).toBe(false)
-    const shown = ids(graphToElements(canvas, [], new Map(), { folded: new Set(), showResponsibility: true }))
+    const elements = graphToElements(canvas, [], new Map(), { folded: new Set(), showResponsibility: true })
+    const shown = ids(elements)
     expect(['r1', 'r2', 'r3', 'r4', 's1'].every((local) => shown.some((id) => id.endsWith(local)))).toBe(true)
+    // The element data carries what the label mapper reads, so the canvas
+    // says "is responsible for" rather than humanising "delivery-lead".
+    const r4 = elements.find((el) => el.group === 'edges' && String(el.data.id).endsWith('r4'))!
+    expect(r4.data.readingKind).toBe(RESPONSIBILITY_KINDS.responsible)
+    expect(r4.data.responsibility).toBe('R')
+    expect(edgeLabelText(r4.data as Parameters<typeof edgeLabelText>[0], 'layered', true)).toBe('is responsible for')
   })
   it('reads the letters in the properties whether or not the canvas draws them', () => {
     const { graph, profileContext } = compileFixture()
@@ -128,13 +135,16 @@ describe('responsibility edges in the editor (#557, ADR 0159)', () => {
     const model = { graph: canvas } as unknown as VisualRenderedModel
     const node = (local: string): CanvasNode => canvas.nodes.find((candidate) => candidate.localId === local)!
     const rows = (local: string) =>
-      responsibilityFacts(node(local), model).filter(({ value }) => value !== '')
+      responsibilityFacts(node(local), model)
+        .filter(({ value }) => value !== '')
+        .map(({ label, value }) => ({ label, value }))
     expect(rows('portal')).toEqual([
       { label: 'Responsible', value: 'Project manager' },
       { label: 'Consulted', value: 'Vendor' },
       { label: 'Informed', value: 'Patron' },
     ])
-    expect(rows('pm')).toEqual([{ label: 'Responsible for', value: 'Portal, API' }])
+    expect(rows('pm')).toEqual([{ label: 'Responsible', value: 'for Portal, API' }])
+    expect(new Set(responsibilityFacts(node('pm'), model).map(({ key }) => key)).size).toBe(6)
     expect(rows('catalogue')).toEqual([])
   })
 })

@@ -878,6 +878,11 @@ export function graphToElements(
         label: edge.name ?? edge.kindLabel,
         wrapLabel: withWrapPoints(edge.name ?? edge.kindLabel),
         coreKindLabel: edge.coreKindLabel,
+        // The kind whose reading the label speaks (ADR 0159): without it the
+        // mapper humanises the authored kind, "responsible" rather than "is
+        // responsible for". The letter rides along for a stylesheet to read.
+        ...(edge.readingKind === undefined ? {} : { readingKind: edge.readingKind }),
+        ...(edge.responsibility === undefined ? {} : { responsibility: edge.responsibility }),
       },
       group: 'edges',
       ...(drawnPerPair.get(pairKey(edge))! > 1
