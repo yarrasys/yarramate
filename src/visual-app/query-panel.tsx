@@ -200,6 +200,7 @@ export interface BadgeChoices {
   readonly showLifecycle: boolean;
   readonly showEvidence: boolean;
   readonly showOwnership: boolean;
+  readonly showResponsibility: boolean;
   readonly showKindLabels: boolean;
 }
 
@@ -240,6 +241,7 @@ const badgePresentation = (
     ...write("showLifecycle"),
     ...write("showEvidence"),
     ...write("showOwnership"),
+    ...write("showResponsibility"),
     ...write("showKindLabels"),
   };
 };
@@ -306,6 +308,7 @@ export interface QueryPanelProps {
   readonly showLifecycle: boolean;
   readonly showEvidence: boolean;
   readonly showOwnership: boolean;
+  readonly showResponsibility: boolean;
   readonly showKindLabels: boolean;
   readonly showNudges: boolean;
   readonly onTogglePresentation: (
@@ -417,6 +420,7 @@ export function QueryPanel({
   showLifecycle,
   showEvidence,
   showOwnership,
+  showResponsibility,
   showKindLabels,
   showNudges,
   onTogglePresentation,
@@ -454,6 +458,7 @@ export function QueryPanel({
     showLifecycle,
     showEvidence,
     showOwnership,
+    showResponsibility,
     showKindLabels,
   }));
 
@@ -497,7 +502,7 @@ export function QueryPanel({
       : {
           view,
           query: composed,
-          badges: { showLifecycle, showEvidence, showOwnership, showKindLabels },
+          badges: { showLifecycle, showEvidence, showOwnership, showResponsibility, showKindLabels },
           opened,
         };
 
@@ -589,6 +594,7 @@ export function QueryPanel({
                 showLifecycle={showLifecycle}
                 showEvidence={showEvidence}
                 showOwnership={showOwnership}
+                showResponsibility={showResponsibility}
                 showKindLabels={showKindLabels}
                 showNudges={showNudges}
                 onTogglePresentation={onTogglePresentation}

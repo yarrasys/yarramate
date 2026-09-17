@@ -74,6 +74,17 @@ export interface CanvasEdge {
   readonly kind: string
   readonly kindLabel: string
   readonly coreKindLabel: string // resolved core-vocabulary kind, from profileContext.relationshipKindLineages[0]
+  /**
+   * The kind whose reading the edge label speaks (ADR 0159): an extension
+   * identity with a reading of its own, else `coreKindLabel`.
+   */
+  readonly readingKind?: string
+  /**
+   * The responsibility letter this edge carries (#557): R, C or I for the
+   * shipped responsibility kinds and their subkinds, null for every other
+   * kind. The canvas draws these only when the view asks (`showResponsibility`).
+   */
+  readonly responsibility?: ResponsibilityLetter | null
   readonly from: string // node id
   readonly to: string // node id
   readonly name: string | null
@@ -91,6 +102,9 @@ export interface CanvasGraph {
   readonly nodes: readonly CanvasNode[]
   readonly edges: readonly CanvasEdge[]
 }
+
+import { readingKindOf } from './relationship-reading.js'
+import { responsibilityLetterOf, type ResponsibilityLetter } from './responsibility-kinds.js'
 
 const CONCEPT_KIND_PREDICATE = 'yarramate/concept/kind'
 const CONCEPT_NAME_PREDICATE = 'yarramate/concept/name'
@@ -309,6 +323,8 @@ const projectRelationship = (
     throw new Error(`Relationship "${relationshipId}" is missing its defining claim`)
   }
   const kind = definingClaim.predicate
+  const lineage = profileContext.relationshipKindLineages.get(kind)
+  const coreKindLabel = kindLabelOf(lineage?.[0] ?? kind)
 
   const nameClaim = ownClaims.find((claim) => claim.predicate === RELATIONSHIP_NAME_PREDICATE)
   const descriptionClaim = ownClaims.find(
@@ -324,7 +340,9 @@ const projectRelationship = (
     document: definingClaim.source.path,
     kind,
     kindLabel: kindLabelOf(kind),
-    coreKindLabel: kindLabelOf(profileContext.relationshipKindLineages.get(kind)?.[0] ?? kind),
+    coreKindLabel,
+    readingKind: readingKindOf(lineage, coreKindLabel),
+    responsibility: responsibilityLetterOf(lineage, kind),
     from: definingClaim.subject,
     to: claimRef(definingClaim),
     name: nameClaim === undefined ? null : claimValue(nameClaim),

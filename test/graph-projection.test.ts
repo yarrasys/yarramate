@@ -223,6 +223,8 @@ relationships:
         kind: 'yarramate/core@0.1#access',
         kindLabel: 'access',
         coreKindLabel: 'access',
+        readingKind: 'access',
+        responsibility: null,
         from: 'consumer',
         to: 'store',
         name: 'Reads store',

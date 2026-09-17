@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { runCli } from '../src/cli.js'
 import {
   CORE_CONCEPT_KIND_ORDER,
+  RELATIONSHIP_LETTERS,
   type CoreConceptKindId,
 } from '../src/archimate-relationships.generated.js'
 import {
@@ -93,6 +94,7 @@ const unclosableTriples = (
   questions: readonly CatalogueQuestion[],
 ): readonly string[] => {
   const coreKinds = new Set<string>(CORE_CONCEPT_KIND_ORDER)
+  const coreRelationships = new Set<string>(Object.values(RELATIONSHIP_LETTERS))
   const unclosable: string[] = []
   for (const question of questions) {
     for (const trigger of question.trigger ?? []) {
@@ -106,6 +108,12 @@ const unclosableTriples = (
         // lookup this check cannot make, and it says so by skipping.
         if (!coreKinds.has(subject)) continue
         for (const relationship of (trigger.kinds ?? []).map(localKind)) {
+          // The same rule for a relationship kind: a shipped optional
+          // profile's `responsible` inherits association's row (ADR 0159),
+          // and the engine's own `unauthorableOffers` checks it through the
+          // lineage once that profile is loaded. Here it is a lookup this
+          // check cannot make, so it skips rather than convicts.
+          if (!coreRelationships.has(relationship)) continue
           const closable = directions.some((direction) =>
             (direction === 'incoming'
               ? sourceKindsPermitting(

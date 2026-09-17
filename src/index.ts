@@ -86,6 +86,25 @@ export {
   type RtmRow,
   type RtmSource,
 } from './rtm.js'
+export {
+  buildResponsibilityMatrix,
+  renderResponsibilityMarkdown,
+  type RaciLetter,
+  type ResponsibilityCell,
+  type ResponsibilityCellSource,
+  type ResponsibilityMatrix,
+  type ResponsibilityOptions,
+  type ResponsibilityPerson,
+  type ResponsibilityRow,
+  type ResponsibilitySource,
+} from './responsibility.js'
+export {
+  PEOPLE_KINDS,
+  RESPONSIBILITY_KINDS,
+  RESPONSIBILITY_PROFILE,
+  responsibilityLetterOf,
+  type ResponsibilityLetter,
+} from './responsibility-kinds.js'
 export type {
   CompilationCache,
   CompilationResult,

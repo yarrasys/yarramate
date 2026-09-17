@@ -69,6 +69,9 @@ formats:
   - id: yarramate/rtm/v1
     schema: schema/yarramate-rtm.schema.json
     packageExport: ./schema/rtm
+  - id: yarramate/responsibility/v1
+    schema: schema/yarramate-responsibility.schema.json
+    packageExport: ./schema/responsibility
 commands:
   - name: init
     binary: yarramate

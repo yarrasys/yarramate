@@ -207,6 +207,14 @@
         "coreKindLabel": {
           "type": "string"
         },
+        "readingKind": {
+          "description": "The kind whose reading the edge label speaks (ADR 0159): an extension identity with a reading of its own, else the core kind label.",
+          "type": "string"
+        },
+        "responsibility": {
+          "description": "The responsibility letter the edge carries (#557, ADR 0159): R, C or I for the shipped responsibility kinds and their subkinds, null otherwise. Drawn only when the view's presentation says showResponsibility.",
+          "enum": ["R", "C", "I", null]
+        },
         "from": {
           "type": "string"
         },

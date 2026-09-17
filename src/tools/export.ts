@@ -15,6 +15,11 @@ import {
   renderRtmMarkdown,
   type RequirementsTraceabilityMatrix,
 } from '../rtm.js'
+import {
+  buildResponsibilityMatrix,
+  renderResponsibilityMarkdown,
+  type ResponsibilityMatrix,
+} from '../responsibility.js'
 import { workbookFrom } from '../workbook.js'
 import {
   exportLikeC4ProjectFromSources,
@@ -235,6 +240,42 @@ export const exportRtm = (
       evaluation.reports,
     )
     return { ok: true, result: { markdown: renderRtmMarkdown(rtm), rtm } }
+  })
+
+/**
+ * `yarramate export responsibility <projection> <ws>`: the RACI matrix over
+ * the projection's subjects (ADR 0159), with the markdown a person reads.
+ * Columns are every person the whole model holds, so an idle person is
+ * idle against these rows, not absent from them.
+ */
+export const exportResponsibility = (
+  workspace: ToolWorkspace,
+  projection: string,
+): ToolResult<{
+  readonly markdown: string
+  readonly matrix: ResponsibilityMatrix
+}> =>
+  guarded(() => {
+    const compilation = compileOf(workspace)
+    if (!compilation.ok) return compilation
+    const { compiled } = compilation
+    const evaluated = projectionOf(workspace, compiled, projection)
+    if (!evaluated.ok) return evaluated
+    const matrix = buildResponsibilityMatrix(
+      workspace.workspace.id,
+      compiled.graph,
+      compiled.profileContext,
+      {
+        rows: evaluated.result.subjects
+          .filter(({ type }) => type === 'concept')
+          .map(({ id }) => id),
+        projection: evaluated.result.projection,
+      },
+    )
+    return {
+      ok: true,
+      result: { markdown: renderResponsibilityMarkdown(matrix), matrix },
+    }
   })
 
 /**

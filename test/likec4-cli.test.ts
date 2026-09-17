@@ -1651,10 +1651,11 @@ views:
         "view starter-technology-deployment {\n" +
           "    title '4 · ArchiMate viewpoints / Technology and deployment'\n" +
           "    description 'Technology structure, behavior, services, networks, and deployed artifacts.'\n" +
-          // The six JSON Schema subjects are artifacts (ADR 0097), so the
-          // technology viewpoint now carries them and, through `connected`,
-          // the results they realize and the sources that realize them.
-          '    include consumerHost, consumerPackage, coreContractSchemaSource, deriveTraceabilityMatrix, engineCli, engineCoreContractManifest, engineCoreContractSchema, engineGraphifyEvidenceAdapter, engineLikec4CheckResultSchema, engineLikec4DiagnosticResultSchema, engineLoadCoreContract, engineProjectionResultSchema, engineRelationshipPolicyCatalogue, engineRelationshipTable, executeShippedBinaries, likec4CheckResult, likec4CheckResultSchemaSource, likec4DiagnosticResult, likec4DiagnosticResultSchemaSource, likec4ExportAdapter, localWebBrowser, mcpAdapter, nodejsRuntime, npmPackage, packageBarrelSource, packageConsumerTests, productDesignSolutionBeforeBuild, productDiscoverProjectArchitecture, productStableCli, projectionResult, projectionResultSchemaSource, relationshipTableGenerator, relationshipTableModule, relationshipTableSource, renderVisualSessionPage, requirementsTraceabilityMatrix, rtmSchema, stateComparison, stateComparisonSchema, stateComparisonSchemaSource, visualBrowser, visualRuntime',
+          // The JSON Schema subjects are artifacts (ADR 0097), so the
+          // technology viewpoint carries them and, through `connected`, the
+          // results they realize and the sources that realize them; the
+          // responsibility matrix and its schema joined them (ADR 0159).
+          '    include consumerHost, consumerPackage, coreContractSchemaSource, deriveTraceabilityMatrix, engineCli, engineCoreContractManifest, engineCoreContractSchema, engineGraphifyEvidenceAdapter, engineLikec4CheckResultSchema, engineLikec4DiagnosticResultSchema, engineLoadCoreContract, engineProjectionResultSchema, engineRelationshipPolicyCatalogue, engineRelationshipTable, executeShippedBinaries, likec4CheckResult, likec4CheckResultSchemaSource, likec4DiagnosticResult, likec4DiagnosticResultSchemaSource, likec4ExportAdapter, localWebBrowser, mcpAdapter, nodejsRuntime, npmPackage, packageBarrelSource, packageConsumerTests, productDesignSolutionBeforeBuild, productDiscoverProjectArchitecture, productStableCli, projectionResult, projectionResultSchemaSource, relationshipTableGenerator, relationshipTableModule, relationshipTableSource, renderVisualSessionPage, requirementsTraceabilityMatrix, responsibilityMatrix, responsibilitySchema, rtmSchema, stateComparison, stateComparisonSchema, stateComparisonSchemaSource, visualBrowser, visualRuntime',
       )
       const marker = JSON.parse(
         readFileSync(

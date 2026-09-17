@@ -455,6 +455,18 @@ observations:
     result: confirmed
     evidence:
       uri: repo:schema/yarramate-rtm.schema.json
+  - subject: derive-responsibility-matrix
+    result: confirmed
+    evidence:
+      uri: repo:src/responsibility.ts
+  - subject: responsibility-matrix
+    result: confirmed
+    evidence:
+      uri: repo:src/responsibility.ts
+  - subject: responsibility-schema
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-responsibility.schema.json
   - subject: semantic-graph
     result: confirmed
     evidence:

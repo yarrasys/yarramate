@@ -4,7 +4,7 @@ import type {
 } from './compiler.js'
 import { conceptKinds } from './profile.js'
 import type { ProjectionResult } from './projection.js'
-import { RELATIONSHIP_READING, humanizeKind } from './relationship-reading.js'
+import { EXTENSION_READING, RELATIONSHIP_READING, humanizeKind } from './relationship-reading.js'
 
 const coreKindNames = new Map(
   conceptKinds.map(({ id, name }) => [id, name]),
@@ -113,6 +113,8 @@ const relationshipPhrase = (
   if (coreKind === 'flow') {
     return content === undefined ? 'flows to' : `sends ${content} to`
   }
+  const extension = EXTENSION_READING[fallbackKind]
+  if (extension !== undefined) return extension
   const reading = coreKind === undefined ? undefined : RELATIONSHIP_READING[coreKind]
   return reading ?? humanizeKind(fallbackKind)
 }

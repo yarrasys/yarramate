@@ -23,6 +23,7 @@ import {
   exportBriefs,
   exportGraph,
   exportMarkdown,
+  exportResponsibility,
   exportRtm,
   exportWorkbook,
 } from './tools/export.js'
@@ -106,7 +107,15 @@ export function runExportCommand(
   const [kind, ...rest] = options
   if (
     kind === undefined ||
-    !['graph', 'markdown', 'briefs', 'rtm', 'likec4', 'xlsx'].includes(kind)
+    ![
+      'graph',
+      'markdown',
+      'briefs',
+      'rtm',
+      'responsibility',
+      'likec4',
+      'xlsx',
+    ].includes(kind)
   ) {
     return { exitCode: 2, stdout: '', stderr: usage }
   }
@@ -172,9 +181,13 @@ export function runExportCommand(
     parsed.positionals.length !== expectedPositionals ||
     workspacePath === undefined ||
     parsed.json ||
-    (usesChanged && (kind === 'graph' || kind === 'rtm')) ||
+    (usesChanged &&
+      (kind === 'graph' || kind === 'rtm' || kind === 'responsibility')) ||
     (parsed.budget !== undefined && kind !== 'briefs') ||
-    ((kind === 'briefs' || kind === 'rtm' || kind === 'xlsx') &&
+    ((kind === 'briefs' ||
+      kind === 'rtm' ||
+      kind === 'responsibility' ||
+      kind === 'xlsx') &&
       parsed.out === undefined)
   ) {
     return { exitCode: 2, stdout: '', stderr: usage }
@@ -236,6 +249,25 @@ export function runExportCommand(
       }
     }
 
+    if (kind === 'responsibility') {
+      const exported = exportResponsibility(tool, projectionPath!)
+      if (!exported.ok) return failedTool(exported)
+      const { markdown, matrix } = exported.result
+      writeText(join(parsed.out!, 'RESPONSIBILITY.md'), markdown)
+      writeText(
+        join(parsed.out!, 'responsibility.json'),
+        `${JSON.stringify(matrix, null, 2)}\n`,
+      )
+      const gaps = matrix.summary.noAccountable + matrix.summary.noResponsible
+      return {
+        exitCode: 0,
+        stdout:
+          `Wrote RESPONSIBILITY.md and responsibility.json (${matrix.summary.rows} row${
+            matrix.summary.rows === 1 ? '' : 's'
+          }, ${gaps} gap${gaps === 1 ? '' : 's'}) to ${parsed.out}\n`,
+        stderr: '',
+      }
+    }
     if (kind === 'graph') {
       const exported = exportGraph(tool)
       if (!exported.ok) return failedTool(exported)

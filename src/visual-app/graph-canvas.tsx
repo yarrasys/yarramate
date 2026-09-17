@@ -733,6 +733,13 @@ export function graphToElements(
      * member the way it does for counts.
      */
     readonly nextQuestionSubjectId?: string | null
+    /**
+     * Whether responsibility edges are drawn (#557, ADR 0159). Off, an R, C
+     * or I edge stays out of the elements entirely: it is read in the
+     * subject's properties, and eight lines out of one person box is not a
+     * diagram.
+     */
+    readonly showResponsibility?: boolean
   }
 ): ElementDefinition[] {
   // CORE kinds, not the authored ones (#473). The rule that decides whether an
@@ -835,7 +842,9 @@ export function graphToElements(
   })
 
   const drawnEdges = graph.edges.filter(
-    (edge) => !consumedEdgeIds.has(edge.id)
+    (edge) =>
+      !consumedEdgeIds.has(edge.id) &&
+      (fold?.showResponsibility === true || (edge.responsibility ?? null) === null)
   )
 
   // How many drawn edges share each unordered endpoint pair. Members of a
@@ -869,6 +878,11 @@ export function graphToElements(
         label: edge.name ?? edge.kindLabel,
         wrapLabel: withWrapPoints(edge.name ?? edge.kindLabel),
         coreKindLabel: edge.coreKindLabel,
+        // The kind whose reading the label speaks (ADR 0159): without it the
+        // mapper humanises the authored kind, "responsible" rather than "is
+        // responsible for". The letter rides along for a stylesheet to read.
+        ...(edge.readingKind === undefined ? {} : { readingKind: edge.readingKind }),
+        ...(edge.responsibility === undefined ? {} : { responsibility: edge.responsibility }),
       },
       group: 'edges',
       ...(drawnPerPair.get(pairKey(edge))! > 1
@@ -1562,6 +1576,8 @@ interface GraphCanvasProps {
   readonly showLifecycle: boolean
   readonly showEvidence: boolean
   readonly showOwnership: boolean
+  /** Whether responsibility edges draw (#557, ADR 0159); off hides them. */
+  readonly showResponsibility: boolean
   readonly showNudges: boolean
   /** Open-question count per subject id, from the model's interrogation
    * overlay; an empty map (host shipped no overlay) draws no chips. */
@@ -1655,6 +1671,7 @@ export function GraphCanvas({
   showLifecycle,
   showEvidence,
   showOwnership,
+  showResponsibility,
   showNudges,
   openQuestionCounts,
   nextQuestionSubjectId = null,
@@ -1758,6 +1775,7 @@ export function GraphCanvas({
         nextQuestionSubjectId,
         folded: folded ?? new Set(),
         memberships,
+        showResponsibility,
       }),
       // Multi-select, so fold and unfold can act on a set (#473). Additive on
       // shift and by box drag; a single click still replaces the selection,
@@ -1968,6 +1986,7 @@ export function GraphCanvas({
         nextQuestionSubjectId,
         folded: folded ?? new Set(),
         memberships,
+        showResponsibility,
       })
       cyRef.current.elements().remove()
       cyRef.current.add(elements)
@@ -2009,7 +2028,7 @@ export function GraphCanvas({
     // just clicked; routing it here would relayout the whole canvas instead,
     // and a rebuild here does not re-apply the fold or the filter at all.
     // `test/graph-canvas-effect-deps.test.ts` pins both halves.
-  }, [graph, openQuestionCounts, nextQuestionSubjectId, nesting, memberships])
+  }, [graph, openQuestionCounts, nextQuestionSubjectId, nesting, memberships, showResponsibility])
 
   // A FOLD change is an element-set change, so a fit alone will not do: the
   // graph has to be placed again (#473). But the reader's eye is on the box
@@ -2041,6 +2060,7 @@ export function GraphCanvas({
         nextQuestionSubjectId,
         folded: current,
         memberships,
+        showResponsibility,
       })
     )
     applyFilter(cy, matchedIds, quickFilterText)

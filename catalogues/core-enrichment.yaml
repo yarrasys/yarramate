@@ -830,6 +830,76 @@ questions:
       Add an owner reference to an accountable actor (evidence such as
       CODEOWNERS may propose it; a human confirms accountability).
 
+  - id: responsible-missing
+    wave: business
+    since: "1.33"
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#businessService
+        - yarramate/core@0.1#applicationService
+        - yarramate/core@0.1#applicationComponent
+        - yarramate/core@0.1#capability
+    trigger:
+      - condition: missing-linkage
+        kinds:
+          - yarramate/policy@0.2#responsible
+        direction: incoming
+        counterpartKinds:
+          - yarramate/core@0.1#businessActor
+          - yarramate/core@0.1#businessRole
+          - yarramate/core@0.1#businessCollaboration
+          - yarramate/core@0.1#stakeholder
+    question: >-
+      Who is responsible for {subject.name}?
+    askPlain: >-
+      Who actually builds, runs or delivers "{subject.name}" day to day?
+    materiality: >-
+      Accountability says whose desk a failure lands on; responsibility says
+      whose hands are on it. A subject with nobody responsible has nobody to
+      hand the work to, and a RACI row with no R is a gap the matrix reports.
+    authority: either
+    resolution: >-
+      Add a `responsible` relationship from the actor, role or collaboration
+      that does the work to the subject (a support contract or CODEOWNERS may
+      propose it; a person confirms it).
+  - id: role-idle
+    wave: business
+    since: "1.33"
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#businessActor
+        - yarramate/core@0.1#businessRole
+        - yarramate/core@0.1#businessCollaboration
+    trigger:
+      - condition: missing-reference
+        predicate: yarramate/ownership/owner
+        direction: incoming
+      - condition: missing-relationship
+        kinds:
+          - yarramate/policy@0.2#responsible
+          - yarramate/policy@0.2#consulted
+          - yarramate/policy@0.2#informed
+        direction: outgoing
+      - condition: missing-relationship
+        kinds:
+          - yarramate/core@0.1#serving
+        direction: incoming
+    question: >-
+      What does {subject.name} answer for?
+    askPlain: >-
+      "{subject.name}" is in the model but owns nothing, is responsible for
+      nothing, and is neither consulted nor informed about anything. What is
+      their part, or should they go?
+    materiality: >-
+      A person with no letter is either missing the edges a delivery depends
+      on or a name that outlived its role. A served actor is a consumer, not
+      a responsibility holder, and is not asked.
+    authority: human
+    resolution: >-
+      Give the person a letter (an owner claim on what they answer for, or a
+      responsible, consulted or informed relationship) or retire the subject.
   - id: actor-unassigned
     wave: business
     since: "0.1"

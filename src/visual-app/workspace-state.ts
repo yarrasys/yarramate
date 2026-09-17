@@ -443,6 +443,8 @@ export interface VisualWorkspaceState {
   readonly showLifecycle: boolean;
   readonly showEvidence: boolean;
   readonly showOwnership: boolean;
+  /** Whether responsibility edges draw on the canvas (#557, ADR 0159). */
+  readonly showResponsibility: boolean;
   /** Whether an unnamed relationship is labelled with its reading (ADR 0147). */
   readonly showKindLabels: boolean;
   readonly showNudges: boolean;
@@ -555,6 +557,7 @@ export type VisualWorkspaceAction =
         | "showLifecycle"
         | "showEvidence"
         | "showOwnership"
+        | "showResponsibility"
         | "showKindLabels"
         | "showNudges";
       readonly value: boolean;
@@ -593,6 +596,7 @@ export const presentationActionsFor = (
         readonly showLifecycle?: boolean;
         readonly showEvidence?: boolean;
         readonly showOwnership?: boolean;
+        readonly showResponsibility?: boolean;
         readonly showKindLabels?: boolean;
       }
     | undefined,
@@ -648,6 +652,13 @@ export const presentationActionsFor = (
       type: "presentation.toggled",
       flag: "showOwnership",
       value: presentation.showOwnership,
+    });
+  }
+  if (presentation?.showResponsibility !== undefined) {
+    actions.push({
+      type: "presentation.toggled",
+      flag: "showResponsibility",
+      value: presentation.showResponsibility,
     });
   }
   if (presentation?.showKindLabels !== undefined) {
@@ -767,6 +778,10 @@ export const createVisualWorkspaceState = (
   // `yarramate/ownership/owner` claims, so every chip would render
   // identically - uniform noise until real ownership diversity exists.
   showOwnership: false,
+  // Off by default (#557, ADR 0159): a role responsible for eight applications
+  // is eight lines out of one box, and the subject's properties read the
+  // letters either way.
+  showResponsibility: false,
   // On by default: the chip is the canvas half of the interview (#292), and
   // it only draws where a count is non-zero, so a finished model stays calm.
   showNudges: true,
