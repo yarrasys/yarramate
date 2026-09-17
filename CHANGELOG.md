@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.33.0
 
 ### Responsibility: three relationship kinds beside the owner claim, and a derived RACI matrix (#557)
 
