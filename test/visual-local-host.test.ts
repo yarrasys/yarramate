@@ -1186,3 +1186,51 @@ presentation:
     expect(model.vocabulary.patterns).toBeUndefined()
   })
 })
+
+describe('a filter that says whether responsibility edges are shown (#563)', () => {
+  const people = `format: yarramate/v1
+id: main
+profile: yarramate/policy@0.2
+concepts:
+  - id: pm
+    kind: businessRole
+    name: Project manager
+  - id: portal
+    kind: applicationComponent
+    name: Portal
+relationships:
+  - id: r1
+    kind: responsible
+    from: pm
+    to: portal
+`
+  const landscape = {
+    kinds: ['yarramate/core@0.1#applicationComponent'],
+    relationships: 'connected' as const,
+  }
+  const matched = (payload: unknown): readonly string[] => {
+    const { frames, send } = openHost({
+      'architecture/main.yaml': people,
+      'projections/apps.yaml': projection,
+    })
+    send(input('filter.query', payload))
+    const result = frames.at(-1)
+    if (result?.kind !== 'filter-result') {
+      throw new Error(`expected a filter-result, got ${String(result?.kind)}`)
+    }
+    return result.result.matchedIds
+  }
+
+  it('keeps the person out while the edges are hidden, which is what an older browser asks', () => {
+    expect(matched({ query: landscape })).toEqual(['portal'])
+    expect(matched({ query: landscape, showResponsibility: false })).toEqual(['portal'])
+  })
+
+  it('walks the person in when the edges are shown', () => {
+    expect([...matched({ query: landscape, showResponsibility: true })].sort()).toEqual([
+      'pm',
+      'portal',
+      'r1',
+    ])
+  })
+})

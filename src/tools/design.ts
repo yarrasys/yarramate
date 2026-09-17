@@ -201,6 +201,8 @@ export const designStepDetailed = (
           presentation: {
             title: step.subject.name ?? step.subject.id,
             description: `The neighbourhood of ${step.subject.id} as declared today.`,
+            // Prose speaks every relationship (#563).
+            showResponsibility: true,
           },
         },
         compiled.profileContext,

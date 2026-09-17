@@ -92,6 +92,20 @@ neighbourhood of a heavily shared constraint include every concept that
 references it, which is the unbounded result one hop exists to prevent
 (#409).
 
+**A responsibility edge carries the walk only when the view shows it.** A
+relationship whose kind carries a responsibility letter (`responsible`,
+`consulted`, `informed` from `yarramate/policy@0.2`, or an adopter's subkind of
+one, read through the lineage) extends a `connected` selection only when the
+projection's `presentation.showResponsibility` is `true` (#563, ADR 0161).
+The canvas hides these edges while the flag is off (ADR 0159), so walking one
+would stand a person in an application landscape with no line to anything.
+Between two subjects the query selected on their own merits the edge is
+selected like any other, under both modes: a whole-workspace evaluation, the
+workbook and the derived matrices keep seeing every relationship. A view that
+wants people through their responsibilities says `showResponsibility: true`
+and gets both the edges and the people; `ask` slices and briefs are prose and
+walk them regardless.
+
 This is worth knowing when choosing `connected`, because
 `docs/MODEL-FLOOR.md` recommends turning a value that restricts into a
 constraint subject referenced by many, and the shape it recommends is the

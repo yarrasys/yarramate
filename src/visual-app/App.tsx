@@ -1632,7 +1632,12 @@ export const App = ({
     );
     if (view === null) return;
     appliedViewRef.current = view.id;
-    filter(view.query, "view", view.presentation?.nesting);
+    filter(
+      view.query,
+      "view",
+      view.presentation?.nesting,
+      view.presentation?.showResponsibility,
+    );
     for (const action of presentationActionsFor(view.presentation)) {
       dispatchWorkspace(action);
     }
@@ -2135,6 +2140,7 @@ export const App = ({
           { instances: [intent.id], relationships: "between" },
           "focus",
           workspace.nesting,
+          workspace.showResponsibility,
         );
         dispatchWorkspace({ type: "menu.dismissed" });
         return;
@@ -2160,6 +2166,7 @@ export const App = ({
           { subjects: [...subjects], relationships: "between" },
           "focus",
           workspace.nesting,
+          workspace.showResponsibility,
         );
         dispatchWorkspace({ type: "menu.dismissed" });
         return;
@@ -2464,9 +2471,21 @@ export const App = ({
           }
           onNextGo={goToQuestion}
           bottomPanel={workspace.bottomPanel}
-          onTogglePresentation={(flag, value) =>
-            dispatchWorkspace({ type: "presentation.toggled", flag, value })
-          }
+          onTogglePresentation={(flag, value) => {
+            dispatchWorkspace({ type: "presentation.toggled", flag, value });
+            // The `connected` walk reads this flag (#563, ADR 0161), so the
+            // standing filter is asked again under the new value: switching
+            // the edges on brings in the people they lead to, switching them
+            // off takes those people out with them.
+            if (flag === "showResponsibility" && state.activeFilter !== null) {
+              filter(
+                state.activeFilter.query,
+                state.activeFilter.source,
+                workspace.nesting,
+                value,
+              );
+            }
+          }}
           onToggleBottomPanel={() =>
             dispatchWorkspace({ type: "bottomPanel.toggled" })
           }
@@ -2475,7 +2494,9 @@ export const App = ({
           }
           // An edit of the active view's query is still that view, so it is
           // filtered as `editor` and the tree goes on naming what is drawn.
-          onApplyFilter={(query) => filter(query, "editor", workspace.nesting)}
+          onApplyFilter={(query) =>
+            filter(query, "editor", workspace.nesting, workspace.showResponsibility)
+          }
           onStageView={stageViewChange}
           readOnly={readOnly}
           paletteReachable={offeredSections.includes("palette")}

@@ -77,3 +77,17 @@ describe('the filter a browser sends', () => {
     expect(parseVisualBrowserInput(composed).ok).toBe(true)
   })
 })
+
+describe('the responsibility flag a browser sends (#563)', () => {
+  it('accepts the flag either way', () => {
+    for (const showResponsibility of [true, false]) {
+      expect(parseVisualBrowserInput(filter({ query: {}, showResponsibility })).ok).toBe(true)
+    }
+  })
+
+  it('refuses a flag that is not a boolean', () => {
+    expect(
+      parseVisualBrowserInput(filter({ query: {}, showResponsibility: 'yes' })).ok,
+    ).toBe(false)
+  })
+})

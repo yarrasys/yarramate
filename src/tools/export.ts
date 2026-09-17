@@ -186,6 +186,8 @@ export const briefsFromResult = (
             title:
               claimValue(result.claims, id, 'yarramate/concept/name') ?? id,
             description: `The neighbourhood of ${id} as declared today.`,
+            // Prose speaks every relationship (#563).
+            showResponsibility: true,
           },
         },
         compiled.profileContext,

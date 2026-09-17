@@ -402,6 +402,9 @@ export const sliceProjection = (
       presentation: {
         title,
         description: `Connected neighbourhood of ${seeds.join(', ')}`,
+        // A brief is prose, not a picture: it speaks every relationship, so
+        // the slice walks responsibility edges the canvas would hide (#563).
+        showResponsibility: true,
       },
     },
     profileContext,

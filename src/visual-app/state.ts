@@ -939,6 +939,7 @@ export type VisualAppIntent =
       readonly kind: "filter";
       readonly query: ProjectionQuery;
       readonly nesting?: readonly NestingKind[];
+      readonly showResponsibility?: boolean;
     }
   | { readonly kind: "commit-changeset" }
   | { readonly kind: "save-layout"; readonly payload: VisualLayoutSavePayload }
@@ -994,6 +995,9 @@ export const visualBrowserInputFor = (
         payload: {
           query: intent.query,
           ...(intent.nesting === undefined ? {} : { nesting: intent.nesting }),
+          ...(intent.showResponsibility === undefined
+            ? {}
+            : { showResponsibility: intent.showResponsibility }),
         },
       };
     case "commit-changeset":

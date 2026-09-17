@@ -15,6 +15,9 @@ import responsibilitySchema from '../schema/yarramate-responsibility.schema.json
   type: 'json',
 }
 import { compileWorkspaceWithProfileContext } from '../src/compiler.js'
+import { evaluateProjection, type ProjectionDefinition } from '../src/projection.js'
+import { matchedIdsOf } from '../src/adapters/visual/workspace-model.js'
+import { sliceProjection } from '../src/tools/ask.js'
 import { projectGraphForCanvas } from '../src/graph-projection.js'
 import {
   EXTENSION_READING,
@@ -464,5 +467,100 @@ presentation:
     expect(runTool('yarramate_export', { kind: 'responsibility' }, tool).text).toBe(
       'yarramate_export responsibility needs `projection`: the view whose subjects are the rows.\n',
     )
+  })
+})
+
+// #563, ADR 0161: the canvas hides responsibility edges unless the view shows
+// them (ADR 0159), and `relationships: connected` used to walk them anyway, so
+// a person stood in an application landscape with no line to anything. On the
+// ApertureX reference that was four people and 157 subjects reading 161.
+describe('the connected walk and responsibility edges', () => {
+  const landscape = (showResponsibility?: boolean): ProjectionDefinition => ({
+    format: 'yarramate/projection/v1',
+    id: 'landscape',
+    version: '1.0',
+    query: { kinds: ['yarramate/core@0.1#applicationComponent'], relationships: 'connected' },
+    ...(showResponsibility === undefined ? {} : { presentation: { showResponsibility } }),
+  })
+  const responsibilityEdgeIds = (compiled: ReturnType<typeof compileFixture>) =>
+    compiled.graph.subjects
+      .filter(({ type }) => type === 'relationship')
+      .filter(({ id }) => {
+        const claim = compiled.graph.claims.find((candidate) => candidate.id === id)
+        return (
+          claim !== undefined &&
+          responsibilityLetterOf(
+            compiled.profileContext.relationshipKindLineages.get(claim.predicate),
+            claim.predicate,
+          ) !== null
+        )
+      })
+      .map(({ id }) => id)
+      .sort()
+
+  it('does not walk a responsibility edge while the view hides them, the adopter subkind included', () => {
+    const compiled = compileFixture()
+    // r4 is `delivery-lead`, the adopter's subkind of `responsible`: held back
+    // through the lineage exactly as the shipped kinds are.
+    expect(responsibilityEdgeIds(compiled)).toEqual(['r1', 'r2', 'r3', 'r4'])
+    for (const projection of [landscape(), landscape(false)]) {
+      const ids = evaluateProjection(compiled.graph, projection, compiled.profileContext).subjects.map(
+        ({ id }) => id,
+      )
+      expect(ids).not.toContain('pm')
+      expect(ids).not.toContain('vendor')
+      for (const edge of responsibilityEdgeIds(compiled)) expect(ids).not.toContain(edge)
+      // A core relationship still walks: the patron and the guest come in by
+      // being served, and the serving edges with them.
+      expect(ids).toEqual(expect.arrayContaining(['portal', 'api', 'billing', 'patron', 'guest', 's1', 's2']))
+    }
+  })
+
+  it('walks them when the view shows responsibility', () => {
+    const compiled = compileFixture()
+    const ids = evaluateProjection(compiled.graph, landscape(true), compiled.profileContext).subjects.map(
+      ({ id }) => id,
+    )
+    expect(ids).toEqual(expect.arrayContaining(['pm', 'vendor', 'patron', 'r1', 'r2', 'r3', 'r4']))
+  })
+
+  it('selects them between subjects the query chose on their own merits, whatever the flag says', () => {
+    const compiled = compileFixture()
+    const ids = evaluateProjection(
+      compiled.graph,
+      {
+        format: 'yarramate/projection/v1',
+        id: 'people-and-applications',
+        version: '1.0',
+        query: {
+          kinds: [
+            'yarramate/core@0.1#businessRole',
+            'yarramate/core@0.1#businessActor',
+            'yarramate/core@0.1#applicationComponent',
+          ],
+          relationships: 'between',
+        },
+      },
+      compiled.profileContext,
+    ).subjects.map(({ id }) => id)
+    expect(ids).toEqual(expect.arrayContaining(['r1', 'r2', 'r3', 'r4', 's1', 's2']))
+  })
+
+  it('is what the visual host answers, flag by flag', () => {
+    const compiled = compileFixture()
+    const query = { kinds: ['yarramate/core@0.1#applicationComponent'], relationships: 'connected' as const }
+    const off = matchedIdsOf(compiled.graph, query, compiled.profileContext, undefined, undefined, false)
+    const unsaid = matchedIdsOf(compiled.graph, query, compiled.profileContext)
+    const on = matchedIdsOf(compiled.graph, query, compiled.profileContext, undefined, undefined, true)
+    expect(off).not.toContain('pm')
+    expect(unsaid).toEqual(off)
+    expect(on).toEqual(expect.arrayContaining(['pm', 'vendor', 'r1', 'r4']))
+  })
+
+  it('is walked by an ask slice, because a brief speaks every relationship', () => {
+    const compiled = compileFixture()
+    const ids = sliceProjection(compiled.graph, ['pm'], 'Project manager', compiled.profileContext, 12)
+      .result.subjects.map(({ id }) => id)
+    expect(ids).toEqual(expect.arrayContaining(['pm', 'portal', 'api', 'r1', 'r4']))
   })
 })

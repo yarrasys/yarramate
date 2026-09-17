@@ -166,10 +166,11 @@ export const conceptCountOf = (
   profileContext: ResolvedProfileContext,
   memberships?: readonly CataloguePatternMembership[],
   nesting?: readonly NestingKind[],
+  showResponsibility?: boolean,
 ): number =>
   evaluateProjection(
     graph,
-    adHoc(query, nesting),
+    adHoc(query, nesting, showResponsibility),
     profileContext,
     memberships,
   ).subjects.filter(({ type }) => type === "concept").length;
@@ -336,6 +337,9 @@ export const renderedWorkspaceOf = (
       // sitting beside the canvas must not count a different tree than the
       // canvas draws.
       view.presentation?.nesting,
+      // And each view's own responsibility flag, for the same reason: the
+      // walk reads it (#563), and the rail must count what the canvas draws.
+      view.presentation?.showResponsibility,
     ),
   }));
   const interrogation =
@@ -397,10 +401,11 @@ export const matchedIdsOf = (
   profileContext: ResolvedProfileContext,
   memberships?: readonly CataloguePatternMembership[],
   nesting?: readonly NestingKind[],
+  showResponsibility?: boolean,
 ): readonly string[] =>
   evaluateProjection(
     graph,
-    adHoc(query, nesting),
+    adHoc(query, nesting, showResponsibility),
     profileContext,
     memberships,
   ).subjects.map(({ id }) => id);
@@ -412,8 +417,14 @@ export const exclusionsOf = (
   profileContext: ResolvedProfileContext,
   memberships?: readonly CataloguePatternMembership[],
   nesting?: readonly NestingKind[],
+  showResponsibility?: boolean,
 ): readonly ProjectionExclusion[] =>
-  explainProjection(graph, adHoc(query, nesting), profileContext, memberships);
+  explainProjection(
+    graph,
+    adHoc(query, nesting, showResponsibility),
+    profileContext,
+    memberships,
+  );
 
 /**
  * A query on its own is not a projection, and every evaluator here wants one.
@@ -422,17 +433,27 @@ export const exclusionsOf = (
 const adHoc = (
   query: ProjectionQuery,
   nesting?: readonly NestingKind[],
-): ProjectionDefinition => ({
-  format: "yarramate/projection/v1",
-  id: "ad-hoc",
-  version: "0",
-  query,
-  // `query.instances` resolves its closure through the view's nesting, so an
-  // ad-hoc projection that dropped the nesting would answer a DIFFERENT
-  // question than the canvas is drawing: 2 subjects against 15 on the
-  // ApertureX reference, with nothing to say it had (#473 phase 2).
-  ...(nesting === undefined ? {} : { presentation: { nesting } }),
-});
+  showResponsibility?: boolean,
+): ProjectionDefinition => {
+  const presentation = {
+    // `query.instances` resolves its closure through the view's nesting, so an
+    // ad-hoc projection that dropped the nesting would answer a DIFFERENT
+    // question than the canvas is drawing: 2 subjects against 15 on the
+    // ApertureX reference, with nothing to say it had (#473 phase 2).
+    ...(nesting === undefined ? {} : { nesting }),
+    // And the `connected` walk reads this flag (#563, ADR 0161): dropped, the
+    // evaluation would walk a responsibility edge the canvas hides and stand a
+    // person in the picture with no line to anything.
+    ...(showResponsibility === undefined ? {} : { showResponsibility }),
+  };
+  return {
+    format: "yarramate/projection/v1",
+    id: "ad-hoc",
+    version: "0",
+    query,
+    ...(Object.keys(presentation).length === 0 ? {} : { presentation }),
+  };
+};
 
 /**
  * One saved view, as the rail reads it. `subjectCount` is the caller's,
