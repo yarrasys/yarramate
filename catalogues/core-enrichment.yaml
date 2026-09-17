@@ -900,6 +900,146 @@ questions:
     resolution: >-
       Give the person a letter (an owner claim on what they answer for, or a
       responsible, consulted or informed relationship) or retire the subject.
+  - id: risk-threatens-nothing
+    wave: motivation
+    since: "1.34"
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/policy@0.3#risk
+      statuses:
+        - planned
+        - current
+    trigger:
+      - condition: missing-linkage
+        kinds:
+          - yarramate/core@0.1#influence
+        direction: outgoing
+        counterpartKinds:
+          - yarramate/core@0.1#goal
+          - yarramate/core@0.1#requirement
+          - yarramate/core@0.1#constraint
+    question: >-
+      What does {subject.name} threaten?
+    askPlain: >-
+      If "{subject.name}" comes true, which goal, requirement or constraint
+      takes the hit?
+    materiality: >-
+      A risk that threatens nothing named cannot be prioritised or retired:
+      its severity has nothing to be measured against, and nobody can say
+      when it has passed.
+    authority: either
+    resolution: >-
+      Add an `influence` relationship from the risk to the goal, requirement
+      or constraint it threatens.
+  - id: risk-unmitigated
+    wave: motivation
+    since: "1.34"
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/policy@0.3#risk
+      statuses:
+        - current
+    trigger:
+      - condition: missing-linkage
+        kinds:
+          - yarramate/core@0.1#influence
+          - yarramate/core@0.1#association
+        direction: incoming
+        counterpartKinds:
+          - yarramate/core@0.1#workPackage
+          - yarramate/core@0.1#deliverable
+          - yarramate/core@0.1#constraint
+          - yarramate/core@0.1#courseOfAction
+    question: >-
+      What mitigates {subject.name}?
+    askPlain: >-
+      "{subject.name}" is live. What work, deliverable, rule or decision is in
+      place to reduce it?
+    materiality: >-
+      A live risk with no mitigation is a bet the engagement is making without
+      saying so; the log exists to make that visible.
+    authority: either
+    resolution: >-
+      Add an `influence` relationship from the work package, deliverable,
+      constraint or decision that mitigates it to the risk, or retire the risk.
+  - id: risk-unowned
+    wave: motivation
+    since: "1.34"
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/policy@0.3#risk
+      statuses:
+        - planned
+        - current
+    trigger:
+      - condition: missing-claim
+        predicate: yarramate/ownership/owner
+    question: >-
+      Who owns {subject.name}?
+    askPlain: >-
+      Whose name is on "{subject.name}": who reviews it and decides when it
+      has passed?
+    materiality: >-
+      The risk owner is who a review date is asked of; without one,
+      risk-reviewed has no authority to sign it.
+    authority: either
+    resolution: >-
+      Add an owner reference to the actor or role that carries the risk.
+  - id: assumption-unconfirmed
+    wave: motivation
+    since: "1.34"
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/policy@0.3#assumption
+      statuses:
+        - planned
+        - current
+    trigger:
+      - condition: missing-attestation
+        topic: assumption-confirmed
+    question: >-
+      Has anyone confirmed {subject.name}?
+    askPlain: >-
+      "{subject.name}" is being built on. Has the person who can confirm it
+      said so, and when?
+    materiality: >-
+      An unconfirmed assumption is a risk wearing a calmer name; the
+      confirmation, with its date, is what turns it into a fact the delivery
+      can rest on.
+    authority: human
+    resolution: >-
+      Record an `assumption-confirmed` attestation by the role or actor that
+      can confirm it, dated; or retire the assumption.
+  - id: assumption-bears-on-nothing
+    wave: motivation
+    since: "1.34"
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/policy@0.3#assumption
+      statuses:
+        - planned
+        - current
+    trigger:
+      - condition: missing-relationship
+        kinds:
+          - yarramate/core@0.1#association
+        direction: outgoing
+    question: >-
+      What does {subject.name} bear on?
+    askPlain: >-
+      If "{subject.name}" turned out false, what in this design would change?
+    materiality: >-
+      An assumption that bears on nothing named is either decorative or
+      missing its edges, and the log cannot say which.
+    authority: either
+    resolution: >-
+      Add an `association` relationship from the assumption to the goal,
+      requirement, constraint or subject it bears on, or retire it.
   - id: actor-unassigned
     wave: business
     since: "0.1"

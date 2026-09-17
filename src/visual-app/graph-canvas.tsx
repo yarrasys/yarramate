@@ -883,6 +883,7 @@ export function graphToElements(
         // responsible for". The letter rides along for a stylesheet to read.
         ...(edge.readingKind === undefined ? {} : { readingKind: edge.readingKind }),
         ...(edge.responsibility === undefined ? {} : { responsibility: edge.responsibility }),
+        ...(edge.reading === undefined ? {} : { reading: edge.reading }),
       },
       group: 'edges',
       ...(drawnPerPair.get(pairKey(edge))! > 1

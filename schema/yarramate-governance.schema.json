@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yarramate.org/schema/governance/v1",
+  "title": "YarraMate governance log",
+  "description": "The RAID log's risks and assumptions as the model holds them, derived and never authored (ADR 0160): owner, status, what each threatens or bears on, what mitigates it, the latest review attestation, what it supersedes, and the groupings it aggregates into.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "workspace", "summary", "rows", "gaps"],
+  "properties": {
+    "format": { "const": "yarramate/governance/v1" },
+    "workspace": { "type": "string", "minLength": 1 },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rows", "risks", "assumptions", "unowned", "unmitigated", "unconfirmed", "unreviewed"],
+      "properties": {
+        "rows": { "type": "integer", "minimum": 0 },
+        "risks": { "type": "integer", "minimum": 0 },
+        "assumptions": { "type": "integer", "minimum": 0 },
+        "unowned": { "type": "integer", "minimum": 0 },
+        "unmitigated": { "type": "integer", "minimum": 0 },
+        "unconfirmed": { "type": "integer", "minimum": 0 },
+        "unreviewed": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "rows": { "type": "array", "items": { "$ref": "#/$defs/row" } },
+    "gaps": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unowned", "unmitigated", "unconfirmed", "unreviewed"],
+      "properties": {
+        "unowned": { "type": "array", "items": { "$ref": "#/$defs/subject" } },
+        "unmitigated": { "type": "array", "items": { "$ref": "#/$defs/subject" } },
+        "unconfirmed": { "type": "array", "items": { "$ref": "#/$defs/subject" } },
+        "unreviewed": { "type": "array", "items": { "$ref": "#/$defs/subject" } }
+      }
+    }
+  },
+  "$defs": {
+    "subject": { "type": "string", "minLength": 1 },
+    "ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name"],
+      "properties": {
+        "id": { "$ref": "#/$defs/subject" },
+        "name": { "type": "string" }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "line"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "line": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["topic", "on", "by", "source"],
+      "properties": {
+        "topic": { "type": "string", "minLength": 1 },
+        "on": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "by": { "$ref": "#/$defs/subject" },
+        "source": { "$ref": "#/$defs/source" }
+      }
+    },
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subject", "name", "kind", "type", "status", "owner", "threatens", "bearsOn", "mitigatedBy", "review", "supersedes", "groupedBy"],
+      "properties": {
+        "subject": { "$ref": "#/$defs/subject" },
+        "name": { "type": "string" },
+        "kind": { "type": "string", "minLength": 1 },
+        "type": { "enum": ["risk", "assumption"] },
+        "status": { "type": ["string", "null"] },
+        "description": { "type": "string" },
+        "owner": { "oneOf": [{ "$ref": "#/$defs/ref" }, { "type": "null" }] },
+        "threatens": { "type": "array", "items": { "$ref": "#/$defs/ref" } },
+        "bearsOn": { "type": "array", "items": { "$ref": "#/$defs/ref" } },
+        "mitigatedBy": { "type": "array", "items": { "$ref": "#/$defs/ref" } },
+        "review": { "oneOf": [{ "$ref": "#/$defs/review" }, { "type": "null" }] },
+        "supersedes": { "type": "array", "items": { "$ref": "#/$defs/subject" } },
+        "groupedBy": { "type": "array", "items": { "$ref": "#/$defs/ref" } }
+      }
+    }
+  }
+}

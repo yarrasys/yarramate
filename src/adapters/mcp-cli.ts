@@ -242,7 +242,7 @@ const runExport = (
     }
   }
   // A text kind under `out`: markdown and graph are one file, rtm,
-  // responsibility and briefs a directory, as the CLI lays them out.
+  // responsibility, governance and briefs a directory, as the CLI lays them out.
   if (kind === 'markdown' || kind === 'graph') {
     mkdirSync(dirname(target), { recursive: true })
     writeFileSync(target, outcome.text, 'utf8')
@@ -268,6 +268,25 @@ const runExport = (
     return {
       exitCode: 0,
       stdout: `Wrote RTM.md and rtm.json to ${out}\n`,
+      stderr: '',
+    }
+  }
+  if (kind === 'governance') {
+    const result = outcome.result as
+      | { readonly log: unknown; readonly markdown: string }
+      | undefined
+    mkdirSync(target, { recursive: true })
+    writeFileSync(join(target, 'GOVERNANCE.md'), outcome.text, 'utf8')
+    if (result !== undefined) {
+      writeFileSync(
+        join(target, 'governance.json'),
+        `${JSON.stringify(result.log, null, 2)}\n`,
+        'utf8',
+      )
+    }
+    return {
+      exitCode: 0,
+      stdout: `Wrote GOVERNANCE.md and governance.json to ${out}\n`,
       stderr: '',
     }
   }

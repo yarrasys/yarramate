@@ -15,6 +15,7 @@ import { checkWorkspace } from './check.js'
 import { designStep } from './design.js'
 import {
   exportBriefs,
+  exportGovernance,
   exportGraph,
   exportLikeC4,
   exportMarkdown,
@@ -126,7 +127,7 @@ export const STDIO_PROPERTIES: Readonly<
   out: {
     type: 'string',
     description:
-      'Where to write, relative to the repository root (the directory that holds .yarramate) unless absolute: a file for markdown, graph and xlsx; a directory for rtm, responsibility, briefs and likec4. Optional for the text kinds, which then return the text instead.',
+      'Where to write, relative to the repository root (the directory that holds .yarramate) unless absolute: a file for markdown, graph and xlsx; a directory for rtm, responsibility, governance, briefs and likec4. Optional for the text kinds, which then return the text instead.',
   },
 }
 
@@ -212,14 +213,14 @@ const catalogueFor = <P extends string>(
   },
   {
     name: `${prefix}_export`,
-    description: `Derives a deliverable from the record and returns it as text: markdown (a projection rendered as prose; needs projection), rtm (the requirements traceability matrix), responsibility (the RACI matrix over a projection's subjects: accountable from the owner claim, responsible, consulted and informed from the yarramate/policy@0.2 relationship kinds; needs projection), graph (the compiled semantic graph as JSON), briefs (one brief per subject of a projection; needs projection). xlsx (needs projection) and likec4 (needs project) produce binary or multi-file output, which comes back as files for the caller to store. ${loop}`,
+    description: `Derives a deliverable from the record and returns it as text: markdown (a projection rendered as prose; needs projection), rtm (the requirements traceability matrix), responsibility (the RACI matrix over a projection's subjects: accountable from the owner claim, responsible, consulted and informed from the yarramate/policy@0.2 relationship kinds; needs projection), governance (the RAID log's risks and assumptions, yarramate/policy@0.3 kinds: owner, status, what each threatens or bears on, what mitigates it, the latest review attestation, gaps), graph (the compiled semantic graph as JSON), briefs (one brief per subject of a projection; needs projection). xlsx (needs projection) and likec4 (needs project) produce binary or multi-file output, which comes back as files for the caller to store. ${loop}`,
     inputSchema: {
       type: 'object',
       required: ['kind'],
       properties: {
         kind: {
           type: 'string',
-          enum: ['markdown', 'rtm', 'responsibility', 'graph', 'briefs', 'xlsx', 'likec4'],
+          enum: ['markdown', 'rtm', 'responsibility', 'governance', 'graph', 'briefs', 'xlsx', 'likec4'],
         },
         projection: {
           type: 'string',
@@ -450,6 +451,9 @@ export const runTool = (
       if (kind === 'rtm') {
         return answer(exportRtm(workspace), ({ markdown }) => markdown)
       }
+      if (kind === 'governance') {
+        return answer(exportGovernance(workspace), ({ markdown }) => markdown)
+      }
       if (kind === 'responsibility') {
         if (projection === undefined) {
           return refuse(
@@ -530,7 +534,7 @@ export const runTool = (
         }
       }
       return refuse(
-        `${name} needs \`kind\`: one of markdown, rtm, responsibility, graph, briefs, xlsx, likec4.`,
+        `${name} needs \`kind\`: one of markdown, rtm, responsibility, governance, graph, briefs, xlsx, likec4.`,
       )
     }
   }

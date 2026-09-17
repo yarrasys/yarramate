@@ -115,6 +115,7 @@
     "./schema/ask-result": "./schema/yarramate-ask-result.schema.json",
     "./schema/rtm": "./schema/yarramate-rtm.schema.json",
     "./schema/responsibility": "./schema/yarramate-responsibility.schema.json",
+    "./schema/governance": "./schema/yarramate-governance.schema.json",
     "./schema/visual-session-request": "./schema/yarramate-visual-session-request.schema.json",
     "./schema/visual-session-started": "./schema/yarramate-visual-session-started.schema.json",
     "./schema/visual-session-descriptor": "./schema/yarramate-visual-session-descriptor.schema.json",

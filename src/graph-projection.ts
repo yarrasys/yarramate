@@ -85,6 +85,12 @@ export interface CanvasEdge {
    * kind. The canvas draws these only when the view asks (`showResponsibility`).
    */
   readonly responsibility?: ResponsibilityLetter | null
+  /**
+   * A reading the endpoints decide (ADR 0160): "threatens" for an
+   * influence from a risk, "mitigates" for one into a risk, "bears on" for
+   * an association from an assumption. Absent, the kind's own reading.
+   */
+  readonly reading?: string
   readonly from: string // node id
   readonly to: string // node id
   readonly name: string | null
@@ -103,7 +109,7 @@ export interface CanvasGraph {
   readonly edges: readonly CanvasEdge[]
 }
 
-import { readingKindOf } from './relationship-reading.js'
+import { contextualReading, readingKindOf } from './relationship-reading.js'
 import { responsibilityLetterOf, type ResponsibilityLetter } from './responsibility-kinds.js'
 
 const CONCEPT_KIND_PREDICATE = 'yarramate/concept/kind'
@@ -313,6 +319,7 @@ const projectRelationship = (
   allClaims: readonly GraphClaim[],
   ownClaims: readonly GraphClaim[],
   profileContext: ResolvedProfileContext,
+  conceptKindOf: ReadonlyMap<string, string> = new Map(),
 ): CanvasEdge => {
   // A relationship's defining claim is asymmetric: its id is the
   // relationship's subject id, but its own `subject` field is the
@@ -325,6 +332,17 @@ const projectRelationship = (
   const kind = definingClaim.predicate
   const lineage = profileContext.relationshipKindLineages.get(kind)
   const coreKindLabel = kindLabelOf(lineage?.[0] ?? kind)
+  const endpointLineage = (subject: string): readonly string[] | undefined => {
+    const conceptKind = conceptKindOf.get(subject)
+    return conceptKind === undefined
+      ? undefined
+      : profileContext.conceptKindLineages.get(conceptKind)
+  }
+  const reading = contextualReading(
+    endpointLineage(definingClaim.subject),
+    endpointLineage(claimRef(definingClaim)),
+    coreKindLabel,
+  )
 
   const nameClaim = ownClaims.find((claim) => claim.predicate === RELATIONSHIP_NAME_PREDICATE)
   const descriptionClaim = ownClaims.find(
@@ -343,6 +361,7 @@ const projectRelationship = (
     coreKindLabel,
     readingKind: readingKindOf(lineage, coreKindLabel),
     responsibility: responsibilityLetterOf(lineage, kind),
+    ...(reading === undefined ? {} : { reading }),
     from: definingClaim.subject,
     to: claimRef(definingClaim),
     name: nameClaim === undefined ? null : claimValue(nameClaim),
@@ -377,6 +396,13 @@ export function projectGraphForCanvas(
   profileContext: ResolvedProfileContext,
 ): CanvasGraph {
   const claimsBySubject = groupClaimsBySubject(graph.claims)
+  // Each concept's authored kind, for the readings an edge's endpoints decide.
+  const conceptKindOf = new Map<string, string>()
+  for (const claim of graph.claims) {
+    if (claim.predicate === CONCEPT_KIND_PREDICATE && 'value' in claim.object) {
+      conceptKindOf.set(claim.subject, claim.object.value)
+    }
+  }
 
   const nodes: CanvasNode[] = []
   const edges: CanvasEdge[] = []
@@ -386,7 +412,9 @@ export function projectGraphForCanvas(
     if (subject.type === 'concept') {
       nodes.push(projectConcept(subject.id, ownClaims, profileContext))
     } else {
-      edges.push(projectRelationship(subject.id, graph.claims, ownClaims, profileContext))
+      edges.push(
+        projectRelationship(subject.id, graph.claims, ownClaims, profileContext, conceptKindOf),
+      )
     }
   }
 

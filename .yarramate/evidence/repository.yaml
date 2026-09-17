@@ -467,6 +467,18 @@ observations:
     result: confirmed
     evidence:
       uri: repo:schema/yarramate-responsibility.schema.json
+  - subject: derive-governance-log
+    result: confirmed
+    evidence:
+      uri: repo:src/governance.ts
+  - subject: governance-log
+    result: confirmed
+    evidence:
+      uri: repo:src/governance.ts
+  - subject: governance-schema
+    result: confirmed
+    evidence:
+      uri: repo:schema/yarramate-governance.schema.json
   - subject: semantic-graph
     result: confirmed
     evidence:

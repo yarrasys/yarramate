@@ -54,6 +54,59 @@ export const readingKindOf = (
   return coreKind
 }
 
+/**
+ * Readings that depend on the SOURCE kind as well as the relationship
+ * (ADR 0160): a risk "threatens" what it influences, where anything else
+ * "influences" it; an assumption "bears on" what it associates. Keyed by
+ * the source kind's identity, then the relationship's core kind, and
+ * resolved through the source's lineage so a profile's subkind of `risk`
+ * threatens too.
+ */
+export const SOURCE_CONTEXTUAL_READING: Readonly<
+  Record<string, Readonly<Record<string, string>>>
+> = {
+  'yarramate/policy@0.3#risk': { influence: 'threatens' },
+  'yarramate/policy@0.3#assumption': { association: 'bears on' },
+}
+
+/**
+ * Readings that depend on the TARGET kind: a work package, deliverable,
+ * constraint or decision "mitigates" the risk it influences. Consulted
+ * after the source table, so a risk that influences another risk still
+ * "threatens" it.
+ */
+export const TARGET_CONTEXTUAL_READING: Readonly<
+  Record<string, Readonly<Record<string, string>>>
+> = {
+  'yarramate/policy@0.3#risk': { influence: 'mitigates' },
+}
+
+const lookupContextual = (
+  table: Readonly<Record<string, Readonly<Record<string, string>>>>,
+  lineage: readonly string[] | undefined,
+  coreKind: string,
+): string | undefined => {
+  if (lineage === undefined) return undefined
+  for (let index = lineage.length - 1; index >= 0; index -= 1) {
+    const phrase = table[lineage[index]!]?.[coreKind]
+    if (phrase !== undefined) return phrase
+  }
+  return undefined
+}
+
+/**
+ * The reading an edge speaks when its endpoints decide it, or undefined
+ * when the relationship kind alone does (the tables above are consulted
+ * source first). `coreKind` is the relationship's core kind label.
+ */
+export const contextualReading = (
+  sourceLineage: readonly string[] | undefined,
+  targetLineage: readonly string[] | undefined,
+  coreKind: string,
+): string | undefined =>
+  lookupContextual(SOURCE_CONTEXTUAL_READING, sourceLineage, coreKind) ??
+  lookupContextual(TARGET_CONTEXTUAL_READING, targetLineage, coreKind)
+
 export const REVERSED_READING: Readonly<Record<string, string>> = {
   serving: 'served by',
   realization: 'realized by',

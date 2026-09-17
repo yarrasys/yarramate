@@ -20,6 +20,11 @@ import {
   renderResponsibilityMarkdown,
   type ResponsibilityMatrix,
 } from '../responsibility.js'
+import {
+  buildGovernanceLog,
+  renderGovernanceMarkdown,
+  type GovernanceLog,
+} from '../governance.js'
 import { workbookFrom } from '../workbook.js'
 import {
   exportLikeC4ProjectFromSources,
@@ -276,6 +281,29 @@ export const exportResponsibility = (
       ok: true,
       result: { markdown: renderResponsibilityMarkdown(matrix), matrix },
     }
+  })
+
+/**
+ * `yarramate export governance <ws>`: the RAID log's risks and assumptions
+ * as the model holds them (ADR 0160), with the markdown a person reads.
+ * Whole-workspace, like the RTM: a risk is a risk wherever it sits.
+ */
+export const exportGovernance = (
+  workspace: ToolWorkspace,
+): ToolResult<{
+  readonly markdown: string
+  readonly log: GovernanceLog
+}> =>
+  guarded(() => {
+    const compilation = compileOf(workspace)
+    if (!compilation.ok) return compilation
+    const { compiled } = compilation
+    const log = buildGovernanceLog(
+      workspace.workspace.id,
+      compiled.graph,
+      compiled.profileContext,
+    )
+    return { ok: true, result: { markdown: renderGovernanceMarkdown(log), log } }
   })
 
 /**

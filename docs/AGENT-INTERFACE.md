@@ -177,6 +177,14 @@ others; graphify analogues: `--wiki` / `--svg` / `--neo4j`.
   from attestation authorities with its topic and date, an authored
   `path:line` behind every letter, rows with no A or no R as `gaps`, and
   people with no letter as `idle`.
+- `export governance`: the RAID log's risks and assumptions as the model
+  holds them (ADR 0160): `GOVERNANCE.md` a person reads and a
+  `yarramate/governance/v1` JSON, one row per `yarramate/policy@0.3` risk or
+  assumption with owner, status, what it threatens or bears on, what
+  mitigates it, the latest `risk-reviewed` or `assumption-confirmed`
+  attestation, what it supersedes and the groupings that aggregate it, and
+  `gaps` for the unowned, the unmitigated current risks, the unconfirmed
+  assumptions and the unreviewed risks.
 - `export likec4` — visualization project (today's adapter surface;
   the adapter binary remains the implementation).
 - Harness use: handoff preparation, CI artifact generation,

@@ -1,5 +1,31 @@
 # Changelog
 
+## Unreleased
+
+### Governance: risk and assumption as kinds beside assessment, readings the endpoints decide, and a derived governance log (#560)
+
+`yarramate/policy@0.3` ships beside 0.2 and extends it (ADR 0160), adding
+`risk` and `assumption` as subkinds of `assessment`; `extends:
+yarramate/policy@0.3` is the whole adoption and the chain rides in behind
+it. A risk "threatens" the goal, requirement or constraint it influences,
+a work package, deliverable, constraint or decision "mitigates" the risk it
+influences, and an assumption "bears on" what it associates: readings the
+endpoints decide, resolved through the lineages, spoken by the canvas label
+and the brief alike, carried on a canvas edge as the optional `reading`.
+`yarramate export governance <workspace> --out <dir>` writes `GOVERNANCE.md`
+and `governance.json` (`yarramate/governance/v1`, registered in the Core
+contract): one row per risk or assumption with owner, status, what it
+threatens or bears on, what mitigates it, the latest `risk-reviewed` or
+`assumption-confirmed` attestation, what it supersedes and the groupings
+that aggregate it, plus `gaps` (unowned, unmitigated, unconfirmed,
+unreviewed). `yarramate_export` takes `kind: governance`; `yarramate/tools`
+exports `exportGovernance`, `buildGovernanceLog` and
+`renderGovernanceMarkdown`. The shipped catalogue gains five questions,
+`risk-threatens-nothing`, `risk-unmitigated`, `risk-unowned`,
+`assumption-unconfirmed` and `assumption-bears-on-nothing`, dormant on any
+workspace that has not adopted policy@0.3. Decision is the adopter's trial
+kind under `courseOfAction` until the trial reports.
+
 ## 1.33.0
 
 ### Responsibility: three relationship kinds beside the owner claim, and a derived RACI matrix (#557)
