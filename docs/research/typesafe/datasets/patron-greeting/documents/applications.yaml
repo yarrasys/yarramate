@@ -1,0 +1,1116 @@
+format: yarramate/v1
+id: applications
+profile: aperturex/mule@1.0
+# The eight applications, each with its contract (an API and its operations), the calls it makes
+# (a client per callee, a request per callee operation, a connector read or write per platform
+# object, a publish per destination), and the mappings that exist only where a call crosses a
+# contract (ADR 0011). What an application DOES is edges at the bottom: it is assigned each of its
+# functions, realizes each operation it exposes, and a flow realizes the operation it implements.
+concepts:
+  # ── patron-checkin-xapi ──────────────────────────────────────────────────────────────────────────
+  - id: patron-checkin-xapi
+    kind: mule-http-api
+    name: "patron-checkin-xapi"
+    description: "Experience API. What the tablet calls; shapes the greeting for a screen. Public ingress. Repository fgc/patron-checkin-xapi."
+    parts:
+      availability: avail-opening-hours
+      recovery: rto-60-rpo-0
+      retention: logs-30d
+      parent: fgc-parent-pom
+      deployment: fgc-ps-au
+      error-handling: errs-framework
+      interface: patron-checkin-api
+      api-layer: layer-experience
+      secrets: xapi-secrets
+      observability: obs-standard
+      cache: patron-lookup-cache
+      auth: jwt-entra
+      rate-limit: rate-60-per-min
+      idempotency: idem-key-header
+      throughput: thr-xapi
+      latency: lat-xapi
+      payload-limit: payload-256kb
+      detection: detect-5min
+      compatibility: api-versioning-v1
+  - id: patron-checkin-api
+    kind: mule-api
+    name: "patron-checkin-api v1"
+    description: "RAML 1.0 in Exchange. GET /patrons?membershipNumber · GET /patrons/{id}/greeting · POST /patrons/{id}/attendances. Traits from fgc-api-fragments; contract tests via the Exchange mocking service."
+    parts:
+      specification: raml-patron-checkin
+    constraints:
+      - { id: auth, ref: jwt-entra }
+      - { id: rate, ref: rate-60-per-min }
+      - { id: idem, ref: idem-key-header }
+  - id: raml-patron-checkin
+    kind: artifact
+    name: "patron-checkin-api RAML"
+    description: "RAML 1.0 published to Anypoint Exchange; the contract the tablet builds against."
+  - id: op-checkin-find-patron
+    kind: mule-api-operation
+    name: "GET /patrons?membershipNumber"
+    description: "Looks a patron up by membership number before the card tap is committed. Passed through to the process API unchanged."
+    parts:
+      request: membership-lookup
+      response: patron-record
+  - id: op-checkin-greeting
+    kind: mule-api-operation
+    name: "GET /patrons/{id}/greeting"
+    description: "Re-fetches the greeting for a screen that was refreshed; composed from what the tablet already holds."
+    parts:
+      request: greeting-request
+      response: greeting-view
+  - id: op-checkin-attendance
+    kind: mule-api-operation
+    name: "POST /patrons/{id}/attendances"
+    description: "The card tap: records the attendance through the process API and returns the greeting shaped for the tablet."
+    parts:
+      request: checkin-request
+      response: greeting-view
+  - id: patron-checkin-service
+    kind: applicationService
+    name: "Patron Check-in Service"
+    description: "The capability the tablet consumes, as one service; the operations beside it are its contract."
+  - id: compose-greeting-view
+    kind: applicationFunction
+    name: "Compose Greeting View"
+    description: "Shapes the greeting for a screen. Internal — never a boundary."
+  - id: client-xapi-papi
+    kind: mule-http-client
+    name: "HTTP client → patron-attendance-api"
+    description: "One HTTP Request configuration: host, TLS, client-id headers, the shared timeout budget and bounded retry."
+    parts:
+      api: patron-attendance-api
+      timeout: timeout-standard
+      retry: retry-bounded
+  - id: req-xapi-record-attendance
+    kind: mule-http-request
+    name: "Call record attendance"
+    description: "The card tap forwarded: the check-in request shaped into an attendance request, the greeting shaped back for the tablet."
+    parts:
+      client: client-xapi-papi
+      operation: op-papi-record-attendance
+      request-mapping: map-patron-attendance-request
+      response-mapping: map-greeting-to-tablet-view
+  - id: req-xapi-find-patron
+    kind: mule-http-request
+    name: "Call find patron"
+    description: "Pass-through: the lookup and the patron record cross unchanged, so neither mapping exists — dismissed with that reason."
+    parts:
+      client: client-xapi-papi
+      operation: op-papi-find-patron
+  - id: map-greeting-to-tablet-view
+    kind: mapping-application-function
+    name: "Map Greeting to Tablet View"
+    description: "DataWeave."
+    parts:
+      source: greeting
+      target: greeting-view
+      specification: spec-greeting-view
+  - id: map-patron-attendance-request
+    kind: mapping-application-function
+    name: "Map Check-in Request to Attendance Request"
+    description: "DataWeave; MUnit assertions in src/test/munit. The caller's request mapping — it writes the process API's request object."
+    parts:
+      source: checkin-request
+      target: attendance-request
+      specification: spec-attendance-request
+  - id: greeting
+    kind: dataObject
+    name: "Greeting"
+    description: "Name, membership tier, tee time, recent purchase, welcome line. What the process API returns."
+  - id: greeting-sample
+    kind: sample-data-object
+    name: "Greeting sample"
+    description: "Redacted real payload from a call that happened."
+  # ── patron-attendance-papi ───────────────────────────────────────────────────────────────────────
+  - id: patron-attendance-papi
+    kind: mule-http-api
+    name: "patron-attendance-papi"
+    description: "Process API. Look up the patron, compose the greeting, record the attendance exactly once per day, publish the arrival event. Private. Repository fgc/patron-attendance-papi."
+    parts:
+      availability: avail-opening-hours
+      recovery: rto-60-rpo-0
+      retention: logs-30d
+      parent: fgc-parent-pom
+      deployment: fgc-ps-au
+      error-handling: errs-framework
+      interface: patron-attendance-api
+      api-layer: layer-process
+      secrets: papi-secrets
+      observability: obs-standard
+      auth: client-id-private
+      idempotency: idem-one-per-day
+      throughput: thr-papi
+      latency: lat-papi
+      payload-limit: payload-256kb
+      detection: detect-5min
+      compatibility: api-versioning-v1
+  - id: patron-attendance-api
+    kind: mule-api
+    name: "patron-attendance-api v1"
+    description: "RAML 1.0 in Exchange. No public endpoint."
+    parts:
+      specification: raml-patron-attendance
+    constraints:
+      - { id: auth, ref: client-id-private }
+      - { id: idem, ref: idem-one-per-day }
+  - id: raml-patron-attendance
+    kind: artifact
+    name: "patron-attendance-api RAML"
+    description: "RAML 1.0 published to Anypoint Exchange, private."
+  - id: op-papi-record-attendance
+    kind: mule-api-operation
+    name: "POST /attendances"
+    description: "Records one attendance per patron per day and returns the composed greeting."
+    parts:
+      request: attendance-request
+      response: greeting
+  - id: op-papi-find-patron
+    kind: mule-api-operation
+    name: "GET /patrons?membershipNumber"
+    description: "Looks the patron up in the system API; the record is returned as the tiers see it."
+    parts:
+      request: membership-lookup
+      response: patron-record
+  - id: patron-attendance-service
+    kind: applicationService
+    name: "Patron Attendance Service"
+    description: "The capability — exposed by the API. This is the subject the consultant's report was about; the operations beside it are its contract."
+  - id: record-patron-attendance
+    kind: applicationFunction
+    name: "Record Patron Attendance"
+    description: "The main flow: reached only through the boundaries, never asked how it is authenticated. Composes the calls below."
+  - id: compose-greeting
+    kind: applicationFunction
+    name: "Compose Greeting"
+    description: "Assembles patron, tee time and purchase context."
+  - id: client-papi-sapi
+    kind: mule-http-client
+    name: "HTTP client → salesforce-patron-api"
+    description: "One HTTP Request configuration to the system API; the shared timeout budget and bounded retry."
+    parts:
+      api: salesforce-patron-api
+      timeout: timeout-standard
+      retry: retry-bounded
+  - id: req-papi-query-patron
+    kind: mule-http-request
+    name: "Call query patron for the greeting"
+    description: "From the attendance request, the patron query; from the patron record, the greeting."
+    parts:
+      client: client-papi-sapi
+      operation: op-sapi-query-patron
+      request-mapping: map-attendance-to-patron-query
+      response-mapping: map-patron-to-greeting
+  - id: req-papi-find-patron
+    kind: mule-http-request
+    name: "Call query patron for the lookup"
+    description: "The lookup shaped into the patron query; the patron record passes through unchanged."
+    parts:
+      client: client-papi-sapi
+      operation: op-sapi-query-patron
+      request-mapping: map-lookup-to-patron-query
+  - id: req-papi-upsert-attendance
+    kind: mule-http-request
+    name: "Call upsert attendance"
+    description: "The attendance request shaped into the system API's attendance record; the acknowledgement carries nothing to map."
+    parts:
+      client: client-papi-sapi
+      operation: op-sapi-upsert-attendance
+      request-mapping: map-attendance-to-record
+  - id: pub-papi-arrival
+    kind: mule-publish
+    name: "Publish arrival event"
+    description: "After the attendance is recorded: patronId, arrivedAt, membership tier, tabletId onto Anypoint MQ patron-arrivals."
+    parts:
+      destination: patron-arrivals
+      event: arrival-event
+      event-mapping: map-attendance-to-arrival
+  - id: map-attendance-to-patron-query
+    kind: mapping-application-function
+    name: "Map Attendance Request to Patron Query"
+    parts:
+      source: attendance-request
+      target: patron-query
+      specification: spec-patron-query
+  - id: map-lookup-to-patron-query
+    kind: mapping-application-function
+    name: "Map Membership Lookup to Patron Query"
+    parts:
+      source: membership-lookup
+      target: patron-query
+      specification: spec-lookup-query
+  - id: map-patron-to-greeting
+    kind: mapping-application-function
+    name: "Map Patron Record to Greeting"
+    parts:
+      source: patron-record
+      target: greeting
+      specification: spec-patron-to-greeting
+  - id: map-attendance-to-record
+    kind: mapping-application-function
+    name: "Map Attendance Request to Attendance Record"
+    parts:
+      source: attendance-request
+      target: attendance-record
+      specification: spec-attendance-record
+  - id: map-attendance-to-arrival
+    kind: mapping-application-function
+    name: "Map Attendance Request to Arrival Event"
+    parts:
+      source: attendance-request
+      target: arrival-event
+      specification: spec-arrival-event
+  - id: attendance-request
+    kind: dataObject
+    name: "Attendance request"
+    description: "patronId, arrivedAt, tabletId, Idempotency-Key."
+  - id: attendance-request-sample
+    kind: sample-data-object
+    name: "Attendance request sample"
+  # ── salesforce-patron-sapi ───────────────────────────────────────────────────────────────────────
+  - id: salesforce-patron-sapi
+    kind: mule-http-api
+    name: "salesforce-patron-sapi"
+    description: "System API. The only application that speaks to Salesforce: contacts, memberships, attendance, purchases, cases, expected arrivals. Hides SOQL and API limits. Private. Repository fgc/salesforce-patron-sapi."
+    parts:
+      availability: avail-opening-hours
+      recovery: rto-60-rpo-0
+      retention: logs-30d
+      parent: fgc-parent-pom
+      deployment: fgc-ps-au
+      error-handling: errs-salesforce
+      interface: salesforce-patron-api
+      backend: salesforce-connector
+      api-layer: layer-system
+      secrets: sapi-secrets
+      observability: obs-sapi
+      cache: patron-lookup-cache
+      auth: client-id-private
+      idempotency: idem-external-id
+      throughput: thr-sapi
+      latency: lat-sapi
+      payload-limit: payload-256kb
+      detection: detect-5min
+      compatibility: api-versioning-v1
+  - id: salesforce-patron-api
+    kind: mule-api
+    name: "salesforce-patron-api v1"
+    description: "RAML 1.0 in Exchange. Consumed by the process API, the digest job, the tee-sheet import, the POS poller and the mailbox reader."
+    parts:
+      specification: raml-salesforce-patron
+    constraints:
+      - { id: auth, ref: client-id-private }
+      - { id: idem, ref: idem-external-id }
+  - id: raml-salesforce-patron
+    kind: artifact
+    name: "salesforce-patron-api RAML"
+    description: "RAML 1.0 published to Anypoint Exchange, private. One resource per Salesforce concern."
+  - id: op-sapi-query-patron
+    kind: mule-api-operation
+    name: "GET /patrons"
+    description: "Contact and membership behind the 15-minute cache, returned as the canonical patron record."
+    parts:
+      request: patron-query
+      response: patron-record
+  - id: op-sapi-upsert-attendance
+    kind: mule-api-operation
+    name: "PUT /attendances/{key}"
+    description: "External-id upsert; the acknowledgement carries the Salesforce id and nothing else."
+    parts:
+      request: attendance-record
+      response: operation-ack
+  - id: op-sapi-list-attendances
+    kind: mule-api-operation
+    name: "GET /attendances?date"
+    description: "A day's attendances, for the digest."
+    parts:
+      request: attendance-query
+      response: attendance-list
+  - id: op-sapi-record-purchase
+    kind: mule-api-operation
+    name: "PUT /purchases/{id}"
+    description: "One pro-shop purchase, keyed by the POS purchase id."
+    parts:
+      request: purchase-record
+      response: operation-ack
+  - id: op-sapi-create-case
+    kind: mule-api-operation
+    name: "POST /cases"
+    description: "A guest enquiry becomes a Case; the case number comes back for the acknowledgement."
+    parts:
+      request: case-request
+      response: case-record
+  - id: op-sapi-upsert-expected-arrival
+    kind: mule-api-operation
+    name: "PUT /expected-arrivals/{booking}"
+    description: "One tee-sheet booking, keyed by the vendor's booking reference."
+    parts:
+      request: expected-arrival
+      response: operation-ack
+  - id: salesforce-patron-service
+    kind: applicationService
+    name: "Salesforce Patron Service"
+    description: "The system capability, as one service; the operations beside it are its contract."
+  - id: call-sapi-query-contact
+    kind: mule-connector-read
+    name: "Query Contact and Membership__c"
+    description: "SOQL on Contact, joined to Membership__c, behind the 15-minute cache. Query parameters are not a mapping."
+    parts:
+      connector: salesforce-connector
+      object: sf-contact
+      read-mapping: map-contact-to-patron
+  - id: call-sapi-upsert-attendance
+    kind: mule-connector-write
+    name: "Upsert Patron_Attendance__c"
+    description: "External-id upsert on Attendance_Key__c."
+    parts:
+      connector: salesforce-connector
+      object: sf-patron-attendance
+      write-mapping: map-attendance-to-sf
+  - id: call-sapi-list-attendances
+    kind: mule-connector-read
+    name: "Query Patron_Attendance__c by date"
+    parts:
+      connector: salesforce-connector
+      object: sf-patron-attendance
+      read-mapping: map-attendances-to-list
+  - id: call-sapi-upsert-purchase
+    kind: mule-connector-write
+    name: "Upsert Patron_Purchase__c"
+    parts:
+      connector: salesforce-connector
+      object: sf-patron-purchase
+      write-mapping: map-purchase
+  - id: call-sapi-create-case
+    kind: mule-connector-write
+    name: "Create Case"
+    parts:
+      connector: salesforce-connector
+      object: sf-case
+      write-mapping: map-case-to-sf
+  - id: call-sapi-upsert-expected-arrival
+    kind: mule-connector-write
+    name: "Upsert Expected_Arrival__c"
+    parts:
+      connector: salesforce-connector
+      object: sf-expected-arrival
+      write-mapping: map-expected-arrival-to-sf
+  - id: map-contact-to-patron
+    kind: mapping-application-function
+    name: "Map Contact to Patron"
+    parts:
+      source: sf-contact
+      target: patron-record
+      specification: spec-contact-to-patron
+  - id: map-attendance-to-sf
+    kind: mapping-application-function
+    name: "Map Attendance Record to Patron_Attendance__c"
+    parts:
+      source: attendance-record
+      target: sf-patron-attendance
+      specification: spec-attendance-to-sf
+  - id: map-attendances-to-list
+    kind: mapping-application-function
+    name: "Map Patron_Attendance__c rows to Attendance List"
+    parts:
+      source: sf-patron-attendance
+      target: attendance-list
+      specification: spec-attendance-list
+  - id: map-purchase
+    kind: mapping-application-function
+    name: "Map Purchase Record to Patron_Purchase__c"
+    parts:
+      source: purchase-record
+      target: sf-patron-purchase
+      specification: spec-purchase
+  - id: map-case-to-sf
+    kind: mapping-application-function
+    name: "Map Case Request to Case"
+    parts:
+      source: case-request
+      target: sf-case
+      specification: spec-case-to-sf
+  - id: map-expected-arrival-to-sf
+    kind: mapping-application-function
+    name: "Map Expected Arrival to Expected_Arrival__c"
+    parts:
+      source: expected-arrival
+      target: sf-expected-arrival
+      specification: spec-expected-arrival-sf
+  - id: patron-record
+    kind: dataObject
+    name: "Patron record"
+    description: "The canonical patron as the tiers see it."
+  - id: patron-record-sample
+    kind: sample-data-object
+    name: "Patron record sample"
+  # ── attendance-digest-job ────────────────────────────────────────────────────────────────────────
+  - id: attendance-digest-job
+    kind: mule-scheduled-job
+    name: "attendance-digest-job"
+    description: "Scheduled job. Yesterday's attendance summary emailed to the Guest Services Manager at 06:00. Repository fgc/attendance-digest-job."
+    parts:
+      availability: avail-opening-hours
+      recovery: rto-60-rpo-0
+      retention: logs-30d
+      parent: fgc-parent-pom
+      deployment: fgc-ps-au
+      error-handling: errs-framework
+      payload: attendance-digest
+      sample: attendance-digest-sample
+      backend: email-connector
+      secrets: job-secrets
+      observability: obs-job
+      idempotency: idem-by-date
+      run-window: run-0600-0630
+      runtime-limit: max-15min
+      overlap: overlap-skip
+      catch-up: catchup-manual
+      volume: vol-digest
+      completion: complete-0630
+      detection: detect-30min
+  - id: summarise-attendance
+    kind: applicationFunction
+    name: "Summarise Attendance"
+    description: "The main flow: list the day through the system API, summarise, send."
+  - id: client-digest-sapi
+    kind: mule-http-client
+    name: "HTTP client → salesforce-patron-api (digest)"
+    parts:
+      api: salesforce-patron-api
+      timeout: timeout-standard
+      retry: retry-bounded
+  - id: req-digest-list-attendances
+    kind: mule-http-request
+    name: "Call list attendances"
+    description: "The date is a query parameter, not a mapping; the list is shaped into the digest."
+    parts:
+      client: client-digest-sapi
+      operation: op-sapi-list-attendances
+      response-mapping: map-attendances-to-digest
+  - id: call-digest-send-email
+    kind: mule-connector-write
+    name: "Send digest email"
+    parts:
+      connector: email-connector
+      object: digest-email
+      write-mapping: map-digest-to-email
+  - id: map-attendances-to-digest
+    kind: mapping-application-function
+    name: "Map Attendance List to Digest"
+    parts:
+      source: attendance-list
+      target: attendance-digest
+      specification: spec-attendance-digest
+  - id: map-digest-to-email
+    kind: mapping-application-function
+    name: "Map Digest to Email"
+    parts:
+      source: attendance-digest
+      target: digest-email
+      specification: spec-digest-email
+  - id: attendance-digest
+    kind: dataObject
+    name: "Attendance digest"
+    description: "Counts by tier, first-time visitors, no-shows against the tee sheet."
+  - id: attendance-digest-sample
+    kind: sample-data-object
+    name: "Digest sample"
+  # ── patron-arrival-notifier ──────────────────────────────────────────────────────────────────────
+  - id: patron-arrival-notifier
+    kind: mule-event-listener
+    name: "patron-arrival-notifier"
+    description: "Event listener on Anypoint MQ patron-arrivals. Posts a greeting card to the pro-shop Teams channel so staff away from the desk know who has arrived. Repository fgc/patron-arrival-notifier."
+    parts:
+      availability: avail-opening-hours
+      recovery: rto-60-rpo-0
+      retention: logs-30d
+      parent: fgc-parent-pom
+      deployment: fgc-ps-au
+      error-handling: errs-framework
+      subscription: patron-arrivals
+      target: pro-shop-teams
+      payload: arrival-event
+      sample: arrival-event-sample
+      secrets: listener-secrets
+      observability: obs-listener
+      idempotency: idem-message-id
+      delivery: at-least-once
+      ordering: ordering-none
+      redelivery: redeliver-3x30s
+      dlq: dlq-4h
+      ttl: ttl-1h
+      backlog: backlog-100
+      throughput: thr-listener
+      latency: lat-listener
+      detection: detect-5min
+  - id: notify-arrival
+    kind: applicationFunction
+    name: "Notify Arrival"
+    description: "The main flow: one message in, one card out."
+  - id: client-notifier-teams
+    kind: mule-http-client
+    name: "HTTP client → Teams incoming webhook"
+    description: "The webhook URL is the credential and lives in the secret set."
+    parts:
+      api: teams-webhook-api
+      timeout: timeout-standard
+      retry: retry-bounded
+  - id: req-notifier-post-card
+    kind: mule-http-request
+    name: "Post greeting card"
+    description: "The arrival event shaped into an Adaptive Card; the webhook answers with a bare 1, nothing to map."
+    parts:
+      client: client-notifier-teams
+      operation: op-teams-post-message
+      request-mapping: map-arrival-to-teams-card
+  - id: map-arrival-to-teams-card
+    kind: mapping-application-function
+    name: "Map Arrival to Teams Card"
+    parts:
+      source: arrival-event
+      target: teams-card
+      specification: spec-teams-card
+  - id: arrival-event
+    kind: dataObject
+    name: "Arrival event"
+    description: "Published by the process API after an attendance is recorded."
+  - id: arrival-event-sample
+    kind: sample-data-object
+    name: "Arrival event sample"
+  # ── tee-sheet-import ─────────────────────────────────────────────────────────────────────────────
+  - id: tee-sheet-import
+    kind: mule-file-transfer
+    name: "tee-sheet-import"
+    description: "File transfer. The booking vendor exports the day's tee sheet as CSV; expected arrivals and tee times land in Salesforce through the system API so the greeting can mention them. Repository fgc/tee-sheet-import."
+    parts:
+      availability: avail-opening-hours
+      recovery: rto-60-rpo-0
+      retention: ret-30-90
+      parent: fgc-parent-pom
+      deployment: fgc-ps-au
+      error-handling: errs-framework
+      source: vendor-tee-sheet-sftp
+      payload: expected-arrival
+      sample: tee-sheet-sample
+      backend: sftp-connector
+      secrets: ft-secrets
+      observability: obs-ft
+      idempotency: idem-file-checksum
+      partial-failure: row-quarantine
+      duplicate: dup-filename-sha256
+      arrival-window: arrive-0400-0500
+      cadence: poll-15min
+      size: size-2mb
+      processing-budget: budget-5min
+      detection: detect-30min
+  - id: import-tee-sheet
+    kind: applicationFunction
+    name: "Import Tee Sheet"
+    description: "The main flow: read the file, one expected arrival per row, upsert each through the system API."
+  - id: call-teesheet-read
+    kind: mule-connector-read
+    name: "Read tee sheet CSV"
+    parts:
+      connector: sftp-connector
+      object: tee-sheet-row
+      read-mapping: map-tee-sheet-row
+  - id: client-teesheet-sapi
+    kind: mule-http-client
+    name: "HTTP client → salesforce-patron-api (tee sheet)"
+    parts:
+      api: salesforce-patron-api
+      timeout: timeout-standard
+      retry: retry-bounded
+  - id: req-teesheet-upsert-arrival
+    kind: mule-http-request
+    name: "Call upsert expected arrival"
+    description: "Pass-through: the expected arrival IS the system API's request object; the acknowledgement carries nothing to map."
+    parts:
+      client: client-teesheet-sapi
+      operation: op-sapi-upsert-expected-arrival
+  - id: map-tee-sheet-row
+    kind: mapping-application-function
+    name: "Map Tee Sheet Row to Expected Arrival"
+    parts:
+      source: tee-sheet-row
+      target: expected-arrival
+      specification: spec-tee-sheet-row
+  - id: expected-arrival
+    kind: dataObject
+    name: "Expected arrival"
+    description: "Patron, tee time, group. Also the system API's request object for PUT /expected-arrivals."
+  - id: tee-sheet-sample
+    kind: sample-data-object
+    name: "Tee sheet sample"
+    description: "One vendor CSV, redacted."
+  # ── pos-purchase-poller ──────────────────────────────────────────────────────────────────────────
+  - id: pos-purchase-poller
+    kind: mule-db-poller
+    name: "pos-purchase-poller"
+    description: "Database poller on the pro-shop POS. Recent purchases so a returning patron can be thanked for last week's putter. Reaches the club LAN over the VPN. Repository fgc/pos-purchase-poller."
+    parts:
+      availability: avail-opening-hours
+      recovery: rto-60-rpo-0
+      retention: logs-30d
+      parent: fgc-parent-pom
+      deployment: fgc-ps-au
+      error-handling: errs-framework
+      source: pos-database
+      payload: purchase
+      sample: purchase-sample
+      backend: db-connector
+      secrets: poller-secrets
+      observability: obs-poller
+      idempotency: idem-purchase-id
+      watermark: wm-purchase-id
+      late-row: late-none
+      cadence: poll-5min
+      lag: lag-60min
+      batch: batch-200
+      query-budget: q-500ms
+      connection-footprint: conn-2
+      backfill: backfill-90d
+      detection: detect-30min
+  - id: sync-purchases
+    kind: applicationFunction
+    name: "Sync Purchases"
+    description: "The main flow: poll past the watermark, one purchase record per row through the system API."
+  - id: call-poller-read-purchases
+    kind: mule-connector-read
+    name: "Select purchases past the watermark"
+    description: "The row is the purchase object as read; no mapping shapes it."
+    parts:
+      connector: db-connector
+      object: purchase
+  - id: client-poller-sapi
+    kind: mule-http-client
+    name: "HTTP client → salesforce-patron-api (POS)"
+    parts:
+      api: salesforce-patron-api
+      timeout: timeout-standard
+      retry: retry-bounded
+  - id: req-poller-record-purchase
+    kind: mule-http-request
+    name: "Call record purchase"
+    description: "The POS row shaped into the system API's purchase record; the acknowledgement carries nothing to map."
+    parts:
+      client: client-poller-sapi
+      operation: op-sapi-record-purchase
+      request-mapping: map-purchase-to-record
+  - id: map-purchase-to-record
+    kind: mapping-application-function
+    name: "Map Purchase to Purchase Record"
+    parts:
+      source: purchase
+      target: purchase-record
+      specification: spec-purchase-record
+  - id: purchase
+    kind: dataObject
+    name: "Purchase"
+    description: "One purchases row."
+  - id: purchase-sample
+    kind: sample-data-object
+    name: "Purchase sample"
+  # ── enquiry-mailbox-reader ───────────────────────────────────────────────────────────────────────
+  - id: enquiry-mailbox-reader
+    kind: mule-app
+    name: "enquiry-mailbox-reader"
+    description: "Generic application on an IMAP trigger. Guest enquiries by email become Salesforce Cases through the system API, with an acknowledgement sent back. No dedicated pattern matches an email trigger, so it gets the catch-all. Repository fgc/enquiry-mailbox-reader."
+    parts:
+      availability: avail-opening-hours
+      recovery: rto-60-rpo-0
+      retention: logs-30d
+      parent: fgc-parent-pom
+      deployment: fgc-ps-au
+      error-handling: errs-framework
+      payload: enquiry-email
+      sample: enquiry-email-sample
+      backend: email-connector
+      secrets: mailbox-secrets
+      observability: obs-mailbox
+      idempotency: idem-message-id-imap
+      volume: vol-10-per-day
+      latency: lat-15min
+      cadence: poll-5min-imap
+      detection: detect-30min
+  - id: register-enquiry
+    kind: applicationFunction
+    name: "Register Enquiry"
+    description: "Mailbox size cap 5 GB; attachments over 10 MB skipped and noted on the Case — the trigger-specific NFRs the generic pattern cannot name."
+  - id: call-mailbox-read
+    kind: mule-connector-read
+    name: "Read enquiries mailbox"
+    description: "The message is the enquiry object as read; no mapping shapes it."
+    parts:
+      connector: email-connector
+      object: enquiry-email
+  - id: client-mailbox-sapi
+    kind: mule-http-client
+    name: "HTTP client → salesforce-patron-api (enquiries)"
+    parts:
+      api: salesforce-patron-api
+      timeout: timeout-standard
+      retry: retry-bounded
+  - id: req-mailbox-create-case
+    kind: mule-http-request
+    name: "Call create case"
+    description: "The email shaped into a case request; the case record comes back as it is and feeds the acknowledgement."
+    parts:
+      client: client-mailbox-sapi
+      operation: op-sapi-create-case
+      request-mapping: map-email-to-case
+  - id: call-mailbox-send-ack
+    kind: mule-connector-write
+    name: "Send acknowledgement"
+    parts:
+      connector: email-connector
+      object: ack-email
+      write-mapping: map-case-to-ack
+  - id: map-email-to-case
+    kind: mapping-application-function
+    name: "Map Email to Case Request"
+    parts:
+      source: enquiry-email
+      target: case-request
+      specification: spec-email-to-case
+  - id: map-case-to-ack
+    kind: mapping-application-function
+    name: "Map Case Record to Acknowledgement"
+    parts:
+      source: case-record
+      target: ack-email
+      specification: spec-ack-email
+  - id: enquiry-email
+    kind: dataObject
+    name: "Enquiry email"
+  - id: enquiry-email-sample
+    kind: sample-data-object
+    name: "Enquiry email sample"
+  # ── Contract and call objects that no application slot names ─────────────────────────────────────
+  - id: greeting-view
+    kind: dataObject
+    name: "Greeting view"
+    description: "What the tablet renders: headline, patron first name, membership tier badge, today's tee time. Shaped for a 10-inch screen; nothing the tablet does not show."
+  - id: checkin-request
+    kind: dataObject
+    name: "Check-in request"
+    description: "What the tablet sends: membershipNumber, tabletId, arrivedAt. The card tap, before anybody has looked the patron up."
+  - id: membership-lookup
+    kind: dataObject
+    name: "Membership lookup"
+    description: "membershipNumber, as the tablet asks and the process API forwards."
+  - id: greeting-request
+    kind: dataObject
+    name: "Greeting request"
+    description: "patronId and tabletId, for a screen that was refreshed."
+  - id: patron-query
+    kind: dataObject
+    name: "Patron query"
+    description: "The system API's lookup: membership number or patron id, and which fields."
+  - id: attendance-record
+    kind: dataObject
+    name: "Attendance record"
+    description: "The system API's request object for an attendance: Attendance_Key__c, patron id, arrivedAt, source tablet."
+  - id: attendance-query
+    kind: dataObject
+    name: "Attendance query"
+    description: "A date."
+  - id: attendance-list
+    kind: dataObject
+    name: "Attendance list"
+    description: "One day's attendances as the system API returns them."
+  - id: purchase-record
+    kind: dataObject
+    name: "Purchase record"
+    description: "The system API's request object for a pro-shop purchase."
+  - id: case-request
+    kind: dataObject
+    name: "Case request"
+    description: "The system API's request object for a guest enquiry: sender, subject, body, received."
+  - id: case-record
+    kind: dataObject
+    name: "Case record"
+    description: "Case number and status, as the system API returns them."
+  - id: operation-ack
+    kind: dataObject
+    name: "Operation acknowledgement"
+    description: "What every write operation of the system API returns: the Salesforce id and nothing else. Nothing maps it."
+  - id: digest-email
+    kind: dataObject
+    name: "Digest email"
+    description: "The message the Guest Services Manager receives at 06:00."
+  - id: ack-email
+    kind: dataObject
+    name: "Acknowledgement email"
+    description: "Case number and expected response time, sent back to the enquirer."
+  - id: teams-card
+    kind: dataObject
+    name: "Teams greeting card"
+    description: "Adaptive Card posted to the pro-shop channel: patron name, tier, arrival time, which tablet."
+  - id: tee-sheet-row
+    kind: dataObject
+    name: "Tee sheet row"
+    description: "One CSV row from the booking vendor's nightly export: booking reference, member number, tee time, players."
+  # ── Mapping specifications. The field rows (source field → target field → expression) live in an
+  # aperturex/mapping-spec/v1 document uploaded against the mapping; a model reference is a subject
+  # id and never a document id, so the ARTIFACT is the model's name for that document, and the
+  # document names the mapping it specifies. Until it is uploaded the product reports AX003.
+  - id: spec-greeting-view
+    kind: artifact
+    name: "Greeting → tablet view mapping spec"
+    description: "aperturex/mapping-spec/v1 for map-greeting-to-tablet-view, in the document library."
+  - id: spec-attendance-request
+    kind: artifact
+    name: "Check-in request → attendance request mapping spec"
+    description: "aperturex/mapping-spec/v1 for map-patron-attendance-request, in the document library."
+  - id: spec-patron-query
+    kind: artifact
+    name: "Attendance request → patron query mapping spec"
+    description: "aperturex/mapping-spec/v1 for map-attendance-to-patron-query, in the document library."
+  - id: spec-lookup-query
+    kind: artifact
+    name: "Membership lookup → patron query mapping spec"
+    description: "aperturex/mapping-spec/v1 for map-lookup-to-patron-query, in the document library."
+  - id: spec-patron-to-greeting
+    kind: artifact
+    name: "Patron record → greeting mapping spec"
+    description: "aperturex/mapping-spec/v1 for map-patron-to-greeting, in the document library."
+  - id: spec-attendance-record
+    kind: artifact
+    name: "Attendance request → attendance record mapping spec"
+    description: "aperturex/mapping-spec/v1 for map-attendance-to-record, in the document library."
+  - id: spec-arrival-event
+    kind: artifact
+    name: "Attendance request → arrival event mapping spec"
+    description: "aperturex/mapping-spec/v1 for map-attendance-to-arrival, in the document library."
+  - id: spec-contact-to-patron
+    kind: artifact
+    name: "Contact → patron record mapping spec"
+    description: "aperturex/mapping-spec/v1 for map-contact-to-patron, in the document library."
+  - id: spec-attendance-to-sf
+    kind: artifact
+    name: "Attendance record → Patron_Attendance__c mapping spec"
+    description: "aperturex/mapping-spec/v1 for map-attendance-to-sf, in the document library."
+  - id: spec-attendance-list
+    kind: artifact
+    name: "Patron_Attendance__c → attendance list mapping spec"
+    description: "aperturex/mapping-spec/v1 for map-attendances-to-list, in the document library."
+  - id: spec-purchase
+    kind: artifact
+    name: "Purchase record → Patron_Purchase__c mapping spec"
+    description: "aperturex/mapping-spec/v1 for map-purchase, in the document library."
+  - id: spec-case-to-sf
+    kind: artifact
+    name: "Case request → Case mapping spec"
+    description: "aperturex/mapping-spec/v1 for map-case-to-sf, in the document library."
+  - id: spec-expected-arrival-sf
+    kind: artifact
+    name: "Expected arrival → Expected_Arrival__c mapping spec"
+    description: "aperturex/mapping-spec/v1 for map-expected-arrival-to-sf, in the document library."
+  - id: spec-attendance-digest
+    kind: artifact
+    name: "Attendance list → attendance digest mapping spec"
+    description: "aperturex/mapping-spec/v1 for map-attendances-to-digest, in the document library."
+  - id: spec-digest-email
+    kind: artifact
+    name: "Attendance digest → email mapping spec"
+    description: "aperturex/mapping-spec/v1 for map-digest-to-email, in the document library."
+  - id: spec-teams-card
+    kind: artifact
+    name: "Arrival event → Teams card mapping spec"
+    description: "aperturex/mapping-spec/v1 for map-arrival-to-teams-card, in the document library."
+  - id: spec-tee-sheet-row
+    kind: artifact
+    name: "Tee sheet row → expected arrival mapping spec"
+    description: "aperturex/mapping-spec/v1 for map-tee-sheet-row, in the document library."
+  - id: spec-purchase-record
+    kind: artifact
+    name: "Purchase → purchase record mapping spec"
+    description: "aperturex/mapping-spec/v1 for map-purchase-to-record, in the document library."
+  - id: spec-email-to-case
+    kind: artifact
+    name: "Enquiry email → case request mapping spec"
+    description: "aperturex/mapping-spec/v1 for map-email-to-case, in the document library."
+  - id: spec-ack-email
+    kind: artifact
+    name: "Case record → acknowledgement email mapping spec"
+    description: "aperturex/mapping-spec/v1 for map-case-to-ack, in the document library."
+relationships:
+  - { id: r-xapi-goal, kind: realization, from: patron-checkin-xapi, to: consistent-arrival-experience }
+  - { id: r-api-tablet, kind: serving, from: patron-checkin-api, to: checkin-tablet-webapp }
+  - { id: r-digest-manager, kind: serving, from: attendance-digest-job, to: guest-services-manager }
+  - { id: r-poller-db-connector, kind: realization, from: db-connector, to: pos-purchase-poller }
+  - { id: r-mailbox-serves, kind: serving, from: enquiries-mailbox, to: enquiry-mailbox-reader }
+  # ── What each application DOES: assigned each of its functions (the calls are functions too).
+  - { id: a-xapi-compose, kind: assignment, from: patron-checkin-xapi, to: compose-greeting-view }
+  - { id: a-xapi-client-papi, kind: assignment, from: patron-checkin-xapi, to: client-xapi-papi }
+  - { id: a-xapi-record, kind: assignment, from: patron-checkin-xapi, to: req-xapi-record-attendance }
+  - { id: a-xapi-find, kind: assignment, from: patron-checkin-xapi, to: req-xapi-find-patron }
+  - { id: a-papi-record, kind: assignment, from: patron-attendance-papi, to: record-patron-attendance }
+  - { id: a-papi-compose, kind: assignment, from: patron-attendance-papi, to: compose-greeting }
+  - { id: a-papi-client-sapi, kind: assignment, from: patron-attendance-papi, to: client-papi-sapi }
+  - { id: a-papi-query, kind: assignment, from: patron-attendance-papi, to: req-papi-query-patron }
+  - { id: a-papi-find, kind: assignment, from: patron-attendance-papi, to: req-papi-find-patron }
+  - { id: a-papi-upsert, kind: assignment, from: patron-attendance-papi, to: req-papi-upsert-attendance }
+  - { id: a-papi-publish, kind: assignment, from: patron-attendance-papi, to: pub-papi-arrival }
+  - { id: a-sapi-query-contact, kind: assignment, from: salesforce-patron-sapi, to: call-sapi-query-contact }
+  - { id: a-sapi-upsert-attendance, kind: assignment, from: salesforce-patron-sapi, to: call-sapi-upsert-attendance }
+  - { id: a-sapi-list-attendances, kind: assignment, from: salesforce-patron-sapi, to: call-sapi-list-attendances }
+  - { id: a-sapi-upsert-purchase, kind: assignment, from: salesforce-patron-sapi, to: call-sapi-upsert-purchase }
+  - { id: a-sapi-create-case, kind: assignment, from: salesforce-patron-sapi, to: call-sapi-create-case }
+  - { id: a-sapi-upsert-arrival, kind: assignment, from: salesforce-patron-sapi, to: call-sapi-upsert-expected-arrival }
+  - { id: a-digest-summarise, kind: assignment, from: attendance-digest-job, to: summarise-attendance }
+  - { id: a-digest-client-sapi, kind: assignment, from: attendance-digest-job, to: client-digest-sapi }
+  - { id: a-digest-list, kind: assignment, from: attendance-digest-job, to: req-digest-list-attendances }
+  - { id: a-digest-send, kind: assignment, from: attendance-digest-job, to: call-digest-send-email }
+  - { id: a-notifier-notify, kind: assignment, from: patron-arrival-notifier, to: notify-arrival }
+  - { id: a-notifier-client-teams, kind: assignment, from: patron-arrival-notifier, to: client-notifier-teams }
+  - { id: a-notifier-post, kind: assignment, from: patron-arrival-notifier, to: req-notifier-post-card }
+  - { id: a-teesheet-import, kind: assignment, from: tee-sheet-import, to: import-tee-sheet }
+  - { id: a-teesheet-read, kind: assignment, from: tee-sheet-import, to: call-teesheet-read }
+  - { id: a-teesheet-client-sapi, kind: assignment, from: tee-sheet-import, to: client-teesheet-sapi }
+  - { id: a-teesheet-upsert, kind: assignment, from: tee-sheet-import, to: req-teesheet-upsert-arrival }
+  - { id: a-poller-sync, kind: assignment, from: pos-purchase-poller, to: sync-purchases }
+  - { id: a-poller-read, kind: assignment, from: pos-purchase-poller, to: call-poller-read-purchases }
+  - { id: a-poller-client-sapi, kind: assignment, from: pos-purchase-poller, to: client-poller-sapi }
+  - { id: a-poller-record, kind: assignment, from: pos-purchase-poller, to: req-poller-record-purchase }
+  - { id: a-mailbox-register, kind: assignment, from: enquiry-mailbox-reader, to: register-enquiry }
+  - { id: a-mailbox-read, kind: assignment, from: enquiry-mailbox-reader, to: call-mailbox-read }
+  - { id: a-mailbox-client-sapi, kind: assignment, from: enquiry-mailbox-reader, to: client-mailbox-sapi }
+  - { id: a-mailbox-create, kind: assignment, from: enquiry-mailbox-reader, to: req-mailbox-create-case }
+  - { id: a-mailbox-ack, kind: assignment, from: enquiry-mailbox-reader, to: call-mailbox-send-ack }
+  # ── What each API EXPOSES: the interface is assigned its operations and its service; the
+  # application realizes them; the flow that implements an operation realizes it too.
+  - { id: x-checkin-svc, kind: assignment, from: patron-checkin-api, to: patron-checkin-service }
+  - { id: x-checkin-find, kind: assignment, from: patron-checkin-api, to: op-checkin-find-patron }
+  - { id: x-checkin-greeting, kind: assignment, from: patron-checkin-api, to: op-checkin-greeting }
+  - { id: x-checkin-attendance, kind: assignment, from: patron-checkin-api, to: op-checkin-attendance }
+  - { id: z-xapi-svc, kind: realization, from: patron-checkin-xapi, to: patron-checkin-service }
+  - { id: z-xapi-find, kind: realization, from: patron-checkin-xapi, to: op-checkin-find-patron }
+  - { id: z-xapi-greeting, kind: realization, from: patron-checkin-xapi, to: op-checkin-greeting }
+  - { id: z-xapi-attendance, kind: realization, from: patron-checkin-xapi, to: op-checkin-attendance }
+  - { id: i-checkin-find, kind: realization, from: req-xapi-find-patron, to: op-checkin-find-patron }
+  - { id: i-checkin-greeting, kind: realization, from: compose-greeting-view, to: op-checkin-greeting }
+  - { id: i-checkin-attendance, kind: realization, from: req-xapi-record-attendance, to: op-checkin-attendance }
+  - { id: x-attendance-svc, kind: assignment, from: patron-attendance-api, to: patron-attendance-service }
+  - { id: x-attendance-record, kind: assignment, from: patron-attendance-api, to: op-papi-record-attendance }
+  - { id: x-attendance-find, kind: assignment, from: patron-attendance-api, to: op-papi-find-patron }
+  - { id: z-papi-svc, kind: realization, from: patron-attendance-papi, to: patron-attendance-service }
+  - { id: z-papi-record, kind: realization, from: patron-attendance-papi, to: op-papi-record-attendance }
+  - { id: z-papi-find, kind: realization, from: patron-attendance-papi, to: op-papi-find-patron }
+  - { id: i-papi-record, kind: realization, from: record-patron-attendance, to: op-papi-record-attendance }
+  - { id: i-papi-find, kind: realization, from: req-papi-find-patron, to: op-papi-find-patron }
+  - { id: x-sapi-svc, kind: assignment, from: salesforce-patron-api, to: salesforce-patron-service }
+  - { id: x-sapi-query, kind: assignment, from: salesforce-patron-api, to: op-sapi-query-patron }
+  - { id: x-sapi-upsert, kind: assignment, from: salesforce-patron-api, to: op-sapi-upsert-attendance }
+  - { id: x-sapi-list, kind: assignment, from: salesforce-patron-api, to: op-sapi-list-attendances }
+  - { id: x-sapi-purchase, kind: assignment, from: salesforce-patron-api, to: op-sapi-record-purchase }
+  - { id: x-sapi-case, kind: assignment, from: salesforce-patron-api, to: op-sapi-create-case }
+  - { id: x-sapi-arrival, kind: assignment, from: salesforce-patron-api, to: op-sapi-upsert-expected-arrival }
+  - { id: z-sapi-svc, kind: realization, from: salesforce-patron-sapi, to: salesforce-patron-service }
+  - { id: z-sapi-query, kind: realization, from: salesforce-patron-sapi, to: op-sapi-query-patron }
+  - { id: z-sapi-upsert, kind: realization, from: salesforce-patron-sapi, to: op-sapi-upsert-attendance }
+  - { id: z-sapi-list, kind: realization, from: salesforce-patron-sapi, to: op-sapi-list-attendances }
+  - { id: z-sapi-purchase, kind: realization, from: salesforce-patron-sapi, to: op-sapi-record-purchase }
+  - { id: z-sapi-case, kind: realization, from: salesforce-patron-sapi, to: op-sapi-create-case }
+  - { id: z-sapi-arrival, kind: realization, from: salesforce-patron-sapi, to: op-sapi-upsert-expected-arrival }
+  - { id: i-sapi-query, kind: realization, from: call-sapi-query-contact, to: op-sapi-query-patron }
+  - { id: i-sapi-upsert, kind: realization, from: call-sapi-upsert-attendance, to: op-sapi-upsert-attendance }
+  - { id: i-sapi-list, kind: realization, from: call-sapi-list-attendances, to: op-sapi-list-attendances }
+  - { id: i-sapi-purchase, kind: realization, from: call-sapi-upsert-purchase, to: op-sapi-record-purchase }
+  - { id: i-sapi-case, kind: realization, from: call-sapi-create-case, to: op-sapi-create-case }
+  - { id: i-sapi-arrival, kind: realization, from: call-sapi-upsert-expected-arrival, to: op-sapi-upsert-expected-arrival }
+  # ── A query that joins a second object accesses it by hand.
+  - { id: r-query-membership, kind: access, from: call-sapi-query-contact, to: sf-membership, mode: read }
+  # ── The HTTP kinds' samples: the application pattern no longer wires them, so the reference does.
+  - { id: s-greeting, kind: association, from: greeting-sample, to: greeting }
+  - { id: s-attendance-request, kind: association, from: attendance-request-sample, to: attendance-request }
+  - { id: s-patron-record, kind: association, from: patron-record-sample, to: patron-record }
+  # ── Sensitivity.
+  - { id: sens-greeting, kind: aggregation, from: pii, to: greeting }
+  - { id: sens-attendance-request, kind: aggregation, from: pii, to: attendance-request }
+  - { id: sens-patron-record, kind: aggregation, from: pii, to: patron-record }
+  - { id: sens-arrival-event, kind: aggregation, from: pii, to: arrival-event }
+  - { id: sens-expected-arrival, kind: aggregation, from: pii, to: expected-arrival }
+  - { id: sens-purchase, kind: aggregation, from: pii, to: purchase }
+  - { id: sens-enquiry-email, kind: aggregation, from: pii, to: enquiry-email }
+  - { id: sens-attendance-digest, kind: aggregation, from: internal, to: attendance-digest }
+  - { id: sens-greeting-view, kind: aggregation, from: pii, to: greeting-view }
+  - { id: sens-checkin-request, kind: aggregation, from: pii, to: checkin-request }
+  - { id: sens-teams-card, kind: aggregation, from: pii, to: teams-card }
+  - { id: sens-tee-sheet-row, kind: aggregation, from: pii, to: tee-sheet-row }
+  - { id: sens-membership-lookup, kind: aggregation, from: pii, to: membership-lookup }
+  - { id: sens-greeting-request, kind: aggregation, from: pii, to: greeting-request }
+  - { id: sens-patron-query, kind: aggregation, from: pii, to: patron-query }
+  - { id: sens-attendance-record, kind: aggregation, from: pii, to: attendance-record }
+  - { id: sens-attendance-query, kind: aggregation, from: internal, to: attendance-query }
+  - { id: sens-attendance-list, kind: aggregation, from: pii, to: attendance-list }
+  - { id: sens-purchase-record, kind: aggregation, from: pii, to: purchase-record }
+  - { id: sens-case-request, kind: aggregation, from: pii, to: case-request }
+  - { id: sens-case-record, kind: aggregation, from: pii, to: case-record }
+  - { id: sens-operation-ack, kind: aggregation, from: internal, to: operation-ack }
+  - { id: sens-digest-email, kind: aggregation, from: internal, to: digest-email }
+  - { id: sens-ack-email, kind: aggregation, from: pii, to: ack-email }
+  # ── Each mapping reads its source and writes its target (the workbook reads the MODE), and names its spec.
+  - { id: m-greeting-to-tablet-view-read, kind: access, from: map-greeting-to-tablet-view, to: greeting, mode: read }
+  - { id: m-greeting-to-tablet-view-write, kind: access, from: map-greeting-to-tablet-view, to: greeting-view, mode: write }
+  - { id: m-greeting-to-tablet-view-spec, kind: association, from: map-greeting-to-tablet-view, to: spec-greeting-view }
+  - { id: m-patron-attendance-request-read, kind: access, from: map-patron-attendance-request, to: checkin-request, mode: read }
+  - { id: m-patron-attendance-request-write, kind: access, from: map-patron-attendance-request, to: attendance-request, mode: write }
+  - { id: m-patron-attendance-request-spec, kind: association, from: map-patron-attendance-request, to: spec-attendance-request }
+  - { id: m-attendance-to-patron-query-read, kind: access, from: map-attendance-to-patron-query, to: attendance-request, mode: read }
+  - { id: m-attendance-to-patron-query-write, kind: access, from: map-attendance-to-patron-query, to: patron-query, mode: write }
+  - { id: m-attendance-to-patron-query-spec, kind: association, from: map-attendance-to-patron-query, to: spec-patron-query }
+  - { id: m-lookup-to-patron-query-read, kind: access, from: map-lookup-to-patron-query, to: membership-lookup, mode: read }
+  - { id: m-lookup-to-patron-query-write, kind: access, from: map-lookup-to-patron-query, to: patron-query, mode: write }
+  - { id: m-lookup-to-patron-query-spec, kind: association, from: map-lookup-to-patron-query, to: spec-lookup-query }
+  - { id: m-patron-to-greeting-read, kind: access, from: map-patron-to-greeting, to: patron-record, mode: read }
+  - { id: m-patron-to-greeting-write, kind: access, from: map-patron-to-greeting, to: greeting, mode: write }
+  - { id: m-patron-to-greeting-spec, kind: association, from: map-patron-to-greeting, to: spec-patron-to-greeting }
+  - { id: m-attendance-to-record-read, kind: access, from: map-attendance-to-record, to: attendance-request, mode: read }
+  - { id: m-attendance-to-record-write, kind: access, from: map-attendance-to-record, to: attendance-record, mode: write }
+  - { id: m-attendance-to-record-spec, kind: association, from: map-attendance-to-record, to: spec-attendance-record }
+  - { id: m-attendance-to-arrival-read, kind: access, from: map-attendance-to-arrival, to: attendance-request, mode: read }
+  - { id: m-attendance-to-arrival-write, kind: access, from: map-attendance-to-arrival, to: arrival-event, mode: write }
+  - { id: m-attendance-to-arrival-spec, kind: association, from: map-attendance-to-arrival, to: spec-arrival-event }
+  - { id: m-contact-to-patron-read, kind: access, from: map-contact-to-patron, to: sf-contact, mode: read }
+  - { id: m-contact-to-patron-write, kind: access, from: map-contact-to-patron, to: patron-record, mode: write }
+  - { id: m-contact-to-patron-spec, kind: association, from: map-contact-to-patron, to: spec-contact-to-patron }
+  - { id: m-attendance-to-sf-read, kind: access, from: map-attendance-to-sf, to: attendance-record, mode: read }
+  - { id: m-attendance-to-sf-write, kind: access, from: map-attendance-to-sf, to: sf-patron-attendance, mode: write }
+  - { id: m-attendance-to-sf-spec, kind: association, from: map-attendance-to-sf, to: spec-attendance-to-sf }
+  - { id: m-attendances-to-list-read, kind: access, from: map-attendances-to-list, to: sf-patron-attendance, mode: read }
+  - { id: m-attendances-to-list-write, kind: access, from: map-attendances-to-list, to: attendance-list, mode: write }
+  - { id: m-attendances-to-list-spec, kind: association, from: map-attendances-to-list, to: spec-attendance-list }
+  - { id: m-purchase-read, kind: access, from: map-purchase, to: purchase-record, mode: read }
+  - { id: m-purchase-write, kind: access, from: map-purchase, to: sf-patron-purchase, mode: write }
+  - { id: m-purchase-spec, kind: association, from: map-purchase, to: spec-purchase }
+  - { id: m-case-to-sf-read, kind: access, from: map-case-to-sf, to: case-request, mode: read }
+  - { id: m-case-to-sf-write, kind: access, from: map-case-to-sf, to: sf-case, mode: write }
+  - { id: m-case-to-sf-spec, kind: association, from: map-case-to-sf, to: spec-case-to-sf }
+  - { id: m-expected-arrival-to-sf-read, kind: access, from: map-expected-arrival-to-sf, to: expected-arrival, mode: read }
+  - { id: m-expected-arrival-to-sf-write, kind: access, from: map-expected-arrival-to-sf, to: sf-expected-arrival, mode: write }
+  - { id: m-expected-arrival-to-sf-spec, kind: association, from: map-expected-arrival-to-sf, to: spec-expected-arrival-sf }
+  - { id: m-attendances-to-digest-read, kind: access, from: map-attendances-to-digest, to: attendance-list, mode: read }
+  - { id: m-attendances-to-digest-write, kind: access, from: map-attendances-to-digest, to: attendance-digest, mode: write }
+  - { id: m-attendances-to-digest-spec, kind: association, from: map-attendances-to-digest, to: spec-attendance-digest }
+  - { id: m-digest-to-email-read, kind: access, from: map-digest-to-email, to: attendance-digest, mode: read }
+  - { id: m-digest-to-email-write, kind: access, from: map-digest-to-email, to: digest-email, mode: write }
+  - { id: m-digest-to-email-spec, kind: association, from: map-digest-to-email, to: spec-digest-email }
+  - { id: m-arrival-to-teams-card-read, kind: access, from: map-arrival-to-teams-card, to: arrival-event, mode: read }
+  - { id: m-arrival-to-teams-card-write, kind: access, from: map-arrival-to-teams-card, to: teams-card, mode: write }
+  - { id: m-arrival-to-teams-card-spec, kind: association, from: map-arrival-to-teams-card, to: spec-teams-card }
+  - { id: m-tee-sheet-row-read, kind: access, from: map-tee-sheet-row, to: tee-sheet-row, mode: read }
+  - { id: m-tee-sheet-row-write, kind: access, from: map-tee-sheet-row, to: expected-arrival, mode: write }
+  - { id: m-tee-sheet-row-spec, kind: association, from: map-tee-sheet-row, to: spec-tee-sheet-row }
+  - { id: m-purchase-to-record-read, kind: access, from: map-purchase-to-record, to: purchase, mode: read }
+  - { id: m-purchase-to-record-write, kind: access, from: map-purchase-to-record, to: purchase-record, mode: write }
+  - { id: m-purchase-to-record-spec, kind: association, from: map-purchase-to-record, to: spec-purchase-record }
+  - { id: m-email-to-case-read, kind: access, from: map-email-to-case, to: enquiry-email, mode: read }
+  - { id: m-email-to-case-write, kind: access, from: map-email-to-case, to: case-request, mode: write }
+  - { id: m-email-to-case-spec, kind: association, from: map-email-to-case, to: spec-email-to-case }
+  - { id: m-case-to-ack-read, kind: access, from: map-case-to-ack, to: case-record, mode: read }
+  - { id: m-case-to-ack-write, kind: access, from: map-case-to-ack, to: ack-email, mode: write }
+  - { id: m-case-to-ack-spec, kind: association, from: map-case-to-ack, to: spec-ack-email }

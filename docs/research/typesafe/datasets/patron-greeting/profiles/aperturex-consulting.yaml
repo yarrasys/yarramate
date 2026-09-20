@@ -1,0 +1,63 @@
+format: yarramate/profile/v1
+id: aperturex/consulting
+version: "1.0"
+extends: yarramate/policy@0.1
+conceptKinds:
+  - id: connector
+    name: Connector
+    parent: yarramate/core@0.1#artifact
+  - id: platform-connector
+    name: Platform connector
+    parent: aperturex/consulting@1.0#connector
+  - id: custom-connector
+    name: Custom connector
+    parent: aperturex/consulting@1.0#connector
+  - id: api-layer
+    name: API-led layer
+    parent: yarramate/core@0.1#grouping
+  - id: integration-style
+    name: Integration style
+    parent: yarramate/core@0.1#grouping
+  - id: deployment-model
+    name: Deployment model
+    parent: yarramate/core@0.1#grouping
+  - id: sensitivity-class
+    name: Sensitivity class
+    parent: yarramate/core@0.1#grouping
+  - id: idempotency-constraint
+    name: Idempotency constraint
+    parent: yarramate/policy@0.1#reliability-constraint
+  - id: environment
+    name: Environment
+    parent: yarramate/core@0.1#grouping
+  - id: availability-constraint
+    name: Availability constraint
+    parent: yarramate/policy@0.1#reliability-constraint
+  - id: solution
+    name: Solution
+    parent: yarramate/core@0.1#grouping
+  - id: component-type
+    name: Component type
+    parent: yarramate/core@0.1#grouping
+  - id: data-domain
+    name: Data domain
+    parent: yarramate/core@0.1#grouping
+  - id: mapping-application-function
+    name: Mapping application function
+    parent: yarramate/core@0.1#applicationFunction
+  - id: sample-data-object
+    name: Sample data object
+    parent: yarramate/core@0.1#dataObject
+  - id: runtime-baseline
+    name: Runtime baseline
+    parent: yarramate/policy@0.1#mechanism-constraint
+  - id: java-baseline
+    name: Java baseline
+    parent: yarramate/policy@0.1#mechanism-constraint
+  - id: maven-coordinates
+    name: Maven coordinates
+    parent: yarramate/policy@0.1#mechanism-constraint
+  - id: coverage-target
+    name: Coverage target
+    parent: yarramate/policy@0.1#mechanism-constraint
+relationshipKinds: []

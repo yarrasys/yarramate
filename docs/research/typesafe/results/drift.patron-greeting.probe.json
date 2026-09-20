@@ -1,0 +1,256 @@
+{
+  "arm": "drift",
+  "dataset": "patron-greeting",
+  "meta": {
+    "probe": true
+  },
+  "model": [
+    "jev-1.13.0"
+  ],
+  "repeat": 1,
+  "scored": {
+    "n": 15,
+    "flaggedSubjects": 2,
+    "flaggedByQuestion": {
+      "served": 2
+    },
+    "probe": {
+      "n": 15,
+      "recovered": 2,
+      "recall": 0.13333333333333333
+    },
+    "rows": [
+      {
+        "subject": "attendance-digest-job",
+        "name": "attendance-digest-job",
+        "removed": {
+          "edge": "r-digest-manager",
+          "kind": "serving",
+          "other": "Guest Services Manager"
+        },
+        "nouls": {
+          "data": 0.4,
+          "served": 0.83,
+          "trigger": 0.5
+        },
+        "flagged": [
+          "served"
+        ]
+      },
+      {
+        "subject": "br-06-attendance-digest",
+        "name": "BR-06 Yesterday's attendance in the manager's inbox by 06:30",
+        "removed": {
+          "edge": "own-br-06",
+          "kind": "association",
+          "other": "Guest Services Manager"
+        },
+        "nouls": {
+          "data": 0.61,
+          "served": 0.82,
+          "trigger": 0.5
+        },
+        "flagged": [
+          "served"
+        ]
+      },
+      {
+        "subject": "call-poller-read-purchases",
+        "name": "Select purchases past the watermark",
+        "removed": {
+          "edge": "call-poller-read-purchases-access-object",
+          "kind": "access",
+          "other": "Purchase"
+        },
+        "nouls": {
+          "data": 0.37,
+          "served": 0.08,
+          "trigger": 0.1
+        },
+        "flagged": []
+      },
+      {
+        "subject": "call-sapi-query-contact",
+        "name": "Query Contact and Membership__c",
+        "removed": {
+          "edge": "r-query-membership",
+          "kind": "access",
+          "other": "Membership__c"
+        },
+        "nouls": {
+          "data": 0.41,
+          "served": 0.15,
+          "trigger": 0.21
+        },
+        "flagged": []
+      },
+      {
+        "subject": "email-connector",
+        "name": "Email Connector (SMTP/IMAP)",
+        "removed": {
+          "edge": "email-connector-association-system",
+          "kind": "association",
+          "other": "Microsoft 365"
+        },
+        "nouls": {
+          "data": 0.1,
+          "served": 0.14,
+          "trigger": 0.15
+        },
+        "flagged": []
+      },
+      {
+        "subject": "enquiries-mailbox",
+        "name": "enquiries@famousgolfcourse.com.au",
+        "removed": {
+          "edge": "r-m365-mailbox",
+          "kind": "association",
+          "other": "Microsoft 365"
+        },
+        "nouls": {
+          "data": 0.29,
+          "served": 0.25,
+          "trigger": 0.38
+        },
+        "flagged": []
+      },
+      {
+        "subject": "fgc-ps-au",
+        "name": "CloudHub 2.0 Private Space · ap-southeast-2",
+        "removed": {
+          "edge": "r-env-prod-plane",
+          "kind": "association",
+          "other": "Production"
+        },
+        "nouls": {
+          "data": 0.51,
+          "served": 0.67,
+          "trigger": 0.39
+        },
+        "flagged": []
+      },
+      {
+        "subject": "op-papi-record-attendance",
+        "name": "POST /attendances",
+        "removed": {
+          "edge": "op-papi-record-attendance-access-response",
+          "kind": "access",
+          "other": "Greeting"
+        },
+        "nouls": {
+          "data": 0.59,
+          "served": 0.45,
+          "trigger": 0.3
+        },
+        "flagged": []
+      },
+      {
+        "subject": "op-sapi-query-patron",
+        "name": "GET /patrons",
+        "removed": {
+          "edge": "op-sapi-query-patron-access-response",
+          "kind": "access",
+          "other": "Patron record"
+        },
+        "nouls": {
+          "data": 0.37,
+          "served": 0.2,
+          "trigger": 0.28
+        },
+        "flagged": []
+      },
+      {
+        "subject": "patron-arrival-notifier",
+        "name": "patron-arrival-notifier",
+        "removed": {
+          "edge": "patron-arrival-notifier-target-serving-self",
+          "kind": "serving",
+          "other": "Pro-shop Teams channel"
+        },
+        "nouls": {
+          "data": 0.47,
+          "served": 0.59,
+          "trigger": 0.4
+        },
+        "flagged": []
+      },
+      {
+        "subject": "patron-attendance-papi",
+        "name": "patron-attendance-papi",
+        "removed": {
+          "edge": "patron-attendance-papi-api-layer-aggregation-self",
+          "kind": "aggregation",
+          "other": "Process"
+        },
+        "nouls": {
+          "data": 0.44,
+          "served": 0.32,
+          "trigger": 0.38
+        },
+        "flagged": []
+      },
+      {
+        "subject": "patron-checkin-api",
+        "name": "patron-checkin-api v1",
+        "removed": {
+          "edge": "x-checkin-attendance",
+          "kind": "assignment",
+          "other": "POST /patrons/{id}/attendances"
+        },
+        "nouls": {
+          "data": 0.3,
+          "served": 0.12,
+          "trigger": 0.17
+        },
+        "flagged": []
+      },
+      {
+        "subject": "patron-checkin-xapi",
+        "name": "patron-checkin-xapi",
+        "removed": {
+          "edge": "patron-checkin-xapi-api-layer-aggregation-self",
+          "kind": "aggregation",
+          "other": "Experience"
+        },
+        "nouls": {
+          "data": 0.1,
+          "served": 0.45,
+          "trigger": 0.28
+        },
+        "flagged": []
+      },
+      {
+        "subject": "release-with-lts",
+        "name": "library release policy",
+        "removed": {
+          "edge": "own-release-with-lts",
+          "kind": "association",
+          "other": "Yarrasys"
+        },
+        "nouls": {
+          "data": 0.14,
+          "served": 0.52,
+          "trigger": 0.67
+        },
+        "flagged": []
+      },
+      {
+        "subject": "salesforce-patron-sapi",
+        "name": "salesforce-patron-sapi",
+        "removed": {
+          "edge": "salesforce-patron-sapi-api-layer-aggregation-self",
+          "kind": "aggregation",
+          "other": "System"
+        },
+        "nouls": {
+          "data": 0.53,
+          "served": 0.25,
+          "trigger": 0.23
+        },
+        "flagged": []
+      }
+    ]
+  },
+  "stability": null,
+  "at": "2026-09-20T01:29:07.326Z"
+}

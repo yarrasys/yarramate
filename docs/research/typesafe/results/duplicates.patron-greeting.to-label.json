@@ -1,0 +1,1512 @@
+[
+  {
+    "pair": "attendance-digest|attendance-list",
+    "a": "Attendance digest",
+    "aDescription": "Counts by tier, first-time visitors, no-shows against the tee sheet.",
+    "b": "Attendance list",
+    "bDescription": "One day's attendances as the system API returns them.",
+    "lexical": 0.824,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "expected-arrival|sf-expected-arrival",
+    "a": "Expected arrival",
+    "aDescription": "Patron, tee time, group. Also the system API's request object for PUT /expected-arrivals.",
+    "b": "Expected_Arrival__c",
+    "bDescription": "One row per tee-sheet booking, external id the vendor's booking reference; what the greeting reads for today's tee time.",
+    "lexical": 0.889,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "client-digest-sapi|client-mailbox-sapi",
+    "a": "HTTP client → salesforce-patron-api (digest)",
+    "aDescription": null,
+    "b": "HTTP client → salesforce-patron-api (enquiries)",
+    "bDescription": null,
+    "lexical": 0.811,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "client-digest-sapi|client-papi-sapi",
+    "a": "HTTP client → salesforce-patron-api (digest)",
+    "aDescription": null,
+    "b": "HTTP client → salesforce-patron-api",
+    "bDescription": "One HTTP Request configuration to the system API; the shared timeout budget and bounded retry.",
+    "lexical": 0.806,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "client-digest-sapi|client-poller-sapi",
+    "a": "HTTP client → salesforce-patron-api (digest)",
+    "aDescription": null,
+    "b": "HTTP client → salesforce-patron-api (POS)",
+    "bDescription": null,
+    "lexical": 0.861,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "client-digest-sapi|client-teesheet-sapi",
+    "a": "HTTP client → salesforce-patron-api (digest)",
+    "aDescription": null,
+    "b": "HTTP client → salesforce-patron-api (tee sheet)",
+    "bDescription": null,
+    "lexical": 0.821,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "client-mailbox-sapi|client-papi-sapi",
+    "a": "HTTP client → salesforce-patron-api (enquiries)",
+    "aDescription": null,
+    "b": "HTTP client → salesforce-patron-api",
+    "bDescription": "One HTTP Request configuration to the system API; the shared timeout budget and bounded retry.",
+    "lexical": 0.8,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "client-mailbox-sapi|client-poller-sapi",
+    "a": "HTTP client → salesforce-patron-api (enquiries)",
+    "aDescription": null,
+    "b": "HTTP client → salesforce-patron-api (POS)",
+    "bDescription": null,
+    "lexical": 0.811,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "client-papi-sapi|client-poller-sapi",
+    "a": "HTTP client → salesforce-patron-api",
+    "aDescription": "One HTTP Request configuration to the system API; the shared timeout budget and bounded retry.",
+    "b": "HTTP client → salesforce-patron-api (POS)",
+    "bDescription": null,
+    "lexical": 0.879,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "coverage-80|coverage-90",
+    "a": "MUnit coverage 80 %",
+    "aDescription": "Enforced by munit-maven-plugin in the parent POM.",
+    "b": "library coverage target",
+    "bDescription": "MUnit coverage 90 %. Higher than applications, because every consumer inherits its bugs.",
+    "lexical": 0.909,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "detect-30min|detect-5min",
+    "a": "batch time to detect",
+    "aDescription": "Time to detect 30 min. For the job and the pollers.",
+    "b": "apis time to detect",
+    "bDescription": "Time to detect 5 min. Error rate > 5 % over 5 min, p95 > 2 s, replica down.",
+    "lexical": 0.833,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "errs-framework|errs-salesforce",
+    "a": "shared error handling",
+    "aDescription": "fgc-error-framework standard. Global handler; 4xx passed through; 5xx as application/problem+json; 503 + Retry-After when a downstream tier is down.",
+    "b": "sapi error handling",
+    "bDescription": "Salesforce error mapping. Framework plus Salesforce fault mapping and reconnection 3 × 2 s.",
+    "lexical": 0.81,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "papi-secrets|sapi-secrets",
+    "a": "papi secrets",
+    "aDescription": "Process API secrets. secure::papi.client.secret for the system-API client application.",
+    "b": "sapi secrets",
+    "bDescription": "System API secrets. secure::sf.consumer.key; JWT signing certificate in Secrets Manager; integration user integration@famousgolfcourse.com.au.",
+    "lexical": 0.909,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "papi-secrets|xapi-secrets",
+    "a": "papi secrets",
+    "aDescription": "Process API secrets. secure::papi.client.secret for the system-API client application.",
+    "b": "xapi secrets",
+    "bDescription": "Experience API secrets. TLS only; no connector credentials.",
+    "lexical": 0.909,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "sapi-secrets|xapi-secrets",
+    "a": "sapi secrets",
+    "aDescription": "System API secrets. secure::sf.consumer.key; JWT signing certificate in Secrets Manager; integration user integration@famousgolfcourse.com.au.",
+    "b": "xapi secrets",
+    "bDescription": "Experience API secrets. TLS only; no connector credentials.",
+    "lexical": 0.909,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "idem-external-id|idem-key-header",
+    "a": "sapi idempotency",
+    "aDescription": "Upsert on Attendance_Key__c. External id upsert in Salesforce.",
+    "b": "xapi idempotency",
+    "bDescription": "Idempotency-Key header on POST. Required by the experience API.",
+    "lexical": 0.938,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "idem-external-id|idem-one-per-day",
+    "a": "sapi idempotency",
+    "aDescription": "Upsert on Attendance_Key__c. External id upsert in Salesforce.",
+    "b": "papi idempotency",
+    "bDescription": "One attendance per patron per day. Idempotent Message Validator keyed patronId + date in Object Store v2, TTL 36 h. The model's One Attendance Registration per Day.",
+    "lexical": 0.938,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "idem-key-header|idem-one-per-day",
+    "a": "xapi idempotency",
+    "aDescription": "Idempotency-Key header on POST. Required by the experience API.",
+    "b": "papi idempotency",
+    "bDescription": "One attendance per patron per day. Idempotent Message Validator keyed patronId + date in Object Store v2, TTL 36 h. The model's One Attendance Registration per Day.",
+    "lexical": 0.938,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "lat-papi|lat-sapi",
+    "a": "papi latency",
+    "aDescription": "p95 1 200 ms",
+    "b": "sapi latency",
+    "bDescription": "p95 800 ms. Salesforce round trip dominates.",
+    "lexical": 0.917,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "lat-papi|lat-xapi",
+    "a": "papi latency",
+    "aDescription": "p95 1 200 ms",
+    "b": "xapi latency",
+    "bDescription": "p95 2 000 ms · p99 4 000 ms at the boundary. Verified by the k6 smoke test.",
+    "lexical": 0.917,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "lat-sapi|lat-xapi",
+    "a": "sapi latency",
+    "aDescription": "p95 800 ms. Salesforce round trip dominates.",
+    "b": "xapi latency",
+    "bDescription": "p95 2 000 ms · p99 4 000 ms at the boundary. Verified by the k6 smoke test.",
+    "lexical": 0.917,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "map-attendance-to-sf|map-attendances-to-list",
+    "a": "Map Attendance Record to Patron_Attendance__c",
+    "aDescription": null,
+    "b": "Map Patron_Attendance__c rows to Attendance List",
+    "bDescription": null,
+    "lexical": 0.864,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "map-attendances-to-digest|map-attendances-to-list",
+    "a": "Map Attendance List to Digest",
+    "aDescription": null,
+    "b": "Map Patron_Attendance__c rows to Attendance List",
+    "bDescription": null,
+    "lexical": 0.875,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "map-case-to-sf|map-email-to-case",
+    "a": "Map Case Request to Case",
+    "aDescription": null,
+    "b": "Map Email to Case Request",
+    "bDescription": null,
+    "lexical": 0.8,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "op-checkin-find-patron|op-papi-find-patron",
+    "a": "GET /patrons?membershipNumber",
+    "aDescription": "Looks a patron up by membership number before the card tap is committed. Passed through to the process API unchanged.",
+    "b": "GET /patrons?membershipNumber",
+    "bDescription": "Looks the patron up in the system API; the record is returned as the tiers see it.",
+    "lexical": 1,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "op-sapi-list-attendances|op-sapi-upsert-attendance",
+    "a": "GET /attendances?date",
+    "aDescription": "A day's attendances, for the digest.",
+    "b": "PUT /attendances/{key}",
+    "bDescription": "External-id upsert; the acknowledgement carries the Salesforce id and nothing else.",
+    "lexical": 0.84,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "poll-15min|poll-5min",
+    "a": "file-transfer cadence",
+    "aDescription": "Every 15 min · 04:00–20:00",
+    "b": "poller cadence",
+    "bDescription": "Every 5 min · 06:00–20:00. Silent during the POS backup 01:00–03:00.",
+    "lexical": 0.9,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "req-papi-find-patron|req-xapi-find-patron",
+    "a": "Call query patron for the lookup",
+    "aDescription": "The lookup shaped into the patron query; the patron record passes through unchanged.",
+    "b": "Call find patron",
+    "bDescription": "Pass-through: the lookup and the patron record cross unchanged, so neither mapping exists — dismissed with that reason.",
+    "lexical": 0.95,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "thr-papi|thr-sapi",
+    "a": "papi throughput",
+    "aDescription": "0.1 req/s expected · 2 req/s peak. Mirrors the experience API.",
+    "b": "sapi throughput",
+    "bDescription": "0.3 req/s expected · 3 req/s peak. Serves three callers.",
+    "lexical": 0.933,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "thr-papi|thr-xapi",
+    "a": "papi throughput",
+    "aDescription": "0.1 req/s expected · 2 req/s peak. Mirrors the experience API.",
+    "b": "xapi throughput",
+    "bDescription": "0.1 req/s expected · 2 req/s peak. Five tablets, one request a minute each; peak at opening.",
+    "lexical": 0.933,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "thr-sapi|thr-xapi",
+    "a": "sapi throughput",
+    "aDescription": "0.3 req/s expected · 3 req/s peak. Serves three callers.",
+    "b": "xapi throughput",
+    "bDescription": "0.1 req/s expected · 2 req/s peak. Five tablets, one request a minute each; peak at opening.",
+    "lexical": 0.933,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "client-papi-sapi|client-xapi-papi",
+    "a": "HTTP client → salesforce-patron-api",
+    "aDescription": "One HTTP Request configuration to the system API; the shared timeout budget and bounded retry.",
+    "b": "HTTP client → patron-attendance-api",
+    "bDescription": "One HTTP Request configuration: host, TLS, client-id headers, the shared timeout budget and bounded retry.",
+    "lexical": 0.875,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "spec-attendance-digest|spec-attendance-list",
+    "a": "Attendance list → attendance digest mapping spec",
+    "aDescription": "aperturex/mapping-spec/v1 for map-attendances-to-digest, in the document library.",
+    "b": "Patron_Attendance__c → attendance list mapping spec",
+    "bDescription": "aperturex/mapping-spec/v1 for map-attendances-to-list, in the document library.",
+    "lexical": 0.864,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "attendance-digest-sample|attendance-request-sample",
+    "a": "Digest sample",
+    "aDescription": null,
+    "b": "Attendance request sample",
+    "bDescription": null,
+    "lexical": 0.84,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "spec-attendance-digest|spec-attendance-request",
+    "a": "Attendance list → attendance digest mapping spec",
+    "aDescription": "aperturex/mapping-spec/v1 for map-attendances-to-digest, in the document library.",
+    "b": "Check-in request → attendance request mapping spec",
+    "bDescription": "aperturex/mapping-spec/v1 for map-patron-attendance-request, in the document library.",
+    "lexical": 0.826,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "req-digest-list-attendances|req-papi-upsert-attendance",
+    "a": "Call list attendances",
+    "aDescription": "The date is a query parameter, not a mapping; the list is shaped into the digest.",
+    "b": "Call upsert attendance",
+    "bDescription": "The attendance request shaped into the system API's attendance record; the acknowledgement carries nothing to map.",
+    "lexical": 0.818,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "spec-attendance-list|spec-attendance-to-sf",
+    "a": "Patron_Attendance__c → attendance list mapping spec",
+    "aDescription": "aperturex/mapping-spec/v1 for map-attendances-to-list, in the document library.",
+    "b": "Attendance record → Patron_Attendance__c mapping spec",
+    "bDescription": "aperturex/mapping-spec/v1 for map-attendance-to-sf, in the document library.",
+    "lexical": 0.81,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "map-case-to-ack|map-case-to-sf",
+    "a": "Map Case Record to Acknowledgement",
+    "aDescription": null,
+    "b": "Map Case Request to Case",
+    "bDescription": null,
+    "lexical": 0.8,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "client-mailbox-sapi|client-teesheet-sapi",
+    "a": "HTTP client → salesforce-patron-api (enquiries)",
+    "aDescription": null,
+    "b": "HTTP client → salesforce-patron-api (tee sheet)",
+    "bDescription": null,
+    "lexical": 0.795,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "client-poller-sapi|client-teesheet-sapi",
+    "a": "HTTP client → salesforce-patron-api (POS)",
+    "aDescription": null,
+    "b": "HTTP client → salesforce-patron-api (tee sheet)",
+    "bDescription": null,
+    "lexical": 0.795,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "fgc-it-security|fgc-it-support",
+    "a": "Famous Golf Course IT Security",
+    "aDescription": "Signs the policy set, the secrets strategy and the rotation calendar; quarterly access review.",
+    "b": "Famous Golf Course IT Support",
+    "bDescription": "L1 support during opening hours; owns alert recipients, runbooks, the VPN and the ingress certificate.",
+    "lexical": 0.793,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "map-attendance-to-sf|map-attendances-to-digest",
+    "a": "Map Attendance Record to Patron_Attendance__c",
+    "aDescription": null,
+    "b": "Map Attendance List to Digest",
+    "bDescription": null,
+    "lexical": 0.792,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "retry-bounded|retry-salesforce",
+    "a": "shared retry policy",
+    "aDescription": "3 attempts · exponential from 2 s. Connectivity, 429 and 503 only. The model's Bounded Retry and Recovery.",
+    "b": "sapi retry policy",
+    "bDescription": "Salesforce: 3 attempts · exponential from 2 s. REQUEST_LIMIT_EXCEEDED and UNABLE_TO_LOCK_ROW treated as retryable.",
+    "lexical": 0.789,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "spec-attendance-list|spec-attendance-request",
+    "a": "Patron_Attendance__c → attendance list mapping spec",
+    "aDescription": "aperturex/mapping-spec/v1 for map-attendances-to-list, in the document library.",
+    "b": "Check-in request → attendance request mapping spec",
+    "bDescription": "aperturex/mapping-spec/v1 for map-patron-attendance-request, in the document library.",
+    "lexical": 0.783,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "spec-attendance-record|spec-attendance-request",
+    "a": "Attendance request → attendance record mapping spec",
+    "aDescription": "aperturex/mapping-spec/v1 for map-attendance-to-record, in the document library.",
+    "b": "Check-in request → attendance request mapping spec",
+    "bDescription": "aperturex/mapping-spec/v1 for map-patron-attendance-request, in the document library.",
+    "lexical": 0.783,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "attendance-digest|attendance-request",
+    "a": "Attendance digest",
+    "aDescription": "Counts by tier, first-time visitors, no-shows against the tee sheet.",
+    "b": "Attendance request",
+    "bDescription": "patronId, arrivedAt, tabletId, Idempotency-Key.",
+    "lexical": 0.778,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "attendance-query|attendance-request",
+    "a": "Attendance query",
+    "aDescription": "A date.",
+    "b": "Attendance request",
+    "bDescription": "patronId, arrivedAt, tabletId, Idempotency-Key.",
+    "lexical": 0.778,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "obs-job|obs-sapi",
+    "a": "job observability",
+    "aDescription": "Job observability. Alert if the 06:00 run has not completed by 06:30.",
+    "b": "sapi observability",
+    "bDescription": "System API observability. Standard plus alert when Salesforce daily API-request consumption passes 80 %.",
+    "lexical": 0.778,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "spec-arrival-event|spec-patron-query",
+    "a": "Attendance request → arrival event mapping spec",
+    "aDescription": "aperturex/mapping-spec/v1 for map-attendance-to-arrival, in the document library.",
+    "b": "Attendance request → patron query mapping spec",
+    "bDescription": "aperturex/mapping-spec/v1 for map-attendance-to-patron-query, in the document library.",
+    "lexical": 0.778,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "spec-attendance-digest|spec-attendance-record",
+    "a": "Attendance list → attendance digest mapping spec",
+    "aDescription": "aperturex/mapping-spec/v1 for map-attendances-to-digest, in the document library.",
+    "b": "Attendance request → attendance record mapping spec",
+    "bDescription": "aperturex/mapping-spec/v1 for map-attendance-to-record, in the document library.",
+    "lexical": 0.776,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "spec-attendance-digest|spec-attendance-to-sf",
+    "a": "Attendance list → attendance digest mapping spec",
+    "aDescription": "aperturex/mapping-spec/v1 for map-attendances-to-digest, in the document library.",
+    "b": "Attendance record → Patron_Attendance__c mapping spec",
+    "bDescription": "aperturex/mapping-spec/v1 for map-attendance-to-sf, in the document library.",
+    "lexical": 0.773,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "req-papi-upsert-attendance|req-xapi-record-attendance",
+    "a": "Call upsert attendance",
+    "aDescription": "The attendance request shaped into the system API's attendance record; the acknowledgement carries nothing to map.",
+    "b": "Call record attendance",
+    "bDescription": "The card tap forwarded: the check-in request shaped into an attendance request, the greeting shaped back for the tablet.",
+    "lexical": 0.773,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "obs-job|obs-standard",
+    "a": "job observability",
+    "aDescription": "Job observability. Alert if the 06:00 run has not completed by 06:30.",
+    "b": "apis observability",
+    "bDescription": "JSON logger · correlation id · standard alerts. x-correlation-id accepted or minted; business events; alerts per detect-5min.",
+    "lexical": 0.765,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "req-papi-find-patron|req-papi-query-patron",
+    "a": "Call query patron for the lookup",
+    "aDescription": "The lookup shaped into the patron query; the patron record passes through unchanged.",
+    "b": "Call query patron for the greeting",
+    "bDescription": "From the attendance request, the patron query; from the patron record, the greeting.",
+    "lexical": 0.765,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "compose-greeting|compose-greeting-view",
+    "a": "Compose Greeting",
+    "aDescription": "Assembles patron, tee time and purchase context.",
+    "b": "Compose Greeting View",
+    "bDescription": "Shapes the greeting for a screen. Internal — never a boundary.",
+    "lexical": 0.762,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "map-attendance-to-arrival|map-attendance-to-record",
+    "a": "Map Attendance Request to Arrival Event",
+    "aDescription": null,
+    "b": "Map Attendance Request to Attendance Record",
+    "bDescription": null,
+    "lexical": 0.76,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "map-attendance-to-arrival|map-attendances-to-list",
+    "a": "Map Attendance Request to Arrival Event",
+    "aDescription": null,
+    "b": "Map Patron_Attendance__c rows to Attendance List",
+    "bDescription": null,
+    "lexical": 0.76,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "op-papi-record-attendance|op-sapi-upsert-attendance",
+    "a": "POST /attendances",
+    "aDescription": "Records one attendance per patron per day and returns the composed greeting.",
+    "b": "PUT /attendances/{key}",
+    "bDescription": "External-id upsert; the acknowledgement carries the Salesforce id and nothing else.",
+    "lexical": 0.76,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "idem-by-date|idem-external-id",
+    "a": "job idempotency",
+    "aDescription": "Digest keyed by date. A re-run of the same date is a no-op.",
+    "b": "sapi idempotency",
+    "bDescription": "Upsert on Attendance_Key__c. External id upsert in Salesforce.",
+    "lexical": 0.75,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "idem-by-date|idem-key-header",
+    "a": "job idempotency",
+    "aDescription": "Digest keyed by date. A re-run of the same date is a no-op.",
+    "b": "xapi idempotency",
+    "bDescription": "Idempotency-Key header on POST. Required by the experience API.",
+    "lexical": 0.75,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "idem-by-date|idem-one-per-day",
+    "a": "job idempotency",
+    "aDescription": "Digest keyed by date. A re-run of the same date is a no-op.",
+    "b": "papi idempotency",
+    "bDescription": "One attendance per patron per day. Idempotent Message Validator keyed patronId + date in Object Store v2, TTL 36 h. The model's One Attendance Registration per Day.",
+    "lexical": 0.75,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "idem-message-id|idem-message-id-imap",
+    "a": "listener idempotency",
+    "aDescription": "MQ message id in Object Store · 24 h",
+    "b": "mailbox idempotency",
+    "bDescription": "IMAP message-id in Object Store. One Case per email.",
+    "lexical": 0.75,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "map-attendance-to-record|map-attendance-to-sf",
+    "a": "Map Attendance Request to Attendance Record",
+    "aDescription": null,
+    "b": "Map Attendance Record to Patron_Attendance__c",
+    "bDescription": null,
+    "lexical": 0.75,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "map-attendance-to-record|map-attendances-to-digest",
+    "a": "Map Attendance Request to Attendance Record",
+    "aDescription": null,
+    "b": "Map Attendance List to Digest",
+    "bDescription": null,
+    "lexical": 0.75,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "map-attendance-to-record|map-attendances-to-list",
+    "a": "Map Attendance Request to Attendance Record",
+    "aDescription": null,
+    "b": "Map Patron_Attendance__c rows to Attendance List",
+    "bDescription": null,
+    "lexical": 0.75,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "obs-job|obs-poller",
+    "a": "job observability",
+    "aDescription": "Job observability. Alert if the 06:00 run has not completed by 06:30.",
+    "b": "poller observability",
+    "bDescription": "Poller observability. Alert if the watermark is unchanged for 60 min during opening hours.",
+    "lexical": 0.75,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "client-papi-sapi|client-teesheet-sapi",
+    "a": "HTTP client → salesforce-patron-api",
+    "aDescription": "One HTTP Request configuration to the system API; the shared timeout budget and bounded retry.",
+    "b": "HTTP client → salesforce-patron-api (tee sheet)",
+    "bDescription": null,
+    "lexical": 0.744,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "map-attendance-to-arrival|map-attendance-to-patron-query",
+    "a": "Map Attendance Request to Arrival Event",
+    "aDescription": null,
+    "b": "Map Attendance Request to Patron Query",
+    "bDescription": null,
+    "lexical": 0.744,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "spec-attendance-request|spec-attendance-to-sf",
+    "a": "Check-in request → attendance request mapping spec",
+    "aDescription": "aperturex/mapping-spec/v1 for map-patron-attendance-request, in the document library.",
+    "b": "Attendance record → Patron_Attendance__c mapping spec",
+    "bDescription": "aperturex/mapping-spec/v1 for map-attendance-to-sf, in the document library.",
+    "lexical": 0.739,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "spec-arrival-event|spec-attendance-record",
+    "a": "Attendance request → arrival event mapping spec",
+    "aDescription": "aperturex/mapping-spec/v1 for map-attendance-to-arrival, in the document library.",
+    "b": "Attendance request → attendance record mapping spec",
+    "bDescription": "aperturex/mapping-spec/v1 for map-attendance-to-record, in the document library.",
+    "lexical": 0.735,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "spec-attendance-record|spec-patron-query",
+    "a": "Attendance request → attendance record mapping spec",
+    "aDescription": "aperturex/mapping-spec/v1 for map-attendance-to-record, in the document library.",
+    "b": "Attendance request → patron query mapping spec",
+    "bDescription": "aperturex/mapping-spec/v1 for map-attendance-to-patron-query, in the document library.",
+    "lexical": 0.735,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "case-record|purchase-record",
+    "a": "Case record",
+    "aDescription": "Case number and status, as the system API returns them.",
+    "b": "Purchase record",
+    "bDescription": "The system API's request object for a pro-shop purchase.",
+    "lexical": 0.733,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "obs-listener|obs-poller",
+    "a": "listener observability",
+    "aDescription": "Listener observability. Alert on DLQ depth > 0 and consumer lag > 100.",
+    "b": "poller observability",
+    "bDescription": "Poller observability. Alert if the watermark is unchanged for 60 min during opening hours.",
+    "lexical": 0.727,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "spec-attendance-list|spec-attendance-record",
+    "a": "Patron_Attendance__c → attendance list mapping spec",
+    "aDescription": "aperturex/mapping-spec/v1 for map-attendances-to-list, in the document library.",
+    "b": "Attendance request → attendance record mapping spec",
+    "bDescription": "aperturex/mapping-spec/v1 for map-attendance-to-record, in the document library.",
+    "lexical": 0.727,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "spec-attendance-record|spec-attendance-to-sf",
+    "a": "Attendance request → attendance record mapping spec",
+    "aDescription": "aperturex/mapping-spec/v1 for map-attendance-to-record, in the document library.",
+    "b": "Attendance record → Patron_Attendance__c mapping spec",
+    "bDescription": "aperturex/mapping-spec/v1 for map-attendance-to-sf, in the document library.",
+    "lexical": 0.727,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "req-digest-list-attendances|req-xapi-record-attendance",
+    "a": "Call list attendances",
+    "aDescription": "The date is a query parameter, not a mapping; the list is shaped into the digest.",
+    "b": "Call record attendance",
+    "bDescription": "The card tap forwarded: the check-in request shaped into an attendance request, the greeting shaped back for the tablet.",
+    "lexical": 0.727,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "api-versioning-v1|compat-semver",
+    "a": "apis compatibility promise",
+    "aDescription": "Major in path, minor in Exchange · 90-day deprecation. The model's Standard API Versioning.",
+    "b": "library compatibility promise",
+    "bDescription": "Major bump only for breaking change · consumers pin exact versions · 30-day notice in Exchange",
+    "lexical": 0.724,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "attendance-list|attendance-request",
+    "a": "Attendance list",
+    "aDescription": "One day's attendances as the system API returns them.",
+    "b": "Attendance request",
+    "bDescription": "patronId, arrivedAt, tabletId, Idempotency-Key.",
+    "lexical": 0.722,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "attendance-record|attendance-request",
+    "a": "Attendance record",
+    "aDescription": "The system API's request object for an attendance: Attendance_Key__c, patron id, arrivedAt, source tablet.",
+    "b": "Attendance request",
+    "bDescription": "patronId, arrivedAt, tabletId, Idempotency-Key.",
+    "lexical": 0.722,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "sf-case|sf-contact",
+    "a": "Case (Salesforce)",
+    "aDescription": "Guest enquiries.",
+    "b": "Contact (Salesforce)",
+    "bDescription": "The patron record.",
+    "lexical": 0.722,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "idem-by-date|idem-purchase-id",
+    "a": "job idempotency",
+    "aDescription": "Digest keyed by date. A re-run of the same date is a no-op.",
+    "b": "poller idempotency",
+    "bDescription": "Upsert on purchase id",
+    "lexical": 0.722,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "idem-one-per-day|idem-purchase-id",
+    "a": "papi idempotency",
+    "aDescription": "One attendance per patron per day. Idempotent Message Validator keyed patronId + date in Object Store v2, TTL 36 h. The model's One Attendance Registration per Day.",
+    "b": "poller idempotency",
+    "bDescription": "Upsert on purchase id",
+    "lexical": 0.722,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "obs-sapi|obs-standard",
+    "a": "sapi observability",
+    "aDescription": "System API observability. Standard plus alert when Salesforce daily API-request consumption passes 80 %.",
+    "b": "apis observability",
+    "bDescription": "JSON logger · correlation id · standard alerts. x-correlation-id accepted or minted; business events; alerts per detect-5min.",
+    "lexical": 0.722,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "map-attendance-to-arrival|map-attendance-to-sf",
+    "a": "Map Attendance Request to Arrival Event",
+    "aDescription": null,
+    "b": "Map Attendance Record to Patron_Attendance__c",
+    "bDescription": null,
+    "lexical": 0.72,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "map-attendance-to-arrival|map-attendances-to-digest",
+    "a": "Map Attendance Request to Arrival Event",
+    "aDescription": null,
+    "b": "Map Attendance List to Digest",
+    "bDescription": null,
+    "lexical": 0.72,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "op-papi-record-attendance|op-sapi-list-attendances",
+    "a": "POST /attendances",
+    "aDescription": "Records one attendance per patron per day and returns the composed greeting.",
+    "b": "GET /attendances?date",
+    "bDescription": "A day's attendances, for the digest.",
+    "lexical": 0.72,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "map-attendance-to-sf|map-purchase",
+    "a": "Map Attendance Record to Patron_Attendance__c",
+    "aDescription": null,
+    "b": "Map Purchase Record to Patron_Purchase__c",
+    "bDescription": null,
+    "lexical": 0.714,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "obs-job|obs-mailbox",
+    "a": "job observability",
+    "aDescription": "Job observability. Alert if the 06:00 run has not completed by 06:30.",
+    "b": "mailbox observability",
+    "bDescription": "Mailbox observability. Alert if the oldest unread enquiry is over 4 h during opening hours.",
+    "lexical": 0.714,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "obs-mailbox|obs-poller",
+    "a": "mailbox observability",
+    "aDescription": "Mailbox observability. Alert if the oldest unread enquiry is over 4 h during opening hours.",
+    "b": "poller observability",
+    "bDescription": "Poller observability. Alert if the watermark is unchanged for 60 min during opening hours.",
+    "lexical": 0.714,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "obs-mailbox|obs-sapi",
+    "a": "mailbox observability",
+    "aDescription": "Mailbox observability. Alert if the oldest unread enquiry is over 4 h during opening hours.",
+    "b": "sapi observability",
+    "bDescription": "System API observability. Standard plus alert when Salesforce daily API-request consumption passes 80 %.",
+    "lexical": 0.714,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "spec-attendance-to-sf|spec-purchase",
+    "a": "Attendance record → Patron_Attendance__c mapping spec",
+    "aDescription": "aperturex/mapping-spec/v1 for map-attendance-to-sf, in the document library.",
+    "b": "Purchase record → Patron_Purchase__c mapping spec",
+    "bDescription": "aperturex/mapping-spec/v1 for map-purchase, in the document library.",
+    "lexical": 0.714,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "map-attendance-to-patron-query|map-patron-attendance-request",
+    "a": "Map Attendance Request to Patron Query",
+    "aDescription": null,
+    "b": "Map Check-in Request to Attendance Request",
+    "bDescription": "DataWeave; MUnit assertions in src/test/munit. The caller's request mapping — it writes the process API's request object.",
+    "lexical": 0.667,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "spec-case-to-sf|spec-email-to-case",
+    "a": "Case request → Case mapping spec",
+    "aDescription": "aperturex/mapping-spec/v1 for map-case-to-sf, in the document library.",
+    "b": "Enquiry email → case request mapping spec",
+    "bDescription": "aperturex/mapping-spec/v1 for map-email-to-case, in the document library.",
+    "lexical": 0.667,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "op-papi-record-attendance|op-sapi-record-purchase",
+    "a": "POST /attendances",
+    "aDescription": "Records one attendance per patron per day and returns the composed greeting.",
+    "b": "PUT /purchases/{id}",
+    "bDescription": "One pro-shop purchase, keyed by the POS purchase id.",
+    "lexical": 0.64,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "call-sapi-upsert-attendance|call-sapi-upsert-purchase",
+    "a": "Upsert Patron_Attendance__c",
+    "aDescription": "External-id upsert on Attendance_Key__c.",
+    "b": "Upsert Patron_Purchase__c",
+    "bDescription": null,
+    "lexical": 0.704,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "op-checkin-attendance|op-papi-record-attendance",
+    "a": "POST /patrons/{id}/attendances",
+    "aDescription": "The card tap: records the attendance through the process API and returns the greeting shaped for the tablet.",
+    "b": "POST /attendances",
+    "bDescription": "Records one attendance per patron per day and returns the composed greeting.",
+    "lexical": 0.64,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "idem-by-date|idem-message-id-imap",
+    "a": "job idempotency",
+    "aDescription": "Digest keyed by date. A re-run of the same date is a no-op.",
+    "b": "mailbox idempotency",
+    "bDescription": "IMAP message-id in Object Store. One Case per email.",
+    "lexical": 0.684,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "greeting-request|greeting-view",
+    "a": "Greeting request",
+    "aDescription": "patronId and tabletId, for a screen that was refreshed.",
+    "b": "Greeting view",
+    "bDescription": "What the tablet renders: headline, patron first name, membership tier badge, today's tee time. Shaped for a 10-inch screen; nothing the tablet does not show.",
+    "lexical": 0.625,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "job-secrets|sapi-secrets",
+    "a": "job secrets",
+    "aDescription": "Digest job secrets. secure::smtp.password, secure::sapi.client.secret.",
+    "b": "sapi secrets",
+    "bDescription": "System API secrets. secure::sf.consumer.key; JWT signing certificate in Secrets Manager; integration user integration@famousgolfcourse.com.au.",
+    "lexical": 0.636,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "idem-key-header|idem-message-id-imap",
+    "a": "xapi idempotency",
+    "aDescription": "Idempotency-Key header on POST. Required by the experience API.",
+    "b": "mailbox idempotency",
+    "bDescription": "IMAP message-id in Object Store. One Case per email.",
+    "lexical": 0.684,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "attendance-digest|attendance-query",
+    "a": "Attendance digest",
+    "aDescription": "Counts by tier, first-time visitors, no-shows against the tee sheet.",
+    "b": "Attendance query",
+    "bDescription": "A date.",
+    "lexical": 0.706,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "idem-external-id|idem-message-id",
+    "a": "sapi idempotency",
+    "aDescription": "Upsert on Attendance_Key__c. External id upsert in Salesforce.",
+    "b": "listener idempotency",
+    "bDescription": "MQ message id in Object Store · 24 h",
+    "lexical": 0.65,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "spec-contact-to-patron|spec-patron-to-greeting",
+    "a": "Contact → patron record mapping spec",
+    "aDescription": "aperturex/mapping-spec/v1 for map-contact-to-patron, in the document library.",
+    "b": "Patron record → greeting mapping spec",
+    "bDescription": "aperturex/mapping-spec/v1 for map-patron-to-greeting, in the document library.",
+    "lexical": 0.667,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "map-attendance-to-record|map-patron-attendance-request",
+    "a": "Map Attendance Request to Attendance Record",
+    "aDescription": null,
+    "b": "Map Check-in Request to Attendance Request",
+    "bDescription": "DataWeave; MUnit assertions in src/test/munit. The caller's request mapping — it writes the process API's request object.",
+    "lexical": 0.674,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "map-purchase|map-purchase-to-record",
+    "a": "Map Purchase Record to Patron_Purchase__c",
+    "aDescription": null,
+    "b": "Map Purchase to Purchase Record",
+    "bDescription": null,
+    "lexical": 0.667,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "spec-attendance-to-sf|spec-case-to-sf",
+    "a": "Attendance record → Patron_Attendance__c mapping spec",
+    "aDescription": "aperturex/mapping-spec/v1 for map-attendance-to-sf, in the document library.",
+    "b": "Case request → Case mapping spec",
+    "bDescription": "aperturex/mapping-spec/v1 for map-case-to-sf, in the document library.",
+    "lexical": 0.619,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "job-secrets|xapi-secrets",
+    "a": "job secrets",
+    "aDescription": "Digest job secrets. secure::smtp.password, secure::sapi.client.secret.",
+    "b": "xapi secrets",
+    "bDescription": "Experience API secrets. TLS only; no connector credentials.",
+    "lexical": 0.636,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "lat-15min|lat-papi",
+    "a": "mailbox latency",
+    "aDescription": "15 min from receipt to Case and acknowledgement",
+    "b": "papi latency",
+    "bDescription": "p95 1 200 ms",
+    "lexical": 0.6,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "idem-by-date|idem-message-id",
+    "a": "job idempotency",
+    "aDescription": "Digest keyed by date. A re-run of the same date is a no-op.",
+    "b": "listener idempotency",
+    "bDescription": "MQ message id in Object Store · 24 h",
+    "lexical": 0.6,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "idem-message-id-imap|idem-purchase-id",
+    "a": "mailbox idempotency",
+    "aDescription": "IMAP message-id in Object Store. One Case per email.",
+    "b": "poller idempotency",
+    "bDescription": "Upsert on purchase id",
+    "lexical": 0.684,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "attendance-list|attendance-record",
+    "a": "Attendance list",
+    "aDescription": "One day's attendances as the system API returns them.",
+    "b": "Attendance record",
+    "bDescription": "The system API's request object for an attendance: Attendance_Key__c, patron id, arrivedAt, source tablet.",
+    "lexical": 0.647,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "attendance-query|attendance-record",
+    "a": "Attendance query",
+    "aDescription": "A date.",
+    "b": "Attendance record",
+    "bDescription": "The system API's request object for an attendance: Attendance_Key__c, patron id, arrivedAt, source tablet.",
+    "lexical": 0.706,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "map-attendance-to-patron-query|map-attendance-to-sf",
+    "a": "Map Attendance Request to Patron Query",
+    "aDescription": null,
+    "b": "Map Attendance Record to Patron_Attendance__c",
+    "bDescription": null,
+    "lexical": 0.636,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "obs-ft|obs-listener",
+    "a": "file-transfer observability",
+    "aDescription": "File-transfer observability. Alert if no file by 05:30 and on any quarantine write.",
+    "b": "listener observability",
+    "bDescription": "Listener observability. Alert on DLQ depth > 0 and consumer lag > 100.",
+    "lexical": 0.704,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "spec-arrival-event|spec-attendance-digest",
+    "a": "Attendance request → arrival event mapping spec",
+    "aDescription": "aperturex/mapping-spec/v1 for map-attendance-to-arrival, in the document library.",
+    "b": "Attendance list → attendance digest mapping spec",
+    "bDescription": "aperturex/mapping-spec/v1 for map-attendances-to-digest, in the document library.",
+    "lexical": 0.63,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "idem-file-checksum|idem-message-id",
+    "a": "file-transfer idempotency",
+    "aDescription": "Filename + checksum in Object Store",
+    "b": "listener idempotency",
+    "bDescription": "MQ message id in Object Store · 24 h",
+    "lexical": 0.68,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "obs-poller|obs-standard",
+    "a": "poller observability",
+    "aDescription": "Poller observability. Alert if the watermark is unchanged for 60 min during opening hours.",
+    "b": "apis observability",
+    "bDescription": "JSON logger · correlation id · standard alerts. x-correlation-id accepted or minted; business events; alerts per detect-5min.",
+    "lexical": 0.65,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "obs-job|obs-listener",
+    "a": "job observability",
+    "aDescription": "Job observability. Alert if the 06:00 run has not completed by 06:30.",
+    "b": "listener observability",
+    "bDescription": "Listener observability. Alert on DLQ depth > 0 and consumer lag > 100.",
+    "lexical": 0.636,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "ft-secrets|xapi-secrets",
+    "a": "file-transfer secrets",
+    "aDescription": "File-transfer secrets. SFTP private key in Secrets Manager; vendor host key pinned.",
+    "b": "xapi secrets",
+    "bDescription": "Experience API secrets. TLS only; no connector credentials.",
+    "lexical": 0.636,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "obs-listener|obs-mailbox",
+    "a": "listener observability",
+    "aDescription": "Listener observability. Alert on DLQ depth > 0 and consumer lag > 100.",
+    "b": "mailbox observability",
+    "bDescription": "Mailbox observability. Alert if the oldest unread enquiry is over 4 h during opening hours.",
+    "lexical": 0.636,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "req-poller-record-purchase|req-xapi-record-attendance",
+    "a": "Call record purchase",
+    "aDescription": "The POS row shaped into the system API's purchase record; the acknowledgement carries nothing to map.",
+    "b": "Call record attendance",
+    "bDescription": "The card tap forwarded: the check-in request shaped into an attendance request, the greeting shaped back for the tablet.",
+    "lexical": 0.636,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "idem-key-header|idem-purchase-id",
+    "a": "xapi idempotency",
+    "aDescription": "Idempotency-Key header on POST. Required by the experience API.",
+    "b": "poller idempotency",
+    "bDescription": "Upsert on purchase id",
+    "lexical": 0.667,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "poll-5min|poll-5min-imap",
+    "a": "poller cadence",
+    "aDescription": "Every 5 min · 06:00–20:00. Silent during the POS backup 01:00–03:00.",
+    "b": "mailbox cadence",
+    "bDescription": "IMAP poll every 5 min",
+    "lexical": 0.667,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "map-attendances-to-digest|map-digest-to-email",
+    "a": "Map Attendance List to Digest",
+    "aDescription": null,
+    "b": "Map Digest to Email",
+    "bDescription": null,
+    "lexical": 0.6,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "spec-arrival-event|spec-digest-email",
+    "a": "Attendance request → arrival event mapping spec",
+    "aDescription": "aperturex/mapping-spec/v1 for map-attendance-to-arrival, in the document library.",
+    "b": "Attendance digest → email mapping spec",
+    "bDescription": "aperturex/mapping-spec/v1 for map-digest-to-email, in the document library.",
+    "lexical": 0.667,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "map-attendance-to-sf|map-case-to-sf",
+    "a": "Map Attendance Record to Patron_Attendance__c",
+    "aDescription": null,
+    "b": "Map Case Request to Case",
+    "bDescription": null,
+    "lexical": 0.6,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "map-attendance-to-patron-query|map-attendances-to-list",
+    "a": "Map Attendance Request to Patron Query",
+    "aDescription": null,
+    "b": "Map Patron_Attendance__c rows to Attendance List",
+    "bDescription": null,
+    "lexical": 0.6,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "ft-secrets|job-secrets",
+    "a": "file-transfer secrets",
+    "aDescription": "File-transfer secrets. SFTP private key in Secrets Manager; vendor host key pinned.",
+    "b": "job secrets",
+    "bDescription": "Digest job secrets. secure::smtp.password, secure::sapi.client.secret.",
+    "lexical": 0.7,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "map-attendance-to-patron-query|map-attendance-to-record",
+    "a": "Map Attendance Request to Patron Query",
+    "aDescription": null,
+    "b": "Map Attendance Request to Attendance Record",
+    "bDescription": null,
+    "lexical": 0.698,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "ft-secrets|sapi-secrets",
+    "a": "file-transfer secrets",
+    "aDescription": "File-transfer secrets. SFTP private key in Secrets Manager; vendor host key pinned.",
+    "b": "sapi secrets",
+    "bDescription": "System API secrets. secure::sf.consumer.key; JWT signing certificate in Secrets Manager; integration user integration@famousgolfcourse.com.au.",
+    "lexical": 0.636,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "spec-attendance-digest|spec-patron-query",
+    "a": "Attendance list → attendance digest mapping spec",
+    "aDescription": "aperturex/mapping-spec/v1 for map-attendances-to-digest, in the document library.",
+    "b": "Attendance request → patron query mapping spec",
+    "bDescription": "aperturex/mapping-spec/v1 for map-attendance-to-patron-query, in the document library.",
+    "lexical": 0.609,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "ft-secrets|listener-secrets",
+    "a": "file-transfer secrets",
+    "aDescription": "File-transfer secrets. SFTP private key in Secrets Manager; vendor host key pinned.",
+    "b": "listener secrets",
+    "bDescription": "Listener secrets. secure::mq.client.secret, secure::teams.webhook.",
+    "lexical": 0.6,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "idem-message-id|idem-purchase-id",
+    "a": "listener idempotency",
+    "aDescription": "MQ message id in Object Store · 24 h",
+    "b": "poller idempotency",
+    "bDescription": "Upsert on purchase id",
+    "lexical": 0.7,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "papi-secrets|poller-secrets",
+    "a": "papi secrets",
+    "aDescription": "Process API secrets. secure::papi.client.secret for the system-API client application.",
+    "b": "poller secrets",
+    "bDescription": "Poller secrets. secure::pos.db.password (read-only account).",
+    "lexical": 0.615,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "map-digest-to-email|map-email-to-case",
+    "a": "Map Digest to Email",
+    "aDescription": null,
+    "b": "Map Email to Case Request",
+    "bDescription": null,
+    "lexical": 0.6,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "raml-patron-attendance|raml-patron-checkin",
+    "a": "patron-attendance-api RAML",
+    "aDescription": "RAML 1.0 published to Anypoint Exchange, private.",
+    "b": "patron-checkin-api RAML",
+    "bDescription": "RAML 1.0 published to Anypoint Exchange; the contract the tablet builds against.",
+    "lexical": 0.636,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "spec-attendance-record|spec-purchase-record",
+    "a": "Attendance request → attendance record mapping spec",
+    "aDescription": "aperturex/mapping-spec/v1 for map-attendance-to-record, in the document library.",
+    "b": "Purchase → purchase record mapping spec",
+    "bDescription": "aperturex/mapping-spec/v1 for map-purchase-to-record, in the document library.",
+    "lexical": 0.636,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "lat-15min|lat-sapi",
+    "a": "mailbox latency",
+    "aDescription": "15 min from receipt to Case and acknowledgement",
+    "b": "sapi latency",
+    "bDescription": "p95 800 ms. Salesforce round trip dominates.",
+    "lexical": 0.6,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "case-request|checkin-request",
+    "a": "Case request",
+    "aDescription": "The system API's request object for a guest enquiry: sender, subject, body, received.",
+    "b": "Check-in request",
+    "bDescription": "What the tablet sends: membershipNumber, tabletId, arrivedAt. The card tap, before anybody has looked the patron up.",
+    "lexical": 0.6,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "greeting|greeting-view",
+    "a": "Greeting",
+    "aDescription": "Name, membership tier, tee time, recent purchase, welcome line. What the process API returns.",
+    "b": "Greeting view",
+    "bDescription": "What the tablet renders: headline, patron first name, membership tier badge, today's tee time. Shaped for a 10-inch screen; nothing the tablet does not show.",
+    "lexical": 0.615,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "checkin-request|greeting-request",
+    "a": "Check-in request",
+    "aDescription": "What the tablet sends: membershipNumber, tabletId, arrivedAt. The card tap, before anybody has looked the patron up.",
+    "b": "Greeting request",
+    "bDescription": "patronId and tabletId, for a screen that was refreshed.",
+    "lexical": 0.688,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "spec-attendance-digest|spec-digest-email",
+    "a": "Attendance list → attendance digest mapping spec",
+    "aDescription": "aperturex/mapping-spec/v1 for map-attendances-to-digest, in the document library.",
+    "b": "Attendance digest → email mapping spec",
+    "bDescription": "aperturex/mapping-spec/v1 for map-digest-to-email, in the document library.",
+    "lexical": 0.667,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "spec-ack-email|spec-digest-email",
+    "a": "Case record → acknowledgement email mapping spec",
+    "aDescription": "aperturex/mapping-spec/v1 for map-case-to-ack, in the document library.",
+    "b": "Attendance digest → email mapping spec",
+    "bDescription": "aperturex/mapping-spec/v1 for map-digest-to-email, in the document library.",
+    "lexical": 0.647,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "client-mailbox-sapi|client-xapi-papi",
+    "a": "HTTP client → salesforce-patron-api (enquiries)",
+    "aDescription": null,
+    "b": "HTTP client → patron-attendance-api",
+    "bDescription": "One HTTP Request configuration: host, TLS, client-id headers, the shared timeout budget and bounded retry.",
+    "lexical": 0.632,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "sf-patron-attendance|sf-patron-purchase",
+    "a": "Patron_Attendance__c",
+    "aDescription": "One row per patron per day, external id Attendance_Key__c.",
+    "b": "Patron_Purchase__c",
+    "bDescription": "Pro-shop purchases synchronised from the POS.",
+    "lexical": 0.6,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "call-sapi-create-case|call-sapi-upsert-purchase",
+    "a": "Create Case",
+    "aDescription": null,
+    "b": "Upsert Patron_Purchase__c",
+    "bDescription": null,
+    "lexical": 0.64,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "patron-query|patron-record",
+    "a": "Patron query",
+    "aDescription": "The system API's lookup: membership number or patron id, and which fields.",
+    "b": "Patron record",
+    "bDescription": "The canonical patron as the tiers see it.",
+    "lexical": 0.615,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "attendance-digest|attendance-record",
+    "a": "Attendance digest",
+    "aDescription": "Counts by tier, first-time visitors, no-shows against the tee sheet.",
+    "b": "Attendance record",
+    "bDescription": "The system API's request object for an attendance: Attendance_Key__c, patron id, arrivedAt, source tablet.",
+    "lexical": 0.647,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "attendance-list|attendance-query",
+    "a": "Attendance list",
+    "aDescription": "One day's attendances as the system API returns them.",
+    "b": "Attendance query",
+    "bDescription": "A date.",
+    "lexical": 0.688,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "lat-15min|lat-xapi",
+    "a": "mailbox latency",
+    "aDescription": "15 min from receipt to Case and acknowledgement",
+    "b": "xapi latency",
+    "bDescription": "p95 2 000 ms · p99 4 000 ms at the boundary. Verified by the k6 smoke test.",
+    "lexical": 0.6,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "spec-attendance-record|spec-digest-email",
+    "a": "Attendance request → attendance record mapping spec",
+    "aDescription": "aperturex/mapping-spec/v1 for map-attendance-to-record, in the document library.",
+    "b": "Attendance digest → email mapping spec",
+    "bDescription": "aperturex/mapping-spec/v1 for map-digest-to-email, in the document library.",
+    "lexical": 0.612,
+    "currentRule": false,
+    "label": null
+  }
+]

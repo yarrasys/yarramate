@@ -20,8 +20,9 @@ export const DATASETS = {
   self: { manifest: resolve(here, '../../../../.yarramate/workspace.yaml'), public: true },
   // The site's showcase, copied read-only; see datasets/halcyon/SOURCE.md.
   halcyon: { manifest: resolve(here, '../datasets/halcyon/workspace.yaml'), public: true },
-  // ApertureX's reference: NOT bundled. Point at a local checkout with --manifest, and only
-  // once its owner has said the record may be sent to the vendor (PROTOCOL.md, data).
+  // ApertureX's reference architecture, copied read-only on the maintainer's instruction;
+  // see datasets/patron-greeting/SOURCE.md for provenance and why it carries no real data.
+  'patron-greeting': { manifest: resolve(here, '../datasets/patron-greeting/workspace.yaml'), public: false },
 }
 
 /** Reads a workspace from disk into the shape compileWorkspaceWithProfileContext wants. */

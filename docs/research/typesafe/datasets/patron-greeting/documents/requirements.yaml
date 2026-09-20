@@ -1,0 +1,144 @@
+format: yarramate/v1
+id: requirements
+profile: aperturex/mule@1.0
+# What the club asked for, written as it would have been before any of it was designed. The
+# requirements come first and the solution follows: each requirement names the goal it realizes and
+# the stakeholder or role who signs it off (an association, the way every constraint subject in
+# nfrs.yaml names its owner), and the solution's own documents declare what they realize — the
+# `br-*` realization edges at the top of the relationships in applications.yaml and platform.yaml.
+# Where a requirement has a number, the number lives in a constraint subject in nfrs.yaml and the
+# requirement is associated to it as "measured by". Nothing here names a technology: a requirement
+# that names one is a design decision in disguise.
+#
+# The Traceability tab tables these rows with what realizes them, and the delivery workbook carries
+# them on `17 Requirements` — a sheet the MuleSoft solution-design template never had — with the
+# traceability as read-only columns.
+concepts:
+  # ── Motivation. The sponsor, the first driver and the first goal are in platform.yaml. The second
+  # driver is the club's duty over its members' data, and two further goals cover what the greeting
+  # produces beyond the moment of arrival.
+  - id: member-data-trust
+    kind: driver
+    name: "Members trust the club with their data"
+    description: "Members hand the club their name, membership and movements on the assumption that the club keeps them to itself. A leak, or data leaving the country, would cost more members than any greeting wins."
+  - id: attendance-known-daily
+    kind: goal
+    name: "Attendance is known by breakfast"
+    description: "Management knows who visited yesterday — by tier, first-time visitors and no-shows against the bookings — before the pro shop opens, from one record that is right."
+  - id: enquiries-answered
+    kind: goal
+    name: "No enquiry goes unanswered"
+    description: "Every guest enquiry that reaches the club is on record against the patron and acknowledged within the quarter hour, so nobody chases a second time."
+  # ── Business requirements. BR-01 to BR-09 are what the club wants to happen; BR-10 to BR-14 are
+  # the terms the club's IT sets for anything that touches its members' data.
+  - id: br-01-recognise-patron
+    kind: requirement
+    name: "BR-01 Recognise the arriving patron"
+    description: "A patron presenting their membership number at the pro shop or the first tee is found in the club's patron record before anything about the visit is written down, so a mistyped number is caught at the tap and not discovered in the morning report."
+  - id: br-02-greet-with-context
+    kind: requirement
+    name: "BR-02 Greet by name, with today's context"
+    description: "The greeting names the patron and shows their membership tier, today's tee time and their most recent pro-shop purchase, so staff can say something personal without looking anything up. It is on the screen within two seconds of the tap at the 95th percentile."
+  - id: br-03-record-arrival-once
+    kind: requirement
+    name: "BR-03 Record every arrival, once"
+    description: "Each arrival is written to the club's patron record at the moment of the tap — once per patron per day however many times the card is tapped or the tablet retries, and never lost when it is."
+  - id: br-04-staff-greet-as-themselves
+    kind: requirement
+    name: "BR-04 Staff greet from a tablet, as themselves"
+    description: "Guest Services staff greet from the tablets at the pro shop and the first tee, signed in with their own club identity, so every recorded arrival names the staff member who greeted and not the device they used."
+  - id: br-05-staff-know-arrivals
+    kind: requirement
+    name: "BR-05 Staff away from the desk know who has arrived"
+    description: "When an arrival is recorded, staff who are not at the tablet see who it was — name, tier, arrival time and which tablet — in the pro-shop channel within ten seconds, so a greeting can follow the patron onto the course."
+  - id: br-06-attendance-digest
+    kind: requirement
+    name: "BR-06 Yesterday's attendance in the manager's inbox by 06:30"
+    description: "The Guest Services Manager receives yesterday's attendance every morning — counts by membership tier, first-time visitors, and no-shows against the tee sheet — in the inbox by 06:30, in time to be read before opening."
+  - id: br-07-tee-times-ahead
+    kind: requirement
+    name: "BR-07 Today's tee times are known before the first arrival"
+    description: "The day's bookings from the tee-time booking vendor are in the patron record before the course opens, so the greeting can mention the tee time. The vendor's export lands between 04:00 and 05:00; a day it has not arrived by 05:30 is reported, not silently missing."
+  - id: br-08-purchases-follow-patron
+    kind: requirement
+    name: "BR-08 Recent pro-shop purchases follow the patron"
+    description: "A purchase made at the pro-shop till is in the patron record within an hour during opening hours, so a returning patron can be thanked for last week's putter at the next arrival."
+  - id: br-09-enquiry-to-case
+    kind: requirement
+    name: "BR-09 Every emailed enquiry becomes a case and is acknowledged"
+    description: "A guest enquiry sent to the club's enquiries mailbox is recorded as a case against the patron, and the sender receives an acknowledgement carrying the case number and the expected response time, within fifteen minutes of receipt."
+  - id: br-10-one-patron-record
+    kind: requirement
+    name: "BR-10 One patron record"
+    description: "The club's CRM is the only system of record for patrons, memberships, attendance, purchases and enquiries. Nothing the greeting does keeps a second copy of patron data, and everything that writes to the record goes through one seam so the CRM's limits are managed in one place."
+  - id: br-11-patron-data-private
+    kind: requirement
+    name: "BR-11 Patron data stays private"
+    description: "A patron's name, membership number and attendance are personal information: masked in every log, never in committed sample data, readable only by signed-in club staff and the integration's own account, and kept in logs for no longer than thirty days."
+  - id: br-12-open-hours-availability
+    kind: requirement
+    name: "BR-12 Ready whenever the course is open"
+    description: "The greeting is available throughout opening hours, 06:00 to 20:00 AEST, at 99.5 %, and best effort outside them. After any outage it is back within an hour with nothing lost, because the patron record is never held anywhere but the CRM."
+  - id: br-13-hosted-in-australia
+    kind: requirement
+    name: "BR-13 Hosted in Australia, on the club's own platform"
+    description: "Everything the club runs for the greeting is hosted in the club's own integration space in the Sydney region and reaches the CRM, the booking vendor and the pro-shop network only from known addresses. The club's own network is reachable for the till's database and for nothing else."
+  - id: br-14-supportable-by-club-it
+    kind: requirement
+    name: "BR-14 Supportable by the club's IT during opening hours"
+    description: "Club IT Support is told about a fault before a patron notices it — an interactive fault within five minutes, an overnight one within thirty — through the club's own alert channel, with a runbook for each alert that first-line support can follow."
+relationships:
+  # ── Whose goals these are, and what presses for them (the first goal is attributed in platform.yaml).
+  - { id: r-stakeholder-attendance-goal, kind: association, from: club-management, to: attendance-known-daily }
+  - { id: r-driver-attendance-goal, kind: association, from: member-retention, to: attendance-known-daily }
+  - { id: r-stakeholder-enquiries-goal, kind: association, from: club-management, to: enquiries-answered }
+  - { id: r-driver-enquiries-goal, kind: association, from: member-retention, to: enquiries-answered }
+  # ── What each requirement realizes. BR-11 and BR-13 realize no goal: they are the terms the
+  # club's duty over its members' data sets on any solution, and the driver names them directly.
+  - { id: g-br-01, kind: realization, from: br-01-recognise-patron, to: consistent-arrival-experience }
+  - { id: g-br-02, kind: realization, from: br-02-greet-with-context, to: consistent-arrival-experience }
+  - { id: g-br-03, kind: realization, from: br-03-record-arrival-once, to: consistent-arrival-experience }
+  - { id: g-br-03-attendance, kind: realization, from: br-03-record-arrival-once, to: attendance-known-daily }
+  - { id: g-br-04, kind: realization, from: br-04-staff-greet-as-themselves, to: consistent-arrival-experience }
+  - { id: g-br-05, kind: realization, from: br-05-staff-know-arrivals, to: consistent-arrival-experience }
+  - { id: g-br-06, kind: realization, from: br-06-attendance-digest, to: attendance-known-daily }
+  - { id: g-br-07, kind: realization, from: br-07-tee-times-ahead, to: consistent-arrival-experience }
+  - { id: g-br-08, kind: realization, from: br-08-purchases-follow-patron, to: consistent-arrival-experience }
+  - { id: g-br-09, kind: realization, from: br-09-enquiry-to-case, to: enquiries-answered }
+  - { id: g-br-10, kind: realization, from: br-10-one-patron-record, to: consistent-arrival-experience }
+  - { id: g-br-10-attendance, kind: realization, from: br-10-one-patron-record, to: attendance-known-daily }
+  - { id: g-br-12, kind: realization, from: br-12-open-hours-availability, to: consistent-arrival-experience }
+  - { id: g-br-14, kind: realization, from: br-14-supportable-by-club-it, to: consistent-arrival-experience }
+  - { id: d-br-11, kind: association, from: member-data-trust, to: br-11-patron-data-private }
+  - { id: d-br-13, kind: association, from: member-data-trust, to: br-13-hosted-in-australia }
+  # ── Who signs each requirement off. The business owns what the greeting does; IT Security owns
+  # the data terms; IT Support owns supportability. The sponsor signs the record itself.
+  - { id: own-br-01, kind: association, from: guest-services-manager, to: br-01-recognise-patron }
+  - { id: own-br-02, kind: association, from: guest-services-manager, to: br-02-greet-with-context }
+  - { id: own-br-03, kind: association, from: guest-services-manager, to: br-03-record-arrival-once }
+  - { id: own-br-04, kind: association, from: guest-services-manager, to: br-04-staff-greet-as-themselves }
+  - { id: own-br-05, kind: association, from: guest-services-manager, to: br-05-staff-know-arrivals }
+  - { id: own-br-06, kind: association, from: guest-services-manager, to: br-06-attendance-digest }
+  - { id: own-br-07, kind: association, from: guest-services-manager, to: br-07-tee-times-ahead }
+  - { id: own-br-08, kind: association, from: guest-services-manager, to: br-08-purchases-follow-patron }
+  - { id: own-br-09, kind: association, from: guest-services-manager, to: br-09-enquiry-to-case }
+  - { id: own-br-10, kind: association, from: club-management, to: br-10-one-patron-record }
+  - { id: own-br-11, kind: association, from: fgc-it-security, to: br-11-patron-data-private }
+  - { id: own-br-12, kind: association, from: guest-services-manager, to: br-12-open-hours-availability }
+  - { id: own-br-13, kind: association, from: fgc-it-security, to: br-13-hosted-in-australia }
+  - { id: own-br-14, kind: association, from: fgc-it-support, to: br-14-supportable-by-club-it }
+  # ── Measured by: the constraint subjects in nfrs.yaml that carry each requirement's number.
+  - { id: m-br-02-latency, kind: association, from: br-02-greet-with-context, to: lat-xapi }
+  - { id: m-br-03-once-per-day, kind: association, from: br-03-record-arrival-once, to: idem-one-per-day }
+  - { id: m-br-03-retry-safe, kind: association, from: br-03-record-arrival-once, to: idem-key-header }
+  - { id: m-br-04-staff-identity, kind: association, from: br-04-staff-greet-as-themselves, to: jwt-entra }
+  - { id: m-br-05-latency, kind: association, from: br-05-staff-know-arrivals, to: lat-listener }
+  - { id: m-br-06-by-0630, kind: association, from: br-06-attendance-digest, to: complete-0630 }
+  - { id: m-br-07-arrival-window, kind: association, from: br-07-tee-times-ahead, to: arrive-0400-0500 }
+  - { id: m-br-08-lag, kind: association, from: br-08-purchases-follow-patron, to: lag-60min }
+  - { id: m-br-09-latency, kind: association, from: br-09-enquiry-to-case, to: lat-15min }
+  - { id: m-br-11-log-retention, kind: association, from: br-11-patron-data-private, to: logs-30d }
+  - { id: m-br-12-availability, kind: association, from: br-12-open-hours-availability, to: avail-opening-hours }
+  - { id: m-br-12-recovery, kind: association, from: br-12-open-hours-availability, to: rto-60-rpo-0 }
+  - { id: m-br-14-detect-apis, kind: association, from: br-14-supportable-by-club-it, to: detect-5min }
+  - { id: m-br-14-detect-batch, kind: association, from: br-14-supportable-by-club-it, to: detect-30min }

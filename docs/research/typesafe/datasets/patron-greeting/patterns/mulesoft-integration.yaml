@@ -1,0 +1,356 @@
+# aperturex/mule@1.0 patterns — what each instance kind promises (yarramate ADR 0123).
+#
+# Reading rules:
+#   • A part is a slot. Bound → its question closes; empty → `missing-part` asks (yarramate #447).
+#     `required: true` is COMPILE-hard (YM416), so it is used only where an instance is meaningless
+#     without the part; everything elicitable is optional.
+#   • Slot kinds are exact except where a FAMILY is meant (`kindMatching: descendants`, #449):
+#     `backend` and a connector call's `connector` admit the connector family; a client's `api`
+#     admits any interface, Mule or not; a request's `operation` admits any service.
+#   • A SLOT BINDS ONE SUBJECT, so anything many-valued is a relationship, not a part — and where
+#     each of the many carries slots of its own, the many are SUBJECTS of their own kind (ADR 0011).
+#     An API's consumers are edges. An API's operations are edges. What an application DOES is
+#     edges: it is assigned each of its functions, and the functions that cross a contract are the
+#     pattern instances declared below.
+#   • THE CALL IS A SUBJECT. An application's contract is its interface, and the contract lives in
+#     the interface's OPERATIONS as request and response data objects — nothing is mapped there. A
+#     mapping exists only where the application crosses someone else's contract, and it crosses it
+#     in a call: one `mule-http-client` per callee (the HTTP Request configuration — the interface,
+#     the timeout, the retry: one per callee, never on the application), one `mule-http-request`
+#     per callee operation (its request and response mappings), one `mule-connector-read` or
+#     `mule-connector-write` per platform object (the CONNECTOR is the configuration and carries
+#     the timeout and retry), one `mule-publish` per destination. A pass-through binds no mapping
+#     and says so.
+#   • Wiring names the relationships the compiler mints between the instance and its structural parts.
+#     Constraint and mechanism parts are deliberately unwired: they are obligations, not edges. A
+#     wire from a part INTO the instance (a callee serving a client, a connector realizing a call)
+#     confers no ownership, so a callee's constraints never close a caller's card (rule D, ADR 0009).
+#   • Every runtime kind shares a common slot block (parent … retention); it is written out per
+#     pattern because the schema has no inheritance, and the duplication is what a generator would emit.
+#   • A MAPPING IS BETWEEN A SOURCE AND A TARGET, and its field rows live in a document. The mapping
+#     kind's own pattern (`source`, `target`, `specification`) is product-wide — it ships with every
+#     project from the bootstrap, src/project/consulting-patterns.ts — so it is NOT declared here.
+#     A wire is from/kind/to and cannot carry an access MODE, so the reference AUTHORS the two access
+#     edges with `mode: read` / `mode: write`: an authored edge that matches a wire is the wiring, and
+#     the mode rides on it — which is what the workbook's Source Context / Target Context columns read.
+format: yarramate/pattern/v1
+id: aperturex-mule-patterns
+version: "1.0"
+patterns:
+
+  # ── mule-http-api ──────────────────────────────────────────────────────────────────────────────
+  # The interface is the contract and is required. The service it realizes, the functions it is
+  # assigned and the operations it exposes are many: edges, authored.
+  - kind: "aperturex/mule@1.0#mule-http-api"
+    parts:
+      interface:        { kind: "aperturex/mule@1.0#mule-api", required: true }
+      parent:           { kind: "aperturex/mule@1.0#mule-shared-library" }
+      backend:          { kind: "aperturex/consulting@1.0#connector", kindMatching: descendants }
+      api-layer:        { kind: "aperturex/consulting@1.0#api-layer" }
+      deployment:       { kind: "aperturex/mule@1.0#runtime-plane" }
+      secrets:          { kind: "aperturex/mule@1.0#secret-set" }
+      observability:    { kind: "aperturex/mule@1.0#observability-profile" }
+      error-handling:   { kind: "aperturex/mule@1.0#error-handling-strategy" }
+      cache:            { kind: "aperturex/mule@1.0#cache-policy" }
+      auth:             { kind: "yarramate/policy@0.1#authentication-constraint" }
+      rate-limit:       { kind: "yarramate/policy@0.1#rate-limit-constraint" }
+      idempotency:      { kind: "aperturex/consulting@1.0#idempotency-constraint" }
+      availability:     { kind: "aperturex/consulting@1.0#availability-constraint" }
+      recovery:         { kind: "aperturex/mule@1.0#recovery-constraint" }
+      throughput:       { kind: "aperturex/mule@1.0#throughput-constraint" }
+      latency:          { kind: "aperturex/mule@1.0#latency-constraint" }
+      payload-limit:    { kind: "aperturex/mule@1.0#payload-limit-constraint" }
+      detection:        { kind: "aperturex/mule@1.0#detection-constraint" }
+      retention:        { kind: "aperturex/mule@1.0#retention-constraint" }
+      compatibility:    { kind: "aperturex/mule@1.0#compatibility-promise" }
+    wiring:
+      - { from: self,       kind: "yarramate/core@0.1#association",  to: parent }
+      - { from: self,       kind: "yarramate/core@0.1#composition",  to: interface }
+      - { from: backend,    kind: "yarramate/core@0.1#realization",  to: interface }
+      - { from: api-layer,  kind: "yarramate/core@0.1#aggregation",  to: self }
+      - { from: deployment, kind: "yarramate/core@0.1#serving",      to: self }
+
+  # ── mule-scheduled-job ─────────────────────────────────────────────────────────────────────────
+  - kind: "aperturex/mule@1.0#mule-scheduled-job"
+    parts:
+      parent:           { kind: "aperturex/mule@1.0#mule-shared-library" }
+      payload:          { kind: "yarramate/core@0.1#dataObject" }
+      sample:           { kind: "aperturex/consulting@1.0#sample-data-object" }
+      backend:          { kind: "aperturex/consulting@1.0#connector", kindMatching: descendants }
+      deployment:       { kind: "aperturex/mule@1.0#runtime-plane" }
+      secrets:          { kind: "aperturex/mule@1.0#secret-set" }
+      observability:    { kind: "aperturex/mule@1.0#observability-profile" }
+      error-handling:   { kind: "aperturex/mule@1.0#error-handling-strategy" }
+      idempotency:      { kind: "aperturex/consulting@1.0#idempotency-constraint" }
+      run-window:       { kind: "aperturex/mule@1.0#run-window-constraint" }
+      runtime-limit:    { kind: "aperturex/mule@1.0#runtime-limit-constraint" }
+      overlap:          { kind: "aperturex/mule@1.0#overlap-policy" }
+      catch-up:         { kind: "aperturex/mule@1.0#catch-up-policy" }
+      volume:           { kind: "aperturex/mule@1.0#volume-constraint" }
+      completion:       { kind: "aperturex/mule@1.0#completion-constraint" }
+      availability:     { kind: "aperturex/consulting@1.0#availability-constraint" }
+      recovery:         { kind: "aperturex/mule@1.0#recovery-constraint" }
+      detection:        { kind: "aperturex/mule@1.0#detection-constraint" }
+      retention:        { kind: "aperturex/mule@1.0#retention-constraint" }
+    wiring:
+      - { from: self,       kind: "yarramate/core@0.1#association",  to: parent }
+      - { from: sample,     kind: "yarramate/core@0.1#association",  to: payload }
+      - { from: backend,    kind: "yarramate/core@0.1#realization",  to: self }
+      - { from: deployment, kind: "yarramate/core@0.1#serving",      to: self }
+
+  # ── mule-event-listener ────────────────────────────────────────────────────────────────────────
+  - kind: "aperturex/mule@1.0#mule-event-listener"
+    parts:
+      subscription:     { kind: "aperturex/mule@1.0#message-queue", required: true }
+      parent:           { kind: "aperturex/mule@1.0#mule-shared-library" }
+      payload:          { kind: "yarramate/core@0.1#dataObject" }
+      sample:           { kind: "aperturex/consulting@1.0#sample-data-object" }
+      backend:          { kind: "aperturex/consulting@1.0#connector", kindMatching: descendants }
+      target:           { kind: "aperturex/mule@1.0#notification-channel" }
+      deployment:       { kind: "aperturex/mule@1.0#runtime-plane" }
+      secrets:          { kind: "aperturex/mule@1.0#secret-set" }
+      observability:    { kind: "aperturex/mule@1.0#observability-profile" }
+      error-handling:   { kind: "aperturex/mule@1.0#error-handling-strategy" }
+      idempotency:      { kind: "aperturex/consulting@1.0#idempotency-constraint" }
+      delivery:         { kind: "aperturex/mule@1.0#delivery-guarantee" }
+      ordering:         { kind: "aperturex/mule@1.0#ordering-policy" }
+      redelivery:       { kind: "aperturex/mule@1.0#redelivery-constraint" }
+      dlq:              { kind: "aperturex/mule@1.0#dlq-constraint" }
+      ttl:              { kind: "aperturex/mule@1.0#ttl-constraint" }
+      backlog:          { kind: "aperturex/mule@1.0#backlog-constraint" }
+      throughput:       { kind: "aperturex/mule@1.0#throughput-constraint" }
+      latency:          { kind: "aperturex/mule@1.0#latency-constraint" }
+      availability:     { kind: "aperturex/consulting@1.0#availability-constraint" }
+      recovery:         { kind: "aperturex/mule@1.0#recovery-constraint" }
+      detection:        { kind: "aperturex/mule@1.0#detection-constraint" }
+      retention:        { kind: "aperturex/mule@1.0#retention-constraint" }
+    wiring:
+      - { from: self,       kind: "yarramate/core@0.1#association",  to: parent }
+      - { from: subscription, kind: "yarramate/core@0.1#serving",    to: self }
+      - { from: sample,     kind: "yarramate/core@0.1#association",  to: payload }
+      - { from: backend,    kind: "yarramate/core@0.1#realization",  to: self }
+      - { from: target,     kind: "yarramate/core@0.1#serving",      to: self }
+      - { from: deployment, kind: "yarramate/core@0.1#serving",      to: self }
+
+  # ── mule-file-transfer ─────────────────────────────────────────────────────────────────────────
+  - kind: "aperturex/mule@1.0#mule-file-transfer"
+    parts:
+      source:           { kind: "aperturex/mule@1.0#file-drop", required: true }
+      parent:           { kind: "aperturex/mule@1.0#mule-shared-library" }
+      payload:          { kind: "yarramate/core@0.1#dataObject" }
+      sample:           { kind: "aperturex/consulting@1.0#sample-data-object" }
+      backend:          { kind: "aperturex/consulting@1.0#connector", kindMatching: descendants }
+      deployment:       { kind: "aperturex/mule@1.0#runtime-plane" }
+      secrets:          { kind: "aperturex/mule@1.0#secret-set" }
+      observability:    { kind: "aperturex/mule@1.0#observability-profile" }
+      error-handling:   { kind: "aperturex/mule@1.0#error-handling-strategy" }
+      idempotency:      { kind: "aperturex/consulting@1.0#idempotency-constraint" }
+      partial-failure:  { kind: "aperturex/mule@1.0#partial-failure-policy" }
+      duplicate:        { kind: "aperturex/mule@1.0#duplicate-policy" }
+      arrival-window:   { kind: "aperturex/mule@1.0#arrival-window-constraint" }
+      cadence:          { kind: "aperturex/mule@1.0#cadence-constraint" }
+      size:             { kind: "aperturex/mule@1.0#size-constraint" }
+      processing-budget: { kind: "aperturex/mule@1.0#processing-budget-constraint" }
+      availability:     { kind: "aperturex/consulting@1.0#availability-constraint" }
+      recovery:         { kind: "aperturex/mule@1.0#recovery-constraint" }
+      detection:        { kind: "aperturex/mule@1.0#detection-constraint" }
+      retention:        { kind: "aperturex/mule@1.0#retention-constraint" }
+    wiring:
+      - { from: self,       kind: "yarramate/core@0.1#association",  to: parent }
+      - { from: source,     kind: "yarramate/core@0.1#serving",      to: self }
+      - { from: sample,     kind: "yarramate/core@0.1#association",  to: payload }
+      - { from: backend,    kind: "yarramate/core@0.1#realization",  to: self }
+      - { from: deployment, kind: "yarramate/core@0.1#serving",      to: self }
+
+  # ── mule-db-poller ─────────────────────────────────────────────────────────────────────────────
+  # `backend` since 3.0: a poller reaches its database through a connector in every real case; the
+  # reference had to hang its database connector off a hand-authored edge.
+  - kind: "aperturex/mule@1.0#mule-db-poller"
+    parts:
+      source:           { kind: "aperturex/mule@1.0#source-database", required: true }
+      parent:           { kind: "aperturex/mule@1.0#mule-shared-library" }
+      payload:          { kind: "yarramate/core@0.1#dataObject" }
+      sample:           { kind: "aperturex/consulting@1.0#sample-data-object" }
+      backend:          { kind: "aperturex/consulting@1.0#connector", kindMatching: descendants }
+      deployment:       { kind: "aperturex/mule@1.0#runtime-plane" }
+      secrets:          { kind: "aperturex/mule@1.0#secret-set" }
+      observability:    { kind: "aperturex/mule@1.0#observability-profile" }
+      error-handling:   { kind: "aperturex/mule@1.0#error-handling-strategy" }
+      idempotency:      { kind: "aperturex/consulting@1.0#idempotency-constraint" }
+      watermark:        { kind: "aperturex/mule@1.0#watermark-policy" }
+      late-row:         { kind: "aperturex/mule@1.0#late-row-policy" }
+      cadence:          { kind: "aperturex/mule@1.0#cadence-constraint" }
+      lag:              { kind: "aperturex/mule@1.0#lag-constraint" }
+      batch:            { kind: "aperturex/mule@1.0#batch-constraint" }
+      query-budget:     { kind: "aperturex/mule@1.0#query-budget-constraint" }
+      connection-footprint: { kind: "aperturex/mule@1.0#connection-footprint-constraint" }
+      backfill:         { kind: "aperturex/mule@1.0#backfill-constraint" }
+      availability:     { kind: "aperturex/consulting@1.0#availability-constraint" }
+      recovery:         { kind: "aperturex/mule@1.0#recovery-constraint" }
+      detection:        { kind: "aperturex/mule@1.0#detection-constraint" }
+      retention:        { kind: "aperturex/mule@1.0#retention-constraint" }
+    wiring:
+      - { from: self,       kind: "yarramate/core@0.1#association",  to: parent }
+      - { from: source,     kind: "yarramate/core@0.1#serving",      to: self }
+      - { from: sample,     kind: "yarramate/core@0.1#association",  to: payload }
+      - { from: backend,    kind: "yarramate/core@0.1#realization",  to: self }
+      - { from: deployment, kind: "yarramate/core@0.1#serving",      to: self }
+
+  # ── mule-app (generic) ─────────────────────────────────────────────────────────────────────────
+  # The catch-all declares only the shared block plus the three NFRs every trigger has. Whatever
+  # its trigger owes beyond that is asked as an attestation ("trigger-specific NFRs declared") in
+  # the catalogue, not as a slot — the moment that attestation has content, a dedicated pattern
+  # should be added locally and proposed upward.
+  - kind: "aperturex/mule@1.0#mule-app"
+    parts:
+      parent:           { kind: "aperturex/mule@1.0#mule-shared-library" }
+      payload:          { kind: "yarramate/core@0.1#dataObject" }
+      sample:           { kind: "aperturex/consulting@1.0#sample-data-object" }
+      backend:          { kind: "aperturex/consulting@1.0#connector", kindMatching: descendants }
+      deployment:       { kind: "aperturex/mule@1.0#runtime-plane" }
+      secrets:          { kind: "aperturex/mule@1.0#secret-set" }
+      observability:    { kind: "aperturex/mule@1.0#observability-profile" }
+      error-handling:   { kind: "aperturex/mule@1.0#error-handling-strategy" }
+      idempotency:      { kind: "aperturex/consulting@1.0#idempotency-constraint" }
+      volume:           { kind: "aperturex/mule@1.0#volume-constraint" }
+      latency:          { kind: "aperturex/mule@1.0#latency-constraint" }
+      cadence:          { kind: "aperturex/mule@1.0#cadence-constraint" }
+      availability:     { kind: "aperturex/consulting@1.0#availability-constraint" }
+      recovery:         { kind: "aperturex/mule@1.0#recovery-constraint" }
+      detection:        { kind: "aperturex/mule@1.0#detection-constraint" }
+      retention:        { kind: "aperturex/mule@1.0#retention-constraint" }
+    wiring:
+      - { from: self,       kind: "yarramate/core@0.1#association",  to: parent }
+      - { from: sample,     kind: "yarramate/core@0.1#association",  to: payload }
+      - { from: backend,    kind: "yarramate/core@0.1#realization",  to: self }
+      - { from: deployment, kind: "yarramate/core@0.1#serving",      to: self }
+
+  # ── mule-shared-library ────────────────────────────────────────────────────────────────────────
+  # An artifact: no deployment, secrets, observability or availability slots exist to be asked.
+  # Its NFRs are compatibility promises. `parent` is the parent POM it inherits. Consumers are not a slot — many instances depend on one
+  # library; the dependency is each consumer's pom.xml, read as evidence.
+  - kind: "aperturex/mule@1.0#mule-shared-library"
+    parts:
+      parent:           { kind: "aperturex/mule@1.0#mule-shared-library" }
+      runtime-range:    { kind: "aperturex/mule@1.0#runtime-range-constraint" }
+      compatibility:    { kind: "aperturex/mule@1.0#compatibility-promise" }
+      release:          { kind: "aperturex/mule@1.0#release-policy" }
+      startup-cost:     { kind: "aperturex/mule@1.0#startup-cost-constraint" }
+      coverage:         { kind: "aperturex/consulting@1.0#coverage-target" }
+    wiring:
+      - { from: self,       kind: "yarramate/core@0.1#association",  to: parent }
+
+  # ── mule-api ───────────────────────────────────────────────────────────────────────────────────
+  # The contract: the published specification realizes it (the edge the base catalogue's contract
+  # question reads). Its operations are many — `mule-api —assignment→ mule-api-operation`, authored.
+  - kind: "aperturex/mule@1.0#mule-api"
+    parts:
+      specification:    { kind: "yarramate/core@0.1#artifact" }
+    wiring:
+      - { from: specification, kind: "yarramate/core@0.1#realization", to: self }
+
+  # ── mule-api-operation ─────────────────────────────────────────────────────────────────────────
+  # One operation of an API: what it takes and what it returns. A caller's request mapping writes
+  # `request`; its response mapping reads `response`. The application realizes it; the flow that
+  # implements it realizes it too — both authored, because both are many.
+  - kind: "aperturex/mule@1.0#mule-api-operation"
+    parts:
+      request:          { kind: "yarramate/core@0.1#dataObject" }
+      response:         { kind: "yarramate/core@0.1#dataObject" }
+    wiring:
+      - { from: self,       kind: "yarramate/core@0.1#access",       to: request }
+      - { from: self,       kind: "yarramate/core@0.1#access",       to: response }
+
+  # ── mule-http-client ───────────────────────────────────────────────────────────────────────────
+  # The HTTP Request configuration: one per callee, carrying the timeout and retry that 2.0 put on
+  # the application. Its requests compose it — the request's own pattern mints that edge.
+  - kind: "aperturex/mule@1.0#mule-http-client"
+    parts:
+      api:              { kind: "yarramate/core@0.1#applicationInterface", required: true, kindMatching: descendants }
+      timeout:          { kind: "aperturex/mule@1.0#timeout-constraint" }
+      retry:            { kind: "aperturex/mule@1.0#retry-constraint" }
+    wiring:
+      - { from: api,        kind: "yarramate/core@0.1#serving",      to: self }
+
+  # ── mule-http-request ──────────────────────────────────────────────────────────────────────────
+  # One call of one callee operation, through a client. Its two mappings are the DataWeave a
+  # generator emits for the call: the request mapping writes the operation's request object, the
+  # response mapping reads its response. A pass-through binds neither and says so.
+  - kind: "aperturex/mule@1.0#mule-http-request"
+    parts:
+      client:           { kind: "aperturex/mule@1.0#mule-http-client" }
+      operation:        { kind: "yarramate/core@0.1#applicationService", required: true, kindMatching: descendants }
+      request-mapping:  { kind: "aperturex/consulting@1.0#mapping-application-function" }
+      response-mapping: { kind: "aperturex/consulting@1.0#mapping-application-function" }
+    wiring:
+      - { from: client,     kind: "yarramate/core@0.1#composition",  to: self }
+      - { from: operation,  kind: "yarramate/core@0.1#serving",      to: self }
+      - { from: self,       kind: "yarramate/core@0.1#composition",  to: request-mapping }
+      - { from: self,       kind: "yarramate/core@0.1#composition",  to: response-mapping }
+
+  # ── mule-connector-read / mule-connector-write ─────────────────────────────────────────────────
+  # One connector operation on one platform object, in Mule's own vocabulary: a query, a file read
+  # or a poll is a READ whose mapping shapes the object into the application's own data; an upsert,
+  # a send or a write is a WRITE whose mapping shapes the application's data into the object. The
+  # connector IS the configuration (its pattern below carries timeout and retry). A query that joins
+  # a second object accesses it by an authored edge.
+  - kind: "aperturex/mule@1.0#mule-connector-read"
+    parts:
+      connector:        { kind: "aperturex/consulting@1.0#connector", kindMatching: descendants }
+      object:           { kind: "yarramate/core@0.1#dataObject", required: true }
+      read-mapping:     { kind: "aperturex/consulting@1.0#mapping-application-function" }
+    wiring:
+      - { from: connector,  kind: "yarramate/core@0.1#realization",  to: self }
+      - { from: self,       kind: "yarramate/core@0.1#access",       to: object }
+      - { from: self,       kind: "yarramate/core@0.1#composition",  to: read-mapping }
+  - kind: "aperturex/mule@1.0#mule-connector-write"
+    parts:
+      connector:        { kind: "aperturex/consulting@1.0#connector", kindMatching: descendants }
+      object:           { kind: "yarramate/core@0.1#dataObject", required: true }
+      write-mapping:    { kind: "aperturex/consulting@1.0#mapping-application-function" }
+    wiring:
+      - { from: connector,  kind: "yarramate/core@0.1#realization",  to: self }
+      - { from: self,       kind: "yarramate/core@0.1#access",       to: object }
+      - { from: self,       kind: "yarramate/core@0.1#composition",  to: write-mapping }
+
+  # ── mule-publish ───────────────────────────────────────────────────────────────────────────────
+  # One publish to one destination: the event it writes and the mapping that shapes it.
+  - kind: "aperturex/mule@1.0#mule-publish"
+    parts:
+      destination:      { kind: "aperturex/mule@1.0#message-queue", required: true }
+      event:            { kind: "yarramate/core@0.1#dataObject" }
+      event-mapping:    { kind: "aperturex/consulting@1.0#mapping-application-function" }
+    wiring:
+      - { from: destination, kind: "yarramate/core@0.1#serving",     to: self }
+      - { from: self,       kind: "yarramate/core@0.1#access",       to: event }
+      - { from: self,       kind: "yarramate/core@0.1#composition",  to: event-mapping }
+
+  # ── connectors ─────────────────────────────────────────────────────────────────────────────────
+  # The connector is to a platform what the client is to an API: the configuration, one per callee,
+  # so its timeout and retry are asked here and nowhere else, and `system` is the application it
+  # speaks to (the client's `api`, one level down: a CRM, a SaaS tenant). A connector to plain
+  # technology — a database, an SFTP host — leaves `system` vacant and says so; the application's
+  # `source` slot already names that callee. A pattern is per exact kind, so the two connector
+  # kinds each get the same shape; the consulting profile's bare `connector` is the not-yet-chosen
+  # case and has none.
+  - kind: "aperturex/consulting@1.0#platform-connector"
+    parts:
+      system:           { kind: "yarramate/core@0.1#applicationComponent", kindMatching: descendants }
+      timeout:          { kind: "aperturex/mule@1.0#timeout-constraint" }
+      retry:            { kind: "aperturex/mule@1.0#retry-constraint" }
+    wiring:
+      - { from: self,       kind: "yarramate/core@0.1#association",  to: system }
+  - kind: "aperturex/consulting@1.0#custom-connector"
+    parts:
+      system:           { kind: "yarramate/core@0.1#applicationComponent", kindMatching: descendants }
+      timeout:          { kind: "aperturex/mule@1.0#timeout-constraint" }
+      retry:            { kind: "aperturex/mule@1.0#retry-constraint" }
+    wiring:
+      - { from: self,       kind: "yarramate/core@0.1#association",  to: system }
+
+  # ── mapping-application-function ───────────────────────────────────────────────────────────────
+  # NOT DECLARED HERE. The mapping's own pattern — `source`, `target`, `specification` — ships with
+  # every project from the bootstrap (src/project/consulting-patterns.ts, patterns/consulting.yaml),
+  # because its kinds belong to the consulting profile, not to this pack. The request, the connector
+  # calls and the publish above name mappings as slots and leave the mapping's shape to that file;
+  # declaring it a second time here would give one kind two patterns.

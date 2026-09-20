@@ -1,0 +1,81 @@
+# aperturex/mule@1.0 — the MuleSoft pack's profile fragment.
+# Extends the consulting profile, so platform-connector, custom-connector, api-layer, environment,
+# solution, mapping-application-function, sample-data-object, idempotency-constraint,
+# availability-constraint and the build baselines are already in scope.
+format: yarramate/profile/v1
+id: aperturex/mule
+version: "1.0"
+extends: aperturex/consulting@1.0
+conceptKinds:
+  # ── Layer 1: application instances, by trigger type. One pattern each (patterns.yaml).
+  - { id: mule-http-api,        name: Mule HTTP API,          parent: "yarramate/core@0.1#applicationComponent" }
+  - { id: mule-scheduled-job,   name: Mule scheduled job,     parent: "yarramate/core@0.1#applicationComponent" }
+  - { id: mule-event-listener,  name: Mule event listener,    parent: "yarramate/core@0.1#applicationComponent" }
+  - { id: mule-file-transfer,   name: Mule file transfer,     parent: "yarramate/core@0.1#applicationComponent" }
+  - { id: mule-db-poller,       name: Mule database poller,   parent: "yarramate/core@0.1#applicationComponent" }
+  - { id: mule-app,             name: Mule application,       parent: "yarramate/core@0.1#applicationComponent" }
+  # A library is an artifact, not a component: it has no runtime, so it can never be asked where it runs.
+  - { id: mule-shared-library,  name: Mule shared library,    parent: "yarramate/core@0.1#artifact" }
+  # ── The contract (ADR 0011): an API is an interface; its operations are services carrying the
+  #    request and response objects. Base-catalogue selectors default to descendants, so an
+  #    operation is still asked who realizes it and who consumes it — the authored edges answer.
+  - { id: mule-api,             name: Mule API interface,     parent: "yarramate/core@0.1#applicationInterface" }
+  - { id: mule-api-operation,   name: API operation,          parent: "yarramate/core@0.1#applicationService" }
+  # ── The calls (ADR 0011): behaviour that crosses a contract. A client per callee, a request per
+  #    callee operation, a connector read or write per platform object, a publish per destination.
+  - { id: mule-http-client,     name: HTTP client,            parent: "yarramate/core@0.1#applicationFunction" }
+  - { id: mule-http-request,    name: HTTP request,           parent: "yarramate/core@0.1#applicationFunction" }
+  - { id: mule-connector-read,  name: Connector read,         parent: "yarramate/core@0.1#applicationFunction" }
+  - { id: mule-connector-write, name: Connector write,        parent: "yarramate/core@0.1#applicationFunction" }
+  - { id: mule-publish,         name: Publish,                parent: "yarramate/core@0.1#applicationFunction" }
+  # ── Technology the instances bind to.
+  - { id: runtime-plane,        name: Runtime plane,          parent: "yarramate/core@0.1#node" }
+  - { id: message-queue,        name: Message queue,          parent: "yarramate/core@0.1#technologyService" }
+  - { id: file-drop,            name: File drop,              parent: "yarramate/core@0.1#technologyInterface" }
+  - { id: source-database,      name: Source database,        parent: "yarramate/core@0.1#systemSoftware" }
+  - { id: mailbox,              name: Mailbox,                parent: "yarramate/core@0.1#technologyInterface" }
+  - { id: notification-channel, name: Notification channel,   parent: "yarramate/core@0.1#technologyService" }
+  # ── Mechanisms: how the instance does something. Each is a subject so it can be shared and cited.
+  - { id: error-handling-strategy, name: Error-handling strategy, parent: "yarramate/policy@0.1#mechanism-constraint" }
+  - { id: secret-set,              name: Secret set,              parent: "yarramate/policy@0.1#mechanism-constraint" }
+  - { id: observability-profile,   name: Observability profile,   parent: "yarramate/policy@0.1#mechanism-constraint" }
+  - { id: cache-policy,            name: Cache policy,            parent: "yarramate/policy@0.1#mechanism-constraint" }
+  - { id: overlap-policy,          name: Overlap policy,          parent: "yarramate/policy@0.1#mechanism-constraint" }
+  - { id: catch-up-policy,         name: Catch-up policy,         parent: "yarramate/policy@0.1#mechanism-constraint" }
+  - { id: delivery-guarantee,      name: Delivery guarantee,      parent: "yarramate/policy@0.1#mechanism-constraint" }
+  - { id: ordering-policy,         name: Ordering policy,         parent: "yarramate/policy@0.1#mechanism-constraint" }
+  - { id: partial-failure-policy,  name: Partial-failure policy,  parent: "yarramate/policy@0.1#mechanism-constraint" }
+  - { id: duplicate-policy,        name: Duplicate policy,        parent: "yarramate/policy@0.1#mechanism-constraint" }
+  - { id: watermark-policy,        name: Watermark policy,        parent: "yarramate/policy@0.1#mechanism-constraint" }
+  - { id: late-row-policy,         name: Late-row policy,         parent: "yarramate/policy@0.1#mechanism-constraint" }
+  - { id: compatibility-promise,   name: Compatibility promise,   parent: "yarramate/policy@0.1#mechanism-constraint" }
+  - { id: release-policy,          name: Release policy,          parent: "yarramate/policy@0.1#mechanism-constraint" }
+  # ── Non-functional envelope: a constraint subject per placeholder, value carried on the subject.
+  - { id: throughput-constraint,           name: Throughput,            parent: "yarramate/policy@0.1#reliability-constraint" }
+  - { id: latency-constraint,              name: Latency,               parent: "yarramate/policy@0.1#reliability-constraint" }
+  - { id: recovery-constraint,             name: Recovery objective,    parent: "yarramate/policy@0.1#reliability-constraint" }
+  - { id: timeout-constraint,              name: Timeout budget,        parent: "yarramate/policy@0.1#reliability-constraint" }
+  - { id: retry-constraint,                name: Retry policy,          parent: "yarramate/policy@0.1#reliability-constraint" }
+  - { id: detection-constraint,            name: Time to detect,        parent: "yarramate/policy@0.1#reliability-constraint" }
+  - { id: retention-constraint,            name: Retention,             parent: "yarramate/policy@0.1#reliability-constraint" }
+  - { id: payload-limit-constraint,        name: Payload limit,         parent: "yarramate/policy@0.1#reliability-constraint" }
+  - { id: run-window-constraint,           name: Run window,            parent: "yarramate/policy@0.1#reliability-constraint" }
+  - { id: runtime-limit-constraint,        name: Maximum runtime,       parent: "yarramate/policy@0.1#reliability-constraint" }
+  - { id: volume-constraint,               name: Volume,                parent: "yarramate/policy@0.1#reliability-constraint" }
+  - { id: completion-constraint,           name: Completion SLA,        parent: "yarramate/policy@0.1#reliability-constraint" }
+  - { id: redelivery-constraint,           name: Redelivery,            parent: "yarramate/policy@0.1#reliability-constraint" }
+  - { id: dlq-constraint,                  name: Dead-letter handling,  parent: "yarramate/policy@0.1#reliability-constraint" }
+  - { id: ttl-constraint,                  name: Message TTL,           parent: "yarramate/policy@0.1#reliability-constraint" }
+  - { id: backlog-constraint,              name: Backlog tolerance,     parent: "yarramate/policy@0.1#reliability-constraint" }
+  - { id: arrival-window-constraint,       name: Arrival window,        parent: "yarramate/policy@0.1#reliability-constraint" }
+  - { id: cadence-constraint,              name: Polling cadence,       parent: "yarramate/policy@0.1#reliability-constraint" }
+  - { id: size-constraint,                 name: Size limit,            parent: "yarramate/policy@0.1#reliability-constraint" }
+  - { id: processing-budget-constraint,    name: Processing budget,     parent: "yarramate/policy@0.1#reliability-constraint" }
+  - { id: lag-constraint,                  name: Lag tolerance,         parent: "yarramate/policy@0.1#reliability-constraint" }
+  - { id: batch-constraint,                name: Batch size,            parent: "yarramate/policy@0.1#reliability-constraint" }
+  - { id: query-budget-constraint,         name: Query budget,          parent: "yarramate/policy@0.1#reliability-constraint" }
+  - { id: connection-footprint-constraint, name: Connection footprint,  parent: "yarramate/policy@0.1#reliability-constraint" }
+  - { id: backfill-constraint,             name: Initial backfill,      parent: "yarramate/policy@0.1#reliability-constraint" }
+  - { id: startup-cost-constraint,         name: Startup cost,          parent: "yarramate/policy@0.1#reliability-constraint" }
+  - { id: runtime-range-constraint,        name: Supported runtime range, parent: "yarramate/policy@0.1#reliability-constraint" }
+relationshipKinds: []

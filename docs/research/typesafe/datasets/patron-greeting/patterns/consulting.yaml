@@ -1,0 +1,13 @@
+format: yarramate/pattern/v1
+id: aperturex-consulting-patterns
+version: "1.0"
+patterns:
+  - kind: "aperturex/consulting@1.0#mapping-application-function"
+    parts:
+      source:           { kind: "yarramate/core@0.1#dataObject" }
+      target:           { kind: "yarramate/core@0.1#dataObject" }
+      specification:    { kind: "yarramate/core@0.1#artifact" }
+    wiring:
+      - { from: self,       kind: "yarramate/core@0.1#access",       to: source }
+      - { from: self,       kind: "yarramate/core@0.1#access",       to: target }
+      - { from: self,       kind: "yarramate/core@0.1#association",  to: specification }

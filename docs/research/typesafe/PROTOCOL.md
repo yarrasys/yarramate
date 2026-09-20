@@ -36,11 +36,20 @@ computes are accurate and stable enough to show a person as suggestions.
 |---|---|---|---|---|
 | `self` | yarramate's own record, `.yarramate/` | tag v1.35.0, `94e914c` | 401 / 539 | yes, public |
 | `halcyon` | the site's showcase, copied read-only | site `ac29f3f`, showcase commit `c6e5bd0` | 18 / 14 | yes, public |
-| ApertureX reference | not bundled | their adoption commit `caac303` | 306 / 574 | only if its owner says so; run with `--manifest` |
+| `patron-greeting` | ApertureX's reference architecture, the "Patron Greeting System" | apx `dbbf549`, copied 2026-09-20 | 294 / 479 | yes, on the maintainer's instruction; placeholders throughout, no real personal data |
 
 The self-model is the primary set; Halcyon is a small second set that a
-visitor to the site would meet. The ApertureX reference is an optional third
-set and its exclusion is not a failure of the study.
+visitor to the site would meet.
+
+- 2026-09-20, after the first run and on the maintainer's instruction, the
+  ApertureX reference is added as `patron-greeting`. It matters because the
+  first run could not measure two things: arm 2 had no duplicates to find in
+  the self-model, and every dataset so far was authored by the same hands that
+  wrote the engine. This one is a consulting engagement's shape, 87 constraints
+  and 57 application functions among 294 subjects, authored by an adopter for a
+  different purpose. Its arm 2 result is the one that can carry recall, and its
+  arm 1 result is the first on a record this project did not write. Every
+  number from it is reported beside the self-model's, never pooled.
 
 ## Arms, metrics, and what counts as a win
 

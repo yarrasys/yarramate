@@ -1,0 +1,23 @@
+format: yarramate/projection/v1
+id: arrivals-and-imports
+version: "1.0"
+query:
+  subjects:
+    - patron-attendance-papi
+    - patron-arrivals
+    - patron-arrival-notifier
+    - pro-shop-teams
+    - vendor-tee-sheet-sftp
+    - tee-sheet-import
+    - pos-database
+    - pos-purchase-poller
+    - enquiries-mailbox
+    - enquiry-mailbox-reader
+    - attendance-digest-job
+    - salesforce-patron-sapi
+    - guest-services-manager
+  relationships: connected
+presentation:
+  title: "Arrivals, imports and the digest"
+  layout: layered
+  nesting: [composition, assignment]

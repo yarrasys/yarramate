@@ -1,0 +1,57 @@
+format: yarramate/projection/v1
+id: experience-api-golden
+version: "1.0"
+query:
+  subjects:
+    - patron-checkin-xapi
+    - patron-checkin-api
+    - checkin-tablet-webapp
+    - patron-checkin-service
+    - raml-patron-checkin
+    - op-checkin-find-patron
+    - op-checkin-greeting
+    - op-checkin-attendance
+    - membership-lookup
+    - greeting-request
+    - checkin-request
+    - compose-greeting-view
+    - client-xapi-papi
+    - req-xapi-record-attendance
+    - req-xapi-find-patron
+    - map-patron-attendance-request
+    - spec-attendance-request
+    - attendance-request
+    - map-greeting-to-tablet-view
+    - greeting
+    - greeting-sample
+    - greeting-view
+    - spec-greeting-view
+    - patron-attendance-papi
+    - patron-attendance-api
+    - op-papi-record-attendance
+    - op-papi-find-patron
+    - layer-experience
+    - fgc-ps-au
+    - fgc-parent-pom
+    - xapi-secrets
+    - obs-standard
+    - errs-framework
+    - patron-lookup-cache
+    - jwt-entra
+    - rate-60-per-min
+    - idem-key-header
+    - avail-opening-hours
+    - rto-60-rpo-0
+    - thr-xapi
+    - lat-xapi
+    - timeout-standard
+    - retry-bounded
+    - payload-256kb
+    - detect-5min
+    - logs-30d
+    - api-versioning-v1
+  relationships: connected
+presentation:
+  title: "Experience API — every slot bound"
+  layout: layered
+  nesting: [composition, assignment]

@@ -1,0 +1,420 @@
+format: yarramate/v1
+id: nfrs
+profile: aperturex/mule@1.0
+concepts:
+  - id: avail-opening-hours
+    kind: availability-constraint
+    name: "shared availability"
+    description: "99.5 % during opening hours. 06:00–20:00 AEST daily; best effort outside. The model's Working-Hours-Only Availability."
+  - id: rto-60-rpo-0
+    kind: recovery-constraint
+    name: "shared recovery objective"
+    description: "RTO 60 min · RPO 0. Every application is stateless; Salesforce is the system of record."
+  - id: timeout-standard
+    kind: timeout-constraint
+    name: "shared timeout budget"
+    description: "Outbound 10 s · total 25 s. Under the 30 s the tablet waits."
+  - id: retry-bounded
+    kind: retry-constraint
+    name: "shared retry policy"
+    description: "3 attempts · exponential from 2 s. Connectivity, 429 and 503 only. The model's Bounded Retry and Recovery."
+  - id: retry-salesforce
+    kind: retry-constraint
+    name: "sapi retry policy"
+    description: "Salesforce: 3 attempts · exponential from 2 s. REQUEST_LIMIT_EXCEEDED and UNABLE_TO_LOCK_ROW treated as retryable."
+  - id: detect-5min
+    kind: detection-constraint
+    name: "apis time to detect"
+    description: "Time to detect 5 min. Error rate > 5 % over 5 min, p95 > 2 s, replica down."
+  - id: detect-30min
+    kind: detection-constraint
+    name: "batch time to detect"
+    description: "Time to detect 30 min. For the job and the pollers."
+  - id: logs-30d
+    kind: retention-constraint
+    name: "shared log retention"
+    description: "Logs 30 days · PII masked. Anypoint Monitoring retention; name and membership number masked by fgc-json-logger."
+  - id: errs-framework
+    kind: error-handling-strategy
+    name: "shared error handling"
+    description: "fgc-error-framework standard. Global handler; 4xx passed through; 5xx as application/problem+json; 503 + Retry-After when a downstream tier is down."
+  - id: errs-salesforce
+    kind: error-handling-strategy
+    name: "sapi error handling"
+    description: "Salesforce error mapping. Framework plus Salesforce fault mapping and reconnection 3 × 2 s."
+  - id: obs-standard
+    kind: observability-profile
+    name: "apis observability"
+    description: "JSON logger · correlation id · standard alerts. x-correlation-id accepted or minted; business events; alerts per detect-5min."
+  - id: obs-sapi
+    kind: observability-profile
+    name: "sapi observability"
+    description: "System API observability. Standard plus alert when Salesforce daily API-request consumption passes 80 %."
+  - id: obs-job
+    kind: observability-profile
+    name: "job observability"
+    description: "Job observability. Alert if the 06:00 run has not completed by 06:30."
+  - id: obs-listener
+    kind: observability-profile
+    name: "listener observability"
+    description: "Listener observability. Alert on DLQ depth > 0 and consumer lag > 100."
+  - id: obs-ft
+    kind: observability-profile
+    name: "file-transfer observability"
+    description: "File-transfer observability. Alert if no file by 05:30 and on any quarantine write."
+  - id: obs-poller
+    kind: observability-profile
+    name: "poller observability"
+    description: "Poller observability. Alert if the watermark is unchanged for 60 min during opening hours."
+  - id: obs-mailbox
+    kind: observability-profile
+    name: "mailbox observability"
+    description: "Mailbox observability. Alert if the oldest unread enquiry is over 4 h during opening hours."
+  - id: api-versioning-v1
+    kind: compatibility-promise
+    name: "apis compatibility promise"
+    description: "Major in path, minor in Exchange · 90-day deprecation. The model's Standard API Versioning."
+  - id: jwt-entra
+    kind: authentication-constraint
+    name: "xapi consumer auth"
+    description: "JWT validation · Entra ID issuer. jwt-validation policy, audience api://patron-checkin, plus client-id enforcement. Identifies the staff member, not the device — upgrades the API key in the previous model."
+  - id: client-id-private
+    kind: authentication-constraint
+    name: "internal API auth"
+    description: "client-id enforcement · private endpoint. No public endpoint; client-id enforcement with per-caller client applications; ip-allowlist to the Private Space CIDR."
+  - id: webhook-url-secret
+    kind: authentication-constraint
+    name: "webhook URL as credential"
+    description: "Teams incoming webhook: the URL is the only credential. Held in the listener's secret set, rotated by regenerating the webhook."
+  - id: rate-60-per-min
+    kind: rate-limit-constraint
+    name: "xapi rate limit"
+    description: "60 requests / minute per client. The model's One Request per Minute, as a rate-limiting policy."
+  - id: idem-key-header
+    kind: idempotency-constraint
+    name: "xapi idempotency"
+    description: "Idempotency-Key header on POST. Required by the experience API."
+  - id: idem-one-per-day
+    kind: idempotency-constraint
+    name: "papi idempotency"
+    description: "One attendance per patron per day. Idempotent Message Validator keyed patronId + date in Object Store v2, TTL 36 h. The model's One Attendance Registration per Day."
+  - id: idem-external-id
+    kind: idempotency-constraint
+    name: "sapi idempotency"
+    description: "Upsert on Attendance_Key__c. External id upsert in Salesforce."
+  - id: patron-lookup-cache
+    kind: cache-policy
+    name: "shared patron cache"
+    description: "Patron lookup cached 15 min. Object Store v2 keyed by membership number; protects the Salesforce daily API cap on a busy morning."
+  - id: thr-xapi
+    kind: throughput-constraint
+    name: "xapi throughput"
+    description: "0.1 req/s expected · 2 req/s peak. Five tablets, one request a minute each; peak at opening."
+  - id: thr-papi
+    kind: throughput-constraint
+    name: "papi throughput"
+    description: "0.1 req/s expected · 2 req/s peak. Mirrors the experience API."
+  - id: thr-sapi
+    kind: throughput-constraint
+    name: "sapi throughput"
+    description: "0.3 req/s expected · 3 req/s peak. Serves three callers."
+  - id: lat-xapi
+    kind: latency-constraint
+    name: "xapi latency"
+    description: "p95 2 000 ms · p99 4 000 ms at the boundary. Verified by the k6 smoke test."
+  - id: lat-papi
+    kind: latency-constraint
+    name: "papi latency"
+    description: "p95 1 200 ms"
+  - id: lat-sapi
+    kind: latency-constraint
+    name: "sapi latency"
+    description: "p95 800 ms. Salesforce round trip dominates."
+  - id: payload-256kb
+    kind: payload-limit-constraint
+    name: "apis payload limit"
+    description: "256 KB"
+  - id: run-0600-0630
+    kind: run-window-constraint
+    name: "job run window"
+    description: "06:00 · complete by 06:30 AEST"
+  - id: max-15min
+    kind: runtime-limit-constraint
+    name: "job max runtime"
+    description: "15 min. Killed and alerted beyond this."
+  - id: overlap-skip
+    kind: overlap-policy
+    name: "job overlap policy"
+    description: "Skip. A second run never starts while one is running."
+  - id: catchup-manual
+    kind: catch-up-policy
+    name: "job catch-up policy"
+    description: "Run once late, manually. Never automatic on a platform restart (runbook)."
+  - id: vol-digest
+    kind: volume-constraint
+    name: "job volume"
+    description: "≈120 attendances · max 400. Tournament days."
+  - id: complete-0630
+    kind: completion-constraint
+    name: "job completion SLA"
+    description: "Digest in the manager's inbox by 06:30"
+  - id: idem-by-date
+    kind: idempotency-constraint
+    name: "job idempotency"
+    description: "Digest keyed by date. A re-run of the same date is a no-op."
+  - id: at-least-once
+    kind: delivery-guarantee
+    name: "listener delivery guarantee"
+    description: "At-least-once · manual ack after the webhook succeeds. Consumer idempotent on message id."
+  - id: ordering-none
+    kind: ordering-policy
+    name: "listener ordering"
+    description: "No ordering. Arrivals are independent."
+  - id: redeliver-3x30s
+    kind: redelivery-constraint
+    name: "listener redelivery"
+    description: "3 redeliveries · 30 s. Then the dead-letter queue."
+  - id: dlq-4h
+    kind: dlq-constraint
+    name: "listener DLQ handling"
+    description: "A dead-lettered message is acted on within 4 h. Alert at depth > 0."
+  - id: ttl-1h
+    kind: ttl-constraint
+    name: "listener message TTL"
+    description: "1 h. A greeting card an hour late is noise."
+  - id: backlog-100
+    kind: backlog-constraint
+    name: "listener backlog tolerance"
+    description: "Alert at queue depth 100"
+  - id: thr-listener
+    kind: throughput-constraint
+    name: "listener throughput"
+    description: "≈2/min at opening · 10/min peak · ≈150/day"
+  - id: lat-listener
+    kind: latency-constraint
+    name: "listener latency"
+    description: "10 s from attendance recorded to card in Teams"
+  - id: idem-message-id
+    kind: idempotency-constraint
+    name: "listener idempotency"
+    description: "MQ message id in Object Store · 24 h"
+  - id: row-quarantine
+    kind: partial-failure-policy
+    name: "file-transfer partial-failure policy"
+    description: "Row-level quarantine. Bad rows to /quarantine/ with the reason; good rows proceed."
+  - id: dup-filename-sha256
+    kind: duplicate-policy
+    name: "file-transfer duplicate policy"
+    description: "Filename + SHA-256. A re-exported identical file is a no-op."
+  - id: arrive-0400-0500
+    kind: arrival-window-constraint
+    name: "file-transfer arrival window"
+    description: "04:00–05:00 · alert at 05:30. Vendor agreement."
+  - id: poll-15min
+    kind: cadence-constraint
+    name: "file-transfer cadence"
+    description: "Every 15 min · 04:00–20:00"
+  - id: size-2mb
+    kind: size-constraint
+    name: "file-transfer size limit"
+    description: "≈50 KB · 300 rows · max 2 MB / 5 000 rows. Streaming; in-memory ceiling 8 MB, above it rejected and alerted."
+  - id: budget-5min
+    kind: processing-budget-constraint
+    name: "file-transfer processing budget"
+    description: "5 min per file · before 06:00"
+  - id: ret-30-90
+    kind: retention-constraint
+    name: "file-transfer retention"
+    description: "Processed 30 days · quarantined 90 days"
+  - id: idem-file-checksum
+    kind: idempotency-constraint
+    name: "file-transfer idempotency"
+    description: "Filename + checksum in Object Store"
+  - id: wm-purchase-id
+    kind: watermark-policy
+    name: "poller watermark"
+    description: "purchase_id · monotonic · Object Store v2"
+  - id: late-none
+    kind: late-row-policy
+    name: "poller late-row policy"
+    description: "Not expected. POS ids are sequential; nightly reconciliation catches strays."
+  - id: poll-5min
+    kind: cadence-constraint
+    name: "poller cadence"
+    description: "Every 5 min · 06:00–20:00. Silent during the POS backup 01:00–03:00."
+  - id: lag-60min
+    kind: lag-constraint
+    name: "poller lag tolerance"
+    description: "60 min behind the source before alert. During opening hours."
+  - id: batch-200
+    kind: batch-constraint
+    name: "poller batch size"
+    description: "200 rows per poll · max 2 000"
+  - id: q-500ms
+    kind: query-budget-constraint
+    name: "poller query budget"
+    description: "500 ms · index on purchase_id"
+  - id: conn-2
+    kind: connection-footprint-constraint
+    name: "poller connection footprint"
+    description: "Max 2 connections · read-only. On a database other systems use."
+  - id: backfill-90d
+    kind: backfill-constraint
+    name: "poller initial backfill"
+    description: "Last 90 days · once, supervised. Run in UAT and production under supervision."
+  - id: idem-purchase-id
+    kind: idempotency-constraint
+    name: "poller idempotency"
+    description: "Upsert on purchase id"
+  - id: vol-10-per-day
+    kind: volume-constraint
+    name: "mailbox volume"
+    description: "≈10 emails/day · max 100"
+  - id: lat-15min
+    kind: latency-constraint
+    name: "mailbox latency"
+    description: "15 min from receipt to Case and acknowledgement"
+  - id: poll-5min-imap
+    kind: cadence-constraint
+    name: "mailbox cadence"
+    description: "IMAP poll every 5 min"
+  - id: idem-message-id-imap
+    kind: idempotency-constraint
+    name: "mailbox idempotency"
+    description: "IMAP message-id in Object Store. One Case per email."
+  - id: rr-mule-4-6-to-4-9
+    kind: runtime-range-constraint
+    name: "library runtime range"
+    description: "Mule 4.6–4.9 · Java 17"
+  - id: compat-semver
+    kind: compatibility-promise
+    name: "library compatibility promise"
+    description: "Major bump only for breaking change · consumers pin exact versions · 30-day notice in Exchange"
+  - id: release-with-lts
+    kind: release-policy
+    name: "library release policy"
+    description: "With each LTS or on a fix · Yarrasys publishes"
+  - id: startup-under-50ms
+    kind: startup-cost-constraint
+    name: "library startup cost"
+    description: "< 50 ms added to consumer startup · < 2 MB. A library that slows every cold start is a defect."
+  - id: coverage-90
+    kind: coverage-target
+    name: "library coverage target"
+    description: "MUnit coverage 90 %. Higher than applications, because every consumer inherits its bugs."
+  - id: xapi-secrets
+    kind: secret-set
+    name: "xapi secrets"
+    description: "Experience API secrets. TLS only; no connector credentials."
+  - id: papi-secrets
+    kind: secret-set
+    name: "papi secrets"
+    description: "Process API secrets. secure::papi.client.secret for the system-API client application."
+  - id: sapi-secrets
+    kind: secret-set
+    name: "sapi secrets"
+    description: "System API secrets. secure::sf.consumer.key; JWT signing certificate in Secrets Manager; integration user integration@famousgolfcourse.com.au."
+  - id: job-secrets
+    kind: secret-set
+    name: "job secrets"
+    description: "Digest job secrets. secure::smtp.password, secure::sapi.client.secret."
+  - id: listener-secrets
+    kind: secret-set
+    name: "listener secrets"
+    description: "Listener secrets. secure::mq.client.secret, secure::teams.webhook."
+  - id: ft-secrets
+    kind: secret-set
+    name: "file-transfer secrets"
+    description: "File-transfer secrets. SFTP private key in Secrets Manager; vendor host key pinned."
+  - id: poller-secrets
+    kind: secret-set
+    name: "poller secrets"
+    description: "Poller secrets. secure::pos.db.password (read-only account)."
+  - id: mailbox-secrets
+    kind: secret-set
+    name: "mailbox secrets"
+    description: "Mailbox secrets. secure::imap.password."
+relationships:
+  - { id: own-avail-opening-hours, kind: association, from: guest-services-manager, to: avail-opening-hours }
+  - { id: own-rto-60-rpo-0, kind: association, from: yarrasys, to: rto-60-rpo-0 }
+  - { id: own-timeout-standard, kind: association, from: yarrasys, to: timeout-standard }
+  - { id: own-retry-bounded, kind: association, from: yarrasys, to: retry-bounded }
+  - { id: own-retry-salesforce, kind: association, from: yarrasys, to: retry-salesforce }
+  - { id: own-detect-5min, kind: association, from: fgc-it-support, to: detect-5min }
+  - { id: own-detect-30min, kind: association, from: fgc-it-support, to: detect-30min }
+  - { id: own-logs-30d, kind: association, from: fgc-it-security, to: logs-30d }
+  - { id: own-errs-framework, kind: association, from: yarrasys, to: errs-framework }
+  - { id: own-errs-salesforce, kind: association, from: yarrasys, to: errs-salesforce }
+  - { id: own-obs-standard, kind: association, from: fgc-it-support, to: obs-standard }
+  - { id: own-obs-sapi, kind: association, from: fgc-it-support, to: obs-sapi }
+  - { id: own-obs-job, kind: association, from: fgc-it-support, to: obs-job }
+  - { id: own-obs-listener, kind: association, from: fgc-it-support, to: obs-listener }
+  - { id: own-obs-ft, kind: association, from: fgc-it-support, to: obs-ft }
+  - { id: own-obs-poller, kind: association, from: fgc-it-support, to: obs-poller }
+  - { id: own-obs-mailbox, kind: association, from: fgc-it-support, to: obs-mailbox }
+  - { id: own-api-versioning-v1, kind: association, from: yarrasys, to: api-versioning-v1 }
+  - { id: own-jwt-entra, kind: association, from: fgc-it-security, to: jwt-entra }
+  - { id: own-client-id-private, kind: association, from: fgc-it-security, to: client-id-private }
+  - { id: own-webhook-url-secret, kind: association, from: fgc-it-security, to: webhook-url-secret }
+  - { id: own-rate-60-per-min, kind: association, from: fgc-it-security, to: rate-60-per-min }
+  - { id: own-idem-key-header, kind: association, from: yarrasys, to: idem-key-header }
+  - { id: own-idem-one-per-day, kind: association, from: yarrasys, to: idem-one-per-day }
+  - { id: own-idem-external-id, kind: association, from: yarrasys, to: idem-external-id }
+  - { id: own-patron-lookup-cache, kind: association, from: yarrasys, to: patron-lookup-cache }
+  - { id: own-thr-xapi, kind: association, from: yarrasys, to: thr-xapi }
+  - { id: own-thr-papi, kind: association, from: yarrasys, to: thr-papi }
+  - { id: own-thr-sapi, kind: association, from: yarrasys, to: thr-sapi }
+  - { id: own-lat-xapi, kind: association, from: yarrasys, to: lat-xapi }
+  - { id: own-lat-papi, kind: association, from: yarrasys, to: lat-papi }
+  - { id: own-lat-sapi, kind: association, from: yarrasys, to: lat-sapi }
+  - { id: own-payload-256kb, kind: association, from: yarrasys, to: payload-256kb }
+  - { id: own-run-0600-0630, kind: association, from: guest-services-manager, to: run-0600-0630 }
+  - { id: own-max-15min, kind: association, from: yarrasys, to: max-15min }
+  - { id: own-overlap-skip, kind: association, from: yarrasys, to: overlap-skip }
+  - { id: own-catchup-manual, kind: association, from: yarrasys, to: catchup-manual }
+  - { id: own-vol-digest, kind: association, from: yarrasys, to: vol-digest }
+  - { id: own-complete-0630, kind: association, from: guest-services-manager, to: complete-0630 }
+  - { id: own-idem-by-date, kind: association, from: yarrasys, to: idem-by-date }
+  - { id: own-at-least-once, kind: association, from: yarrasys, to: at-least-once }
+  - { id: own-ordering-none, kind: association, from: yarrasys, to: ordering-none }
+  - { id: own-redeliver-3x30s, kind: association, from: yarrasys, to: redeliver-3x30s }
+  - { id: own-dlq-4h, kind: association, from: guest-services-manager, to: dlq-4h }
+  - { id: own-ttl-1h, kind: association, from: yarrasys, to: ttl-1h }
+  - { id: own-backlog-100, kind: association, from: yarrasys, to: backlog-100 }
+  - { id: own-thr-listener, kind: association, from: yarrasys, to: thr-listener }
+  - { id: own-lat-listener, kind: association, from: yarrasys, to: lat-listener }
+  - { id: own-idem-message-id, kind: association, from: yarrasys, to: idem-message-id }
+  - { id: own-row-quarantine, kind: association, from: yarrasys, to: row-quarantine }
+  - { id: own-dup-filename-sha256, kind: association, from: yarrasys, to: dup-filename-sha256 }
+  - { id: own-arrive-0400-0500, kind: association, from: fgc-it-support, to: arrive-0400-0500 }
+  - { id: own-poll-15min, kind: association, from: yarrasys, to: poll-15min }
+  - { id: own-size-2mb, kind: association, from: yarrasys, to: size-2mb }
+  - { id: own-budget-5min, kind: association, from: yarrasys, to: budget-5min }
+  - { id: own-ret-30-90, kind: association, from: fgc-it-security, to: ret-30-90 }
+  - { id: own-idem-file-checksum, kind: association, from: yarrasys, to: idem-file-checksum }
+  - { id: own-wm-purchase-id, kind: association, from: yarrasys, to: wm-purchase-id }
+  - { id: own-late-none, kind: association, from: yarrasys, to: late-none }
+  - { id: own-poll-5min, kind: association, from: yarrasys, to: poll-5min }
+  - { id: own-lag-60min, kind: association, from: yarrasys, to: lag-60min }
+  - { id: own-batch-200, kind: association, from: yarrasys, to: batch-200 }
+  - { id: own-q-500ms, kind: association, from: yarrasys, to: q-500ms }
+  - { id: own-conn-2, kind: association, from: fgc-it-support, to: conn-2 }
+  - { id: own-backfill-90d, kind: association, from: fgc-it-support, to: backfill-90d }
+  - { id: own-idem-purchase-id, kind: association, from: yarrasys, to: idem-purchase-id }
+  - { id: own-vol-10-per-day, kind: association, from: yarrasys, to: vol-10-per-day }
+  - { id: own-lat-15min, kind: association, from: yarrasys, to: lat-15min }
+  - { id: own-poll-5min-imap, kind: association, from: yarrasys, to: poll-5min-imap }
+  - { id: own-idem-message-id-imap, kind: association, from: yarrasys, to: idem-message-id-imap }
+  - { id: own-rr-mule-4-6-to-4-9, kind: association, from: yarrasys, to: rr-mule-4-6-to-4-9 }
+  - { id: own-compat-semver, kind: association, from: yarrasys, to: compat-semver }
+  - { id: own-release-with-lts, kind: association, from: yarrasys, to: release-with-lts }
+  - { id: own-startup-under-50ms, kind: association, from: yarrasys, to: startup-under-50ms }
+  - { id: own-coverage-90, kind: association, from: yarrasys, to: coverage-90 }
+  - { id: own-xapi-secrets, kind: association, from: fgc-it-security, to: xapi-secrets }
+  - { id: own-papi-secrets, kind: association, from: fgc-it-security, to: papi-secrets }
+  - { id: own-sapi-secrets, kind: association, from: fgc-it-security, to: sapi-secrets }
+  - { id: own-job-secrets, kind: association, from: fgc-it-security, to: job-secrets }
+  - { id: own-listener-secrets, kind: association, from: fgc-it-security, to: listener-secrets }
+  - { id: own-ft-secrets, kind: association, from: fgc-it-security, to: ft-secrets }
+  - { id: own-poller-secrets, kind: association, from: fgc-it-security, to: poller-secrets }
+  - { id: own-mailbox-secrets, kind: association, from: fgc-it-security, to: mailbox-secrets }

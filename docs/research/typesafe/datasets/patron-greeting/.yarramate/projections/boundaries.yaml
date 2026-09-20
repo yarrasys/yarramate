@@ -1,0 +1,25 @@
+format: yarramate/projection/v1
+id: boundaries
+version: "1.0"
+query:
+  subjects:
+    - checkin-tablet-webapp
+    - patron-checkin-api
+    - patron-attendance-api
+    - salesforce-patron-api
+    - salesforce-connector
+    - salesforce-crm
+    - patron-arrivals
+    - pro-shop-teams
+    - vendor-tee-sheet-sftp
+    - pos-database
+    - enquiries-mailbox
+    - jwt-entra
+    - client-id-private
+    - rate-60-per-min
+    - entra-id
+  relationships: connected
+presentation:
+  title: "Trust boundaries"
+  layout: layered
+  nesting: [composition, assignment]

@@ -1,0 +1,2582 @@
+{
+  "arm": "drift",
+  "dataset": "patron-greeting",
+  "meta": {
+    "probe": false
+  },
+  "model": [
+    "jev-1.13.0"
+  ],
+  "repeat": 3,
+  "scored": {
+    "n": 227,
+    "flaggedSubjects": 26,
+    "flaggedByQuestion": {
+      "data": 19,
+      "served": 9,
+      "trigger": 1
+    },
+    "probe": null,
+    "rows": [
+      {
+        "subject": "ack-email",
+        "name": "Acknowledgement email",
+        "removed": null,
+        "nouls": {
+          "data": 0.43,
+          "served": 0.5,
+          "trigger": 0.38
+        },
+        "flagged": []
+      },
+      {
+        "subject": "anypoint-exchange",
+        "name": "Anypoint Exchange",
+        "removed": null,
+        "nouls": {
+          "data": 0.31,
+          "served": 0.26,
+          "trigger": 0.38
+        },
+        "flagged": []
+      },
+      {
+        "subject": "anypoint-monitoring",
+        "name": "Anypoint Monitoring",
+        "removed": null,
+        "nouls": {
+          "data": 0.54,
+          "served": 0.63,
+          "trigger": 0.34
+        },
+        "flagged": []
+      },
+      {
+        "subject": "api-versioning-v1",
+        "name": "apis compatibility promise",
+        "removed": null,
+        "nouls": {
+          "data": 0.07,
+          "served": 0.28,
+          "trigger": 0.44
+        },
+        "flagged": []
+      },
+      {
+        "subject": "arrival-event",
+        "name": "Arrival event",
+        "removed": null,
+        "nouls": {
+          "data": 0.17,
+          "served": 0.18,
+          "trigger": 0.26
+        },
+        "flagged": []
+      },
+      {
+        "subject": "arrive-0400-0500",
+        "name": "file-transfer arrival window",
+        "removed": null,
+        "nouls": {
+          "data": 0.14,
+          "served": 0.27,
+          "trigger": 0.53
+        },
+        "flagged": []
+      },
+      {
+        "subject": "at-least-once",
+        "name": "listener delivery guarantee",
+        "removed": null,
+        "nouls": {
+          "data": 0.29,
+          "served": 0.54,
+          "trigger": 0.32
+        },
+        "flagged": []
+      },
+      {
+        "subject": "attendance-digest",
+        "name": "Attendance digest",
+        "removed": null,
+        "nouls": {
+          "data": 0.55,
+          "served": 0.16,
+          "trigger": 0.15
+        },
+        "flagged": []
+      },
+      {
+        "subject": "attendance-digest-job",
+        "name": "attendance-digest-job",
+        "removed": null,
+        "nouls": {
+          "data": 0.39,
+          "served": 0.12,
+          "trigger": 0.45
+        },
+        "flagged": []
+      },
+      {
+        "subject": "attendance-known-daily",
+        "name": "Attendance is known by breakfast",
+        "removed": null,
+        "nouls": {
+          "data": 0.56,
+          "served": 0.42,
+          "trigger": 0.31
+        },
+        "flagged": []
+      },
+      {
+        "subject": "attendance-list",
+        "name": "Attendance list",
+        "removed": null,
+        "nouls": {
+          "data": 0.17,
+          "served": 0.09,
+          "trigger": 0.13
+        },
+        "flagged": []
+      },
+      {
+        "subject": "attendance-record",
+        "name": "Attendance record",
+        "removed": null,
+        "nouls": {
+          "data": 0.3,
+          "served": 0.19,
+          "trigger": 0.18
+        },
+        "flagged": []
+      },
+      {
+        "subject": "attendance-request",
+        "name": "Attendance request",
+        "removed": null,
+        "nouls": {
+          "data": 0.48,
+          "served": 0.17,
+          "trigger": 0.1
+        },
+        "flagged": []
+      },
+      {
+        "subject": "avail-opening-hours",
+        "name": "shared availability",
+        "removed": null,
+        "nouls": {
+          "data": 0.06,
+          "served": 0.27,
+          "trigger": 0.25
+        },
+        "flagged": []
+      },
+      {
+        "subject": "backfill-90d",
+        "name": "poller initial backfill",
+        "removed": null,
+        "nouls": {
+          "data": 0.13,
+          "served": 0.21,
+          "trigger": 0.38
+        },
+        "flagged": []
+      },
+      {
+        "subject": "br-01-recognise-patron",
+        "name": "BR-01 Recognise the arriving patron",
+        "removed": null,
+        "nouls": {
+          "data": 0.87,
+          "served": 0.66,
+          "trigger": 0.67
+        },
+        "flagged": [
+          "data"
+        ]
+      },
+      {
+        "subject": "br-02-greet-with-context",
+        "name": "BR-02 Greet by name, with today's context",
+        "removed": null,
+        "nouls": {
+          "data": 0.75,
+          "served": 0.74,
+          "trigger": 0.43
+        },
+        "flagged": [
+          "data",
+          "served"
+        ]
+      },
+      {
+        "subject": "br-03-record-arrival-once",
+        "name": "BR-03 Record every arrival, once",
+        "removed": null,
+        "nouls": {
+          "data": 0.72,
+          "served": 0.61,
+          "trigger": 0.44
+        },
+        "flagged": [
+          "data"
+        ]
+      },
+      {
+        "subject": "br-04-staff-greet-as-themselves",
+        "name": "BR-04 Staff greet from a tablet, as themselves",
+        "removed": null,
+        "nouls": {
+          "data": 0.5,
+          "served": 0.74,
+          "trigger": 0.49
+        },
+        "flagged": [
+          "served"
+        ]
+      },
+      {
+        "subject": "br-05-staff-know-arrivals",
+        "name": "BR-05 Staff away from the desk know who has arrived",
+        "removed": null,
+        "nouls": {
+          "data": 0.67,
+          "served": 0.79,
+          "trigger": 0.65
+        },
+        "flagged": [
+          "served"
+        ]
+      },
+      {
+        "subject": "br-06-attendance-digest",
+        "name": "BR-06 Yesterday's attendance in the manager's inbox by 06:30",
+        "removed": null,
+        "nouls": {
+          "data": 0.68,
+          "served": 0.26,
+          "trigger": 0.5
+        },
+        "flagged": []
+      },
+      {
+        "subject": "br-07-tee-times-ahead",
+        "name": "BR-07 Today's tee times are known before the first arrival",
+        "removed": null,
+        "nouls": {
+          "data": 0.72,
+          "served": 0.74,
+          "trigger": 0.66
+        },
+        "flagged": [
+          "data",
+          "served"
+        ]
+      },
+      {
+        "subject": "br-08-purchases-follow-patron",
+        "name": "BR-08 Recent pro-shop purchases follow the patron",
+        "removed": null,
+        "nouls": {
+          "data": 0.7,
+          "served": 0.67,
+          "trigger": 0.55
+        },
+        "flagged": [
+          "data"
+        ]
+      },
+      {
+        "subject": "br-09-enquiry-to-case",
+        "name": "BR-09 Every emailed enquiry becomes a case and is acknowledged",
+        "removed": null,
+        "nouls": {
+          "data": 0.84,
+          "served": 0.54,
+          "trigger": 0.57
+        },
+        "flagged": [
+          "data"
+        ]
+      },
+      {
+        "subject": "br-10-one-patron-record",
+        "name": "BR-10 One patron record",
+        "removed": null,
+        "nouls": {
+          "data": 0.9,
+          "served": 0.61,
+          "trigger": 0.55
+        },
+        "flagged": [
+          "data"
+        ]
+      },
+      {
+        "subject": "br-11-patron-data-private",
+        "name": "BR-11 Patron data stays private",
+        "removed": null,
+        "nouls": {
+          "data": 0.68,
+          "served": 0.45,
+          "trigger": 0.32
+        },
+        "flagged": []
+      },
+      {
+        "subject": "br-12-open-hours-availability",
+        "name": "BR-12 Ready whenever the course is open",
+        "removed": null,
+        "nouls": {
+          "data": 0.66,
+          "served": 0.56,
+          "trigger": 0.37
+        },
+        "flagged": []
+      },
+      {
+        "subject": "br-13-hosted-in-australia",
+        "name": "BR-13 Hosted in Australia, on the club's own platform",
+        "removed": null,
+        "nouls": {
+          "data": 0.56,
+          "served": 0.84,
+          "trigger": 0.53
+        },
+        "flagged": [
+          "served"
+        ]
+      },
+      {
+        "subject": "br-14-supportable-by-club-it",
+        "name": "BR-14 Supportable by the club's IT during opening hours",
+        "removed": null,
+        "nouls": {
+          "data": 0.52,
+          "served": 0.71,
+          "trigger": 0.68
+        },
+        "flagged": [
+          "served"
+        ]
+      },
+      {
+        "subject": "call-mailbox-read",
+        "name": "Read enquiries mailbox",
+        "removed": null,
+        "nouls": {
+          "data": 0.11,
+          "served": 0.11,
+          "trigger": 0.1
+        },
+        "flagged": []
+      },
+      {
+        "subject": "call-poller-read-purchases",
+        "name": "Select purchases past the watermark",
+        "removed": null,
+        "nouls": {
+          "data": 0.14,
+          "served": 0.09,
+          "trigger": 0.11
+        },
+        "flagged": []
+      },
+      {
+        "subject": "call-sapi-query-contact",
+        "name": "Query Contact and Membership__c",
+        "removed": null,
+        "nouls": {
+          "data": 0.14,
+          "served": 0.13,
+          "trigger": 0.19
+        },
+        "flagged": []
+      },
+      {
+        "subject": "call-sapi-upsert-attendance",
+        "name": "Upsert Patron_Attendance__c",
+        "removed": null,
+        "nouls": {
+          "data": 0.23,
+          "served": 0.1,
+          "trigger": 0.14
+        },
+        "flagged": []
+      },
+      {
+        "subject": "case-record",
+        "name": "Case record",
+        "removed": null,
+        "nouls": {
+          "data": 0.32,
+          "served": 0.11,
+          "trigger": 0.1
+        },
+        "flagged": []
+      },
+      {
+        "subject": "case-request",
+        "name": "Case request",
+        "removed": null,
+        "nouls": {
+          "data": 0.23,
+          "served": 0.28,
+          "trigger": 0.13
+        },
+        "flagged": []
+      },
+      {
+        "subject": "catchup-manual",
+        "name": "job catch-up policy",
+        "removed": null,
+        "nouls": {
+          "data": 0.06,
+          "served": 0.21,
+          "trigger": 0.55
+        },
+        "flagged": []
+      },
+      {
+        "subject": "checkin-request",
+        "name": "Check-in request",
+        "removed": null,
+        "nouls": {
+          "data": 0.39,
+          "served": 0.46,
+          "trigger": 0.36
+        },
+        "flagged": []
+      },
+      {
+        "subject": "checkin-tablet",
+        "name": "Golf Course Check-in Tablet",
+        "removed": null,
+        "nouls": {
+          "data": 0.06,
+          "served": 0.13,
+          "trigger": 0.1
+        },
+        "flagged": []
+      },
+      {
+        "subject": "checkin-tablet-webapp",
+        "name": "checkin-tablet-webapp",
+        "removed": null,
+        "nouls": {
+          "data": 0.15,
+          "served": 0.25,
+          "trigger": 0.46
+        },
+        "flagged": []
+      },
+      {
+        "subject": "client-id-private",
+        "name": "internal API auth",
+        "removed": null,
+        "nouls": {
+          "data": 0.08,
+          "served": 0.36,
+          "trigger": 0.24
+        },
+        "flagged": []
+      },
+      {
+        "subject": "client-notifier-teams",
+        "name": "HTTP client → Teams incoming webhook",
+        "removed": null,
+        "nouls": {
+          "data": 0.23,
+          "served": 0.08,
+          "trigger": 0.12
+        },
+        "flagged": []
+      },
+      {
+        "subject": "client-papi-sapi",
+        "name": "HTTP client → salesforce-patron-api",
+        "removed": null,
+        "nouls": {
+          "data": 0.07,
+          "served": 0.12,
+          "trigger": 0.19
+        },
+        "flagged": []
+      },
+      {
+        "subject": "client-xapi-papi",
+        "name": "HTTP client → patron-attendance-api",
+        "removed": null,
+        "nouls": {
+          "data": 0.12,
+          "served": 0.15,
+          "trigger": 0.21
+        },
+        "flagged": []
+      },
+      {
+        "subject": "club-management",
+        "name": "Famous Golf Course management",
+        "removed": null,
+        "nouls": {
+          "data": 0.12,
+          "served": 0.38,
+          "trigger": 0.37
+        },
+        "flagged": []
+      },
+      {
+        "subject": "compat-semver",
+        "name": "library compatibility promise",
+        "removed": null,
+        "nouls": {
+          "data": 0.22,
+          "served": 0.65,
+          "trigger": 0.39
+        },
+        "flagged": []
+      },
+      {
+        "subject": "compose-greeting",
+        "name": "Compose Greeting",
+        "removed": null,
+        "nouls": {
+          "data": 0.76,
+          "served": 0.42,
+          "trigger": 0.33
+        },
+        "flagged": [
+          "data"
+        ]
+      },
+      {
+        "subject": "compose-greeting-view",
+        "name": "Compose Greeting View",
+        "removed": null,
+        "nouls": {
+          "data": 0.05,
+          "served": 0.09,
+          "trigger": 0.08
+        },
+        "flagged": []
+      },
+      {
+        "subject": "conn-2",
+        "name": "poller connection footprint",
+        "removed": null,
+        "nouls": {
+          "data": 0.22,
+          "served": 0.39,
+          "trigger": 0.2
+        },
+        "flagged": []
+      },
+      {
+        "subject": "consistent-arrival-experience",
+        "name": "Consistent arrival experience",
+        "removed": null,
+        "nouls": {
+          "data": 0.34,
+          "served": 0.3,
+          "trigger": 0.25
+        },
+        "flagged": []
+      },
+      {
+        "subject": "coverage-80",
+        "name": "MUnit coverage 80 %",
+        "removed": null,
+        "nouls": {
+          "data": 0.05,
+          "served": 0.17,
+          "trigger": 0.47
+        },
+        "flagged": []
+      },
+      {
+        "subject": "coverage-90",
+        "name": "library coverage target",
+        "removed": null,
+        "nouls": {
+          "data": 0.06,
+          "served": 0.34,
+          "trigger": 0.1
+        },
+        "flagged": []
+      },
+      {
+        "subject": "detect-30min",
+        "name": "batch time to detect",
+        "removed": null,
+        "nouls": {
+          "data": 0.11,
+          "served": 0.37,
+          "trigger": 0.43
+        },
+        "flagged": []
+      },
+      {
+        "subject": "detect-5min",
+        "name": "apis time to detect",
+        "removed": null,
+        "nouls": {
+          "data": 0.13,
+          "served": 0.18,
+          "trigger": 0.45
+        },
+        "flagged": []
+      },
+      {
+        "subject": "digest-email",
+        "name": "Digest email",
+        "removed": null,
+        "nouls": {
+          "data": 0.12,
+          "served": 0.74,
+          "trigger": 0.31
+        },
+        "flagged": [
+          "served"
+        ]
+      },
+      {
+        "subject": "dlq-4h",
+        "name": "listener DLQ handling",
+        "removed": null,
+        "nouls": {
+          "data": 0.42,
+          "served": 0.23,
+          "trigger": 0.43
+        },
+        "flagged": []
+      },
+      {
+        "subject": "dup-filename-sha256",
+        "name": "file-transfer duplicate policy",
+        "removed": null,
+        "nouls": {
+          "data": 0.41,
+          "served": 0.15,
+          "trigger": 0.23
+        },
+        "flagged": []
+      },
+      {
+        "subject": "email-connector",
+        "name": "Email Connector (SMTP/IMAP)",
+        "removed": null,
+        "nouls": {
+          "data": 0.1,
+          "served": 0.15,
+          "trigger": 0.16
+        },
+        "flagged": []
+      },
+      {
+        "subject": "enquiries-answered",
+        "name": "No enquiry goes unanswered",
+        "removed": null,
+        "nouls": {
+          "data": 0.62,
+          "served": 0.52,
+          "trigger": 0.38
+        },
+        "flagged": []
+      },
+      {
+        "subject": "enquiries-mailbox",
+        "name": "enquiries@famousgolfcourse.com.au",
+        "removed": null,
+        "nouls": {
+          "data": 0.26,
+          "served": 0.28,
+          "trigger": 0.36
+        },
+        "flagged": []
+      },
+      {
+        "subject": "enquiry-mailbox-reader",
+        "name": "enquiry-mailbox-reader",
+        "removed": null,
+        "nouls": {
+          "data": 0.46,
+          "served": 0.49,
+          "trigger": 0.46
+        },
+        "flagged": []
+      },
+      {
+        "subject": "entra-id",
+        "name": "Microsoft Entra ID",
+        "removed": null,
+        "nouls": {
+          "data": 0.34,
+          "served": 0.67,
+          "trigger": 0.52
+        },
+        "flagged": []
+      },
+      {
+        "subject": "env-design",
+        "name": "Design",
+        "removed": null,
+        "nouls": {
+          "data": 0.1,
+          "served": 0.33,
+          "trigger": 0.23
+        },
+        "flagged": []
+      },
+      {
+        "subject": "env-production",
+        "name": "Production",
+        "removed": null,
+        "nouls": {
+          "data": 0.08,
+          "served": 0.68,
+          "trigger": 0.59
+        },
+        "flagged": []
+      },
+      {
+        "subject": "env-sandbox",
+        "name": "Sandbox",
+        "removed": null,
+        "nouls": {
+          "data": 0.04,
+          "served": 0.32,
+          "trigger": 0.1
+        },
+        "flagged": []
+      },
+      {
+        "subject": "env-uat",
+        "name": "UAT",
+        "removed": null,
+        "nouls": {
+          "data": 0.04,
+          "served": 0.66,
+          "trigger": 0.75
+        },
+        "flagged": [
+          "trigger"
+        ]
+      },
+      {
+        "subject": "errs-framework",
+        "name": "shared error handling",
+        "removed": null,
+        "nouls": {
+          "data": 0.21,
+          "served": 0.32,
+          "trigger": 0.33
+        },
+        "flagged": []
+      },
+      {
+        "subject": "errs-salesforce",
+        "name": "sapi error handling",
+        "removed": null,
+        "nouls": {
+          "data": 0.15,
+          "served": 0.27,
+          "trigger": 0.45
+        },
+        "flagged": []
+      },
+      {
+        "subject": "expected-arrival",
+        "name": "Expected arrival",
+        "removed": null,
+        "nouls": {
+          "data": 0.52,
+          "served": 0.39,
+          "trigger": 0.19
+        },
+        "flagged": []
+      },
+      {
+        "subject": "fgc-api-fragments",
+        "name": "fgc-api-fragments",
+        "removed": null,
+        "nouls": {
+          "data": 0.12,
+          "served": 0.23,
+          "trigger": 0.06
+        },
+        "flagged": []
+      },
+      {
+        "subject": "fgc-error-framework",
+        "name": "fgc-error-framework",
+        "removed": null,
+        "nouls": {
+          "data": 0.27,
+          "served": 0.23,
+          "trigger": 0.17
+        },
+        "flagged": []
+      },
+      {
+        "subject": "fgc-it-security",
+        "name": "Famous Golf Course IT Security",
+        "removed": null,
+        "nouls": {
+          "data": 0.42,
+          "served": 0.19,
+          "trigger": 0.59
+        },
+        "flagged": []
+      },
+      {
+        "subject": "fgc-it-support",
+        "name": "Famous Golf Course IT Support",
+        "removed": null,
+        "nouls": {
+          "data": 0.34,
+          "served": 0.33,
+          "trigger": 0.39
+        },
+        "flagged": []
+      },
+      {
+        "subject": "fgc-json-logger",
+        "name": "fgc-json-logger",
+        "removed": null,
+        "nouls": {
+          "data": 0.39,
+          "served": 0.13,
+          "trigger": 0.16
+        },
+        "flagged": []
+      },
+      {
+        "subject": "fgc-maven-coordinates",
+        "name": "au.com.famousgolfcourse.integration",
+        "removed": null,
+        "nouls": {
+          "data": 0.08,
+          "served": 0.16,
+          "trigger": 0.09
+        },
+        "flagged": []
+      },
+      {
+        "subject": "fgc-parent-pom",
+        "name": "fgc-parent-pom",
+        "removed": null,
+        "nouls": {
+          "data": 0.04,
+          "served": 0.21,
+          "trigger": 0.09
+        },
+        "flagged": []
+      },
+      {
+        "subject": "fgc-ps-au",
+        "name": "CloudHub 2.0 Private Space · ap-southeast-2",
+        "removed": null,
+        "nouls": {
+          "data": 0.46,
+          "served": 0.61,
+          "trigger": 0.42
+        },
+        "flagged": []
+      },
+      {
+        "subject": "ft-secrets",
+        "name": "file-transfer secrets",
+        "removed": null,
+        "nouls": {
+          "data": 0.57,
+          "served": 0.22,
+          "trigger": 0.25
+        },
+        "flagged": []
+      },
+      {
+        "subject": "greeting",
+        "name": "Greeting",
+        "removed": null,
+        "nouls": {
+          "data": 0.43,
+          "served": 0.24,
+          "trigger": 0.14
+        },
+        "flagged": []
+      },
+      {
+        "subject": "greeting-request",
+        "name": "Greeting request",
+        "removed": null,
+        "nouls": {
+          "data": 0.32,
+          "served": 0.28,
+          "trigger": 0.35
+        },
+        "flagged": []
+      },
+      {
+        "subject": "greeting-sample",
+        "name": "Greeting sample",
+        "removed": null,
+        "nouls": {
+          "data": 0.11,
+          "served": 0.07,
+          "trigger": 0.14
+        },
+        "flagged": []
+      },
+      {
+        "subject": "greeting-system-delivery",
+        "name": "Patron Greeting System delivery",
+        "removed": null,
+        "nouls": {
+          "data": 0.07,
+          "served": 0.23,
+          "trigger": 0.47
+        },
+        "flagged": []
+      },
+      {
+        "subject": "greeting-view",
+        "name": "Greeting view",
+        "removed": null,
+        "nouls": {
+          "data": 0.27,
+          "served": 0.33,
+          "trigger": 0.11
+        },
+        "flagged": []
+      },
+      {
+        "subject": "guest-services-manager",
+        "name": "Guest Services Manager",
+        "removed": null,
+        "nouls": {
+          "data": 0.56,
+          "served": 0.19,
+          "trigger": 0.39
+        },
+        "flagged": []
+      },
+      {
+        "subject": "idem-by-date",
+        "name": "job idempotency",
+        "removed": null,
+        "nouls": {
+          "data": 0.43,
+          "served": 0.14,
+          "trigger": 0.26
+        },
+        "flagged": []
+      },
+      {
+        "subject": "idem-external-id",
+        "name": "sapi idempotency",
+        "removed": null,
+        "nouls": {
+          "data": 0.81,
+          "served": 0.35,
+          "trigger": 0.44
+        },
+        "flagged": [
+          "data"
+        ]
+      },
+      {
+        "subject": "idem-key-header",
+        "name": "xapi idempotency",
+        "removed": null,
+        "nouls": {
+          "data": 0.2,
+          "served": 0.25,
+          "trigger": 0.19
+        },
+        "flagged": []
+      },
+      {
+        "subject": "idem-message-id-imap",
+        "name": "mailbox idempotency",
+        "removed": null,
+        "nouls": {
+          "data": 0.7,
+          "served": 0.22,
+          "trigger": 0.22
+        },
+        "flagged": [
+          "data"
+        ]
+      },
+      {
+        "subject": "idem-one-per-day",
+        "name": "papi idempotency",
+        "removed": null,
+        "nouls": {
+          "data": 0.83,
+          "served": 0.41,
+          "trigger": 0.47
+        },
+        "flagged": [
+          "data"
+        ]
+      },
+      {
+        "subject": "import-tee-sheet",
+        "name": "Import Tee Sheet",
+        "removed": null,
+        "nouls": {
+          "data": 0.7,
+          "served": 0.29,
+          "trigger": 0.45
+        },
+        "flagged": [
+          "data"
+        ]
+      },
+      {
+        "subject": "internal",
+        "name": "Internal",
+        "removed": null,
+        "nouls": {
+          "data": 0.12,
+          "served": 0.09,
+          "trigger": 0.07
+        },
+        "flagged": []
+      },
+      {
+        "subject": "java-17",
+        "name": "Java 17",
+        "removed": null,
+        "nouls": {
+          "data": 0.48,
+          "served": 0.13,
+          "trigger": 0.11
+        },
+        "flagged": []
+      },
+      {
+        "subject": "job-secrets",
+        "name": "job secrets",
+        "removed": null,
+        "nouls": {
+          "data": 0.8,
+          "served": 0.26,
+          "trigger": 0.48
+        },
+        "flagged": [
+          "data"
+        ]
+      },
+      {
+        "subject": "jwt-entra",
+        "name": "xapi consumer auth",
+        "removed": null,
+        "nouls": {
+          "data": 0.31,
+          "served": 0.44,
+          "trigger": 0.48
+        },
+        "flagged": []
+      },
+      {
+        "subject": "lag-60min",
+        "name": "poller lag tolerance",
+        "removed": null,
+        "nouls": {
+          "data": 0.17,
+          "served": 0.17,
+          "trigger": 0.26
+        },
+        "flagged": []
+      },
+      {
+        "subject": "lat-15min",
+        "name": "mailbox latency",
+        "removed": null,
+        "nouls": {
+          "data": 0.17,
+          "served": 0.17,
+          "trigger": 0.41
+        },
+        "flagged": []
+      },
+      {
+        "subject": "lat-listener",
+        "name": "listener latency",
+        "removed": null,
+        "nouls": {
+          "data": 0.42,
+          "served": 0.35,
+          "trigger": 0.61
+        },
+        "flagged": []
+      },
+      {
+        "subject": "lat-sapi",
+        "name": "sapi latency",
+        "removed": null,
+        "nouls": {
+          "data": 0.06,
+          "served": 0.22,
+          "trigger": 0.3
+        },
+        "flagged": []
+      },
+      {
+        "subject": "lat-xapi",
+        "name": "xapi latency",
+        "removed": null,
+        "nouls": {
+          "data": 0.09,
+          "served": 0.13,
+          "trigger": 0.26
+        },
+        "flagged": []
+      },
+      {
+        "subject": "late-none",
+        "name": "poller late-row policy",
+        "removed": null,
+        "nouls": {
+          "data": 0.31,
+          "served": 0.36,
+          "trigger": 0.44
+        },
+        "flagged": []
+      },
+      {
+        "subject": "layer-experience",
+        "name": "Experience",
+        "removed": null,
+        "nouls": {
+          "data": 0.16,
+          "served": 0.38,
+          "trigger": 0.27
+        },
+        "flagged": []
+      },
+      {
+        "subject": "layer-process",
+        "name": "Process",
+        "removed": null,
+        "nouls": {
+          "data": 0.23,
+          "served": 0.16,
+          "trigger": 0.4
+        },
+        "flagged": []
+      },
+      {
+        "subject": "layer-system",
+        "name": "System",
+        "removed": null,
+        "nouls": {
+          "data": 0.07,
+          "served": 0.38,
+          "trigger": 0.16
+        },
+        "flagged": []
+      },
+      {
+        "subject": "listener-secrets",
+        "name": "listener secrets",
+        "removed": null,
+        "nouls": {
+          "data": 0.73,
+          "served": 0.33,
+          "trigger": 0.18
+        },
+        "flagged": [
+          "data"
+        ]
+      },
+      {
+        "subject": "logs-30d",
+        "name": "shared log retention",
+        "removed": null,
+        "nouls": {
+          "data": 0.73,
+          "served": 0.45,
+          "trigger": 0.42
+        },
+        "flagged": [
+          "data"
+        ]
+      },
+      {
+        "subject": "map-patron-attendance-request",
+        "name": "Map Check-in Request to Attendance Request",
+        "removed": null,
+        "nouls": {
+          "data": 0.4,
+          "served": 0.32,
+          "trigger": 0.25
+        },
+        "flagged": []
+      },
+      {
+        "subject": "member-data-trust",
+        "name": "Members trust the club with their data",
+        "removed": null,
+        "nouls": {
+          "data": 0.36,
+          "served": 0.25,
+          "trigger": 0.42
+        },
+        "flagged": []
+      },
+      {
+        "subject": "member-retention",
+        "name": "Member retention",
+        "removed": null,
+        "nouls": {
+          "data": 0.07,
+          "served": 0.24,
+          "trigger": 0.43
+        },
+        "flagged": []
+      },
+      {
+        "subject": "membership-lookup",
+        "name": "Membership lookup",
+        "removed": null,
+        "nouls": {
+          "data": 0.24,
+          "served": 0.43,
+          "trigger": 0.18
+        },
+        "flagged": []
+      },
+      {
+        "subject": "microsoft-365",
+        "name": "Microsoft 365",
+        "removed": null,
+        "nouls": {
+          "data": 0.34,
+          "served": 0.24,
+          "trigger": 0.16
+        },
+        "flagged": []
+      },
+      {
+        "subject": "microsoft-cloud",
+        "name": "Microsoft cloud",
+        "removed": null,
+        "nouls": {
+          "data": 0.06,
+          "served": 0.16,
+          "trigger": 0.17
+        },
+        "flagged": []
+      },
+      {
+        "subject": "mule-4-9-lts",
+        "name": "Mule 4.9 LTS",
+        "removed": null,
+        "nouls": {
+          "data": 0.05,
+          "served": 0.15,
+          "trigger": 0.38
+        },
+        "flagged": []
+      },
+      {
+        "subject": "notify-arrival",
+        "name": "Notify Arrival",
+        "removed": null,
+        "nouls": {
+          "data": 0.51,
+          "served": 0.15,
+          "trigger": 0.34
+        },
+        "flagged": []
+      },
+      {
+        "subject": "obs-ft",
+        "name": "file-transfer observability",
+        "removed": null,
+        "nouls": {
+          "data": 0.49,
+          "served": 0.23,
+          "trigger": 0.53
+        },
+        "flagged": []
+      },
+      {
+        "subject": "obs-job",
+        "name": "job observability",
+        "removed": null,
+        "nouls": {
+          "data": 0.12,
+          "served": 0.31,
+          "trigger": 0.52
+        },
+        "flagged": []
+      },
+      {
+        "subject": "obs-listener",
+        "name": "listener observability",
+        "removed": null,
+        "nouls": {
+          "data": 0.35,
+          "served": 0.28,
+          "trigger": 0.37
+        },
+        "flagged": []
+      },
+      {
+        "subject": "obs-mailbox",
+        "name": "mailbox observability",
+        "removed": null,
+        "nouls": {
+          "data": 0.38,
+          "served": 0.27,
+          "trigger": 0.35
+        },
+        "flagged": []
+      },
+      {
+        "subject": "obs-poller",
+        "name": "poller observability",
+        "removed": null,
+        "nouls": {
+          "data": 0.29,
+          "served": 0.23,
+          "trigger": 0.42
+        },
+        "flagged": []
+      },
+      {
+        "subject": "obs-sapi",
+        "name": "sapi observability",
+        "removed": null,
+        "nouls": {
+          "data": 0.21,
+          "served": 0.51,
+          "trigger": 0.52
+        },
+        "flagged": []
+      },
+      {
+        "subject": "obs-standard",
+        "name": "apis observability",
+        "removed": null,
+        "nouls": {
+          "data": 0.65,
+          "served": 0.31,
+          "trigger": 0.54
+        },
+        "flagged": []
+      },
+      {
+        "subject": "op-checkin-attendance",
+        "name": "POST /patrons/{id}/attendances",
+        "removed": null,
+        "nouls": {
+          "data": 0.31,
+          "served": 0.65,
+          "trigger": 0.34
+        },
+        "flagged": []
+      },
+      {
+        "subject": "op-checkin-find-patron",
+        "name": "GET /patrons?membershipNumber",
+        "removed": null,
+        "nouls": {
+          "data": 0.11,
+          "served": 0.43,
+          "trigger": 0.5
+        },
+        "flagged": []
+      },
+      {
+        "subject": "op-checkin-greeting",
+        "name": "GET /patrons/{id}/greeting",
+        "removed": null,
+        "nouls": {
+          "data": 0.15,
+          "served": 0.4,
+          "trigger": 0.45
+        },
+        "flagged": []
+      },
+      {
+        "subject": "op-papi-find-patron",
+        "name": "GET /patrons?membershipNumber",
+        "removed": null,
+        "nouls": {
+          "data": 0.16,
+          "served": 0.22,
+          "trigger": 0.2
+        },
+        "flagged": []
+      },
+      {
+        "subject": "op-papi-record-attendance",
+        "name": "POST /attendances",
+        "removed": null,
+        "nouls": {
+          "data": 0.46,
+          "served": 0.39,
+          "trigger": 0.28
+        },
+        "flagged": []
+      },
+      {
+        "subject": "op-sapi-create-case",
+        "name": "POST /cases",
+        "removed": null,
+        "nouls": {
+          "data": 0.25,
+          "served": 0.48,
+          "trigger": 0.51
+        },
+        "flagged": []
+      },
+      {
+        "subject": "op-sapi-query-patron",
+        "name": "GET /patrons",
+        "removed": null,
+        "nouls": {
+          "data": 0.24,
+          "served": 0.19,
+          "trigger": 0.26
+        },
+        "flagged": []
+      },
+      {
+        "subject": "op-sapi-record-purchase",
+        "name": "PUT /purchases/{id}",
+        "removed": null,
+        "nouls": {
+          "data": 0.33,
+          "served": 0.18,
+          "trigger": 0.23
+        },
+        "flagged": []
+      },
+      {
+        "subject": "op-sapi-upsert-attendance",
+        "name": "PUT /attendances/{key}",
+        "removed": null,
+        "nouls": {
+          "data": 0.36,
+          "served": 0.18,
+          "trigger": 0.2
+        },
+        "flagged": []
+      },
+      {
+        "subject": "op-sapi-upsert-expected-arrival",
+        "name": "PUT /expected-arrivals/{booking}",
+        "removed": null,
+        "nouls": {
+          "data": 0.29,
+          "served": 0.17,
+          "trigger": 0.23
+        },
+        "flagged": []
+      },
+      {
+        "subject": "operation-ack",
+        "name": "Operation acknowledgement",
+        "removed": null,
+        "nouls": {
+          "data": 0.18,
+          "served": 0.13,
+          "trigger": 0.15
+        },
+        "flagged": []
+      },
+      {
+        "subject": "overlap-skip",
+        "name": "job overlap policy",
+        "removed": null,
+        "nouls": {
+          "data": 0.05,
+          "served": 0.21,
+          "trigger": 0.42
+        },
+        "flagged": []
+      },
+      {
+        "subject": "papi-secrets",
+        "name": "papi secrets",
+        "removed": null,
+        "nouls": {
+          "data": 0.7,
+          "served": 0.76,
+          "trigger": 0.55
+        },
+        "flagged": [
+          "data",
+          "served"
+        ]
+      },
+      {
+        "subject": "patron",
+        "name": "Patron",
+        "removed": null,
+        "nouls": {
+          "data": 0.04,
+          "served": 0.26,
+          "trigger": 0.24
+        },
+        "flagged": []
+      },
+      {
+        "subject": "patron-arrival-notifier",
+        "name": "patron-arrival-notifier",
+        "removed": null,
+        "nouls": {
+          "data": 0.46,
+          "served": 0.42,
+          "trigger": 0.38
+        },
+        "flagged": []
+      },
+      {
+        "subject": "patron-arrivals",
+        "name": "Anypoint MQ · patron-arrivals",
+        "removed": null,
+        "nouls": {
+          "data": 0.28,
+          "served": 0.08,
+          "trigger": 0.26
+        },
+        "flagged": []
+      },
+      {
+        "subject": "patron-attendance-api",
+        "name": "patron-attendance-api v1",
+        "removed": null,
+        "nouls": {
+          "data": 0.06,
+          "served": 0.11,
+          "trigger": 0.09
+        },
+        "flagged": []
+      },
+      {
+        "subject": "patron-attendance-papi",
+        "name": "patron-attendance-papi",
+        "removed": null,
+        "nouls": {
+          "data": 0.47,
+          "served": 0.34,
+          "trigger": 0.34
+        },
+        "flagged": []
+      },
+      {
+        "subject": "patron-attendance-service",
+        "name": "Patron Attendance Service",
+        "removed": null,
+        "nouls": {
+          "data": 0.06,
+          "served": 0.18,
+          "trigger": 0.12
+        },
+        "flagged": []
+      },
+      {
+        "subject": "patron-checkin-api",
+        "name": "patron-checkin-api v1",
+        "removed": null,
+        "nouls": {
+          "data": 0.33,
+          "served": 0.11,
+          "trigger": 0.16
+        },
+        "flagged": []
+      },
+      {
+        "subject": "patron-checkin-service",
+        "name": "Patron Check-in Service",
+        "removed": null,
+        "nouls": {
+          "data": 0.07,
+          "served": 0.5,
+          "trigger": 0.16
+        },
+        "flagged": []
+      },
+      {
+        "subject": "patron-checkin-xapi",
+        "name": "patron-checkin-xapi",
+        "removed": null,
+        "nouls": {
+          "data": 0.1,
+          "served": 0.44,
+          "trigger": 0.25
+        },
+        "flagged": []
+      },
+      {
+        "subject": "patron-greeting-system",
+        "name": "Patron Greeting System",
+        "removed": null,
+        "nouls": {
+          "data": 0.16,
+          "served": 0.34,
+          "trigger": 0.4
+        },
+        "flagged": []
+      },
+      {
+        "subject": "patron-lookup-cache",
+        "name": "shared patron cache",
+        "removed": null,
+        "nouls": {
+          "data": 0.76,
+          "served": 0.61,
+          "trigger": 0.43
+        },
+        "flagged": [
+          "data"
+        ]
+      },
+      {
+        "subject": "patron-query",
+        "name": "Patron query",
+        "removed": null,
+        "nouls": {
+          "data": 0.28,
+          "served": 0.18,
+          "trigger": 0.12
+        },
+        "flagged": []
+      },
+      {
+        "subject": "patron-record",
+        "name": "Patron record",
+        "removed": null,
+        "nouls": {
+          "data": 0.12,
+          "served": 0.27,
+          "trigger": 0.08
+        },
+        "flagged": []
+      },
+      {
+        "subject": "pii",
+        "name": "PII",
+        "removed": null,
+        "nouls": {
+          "data": 0.54,
+          "served": 0.18,
+          "trigger": 0.15
+        },
+        "flagged": []
+      },
+      {
+        "subject": "poll-5min",
+        "name": "poller cadence",
+        "removed": null,
+        "nouls": {
+          "data": 0.11,
+          "served": 0.3,
+          "trigger": 0.57
+        },
+        "flagged": []
+      },
+      {
+        "subject": "poller-secrets",
+        "name": "poller secrets",
+        "removed": null,
+        "nouls": {
+          "data": 0.61,
+          "served": 0.42,
+          "trigger": 0.23
+        },
+        "flagged": []
+      },
+      {
+        "subject": "pos-database",
+        "name": "Pro-shop POS database",
+        "removed": null,
+        "nouls": {
+          "data": 0.64,
+          "served": 0.22,
+          "trigger": 0.54
+        },
+        "flagged": []
+      },
+      {
+        "subject": "pos-purchase-poller",
+        "name": "pos-purchase-poller",
+        "removed": null,
+        "nouls": {
+          "data": 0.56,
+          "served": 0.64,
+          "trigger": 0.47
+        },
+        "flagged": []
+      },
+      {
+        "subject": "pro-shop-teams",
+        "name": "Pro-shop Teams channel",
+        "removed": null,
+        "nouls": {
+          "data": 0.19,
+          "served": 0.1,
+          "trigger": 0.24
+        },
+        "flagged": []
+      },
+      {
+        "subject": "pub-papi-arrival",
+        "name": "Publish arrival event",
+        "removed": null,
+        "nouls": {
+          "data": 0.7,
+          "served": 0.3,
+          "trigger": 0.44
+        },
+        "flagged": [
+          "data"
+        ]
+      },
+      {
+        "subject": "purchase-record",
+        "name": "Purchase record",
+        "removed": null,
+        "nouls": {
+          "data": 0.16,
+          "served": 0.24,
+          "trigger": 0.16
+        },
+        "flagged": []
+      },
+      {
+        "subject": "raml-patron-attendance",
+        "name": "patron-attendance-api RAML",
+        "removed": null,
+        "nouls": {
+          "data": 0.05,
+          "served": 0.11,
+          "trigger": 0.14
+        },
+        "flagged": []
+      },
+      {
+        "subject": "raml-patron-checkin",
+        "name": "patron-checkin-api RAML",
+        "removed": null,
+        "nouls": {
+          "data": 0.11,
+          "served": 0.47,
+          "trigger": 0.17
+        },
+        "flagged": []
+      },
+      {
+        "subject": "raml-salesforce-patron",
+        "name": "salesforce-patron-api RAML",
+        "removed": null,
+        "nouls": {
+          "data": 0.1,
+          "served": 0.17,
+          "trigger": 0.14
+        },
+        "flagged": []
+      },
+      {
+        "subject": "rate-60-per-min",
+        "name": "xapi rate limit",
+        "removed": null,
+        "nouls": {
+          "data": 0.07,
+          "served": 0.33,
+          "trigger": 0.26
+        },
+        "flagged": []
+      },
+      {
+        "subject": "record-patron-attendance",
+        "name": "Record Patron Attendance",
+        "removed": null,
+        "nouls": {
+          "data": 0.17,
+          "served": 0.19,
+          "trigger": 0.27
+        },
+        "flagged": []
+      },
+      {
+        "subject": "redeliver-3x30s",
+        "name": "listener redelivery",
+        "removed": null,
+        "nouls": {
+          "data": 0.39,
+          "served": 0.29,
+          "trigger": 0.49
+        },
+        "flagged": []
+      },
+      {
+        "subject": "register-enquiry",
+        "name": "Register Enquiry",
+        "removed": null,
+        "nouls": {
+          "data": 0.69,
+          "served": 0.3,
+          "trigger": 0.37
+        },
+        "flagged": []
+      },
+      {
+        "subject": "release-with-lts",
+        "name": "library release policy",
+        "removed": null,
+        "nouls": {
+          "data": 0.11,
+          "served": 0.17,
+          "trigger": 0.35
+        },
+        "flagged": []
+      },
+      {
+        "subject": "req-digest-list-attendances",
+        "name": "Call list attendances",
+        "removed": null,
+        "nouls": {
+          "data": 0.17,
+          "served": 0.1,
+          "trigger": 0.15
+        },
+        "flagged": []
+      },
+      {
+        "subject": "req-mailbox-create-case",
+        "name": "Call create case",
+        "removed": null,
+        "nouls": {
+          "data": 0.52,
+          "served": 0.49,
+          "trigger": 0.45
+        },
+        "flagged": []
+      },
+      {
+        "subject": "req-notifier-post-card",
+        "name": "Post greeting card",
+        "removed": null,
+        "nouls": {
+          "data": 0.24,
+          "served": 0.19,
+          "trigger": 0.4
+        },
+        "flagged": []
+      },
+      {
+        "subject": "req-papi-find-patron",
+        "name": "Call query patron for the lookup",
+        "removed": null,
+        "nouls": {
+          "data": 0.42,
+          "served": 0.22,
+          "trigger": 0.19
+        },
+        "flagged": []
+      },
+      {
+        "subject": "req-papi-query-patron",
+        "name": "Call query patron for the greeting",
+        "removed": null,
+        "nouls": {
+          "data": 0.47,
+          "served": 0.28,
+          "trigger": 0.31
+        },
+        "flagged": []
+      },
+      {
+        "subject": "req-papi-upsert-attendance",
+        "name": "Call upsert attendance",
+        "removed": null,
+        "nouls": {
+          "data": 0.42,
+          "served": 0.21,
+          "trigger": 0.23
+        },
+        "flagged": []
+      },
+      {
+        "subject": "req-poller-record-purchase",
+        "name": "Call record purchase",
+        "removed": null,
+        "nouls": {
+          "data": 0.29,
+          "served": 0.15,
+          "trigger": 0.17
+        },
+        "flagged": []
+      },
+      {
+        "subject": "req-teesheet-upsert-arrival",
+        "name": "Call upsert expected arrival",
+        "removed": null,
+        "nouls": {
+          "data": 0.24,
+          "served": 0.14,
+          "trigger": 0.16
+        },
+        "flagged": []
+      },
+      {
+        "subject": "req-xapi-find-patron",
+        "name": "Call find patron",
+        "removed": null,
+        "nouls": {
+          "data": 0.29,
+          "served": 0.16,
+          "trigger": 0.14
+        },
+        "flagged": []
+      },
+      {
+        "subject": "req-xapi-record-attendance",
+        "name": "Call record attendance",
+        "removed": null,
+        "nouls": {
+          "data": 0.23,
+          "served": 0.3,
+          "trigger": 0.38
+        },
+        "flagged": []
+      },
+      {
+        "subject": "retry-bounded",
+        "name": "shared retry policy",
+        "removed": null,
+        "nouls": {
+          "data": 0.06,
+          "served": 0.41,
+          "trigger": 0.3
+        },
+        "flagged": []
+      },
+      {
+        "subject": "retry-salesforce",
+        "name": "sapi retry policy",
+        "removed": null,
+        "nouls": {
+          "data": 0.1,
+          "served": 0.38,
+          "trigger": 0.38
+        },
+        "flagged": []
+      },
+      {
+        "subject": "row-quarantine",
+        "name": "file-transfer partial-failure policy",
+        "removed": null,
+        "nouls": {
+          "data": 0.64,
+          "served": 0.27,
+          "trigger": 0.42
+        },
+        "flagged": []
+      },
+      {
+        "subject": "rto-60-rpo-0",
+        "name": "shared recovery objective",
+        "removed": null,
+        "nouls": {
+          "data": 0.42,
+          "served": 0.45,
+          "trigger": 0.2
+        },
+        "flagged": []
+      },
+      {
+        "subject": "salesforce-cloud",
+        "name": "Salesforce cloud",
+        "removed": null,
+        "nouls": {
+          "data": 0.06,
+          "served": 0.13,
+          "trigger": 0.16
+        },
+        "flagged": []
+      },
+      {
+        "subject": "salesforce-connector",
+        "name": "MuleSoft Salesforce Connector 10.x",
+        "removed": null,
+        "nouls": {
+          "data": 0.06,
+          "served": 0.16,
+          "trigger": 0.31
+        },
+        "flagged": []
+      },
+      {
+        "subject": "salesforce-crm",
+        "name": "Salesforce CRM",
+        "removed": null,
+        "nouls": {
+          "data": 0.73,
+          "served": 0.38,
+          "trigger": 0.34
+        },
+        "flagged": [
+          "data"
+        ]
+      },
+      {
+        "subject": "salesforce-patron-api",
+        "name": "salesforce-patron-api v1",
+        "removed": null,
+        "nouls": {
+          "data": 0.11,
+          "served": 0.26,
+          "trigger": 0.17
+        },
+        "flagged": []
+      },
+      {
+        "subject": "salesforce-patron-sapi",
+        "name": "salesforce-patron-sapi",
+        "removed": null,
+        "nouls": {
+          "data": 0.56,
+          "served": 0.26,
+          "trigger": 0.2
+        },
+        "flagged": []
+      },
+      {
+        "subject": "salesforce-patron-service",
+        "name": "Salesforce Patron Service",
+        "removed": null,
+        "nouls": {
+          "data": 0.06,
+          "served": 0.12,
+          "trigger": 0.11
+        },
+        "flagged": []
+      },
+      {
+        "subject": "sapi-secrets",
+        "name": "sapi secrets",
+        "removed": null,
+        "nouls": {
+          "data": 0.51,
+          "served": 0.73,
+          "trigger": 0.25
+        },
+        "flagged": [
+          "served"
+        ]
+      },
+      {
+        "subject": "sf-expected-arrival",
+        "name": "Expected_Arrival__c",
+        "removed": null,
+        "nouls": {
+          "data": 0.27,
+          "served": 0.33,
+          "trigger": 0.25
+        },
+        "flagged": []
+      },
+      {
+        "subject": "sf-patron-attendance",
+        "name": "Patron_Attendance__c",
+        "removed": null,
+        "nouls": {
+          "data": 0.23,
+          "served": 0.15,
+          "trigger": 0.1
+        },
+        "flagged": []
+      },
+      {
+        "subject": "sf-patron-purchase",
+        "name": "Patron_Purchase__c",
+        "removed": null,
+        "nouls": {
+          "data": 0.21,
+          "served": 0.17,
+          "trigger": 0.27
+        },
+        "flagged": []
+      },
+      {
+        "subject": "size-2mb",
+        "name": "file-transfer size limit",
+        "removed": null,
+        "nouls": {
+          "data": 0.47,
+          "served": 0.15,
+          "trigger": 0.28
+        },
+        "flagged": []
+      },
+      {
+        "subject": "spec-ack-email",
+        "name": "Case record → acknowledgement email mapping spec",
+        "removed": null,
+        "nouls": {
+          "data": 0.27,
+          "served": 0.16,
+          "trigger": 0.15
+        },
+        "flagged": []
+      },
+      {
+        "subject": "spec-arrival-event",
+        "name": "Attendance request → arrival event mapping spec",
+        "removed": null,
+        "nouls": {
+          "data": 0.15,
+          "served": 0.13,
+          "trigger": 0.15
+        },
+        "flagged": []
+      },
+      {
+        "subject": "spec-attendance-digest",
+        "name": "Attendance list → attendance digest mapping spec",
+        "removed": null,
+        "nouls": {
+          "data": 0.17,
+          "served": 0.14,
+          "trigger": 0.14
+        },
+        "flagged": []
+      },
+      {
+        "subject": "spec-attendance-list",
+        "name": "Patron_Attendance__c → attendance list mapping spec",
+        "removed": null,
+        "nouls": {
+          "data": 0.19,
+          "served": 0.16,
+          "trigger": 0.18
+        },
+        "flagged": []
+      },
+      {
+        "subject": "spec-attendance-record",
+        "name": "Attendance request → attendance record mapping spec",
+        "removed": null,
+        "nouls": {
+          "data": 0.22,
+          "served": 0.15,
+          "trigger": 0.13
+        },
+        "flagged": []
+      },
+      {
+        "subject": "spec-attendance-request",
+        "name": "Check-in request → attendance request mapping spec",
+        "removed": null,
+        "nouls": {
+          "data": 0.16,
+          "served": 0.2,
+          "trigger": 0.14
+        },
+        "flagged": []
+      },
+      {
+        "subject": "spec-attendance-to-sf",
+        "name": "Attendance record → Patron_Attendance__c mapping spec",
+        "removed": null,
+        "nouls": {
+          "data": 0.18,
+          "served": 0.19,
+          "trigger": 0.15
+        },
+        "flagged": []
+      },
+      {
+        "subject": "spec-case-to-sf",
+        "name": "Case request → Case mapping spec",
+        "removed": null,
+        "nouls": {
+          "data": 0.22,
+          "served": 0.32,
+          "trigger": 0.19
+        },
+        "flagged": []
+      },
+      {
+        "subject": "spec-contact-to-patron",
+        "name": "Contact → patron record mapping spec",
+        "removed": null,
+        "nouls": {
+          "data": 0.15,
+          "served": 0.18,
+          "trigger": 0.16
+        },
+        "flagged": []
+      },
+      {
+        "subject": "spec-digest-email",
+        "name": "Attendance digest → email mapping spec",
+        "removed": null,
+        "nouls": {
+          "data": 0.16,
+          "served": 0.14,
+          "trigger": 0.15
+        },
+        "flagged": []
+      },
+      {
+        "subject": "spec-email-to-case",
+        "name": "Enquiry email → case request mapping spec",
+        "removed": null,
+        "nouls": {
+          "data": 0.15,
+          "served": 0.14,
+          "trigger": 0.16
+        },
+        "flagged": []
+      },
+      {
+        "subject": "spec-expected-arrival-sf",
+        "name": "Expected arrival → Expected_Arrival__c mapping spec",
+        "removed": null,
+        "nouls": {
+          "data": 0.17,
+          "served": 0.26,
+          "trigger": 0.17
+        },
+        "flagged": []
+      },
+      {
+        "subject": "spec-greeting-view",
+        "name": "Greeting → tablet view mapping spec",
+        "removed": null,
+        "nouls": {
+          "data": 0.12,
+          "served": 0.13,
+          "trigger": 0.13
+        },
+        "flagged": []
+      },
+      {
+        "subject": "spec-lookup-query",
+        "name": "Membership lookup → patron query mapping spec",
+        "removed": null,
+        "nouls": {
+          "data": 0.19,
+          "served": 0.16,
+          "trigger": 0.15
+        },
+        "flagged": []
+      },
+      {
+        "subject": "spec-patron-query",
+        "name": "Attendance request → patron query mapping spec",
+        "removed": null,
+        "nouls": {
+          "data": 0.15,
+          "served": 0.19,
+          "trigger": 0.15
+        },
+        "flagged": []
+      },
+      {
+        "subject": "spec-patron-to-greeting",
+        "name": "Patron record → greeting mapping spec",
+        "removed": null,
+        "nouls": {
+          "data": 0.21,
+          "served": 0.15,
+          "trigger": 0.13
+        },
+        "flagged": []
+      },
+      {
+        "subject": "spec-purchase",
+        "name": "Purchase record → Patron_Purchase__c mapping spec",
+        "removed": null,
+        "nouls": {
+          "data": 0.21,
+          "served": 0.13,
+          "trigger": 0.16
+        },
+        "flagged": []
+      },
+      {
+        "subject": "spec-purchase-record",
+        "name": "Purchase → purchase record mapping spec",
+        "removed": null,
+        "nouls": {
+          "data": 0.19,
+          "served": 0.16,
+          "trigger": 0.17
+        },
+        "flagged": []
+      },
+      {
+        "subject": "spec-teams-card",
+        "name": "Arrival event → Teams card mapping spec",
+        "removed": null,
+        "nouls": {
+          "data": 0.15,
+          "served": 0.14,
+          "trigger": 0.16
+        },
+        "flagged": []
+      },
+      {
+        "subject": "spec-teams-webhook",
+        "name": "Teams incoming webhook schema",
+        "removed": null,
+        "nouls": {
+          "data": 0.12,
+          "served": 0.19,
+          "trigger": 0.15
+        },
+        "flagged": []
+      },
+      {
+        "subject": "spec-tee-sheet-row",
+        "name": "Tee sheet row → expected arrival mapping spec",
+        "removed": null,
+        "nouls": {
+          "data": 0.14,
+          "served": 0.12,
+          "trigger": 0.12
+        },
+        "flagged": []
+      },
+      {
+        "subject": "startup-under-50ms",
+        "name": "library startup cost",
+        "removed": null,
+        "nouls": {
+          "data": 0.05,
+          "served": 0.53,
+          "trigger": 0.52
+        },
+        "flagged": []
+      },
+      {
+        "subject": "summarise-attendance",
+        "name": "Summarise Attendance",
+        "removed": null,
+        "nouls": {
+          "data": 0.35,
+          "served": 0.2,
+          "trigger": 0.49
+        },
+        "flagged": []
+      },
+      {
+        "subject": "sync-purchases",
+        "name": "Sync Purchases",
+        "removed": null,
+        "nouls": {
+          "data": 0.6,
+          "served": 0.19,
+          "trigger": 0.28
+        },
+        "flagged": []
+      },
+      {
+        "subject": "teams-card",
+        "name": "Teams greeting card",
+        "removed": null,
+        "nouls": {
+          "data": 0.43,
+          "served": 0.5,
+          "trigger": 0.21
+        },
+        "flagged": []
+      },
+      {
+        "subject": "teams-webhook-api",
+        "name": "Teams incoming webhook",
+        "removed": null,
+        "nouls": {
+          "data": 0.32,
+          "served": 0.35,
+          "trigger": 0.32
+        },
+        "flagged": []
+      },
+      {
+        "subject": "tee-booking-vendor",
+        "name": "Tee-time booking vendor",
+        "removed": null,
+        "nouls": {
+          "data": 0.43,
+          "served": 0.21,
+          "trigger": 0.61
+        },
+        "flagged": []
+      },
+      {
+        "subject": "tee-sheet-import",
+        "name": "tee-sheet-import",
+        "removed": null,
+        "nouls": {
+          "data": 0.4,
+          "served": 0.54,
+          "trigger": 0.34
+        },
+        "flagged": []
+      },
+      {
+        "subject": "tee-sheet-row",
+        "name": "Tee sheet row",
+        "removed": null,
+        "nouls": {
+          "data": 0.19,
+          "served": 0.18,
+          "trigger": 0.18
+        },
+        "flagged": []
+      },
+      {
+        "subject": "thr-listener",
+        "name": "listener throughput",
+        "removed": null,
+        "nouls": {
+          "data": 0.09,
+          "served": 0.12,
+          "trigger": 0.22
+        },
+        "flagged": []
+      },
+      {
+        "subject": "thr-papi",
+        "name": "papi throughput",
+        "removed": null,
+        "nouls": {
+          "data": 0.06,
+          "served": 0.5,
+          "trigger": 0.24
+        },
+        "flagged": []
+      },
+      {
+        "subject": "thr-sapi",
+        "name": "sapi throughput",
+        "removed": null,
+        "nouls": {
+          "data": 0.05,
+          "served": 0.49,
+          "trigger": 0.12
+        },
+        "flagged": []
+      },
+      {
+        "subject": "thr-xapi",
+        "name": "xapi throughput",
+        "removed": null,
+        "nouls": {
+          "data": 0.07,
+          "served": 0.21,
+          "trigger": 0.44
+        },
+        "flagged": []
+      },
+      {
+        "subject": "timeout-standard",
+        "name": "shared timeout budget",
+        "removed": null,
+        "nouls": {
+          "data": 0.05,
+          "served": 0.43,
+          "trigger": 0.4
+        },
+        "flagged": []
+      },
+      {
+        "subject": "ttl-1h",
+        "name": "listener message TTL",
+        "removed": null,
+        "nouls": {
+          "data": 0.12,
+          "served": 0.26,
+          "trigger": 0.27
+        },
+        "flagged": []
+      },
+      {
+        "subject": "vendor-tee-sheet-sftp",
+        "name": "Booking vendor SFTP · /exports/tee-sheet/",
+        "removed": null,
+        "nouls": {
+          "data": 0.16,
+          "served": 0.11,
+          "trigger": 0.36
+        },
+        "flagged": []
+      },
+      {
+        "subject": "vol-digest",
+        "name": "job volume",
+        "removed": null,
+        "nouls": {
+          "data": 0.11,
+          "served": 0.17,
+          "trigger": 0.28
+        },
+        "flagged": []
+      },
+      {
+        "subject": "webhook-url-secret",
+        "name": "webhook URL as credential",
+        "removed": null,
+        "nouls": {
+          "data": 0.29,
+          "served": 0.51,
+          "trigger": 0.57
+        },
+        "flagged": []
+      },
+      {
+        "subject": "wm-purchase-id",
+        "name": "poller watermark",
+        "removed": null,
+        "nouls": {
+          "data": 0.55,
+          "served": 0.32,
+          "trigger": 0.3
+        },
+        "flagged": []
+      },
+      {
+        "subject": "xapi-secrets",
+        "name": "xapi secrets",
+        "removed": null,
+        "nouls": {
+          "data": 0.4,
+          "served": 0.16,
+          "trigger": 0.15
+        },
+        "flagged": []
+      },
+      {
+        "subject": "yarrasys",
+        "name": "Yarrasys",
+        "removed": null,
+        "nouls": {
+          "data": 0.07,
+          "served": 0.25,
+          "trigger": 0.15
+        },
+        "flagged": []
+      }
+    ]
+  },
+  "stability": {
+    "series": 681,
+    "meanSd": 0.012188219684900888,
+    "p95Sd": 0.03265986323710905,
+    "maxSd": 0.061824123303304675
+  },
+  "at": "2026-09-20T01:29:05.521Z"
+}

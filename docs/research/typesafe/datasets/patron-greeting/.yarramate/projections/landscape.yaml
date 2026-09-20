@@ -1,0 +1,25 @@
+format: yarramate/projection/v1
+id: landscape
+version: "1.0"
+query:
+  # The applications and what stands between them. Every application component, pack kinds
+  # included, plus the boundary the fold leaves outside: shared libraries, connectors, the
+  # runtime plane, the platform's technology, and the contract data objects. `connected` brings
+  # each application's first-level members (interface, calls, operations, rulings) into the view,
+  # which is what the fold absorbs and what the application-to-application edges run between.
+  kinds:
+    - "yarramate/core@0.1#applicationComponent"
+    - "aperturex/mule@1.0#mule-shared-library"
+    - "aperturex/consulting@1.0#connector"
+    - "yarramate/core@0.1#node"
+    - "yarramate/core@0.1#technologyService"
+    - "yarramate/core@0.1#technologyInterface"
+    - "yarramate/core@0.1#systemSoftware"
+    - "yarramate/core@0.1#dataObject"
+  kindMatching: descendants
+  relationships: connected
+presentation:
+  title: "Landscape"
+  description: "Every application as one box, and the boundary between them. Fold the instances to read it; open one to see its pattern."
+  layout: layered
+  nesting: [composition, assignment]

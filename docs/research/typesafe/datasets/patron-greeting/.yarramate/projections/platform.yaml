@@ -1,0 +1,28 @@
+format: yarramate/projection/v1
+id: platform
+version: "1.0"
+query:
+  subjects:
+    - env-design
+    - env-sandbox
+    - env-uat
+    - env-production
+    - fgc-ps-au
+    - entra-id
+    - anypoint-monitoring
+    - anypoint-exchange
+    - pii
+    - internal
+    - mule-4-9-lts
+    - java-17
+    - fgc-maven-coordinates
+    - coverage-80
+    - fgc-parent-pom
+    - fgc-error-framework
+    - fgc-json-logger
+    - fgc-api-fragments
+  relationships: connected
+presentation:
+  title: "Platform declarations"
+  layout: layered
+  nesting: [composition, assignment]

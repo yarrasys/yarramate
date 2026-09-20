@@ -1,0 +1,22 @@
+format: yarramate/projection/v1
+id: api-tiers
+version: "1.0"
+query:
+  subjects:
+    - checkin-tablet-webapp
+    - patron-checkin-xapi
+    - patron-checkin-api
+    - patron-attendance-papi
+    - patron-attendance-api
+    - salesforce-patron-sapi
+    - salesforce-patron-api
+    - salesforce-connector
+    - salesforce-crm
+    - layer-experience
+    - layer-process
+    - layer-system
+  relationships: connected
+presentation:
+  title: "API tiers"
+  layout: layered
+  nesting: [composition, assignment]

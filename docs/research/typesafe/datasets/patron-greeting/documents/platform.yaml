@@ -1,0 +1,331 @@
+format: yarramate/v1
+id: platform
+profile: aperturex/mule@1.0
+concepts:
+  - id: club-management
+    kind: stakeholder
+    name: "Famous Golf Course management"
+    description: "Sponsor of the greeting programme; signs off the production release."
+  - id: member-retention
+    kind: driver
+    name: "Member retention"
+    description: "Members who feel recognised renew; the arrival moment is the cheapest place to show recognition."
+  - id: consistent-arrival-experience
+    kind: goal
+    name: "Consistent arrival experience"
+    description: "Every patron is greeted by name, with their tee time and membership context, within seconds of arriving."
+  - id: greeting-system-delivery
+    kind: workPackage
+    name: "Patron Greeting System delivery"
+    description: "Design, build and release of the eight applications and four libraries."
+  - id: guest-services-manager
+    kind: businessRole
+    name: "Guest Services Manager"
+    description: "Business owner. Accepts UAT into production; receives the daily attendance digest."
+  - id: guest-services-staff
+    kind: businessRole
+    name: "Guest Services staff"
+    description: "Greet patrons from the check-in tablet."
+  - id: patron
+    kind: businessActor
+    name: "Patron"
+    description: "A member or visitor arriving at the club."
+  - id: fgc-it-support
+    kind: businessRole
+    name: "Famous Golf Course IT Support"
+    description: "L1 support during opening hours; owns alert recipients, runbooks, the VPN and the ingress certificate."
+  - id: fgc-it-security
+    kind: businessRole
+    name: "Famous Golf Course IT Security"
+    description: "Signs the policy set, the secrets strategy and the rotation calendar; quarterly access review."
+  - id: yarrasys
+    kind: businessActor
+    name: "Yarrasys"
+    description: "MuleSoft partner. L2/L3 under the support contract; publishes the shared libraries."
+  - id: tee-booking-vendor
+    kind: businessActor
+    name: "Tee-time booking vendor"
+    description: "Exports the daily tee sheet to SFTP at 04:00–05:00."
+  - id: env-design
+    kind: environment
+    name: "Design"
+    description: "Anypoint Design Center only; no runtime."
+  - id: env-sandbox
+    kind: environment
+    name: "Sandbox"
+    description: "Developer runtime. 1 replica per application, 0.1 vCore."
+  - id: env-uat
+    kind: environment
+    name: "UAT"
+    description: "Client acceptance. Promotion from Sandbox by the Yarrasys lead."
+  - id: env-production
+    kind: environment
+    name: "Production"
+    description: "Promotion from UAT accepted by the Guest Services Manager with IT Security sign-off on the policy set."
+  - id: fgc-ps-au
+    kind: runtime-plane
+    attestations:
+      - { topic: security, by: fgc-it-security, on: "2026-09-03", recordedBy: yarrasys }
+    name: "CloudHub 2.0 Private Space · ap-southeast-2"
+    description: "Private Space fgc-ps-au, CIDR 10.40.0.0/22, two static egress IPs allow-listed at Salesforce and the booking vendor. One IPsec VPN to the club LAN (192.168.20.0/24) for the POS database and nothing else. Ingress api.famousgolfcourse.com.au, TLS certificate in Secrets Manager, rotated annually by IT Support. Production replicas span availability zones; no second region."
+  - id: entra-id
+    kind: technologyService
+    name: "Microsoft Entra ID"
+    description: "SAML SSO for Anypoint; issuer of the staff JWT the experience API validates (audience api://patron-checkin). Client management for API consumers stays in Anypoint."
+  - id: anypoint-monitoring
+    kind: technologyService
+    name: "Anypoint Monitoring"
+    description: "Dashboards, 30-day log search and alerting. Alerts to #fgc-integration-alerts (Teams) and it-support@. No external SIEM."
+  - id: anypoint-exchange
+    kind: technologyService
+    name: "Anypoint Exchange"
+    description: "Every contract is published as RAML 1.0; API Governance rulesets Anypoint Best Practices and OpenAPI/RAML Best Practices are required before publish."
+  - id: layer-experience
+    kind: api-layer
+    name: "Experience"
+    description: "What the tablet calls. Owns pagination, field selection, CORS."
+  - id: layer-process
+    kind: api-layer
+    name: "Process"
+    description: "Orchestration: look up, compose, record once per day."
+  - id: layer-system
+    kind: api-layer
+    name: "System"
+    description: "The only tier that speaks to Salesforce."
+  - id: pii
+    kind: sensitivity-class
+    name: "PII"
+    description: "Patron name, membership number, attendance. Masked in logs by the JSON logger; never in committed sample data."
+  - id: internal
+    kind: sensitivity-class
+    name: "Internal"
+    description: "Operational data with no personal content."
+  - id: patron-greeting-system
+    kind: solution
+    name: "Patron Greeting System"
+    description: "Three API tiers, one job, one listener, one file transfer, one poller, one mailbox reader, four shared libraries."
+  - id: mule-4-9-lts
+    kind: runtime-baseline
+    name: "Mule 4.9 LTS"
+    description: "Long-term-support channel; upgrade on each LTS, Sandbox first."
+  - id: java-17
+    kind: java-baseline
+    name: "Java 17"
+    description: "javaSpecificationVersions [\"17\"] in every mule-artifact.json."
+  - id: fgc-maven-coordinates
+    kind: maven-coordinates
+    name: "au.com.famousgolfcourse.integration"
+    description: "Group id for every application and library."
+  - id: coverage-80
+    kind: coverage-target
+    name: "MUnit coverage 80 %"
+    description: "Enforced by munit-maven-plugin in the parent POM."
+  - id: patron-arrivals
+    kind: message-queue
+    name: "Anypoint MQ · patron-arrivals"
+    description: "Standard queue in ap-southeast-2, encrypted at rest, base tier. Dead-letter queue patron-arrivals-dlq after 3 redeliveries."
+  - id: pro-shop-teams
+    kind: notification-channel
+    name: "Pro-shop Teams channel"
+    description: "Incoming webhook; the webhook URL is the secret and is treated as one."
+  # The webhook is an interface with one operation, so the notifier's post is a call like any other
+  # (ADR 0011): a plain interface and a plain service, because the contract is Microsoft's, not ours.
+  - id: teams-webhook-api
+    kind: applicationInterface
+    name: "Teams incoming webhook"
+    description: "Microsoft's contract: POST an Adaptive Card payload to the channel's webhook URL."
+    constraints:
+      - { id: auth, ref: webhook-url-secret }
+  - id: op-teams-post-message
+    kind: applicationService
+    name: "POST card"
+    description: "Posts one card; answers with a bare 1."
+  - id: spec-teams-webhook
+    kind: artifact
+    name: "Teams incoming webhook schema"
+    description: "Microsoft's published message-card schema, kept in the document library."
+  - id: enquiries-mailbox
+    kind: mailbox
+    name: "enquiries@famousgolfcourse.com.au"
+    description: "Microsoft 365 shared mailbox. IMAP over TLS for reading, SMTP over TLS for acknowledgements and the digest."
+  - id: vendor-tee-sheet-sftp
+    kind: file-drop
+    name: "Booking vendor SFTP · /exports/tee-sheet/"
+    description: "Key-based SFTP, private key in Secrets Manager, vendor host key pinned. Pulled, never pushed."
+  - id: pos-database
+    kind: source-database
+    name: "Pro-shop POS database"
+    description: "On the club LAN, reached over the VPN. Dedicated read-only user on the purchases table; TLS on JDBC; silent during the 01:00–03:00 backup."
+  - id: salesforce-crm
+    kind: applicationComponent
+    name: "Salesforce CRM"
+    description: "System of record for patrons, memberships, attendance and enquiries. Connected App with OAuth 2.0 JWT bearer; integration user with a least-privilege permission set; login IP ranges restricted to the Private Space egress IPs."
+  - id: salesforce-cloud
+    kind: node
+    name: "Salesforce cloud"
+    description: "Salesforce-operated; no infrastructure of ours. Security posture accepted on the strength of Salesforce's own compliance programme."
+    attestations:
+      - { topic: security, by: fgc-it-security, on: "2026-09-03", recordedBy: yarrasys }
+  - id: sf-contact
+    kind: dataObject
+    name: "Contact (Salesforce)"
+    description: "The patron record."
+  - id: sf-membership
+    kind: dataObject
+    name: "Membership__c"
+    description: "Tier, expiry, home club."
+  - id: sf-patron-attendance
+    kind: dataObject
+    name: "Patron_Attendance__c"
+    description: "One row per patron per day, external id Attendance_Key__c."
+  - id: sf-patron-purchase
+    kind: dataObject
+    name: "Patron_Purchase__c"
+    description: "Pro-shop purchases synchronised from the POS."
+  - id: sf-case
+    kind: dataObject
+    name: "Case (Salesforce)"
+    description: "Guest enquiries."
+  - id: sf-expected-arrival
+    kind: dataObject
+    name: "Expected_Arrival__c"
+    description: "One row per tee-sheet booking, external id the vendor's booking reference; what the greeting reads for today's tee time."
+  - id: checkin-tablet-webapp
+    kind: applicationComponent
+    name: "checkin-tablet-webapp"
+    description: "Staff web app served from https://checkin.famousgolfcourse.com.au; signs staff in with Entra ID and calls the experience API with the user JWT."
+  - id: checkin-tablet
+    kind: device
+    name: "Golf Course Check-in Tablet"
+    description: "Five tablets at the pro shop and the first tee."
+  # A connector is the configuration for a platform callee, so it carries the timeout and retry —
+  # one per callee, the same rule as an HTTP client (ADR 0011).
+  - id: salesforce-connector
+    kind: platform-connector
+    name: "MuleSoft Salesforce Connector 10.x"
+    description: "OAuth 2.0 JWT bearer flow; reconnection 3 × 2 s; REQUEST_LIMIT_EXCEEDED and UNABLE_TO_LOCK_ROW mapped to retryable."
+    parts:
+      system: salesforce-crm
+      timeout: timeout-standard
+      retry: retry-salesforce
+  - id: microsoft-365
+    kind: applicationComponent
+    name: "Microsoft 365"
+    description: "The club tenant: the shared mailbox and the SMTP relay the email connector speaks to."
+  - id: microsoft-cloud
+    kind: node
+    name: "Microsoft cloud"
+    description: "Microsoft-operated; no infrastructure of ours. Security posture accepted on the strength of Microsoft's compliance programme."
+    attestations:
+      - { topic: security, by: fgc-it-security, on: "2026-09-03", recordedBy: yarrasys }
+  - id: email-connector
+    kind: platform-connector
+    name: "Email Connector (SMTP/IMAP)"
+    description: "Microsoft 365 over TLS; app password in secure properties."
+    parts:
+      system: microsoft-365
+      timeout: timeout-standard
+      retry: retry-bounded
+  - id: sftp-connector
+    kind: platform-connector
+    name: "SFTP Connector"
+    description: "Key-based; host key pinned."
+    parts:
+      timeout: timeout-standard
+      retry: retry-bounded
+  - id: db-connector
+    kind: platform-connector
+    name: "Database Connector"
+    description: "JDBC over TLS; pool max 2, read-only."
+    parts:
+      timeout: timeout-standard
+      retry: retry-bounded
+  - id: fgc-parent-pom
+    kind: mule-shared-library
+    name: "fgc-parent-pom"
+    description: "Runtime, Java, plugin and connector versions for every application. Root of the inheritance; no parent of its own."
+    parts:
+      runtime-range: rr-mule-4-6-to-4-9
+      compatibility: compat-semver
+      release: release-with-lts
+      startup-cost: startup-under-50ms
+      coverage: coverage-90
+  - id: fgc-error-framework
+    kind: mule-shared-library
+    name: "fgc-error-framework"
+    description: "Global error handler, error-type mapping, application/problem+json responses."
+    parts:
+      parent: fgc-parent-pom
+      runtime-range: rr-mule-4-6-to-4-9
+      compatibility: compat-semver
+      release: release-with-lts
+      startup-cost: startup-under-50ms
+      coverage: coverage-90
+  - id: fgc-json-logger
+    kind: mule-shared-library
+    name: "fgc-json-logger"
+    description: "Structured logging with x-correlation-id propagation and PII masking."
+    parts:
+      parent: fgc-parent-pom
+      runtime-range: rr-mule-4-6-to-4-9
+      compatibility: compat-semver
+      release: release-with-lts
+      startup-cost: startup-under-50ms
+      coverage: coverage-90
+  - id: fgc-api-fragments
+    kind: mule-shared-library
+    name: "fgc-api-fragments"
+    description: "RAML traits and types shared by the three contracts."
+    parts:
+      parent: fgc-parent-pom
+      runtime-range: rr-mule-4-6-to-4-9
+      compatibility: compat-semver
+      release: release-with-lts
+      startup-cost: startup-under-50ms
+      coverage: coverage-90
+relationships:
+  - { id: r-goal-driver, kind: association, from: member-retention, to: consistent-arrival-experience }
+  - { id: r-stakeholder-goal, kind: association, from: club-management, to: consistent-arrival-experience }
+  - { id: r-wp-goal, kind: association, from: greeting-system-delivery, to: consistent-arrival-experience }
+  - { id: r-tablet-device, kind: serving, from: checkin-tablet, to: checkin-tablet-webapp }
+  - { id: r-staff-tablet, kind: serving, from: checkin-tablet-webapp, to: guest-services-staff }
+  - { id: r-sfconn-crm, kind: association, from: salesforce-connector, to: salesforce-crm }
+  - { id: r-crm-contact, kind: access, from: salesforce-crm, to: sf-contact }
+  - { id: r-crm-membership, kind: access, from: salesforce-crm, to: sf-membership }
+  - { id: r-crm-attendance, kind: access, from: salesforce-crm, to: sf-patron-attendance }
+  - { id: r-crm-purchase, kind: access, from: salesforce-crm, to: sf-patron-purchase }
+  - { id: r-crm-case, kind: access, from: salesforce-crm, to: sf-case }
+  - { id: r-crm-expected-arrival, kind: access, from: salesforce-crm, to: sf-expected-arrival }
+  - { id: sens-sf-expected-arrival, kind: aggregation, from: pii, to: sf-expected-arrival }
+  # The Teams webhook as a contract: its schema realizes it, the channel serves its one operation.
+  - { id: r-teams-spec, kind: realization, from: spec-teams-webhook, to: teams-webhook-api }
+  - { id: r-teams-op, kind: assignment, from: teams-webhook-api, to: op-teams-post-message }
+  - { id: r-teams-channel-op, kind: serving, from: pro-shop-teams, to: op-teams-post-message }
+  - { id: r-teams-op-card, kind: access, from: op-teams-post-message, to: teams-card, mode: read }
+  - { id: r-vendor-sftp, kind: association, from: tee-booking-vendor, to: vendor-tee-sheet-sftp }
+  - { id: r-solution-xapi, kind: aggregation, from: patron-greeting-system, to: patron-checkin-xapi }
+  - { id: r-solution-papi, kind: aggregation, from: patron-greeting-system, to: patron-attendance-papi }
+  - { id: r-solution-sapi, kind: aggregation, from: patron-greeting-system, to: salesforce-patron-sapi }
+  - { id: r-solution-job, kind: aggregation, from: patron-greeting-system, to: attendance-digest-job }
+  - { id: r-solution-listener, kind: aggregation, from: patron-greeting-system, to: patron-arrival-notifier }
+  - { id: r-solution-ft, kind: aggregation, from: patron-greeting-system, to: tee-sheet-import }
+  - { id: r-solution-poller, kind: aggregation, from: patron-greeting-system, to: pos-purchase-poller }
+  - { id: r-solution-mailbox, kind: aggregation, from: patron-greeting-system, to: enquiry-mailbox-reader }
+  - { id: r-env-prod-plane, kind: association, from: env-production, to: fgc-ps-au }
+  - { id: r-env-uat-plane, kind: association, from: env-uat, to: fgc-ps-au }
+  - { id: r-env-sandbox-plane, kind: association, from: env-sandbox, to: fgc-ps-au }
+  - { id: sens-sf-contact, kind: aggregation, from: pii, to: sf-contact }
+  - { id: sens-sf-membership, kind: aggregation, from: pii, to: sf-membership }
+  - { id: sens-sf-patron-attendance, kind: aggregation, from: pii, to: sf-patron-attendance }
+  - { id: sens-sf-patron-purchase, kind: aggregation, from: pii, to: sf-patron-purchase }
+  - { id: sens-sf-case, kind: aggregation, from: pii, to: sf-case }
+  - { id: r-entra-xapi, kind: serving, from: entra-id, to: patron-checkin-xapi }
+  - { id: r-monitoring-plane, kind: serving, from: anypoint-monitoring, to: fgc-ps-au }
+  - { id: r-exchange-api, kind: association, from: anypoint-exchange, to: patron-checkin-api }
+  - { id: own-mule-4-9-lts, kind: association, from: yarrasys, to: mule-4-9-lts }
+  - { id: own-java-17, kind: association, from: yarrasys, to: java-17 }
+  - { id: own-fgc-maven-coordinates, kind: association, from: yarrasys, to: fgc-maven-coordinates }
+  - { id: own-coverage-80, kind: association, from: yarrasys, to: coverage-80 }
+  - { id: r-sf-cloud, kind: serving, from: salesforce-cloud, to: salesforce-crm }
+  - { id: r-m365-mailbox, kind: association, from: microsoft-365, to: enquiries-mailbox }
+  - { id: r-ms-cloud, kind: serving, from: microsoft-cloud, to: microsoft-365 }
