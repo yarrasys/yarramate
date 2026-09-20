@@ -1,5 +1,44 @@
 # Changelog
 
+## Unreleased
+
+### A word the other name never says is a difference (#570)
+
+The near-duplicate rule no longer reads a shared naming convention as
+evidence that two subjects are one. Two changes, both in
+`src/subject-identity.ts`, and no threshold moved:
+
+- A type noun is stripped only from the **tail** of a label. The whole
+  trailing run still goes, so `order-api-gateway` reduces to `[order]` and
+  the motivating `order-gateway` / `orders-service` pair is untouched. A
+  type word inside the name stays, because it is part of the name.
+- Head tokens are paired one to one, and **two labels that each say a word
+  the other never says are two subjects**, scoring zero however close the
+  full strings look. Misspellings still correspond, so "component" reaches
+  "componant"; the same words in any order still match; and one label that
+  says everything the other says and more still fires, which is the shape a
+  copy takes.
+
+`visual-session-server-source` and `visual-session-store-source` scored a
+flat 1.0 before this: both `server` and `store` are on the type-noun list,
+so the one word telling the two files apart was deleted from both, and at
+1.0 the pair cleared the strong threshold without any corroboration. Across
+this repository's 383 live concepts the rule flagged 25 pairs, none of them
+duplicates; it now flags 8, every one a label that contains another.
+
+**`INTERROGATION_SEMANTICS_VERSION` moves to `2`** (ADR 0106): an unchanged
+model can answer `near-duplicate` differently. Expect such questions to
+close, never to open. Nothing else in the report changes and no schema
+moves.
+
+Worth recording for anyone reading #570: its headline of six wrong questions
+on this repository's own record was an artifact of the harness that filed
+it, which skipped the retired-subject filter the shipped path applies
+(ADR 0064). All six named retired commands. The defect is real, and it is
+the 25, not the 6.
+
+See ADR 0163, amending ADR 0077.
+
 ## 1.36.0
 
 ### A free-text `ask` says what else was in the running (#569)

@@ -75,11 +75,19 @@ export const normalizeLabel = (label: string): readonly string[] =>
     .filter((token) => token.length > 0)
     .map(singularize)
 
+// Only the trailing run is stripped, because a role noun qualifies the name
+// it follows: `order-gateway`, `orders-service`, `payment-api`. A type word
+// anywhere else is part of the name rather than a label on it, and stripping
+// it deletes the very thing that tells two subjects apart:
+// `visual-session-server-source` and `visual-session-store-source` disagree
+// on precisely one word, and removing it from both scored them identical.
+//
 // Removing every token would erase a subject genuinely called "Gateway", so
 // a label that is nothing but type nouns keeps them.
 export const headTokens = (tokens: readonly string[]): readonly string[] => {
-  const head = tokens.filter((token) => !typeTokens.has(token))
-  return head.length === 0 ? tokens : head
+  let end = tokens.length
+  while (end > 0 && typeTokens.has(tokens[end - 1]!)) end -= 1
+  return end === 0 ? tokens : tokens.slice(0, end)
 }
 
 const levenshtein = (left: string, right: string): number => {
@@ -147,10 +155,74 @@ export interface NearDuplicatePair {
 export const strongLexicalThreshold = 0.95
 export const moderateLexicalThreshold = 0.8
 
+interface TokenCorrespondence {
+  readonly leftMatched: number
+  readonly rightMatched: number
+}
+
+/**
+ * Pair the two token lists one-to-one, strongest first. Two tokens correspond
+ * when they are the same word: identical after normalization, or close enough
+ * that the difference reads as a misspelling ("component" beside
+ * "componant"). The bar is `moderateLexicalThreshold` rather than a second
+ * published number, because the judgment is the one the threshold already
+ * names, asked of a shorter string.
+ *
+ * Greedy is enough and optimal pairing is not worth its cost: ties break on
+ * position, so the result is the same on any machine.
+ */
+const correspondence = (
+  left: readonly string[],
+  right: readonly string[],
+): TokenCorrespondence => {
+  const candidates: { score: number; left: number; right: number }[] = []
+  for (const [leftIndex, leftToken] of left.entries()) {
+    for (const [rightIndex, rightToken] of right.entries()) {
+      const score = similarity(leftToken, rightToken)
+      if (score >= moderateLexicalThreshold) {
+        candidates.push({ score, left: leftIndex, right: rightIndex })
+      }
+    }
+  }
+  candidates.sort(
+    (first, second) =>
+      second.score - first.score ||
+      first.left - second.left ||
+      first.right - second.right,
+  )
+  const leftTaken = new Set<number>()
+  const rightTaken = new Set<number>()
+  for (const candidate of candidates) {
+    if (leftTaken.has(candidate.left) || rightTaken.has(candidate.right)) {
+      continue
+    }
+    leftTaken.add(candidate.left)
+    rightTaken.add(candidate.right)
+  }
+  return { leftMatched: leftTaken.size, rightMatched: rightTaken.size }
+}
+
 const labelScore = (left: string, right: string): number => {
   const leftHead = headTokens(normalizeLabel(left))
   const rightHead = headTokens(normalizeLabel(right))
   if (leftHead.length === 0 || rightHead.length === 0) return 0
+  const pairing = correspondence(leftHead, rightHead)
+  // Each side says a word the other never says. That is a family naming its
+  // members apart, not one subject recorded twice: "Add command" beside "Ask
+  // command", `session-server` beside `session-store`, `likec4-check-result`
+  // beside `likec4-diagnostic-result`. Character overlap between such labels
+  // measures how elaborate the shared convention is rather than how alike the
+  // subjects are, and the more disciplined the naming the higher it scores,
+  // so the pair is never offered however close the strings look.
+  if (
+    pairing.leftMatched < leftHead.length &&
+    pairing.rightMatched < rightHead.length
+  ) {
+    return 0
+  }
+  // One list is the other, or the other plus words. Same words means the same
+  // subject named twice; extra words are what a copy looks like
+  // (`payment-batch-processor` beside `payment-batch-processor-v2`).
   return Math.max(
     jaccard(new Set(leftHead), new Set(rightHead)),
     similarity(leftHead.join(' '), rightHead.join(' ')),

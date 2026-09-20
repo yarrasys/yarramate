@@ -2,6 +2,12 @@
 
 Status: accepted
 
+> Steps 3 and 4 below are amended by ADR 0163. Type nouns are removed from
+> the tail of a label only, and two labels that each say a word the other
+> never says score zero rather than being compared as strings. The two
+> tiers, their thresholds, the dismissal, the stemmer, and "never a `check`
+> error" are unchanged.
+
 From the ontology-mapping exploration (2026-08-05, issue #159): the only
 duplicate rules in the engine were exact id collisions, for document ids,
 local ids, constraint ids, and reference ids. Nothing noticed that

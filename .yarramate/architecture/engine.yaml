@@ -797,7 +797,7 @@ concepts:
   - id: detect-near-duplicate-subjects
     kind: applicationFunction
     name: Detect near-duplicate subjects
-    description: Pairs subjects whose labels collide above published lexical thresholds and opens a hygiene question, so two agents who invented two names for one subject are asked about it instead of both names surviving silently. It is never a check error, and a symmetric distinctFrom dismissal closes the question permanently on both sides.
+    description: Pairs subjects whose labels say the same words, above published lexical thresholds, and opens a hygiene question, so two agents who invented two names for one subject are asked about it instead of both names surviving silently. Two labels that each say a word the other never says are two subjects and are never paired, because a disciplined naming convention makes a family look more alike the tidier it gets. It is never a check error, and a symmetric distinctFrom dismissal closes the question permanently on both sides.
     status: current
   - id: compose-subject-brief
     kind: applicationFunction

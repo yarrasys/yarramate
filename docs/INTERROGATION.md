@@ -53,7 +53,8 @@ questions. Each question binds:
   `near-duplicate` (the subject resembles another subject of the same
   kind closely enough to be the same thing under two names, and no
   `yarramate/identity/distinct-from` claim dismisses the pair; the
-  algorithm and its thresholds are stated in ADR 0077),
+  algorithm and its thresholds are stated in ADR 0077 as amended by
+  ADR 0163),
   `unconstrained-kind` (every relationship the subject participates in
   would still be permitted by the ArchiMate relationship table if the
   subject were reclassified to a kind of another aspect, so its kind is a

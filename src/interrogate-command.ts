@@ -45,7 +45,7 @@ import { validateCatalogue } from './schema-validation.js'
  * a fixture and fails if evaluation moves without this bumping, so the rule is
  * enforced rather than remembered.
  */
-export const INTERROGATION_SEMANTICS_VERSION = '1'
+export const INTERROGATION_SEMANTICS_VERSION = '2'
 
 export interface CatalogueSelector {
   /**
