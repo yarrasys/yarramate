@@ -712,12 +712,94 @@ describe('box-to-member edges (ADR 0147)', () => {
   it('draws the same edge once the nesting it crossed is gone', () => {
     // A filter that hides the box detaches the member (see `applyFilter`), and
     // an edge that no longer crosses a nesting boundary is an ordinary edge.
+    //
+    // The match set names the edge because this is about the nesting rule and
+    // a view that draws `box-member` selects it (#579): a `between` or
+    // `connected` query returns its relationships alongside its subjects. A
+    // node-only match set now means the view selected no relationships, which
+    // is what the test below pins.
     const cy = buildNested()
-    applyFilter(cy, ['member', 'outside', 'box'], '')
+    applyFilter(cy, ['member', 'outside', 'box', 'box-member'], '')
     expect(cy.getElementById('box-member').style('display')).toBe('none')
     cy.getElementById('member').move({ parent: null })
     cy.getElementById('member').removeData('compositionParent')
-    applyFilter(cy, ['member', 'outside', 'box'], '')
+    applyFilter(cy, ['member', 'outside', 'box', 'box-member'], '')
     expect(cy.getElementById('box-member').style('display')).toBe('element')
+  })
+})
+
+// #579: the projection honoured `relationshipKinds` and `relationships: none`
+// while the canvas drew any edge between two visible nodes. Measured on this
+// repository's own model, eight of twenty-two views drew edges they had not
+// selected, 100 in total; `engine-components` drew six while declaring
+// `relationships: none`.
+describe('a view draws the relationships it selected (#579)', () => {
+  const buildPair = () =>
+    cytoscape({
+      styleEnabled: true,
+      layout: { name: 'preset' },
+      elements: [
+        { data: { id: 'a' }, position: { x: 0, y: 0 }, group: 'nodes' },
+        { data: { id: 'b' }, position: { x: 200, y: 0 }, group: 'nodes' },
+        { data: { id: 'a-serves-b', source: 'a', target: 'b' }, group: 'edges' },
+        { data: { id: 'a-accesses-b', source: 'a', target: 'b' }, group: 'edges' },
+      ],
+    })
+
+  it('draws an edge the match set names and hides one it does not', () => {
+    const cy = buildPair()
+    applyFilter(cy, ['a', 'b', 'a-serves-b'], '')
+    expect(cy.getElementById('a-serves-b').style('display')).toBe('element')
+    // Both endpoints are visible, which used to be the whole rule.
+    expect(cy.getElementById('a-accesses-b').style('display')).toBe('none')
+  })
+
+  it('draws no relationships at all for a view that selected none', () => {
+    const cy = buildPair()
+    applyFilter(cy, ['a', 'b'], '')
+    expect(cy.getElementById('a').style('display')).toBe('element')
+    expect(cy.getElementById('b').style('display')).toBe('element')
+    expect(cy.getElementById('a-serves-b').style('display')).toBe('none')
+    expect(cy.getElementById('a-accesses-b').style('display')).toBe('none')
+  })
+
+  it('leaves a view with no structural filter untouched', () => {
+    const cy = buildPair()
+    applyFilter(cy, null, '')
+    expect(cy.getElementById('a-serves-b').style('display')).toBe('element')
+    expect(cy.getElementById('a-accesses-b').style('display')).toBe('element')
+  })
+
+  it('still hides a selected edge whose endpoint the quick filter took', () => {
+    const cy = buildPair()
+    applyFilter(cy, ['a', 'b', 'a-serves-b'], 'a')
+    expect(cy.getElementById('b').style('display')).toBe('none')
+    expect(cy.getElementById('a-serves-b').style('display')).toBe('none')
+  })
+
+  it('draws a lifted edge while the view selected any relationship it stands for', () => {
+    const lifted = (relationshipIds: readonly string[]) =>
+      cytoscape({
+        styleEnabled: true,
+        layout: { name: 'preset' },
+        elements: [
+          { data: { id: 'a' }, position: { x: 0, y: 0 }, group: 'nodes' },
+          { data: { id: 'b' }, position: { x: 200, y: 0 }, group: 'nodes' },
+          {
+            data: { id: 'lift:a:b', source: 'a', target: 'b', relationshipIds },
+            group: 'edges',
+            classes: 'lifted',
+          },
+        ],
+      })
+    // Synthetic `lift:` ids are never in a match set, so the lift is judged by
+    // what it stands for. Selected one of two: it draws.
+    const drawn = lifted(['a-serves-b', 'a-accesses-b'])
+    applyFilter(drawn, ['a', 'b', 'a-serves-b'], '')
+    expect(drawn.getElementById('lift:a:b').style('display')).toBe('element')
+    // Selected neither: it goes, rather than surviving on its synthetic id.
+    const hidden = lifted(['a-serves-b', 'a-accesses-b'])
+    applyFilter(hidden, ['a', 'b'], '')
+    expect(hidden.getElementById('lift:a:b').style('display')).toBe('none')
   })
 })

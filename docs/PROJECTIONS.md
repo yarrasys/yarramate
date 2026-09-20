@@ -83,6 +83,19 @@ and its opposite endpoint is added to the result. Expansion is exactly one
 hop: newly added endpoints do not trigger further selection. `none` excludes
 all relationships.
 
+**What a view selects is what it draws** (#579, ADR 0164). The relationship
+selectors bound the picture as well as the result: a canvas draws an edge only
+where the view selected it and both its ends are on screen. A view declaring
+`relationships: none` draws no edges at all, and one naming
+`relationshipKinds` draws no kind it did not name, however many relationships
+happen to exist between the subjects it shows.
+
+This used to be two answers. Every read surface honoured the selectors, and
+the canvas drew any edge whose endpoints were both visible, so a view showing
+the right subjects also showed wiring it had excluded — measured at 100 edges
+across eight of this repository's twenty-two projections, including six on a
+view declaring `relationships: none`.
+
 **Expansion follows relationships, and only relationships.** A subject that
 another subject *references* — through `constraints[].ref` or
 `references[].ref` — is not pulled in by `connected`, because a reference is a
