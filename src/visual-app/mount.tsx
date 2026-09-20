@@ -413,3 +413,20 @@ export { createLocalHost } from './local-host.js'
 // over its own server's routes keeps the protocol and changes the URLs.
 export { createSocketHost, type SocketHostOptions } from './socket-host.js'
 export { RIGHT_SECTIONS, type RightSectionId } from './workspace-state.js'
+// What an edge says, for anyone drawing the canvas's picture somewhere else
+// (#576). `edgeLabelText` is the one place that decides it (ADR 0147), and it
+// was already pure; it was simply not reachable from here, so a consumer
+// publishing figures from a saved canvas had to restate the whole chain -
+// named edge, kind labels off, the edge's own reading, the subkind, the
+// reversed form, the table - and then guess at the mode list to know when the
+// reversed form applies. The rule travels; the reading tables it consults stay
+// inside, because a table cannot carry the conditions that pick between them.
+//
+// `LAYOUT_MODES` travels with it so a consumer can fail a test when the list
+// grows rather than silently mislabel every serving edge it draws.
+export { edgeLabelText, type EdgeLabelData } from './elk-layout.js'
+export {
+  DEFAULT_LAYOUT,
+  LAYOUT_MODES,
+  type LayoutMode,
+} from '../layout-mode.js'

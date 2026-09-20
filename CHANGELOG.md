@@ -1,5 +1,31 @@
 # Changelog
 
+## Unreleased
+
+### The rule that decides what an edge says now travels with the editor (#576)
+
+`yarramate/visual-app` exports `edgeLabelText` and its `EdgeLabelData` type,
+plus `LAYOUT_MODES`, `DEFAULT_LAYOUT` and `LayoutMode`. Nothing is rewritten
+and no behaviour changes: `edgeLabelText` was already the one place that
+decides an edge's label (ADR 0147) and was already pure, it simply could not
+be reached from the entry a consumer mounts.
+
+A product publishing figures from a saved canvas had to restate the whole
+chain to make a figure read like the canvas: the name the author gave the
+edge, kind labels being off, a reading the endpoints decided, a subkind
+spelled out from its own name, the reversed form, the table. The last of those
+is the one that bites. The reversed form applies where the mode layers the
+target above its source, and a consumer with no access to that predicate has
+to test the mode names instead. Those two agree today and would part silently
+the moment a mode is added, mislabelling every serving edge drawn.
+
+`LAYOUT_MODES` ships alongside so a consumer can assert against the list
+rather than hard-code it. The reading tables stay internal: a table cannot
+carry the conditions that pick between them, so exporting one hands over the
+ingredients and keeps the recipe.
+
+Reported by an adopter maintaining exactly that mirror.
+
 ## 1.37.0
 
 ### A word the other name never says is a difference (#570)

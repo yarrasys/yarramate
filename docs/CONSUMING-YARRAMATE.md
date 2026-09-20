@@ -632,6 +632,36 @@ transport instead imports `mountEditorWith` from `yarramate/visual-app` and
 mounts it with its `EditorHost`; `yarramate-visual` remains the supplied
 socket/session host.
 
+### Drawing the canvas's picture somewhere else
+
+A product that publishes figures from a saved canvas needs each edge to read
+the way the canvas reads it. `edgeLabelText` is the one place that decides
+that (ADR 0147), and it travels with the editor so nobody has to restate it:
+
+```ts
+import { edgeLabelText, LAYOUT_MODES } from 'yarramate/visual-app'
+import type { EdgeLabelData, LayoutMode } from 'yarramate/visual-app'
+
+edgeLabelText({ coreKindLabel: 'serving', kindLabel: 'serving' }, 'served-by', true)
+// 'served by' - the mode layers the served element above, so the label reads
+// down the page; 'layered' gives 'serves'
+```
+
+It answers in order: the name the author gave the edge, then nothing at all if
+kind labels are off, then a reading the endpoints decided, then a subkind spelled
+out from its own name, then the reversed form where the mode layers the target
+above, and otherwise the kind's reading. Pass a `liftedCount` above 1 and it says
+how many relationships the edge stands for.
+
+`LAYOUT_MODES` ships beside it so a consumer can assert against the list rather
+than hard-code the modes that reverse. Testing mode names instead of asking
+`edgeLabelText` is the trap: the two agree today and would part the moment a
+mode is added, silently, on every serving edge drawn.
+
+The reading tables themselves stay internal on purpose. A table cannot carry the
+conditions that pick between them, so exporting one would hand over the
+ingredients and keep the recipe.
+
 [...]
 
 ## White-labelling: one branding value
