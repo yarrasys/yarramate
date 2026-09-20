@@ -9,8 +9,11 @@ outside the npm `files` list) and nothing here is imported by `src/`.
   threshold (`arms.mjs`).
 - `datasets/`: Halcyon, copied read-only (see its `SOURCE.md`); ask queries as
   `ask-queries.<dataset>.json`.
-- `cache/`: every request and response, keyed by request hash. Committed, so a
-  finished arm replays without a call and a reader can check any answer.
+- `cache/`: every request and response, keyed by request hash. Local only and
+  git-ignored: 48 MB of regenerable bodies is not evidence anyone can check
+  without a key. Keep it and a finished arm replays without a call; delete it
+  and the next run pays for those requests again. `run-provenance.json` holds
+  the aggregate for the run that produced `RESULTS.md`.
 - `results/`: scored output per arm and dataset, plus the labelling sheets.
 
 ## The key

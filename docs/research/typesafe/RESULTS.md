@@ -1,9 +1,12 @@
 # Typed judgments beside the engine: results
 
 Run 2026-09-20 against `jev-1.13.0` on the vendor's API, 11,988 requests,
-about US$0.25 at list price. Every request and response is in `cache/`.
-Read `PROTOCOL.md` first; it was registered before the first call and its
-amendments are dated.
+6.81 M input tokens, US$0.29 at list price; median latency 297 ms, 95th
+percentile 380 ms. The request and response bodies are not kept in the
+repository: `run-provenance.json` carries the aggregate, `results/` carries
+every number quoted here, and re-running the harness with a key regenerates
+the rest. Read `PROTOCOL.md` first; it was registered before the first call
+and its amendments are dated.
 
 ## Verdict against the registered conditions
 
