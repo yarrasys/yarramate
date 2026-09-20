@@ -1,0 +1,164 @@
+{
+  "arm": "drift",
+  "dataset": "self",
+  "meta": {
+    "probe": true
+  },
+  "model": [
+    "jev-1.13.0"
+  ],
+  "repeat": 1,
+  "scored": {
+    "n": 9,
+    "flaggedSubjects": 1,
+    "flaggedByQuestion": {
+      "data": 1
+    },
+    "probe": {
+      "n": 9,
+      "recovered": 1,
+      "recall": 0.1111111111111111
+    },
+    "rows": [
+      {
+        "subject": "assess-artifact-coverage",
+        "name": "Assess artifact coverage",
+        "removed": {
+          "edge": "artifact-coverage-reads-workspace-manifest",
+          "kind": "access",
+          "other": "Workspace manifest"
+        },
+        "nouls": {
+          "data": 0.72,
+          "served": 0.27,
+          "trigger": 0.44
+        },
+        "flagged": [
+          "data"
+        ]
+      },
+      {
+        "subject": "import-command",
+        "name": "Import command",
+        "removed": {
+          "edge": "import-command-reads-workbook",
+          "kind": "access",
+          "other": "Architecture workbook"
+        },
+        "nouls": {
+          "data": 0.56,
+          "served": 0.26,
+          "trigger": 0.43
+        },
+        "flagged": []
+      },
+      {
+        "subject": "local-web-browser",
+        "name": "Local web browser",
+        "removed": {
+          "edge": "consumer-host-composes-web-browser",
+          "kind": "composition",
+          "other": "Consumer host"
+        },
+        "nouls": {
+          "data": 0.17,
+          "served": 0.34,
+          "trigger": 0.26
+        },
+        "flagged": []
+      },
+      {
+        "subject": "nodejs-runtime",
+        "name": "Node.js runtime",
+        "removed": {
+          "edge": "consumer-host-composes-runtime",
+          "kind": "composition",
+          "other": "Consumer host"
+        },
+        "nouls": {
+          "data": 0.05,
+          "served": 0.19,
+          "trigger": 0.17
+        },
+        "flagged": []
+      },
+      {
+        "subject": "published-formats-contract",
+        "name": "Published-formats contract",
+        "removed": {
+          "edge": "contract-manifest-realizes-published-formats",
+          "kind": "realization",
+          "other": "Core contract manifest"
+        },
+        "nouls": {
+          "data": 0.36,
+          "served": 0.54,
+          "trigger": 0.32
+        },
+        "flagged": []
+      },
+      {
+        "subject": "relationship-policy-catalogue",
+        "name": "Relationship policy catalogue",
+        "removed": {
+          "edge": "relationship-table-realizes-policies",
+          "kind": "realization",
+          "other": "ArchiMate 3.2 relationship table"
+        },
+        "nouls": {
+          "data": 0.54,
+          "served": 0.12,
+          "trigger": 0.13
+        },
+        "flagged": []
+      },
+      {
+        "subject": "render-likec4-state-comparison",
+        "name": "Render LikeC4 state comparison",
+        "removed": {
+          "edge": "likec4-comparison-reads-state-comparison",
+          "kind": "access",
+          "other": "Architecture-state comparison"
+        },
+        "nouls": {
+          "data": 0.36,
+          "served": 0.14,
+          "trigger": 0.16
+        },
+        "flagged": []
+      },
+      {
+        "subject": "state-comparison-schema",
+        "name": "Architecture-state comparison JSON Schema",
+        "removed": {
+          "edge": "comparison-schema-describes-result",
+          "kind": "realization",
+          "other": "Architecture-state comparison"
+        },
+        "nouls": {
+          "data": 0.14,
+          "served": 0.1,
+          "trigger": 0.09
+        },
+        "flagged": []
+      },
+      {
+        "subject": "validate-native-architecture",
+        "name": "Validate native architecture",
+        "removed": {
+          "edge": "validation-realizes-correctness",
+          "kind": "realization",
+          "other": "Deterministic correctness"
+        },
+        "nouls": {
+          "data": 0.08,
+          "served": 0.1,
+          "trigger": 0.11
+        },
+        "flagged": []
+      }
+    ]
+  },
+  "stability": null,
+  "at": "2026-09-20T00:36:58.830Z"
+}

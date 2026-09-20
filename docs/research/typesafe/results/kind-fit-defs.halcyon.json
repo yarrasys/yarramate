@@ -1,0 +1,424 @@
+{
+  "arm": "kind-fit-defs",
+  "dataset": "halcyon",
+  "meta": {
+    "skipped": {
+      "noCoreEndpoint": 0,
+      "onlyAssociation": 0,
+      "authoredNotLegal": 0,
+      "responsibility": 0
+    },
+    "variant": "definitions"
+  },
+  "model": [
+    "jev-1.13.0"
+  ],
+  "repeat": 3,
+  "scored": {
+    "n": 14,
+    "answered": 14,
+    "agreementAll": 0.5714285714285714,
+    "confident": 8,
+    "agreementConfident": 0.875,
+    "agreementByCut": {
+      "0.5": {
+        "n": 10,
+        "agreement": 0.7
+      },
+      "0.6": {
+        "n": 8,
+        "agreement": 0.875
+      },
+      "0.7": {
+        "n": 7,
+        "agreement": 0.8571428571428571
+      },
+      "0.8": {
+        "n": 6,
+        "agreement": 1
+      },
+      "0.9": {
+        "n": 5,
+        "agreement": 1
+      }
+    },
+    "auditMeanOnAgree": null,
+    "auditMeanOnDisagree": null,
+    "disagreements": [
+      {
+        "edge": "requirement-realizes-goal",
+        "from": "Meter reads reach billing within 24 hours",
+        "to": "Bill every connection from actual reads",
+        "authored": "realization",
+        "chosen": "influence",
+        "p": 0.85,
+        "confidence": 0.78,
+        "agrees": false,
+        "fits": null,
+        "pAuthored": 0.14,
+        "probabilities": {
+          "association": 0.01,
+          "realization": 0.14,
+          "influence": 0.85
+        }
+      },
+      {
+        "edge": "cloud-hosts-platform",
+        "from": "Cloud region, in-state",
+        "to": "Meter data platform",
+        "authored": "realization",
+        "chosen": "serving",
+        "p": 0.63,
+        "confidence": 0.52,
+        "agrees": false,
+        "fits": null,
+        "pAuthored": 0.17,
+        "probabilities": {
+          "flow": 0,
+          "serving": 0.63,
+          "triggering": 0,
+          "realization": 0.17,
+          "association": 0.2
+        }
+      },
+      {
+        "edge": "platform-composes-api",
+        "from": "Meter data platform",
+        "to": "Reads API",
+        "authored": "composition",
+        "chosen": "serving",
+        "p": 0.59,
+        "confidence": 0.52,
+        "agrees": false,
+        "fits": null,
+        "pAuthored": 0,
+        "probabilities": {
+          "realization": 0.4,
+          "composition": 0,
+          "triggering": 0,
+          "association": 0,
+          "flow": 0.01,
+          "serving": 0.59,
+          "aggregation": 0
+        }
+      },
+      {
+        "edge": "billing-serves-customer",
+        "from": "Water billing",
+        "to": "Customer",
+        "authored": "serving",
+        "chosen": "flow",
+        "p": 0.54,
+        "confidence": 0.39,
+        "agrees": false,
+        "fits": null,
+        "pAuthored": 0.45,
+        "probabilities": {
+          "association": 0.01,
+          "flow": 0.54,
+          "serving": 0.45,
+          "triggering": 0
+        }
+      },
+      {
+        "edge": "legacy-serves-run",
+        "from": "Billing system (legacy)",
+        "to": "Monthly billing run",
+        "authored": "serving",
+        "chosen": "realization",
+        "p": 0.49,
+        "confidence": 0.36,
+        "agrees": false,
+        "fits": null,
+        "pAuthored": 0.49,
+        "probabilities": {
+          "realization": 0.49,
+          "serving": 0.49,
+          "flow": 0.02,
+          "association": 0,
+          "triggering": 0
+        }
+      },
+      {
+        "edge": "dc-hosts-legacy",
+        "from": "Regional data centre",
+        "to": "Billing system (legacy)",
+        "authored": "realization",
+        "chosen": "serving",
+        "p": 0.48,
+        "confidence": 0.35,
+        "agrees": false,
+        "fits": null,
+        "pAuthored": 0.29,
+        "probabilities": {
+          "association": 0.23,
+          "triggering": 0,
+          "flow": 0,
+          "serving": 0.48,
+          "realization": 0.29
+        }
+      }
+    ],
+    "rows": [
+      {
+        "edge": "api-serves-legacy",
+        "from": "Reads API",
+        "to": "Billing system (legacy)",
+        "authored": "serving",
+        "chosen": "serving",
+        "p": 0.5,
+        "confidence": 0.33,
+        "agrees": true,
+        "fits": null,
+        "pAuthored": 0.5,
+        "probabilities": {
+          "serving": 0.5,
+          "triggering": 0.01,
+          "flow": 0.33,
+          "association": 0.16
+        }
+      },
+      {
+        "edge": "billing-serves-customer",
+        "from": "Water billing",
+        "to": "Customer",
+        "authored": "serving",
+        "chosen": "flow",
+        "p": 0.54,
+        "confidence": 0.39,
+        "agrees": false,
+        "fits": null,
+        "pAuthored": 0.45,
+        "probabilities": {
+          "association": 0.01,
+          "flow": 0.54,
+          "serving": 0.45,
+          "triggering": 0
+        }
+      },
+      {
+        "edge": "cloud-hosts-platform",
+        "from": "Cloud region, in-state",
+        "to": "Meter data platform",
+        "authored": "realization",
+        "chosen": "serving",
+        "p": 0.63,
+        "confidence": 0.52,
+        "agrees": false,
+        "fits": null,
+        "pAuthored": 0.17,
+        "probabilities": {
+          "flow": 0,
+          "serving": 0.63,
+          "triggering": 0,
+          "realization": 0.17,
+          "association": 0.2
+        }
+      },
+      {
+        "edge": "crew-to-platform-reads",
+        "from": "Field crew",
+        "to": "Meter data platform",
+        "authored": "flow",
+        "chosen": "flow",
+        "p": 0.97,
+        "confidence": 0.95,
+        "agrees": true,
+        "fits": null,
+        "pAuthored": 0.97,
+        "probabilities": {
+          "triggering": 0,
+          "association": 0.02,
+          "serving": 0.01,
+          "flow": 0.97
+        }
+      },
+      {
+        "edge": "dc-hosts-legacy",
+        "from": "Regional data centre",
+        "to": "Billing system (legacy)",
+        "authored": "realization",
+        "chosen": "serving",
+        "p": 0.48,
+        "confidence": 0.35,
+        "agrees": false,
+        "fits": null,
+        "pAuthored": 0.29,
+        "probabilities": {
+          "association": 0.23,
+          "triggering": 0,
+          "flow": 0,
+          "serving": 0.48,
+          "realization": 0.29
+        }
+      },
+      {
+        "edge": "fleet-influences-goal",
+        "from": "Ageing meter fleet",
+        "to": "Bill every connection from actual reads",
+        "authored": "influence",
+        "chosen": "influence",
+        "p": 0.99,
+        "confidence": 0.99,
+        "agrees": true,
+        "fits": null,
+        "pAuthored": 0.99,
+        "probabilities": {
+          "influence": 0.99,
+          "association": 0.01
+        }
+      },
+      {
+        "edge": "legacy-accesses-account",
+        "from": "Billing system (legacy)",
+        "to": "Customer account",
+        "authored": "access",
+        "chosen": "access",
+        "p": 0.96,
+        "confidence": 0.92,
+        "agrees": true,
+        "fits": null,
+        "pAuthored": 0.96,
+        "probabilities": {
+          "access": 0.96,
+          "association": 0.04
+        }
+      },
+      {
+        "edge": "legacy-serves-run",
+        "from": "Billing system (legacy)",
+        "to": "Monthly billing run",
+        "authored": "serving",
+        "chosen": "realization",
+        "p": 0.49,
+        "confidence": 0.36,
+        "agrees": false,
+        "fits": null,
+        "pAuthored": 0.49,
+        "probabilities": {
+          "realization": 0.49,
+          "serving": 0.49,
+          "flow": 0.02,
+          "association": 0,
+          "triggering": 0
+        }
+      },
+      {
+        "edge": "meter-replacement-programme-realization-platform",
+        "from": "Meter fleet replacement programme",
+        "to": "Meter data platform",
+        "authored": "realization",
+        "chosen": "realization",
+        "p": 0.93,
+        "confidence": 0.85,
+        "agrees": true,
+        "fits": null,
+        "pAuthored": 0.93,
+        "probabilities": {
+          "association": 0.07,
+          "realization": 0.93
+        }
+      },
+      {
+        "edge": "platform-accesses-reads",
+        "from": "Meter data platform",
+        "to": "Meter read",
+        "authored": "access",
+        "chosen": "access",
+        "p": 1,
+        "confidence": 1,
+        "agrees": true,
+        "fits": null,
+        "pAuthored": 1,
+        "probabilities": {
+          "access": 1,
+          "association": 0
+        }
+      },
+      {
+        "edge": "platform-composes-api",
+        "from": "Meter data platform",
+        "to": "Reads API",
+        "authored": "composition",
+        "chosen": "serving",
+        "p": 0.59,
+        "confidence": 0.52,
+        "agrees": false,
+        "fits": null,
+        "pAuthored": 0,
+        "probabilities": {
+          "realization": 0.4,
+          "composition": 0,
+          "triggering": 0,
+          "association": 0,
+          "flow": 0.01,
+          "serving": 0.59,
+          "aggregation": 0
+        }
+      },
+      {
+        "edge": "platform-realizes-ingestion",
+        "from": "Meter data platform",
+        "to": "Meter read ingestion",
+        "authored": "realization",
+        "chosen": "realization",
+        "p": 0.92,
+        "confidence": 0.9,
+        "agrees": true,
+        "fits": null,
+        "pAuthored": 0.92,
+        "probabilities": {
+          "assignment": 0.07,
+          "serving": 0.01,
+          "flow": 0,
+          "triggering": 0,
+          "association": 0,
+          "realization": 0.92
+        }
+      },
+      {
+        "edge": "requirement-realizes-goal",
+        "from": "Meter reads reach billing within 24 hours",
+        "to": "Bill every connection from actual reads",
+        "authored": "realization",
+        "chosen": "influence",
+        "p": 0.85,
+        "confidence": 0.78,
+        "agrees": false,
+        "fits": null,
+        "pAuthored": 0.14,
+        "probabilities": {
+          "association": 0.01,
+          "realization": 0.14,
+          "influence": 0.85
+        }
+      },
+      {
+        "edge": "run-realizes-billing",
+        "from": "Monthly billing run",
+        "to": "Water billing",
+        "authored": "realization",
+        "chosen": "realization",
+        "p": 0.75,
+        "confidence": 0.68,
+        "agrees": true,
+        "fits": null,
+        "pAuthored": 0.75,
+        "probabilities": {
+          "flow": 0.06,
+          "triggering": 0.02,
+          "serving": 0.14,
+          "realization": 0.75,
+          "association": 0.03
+        }
+      }
+    ]
+  },
+  "stability": {
+    "series": 56,
+    "meanSd": 0.009495171504659592,
+    "p95Sd": 0.032998316455372226,
+    "maxSd": 0.04546060565661954
+  },
+  "at": "2026-09-20T00:30:45.902Z"
+}

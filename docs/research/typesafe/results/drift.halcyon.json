@@ -1,0 +1,224 @@
+{
+  "arm": "drift",
+  "dataset": "halcyon",
+  "meta": {
+    "probe": false
+  },
+  "model": [
+    "jev-1.13.0"
+  ],
+  "repeat": 3,
+  "scored": {
+    "n": 17,
+    "flaggedSubjects": 4,
+    "flaggedByQuestion": {
+      "data": 3,
+      "served": 1
+    },
+    "probe": null,
+    "rows": [
+      {
+        "subject": "ageing-meter-fleet",
+        "name": "Ageing meter fleet",
+        "removed": null,
+        "nouls": {
+          "data": 0.25,
+          "served": 0.28,
+          "trigger": 0.38
+        },
+        "flagged": []
+      },
+      {
+        "subject": "bill-from-actual-reads",
+        "name": "Bill every connection from actual reads",
+        "removed": null,
+        "nouls": {
+          "data": 0.34,
+          "served": 0.17,
+          "trigger": 0.2
+        },
+        "flagged": []
+      },
+      {
+        "subject": "cloud-region",
+        "name": "Cloud region, in-state",
+        "removed": null,
+        "nouls": {
+          "data": 0.11,
+          "served": 0.09,
+          "trigger": 0.1
+        },
+        "flagged": []
+      },
+      {
+        "subject": "customer",
+        "name": "Customer",
+        "removed": null,
+        "nouls": {
+          "data": 0.06,
+          "served": 0.13,
+          "trigger": 0.12
+        },
+        "flagged": []
+      },
+      {
+        "subject": "customer-account",
+        "name": "Customer account",
+        "removed": null,
+        "nouls": {
+          "data": 0.37,
+          "served": 0.42,
+          "trigger": 0.15
+        },
+        "flagged": []
+      },
+      {
+        "subject": "data-stays-in-region",
+        "name": "Customer data stays in-region",
+        "removed": null,
+        "nouls": {
+          "data": 0.87,
+          "served": 0.22,
+          "trigger": 0.27
+        },
+        "flagged": [
+          "data"
+        ]
+      },
+      {
+        "subject": "field-crew",
+        "name": "Field crew",
+        "removed": null,
+        "nouls": {
+          "data": 0.28,
+          "served": 0.27,
+          "trigger": 0.27
+        },
+        "flagged": []
+      },
+      {
+        "subject": "legacy-billing",
+        "name": "Billing system (legacy)",
+        "removed": null,
+        "nouls": {
+          "data": 0.11,
+          "served": 0.12,
+          "trigger": 0.2
+        },
+        "flagged": []
+      },
+      {
+        "subject": "meter-data-platform",
+        "name": "Meter data platform",
+        "removed": null,
+        "nouls": {
+          "data": 0.41,
+          "served": 0.18,
+          "trigger": 0.23
+        },
+        "flagged": []
+      },
+      {
+        "subject": "meter-read",
+        "name": "Meter read",
+        "removed": null,
+        "nouls": {
+          "data": 0.14,
+          "served": 0.09,
+          "trigger": 0.12
+        },
+        "flagged": []
+      },
+      {
+        "subject": "meter-replacement-programme",
+        "name": "Meter fleet replacement programme",
+        "removed": null,
+        "nouls": {
+          "data": 0.17,
+          "served": 0.25,
+          "trigger": 0.3
+        },
+        "flagged": []
+      },
+      {
+        "subject": "monthly-billing-run",
+        "name": "Monthly billing run",
+        "removed": null,
+        "nouls": {
+          "data": 0.78,
+          "served": 0.15,
+          "trigger": 0.28
+        },
+        "flagged": [
+          "data"
+        ]
+      },
+      {
+        "subject": "operations-director",
+        "name": "Operations director",
+        "removed": null,
+        "nouls": {
+          "data": 0.33,
+          "served": 0.8,
+          "trigger": 0.56
+        },
+        "flagged": [
+          "served"
+        ]
+      },
+      {
+        "subject": "read-ingestion",
+        "name": "Meter read ingestion",
+        "removed": null,
+        "nouls": {
+          "data": 0.61,
+          "served": 0.2,
+          "trigger": 0.28
+        },
+        "flagged": []
+      },
+      {
+        "subject": "reads-api",
+        "name": "Reads API",
+        "removed": null,
+        "nouls": {
+          "data": 0.2,
+          "served": 0.16,
+          "trigger": 0.3
+        },
+        "flagged": []
+      },
+      {
+        "subject": "reads-within-24h",
+        "name": "Meter reads reach billing within 24 hours",
+        "removed": null,
+        "nouls": {
+          "data": 0.32,
+          "served": 0.43,
+          "trigger": 0.47
+        },
+        "flagged": []
+      },
+      {
+        "subject": "water-billing",
+        "name": "Water billing",
+        "removed": null,
+        "nouls": {
+          "data": 0.7,
+          "served": 0.11,
+          "trigger": 0.26
+        },
+        "flagged": [
+          "data"
+        ]
+      }
+    ]
+  },
+  "stability": {
+    "series": 51,
+    "meanSd": 0.012437062012642297,
+    "p95Sd": 0.0262466929133727,
+    "maxSd": 0.02943920288775949
+  },
+  "at": "2026-09-20T00:37:03.969Z"
+}

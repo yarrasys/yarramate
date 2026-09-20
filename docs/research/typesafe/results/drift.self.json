@@ -1,0 +1,2105 @@
+{
+  "arm": "drift",
+  "dataset": "self",
+  "meta": {
+    "probe": false
+  },
+  "model": [
+    "jev-1.13.0"
+  ],
+  "repeat": 3,
+  "scored": {
+    "n": 186,
+    "flaggedSubjects": 15,
+    "flaggedByQuestion": {
+      "data": 10,
+      "served": 5
+    },
+    "probe": null,
+    "rows": [
+      {
+        "subject": "adapter-foundation",
+        "name": "Adapter-backed foundation",
+        "removed": null,
+        "nouls": {
+          "data": 0.23,
+          "served": 0.33,
+          "trigger": 0.5
+        },
+        "flagged": []
+      },
+      {
+        "subject": "adapter-mapping",
+        "name": "Optional adapter mapping",
+        "removed": null,
+        "nouls": {
+          "data": 0.22,
+          "served": 0.12,
+          "trigger": 0.09
+        },
+        "flagged": []
+      },
+      {
+        "subject": "adapter-mapping-schema",
+        "name": "Adapter mapping JSON Schema",
+        "removed": null,
+        "nouls": {
+          "data": 0.24,
+          "served": 0.13,
+          "trigger": 0.07
+        },
+        "flagged": []
+      },
+      {
+        "subject": "add-command",
+        "name": "Add command",
+        "removed": null,
+        "nouls": {
+          "data": 0.23,
+          "served": 0.11,
+          "trigger": 0.41
+        },
+        "flagged": []
+      },
+      {
+        "subject": "adopting-team",
+        "name": "Adopting team",
+        "removed": null,
+        "nouls": {
+          "data": 0.61,
+          "served": 0.38,
+          "trigger": 0.53
+        },
+        "flagged": []
+      },
+      {
+        "subject": "agent-harness",
+        "name": "Agent harness",
+        "removed": null,
+        "nouls": {
+          "data": 0.18,
+          "served": 0.21,
+          "trigger": 0.23
+        },
+        "flagged": []
+      },
+      {
+        "subject": "apply-command",
+        "name": "Apply command",
+        "removed": null,
+        "nouls": {
+          "data": 0.15,
+          "served": 0.09,
+          "trigger": 0.29
+        },
+        "flagged": []
+      },
+      {
+        "subject": "apply-operations",
+        "name": "Operations document",
+        "removed": null,
+        "nouls": {
+          "data": 0.29,
+          "served": 0.15,
+          "trigger": 0.2
+        },
+        "flagged": []
+      },
+      {
+        "subject": "apply-operations-schema",
+        "name": "Operations schema",
+        "removed": null,
+        "nouls": {
+          "data": 0.15,
+          "served": 0.11,
+          "trigger": 0.09
+        },
+        "flagged": []
+      },
+      {
+        "subject": "apply-result",
+        "name": "Apply result",
+        "removed": null,
+        "nouls": {
+          "data": 0.14,
+          "served": 0.15,
+          "trigger": 0.23
+        },
+        "flagged": []
+      },
+      {
+        "subject": "apply-result-schema",
+        "name": "Apply result schema",
+        "removed": null,
+        "nouls": {
+          "data": 0.12,
+          "served": 0.11,
+          "trigger": 0.07
+        },
+        "flagged": []
+      },
+      {
+        "subject": "architecture-decisions",
+        "name": "Architecture decision records",
+        "removed": null,
+        "nouls": {
+          "data": 0.46,
+          "served": 0.16,
+          "trigger": 0.13
+        },
+        "flagged": []
+      },
+      {
+        "subject": "architecture-drift",
+        "name": "Architecture drift",
+        "removed": null,
+        "nouls": {
+          "data": 0.57,
+          "served": 0.13,
+          "trigger": 0.38
+        },
+        "flagged": []
+      },
+      {
+        "subject": "architecture-state-engine",
+        "name": "Architecture state engine",
+        "removed": null,
+        "nouls": {
+          "data": 0.21,
+          "served": 0.22,
+          "trigger": 0.18
+        },
+        "flagged": []
+      },
+      {
+        "subject": "architecture-workbook",
+        "name": "Architecture workbook",
+        "removed": null,
+        "nouls": {
+          "data": 0.17,
+          "served": 0.39,
+          "trigger": 0.15
+        },
+        "flagged": []
+      },
+      {
+        "subject": "ask-command",
+        "name": "Ask command",
+        "removed": null,
+        "nouls": {
+          "data": 0.67,
+          "served": 0.21,
+          "trigger": 0.3
+        },
+        "flagged": []
+      },
+      {
+        "subject": "ask-result",
+        "name": "Ask result",
+        "removed": null,
+        "nouls": {
+          "data": 0.14,
+          "served": 0.16,
+          "trigger": 0.19
+        },
+        "flagged": []
+      },
+      {
+        "subject": "ask-result-schema",
+        "name": "Ask result schema",
+        "removed": null,
+        "nouls": {
+          "data": 0.12,
+          "served": 0.1,
+          "trigger": 0.07
+        },
+        "flagged": []
+      },
+      {
+        "subject": "assemble-likec4-project",
+        "name": "Assemble multi-view LikeC4 project",
+        "removed": null,
+        "nouls": {
+          "data": 0.18,
+          "served": 0.11,
+          "trigger": 0.17
+        },
+        "flagged": []
+      },
+      {
+        "subject": "assess-artifact-coverage",
+        "name": "Assess artifact coverage",
+        "removed": null,
+        "nouls": {
+          "data": 0.7,
+          "served": 0.23,
+          "trigger": 0.43
+        },
+        "flagged": [
+          "data"
+        ]
+      },
+      {
+        "subject": "backlog-disposition",
+        "name": "Backlog disposition",
+        "removed": null,
+        "nouls": {
+          "data": 0.15,
+          "served": 0.16,
+          "trigger": 0.15
+        },
+        "flagged": []
+      },
+      {
+        "subject": "bind-pattern-parts",
+        "name": "Bind pattern parts",
+        "removed": null,
+        "nouls": {
+          "data": 0.54,
+          "served": 0.67,
+          "trigger": 0.47
+        },
+        "flagged": []
+      },
+      {
+        "subject": "branding",
+        "name": "Branding",
+        "removed": null,
+        "nouls": {
+          "data": 0.41,
+          "served": 0.58,
+          "trigger": 0.22
+        },
+        "flagged": []
+      },
+      {
+        "subject": "branding-value",
+        "name": "Branding value",
+        "removed": null,
+        "nouls": {
+          "data": 0.17,
+          "served": 0.24,
+          "trigger": 0.17
+        },
+        "flagged": []
+      },
+      {
+        "subject": "build-visual-session-request",
+        "name": "Build the visual session request",
+        "removed": null,
+        "nouls": {
+          "data": 0.78,
+          "served": 0.3,
+          "trigger": 0.61
+        },
+        "flagged": [
+          "data"
+        ]
+      },
+      {
+        "subject": "check-command",
+        "name": "Check command",
+        "removed": null,
+        "nouls": {
+          "data": 0.12,
+          "served": 0.11,
+          "trigger": 0.2
+        },
+        "flagged": []
+      },
+      {
+        "subject": "check-core-contract",
+        "name": "Check Core contract",
+        "removed": null,
+        "nouls": {
+          "data": 0.35,
+          "served": 0.14,
+          "trigger": 0.2
+        },
+        "flagged": []
+      },
+      {
+        "subject": "check-result",
+        "name": "Machine-readable check result",
+        "removed": null,
+        "nouls": {
+          "data": 0.16,
+          "served": 0.49,
+          "trigger": 0.24
+        },
+        "flagged": []
+      },
+      {
+        "subject": "check-result-schema",
+        "name": "Check result JSON Schema",
+        "removed": null,
+        "nouls": {
+          "data": 0.12,
+          "served": 0.11,
+          "trigger": 0.08
+        },
+        "flagged": []
+      },
+      {
+        "subject": "cli",
+        "name": "YarraMate CLI",
+        "removed": null,
+        "nouls": {
+          "data": 0.14,
+          "served": 0.19,
+          "trigger": 0.14
+        },
+        "flagged": []
+      },
+      {
+        "subject": "commit-visual-changeset",
+        "name": "Commit the visual changeset",
+        "removed": null,
+        "nouls": {
+          "data": 0.26,
+          "served": 0.26,
+          "trigger": 0.33
+        },
+        "flagged": []
+      },
+      {
+        "subject": "compare-architecture-states",
+        "name": "Compare architecture states",
+        "removed": null,
+        "nouls": {
+          "data": 0.11,
+          "served": 0.1,
+          "trigger": 0.15
+        },
+        "flagged": []
+      },
+      {
+        "subject": "compare-command",
+        "name": "Compare command",
+        "removed": null,
+        "nouls": {
+          "data": 0.26,
+          "served": 0.69,
+          "trigger": 0.23
+        },
+        "flagged": []
+      },
+      {
+        "subject": "compile-command",
+        "name": "Compile command",
+        "removed": null,
+        "nouls": {
+          "data": 0.56,
+          "served": 0.09,
+          "trigger": 0.22
+        },
+        "flagged": []
+      },
+      {
+        "subject": "compile-native-architecture",
+        "name": "Compile native architecture",
+        "removed": null,
+        "nouls": {
+          "data": 0.37,
+          "served": 0.28,
+          "trigger": 0.34
+        },
+        "flagged": []
+      },
+      {
+        "subject": "compiler",
+        "name": "Native compiler",
+        "removed": null,
+        "nouls": {
+          "data": 0.45,
+          "served": 0.17,
+          "trigger": 0.34
+        },
+        "flagged": []
+      },
+      {
+        "subject": "compose-question-catalogues",
+        "name": "Compose question catalogues",
+        "removed": null,
+        "nouls": {
+          "data": 0.65,
+          "served": 0.63,
+          "trigger": 0.56
+        },
+        "flagged": []
+      },
+      {
+        "subject": "compose-subject-brief",
+        "name": "Compose subject brief",
+        "removed": null,
+        "nouls": {
+          "data": 0.28,
+          "served": 0.14,
+          "trigger": 0.33
+        },
+        "flagged": []
+      },
+      {
+        "subject": "connect-command",
+        "name": "Connect command",
+        "removed": null,
+        "nouls": {
+          "data": 0.15,
+          "served": 0.1,
+          "trigger": 0.29
+        },
+        "flagged": []
+      },
+      {
+        "subject": "consumer-guide",
+        "name": "Consumer installation guide",
+        "removed": null,
+        "nouls": {
+          "data": 0.19,
+          "served": 0.6,
+          "trigger": 0.31
+        },
+        "flagged": []
+      },
+      {
+        "subject": "consumer-host",
+        "name": "Consumer host",
+        "removed": null,
+        "nouls": {
+          "data": 0.09,
+          "served": 0.47,
+          "trigger": 0.2
+        },
+        "flagged": []
+      },
+      {
+        "subject": "consumer-package",
+        "name": "YarraMate consumer package",
+        "removed": null,
+        "nouls": {
+          "data": 0.26,
+          "served": 0.61,
+          "trigger": 0.15
+        },
+        "flagged": []
+      },
+      {
+        "subject": "context-command",
+        "name": "Context command",
+        "removed": null,
+        "nouls": {
+          "data": 0.21,
+          "served": 0.12,
+          "trigger": 0.23
+        },
+        "flagged": []
+      },
+      {
+        "subject": "core-contract-checker",
+        "name": "Core contract checker",
+        "removed": null,
+        "nouls": {
+          "data": 0.49,
+          "served": 0.15,
+          "trigger": 0.27
+        },
+        "flagged": []
+      },
+      {
+        "subject": "core-contract-foundation",
+        "name": "Core contract foundation",
+        "removed": null,
+        "nouls": {
+          "data": 0.22,
+          "served": 0.18,
+          "trigger": 0.35
+        },
+        "flagged": []
+      },
+      {
+        "subject": "core-contract-manifest",
+        "name": "Core contract manifest",
+        "removed": null,
+        "nouls": {
+          "data": 0.11,
+          "served": 0.1,
+          "trigger": 0.11
+        },
+        "flagged": []
+      },
+      {
+        "subject": "core-contract-schema",
+        "name": "Core contract JSON Schema",
+        "removed": null,
+        "nouls": {
+          "data": 0.15,
+          "served": 0.13,
+          "trigger": 0.09
+        },
+        "flagged": []
+      },
+      {
+        "subject": "derive-architecture-workbook",
+        "name": "Derive the architecture workbook",
+        "removed": null,
+        "nouls": {
+          "data": 0.63,
+          "served": 0.74,
+          "trigger": 0.46
+        },
+        "flagged": [
+          "served"
+        ]
+      },
+      {
+        "subject": "derive-changed-slice",
+        "name": "Derive changed slice",
+        "removed": null,
+        "nouls": {
+          "data": 0.65,
+          "served": 0.61,
+          "trigger": 0.53
+        },
+        "flagged": []
+      },
+      {
+        "subject": "derive-governance-log",
+        "name": "Derive governance log",
+        "removed": null,
+        "nouls": {
+          "data": 0.74,
+          "served": 0.22,
+          "trigger": 0.41
+        },
+        "flagged": [
+          "data"
+        ]
+      },
+      {
+        "subject": "derive-responsibility-matrix",
+        "name": "Derive responsibility matrix",
+        "removed": null,
+        "nouls": {
+          "data": 0.82,
+          "served": 0.37,
+          "trigger": 0.49
+        },
+        "flagged": [
+          "data"
+        ]
+      },
+      {
+        "subject": "derive-traceability-matrix",
+        "name": "Derive requirements traceability matrix",
+        "removed": null,
+        "nouls": {
+          "data": 0.37,
+          "served": 0.14,
+          "trigger": 0.3
+        },
+        "flagged": []
+      },
+      {
+        "subject": "design-command",
+        "name": "Design command",
+        "removed": null,
+        "nouls": {
+          "data": 0.27,
+          "served": 0.13,
+          "trigger": 0.24
+        },
+        "flagged": []
+      },
+      {
+        "subject": "design-solution-before-build",
+        "name": "Design solution before build",
+        "removed": null,
+        "nouls": {
+          "data": 0.16,
+          "served": 0.43,
+          "trigger": 0.34
+        },
+        "flagged": []
+      },
+      {
+        "subject": "design-step",
+        "name": "Design step",
+        "removed": null,
+        "nouls": {
+          "data": 0.11,
+          "served": 0.19,
+          "trigger": 0.19
+        },
+        "flagged": []
+      },
+      {
+        "subject": "design-step-schema",
+        "name": "Design step schema",
+        "removed": null,
+        "nouls": {
+          "data": 0.13,
+          "served": 0.09,
+          "trigger": 0.08
+        },
+        "flagged": []
+      },
+      {
+        "subject": "detect-near-duplicate-subjects",
+        "name": "Detect near-duplicate subjects",
+        "removed": null,
+        "nouls": {
+          "data": 0.2,
+          "served": 0.48,
+          "trigger": 0.53
+        },
+        "flagged": []
+      },
+      {
+        "subject": "detect-stale-attestations",
+        "name": "Detect stale attestations",
+        "removed": null,
+        "nouls": {
+          "data": 0.27,
+          "served": 0.71,
+          "trigger": 0.4
+        },
+        "flagged": [
+          "served"
+        ]
+      },
+      {
+        "subject": "deterministic-correctness",
+        "name": "Deterministic correctness",
+        "removed": null,
+        "nouls": {
+          "data": 0.06,
+          "served": 0.09,
+          "trigger": 0.12
+        },
+        "flagged": []
+      },
+      {
+        "subject": "diagnostic-result",
+        "name": "Semantic command diagnostic result",
+        "removed": null,
+        "nouls": {
+          "data": 0.12,
+          "served": 0.14,
+          "trigger": 0.18
+        },
+        "flagged": []
+      },
+      {
+        "subject": "diagnostic-result-schema",
+        "name": "Diagnostic result JSON Schema",
+        "removed": null,
+        "nouls": {
+          "data": 0.12,
+          "served": 0.12,
+          "trigger": 0.09
+        },
+        "flagged": []
+      },
+      {
+        "subject": "diagnostics",
+        "name": "Source-located diagnostics",
+        "removed": null,
+        "nouls": {
+          "data": 0.15,
+          "served": 0.14,
+          "trigger": 0.12
+        },
+        "flagged": []
+      },
+      {
+        "subject": "discover-project-architecture",
+        "name": "Discover project architecture",
+        "removed": null,
+        "nouls": {
+          "data": 0.21,
+          "served": 0.44,
+          "trigger": 0.26
+        },
+        "flagged": []
+      },
+      {
+        "subject": "document-schema",
+        "name": "Native document JSON Schema",
+        "removed": null,
+        "nouls": {
+          "data": 0.21,
+          "served": 0.12,
+          "trigger": 0.09
+        },
+        "flagged": []
+      },
+      {
+        "subject": "evaluate-architecture-evidence",
+        "name": "Evaluate architecture evidence",
+        "removed": null,
+        "nouls": {
+          "data": 0.16,
+          "served": 0.19,
+          "trigger": 0.17
+        },
+        "flagged": []
+      },
+      {
+        "subject": "evaluate-evidence",
+        "name": "Evaluate evidence overlay",
+        "removed": null,
+        "nouls": {
+          "data": 0.28,
+          "served": 0.2,
+          "trigger": 0.26
+        },
+        "flagged": []
+      },
+      {
+        "subject": "evaluate-projection",
+        "name": "Evaluate semantic projection",
+        "removed": null,
+        "nouls": {
+          "data": 0.19,
+          "served": 0.17,
+          "trigger": 0.21
+        },
+        "flagged": []
+      },
+      {
+        "subject": "evidence-command",
+        "name": "Evidence command",
+        "removed": null,
+        "nouls": {
+          "data": 0.75,
+          "served": 0.09,
+          "trigger": 0.19
+        },
+        "flagged": [
+          "data"
+        ]
+      },
+      {
+        "subject": "evidence-document",
+        "name": "Evidence overlay document",
+        "removed": null,
+        "nouls": {
+          "data": 0.14,
+          "served": 0.15,
+          "trigger": 0.09
+        },
+        "flagged": []
+      },
+      {
+        "subject": "evidence-evaluator",
+        "name": "Evidence evaluator",
+        "removed": null,
+        "nouls": {
+          "data": 0.24,
+          "served": 0.22,
+          "trigger": 0.17
+        },
+        "flagged": []
+      },
+      {
+        "subject": "evidence-intent-separation",
+        "name": "Evidence and intent remain distinct",
+        "removed": null,
+        "nouls": {
+          "data": 0.1,
+          "served": 0.09,
+          "trigger": 0.09
+        },
+        "flagged": []
+      },
+      {
+        "subject": "evidence-report",
+        "name": "Deterministic evidence report",
+        "removed": null,
+        "nouls": {
+          "data": 0.25,
+          "served": 0.14,
+          "trigger": 0.21
+        },
+        "flagged": []
+      },
+      {
+        "subject": "evidence-report-schema",
+        "name": "Evidence report JSON Schema",
+        "removed": null,
+        "nouls": {
+          "data": 0.12,
+          "served": 0.15,
+          "trigger": 0.09
+        },
+        "flagged": []
+      },
+      {
+        "subject": "evidence-schema",
+        "name": "Evidence overlay JSON Schema",
+        "removed": null,
+        "nouls": {
+          "data": 0.23,
+          "served": 0.11,
+          "trigger": 0.08
+        },
+        "flagged": []
+      },
+      {
+        "subject": "execute-shipped-binaries",
+        "name": "Execute the shipped binaries",
+        "removed": null,
+        "nouls": {
+          "data": 0.04,
+          "served": 0.47,
+          "trigger": 0.5
+        },
+        "flagged": []
+      },
+      {
+        "subject": "export-command",
+        "name": "Export command",
+        "removed": null,
+        "nouls": {
+          "data": 0.86,
+          "served": 0.33,
+          "trigger": 0.5
+        },
+        "flagged": [
+          "data"
+        ]
+      },
+      {
+        "subject": "export-likec4",
+        "name": "Export LikeC4 source",
+        "removed": null,
+        "nouls": {
+          "data": 0.17,
+          "served": 0.1,
+          "trigger": 0.17
+        },
+        "flagged": []
+      },
+      {
+        "subject": "expose-cli-over-mcp",
+        "name": "Expose the CLI over MCP",
+        "removed": null,
+        "nouls": {
+          "data": 0.14,
+          "served": 0.42,
+          "trigger": 0.38
+        },
+        "flagged": []
+      },
+      {
+        "subject": "governance-log",
+        "name": "Governance log",
+        "removed": null,
+        "nouls": {
+          "data": 0.45,
+          "served": 0.35,
+          "trigger": 0.35
+        },
+        "flagged": []
+      },
+      {
+        "subject": "governance-schema",
+        "name": "Governance log JSON Schema",
+        "removed": null,
+        "nouls": {
+          "data": 0.13,
+          "served": 0.22,
+          "trigger": 0.15
+        },
+        "flagged": []
+      },
+      {
+        "subject": "graphify-evidence-adapter",
+        "name": "Graphify evidence adapter",
+        "removed": null,
+        "nouls": {
+          "data": 0.22,
+          "served": 0.16,
+          "trigger": 0.22
+        },
+        "flagged": []
+      },
+      {
+        "subject": "graphify-observe-command",
+        "name": "Graphify observe command",
+        "removed": null,
+        "nouls": {
+          "data": 0.17,
+          "served": 0.1,
+          "trigger": 0.23
+        },
+        "flagged": []
+      },
+      {
+        "subject": "host-entry",
+        "name": "Host entry",
+        "removed": null,
+        "nouls": {
+          "data": 0.15,
+          "served": 0.37,
+          "trigger": 0.42
+        },
+        "flagged": []
+      },
+      {
+        "subject": "import-command",
+        "name": "Import command",
+        "removed": null,
+        "nouls": {
+          "data": 0.3,
+          "served": 0.2,
+          "trigger": 0.42
+        },
+        "flagged": []
+      },
+      {
+        "subject": "init-command",
+        "name": "Init command",
+        "removed": null,
+        "nouls": {
+          "data": 0.26,
+          "served": 0.08,
+          "trigger": 0.26
+        },
+        "flagged": []
+      },
+      {
+        "subject": "interrogate-command",
+        "name": "Interrogate command",
+        "removed": null,
+        "nouls": {
+          "data": 0.65,
+          "served": 0.12,
+          "trigger": 0.23
+        },
+        "flagged": []
+      },
+      {
+        "subject": "interrogation-engine",
+        "name": "Interrogation engine",
+        "removed": null,
+        "nouls": {
+          "data": 0.58,
+          "served": 0.7,
+          "trigger": 0.56
+        },
+        "flagged": [
+          "served"
+        ]
+      },
+      {
+        "subject": "kind-catalogue",
+        "name": "Concept kind catalogue",
+        "removed": null,
+        "nouls": {
+          "data": 0.24,
+          "served": 0.38,
+          "trigger": 0.18
+        },
+        "flagged": []
+      },
+      {
+        "subject": "likec4-adapter-prototype",
+        "name": "LikeC4 adapter prototype",
+        "removed": null,
+        "nouls": {
+          "data": 0.06,
+          "served": 0.16,
+          "trigger": 0.18
+        },
+        "flagged": []
+      },
+      {
+        "subject": "likec4-check-command",
+        "name": "LikeC4 check command",
+        "removed": null,
+        "nouls": {
+          "data": 0.12,
+          "served": 0.1,
+          "trigger": 0.16
+        },
+        "flagged": []
+      },
+      {
+        "subject": "likec4-check-result",
+        "name": "LikeC4 adapter check result",
+        "removed": null,
+        "nouls": {
+          "data": 0.14,
+          "served": 0.11,
+          "trigger": 0.17
+        },
+        "flagged": []
+      },
+      {
+        "subject": "likec4-check-result-schema",
+        "name": "LikeC4 check result JSON Schema",
+        "removed": null,
+        "nouls": {
+          "data": 0.12,
+          "served": 0.15,
+          "trigger": 0.09
+        },
+        "flagged": []
+      },
+      {
+        "subject": "likec4-diagnostic-result",
+        "name": "LikeC4 adapter diagnostic result",
+        "removed": null,
+        "nouls": {
+          "data": 0.16,
+          "served": 0.12,
+          "trigger": 0.15
+        },
+        "flagged": []
+      },
+      {
+        "subject": "likec4-diagnostic-result-schema",
+        "name": "LikeC4 diagnostic result JSON Schema",
+        "removed": null,
+        "nouls": {
+          "data": 0.14,
+          "served": 0.2,
+          "trigger": 0.12
+        },
+        "flagged": []
+      },
+      {
+        "subject": "likec4-export-adapter",
+        "name": "LikeC4 export adapter",
+        "removed": null,
+        "nouls": {
+          "data": 0.35,
+          "served": 0.18,
+          "trigger": 0.3
+        },
+        "flagged": []
+      },
+      {
+        "subject": "likec4-export-command",
+        "name": "LikeC4 export command",
+        "removed": null,
+        "nouls": {
+          "data": 0.67,
+          "served": 0.12,
+          "trigger": 0.21
+        },
+        "flagged": []
+      },
+      {
+        "subject": "likec4-generated-project-schema",
+        "name": "Generated LikeC4 project marker JSON Schema",
+        "removed": null,
+        "nouls": {
+          "data": 0.18,
+          "served": 0.14,
+          "trigger": 0.1
+        },
+        "flagged": []
+      },
+      {
+        "subject": "likec4-generated-project-v2-schema",
+        "name": "Multi-view generated LikeC4 project marker JSON Schema",
+        "removed": null,
+        "nouls": {
+          "data": 0.15,
+          "served": 0.13,
+          "trigger": 0.1
+        },
+        "flagged": []
+      },
+      {
+        "subject": "likec4-kind-mapping",
+        "name": "LikeC4 kind compatibility mapping",
+        "removed": null,
+        "nouls": {
+          "data": 0.22,
+          "served": 0.17,
+          "trigger": 0.1
+        },
+        "flagged": []
+      },
+      {
+        "subject": "likec4-kind-mapping-schema",
+        "name": "LikeC4 kind mapping JSON Schema",
+        "removed": null,
+        "nouls": {
+          "data": 0.13,
+          "served": 0.12,
+          "trigger": 0.09
+        },
+        "flagged": []
+      },
+      {
+        "subject": "likec4-project-definition",
+        "name": "LikeC4 project definition",
+        "removed": null,
+        "nouls": {
+          "data": 0.18,
+          "served": 0.19,
+          "trigger": 0.18
+        },
+        "flagged": []
+      },
+      {
+        "subject": "likec4-project-schema",
+        "name": "LikeC4 project definition JSON Schema",
+        "removed": null,
+        "nouls": {
+          "data": 0.15,
+          "served": 0.14,
+          "trigger": 0.11
+        },
+        "flagged": []
+      },
+      {
+        "subject": "load-core-contract",
+        "name": "Load Core contract",
+        "removed": null,
+        "nouls": {
+          "data": 0.45,
+          "served": 0.15,
+          "trigger": 0.29
+        },
+        "flagged": []
+      },
+      {
+        "subject": "load-source-document",
+        "name": "Load source document",
+        "removed": null,
+        "nouls": {
+          "data": 0.41,
+          "served": 0.16,
+          "trigger": 0.27
+        },
+        "flagged": []
+      },
+      {
+        "subject": "local-web-browser",
+        "name": "Local web browser",
+        "removed": null,
+        "nouls": {
+          "data": 0.16,
+          "served": 0.38,
+          "trigger": 0.25
+        },
+        "flagged": []
+      },
+      {
+        "subject": "mcp-adapter",
+        "name": "MCP adapter",
+        "removed": null,
+        "nouls": {
+          "data": 0.38,
+          "served": 0.16,
+          "trigger": 0.38
+        },
+        "flagged": []
+      },
+      {
+        "subject": "merge-edited-workbook",
+        "name": "Merge an edited workbook",
+        "removed": null,
+        "nouls": {
+          "data": 0.56,
+          "served": 0.16,
+          "trigger": 0.4
+        },
+        "flagged": []
+      },
+      {
+        "subject": "native-document",
+        "name": "Native YAML document",
+        "removed": null,
+        "nouls": {
+          "data": 0.2,
+          "served": 0.09,
+          "trigger": 0.09
+        },
+        "flagged": []
+      },
+      {
+        "subject": "native-documents-are-canonical",
+        "name": "Native documents are canonical",
+        "removed": null,
+        "nouls": {
+          "data": 0.42,
+          "served": 0.2,
+          "trigger": 0.15
+        },
+        "flagged": []
+      },
+      {
+        "subject": "native-foundation",
+        "name": "Native compiler foundation",
+        "removed": null,
+        "nouls": {
+          "data": 0.79,
+          "served": 0.22,
+          "trigger": 0.25
+        },
+        "flagged": [
+          "data"
+        ]
+      },
+      {
+        "subject": "new-command",
+        "name": "New command",
+        "removed": null,
+        "nouls": {
+          "data": 0.71,
+          "served": 0.09,
+          "trigger": 0.26
+        },
+        "flagged": [
+          "data"
+        ]
+      },
+      {
+        "subject": "next-command",
+        "name": "Next command",
+        "removed": null,
+        "nouls": {
+          "data": 0.2,
+          "served": 0.12,
+          "trigger": 0.16
+        },
+        "flagged": []
+      },
+      {
+        "subject": "nodejs-runtime",
+        "name": "Node.js runtime",
+        "removed": null,
+        "nouls": {
+          "data": 0.04,
+          "served": 0.13,
+          "trigger": 0.14
+        },
+        "flagged": []
+      },
+      {
+        "subject": "npm-package",
+        "name": "npm package",
+        "removed": null,
+        "nouls": {
+          "data": 0.7,
+          "served": 0.18,
+          "trigger": 0.14
+        },
+        "flagged": [
+          "data"
+        ]
+      },
+      {
+        "subject": "observe-graphify",
+        "name": "Observe mapped Graphify nodes",
+        "removed": null,
+        "nouls": {
+          "data": 0.26,
+          "served": 0.17,
+          "trigger": 0.19
+        },
+        "flagged": []
+      },
+      {
+        "subject": "pattern-document",
+        "name": "Pattern document",
+        "removed": null,
+        "nouls": {
+          "data": 0.18,
+          "served": 0.48,
+          "trigger": 0.27
+        },
+        "flagged": []
+      },
+      {
+        "subject": "present-visual-conversation",
+        "name": "Present the visual conversation",
+        "removed": null,
+        "nouls": {
+          "data": 0.72,
+          "served": 0.3,
+          "trigger": 0.37
+        },
+        "flagged": [
+          "data"
+        ]
+      },
+      {
+        "subject": "product-journeys-guide",
+        "name": "Product journey guide",
+        "removed": null,
+        "nouls": {
+          "data": 0.12,
+          "served": 0.26,
+          "trigger": 0.42
+        },
+        "flagged": []
+      },
+      {
+        "subject": "profile-catalogue",
+        "name": "Native profile catalogue",
+        "removed": null,
+        "nouls": {
+          "data": 0.39,
+          "served": 0.15,
+          "trigger": 0.1
+        },
+        "flagged": []
+      },
+      {
+        "subject": "projection-definition",
+        "name": "Semantic projection definition",
+        "removed": null,
+        "nouls": {
+          "data": 0.09,
+          "served": 0.1,
+          "trigger": 0.07
+        },
+        "flagged": []
+      },
+      {
+        "subject": "projection-result",
+        "name": "Deterministic projection result",
+        "removed": null,
+        "nouls": {
+          "data": 0.14,
+          "served": 0.1,
+          "trigger": 0.27
+        },
+        "flagged": []
+      },
+      {
+        "subject": "projection-result-schema",
+        "name": "Projection result JSON Schema",
+        "removed": null,
+        "nouls": {
+          "data": 0.12,
+          "served": 0.14,
+          "trigger": 0.1
+        },
+        "flagged": []
+      },
+      {
+        "subject": "projection-schema",
+        "name": "Projection definition JSON Schema",
+        "removed": null,
+        "nouls": {
+          "data": 0.11,
+          "served": 0.1,
+          "trigger": 0.07
+        },
+        "flagged": []
+      },
+      {
+        "subject": "provide-machine-context",
+        "name": "Provide machine-readable context",
+        "removed": null,
+        "nouls": {
+          "data": 0.16,
+          "served": 0.72,
+          "trigger": 0.22
+        },
+        "flagged": [
+          "served"
+        ]
+      },
+      {
+        "subject": "published-formats-contract",
+        "name": "Published-formats contract",
+        "removed": null,
+        "nouls": {
+          "data": 0.35,
+          "served": 0.51,
+          "trigger": 0.25
+        },
+        "flagged": []
+      },
+      {
+        "subject": "question-catalogue",
+        "name": "Shipped question catalogue",
+        "removed": null,
+        "nouls": {
+          "data": 0.14,
+          "served": 0.18,
+          "trigger": 0.22
+        },
+        "flagged": []
+      },
+      {
+        "subject": "reconcile-command",
+        "name": "Reconcile command",
+        "removed": null,
+        "nouls": {
+          "data": 0.1,
+          "served": 0.27,
+          "trigger": 0.29
+        },
+        "flagged": []
+      },
+      {
+        "subject": "reconcile-evidence",
+        "name": "Reconcile workspace evidence",
+        "removed": null,
+        "nouls": {
+          "data": 0.24,
+          "served": 0.22,
+          "trigger": 0.26
+        },
+        "flagged": []
+      },
+      {
+        "subject": "reconcile-intent-and-evidence",
+        "name": "Reconcile intent and evidence",
+        "removed": null,
+        "nouls": {
+          "data": 0.21,
+          "served": 0.15,
+          "trigger": 0.18
+        },
+        "flagged": []
+      },
+      {
+        "subject": "reconciliation-report",
+        "name": "Reconciliation report",
+        "removed": null,
+        "nouls": {
+          "data": 0.21,
+          "served": 0.11,
+          "trigger": 0.13
+        },
+        "flagged": []
+      },
+      {
+        "subject": "reconciliation-report-schema",
+        "name": "Reconciliation report JSON Schema",
+        "removed": null,
+        "nouls": {
+          "data": 0.14,
+          "served": 0.13,
+          "trigger": 0.1
+        },
+        "flagged": []
+      },
+      {
+        "subject": "recover-visual-session",
+        "name": "Recover visual conversation",
+        "removed": null,
+        "nouls": {
+          "data": 0.54,
+          "served": 0.28,
+          "trigger": 0.59
+        },
+        "flagged": []
+      },
+      {
+        "subject": "relationship-policy-catalogue",
+        "name": "Relationship policy catalogue",
+        "removed": null,
+        "nouls": {
+          "data": 0.51,
+          "served": 0.1,
+          "trigger": 0.12
+        },
+        "flagged": []
+      },
+      {
+        "subject": "relationship-table",
+        "name": "ArchiMate 3.2 relationship table",
+        "removed": null,
+        "nouls": {
+          "data": 0.27,
+          "served": 0.13,
+          "trigger": 0.21
+        },
+        "flagged": []
+      },
+      {
+        "subject": "render-archimate-kind-icons",
+        "name": "Render ArchiMate kind icons",
+        "removed": null,
+        "nouls": {
+          "data": 0.11,
+          "served": 0.15,
+          "trigger": 0.14
+        },
+        "flagged": []
+      },
+      {
+        "subject": "render-likec4-deployment-view",
+        "name": "Render LikeC4 deployment view",
+        "removed": null,
+        "nouls": {
+          "data": 0.13,
+          "served": 0.15,
+          "trigger": 0.32
+        },
+        "flagged": []
+      },
+      {
+        "subject": "render-likec4-dynamic-view",
+        "name": "Render LikeC4 dynamic view",
+        "removed": null,
+        "nouls": {
+          "data": 0.13,
+          "served": 0.14,
+          "trigger": 0.27
+        },
+        "flagged": []
+      },
+      {
+        "subject": "render-likec4-state-comparison",
+        "name": "Render LikeC4 state comparison",
+        "removed": null,
+        "nouls": {
+          "data": 0.35,
+          "served": 0.15,
+          "trigger": 0.18
+        },
+        "flagged": []
+      },
+      {
+        "subject": "render-visual-model",
+        "name": "Render temporary visual model",
+        "removed": null,
+        "nouls": {
+          "data": 0.3,
+          "served": 0.44,
+          "trigger": 0.46
+        },
+        "flagged": []
+      },
+      {
+        "subject": "render-visual-presentation-badges",
+        "name": "Render visual presentation badges",
+        "removed": null,
+        "nouls": {
+          "data": 0.69,
+          "served": 0.26,
+          "trigger": 0.18
+        },
+        "flagged": []
+      },
+      {
+        "subject": "render-visual-session-page",
+        "name": "Render the visual session page",
+        "removed": null,
+        "nouls": {
+          "data": 0.63,
+          "served": 0.24,
+          "trigger": 0.54
+        },
+        "flagged": []
+      },
+      {
+        "subject": "repository-native-operation",
+        "name": "Repository-native operation",
+        "removed": null,
+        "nouls": {
+          "data": 0.43,
+          "served": 0.19,
+          "trigger": 0.2
+        },
+        "flagged": []
+      },
+      {
+        "subject": "repository-stewardship",
+        "name": "Repository stewardship",
+        "removed": null,
+        "nouls": {
+          "data": 0.57,
+          "served": 0.4,
+          "trigger": 0.34
+        },
+        "flagged": []
+      },
+      {
+        "subject": "requirements-traceability-matrix",
+        "name": "Requirements traceability matrix",
+        "removed": null,
+        "nouls": {
+          "data": 0.48,
+          "served": 0.21,
+          "trigger": 0.32
+        },
+        "flagged": []
+      },
+      {
+        "subject": "resolve-branding",
+        "name": "Resolve the host's branding",
+        "removed": null,
+        "nouls": {
+          "data": 0.52,
+          "served": 0.39,
+          "trigger": 0.38
+        },
+        "flagged": []
+      },
+      {
+        "subject": "resolve-workspace",
+        "name": "Resolve workspace manifest",
+        "removed": null,
+        "nouls": {
+          "data": 0.14,
+          "served": 0.12,
+          "trigger": 0.24
+        },
+        "flagged": []
+      },
+      {
+        "subject": "responsibility-matrix",
+        "name": "Responsibility matrix",
+        "removed": null,
+        "nouls": {
+          "data": 0.55,
+          "served": 0.33,
+          "trigger": 0.31
+        },
+        "flagged": []
+      },
+      {
+        "subject": "responsibility-schema",
+        "name": "Responsibility matrix JSON Schema",
+        "removed": null,
+        "nouls": {
+          "data": 0.13,
+          "served": 0.18,
+          "trigger": 0.12
+        },
+        "flagged": []
+      },
+      {
+        "subject": "roadmap",
+        "name": "Product roadmap",
+        "removed": null,
+        "nouls": {
+          "data": 0.14,
+          "served": 0.17,
+          "trigger": 0.21
+        },
+        "flagged": []
+      },
+      {
+        "subject": "rtm-schema",
+        "name": "Requirements traceability matrix JSON Schema",
+        "removed": null,
+        "nouls": {
+          "data": 0.11,
+          "served": 0.09,
+          "trigger": 0.09
+        },
+        "flagged": []
+      },
+      {
+        "subject": "run-design-journey",
+        "name": "Run the design journey",
+        "removed": null,
+        "nouls": {
+          "data": 0.44,
+          "served": 0.31,
+          "trigger": 0.46
+        },
+        "flagged": []
+      },
+      {
+        "subject": "run-discovery-journey",
+        "name": "Run the discovery journey",
+        "removed": null,
+        "nouls": {
+          "data": 0.55,
+          "served": 0.72,
+          "trigger": 0.46
+        },
+        "flagged": [
+          "served"
+        ]
+      },
+      {
+        "subject": "save-visual-layout",
+        "name": "Save the visual layout",
+        "removed": null,
+        "nouls": {
+          "data": 0.34,
+          "served": 0.36,
+          "trigger": 0.2
+        },
+        "flagged": []
+      },
+      {
+        "subject": "select-focus-neighbourhood",
+        "name": "Select focus neighbourhood",
+        "removed": null,
+        "nouls": {
+          "data": 0.19,
+          "served": 0.21,
+          "trigger": 0.19
+        },
+        "flagged": []
+      },
+      {
+        "subject": "semantic-graph",
+        "name": "Tool-neutral semantic graph",
+        "removed": null,
+        "nouls": {
+          "data": 0.17,
+          "served": 0.1,
+          "trigger": 0.16
+        },
+        "flagged": []
+      },
+      {
+        "subject": "semantic-graph-schema",
+        "name": "Semantic graph v2 JSON Schema",
+        "removed": null,
+        "nouls": {
+          "data": 0.14,
+          "served": 0.12,
+          "trigger": 0.1
+        },
+        "flagged": []
+      },
+      {
+        "subject": "serialize-semantic-graph",
+        "name": "Serialize semantic graph",
+        "removed": null,
+        "nouls": {
+          "data": 0.33,
+          "served": 0.54,
+          "trigger": 0.27
+        },
+        "flagged": []
+      },
+      {
+        "subject": "shared-architecture-context",
+        "name": "Shared architecture context",
+        "removed": null,
+        "nouls": {
+          "data": 0.11,
+          "served": 0.25,
+          "trigger": 0.15
+        },
+        "flagged": []
+      },
+      {
+        "subject": "source-document-loader",
+        "name": "Source-located document loader",
+        "removed": null,
+        "nouls": {
+          "data": 0.26,
+          "served": 0.17,
+          "trigger": 0.23
+        },
+        "flagged": []
+      },
+      {
+        "subject": "stable-cli",
+        "name": "Stable CLI",
+        "removed": null,
+        "nouls": {
+          "data": 0.06,
+          "served": 0.63,
+          "trigger": 0.17
+        },
+        "flagged": []
+      },
+      {
+        "subject": "starter-view-pack",
+        "name": "Native starter view pack",
+        "removed": null,
+        "nouls": {
+          "data": 0.16,
+          "served": 0.15,
+          "trigger": 0.1
+        },
+        "flagged": []
+      },
+      {
+        "subject": "state-comparison",
+        "name": "Architecture-state comparison",
+        "removed": null,
+        "nouls": {
+          "data": 0.18,
+          "served": 0.08,
+          "trigger": 0.15
+        },
+        "flagged": []
+      },
+      {
+        "subject": "state-comparison-schema",
+        "name": "Architecture-state comparison JSON Schema",
+        "removed": null,
+        "nouls": {
+          "data": 0.16,
+          "served": 0.1,
+          "trigger": 0.1
+        },
+        "flagged": []
+      },
+      {
+        "subject": "state-foundation",
+        "name": "Architecture-state foundation",
+        "removed": null,
+        "nouls": {
+          "data": 0.18,
+          "served": 0.13,
+          "trigger": 0.22
+        },
+        "flagged": []
+      },
+      {
+        "subject": "status-command",
+        "name": "Status command",
+        "removed": null,
+        "nouls": {
+          "data": 0.23,
+          "served": 0.08,
+          "trigger": 0.17
+        },
+        "flagged": []
+      },
+      {
+        "subject": "subject-identity",
+        "name": "Subject identity resolver",
+        "removed": null,
+        "nouls": {
+          "data": 0.32,
+          "served": 0.17,
+          "trigger": 0.25
+        },
+        "flagged": []
+      },
+      {
+        "subject": "tool-neutral-core",
+        "name": "Tool-neutral core",
+        "removed": null,
+        "nouls": {
+          "data": 0.1,
+          "served": 0.25,
+          "trigger": 0.11
+        },
+        "flagged": []
+      },
+      {
+        "subject": "tools-entry",
+        "name": "Path-free tools entry",
+        "removed": null,
+        "nouls": {
+          "data": 0.48,
+          "served": 0.18,
+          "trigger": 0.28
+        },
+        "flagged": []
+      },
+      {
+        "subject": "trustworthy-agent-context",
+        "name": "Trustworthy agent context",
+        "removed": null,
+        "nouls": {
+          "data": 0.35,
+          "served": 0.16,
+          "trigger": 0.32
+        },
+        "flagged": []
+      },
+      {
+        "subject": "validate-adapter-mapping",
+        "name": "Validate adapter mapping",
+        "removed": null,
+        "nouls": {
+          "data": 0.11,
+          "served": 0.12,
+          "trigger": 0.14
+        },
+        "flagged": []
+      },
+      {
+        "subject": "validate-native-architecture",
+        "name": "Validate native architecture",
+        "removed": null,
+        "nouls": {
+          "data": 0.06,
+          "served": 0.13,
+          "trigger": 0.13
+        },
+        "flagged": []
+      },
+      {
+        "subject": "validate-semantic-claims",
+        "name": "Validate semantic claims",
+        "removed": null,
+        "nouls": {
+          "data": 0.49,
+          "served": 0.23,
+          "trigger": 0.29
+        },
+        "flagged": []
+      },
+      {
+        "subject": "view-command",
+        "name": "View command",
+        "removed": null,
+        "nouls": {
+          "data": 0.26,
+          "served": 0.29,
+          "trigger": 0.2
+        },
+        "flagged": []
+      },
+      {
+        "subject": "visual-browser",
+        "name": "Visual conversation browser",
+        "removed": null,
+        "nouls": {
+          "data": 0.5,
+          "served": 0.17,
+          "trigger": 0.21
+        },
+        "flagged": []
+      },
+      {
+        "subject": "visual-changeset-submitted",
+        "name": "Visual changeset submitted",
+        "removed": null,
+        "nouls": {
+          "data": 0.15,
+          "served": 0.3,
+          "trigger": 0.35
+        },
+        "flagged": []
+      },
+      {
+        "subject": "visual-handoff",
+        "name": "Visual conversation handoff",
+        "removed": null,
+        "nouls": {
+          "data": 0.43,
+          "served": 0.16,
+          "trigger": 0.21
+        },
+        "flagged": []
+      },
+      {
+        "subject": "visual-layout-sidecar",
+        "name": "Visual layout sidecar",
+        "removed": null,
+        "nouls": {
+          "data": 0.34,
+          "served": 0.23,
+          "trigger": 0.15
+        },
+        "flagged": []
+      },
+      {
+        "subject": "visual-runtime",
+        "name": "Visual conversation runtime",
+        "removed": null,
+        "nouls": {
+          "data": 0.55,
+          "served": 0.32,
+          "trigger": 0.28
+        },
+        "flagged": []
+      },
+      {
+        "subject": "visual-session-protocol",
+        "name": "Visual session protocol",
+        "removed": null,
+        "nouls": {
+          "data": 0.58,
+          "served": 0.18,
+          "trigger": 0.29
+        },
+        "flagged": []
+      },
+      {
+        "subject": "visual-session-service",
+        "name": "Visual session command",
+        "removed": null,
+        "nouls": {
+          "data": 0.13,
+          "served": 0.14,
+          "trigger": 0.48
+        },
+        "flagged": []
+      },
+      {
+        "subject": "workbook-engine",
+        "name": "Workbook engine",
+        "removed": null,
+        "nouls": {
+          "data": 0.59,
+          "served": 0.55,
+          "trigger": 0.41
+        },
+        "flagged": []
+      },
+      {
+        "subject": "workspace-loader",
+        "name": "Workspace manifest loader",
+        "removed": null,
+        "nouls": {
+          "data": 0.23,
+          "served": 0.13,
+          "trigger": 0.17
+        },
+        "flagged": []
+      },
+      {
+        "subject": "workspace-manifest",
+        "name": "Workspace manifest",
+        "removed": null,
+        "nouls": {
+          "data": 0.15,
+          "served": 0.1,
+          "trigger": 0.12
+        },
+        "flagged": []
+      },
+      {
+        "subject": "workspace-question-catalogue",
+        "name": "Workspace question catalogue",
+        "removed": null,
+        "nouls": {
+          "data": 0.26,
+          "served": 0.61,
+          "trigger": 0.53
+        },
+        "flagged": []
+      },
+      {
+        "subject": "workspace-schema",
+        "name": "Workspace manifest JSON Schema",
+        "removed": null,
+        "nouls": {
+          "data": 0.14,
+          "served": 0.1,
+          "trigger": 0.08
+        },
+        "flagged": []
+      },
+      {
+        "subject": "yarramate-maintainers",
+        "name": "YarraMate maintainers",
+        "removed": null,
+        "nouls": {
+          "data": 0.22,
+          "served": 0.24,
+          "trigger": 0.13
+        },
+        "flagged": []
+      }
+    ]
+  },
+  "stability": {
+    "series": 558,
+    "meanSd": 0.009919944096947303,
+    "p95Sd": 0.024944382578492942,
+    "maxSd": 0.06128258770283413
+  },
+  "at": "2026-09-20T00:36:57.340Z"
+}

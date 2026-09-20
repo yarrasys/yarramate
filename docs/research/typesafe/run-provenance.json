@@ -1,0 +1,14 @@
+{
+  "note": "Aggregate provenance for the run. The request and response bodies were deliberately not kept in the repository: re-running the harness with a key regenerates them, and the scored results in results/ carry every number the write-up quotes.",
+  "requests": 11988,
+  "inputTokens": 6813737,
+  "estimatedUsd": 0.2862,
+  "latencyMs": {
+    "p50": 297,
+    "p95": 380,
+    "max": 1491
+  },
+  "models": {
+    "jev-1.13.0": 11988
+  }
+}

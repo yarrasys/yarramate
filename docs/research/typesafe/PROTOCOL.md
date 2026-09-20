@@ -196,3 +196,14 @@ In every case the engine's README sentence stays as it is.
   classed as "the named subject" or "something else", beside the same for the
   substring baseline. Returning the named subject with more confidence is the
   baseline's error, not an improvement.
+- 2026-09-20, written after the Halcyon kind-fit run (n=14) and BEFORE any
+  self-model answer was seen, arm 1b: on Halcyon the model read each option as
+  plain English and picked the plainly-true phrase over the ArchiMate one. A
+  technology node "serves" an application in ordinary speech; ArchiMate says
+  realization. A requirement "influences" a goal in ordinary speech; ArchiMate
+  says realization. Four of the eight disagreements are that one substitution.
+  Arm 1b therefore repeats the same Choice over the same edges with ArchiMate's
+  meaning of each kind beside its reading (`KIND_DEFINITIONS` in arms.mjs).
+  Both arms are reported. Arm 1 remains the registered primary; 1b is an
+  exploratory variant and is labelled as such wherever it appears, because it
+  was written after seeing one dataset's answers.

@@ -29,7 +29,7 @@ const flag = (name, fallback) => {
 }
 const has = (name) => args.includes(`--${name}`)
 
-const armNames = flag('arm', 'all') === 'all' ? ['kind-fit', 'duplicates', 'drift', 'ask'] : [flag('arm')]
+const armNames = flag('arm', 'all') === 'all' ? ['kind-fit', 'kind-fit-defs', 'duplicates', 'drift', 'ask'] : [flag('arm')]
 const datasetNames = flag('dataset', 'all') === 'all' ? Object.keys(DATASETS) : [flag('dataset')]
 const repeat = Number(flag('repeat', '1'))
 const manifestOverride = flag('manifest', null)
@@ -53,6 +53,10 @@ const build = (arm, ds, name) => {
       const { items, skipped } = buildKindFit(ds)
       return { requests: items.flatMap((i) => [{ key: `blind:${i.edge}`, request: i.blind }, { key: `audit:${i.edge}`, request: i.audit }]), items, meta: { skipped } }
     }
+    case 'kind-fit-defs': {
+      const { items, skipped } = buildKindFit(ds)
+      return { requests: items.map((i) => ({ key: `blind:${i.edge}`, request: i.defined })), items, meta: { skipped, variant: 'definitions' } }
+    }
     case 'duplicates': {
       const { items, buckets, subjects } = buildDuplicates(ds)
       return { requests: items.map((i) => ({ key: i.pair, request: i.request })), items, meta: { buckets, subjects, currentRuleFlags: items.filter((i) => i.currentRule).length } }
@@ -72,6 +76,7 @@ const build = (arm, ds, name) => {
 
 const score = (arm, name, items, answers) => {
   switch (arm) {
+    case 'kind-fit-defs':
     case 'kind-fit': {
       const blind = new Map(), audit = new Map()
       for (const [key, value] of answers) (key.startsWith('blind:') ? blind : audit).set(key.slice(key.indexOf(':') + 1), value)

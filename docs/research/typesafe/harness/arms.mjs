@@ -18,6 +18,25 @@ export const CUTS = {
   askShortlist: 30, // substring candidates handed to the rerank
 }
 
+
+// ArchiMate's own meaning for each core relationship kind, for arm 1b. The
+// reading phrase alone ("Cloud region realizes Meter data platform") is plain
+// English that a reader can judge without knowing ArchiMate; these say what the
+// standard means by it, which is the thing the record actually asserts.
+export const KIND_DEFINITIONS = {
+  composition: 'the target is a part of the source and does not exist outside it',
+  aggregation: 'the source groups the target, and the target can exist on its own',
+  assignment: 'the source is the active element allocated to perform the target, or the platform the target is deployed on',
+  realization: 'the source is the concrete thing that fulfils or implements the more abstract target',
+  serving: 'the source provides its functionality to the target, which uses it',
+  access: 'the source behaviour reads, writes, or creates the target data',
+  influence: 'the source affects whether the target goal, requirement or outcome is met',
+  triggering: 'the source finishes and the target then begins: a sequence in time',
+  flow: 'something concrete passes from the source to the target: data, goods, money, a signal',
+  specialization: 'the source is a particular kind of the target',
+  association: 'the two are related in a way none of the other kinds describes',
+}
+
 const stateWithRun = (state, run) => (run === 0 ? state : { ...state, run_marker: `repeat-${run}` })
 
 // ---------------------------------------------------------------------------
@@ -73,7 +92,29 @@ export const buildKindFit = (ds) => {
         },
       },
     }
-    items.push({ edge: edge.id, from: from.name, to: to.name, authored: edge.coreKindLabel, legal, blind, audit })
+    // Arm 1b (PROTOCOL.md amendment): the same choice, with ArchiMate's meaning
+    // beside each reading, so the answer is about the standard's assertion and
+    // not only about whether the English phrase sounds true.
+    const defined = {
+      state,
+      questions: {
+        kind: {
+          type: 'choice',
+          instructions: {
+            question: 'Which of these relationships does the record correctly assert between `source` and `target`?',
+            focus: 'Each option gives the reading and what that relationship means. Judge against the meaning, not only the wording.',
+          },
+          criteria: Object.fromEntries(legal.map((kind) => [
+            kind,
+            {
+              reading: `${from.name} ${readingOf(kind)} ${to.name}`,
+              means: KIND_DEFINITIONS[kind] ?? 'no definition recorded',
+            },
+          ])),
+        },
+      },
+    }
+    items.push({ edge: edge.id, from: from.name, to: to.name, authored: edge.coreKindLabel, legal, blind, audit, defined })
   }
   return { items, skipped }
 }

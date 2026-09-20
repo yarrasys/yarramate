@@ -1,0 +1,2 @@
+# The replay cache is local only: large, regenerable, and not evidence anyone can check without a key.
+cache/

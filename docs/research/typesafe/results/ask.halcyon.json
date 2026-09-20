@@ -1,0 +1,664 @@
+{
+  "arm": "ask",
+  "dataset": "halcyon",
+  "meta": {
+    "queries": 32
+  },
+  "model": [
+    "jev-1.13.0"
+  ],
+  "repeat": 3,
+  "scored": {
+    "n": 32,
+    "withIntent": 23,
+    "noAnswer": 9,
+    "zeroSubstringHits": 2,
+    "bySource": {
+      "site-session": {
+        "n": 23,
+        "substringTop1": 0.43478260869565216,
+        "rerankTop1": 0.782608695652174,
+        "substringTop5": 0.8695652173913043,
+        "rerankTop5": 0.8695652173913043
+      }
+    },
+    "substringTop1": 0.43478260869565216,
+    "substringTop5": 0.8695652173913043,
+    "rerankTop1": 0.782608695652174,
+    "rerankTop5": 0.8695652173913043,
+    "honestEmpty": 0.8888888888888888,
+    "emptyByBatch": {
+      "absent-vocabulary": {
+        "n": 5,
+        "honestEmpty": 1,
+        "rerankReturnedNamed": 0,
+        "baselineReturnedNamed": 0
+      },
+      "present-vocabulary": {
+        "n": 4,
+        "honestEmpty": 0.75,
+        "rerankReturnedNamed": 0,
+        "baselineReturnedNamed": 0.5
+      }
+    },
+    "rows": [
+      {
+        "query": "why are they replacing the meters",
+        "source": "site-session",
+        "intended": [
+          "ageing-meter-fleet",
+          "meter-replacement-programme"
+        ],
+        "any": 0.98,
+        "substringHits": 13,
+        "substringTop1": true,
+        "substringTop5": true,
+        "rerankTop1": true,
+        "rerankTop5": true,
+        "honestEmpty": null,
+        "batch": null,
+        "returnedNamed": null,
+        "baselineReturnedNamed": null,
+        "reranked": [
+          "ageing-meter-fleet"
+        ]
+      },
+      {
+        "query": "what problem started all this",
+        "source": "site-session",
+        "intended": [
+          "ageing-meter-fleet"
+        ],
+        "any": 0.93,
+        "substringHits": 0,
+        "substringTop1": false,
+        "substringTop5": false,
+        "rerankTop1": true,
+        "rerankTop5": true,
+        "honestEmpty": null,
+        "batch": null,
+        "returnedNamed": null,
+        "baselineReturnedNamed": null,
+        "reranked": [
+          "ageing-meter-fleet"
+        ]
+      },
+      {
+        "query": "what are they actually trying to achieve",
+        "source": "site-session",
+        "intended": [
+          "bill-from-actual-reads"
+        ],
+        "any": 0.89,
+        "substringHits": 10,
+        "substringTop1": false,
+        "substringTop5": false,
+        "rerankTop1": true,
+        "rerankTop5": true,
+        "honestEmpty": null,
+        "batch": null,
+        "returnedNamed": null,
+        "baselineReturnedNamed": null,
+        "reranked": [
+          "bill-from-actual-reads"
+        ]
+      },
+      {
+        "query": "stop estimating bills",
+        "source": "site-session",
+        "intended": [
+          "bill-from-actual-reads"
+        ],
+        "any": 0.8,
+        "substringHits": 3,
+        "substringTop1": false,
+        "substringTop5": true,
+        "rerankTop1": true,
+        "rerankTop5": true,
+        "honestEmpty": null,
+        "batch": null,
+        "returnedNamed": null,
+        "baselineReturnedNamed": null,
+        "reranked": [
+          "bill-from-actual-reads"
+        ]
+      },
+      {
+        "query": "how many customers still get estimated bills",
+        "source": "site-session",
+        "intended": [
+          "ageing-meter-fleet",
+          "bill-from-actual-reads"
+        ],
+        "any": 0.53,
+        "substringHits": 4,
+        "substringTop1": true,
+        "substringTop5": true,
+        "rerankTop1": false,
+        "rerankTop5": false,
+        "honestEmpty": null,
+        "batch": null,
+        "returnedNamed": null,
+        "baselineReturnedNamed": null,
+        "reranked": []
+      },
+      {
+        "query": "what is the 24 hour rule",
+        "source": "site-session",
+        "intended": [
+          "reads-within-24h"
+        ],
+        "any": 0.97,
+        "substringHits": 13,
+        "substringTop1": true,
+        "substringTop5": true,
+        "rerankTop1": true,
+        "rerankTop5": true,
+        "honestEmpty": null,
+        "batch": null,
+        "returnedNamed": null,
+        "baselineReturnedNamed": null,
+        "reranked": [
+          "reads-within-24h"
+        ]
+      },
+      {
+        "query": "how fast do reads have to reach billing",
+        "source": "site-session",
+        "intended": [
+          "reads-within-24h"
+        ],
+        "any": 0.96,
+        "substringHits": 15,
+        "substringTop1": true,
+        "substringTop5": true,
+        "rerankTop1": true,
+        "rerankTop5": true,
+        "honestEmpty": null,
+        "batch": null,
+        "returnedNamed": null,
+        "baselineReturnedNamed": null,
+        "reranked": [
+          "reads-within-24h"
+        ]
+      },
+      {
+        "query": "can customer data leave the state",
+        "source": "site-session",
+        "intended": [
+          "data-stays-in-region"
+        ],
+        "any": 0.89,
+        "substringHits": 16,
+        "substringTop1": true,
+        "substringTop5": true,
+        "rerankTop1": true,
+        "rerankTop5": true,
+        "honestEmpty": null,
+        "batch": null,
+        "returnedNamed": null,
+        "baselineReturnedNamed": null,
+        "reranked": [
+          "data-stays-in-region"
+        ]
+      },
+      {
+        "query": "what compliance rules do they have to follow",
+        "source": "site-session",
+        "intended": [
+          "data-stays-in-region"
+        ],
+        "any": 0.89,
+        "substringHits": 9,
+        "substringTop1": false,
+        "substringTop5": true,
+        "rerankTop1": true,
+        "rerankTop5": true,
+        "honestEmpty": null,
+        "batch": null,
+        "returnedNamed": null,
+        "baselineReturnedNamed": null,
+        "reranked": [
+          "data-stays-in-region"
+        ]
+      },
+      {
+        "query": "who cares about billing accuracy",
+        "source": "site-session",
+        "intended": [
+          "operations-director"
+        ],
+        "any": 0.94,
+        "substringHits": 8,
+        "substringTop1": true,
+        "substringTop5": true,
+        "rerankTop1": true,
+        "rerankTop5": true,
+        "honestEmpty": null,
+        "batch": null,
+        "returnedNamed": null,
+        "baselineReturnedNamed": null,
+        "reranked": [
+          "operations-director"
+        ]
+      },
+      {
+        "query": "who is the sponsor",
+        "source": "site-session",
+        "intended": [
+          "operations-director"
+        ],
+        "any": 0.96,
+        "substringHits": 13,
+        "substringTop1": false,
+        "substringTop5": true,
+        "rerankTop1": true,
+        "rerankTop5": true,
+        "honestEmpty": null,
+        "batch": null,
+        "returnedNamed": null,
+        "baselineReturnedNamed": null,
+        "reranked": [
+          "operations-director"
+        ]
+      },
+      {
+        "query": "who reads the meters",
+        "source": "site-session",
+        "intended": [
+          "field-crew"
+        ],
+        "any": 0.98,
+        "substringHits": 16,
+        "substringTop1": true,
+        "substringTop5": true,
+        "rerankTop1": true,
+        "rerankTop5": true,
+        "honestEmpty": null,
+        "batch": null,
+        "returnedNamed": null,
+        "baselineReturnedNamed": null,
+        "reranked": [
+          "field-crew"
+        ]
+      },
+      {
+        "query": "what is the old billing system",
+        "source": "site-session",
+        "intended": [
+          "legacy-billing"
+        ],
+        "any": 0.98,
+        "substringHits": 15,
+        "substringTop1": true,
+        "substringTop5": true,
+        "rerankTop1": true,
+        "rerankTop5": true,
+        "honestEmpty": null,
+        "batch": null,
+        "returnedNamed": null,
+        "baselineReturnedNamed": null,
+        "reranked": [
+          "legacy-billing"
+        ]
+      },
+      {
+        "query": "what new platform are they building",
+        "source": "site-session",
+        "intended": [
+          "meter-data-platform"
+        ],
+        "any": 0.94,
+        "substringHits": 4,
+        "substringTop1": false,
+        "substringTop5": true,
+        "rerankTop1": true,
+        "rerankTop5": true,
+        "honestEmpty": null,
+        "batch": null,
+        "returnedNamed": null,
+        "baselineReturnedNamed": null,
+        "reranked": [
+          "meter-data-platform"
+        ]
+      },
+      {
+        "query": "how do meter reads get into billing",
+        "source": "site-session",
+        "intended": [
+          "read-ingestion",
+          "reads-api"
+        ],
+        "any": 0.9,
+        "substringHits": 15,
+        "substringTop1": false,
+        "substringTop5": true,
+        "rerankTop1": false,
+        "rerankTop5": true,
+        "honestEmpty": null,
+        "batch": null,
+        "returnedNamed": null,
+        "baselineReturnedNamed": null,
+        "reranked": [
+          "monthly-billing-run",
+          "reads-api",
+          "read-ingestion"
+        ]
+      },
+      {
+        "query": "is there an api for reads",
+        "source": "site-session",
+        "intended": [
+          "reads-api"
+        ],
+        "any": 0.95,
+        "substringHits": 14,
+        "substringTop1": false,
+        "substringTop5": true,
+        "rerankTop1": true,
+        "rerankTop5": true,
+        "honestEmpty": null,
+        "batch": null,
+        "returnedNamed": null,
+        "baselineReturnedNamed": null,
+        "reranked": [
+          "reads-api"
+        ]
+      },
+      {
+        "query": "what runs every month",
+        "source": "site-session",
+        "intended": [
+          "monthly-billing-run"
+        ],
+        "any": 0.96,
+        "substringHits": 3,
+        "substringTop1": false,
+        "substringTop5": true,
+        "rerankTop1": true,
+        "rerankTop5": true,
+        "honestEmpty": null,
+        "batch": null,
+        "returnedNamed": null,
+        "baselineReturnedNamed": null,
+        "reranked": [
+          "monthly-billing-run"
+        ]
+      },
+      {
+        "query": "what do customers actually get",
+        "source": "site-session",
+        "intended": [
+          "water-billing"
+        ],
+        "any": 0.78,
+        "substringHits": 0,
+        "substringTop1": false,
+        "substringTop5": false,
+        "rerankTop1": false,
+        "rerankTop5": false,
+        "honestEmpty": null,
+        "batch": null,
+        "returnedNamed": null,
+        "baselineReturnedNamed": null,
+        "reranked": [
+          "bill-from-actual-reads"
+        ]
+      },
+      {
+        "query": "where does customer data live today",
+        "source": "site-session",
+        "intended": [
+          "regional-data-centre",
+          "customer-account"
+        ],
+        "any": 0.89,
+        "substringHits": 6,
+        "substringTop1": true,
+        "substringTop5": true,
+        "rerankTop1": false,
+        "rerankTop5": true,
+        "honestEmpty": null,
+        "batch": null,
+        "returnedNamed": null,
+        "baselineReturnedNamed": null,
+        "reranked": [
+          "data-stays-in-region",
+          "regional-data-centre"
+        ]
+      },
+      {
+        "query": "are they moving to the cloud",
+        "source": "site-session",
+        "intended": [
+          "cloud-region"
+        ],
+        "any": 0.64,
+        "substringHits": 15,
+        "substringTop1": false,
+        "substringTop5": true,
+        "rerankTop1": true,
+        "rerankTop5": true,
+        "honestEmpty": null,
+        "batch": null,
+        "returnedNamed": null,
+        "baselineReturnedNamed": null,
+        "reranked": [
+          "cloud-region"
+        ]
+      },
+      {
+        "query": "what counts as a meter read here",
+        "source": "site-session",
+        "intended": [
+          "meter-read"
+        ],
+        "any": 0.94,
+        "substringHits": 14,
+        "substringTop1": false,
+        "substringTop5": true,
+        "rerankTop1": true,
+        "rerankTop5": true,
+        "honestEmpty": null,
+        "batch": null,
+        "returnedNamed": null,
+        "baselineReturnedNamed": null,
+        "reranked": [
+          "meter-read"
+        ]
+      },
+      {
+        "query": "who is the customer in this model",
+        "source": "site-session",
+        "intended": [
+          "customer"
+        ],
+        "any": 0.98,
+        "substringHits": 17,
+        "substringTop1": false,
+        "substringTop5": true,
+        "rerankTop1": true,
+        "rerankTop5": true,
+        "honestEmpty": null,
+        "batch": null,
+        "returnedNamed": null,
+        "baselineReturnedNamed": null,
+        "reranked": [
+          "customer"
+        ]
+      },
+      {
+        "query": "what talks to the legacy billing system",
+        "source": "site-session",
+        "intended": [
+          "legacy-billing",
+          "read-ingestion"
+        ],
+        "any": 0.74,
+        "substringHits": 16,
+        "substringTop1": true,
+        "substringTop5": true,
+        "rerankTop1": false,
+        "rerankTop5": false,
+        "honestEmpty": null,
+        "batch": null,
+        "returnedNamed": null,
+        "baselineReturnedNamed": null,
+        "reranked": [
+          "reads-api"
+        ]
+      },
+      {
+        "query": "how much does a water bill cost",
+        "source": "site-session",
+        "intended": [],
+        "any": 0.21,
+        "substringHits": 10,
+        "substringTop1": false,
+        "substringTop5": false,
+        "rerankTop1": false,
+        "rerankTop5": false,
+        "honestEmpty": true,
+        "batch": "absent-vocabulary",
+        "returnedNamed": null,
+        "baselineReturnedNamed": null,
+        "reranked": []
+      },
+      {
+        "query": "who is the ceo of halcyon regional water",
+        "source": "site-session",
+        "intended": [],
+        "any": 0.03,
+        "substringHits": 15,
+        "substringTop1": false,
+        "substringTop5": false,
+        "rerankTop1": false,
+        "rerankTop5": false,
+        "honestEmpty": true,
+        "batch": "absent-vocabulary",
+        "returnedNamed": null,
+        "baselineReturnedNamed": null,
+        "reranked": []
+      },
+      {
+        "query": "how many staff does halcyon employ",
+        "source": "site-session",
+        "intended": [],
+        "any": 0.03,
+        "substringHits": 1,
+        "substringTop1": false,
+        "substringTop5": false,
+        "rerankTop1": false,
+        "rerankTop5": false,
+        "honestEmpty": true,
+        "batch": "absent-vocabulary",
+        "returnedNamed": null,
+        "baselineReturnedNamed": null,
+        "reranked": []
+      },
+      {
+        "query": "what does their mobile app do",
+        "source": "site-session",
+        "intended": [],
+        "any": 0.19,
+        "substringHits": 1,
+        "substringTop1": false,
+        "substringTop5": false,
+        "rerankTop1": false,
+        "rerankTop5": false,
+        "honestEmpty": true,
+        "batch": "absent-vocabulary",
+        "returnedNamed": null,
+        "baselineReturnedNamed": null,
+        "reranked": []
+      },
+      {
+        "query": "when is the next board meeting",
+        "source": "site-session",
+        "intended": [],
+        "any": 0.03,
+        "substringHits": 13,
+        "substringTop1": false,
+        "substringTop5": false,
+        "rerankTop1": false,
+        "rerankTop5": false,
+        "honestEmpty": true,
+        "batch": "absent-vocabulary",
+        "returnedNamed": null,
+        "baselineReturnedNamed": null,
+        "reranked": []
+      },
+      {
+        "query": "what does the meter data platform cost to run",
+        "source": "site-session",
+        "intended": [],
+        "any": 0.08,
+        "substringHits": 17,
+        "substringTop1": false,
+        "substringTop5": false,
+        "rerankTop1": false,
+        "rerankTop5": false,
+        "honestEmpty": true,
+        "batch": "present-vocabulary",
+        "returnedNamed": false,
+        "baselineReturnedNamed": false,
+        "reranked": []
+      },
+      {
+        "query": "what is the uptime target for the reads api",
+        "source": "site-session",
+        "intended": [],
+        "any": 0.15,
+        "substringHits": 16,
+        "substringTop1": false,
+        "substringTop5": false,
+        "rerankTop1": false,
+        "rerankTop5": false,
+        "honestEmpty": true,
+        "batch": "present-vocabulary",
+        "returnedNamed": false,
+        "baselineReturnedNamed": true,
+        "reranked": []
+      },
+      {
+        "query": "how long are customer accounts kept after someone closes theirs",
+        "source": "site-session",
+        "intended": [],
+        "any": 0.05,
+        "substringHits": 5,
+        "substringTop1": false,
+        "substringTop5": false,
+        "rerankTop1": false,
+        "rerankTop5": false,
+        "honestEmpty": true,
+        "batch": "present-vocabulary",
+        "returnedNamed": false,
+        "baselineReturnedNamed": false,
+        "reranked": []
+      },
+      {
+        "query": "which field crew covers the northern region",
+        "source": "site-session",
+        "intended": [],
+        "any": 0.51,
+        "substringHits": 13,
+        "substringTop1": false,
+        "substringTop5": false,
+        "rerankTop1": false,
+        "rerankTop5": false,
+        "honestEmpty": false,
+        "batch": "present-vocabulary",
+        "returnedNamed": false,
+        "baselineReturnedNamed": true,
+        "reranked": []
+      }
+    ]
+  },
+  "stability": {
+    "series": 608,
+    "meanSd": 0.003762572121358112,
+    "p95Sd": 0.016996731711975938,
+    "maxSd": 0.05249338582674539
+  },
+  "at": "2026-09-20T00:28:43.109Z"
+}

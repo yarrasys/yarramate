@@ -57,11 +57,23 @@ export const createClient = ({ cacheDir, live = false, concurrency = 4, log = ()
       for (;;) {
         attempt += 1
         const started = Date.now()
-        const response = await fetch(ENDPOINT, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        })
+        let response
+        try {
+          response = await fetch(ENDPOINT, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(60000),
+          })
+        } catch (error) {
+          // A dropped connection or a timeout is not an answer; retry it the way a
+          // throttle is retried. A long run over thousands of requests will meet these.
+          if (attempt >= 8) throw new Error(`network failed after ${attempt} attempts: ${error?.cause?.code ?? error.message}`)
+          const wait = Math.min(30000, 500 * 2 ** attempt)
+          log(`network ${error?.cause?.code ?? error.name}, retrying in ${wait} ms`)
+          await new Promise((r) => setTimeout(r, wait))
+          continue
+        }
         const ms = Date.now() - started
         if (response.status === 429 || response.status === 529) {
           if (attempt >= 6) throw new Error(`typesafe ${response.status} after ${attempt} attempts`)
