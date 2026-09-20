@@ -771,6 +771,12 @@ export function runAskCommand(
         topic,
         seeds: resolution.seeds,
         matched: resolution.matched,
+        // The same document the tools entry emits, field for field (ADR 0156),
+        // and `test/tools-entry.test.ts` compares them. The ranked candidates
+        // ride on both (#569).
+        ...(resolution.addressing === 'free-text'
+          ? { candidates: resolution.candidates }
+          : {}),
         ...(neighbourhood === undefined ? {} : { neighbourhood }),
         result: evaluated,
       }

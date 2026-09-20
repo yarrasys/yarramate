@@ -106,7 +106,18 @@ read; graphify analogues: `query` / `explain` / `path`.
   machinery renders the slice — graphify's query model, deterministic,
   no LLM in the engine. The slice walks responsibility edges too: a brief
   speaks every relationship, where a view walks them only when it shows
-  them (#563). On dense graphs the expansion keeps at most 12
+  them (#563).
+
+  A free-text slice also carries `candidates`: every concept a term
+  touched, ranked, not only the five that seeded it (#569). The term count
+  finds the right subject and then buries it — measured against 32
+  questions written by someone other than the author, the subject meant
+  was inside that list 87% of the time and was the first seed 43% of the
+  time. Deciding which term-matching concept actually answers a question
+  is a judgment, and the engine does not make judgments, so it hands the
+  list over. An agent that can judge reorders `candidates` and asks again
+  with the ids: `ask <ws> <id> <id> ...`, precise addressing, which needs
+  nothing new. An agent that cannot uses `seeds` exactly as before. On dense graphs the expansion keeps at most 12
   materiality-ordered neighbours per seed and announces what it dropped
   (ADR 0070); `--neighbours <n>` widens the cap, `--neighbours 0` lifts
   it.

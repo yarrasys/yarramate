@@ -208,6 +208,19 @@
           "type": "integer",
           "minimum": 0
         },
+        "candidates": {
+          "type": "array",
+          "description": "Every concept a query term touched, ranked by how many distinct terms it contains, present on a free-text slice (#569). The seeds are the first few of these. A caller that can judge which candidate actually answers the question reorders the list and asks again with `subjects` addressing; the engine does not judge, so it hands the list over instead.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "terms"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "terms": { "type": "integer", "minimum": 1 }
+            }
+          }
+        },
         "result": {
           "$ref": "#/$defs/projectionResult"
         },
