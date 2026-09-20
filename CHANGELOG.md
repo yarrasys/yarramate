@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.37.0
 
 ### A word the other name never says is a difference (#570)
 
