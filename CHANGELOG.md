@@ -2,6 +2,44 @@
 
 ## Unreleased
 
+### What a view selects is what it draws (#579)
+
+**Behaviour change, in one direction: a canvas draws fewer edges, never more.**
+
+A projection's query says which relationships a view holds, and every read
+surface honoured it. The canvas did not: it holds the whole model
+(`projectGraphForCanvas` takes no query) and drew an edge whenever both its
+ends were visible, whatever the view had said about it. An edge is now drawn
+only where the view selected it **and** both its ends are on screen.
+
+Measured across this repository's own projections, eight of twenty-two drew
+edges they had not selected, 100 in total:
+
+| projection | selected | drawn | extra |
+|---|---|---|---|
+| starter-information-structure | 117 | 163 | 46 |
+| starter-landscape | 180 | 211 | 31 |
+| engine-components | **0** | 6 | 6 |
+
+`starter-information-structure` asks for `access`, `aggregation`,
+`association` and `composition`, and drew 26 `serving` edges through it.
+`engine-components` declares `relationships: none` and drew six.
+
+**What to expect on upgrade.** A view with `relationshipKinds` or
+`relationships: none` draws less, and what it stops drawing is what it had
+already excluded. A view with no structural filter is untouched. Nothing is
+computed that was not computed before and nothing moves on the wire: the
+matched relationship ids were already being sent and were being ignored for
+visibility. No schema moves, and `check`, `compile` and `apply` are not
+involved.
+
+A lifted edge (a folded box's aggregate) draws while the view selected any of
+the relationships it stands for. On the way, an edge the view named stopped
+surviving the quick filter taking one of its ends, which the function had
+always documented and not done.
+
+See ADR 0164.
+
 ### The rule that decides what an edge says now travels with the editor (#576)
 
 `yarramate/visual-app` exports `edgeLabelText` and its `EdgeLabelData` type,

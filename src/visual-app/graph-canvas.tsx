@@ -963,8 +963,9 @@ export function filteredSubjectCount(
 // `matchedIds` filter and the client-side `quickFilterText` narrowing, then
 // hide/show elements in one pass. `matchedIds === null` means "no structural
 // filter" (all nodes eligible); an empty/whitespace `quickFilterText` means "no
-// quick-filter narrowing". An edge is visible iff both its endpoints are
-// visible nodes - an edge's own label never keeps it visible independently.
+// quick-filter narrowing". An edge is visible iff the view selected it AND both
+// its endpoints are visible nodes (#579, ADR 0164) - an edge's own label never
+// keeps it visible independently, and neither does having two visible ends.
 // Binary hide/show only, mirroring the "no partial/dimmed state" principle
 // used for selection highlighting below - never CSS opacity/dimming.
 //
@@ -1090,17 +1091,42 @@ export function applyFilter(
     nestedPairEdges(cy.elements()).map((edge) => edge.id()),
   )
   const visibleIds = new Set<string>(visibleNodeIds)
+  // The seed carries relationship ids, because a match set names relationships
+  // as well as subjects (`between` and `connected` queries do). Every edge is
+  // taken back out of it and decided below on its own terms: being named was
+  // keeping an edge on screen after the quick filter had taken one of its
+  // ends, which is the opposite of what this function documents.
+  for (const edge of cy.edges()) visibleIds.delete(edge.id())
+
+  // Two conditions, both necessary. The endpoints, because an edge to nowhere
+  // is not a relationship anyone can read. And the view's own selection,
+  // because a view that names what it draws means it (#579, ADR 0164):
+  // measured on this repository's own model, eight of twenty-two projections
+  // drew edges they had not selected, 100 in total, and `engine-components`
+  // drew six while declaring `relationships: none`.
+  const selectedIds = matchedIds === null ? null : new Set(matchedIds)
+  const viewSelected = (edge: EdgeSingular): boolean => {
+    if (selectedIds === null) return true
+    // A lifted edge is synthetic (`lift:` ids) and never in a match set. It
+    // stands for the relationships it names, so it draws while the view
+    // selected any of them, and goes when it selected none.
+    const stands = edge.data('relationshipIds') as unknown
+    return Array.isArray(stands)
+      ? (stands as readonly string[]).some((id) => selectedIds.has(id))
+      : selectedIds.has(edge.id())
+  }
   for (const edge of cy.edges()) {
     const source = edge.data('source') as string
     const target = edge.data('target') as string
-    if (visibleNodeIds.has(source) && visibleNodeIds.has(target)) {
-      visibleIds.add(edge.id())
-    }
+    if (!visibleNodeIds.has(source) || !visibleNodeIds.has(target)) continue
+    if (!viewSelected(edge)) continue
+    visibleIds.add(edge.id())
   }
-  // Subtracted last, because a view's match set may name relationships as
-  // well as subjects (`between` and `connected` queries do), and a named one
-  // is seeded into the visible set above before any edge rule runs. Measured:
-  // 20 of API tiers' 24 box-to-member edges came back through that seed.
+
+  // Subtracted last: a box-to-member edge can satisfy both conditions above
+  // and still be implied by the nesting rather than drawn. Measured: 20 of API
+  // tiers' 24 came back through the seed before the seed dropped edges, and
+  // they would come back through the endpoint rule now.
   for (const id of implied) visibleIds.delete(id)
 
   cy.elements().style('display', 'none')
