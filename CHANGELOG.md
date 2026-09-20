@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.36.0
 
 ### A free-text `ask` says what else was in the running (#569)
 
