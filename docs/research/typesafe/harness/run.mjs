@@ -13,7 +13,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { DATASETS, loadWorkspace } from './datasets.mjs'
-import { buildAsk, buildDrift, buildDuplicates, buildKindFit, scoreAsk, scoreDrift, scoreDuplicates, scoreKindFit, stateWithRun } from './arms.mjs'
+import { buildAsk, buildDrift, buildDuplicates, buildEvidenceCitations, buildKindFit, scoreAsk, scoreDrift, scoreDuplicates, scoreEvidenceCitations, scoreKindFit, stateWithRun } from './arms.mjs'
+import { readFileSync as readFrozen } from 'node:fs'
 import { createClient, estimateTokens } from './typesafe.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -30,6 +31,11 @@ const flag = (name, fallback) => {
 const has = (name) => args.includes(`--${name}`)
 
 const armNames = flag('arm', 'all') === 'all' ? ['kind-fit', 'kind-fit-defs', 'duplicates', 'drift', 'ask'] : [flag('arm')]
+
+// Arm 5 reads its frozen item set rather than deriving one, so the sample
+// cannot drift between the ablation's two halves or between repeats.
+const frozenCitations = () =>
+  JSON.parse(readFrozen(new URL('../datasets/evidence-citations.self.json', import.meta.url), 'utf8'))
 const datasetNames = flag('dataset', 'all') === 'all' ? Object.keys(DATASETS) : [flag('dataset')]
 const repeat = Number(flag('repeat', '1'))
 const manifestOverride = flag('manifest', null)
@@ -69,6 +75,14 @@ const build = (arm, ds, name) => {
       const { items } = buildAsk(ds, readQueries(name))
       return { requests: items.map((i) => ({ key: i.index, request: i.request })), items, meta: { queries: items.length } }
     }
+    case 'citations': {
+      const { items, meta } = buildEvidenceCitations(frozenCitations(), { withContent: true })
+      return { requests: items.map((i) => ({ key: i.id, request: i.request })), items, meta }
+    }
+    case 'citations-blind': {
+      const { items, meta } = buildEvidenceCitations(frozenCitations(), { withContent: false })
+      return { requests: items.map((i) => ({ key: i.id, request: i.request })), items, meta }
+    }
     default:
       throw new Error(`unknown arm ${arm}`)
   }
@@ -85,6 +99,8 @@ const score = (arm, name, items, answers) => {
     case 'duplicates': return scoreDuplicates(items, answers, readLabels(name))
     case 'drift': return scoreDrift(items, answers)
     case 'ask': return scoreAsk(items, answers)
+    case 'citations':
+    case 'citations-blind': return scoreEvidenceCitations(items, answers)
     default: throw new Error(`unknown arm ${arm}`)
   }
 }

@@ -431,3 +431,117 @@ export const scoreAsk = (items, answers) => {
 const mean = (xs) => (xs.length === 0 ? null : xs.reduce((a, b) => a + b, 0) / xs.length)
 const count = (xs) => xs.reduce((acc, x) => ({ ...acc, [x ?? 'null']: (acc[x ?? 'null'] ?? 0) + 1 }), {})
 export { stateWithRun }
+
+// ── Arm 5: does the cited evidence support the claim? ────────────────────────
+//
+// An agent proposes an operation and cites something as its evidence. This asks
+// whether the citation holds, over citations a person actually wrote: the
+// self-model's evidence document, 60 authored (subject, file) pairs and 58 hard
+// negatives where the file is a sibling of the real one.
+//
+// `withContent` is the registered ablation. With it, the cited file's contents
+// are in the state and the answer is visible in the material. Without it, only
+// the path is, and a good score can only come from reading our naming
+// conventions - which is exactly what arm 1 turned out to be doing.
+export const buildEvidenceCitations = (frozen, { withContent = true } = {}) => {
+  const items = frozen.items.map((item) => ({
+    id: item.id,
+    subject: item.subject,
+    path: item.path,
+    label: item.label,
+    truncated: item.truncated === true,
+    request: {
+      state: {
+        subject: item.claim,
+        citation: {
+          path: item.path,
+          ...(withContent ? { contents: item.content } : {}),
+        },
+      },
+      questions: {
+        supports: {
+          type: 'score',
+          instructions: {
+            question:
+              'Is the cited file where `subject` lives in this repository - the file whose contents implement or define it?',
+            focus: withContent
+              ? 'Read `citation.contents`. Judge what that file actually does against what the subject is described as being.'
+              : 'Only the path is given. Judge from the path alone, and say so when it is not enough.',
+          },
+          criteria: [
+            {
+              what: 'No, the citation is wrong',
+              signals: [
+                'The file does something else entirely',
+                'The file is a neighbour of the right one: same area, different responsibility',
+              ],
+            },
+            {
+              what: 'Cannot tell from what is given',
+              signals: [
+                'The material does not say what this file is for',
+                'Plausible but nothing in the material settles it',
+              ],
+            },
+            {
+              what: 'Yes, this is the file',
+              signals: [
+                'The file implements or defines exactly what the subject describes',
+                'Its contents and the subject describe the same thing in different words',
+              ],
+            },
+          ],
+        },
+      },
+    },
+  }))
+  return { items, meta: { items: items.length, withContent, truncated: items.filter((i) => i.truncated).length } }
+}
+
+export const scoreEvidenceCitations = (items, answers) => {
+  const LEVELS = ['not-supported', 'cannot-tell', 'supported']
+  const rows = items.map((item) => {
+    const a = answers.get(item.id)?.answers?.supports
+    const level = a ? LEVELS[Math.round(a.score)] : null
+    return { ...item, request: undefined, score: a?.score ?? null, confidence: a?.confidence ?? null, level }
+  })
+  const answered = rows.filter((r) => r.level !== null)
+  const supported = answered.filter((r) => r.label === 'supported')
+  const fabricated = answered.filter((r) => r.label === 'fabricated')
+  // A three-level answer over two classes: "cannot tell" is never a catch and
+  // never a false alarm, and its rate is reported rather than folded away.
+  const rate = (group, level) => (group.length === 0 ? null : group.filter((r) => r.level === level).length / group.length)
+  const supportedRecall = rate(supported, 'supported')
+  const fabricatedRecall = rate(fabricated, 'not-supported')
+  const balanced =
+    supportedRecall === null || fabricatedRecall === null ? null : (supportedRecall + fabricatedRecall) / 2
+  const whole = answered.filter((r) => !r.truncated)
+  return {
+    items: rows.length,
+    answered: answered.length,
+    supported: {
+      n: supported.length,
+      correct: supportedRecall,
+      cannotTell: rate(supported, 'cannot-tell'),
+      wrong: rate(supported, 'not-supported'),
+    },
+    fabricated: {
+      n: fabricated.length,
+      caught: fabricatedRecall,
+      cannotTell: rate(fabricated, 'cannot-tell'),
+      missed: rate(fabricated, 'supported'),
+    },
+    balancedAccuracy: balanced,
+    // The eleven truncated files, excluded, so a cap cannot flatter or damage
+    // the headline without anyone seeing it.
+    balancedAccuracyWholeFilesOnly: (() => {
+      const s = whole.filter((r) => r.label === 'supported')
+      const f = whole.filter((r) => r.label === 'fabricated')
+      const sr = rate(s, 'supported')
+      const fr = rate(f, 'not-supported')
+      return sr === null || fr === null ? null : { n: whole.length, value: (sr + fr) / 2 }
+    })(),
+    meanConfidence: answered.length === 0 ? null : answered.reduce((t, r) => t + (r.confidence ?? 0), 0) / answered.length,
+    rows,
+  }
+}

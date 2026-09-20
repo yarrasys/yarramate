@@ -259,3 +259,102 @@ lexical baseline.
    probe that only hides kinds its questions can ask about; the confident
    disagreements of arm 1b and the 15 drift proposals need the maintainer's
    labels before the "finds real errors" half of either condition is settled.
+
+---
+
+## Arm 5: the cited evidence supports the claim
+
+Run 2026-09-20 against `jev-1.13.0`, three repeats, 708 live requests, about
+US$0.055. Registered in PROTOCOL.md before any call, with the material amended
+once (also before any call) after looking at the frozen items.
+
+**What was asked.** 118 citations from the self-model's evidence document: 60
+that a person actually wrote (`subject` is evidenced by `repo:<path>`,
+confirmed by `reconcile`) and 58 fabricated by swapping the cited file for a
+sibling in the same directory that no observation cites for that subject. Each
+item hands over the subject's name, kind and description, the cited path, and
+the file's contents. Three answers: supported, cannot tell, not supported.
+
+### The registered outcome
+
+| | 5a, file given | 5b, path only |
+|---|---|---|
+| Balanced accuracy | **0.764** | 0.244 |
+| … whole files only (107) | 0.785 | 0.263 |
+| Real citations confirmed | 0.717 | 0.350 |
+| Real citations called wrong | 0.050 | 0.000 |
+| Fabrications caught | **0.810** | 0.138 |
+| Fabrications missed | 0.052 | 0.052 |
+| Abstained ("cannot tell") | 0.186 | 0.729 |
+| Mean confidence | 0.695 | 0.570 |
+| Stability, mean s.d. over 3 runs | 0.0075 | 0.0138 |
+
+**The win condition FAILS.** It required balanced accuracy at or above 0.85 and
+fabrication recall at or above 0.80. Recall clears at 0.810; accuracy does not,
+at 0.764. The shortfall is entirely abstention on real citations: the model
+declines to confirm 23% of citations a person wrote.
+
+**The ablation answers the question it was added for, decisively.** Blind to
+the file's contents the model scores 0.244, fifty-two points below 5a against
+the fifteen registered. It abstains on 73% of items and ventures a
+"not supported" verdict only eight times. So this arm is not arm 1 in disguise:
+the model is reading the cited material, not our naming conventions. That was
+the thing most worth knowing and it is now known.
+
+**A gap in my own registration, stated rather than resolved in my favour.** I
+registered two branches: 5b close to 5a means house style and a negative
+result; 5a clearing the win with 5b fifteen points below means the material is
+doing the work. The actual outcome is in neither. The branches were not
+exhaustive, and the honest reading is that the mechanism test passed and the
+accuracy bar failed, which is two facts rather than one verdict.
+
+### Post-hoc, and labelled as such
+
+Balanced accuracy punishes abstention as heavily as error. For the use this
+arm exists for — flagging suspect citations to a reviewer — a wrong verdict is
+expensive and an abstention is cheap. On that reading:
+
+- When it says **the citation is wrong, it is right 94% of the time** (50
+  verdicts, 47 correct).
+- When it says **the citation holds, it is right 93.5%** (46 verdicts, 43
+  correct).
+- It abstains on 19% and is wrong about 5% either way.
+
+That is a usable shape for a reviewer aid and a poor shape for anything
+automatic. It is also not what was registered, and it is not evidence for a
+threshold chosen after seeing the numbers.
+
+### What is wrong with this arm
+
+**Some hard negatives may not be negative.** The clearest miss,
+`native-document` cited to `.yarramate/architecture/product.yaml`, was called
+supported at 0.92 confidence. That file plausibly does evidence that subject;
+the label says fabricated only because no observation happens to cite it. An
+unknown share of the 5.2% "missed" is the model being right and the label being
+wrong, which flatters nothing here but does mean 0.810 is a floor on recall
+rather than a point estimate.
+
+**The truncated eleven are worse.** Of the 11 files over the 40,000-character
+cap, real citations were confirmed 3 of 7 against 0.717 overall. Cutting the
+material hurts, which is consistent with the ablation and is why they are
+reported apart.
+
+**One record, as registered.** Neither frozen adopter dataset carries an
+evidence document; that was checked before registering, not discovered after.
+The ablation tests the mechanism inside one record and cannot substitute for a
+second. A win here would have been a reason to run this on an adopter's record,
+not a result on one.
+
+### Decision
+
+**Not proposed.** The arm did not clear what it registered, and the honest
+summary is narrower than the one the post-hoc numbers invite. What it did
+establish is that the failure mode which killed arm 1 does not apply here: with
+the material in front of it the model reads, and without the material it says
+so rather than guessing.
+
+That makes a citation check the one candidate in this study still worth a
+second look, and the next step is not a threshold but a second record: an
+adopter's evidence document, where the same questions can be asked of prose
+this project did not write. Until that exists the answer is no.
+

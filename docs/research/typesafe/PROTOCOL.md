@@ -138,6 +138,63 @@ request asks a Noul per candidate and one Noul on whether anything answers.
   non-author queries, with honest-empty at or above 0.8.
 - This arm does not run until at least 20 non-author queries exist.
 
+### Arm 5: the cited evidence supports the claim (added 2026-09-20)
+
+Registered after arms 1 to 4 reported, before any arm 5 call. It is the arm
+the first study named and did not run.
+
+**The claim under test.** An agent proposes an operation and cites something
+as its evidence. A reviewer wants to know whether the citation holds. This
+arm asks exactly that question over citations a person actually wrote.
+
+**Items.** The self-model's evidence document carries 358 authored
+observations of the form `(subject, repo:<path>)`: this subject is evidenced
+by this file, each one confirmed by `reconcile`. Each item hands the model the
+subject's name, kind and description, the cited path, and the cited file's
+contents, and asks whether that file is where that subject lives.
+
+- **Supported (positive):** the observation as authored.
+- **Fabricated (hard negative):** the same subject with a *sibling* file from
+  the same directory, admitted only where no observation anywhere cites that
+  file for that subject. A sibling, not a random file, because the failure
+  worth catching is an agent citing the nearly-right thing.
+
+Sampling is balanced, seeded, and frozen to `datasets/evidence-citations.self.json`
+before the first call.
+
+**Metric.** Balanced accuracy over the two classes, and separately the share
+of fabricated citations the model calls unsupported. A Score with three levels
+(supported / cannot tell / not supported); "cannot tell" is never counted as a
+catch and never as a false alarm, and its rate is reported.
+
+**Win.** Balanced accuracy at or above 0.85, with fabricated-citation recall
+at or above 0.80.
+
+**The ablation, and why this arm has one.** Arm 1 scored 0.872 on the
+self-model and 0.534 on an adopter's, because what looked like skill was house
+style. This arm cannot be run on a second record: neither frozen dataset
+carries an evidence document, which was checked before registering rather than
+discovered after. So the transfer question is attacked from inside one record
+instead.
+
+Every item runs twice: once with the cited file's head included (**5a**), once
+with the path alone and no content (**5b**). The registered prediction is that
+5a clears the win and 5b does not.
+
+- If **5b** scores close to **5a**, the model is reading our naming
+  conventions, not the cited material, and this arm has measured house style
+  exactly as arm 1 did. That is a negative result and is reported as one,
+  whatever 5a says.
+- If **5a** clears the win and **5b** falls at least 15 points below it, the
+  material is doing the work. That is the mechanism this arm exists to test,
+  and it is the condition under which the result has any claim to transfer.
+
+**What this arm cannot show.** It cannot show the judgment works on a record
+this project did not write. A win here is evidence that the mechanism is
+reading rather than pattern-matching, and a reason to run it on an adopter's
+record with an evidence document. It is not a result on that record, and must
+not be reported as one.
+
 ### Stability, every arm
 
 Each arm's requests are repeated three times. Reported: the per-question
@@ -216,3 +273,23 @@ In every case the engine's README sentence stays as it is.
   Both arms are reported. Arm 1 remains the registered primary; 1b is an
   exploratory variant and is labelled as such wherever it appears, because it
   was written after seeing one dataset's answers.
+
+- 2026-09-20, before any arm 5 call: the registered material was "the head of
+  the cited file", set at 40 lines. Looking at the frozen items before spending
+  showed the flaw: a third of them are TypeScript files whose first forty lines
+  are nothing but imports, and a sixty-line window of a two-thousand-line file
+  shows whichever part of it the window happens to land on. Either way the
+  material could not answer the question, so the arm would have measured
+  something other than what it claims to.
+
+  The material is now the cited file's **whole contents**, capped at 40,000
+  characters. 107 of the 118 items fit under that cap entire; the 11 that do not
+  are flagged `truncated` in the frozen set and their results are reported
+  separately. This widens what arm 5a is given and leaves 5b, the ablation,
+  exactly as registered: path only, no contents. It therefore makes the
+  registered prediction harder to fail by accident and easier to fail honestly,
+  since 5a now has no excuse for missing an answer that is in front of it.
+
+  Frozen set: `datasets/evidence-citations.self.json`, seed 20260920,
+  60 supported and 58 fabricated over 60 subjects.
+

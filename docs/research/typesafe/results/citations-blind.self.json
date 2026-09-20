@@ -1,0 +1,1224 @@
+{
+  "arm": "citations-blind",
+  "dataset": "self",
+  "meta": {
+    "items": 118,
+    "withContent": false,
+    "truncated": 11
+  },
+  "model": [
+    "jev-1.13.0"
+  ],
+  "repeat": 3,
+  "scored": {
+    "items": 118,
+    "answered": 118,
+    "supported": {
+      "n": 60,
+      "correct": 0.35,
+      "cannotTell": 0.65,
+      "wrong": 0
+    },
+    "fabricated": {
+      "n": 58,
+      "caught": 0.13793103448275862,
+      "cannotTell": 0.8103448275862069,
+      "missed": 0.05172413793103448
+    },
+    "balancedAccuracy": 0.2439655172413793,
+    "balancedAccuracyWholeFilesOnly": {
+      "n": 107,
+      "value": 0.26292802236198465
+    },
+    "meanConfidence": 0.5695762711864407,
+    "rows": [
+      {
+        "id": "init-command|src/cli.ts",
+        "subject": "init-command",
+        "path": "src/cli.ts",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.02,
+        "confidence": 0.91,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "likec4-export-command|src/adapters/likec4-cli.ts",
+        "subject": "likec4-export-command",
+        "path": "src/adapters/likec4-cli.ts",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.29,
+        "confidence": 0.53,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "likec4-generated-project-v2-schema|schema/yarramate-likec4-generated-project-v2.schema.json",
+        "subject": "likec4-generated-project-v2-schema",
+        "path": "schema/yarramate-likec4-generated-project-v2.schema.json",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.79,
+        "confidence": 0.69,
+        "level": "supported"
+      },
+      {
+        "id": "profile-catalogue|src/profile.ts",
+        "subject": "profile-catalogue",
+        "path": "src/profile.ts",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.24,
+        "confidence": 0.61,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "likec4-diagnostic-result|src/adapters/likec4-cli.ts",
+        "subject": "likec4-diagnostic-result",
+        "path": "src/adapters/likec4-cli.ts",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.05,
+        "confidence": 0.72,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "workspace-loader|src/workspace.ts",
+        "subject": "workspace-loader",
+        "path": "src/workspace.ts",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.14,
+        "confidence": 0.77,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "visual-session-service|src/adapters/visual-cli.ts",
+        "subject": "visual-session-service",
+        "path": "src/adapters/visual-cli.ts",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.32,
+        "confidence": 0.47,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "likec4-generated-project-schema|schema/yarramate-likec4-generated-project.schema.json",
+        "subject": "likec4-generated-project-schema",
+        "path": "schema/yarramate-likec4-generated-project.schema.json",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.74,
+        "confidence": 0.6,
+        "level": "supported"
+      },
+      {
+        "id": "check-result-schema|schema/yarramate-check-result.schema.json",
+        "subject": "check-result-schema",
+        "path": "schema/yarramate-check-result.schema.json",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.89,
+        "confidence": 0.83,
+        "level": "supported"
+      },
+      {
+        "id": "validate-semantic-claims|src/compiler.ts",
+        "subject": "validate-semantic-claims",
+        "path": "src/compiler.ts",
+        "label": "supported",
+        "truncated": true,
+        "score": 1.05,
+        "confidence": 0.84,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "derive-traceability-matrix|src/rtm.ts",
+        "subject": "derive-traceability-matrix",
+        "path": "src/rtm.ts",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.3,
+        "confidence": 0.54,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "core-contract-checker|src/core-contract.ts",
+        "subject": "core-contract-checker",
+        "path": "src/core-contract.ts",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.31,
+        "confidence": 0.52,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "local-web-browser|src/visual-app/index.html",
+        "subject": "local-web-browser",
+        "path": "src/visual-app/index.html",
+        "label": "supported",
+        "truncated": false,
+        "score": 0.7,
+        "confidence": 0.25,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "render-likec4-deployment-view|src/adapters/likec4-project.ts",
+        "subject": "render-likec4-deployment-view",
+        "path": "src/adapters/likec4-project.ts",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.25,
+        "confidence": 0.59,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "semantic-graph-schema|schema/yarramate-graph-v2.schema.json",
+        "subject": "semantic-graph-schema",
+        "path": "schema/yarramate-graph-v2.schema.json",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.85,
+        "confidence": 0.78,
+        "level": "supported"
+      },
+      {
+        "id": "likec4-kind-mapping-schema|schema/yarramate-likec4-kind-mapping.schema.json",
+        "subject": "likec4-kind-mapping-schema",
+        "path": "schema/yarramate-likec4-kind-mapping.schema.json",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.83,
+        "confidence": 0.75,
+        "level": "supported"
+      },
+      {
+        "id": "save-visual-layout|src/adapters/visual/session-server.ts",
+        "subject": "save-visual-layout",
+        "path": "src/adapters/visual/session-server.ts",
+        "label": "supported",
+        "truncated": true,
+        "score": 1.13,
+        "confidence": 0.77,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "cli|src/cli.ts",
+        "subject": "cli",
+        "path": "src/cli.ts",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.33,
+        "confidence": 0.49,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "render-visual-model|src/graph-projection.ts",
+        "subject": "render-visual-model",
+        "path": "src/graph-projection.ts",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.35,
+        "confidence": 0.45,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "resolve-branding|src/branding.ts",
+        "subject": "resolve-branding",
+        "path": "src/branding.ts",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.36,
+        "confidence": 0.44,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "governance-log|src/governance.ts",
+        "subject": "governance-log",
+        "path": "src/governance.ts",
+        "label": "supported",
+        "truncated": false,
+        "score": 0.94,
+        "confidence": 0.56,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "execute-shipped-binaries|package.json",
+        "subject": "execute-shipped-binaries",
+        "path": "package.json",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.18,
+        "confidence": 0.59,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "projection-schema|schema/yarramate-projection.schema.json",
+        "subject": "projection-schema",
+        "path": "schema/yarramate-projection.schema.json",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.84,
+        "confidence": 0.75,
+        "level": "supported"
+      },
+      {
+        "id": "npm-package|package.json",
+        "subject": "npm-package",
+        "path": "package.json",
+        "label": "supported",
+        "truncated": false,
+        "score": 0.85,
+        "confidence": 0.41,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "projection-result-schema|schema/yarramate-projection-result.schema.json",
+        "subject": "projection-result-schema",
+        "path": "schema/yarramate-projection-result.schema.json",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.86,
+        "confidence": 0.79,
+        "level": "supported"
+      },
+      {
+        "id": "state-comparison-schema|schema/yarramate-state-comparison.schema.json",
+        "subject": "state-comparison-schema",
+        "path": "schema/yarramate-state-comparison.schema.json",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.75,
+        "confidence": 0.63,
+        "level": "supported"
+      },
+      {
+        "id": "question-catalogue|catalogues/core-enrichment.yaml",
+        "subject": "question-catalogue",
+        "path": "catalogues/core-enrichment.yaml",
+        "label": "supported",
+        "truncated": true,
+        "score": 1.23,
+        "confidence": 0.49,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "adapter-mapping-schema|schema/yarramate-adapter-mapping.schema.json",
+        "subject": "adapter-mapping-schema",
+        "path": "schema/yarramate-adapter-mapping.schema.json",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.69,
+        "confidence": 0.53,
+        "level": "supported"
+      },
+      {
+        "id": "evidence-schema|schema/yarramate-evidence.schema.json",
+        "subject": "evidence-schema",
+        "path": "schema/yarramate-evidence.schema.json",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.64,
+        "confidence": 0.46,
+        "level": "supported"
+      },
+      {
+        "id": "workspace-schema|schema/yarramate-workspace.schema.json",
+        "subject": "workspace-schema",
+        "path": "schema/yarramate-workspace.schema.json",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.83,
+        "confidence": 0.74,
+        "level": "supported"
+      },
+      {
+        "id": "select-focus-neighbourhood|src/visual-app/focus-neighbourhood.ts",
+        "subject": "select-focus-neighbourhood",
+        "path": "src/visual-app/focus-neighbourhood.ts",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.63,
+        "confidence": 0.44,
+        "level": "supported"
+      },
+      {
+        "id": "nodejs-runtime|package.json",
+        "subject": "nodejs-runtime",
+        "path": "package.json",
+        "label": "supported",
+        "truncated": false,
+        "score": 0.96,
+        "confidence": 0.56,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "likec4-diagnostic-result-schema|schema/yarramate-likec4-diagnostic-result.schema.json",
+        "subject": "likec4-diagnostic-result-schema",
+        "path": "schema/yarramate-likec4-diagnostic-result.schema.json",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.81,
+        "confidence": 0.72,
+        "level": "supported"
+      },
+      {
+        "id": "evaluate-evidence|src/evidence.ts",
+        "subject": "evaluate-evidence",
+        "path": "src/evidence.ts",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.14,
+        "confidence": 0.77,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "compose-question-catalogues|src/interrogate-command.ts",
+        "subject": "compose-question-catalogues",
+        "path": "src/interrogate-command.ts",
+        "label": "supported",
+        "truncated": true,
+        "score": 1.07,
+        "confidence": 0.76,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "visual-layout-sidecar|schema/yarramate-visual-layout.schema.json",
+        "subject": "visual-layout-sidecar",
+        "path": "schema/yarramate-visual-layout.schema.json",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.37,
+        "confidence": 0.06,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "consumer-package|package.json",
+        "subject": "consumer-package",
+        "path": "package.json",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.1,
+        "confidence": 0.6,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "validate-native-architecture|src/check-command.ts",
+        "subject": "validate-native-architecture",
+        "path": "src/check-command.ts",
+        "label": "supported",
+        "truncated": false,
+        "score": 0.99,
+        "confidence": 0.8,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "native-document|.yarramate/architecture/engine.yaml",
+        "subject": "native-document",
+        "path": ".yarramate/architecture/engine.yaml",
+        "label": "supported",
+        "truncated": true,
+        "score": 1.35,
+        "confidence": 0.46,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "state-comparison|src/architecture-state.ts",
+        "subject": "state-comparison",
+        "path": "src/architecture-state.ts",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.44,
+        "confidence": 0.31,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "core-contract-schema|schema/yarramate-core-contract.schema.json",
+        "subject": "core-contract-schema",
+        "path": "schema/yarramate-core-contract.schema.json",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.86,
+        "confidence": 0.79,
+        "level": "supported"
+      },
+      {
+        "id": "render-archimate-kind-icons|src/visual-app/kind-icons.ts",
+        "subject": "render-archimate-kind-icons",
+        "path": "src/visual-app/kind-icons.ts",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.66,
+        "confidence": 0.49,
+        "level": "supported"
+      },
+      {
+        "id": "derive-changed-slice|src/changed.ts",
+        "subject": "derive-changed-slice",
+        "path": "src/changed.ts",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.28,
+        "confidence": 0.57,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "derive-governance-log|src/governance.ts",
+        "subject": "derive-governance-log",
+        "path": "src/governance.ts",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.23,
+        "confidence": 0.63,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "architecture-workbook|src/workbook-xlsx.ts",
+        "subject": "architecture-workbook",
+        "path": "src/workbook-xlsx.ts",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.17,
+        "confidence": 0.4,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "export-command|src/export-command.ts",
+        "subject": "export-command",
+        "path": "src/export-command.ts",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.51,
+        "confidence": 0.26,
+        "level": "supported"
+      },
+      {
+        "id": "reconcile-intent-and-evidence|src/reconciliation.ts",
+        "subject": "reconcile-intent-and-evidence",
+        "path": "src/reconciliation.ts",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.32,
+        "confidence": 0.5,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "likec4-export-adapter|src/adapters/likec4-export.ts",
+        "subject": "likec4-export-adapter",
+        "path": "src/adapters/likec4-export.ts",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.62,
+        "confidence": 0.44,
+        "level": "supported"
+      },
+      {
+        "id": "reconcile-evidence|src/reconciliation.ts",
+        "subject": "reconcile-evidence",
+        "path": "src/reconciliation.ts",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.22,
+        "confidence": 0.65,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "responsibility-matrix|src/responsibility.ts",
+        "subject": "responsibility-matrix",
+        "path": "src/responsibility.ts",
+        "label": "supported",
+        "truncated": false,
+        "score": 0.89,
+        "confidence": 0.59,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "tools-entry|src/tools-entry.ts",
+        "subject": "tools-entry",
+        "path": "src/tools-entry.ts",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.63,
+        "confidence": 0.45,
+        "level": "supported"
+      },
+      {
+        "id": "diagnostic-result|src/cli-support.ts",
+        "subject": "diagnostic-result",
+        "path": "src/cli-support.ts",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.02,
+        "confidence": 0.9,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "pattern-document|schema/yarramate-pattern.schema.json",
+        "subject": "pattern-document",
+        "path": "schema/yarramate-pattern.schema.json",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.49,
+        "confidence": 0.23,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "validate-adapter-mapping|src/adapter-mapping.ts",
+        "subject": "validate-adapter-mapping",
+        "path": "src/adapter-mapping.ts",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.31,
+        "confidence": 0.52,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "product-journeys-guide|docs/PRODUCT-JOURNEYS.md",
+        "subject": "product-journeys-guide",
+        "path": "docs/PRODUCT-JOURNEYS.md",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.59,
+        "confidence": 0.38,
+        "level": "supported"
+      },
+      {
+        "id": "evidence-report-schema|schema/yarramate-evidence-report.schema.json",
+        "subject": "evidence-report-schema",
+        "path": "schema/yarramate-evidence-report.schema.json",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.86,
+        "confidence": 0.79,
+        "level": "supported"
+      },
+      {
+        "id": "governance-schema|schema/yarramate-governance.schema.json",
+        "subject": "governance-schema",
+        "path": "schema/yarramate-governance.schema.json",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.84,
+        "confidence": 0.75,
+        "level": "supported"
+      },
+      {
+        "id": "apply-command|src/apply-command.ts",
+        "subject": "apply-command",
+        "path": "src/apply-command.ts",
+        "label": "supported",
+        "truncated": true,
+        "score": 1.47,
+        "confidence": 0.29,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "evidence-document|.yarramate/evidence/repository.yaml",
+        "subject": "evidence-document",
+        "path": ".yarramate/evidence/repository.yaml",
+        "label": "supported",
+        "truncated": true,
+        "score": 0.93,
+        "confidence": 0.56,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "relationship-policy-catalogue|src/profile.ts",
+        "subject": "relationship-policy-catalogue",
+        "path": "src/profile.ts",
+        "label": "supported",
+        "truncated": false,
+        "score": 1.06,
+        "confidence": 0.87,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "evidence-schema|schema/yarramate-profile.schema.json",
+        "subject": "evidence-schema",
+        "path": "schema/yarramate-profile.schema.json",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 1.38,
+        "confidence": 0.39,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "nodejs-runtime|tsconfig.visual-lib.json",
+        "subject": "nodejs-runtime",
+        "path": "tsconfig.visual-lib.json",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 0.28,
+        "confidence": 0.58,
+        "level": "not-supported"
+      },
+      {
+        "id": "likec4-export-adapter|src/adapters/visual-graph-entry.ts",
+        "subject": "likec4-export-adapter",
+        "path": "src/adapters/visual-graph-entry.ts",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 1.09,
+        "confidence": 0.64,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "tools-entry|src/workbook-read.ts",
+        "subject": "tools-entry",
+        "path": "src/workbook-read.ts",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 0.58,
+        "confidence": 0.34,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "visual-layout-sidecar|schema/yarramate-document.schema.json",
+        "subject": "visual-layout-sidecar",
+        "path": "schema/yarramate-document.schema.json",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 0.5,
+        "confidence": 0.25,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "native-document|.yarramate/architecture/product.yaml",
+        "subject": "native-document",
+        "path": ".yarramate/architecture/product.yaml",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 1.47,
+        "confidence": 0.28,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "consumer-package|CHANGELOG.md",
+        "subject": "consumer-package",
+        "path": "CHANGELOG.md",
+        "label": "fabricated",
+        "truncated": true,
+        "score": 0.16,
+        "confidence": 0.76,
+        "level": "not-supported"
+      },
+      {
+        "id": "export-command|src/core-contract.ts",
+        "subject": "export-command",
+        "path": "src/core-contract.ts",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 0.88,
+        "confidence": 0.8,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "derive-governance-log|src/design-command.ts",
+        "subject": "derive-governance-log",
+        "path": "src/design-command.ts",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 0.94,
+        "confidence": 0.81,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "core-contract-checker|src/check-command.ts",
+        "subject": "core-contract-checker",
+        "path": "src/check-command.ts",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 1.17,
+        "confidence": 0.69,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "init-command|src/branding.ts",
+        "subject": "init-command",
+        "path": "src/branding.ts",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 0.48,
+        "confidence": 0.28,
+        "level": "not-supported"
+      },
+      {
+        "id": "likec4-generated-project-v2-schema|schema/yarramate-visual-diagnostic-result.schema.json",
+        "subject": "likec4-generated-project-v2-schema",
+        "path": "schema/yarramate-visual-diagnostic-result.schema.json",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 0.3,
+        "confidence": 0.55,
+        "level": "not-supported"
+      },
+      {
+        "id": "reconcile-evidence|src/adapter-mapping.ts",
+        "subject": "reconcile-evidence",
+        "path": "src/adapter-mapping.ts",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 0.95,
+        "confidence": 0.85,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "validate-semantic-claims|src/archimate-relationships.generated.ts",
+        "subject": "validate-semantic-claims",
+        "path": "src/archimate-relationships.generated.ts",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 0.86,
+        "confidence": 0.65,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "product-journeys-guide|docs/NATIVE-DOCUMENT.md",
+        "subject": "product-journeys-guide",
+        "path": "docs/NATIVE-DOCUMENT.md",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 1.08,
+        "confidence": 0.78,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "pattern-document|schema/yarramate-likec4-project.schema.json",
+        "subject": "pattern-document",
+        "path": "schema/yarramate-likec4-project.schema.json",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 0.88,
+        "confidence": 0.43,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "responsibility-matrix|src/shipped-profile.ts",
+        "subject": "responsibility-matrix",
+        "path": "src/shipped-profile.ts",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 0.65,
+        "confidence": 0.47,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "governance-schema|schema/yarramate-projection.schema.json",
+        "subject": "governance-schema",
+        "path": "schema/yarramate-projection.schema.json",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 1.67,
+        "confidence": 0.51,
+        "level": "supported"
+      },
+      {
+        "id": "governance-log|src/subject-references.ts",
+        "subject": "governance-log",
+        "path": "src/subject-references.ts",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 0.83,
+        "confidence": 0.43,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "core-contract-schema|schema/yarramate-profile.schema.json",
+        "subject": "core-contract-schema",
+        "path": "schema/yarramate-profile.schema.json",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 1.39,
+        "confidence": 0.26,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "npm-package|README.md",
+        "subject": "npm-package",
+        "path": "README.md",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 0.26,
+        "confidence": 0.61,
+        "level": "not-supported"
+      },
+      {
+        "id": "derive-traceability-matrix|src/design-command.ts",
+        "subject": "derive-traceability-matrix",
+        "path": "src/design-command.ts",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 1.03,
+        "confidence": 0.87,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "cli|src/interrogation-entry.ts",
+        "subject": "cli",
+        "path": "src/interrogation-entry.ts",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 0.99,
+        "confidence": 0.88,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "evaluate-evidence|src/graph-projection.ts",
+        "subject": "evaluate-evidence",
+        "path": "src/graph-projection.ts",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 0.97,
+        "confidence": 0.87,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "likec4-diagnostic-result|src/adapters/graphify.ts",
+        "subject": "likec4-diagnostic-result",
+        "path": "src/adapters/graphify.ts",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 0.89,
+        "confidence": 0.76,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "validate-adapter-mapping|src/subject-references.ts",
+        "subject": "validate-adapter-mapping",
+        "path": "src/subject-references.ts",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 1.08,
+        "confidence": 0.82,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "state-comparison-schema|schema/yarramate-visual-model.schema.json",
+        "subject": "state-comparison-schema",
+        "path": "schema/yarramate-visual-model.schema.json",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 1.31,
+        "confidence": 0.38,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "visual-session-service|src/adapters/likec4-cli.ts",
+        "subject": "visual-session-service",
+        "path": "src/adapters/likec4-cli.ts",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 1.14,
+        "confidence": 0.58,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "profile-catalogue|src/reconciliation-text.ts",
+        "subject": "profile-catalogue",
+        "path": "src/reconciliation-text.ts",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 0.83,
+        "confidence": 0.59,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "projection-result-schema|schema/yarramate-evidence.schema.json",
+        "subject": "projection-result-schema",
+        "path": "schema/yarramate-evidence.schema.json",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 0.9,
+        "confidence": 0.12,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "workspace-loader|src/archimate-relationships.generated.ts",
+        "subject": "workspace-loader",
+        "path": "src/archimate-relationships.generated.ts",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 0.31,
+        "confidence": 0.53,
+        "level": "not-supported"
+      },
+      {
+        "id": "render-visual-model|src/export-command.ts",
+        "subject": "render-visual-model",
+        "path": "src/export-command.ts",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 1,
+        "confidence": 0.84,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "execute-shipped-binaries|vite.visual.config.ts",
+        "subject": "execute-shipped-binaries",
+        "path": "vite.visual.config.ts",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 0.59,
+        "confidence": 0.36,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "resolve-branding|src/projection.ts",
+        "subject": "resolve-branding",
+        "path": "src/projection.ts",
+        "label": "fabricated",
+        "truncated": true,
+        "score": 1.05,
+        "confidence": 0.9,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "architecture-workbook|src/workbook-operations.ts",
+        "subject": "architecture-workbook",
+        "path": "src/workbook-operations.ts",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 0.67,
+        "confidence": 0.4,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "workspace-schema|schema/yarramate-operations.schema.json",
+        "subject": "workspace-schema",
+        "path": "schema/yarramate-operations.schema.json",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 1.6,
+        "confidence": 0.4,
+        "level": "supported"
+      },
+      {
+        "id": "local-web-browser|src/visual-app/query-fields.tsx",
+        "subject": "local-web-browser",
+        "path": "src/visual-app/query-fields.tsx",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 0.36,
+        "confidence": 0.47,
+        "level": "not-supported"
+      },
+      {
+        "id": "state-comparison|src/index.ts",
+        "subject": "state-comparison",
+        "path": "src/index.ts",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 1,
+        "confidence": 0.97,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "diagnostic-result|src/operations.ts",
+        "subject": "diagnostic-result",
+        "path": "src/operations.ts",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 0.99,
+        "confidence": 0.95,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "render-likec4-deployment-view|src/adapters/likec4-project-export.ts",
+        "subject": "render-likec4-deployment-view",
+        "path": "src/adapters/likec4-project-export.ts",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 1.34,
+        "confidence": 0.44,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "relationship-policy-catalogue|src/shipped-catalogue.generated.ts",
+        "subject": "relationship-policy-catalogue",
+        "path": "src/shipped-catalogue.generated.ts",
+        "label": "fabricated",
+        "truncated": true,
+        "score": 1.56,
+        "confidence": 0.35,
+        "level": "supported"
+      },
+      {
+        "id": "save-visual-layout|src/adapters/visual/session-store.ts",
+        "subject": "save-visual-layout",
+        "path": "src/adapters/visual/session-store.ts",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 1.41,
+        "confidence": 0.36,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "semantic-graph-schema|schema/yarramate-visual-response.schema.json",
+        "subject": "semantic-graph-schema",
+        "path": "schema/yarramate-visual-response.schema.json",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 0.6,
+        "confidence": 0.1,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "adapter-mapping-schema|schema/yarramate-operations.schema.json",
+        "subject": "adapter-mapping-schema",
+        "path": "schema/yarramate-operations.schema.json",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 0.85,
+        "confidence": 0.46,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "render-archimate-kind-icons|src/visual-app/slots-model.ts",
+        "subject": "render-archimate-kind-icons",
+        "path": "src/visual-app/slots-model.ts",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 1.05,
+        "confidence": 0.82,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "check-result-schema|schema/yarramate-likec4-generated-project-v2.schema.json",
+        "subject": "check-result-schema",
+        "path": "schema/yarramate-likec4-generated-project-v2.schema.json",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 0.94,
+        "confidence": 0.13,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "projection-schema|schema/yarramate-projection-result.schema.json",
+        "subject": "projection-schema",
+        "path": "schema/yarramate-projection-result.schema.json",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 1.46,
+        "confidence": 0.18,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "validate-native-architecture|src/schema-validators.generated.ts",
+        "subject": "validate-native-architecture",
+        "path": "src/schema-validators.generated.ts",
+        "label": "fabricated",
+        "truncated": true,
+        "score": 1.21,
+        "confidence": 0.64,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "evidence-report-schema|schema/yarramate-likec4-check-result.schema.json",
+        "subject": "evidence-report-schema",
+        "path": "schema/yarramate-likec4-check-result.schema.json",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 0.33,
+        "confidence": 0.5,
+        "level": "not-supported"
+      },
+      {
+        "id": "likec4-diagnostic-result-schema|schema/yarramate-visual-event.schema.json",
+        "subject": "likec4-diagnostic-result-schema",
+        "path": "schema/yarramate-visual-event.schema.json",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 0.71,
+        "confidence": 0.29,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "compose-question-catalogues|src/deletion-drafting.ts",
+        "subject": "compose-question-catalogues",
+        "path": "src/deletion-drafting.ts",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 0.74,
+        "confidence": 0.49,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "likec4-generated-project-schema|schema/yarramate-governance.schema.json",
+        "subject": "likec4-generated-project-schema",
+        "path": "schema/yarramate-governance.schema.json",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 1.21,
+        "confidence": 0.39,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "apply-command|src/artifact-coverage.ts",
+        "subject": "apply-command",
+        "path": "src/artifact-coverage.ts",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 0.77,
+        "confidence": 0.63,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "likec4-export-command|src/adapters/graphify.ts",
+        "subject": "likec4-export-command",
+        "path": "src/adapters/graphify.ts",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 0.83,
+        "confidence": 0.68,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "select-focus-neighbourhood|src/visual-app/context-menu-model.ts",
+        "subject": "select-focus-neighbourhood",
+        "path": "src/visual-app/context-menu-model.ts",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 1.19,
+        "confidence": 0.62,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "reconcile-intent-and-evidence|src/next-command.ts",
+        "subject": "reconcile-intent-and-evidence",
+        "path": "src/next-command.ts",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 0.95,
+        "confidence": 0.89,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "likec4-kind-mapping-schema|schema/yarramate-projection.schema.json",
+        "subject": "likec4-kind-mapping-schema",
+        "path": "schema/yarramate-projection.schema.json",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 0.92,
+        "confidence": 0.48,
+        "level": "cannot-tell"
+      },
+      {
+        "id": "derive-changed-slice|src/governance-kinds.ts",
+        "subject": "derive-changed-slice",
+        "path": "src/governance-kinds.ts",
+        "label": "fabricated",
+        "truncated": false,
+        "score": 1.04,
+        "confidence": 0.67,
+        "level": "cannot-tell"
+      }
+    ]
+  },
+  "stability": {
+    "series": 354,
+    "meanSd": 0.013845741375711177,
+    "p95Sd": 0.03858612300930075,
+    "maxSd": 0.07318166133366714
+  },
+  "at": "2026-09-20T11:06:25.374Z"
+}
