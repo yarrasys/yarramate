@@ -371,6 +371,12 @@ concepts:
     name: Shipped question catalogue
     description: The versioned design-question catalogue evaluated against the compiled graph. It resolves from the installed package by default, so orientation needs no argument, and `--catalogue` substitutes an authored one.
     status: current
+  - id: relationship-conventions
+    kind: dataObject
+    owner: yarramate-maintainers
+    name: Relationship conventions
+    description: "The relationship kind ArchiMate practice expects for a pair of core kinds, read off the language's own definitions as named rules, or nothing where the language permits several readings. Guidance beside the permission table, never a rule the compiler enforces."
+    status: current
   - id: relationship-policy-catalogue
     kind: dataObject
     owner: yarramate-maintainers

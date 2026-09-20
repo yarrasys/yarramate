@@ -30,6 +30,10 @@ import type { CanvasGraph } from "../graph-projection.js";
 import type { VisualKindOption } from "../adapters/visual/protocol-contract.js";
 import { connectableKinds } from "../relationship-drafting.js";
 import { CORE_RELATIONSHIP_KINDS } from "../relationship-matrix.js";
+import {
+  conventionalRelationshipKind,
+  type RelationshipConvention,
+} from "../relationship-convention.js";
 
 export interface RelationshipKindOffer {
   /** What may be chosen, in vocabulary order. */
@@ -40,6 +44,13 @@ export interface RelationshipKindOffer {
    * vocabulary is offered because nothing here can judge it.
    */
   readonly narrowed: boolean;
+  /**
+   * The kind practice expects between these endpoints, where practice expects
+   * anything (#571, ADR 0162). A `<select>` keeps vocabulary order - reordering
+   * a list someone is reading is worse than annotating it - so this is offered
+   * for marking, not for sorting. Null far more often than not.
+   */
+  readonly conventional: RelationshipConvention | null;
 }
 
 export const relationshipKindOffer = (
@@ -59,7 +70,13 @@ export const relationshipKindOffer = (
   // Empty means the table has no row for this pairing — an endpoint outside the
   // core vocabulary. Offering nothing would make the kind uneditable, which is
   // a worse answer than the one this module cannot give.
-  if (permitted.size === 0) return { options: vocabulary, narrowed: false };
+  const conventional = conventionalRelationshipKind(
+    graph.nodes.find((node) => node.id === endpoints.from)?.coreKindLabel ?? "",
+    graph.nodes.find((node) => node.id === endpoints.to)?.coreKindLabel ?? "",
+  );
+  if (permitted.size === 0) {
+    return { options: vocabulary, narrowed: false, conventional };
+  }
 
   const core = new Set<string>(CORE_RELATIONSHIP_KINDS);
   return {
@@ -73,5 +90,6 @@ export const relationshipKindOffer = (
         option.label === currentKindLabel,
     ),
     narrowed: true,
+    conventional,
   };
 };
