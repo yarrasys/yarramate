@@ -22,8 +22,8 @@ import {
 // wave, or a rendering leaves it alone, because none of those changes what an
 // existing question answers.
 
-const EXPECTED_SEMANTICS = '1'
-const EXPECTED_FINGERPRINT = '4be1f41248e27adb'
+const EXPECTED_SEMANTICS = '2'
+const EXPECTED_FINGERPRINT = 'ecd94288cb0751f1'
 
 const profile = 'yarramate/core@0.1'
 
@@ -53,6 +53,22 @@ const document = [
   '  - id: near-duplicate-component',
   '    kind: applicationComponent',
   '    name: Lonely componant',
+  // The pair the near-duplicate condition is for: one subject, two names that
+  // disagree on every raw token and agree once the trailing role noun goes.
+  '  - id: order-gateway',
+  '    kind: applicationComponent',
+  '    name: Order Gateway',
+  '  - id: orders-service',
+  '    kind: applicationComponent',
+  '    name: Orders Service',
+  // And the pair it is not for, in the shape the engine got wrong: a role
+  // noun sitting mid-name, where it is the word that tells the two apart.
+  '  - id: session-server-source',
+  '    kind: applicationComponent',
+  '    name: Session server source',
+  '  - id: session-store-source',
+  '    kind: applicationComponent',
+  '    name: Session store source',
   '  - id: billing-service',
   '    kind: applicationService',
   '    name: Billing service',

@@ -16,6 +16,8 @@ import {
 import {
   findNearDuplicates,
   headTokens,
+  lexicalScore,
+  moderateLexicalThreshold,
   normalizeLabel,
   similarity,
   type IdentitySubject,
@@ -59,6 +61,17 @@ describe('label normalization', () => {
   it('strips type nouns but never empties a label that is only type nouns', () => {
     expect(headTokens(normalizeLabel('orders-service'))).toEqual(['order'])
     expect(headTokens(normalizeLabel('gateway'))).toEqual(['gateway'])
+  })
+
+  it('strips the whole trailing run and keeps a type noun inside the name', () => {
+    expect(headTokens(normalizeLabel('order-api-gateway'))).toEqual(['order'])
+    // `server` here is not a label on the name, it is part of it: it is the
+    // word that tells this file from `session-store-source`.
+    expect(headTokens(normalizeLabel('session-server-source'))).toEqual([
+      'session',
+      'server',
+      'source',
+    ])
   })
 
   it('scores edit similarity between 0 and 1', () => {
@@ -148,6 +161,73 @@ describe('near-duplicate detection', () => {
           'Identity Provider',
           'auth',
         ]),
+      ]),
+    ).toHaveLength(1)
+  })
+
+  // What #570 found on this repository's own record: `session-server-source`
+  // and `session-store-source` scored a flat 1.0, because the one word that
+  // told them apart was a type noun and was stripped from both. At 1.0 they
+  // cleared the strong threshold, so the corroborator that exists to hold
+  // such pairs back was never consulted.
+  it('offers the subject named twice and not the family, from one model', () => {
+    const pairs = findNearDuplicates([
+      subject('order-gateway', ['order-gateway', 'Order Gateway'], {
+        owner: 'team',
+      }),
+      subject('orders-service', ['orders-service', 'Orders Service'], {
+        owner: 'team',
+      }),
+      subject(
+        'session-server-source',
+        ['session-server-source', 'Session server source'],
+        { owner: 'team', neighbours: new Set(['visual-app']) },
+      ),
+      subject(
+        'session-store-source',
+        ['session-store-source', 'Session store source'],
+        { owner: 'team', neighbours: new Set(['visual-app']) },
+      ),
+    ])
+    expect(pairs.map(({ left, right }) => `${left} · ${right}`)).toEqual([
+      'order-gateway · orders-service',
+    ])
+  })
+
+  it('reads a disagreeing word as disagreement, not as resemblance', () => {
+    const server = subject('session-server-source', ['session-server-source'])
+    const store = subject('session-store-source', ['session-store-source'])
+    expect(lexicalScore(server, store)).toBeLessThan(moderateLexicalThreshold)
+  })
+
+  it('stays silent on a family however disciplined its naming convention', () => {
+    // Every corroboration the rule accepts is present: one owner, one shared
+    // neighbour. The convention is what makes these labels look alike, and a
+    // tidier convention would only make them look more alike.
+    const family = ['add', 'ask', 'new', 'next', 'compare', 'compile'].map(
+      (word) =>
+        subject(`${word}-command`, [`${word}-command`, `${word} command`], {
+          owner: 'team',
+          neighbours: new Set(['cli']),
+        }),
+    )
+    expect(findNearDuplicates(family)).toEqual([])
+  })
+
+  it('still corresponds through a misspelling of the same word', () => {
+    const pairs = findNearDuplicates([
+      subject('customer-portal', ['customer-portal'], { owner: 'team' }),
+      subject('custmer-portal', ['custmer-portal'], { owner: 'team' }),
+    ])
+    expect(pairs).toHaveLength(1)
+    expect(pairs[0]!.corroboration).toBe('owner')
+  })
+
+  it('reads the same words in either order as the same words', () => {
+    expect(
+      findNearDuplicates([
+        subject('auth-user-service', ['auth-user-service']),
+        subject('user-auth-service', ['user-auth-service']),
       ]),
     ).toHaveLength(1)
   })
