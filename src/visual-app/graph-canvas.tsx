@@ -1102,8 +1102,10 @@ export function applyFilter(
   // is not a relationship anyone can read. And the view's own selection,
   // because a view that names what it draws means it (#579, ADR 0164):
   // measured on this repository's own model, eight of twenty-two projections
-  // drew edges they had not selected, 100 in total, and `engine-components`
-  // drew six while declaring `relationships: none`.
+  // drew edges they had not selected, 103 in total, and `engine-components`
+  // drew six while declaring `relationships: none`. Counted against the nodes
+  // the canvas shows, ancestor pull-in above included, not against the query's
+  // selected concepts.
   const selectedIds = matchedIds === null ? null : new Set(matchedIds)
   const viewSelected = (edge: EdgeSingular): boolean => {
     if (selectedIds === null) return true
