@@ -159,4 +159,9 @@ In every case the engine's README sentence stays as it is.
 
 ## Amendments
 
-(none)
+- 2026-09-20, before any call: the self-model's near-duplicate candidates are
+  dominated by artifact subjects named after file paths (test files, schemas),
+  which are trivially different and would inflate precision for the judgment
+  and the shipped rule alike. Arm 2 therefore reports its metrics twice: over
+  all labelled pairs, and over pairs where at least one subject is not
+  path-named. The win condition applies to the second.
