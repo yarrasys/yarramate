@@ -1,0 +1,12 @@
+format: yarramate/projection/v1
+id: current-state
+version: "1.0"
+query:
+  documents:
+    - halcyon
+  statuses:
+    - current
+presentation:
+  title: Current state
+  description: What runs today, before the meter data platform.
+  notation: archimate

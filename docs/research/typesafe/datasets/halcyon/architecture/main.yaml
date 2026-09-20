@@ -1,0 +1,163 @@
+format: yarramate/v1
+id: halcyon
+profile: halcyon/water-utility@1.0
+concepts:
+  - id: operations-director
+    kind: stakeholder
+    name: Operations director
+    description: Sponsors the metering programme and answers to the board for billing accuracy.
+    status: current
+  - id: ageing-meter-fleet
+    kind: driver
+    name: Ageing meter fleet
+    description: Two thirds of residential meters are past their read-accuracy life; estimated bills are rising.
+    status: current
+  - id: bill-from-actual-reads
+    kind: goal
+    name: Bill every connection from actual reads
+    description: No estimated bills for connections with a working smart meter.
+    status: current
+  - id: reads-within-24h
+    kind: requirement
+    name: Meter reads reach billing within 24 hours
+    description: A read taken in the field is available to the billing run no later than the next day.
+    status: current
+  - id: data-stays-in-region
+    kind: regulatory-constraint
+    name: Customer data stays in-region
+    description: Customer and consumption data is stored and processed inside the state, by regulation.
+    status: current
+  - id: customer
+    kind: businessActor
+    name: Customer
+    description: A household or business with a water connection.
+    status: current
+  - id: field-crew
+    kind: businessActor
+    name: Field crew
+    description: Reads and replaces meters on the ground.
+    status: current
+  - id: water-billing
+    kind: businessService
+    name: Water billing
+    description: Quarterly bills for water and sewerage, based on reads.
+    status: current
+  - id: monthly-billing-run
+    kind: businessProcess
+    name: Monthly billing run
+    description: Turns the month's reads into invoices and adjustments.
+    status: current
+  - id: legacy-billing
+    kind: applicationComponent
+    name: Billing system (legacy)
+    description: The 2009 billing package; batch interfaces only.
+    status: current
+  - id: meter-data-platform
+    kind: metering-platform
+    name: Meter data platform
+    description: Collects, validates and stores smart-meter reads.
+    status: planned
+    parts:
+      ingestion: read-ingestion
+      reads-api: reads-api
+      host: cloud-region
+      reads: meter-read
+    constraints:
+      - id: residency
+        ref: data-stays-in-region
+  - id: read-ingestion
+    kind: applicationService
+    name: Meter read ingestion
+    description: Accepts reads from meters and field devices, validates them, and stores them.
+    status: planned
+  - id: reads-api
+    kind: applicationInterface
+    name: Reads API
+    description: How the billing system asks for validated reads.
+    status: planned
+  - id: meter-read
+    kind: dataObject
+    name: Meter read
+    description: One reading from one meter at one time, with its validation state.
+    status: current
+  - id: customer-account
+    kind: dataObject
+    name: Customer account
+    description: The connection, the customer and the tariff.
+    status: current
+    constraints:
+      - id: residency
+        ref: data-stays-in-region
+  - id: regional-data-centre
+    kind: node
+    name: Regional data centre
+    description: Where the billing system runs today.
+    status: current
+  - id: cloud-region
+    kind: node
+    name: Cloud region, in-state
+    description: The in-state cloud region proposed for the meter data platform.
+    status: planned
+    constraints:
+      - id: residency
+        ref: data-stays-in-region
+  - id: meter-replacement-programme
+    kind: metering-programme
+    name: Meter fleet replacement programme
+    description: The programme of work that replaces the ageing meters and stands up the platform that reads them.
+    status: planned
+    parts:
+      platform: meter-data-platform
+relationships:
+  - id: fleet-influences-goal
+    kind: influence
+    from: ageing-meter-fleet
+    to: bill-from-actual-reads
+  - id: requirement-realizes-goal
+    kind: realization
+    from: reads-within-24h
+    to: bill-from-actual-reads
+  - id: billing-serves-customer
+    kind: serving
+    from: water-billing
+    to: customer
+  - id: run-realizes-billing
+    kind: realization
+    from: monthly-billing-run
+    to: water-billing
+  - id: legacy-serves-run
+    kind: serving
+    from: legacy-billing
+    to: monthly-billing-run
+  - id: legacy-accesses-account
+    kind: access
+    from: legacy-billing
+    to: customer-account
+  - id: platform-realizes-ingestion
+    kind: realization
+    from: meter-data-platform
+    to: read-ingestion
+  - id: platform-composes-api
+    kind: composition
+    from: meter-data-platform
+    to: reads-api
+  - id: api-serves-legacy
+    kind: serving
+    from: reads-api
+    to: legacy-billing
+  - id: platform-accesses-reads
+    kind: access
+    from: meter-data-platform
+    to: meter-read
+  - id: crew-to-platform-reads
+    kind: flow
+    from: field-crew
+    to: meter-data-platform
+  - id: dc-hosts-legacy
+    kind: realization
+    from: regional-data-centre
+    to: legacy-billing
+  - id: cloud-hosts-platform
+    kind: realization
+    from: cloud-region
+    to: meter-data-platform

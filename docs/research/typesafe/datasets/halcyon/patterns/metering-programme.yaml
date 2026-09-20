@@ -1,0 +1,52 @@
+format: yarramate/pattern/v1
+id: metering-programme
+version: "1.0"
+# The building blocks: the shape each sector kind promises. An instance binds
+# its parts by slot name; the compiler mints the wiring between them, and a
+# slot left empty becomes a question in the interview.
+patterns:
+  - kind: halcyon/water-utility@1.0#metering-platform
+    parts:
+      ingestion:
+        kind: yarramate/core@0.1#applicationService
+        required: true
+      reads-api:
+        kind: yarramate/core@0.1#applicationInterface
+        required: true
+      host:
+        kind: yarramate/core@0.1#node
+        required: true
+      reads:
+        kind: yarramate/core@0.1#dataObject
+      field-channel:
+        kind: yarramate/core@0.1#applicationInterface
+    wiring:
+      - from: self
+        kind: yarramate/core@0.1#realization
+        to: ingestion
+      - from: self
+        kind: yarramate/core@0.1#composition
+        to: reads-api
+      - from: host
+        kind: yarramate/core@0.1#realization
+        to: self
+      - from: self
+        kind: yarramate/core@0.1#access
+        to: reads
+      - from: self
+        kind: yarramate/core@0.1#composition
+        to: field-channel
+  - kind: halcyon/water-utility@1.0#metering-programme
+    parts:
+      platform:
+        kind: halcyon/water-utility@1.0#metering-platform
+        required: true
+      fleet:
+        kind: halcyon/water-utility@1.0#meter-fleet
+    wiring:
+      - from: self
+        kind: yarramate/core@0.1#realization
+        to: platform
+      - from: self
+        kind: yarramate/core@0.1#realization
+        to: fleet

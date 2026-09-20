@@ -1,0 +1,15 @@
+format: yarramate/likec4-kind-mapping/v1
+id: halcyon-likec4-kinds
+version: "1.0"
+# LikeC4 only knows the core kinds, so each sector kind draws as the core
+# kind it specialises.
+conceptKinds:
+  - native: halcyon/water-utility@1.0#regulatory-constraint
+    external: constraint
+  - native: halcyon/water-utility@1.0#metering-platform
+    external: applicationComponent
+  - native: halcyon/water-utility@1.0#metering-programme
+    external: workPackage
+  - native: halcyon/water-utility@1.0#meter-fleet
+    external: equipment
+relationshipKinds: []

@@ -1,0 +1,1512 @@
+[
+  {
+    "pair": "likec4-export-tests|likec4-prepare-tests",
+    "a": "test/likec4-export.test.ts",
+    "aDescription": null,
+    "b": "test/likec4-prepare.test.ts",
+    "bDescription": null,
+    "lexical": 0.815,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "likec4-project-export-source|likec4-project-source",
+    "a": "src/adapters/likec4-project-export.ts",
+    "aDescription": null,
+    "b": "src/adapters/likec4-project.ts",
+    "bDescription": null,
+    "lexical": 0.8,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "reconciliation-source|reconciliation-text-source",
+    "a": "src/reconciliation.ts",
+    "aDescription": null,
+    "b": "src/reconciliation-text.ts",
+    "bDescription": null,
+    "lexical": 0.808,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "visual-browser-shell|visual-browser-tests",
+    "a": "src/visual-app/index.html",
+    "aDescription": null,
+    "b": "test/visual-app-state.test.ts",
+    "bDescription": null,
+    "lexical": 0.8,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "visual-context-menu-model-source|visual-context-menu-source",
+    "a": "src/visual-app/context-menu-model.ts",
+    "aDescription": null,
+    "b": "src/visual-app/context-menu.tsx",
+    "bDescription": null,
+    "lexical": 0.813,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "visual-event-schema-source|visual-response-schema-source",
+    "a": "schema/yarramate-visual-event.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-response.schema.json",
+    "bDescription": null,
+    "lexical": 0.864,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "visual-event-schema-source|visual-status-schema-source",
+    "a": "schema/yarramate-visual-event.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-status.schema.json",
+    "bDescription": null,
+    "lexical": 0.878,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "visual-faults-source|visual-mount-source",
+    "a": "src/visual-app/faults.ts",
+    "aDescription": null,
+    "b": "src/visual-app/mount.tsx",
+    "bDescription": null,
+    "lexical": 0.842,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "visual-graph-schema-source|visual-model-schema-source",
+    "a": "schema/yarramate-visual-graph.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-model.schema.json",
+    "bDescription": null,
+    "lexical": 0.878,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "visual-instance-draft-panel-source|visual-subject-draft-panel-source",
+    "a": "src/visual-app/instance-draft-panel.tsx",
+    "aDescription": null,
+    "b": "src/visual-app/subject-draft-panel.tsx",
+    "bDescription": null,
+    "lexical": 0.8,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "visual-main-source|visual-mount-source",
+    "a": "src/visual-app/main.tsx",
+    "aDescription": null,
+    "b": "src/visual-app/mount.tsx",
+    "bDescription": null,
+    "lexical": 0.85,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "visual-protocol-client-source|visual-protocol-contract-source",
+    "a": "src/adapters/visual/client.ts",
+    "aDescription": null,
+    "b": "src/adapters/visual/protocol-contract.ts",
+    "bDescription": null,
+    "lexical": 0.806,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "visual-protocol-contract-source|visual-protocol-source",
+    "a": "src/adapters/visual/protocol-contract.ts",
+    "aDescription": null,
+    "b": "src/adapters/visual/protocol.ts",
+    "bDescription": null,
+    "lexical": 0.8,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "visual-query-fields-source|visual-query-panel-source",
+    "a": "src/visual-app/query-fields.tsx",
+    "aDescription": null,
+    "b": "src/visual-app/query-panel.tsx",
+    "bDescription": null,
+    "lexical": 0.846,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "visual-quick-filter-source|visual-subject-filter-source",
+    "a": "src/visual-app/quick-filter.tsx",
+    "aDescription": null,
+    "b": "src/visual-app/subject-filter.ts",
+    "bDescription": null,
+    "lexical": 0.821,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "visual-response-schema-source|visual-session-request-schema-source",
+    "a": "schema/yarramate-visual-response.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-session-request.schema.json",
+    "bDescription": null,
+    "lexical": 0.804,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "visual-response-schema-source|visual-session-started-schema-source",
+    "a": "schema/yarramate-visual-response.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-session-started.schema.json",
+    "bDescription": null,
+    "lexical": 0.824,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "visual-response-schema-source|visual-status-schema-source",
+    "a": "schema/yarramate-visual-response.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-status.schema.json",
+    "bDescription": null,
+    "lexical": 0.841,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "visual-session-descriptor-schema-source|visual-session-request-schema-source",
+    "a": "schema/yarramate-visual-session-descriptor.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-session-request.schema.json",
+    "bDescription": null,
+    "lexical": 0.852,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "visual-session-descriptor-schema-source|visual-session-started-schema-source",
+    "a": "schema/yarramate-visual-session-descriptor.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-session-started.schema.json",
+    "bDescription": null,
+    "lexical": 0.852,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "visual-session-request-schema-source|visual-session-started-schema-source",
+    "a": "schema/yarramate-visual-session-request.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-session-started.schema.json",
+    "bDescription": null,
+    "lexical": 0.863,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "visual-session-server-source|visual-session-store-source",
+    "a": "src/adapters/visual/session-server.ts",
+    "aDescription": null,
+    "b": "src/adapters/visual/session-store.ts",
+    "bDescription": null,
+    "lexical": 1,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "visual-session-server-tests|visual-session-store-tests",
+    "a": "test/visual-session-server.test.ts",
+    "aDescription": null,
+    "b": "test/visual-session-store.test.ts",
+    "bDescription": null,
+    "lexical": 1,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "visual-state-source|visual-workspace-state-source",
+    "a": "src/visual-app/state.ts",
+    "aDescription": null,
+    "b": "src/visual-app/workspace-state.ts",
+    "bDescription": null,
+    "lexical": 0.8,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "visual-view-tree-model-source|visual-view-tree-source",
+    "a": "src/visual-app/view-tree-model.ts",
+    "aDescription": null,
+    "b": "src/visual-app/view-tree.tsx",
+    "bDescription": null,
+    "lexical": 0.8,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "add-command|ask-command",
+    "a": "Add command",
+    "aDescription": "Adds a concept only when the candidate workspace compiles successfully.",
+    "b": "Ask command",
+    "bDescription": "One entry point for every consumed-now read - orientation with the backlog-shaped verdict, the filterable roster, free-text-seeded slices, the advise composition, build order, open questions, and state comparison.",
+    "lexical": 0.818,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "compare-command|compile-command",
+    "a": "Compare command",
+    "aDescription": "Emits a deterministic architecture-state comparison for humans, CI, and agents.",
+    "b": "Compile command",
+    "bDescription": "Emits the normative graph-v2 interchange document without writing a derived artifact.",
+    "lexical": 0.867,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "connect-command|context-command",
+    "a": "Connect command",
+    "aDescription": "Adds a relationship only when the candidate workspace compiles successfully.",
+    "b": "Context command",
+    "bDescription": "Renders an authored or ad-hoc projection slice as agent-ready context within an optional token budget.",
+    "lexical": 0.867,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "context-command|next-command",
+    "a": "Context command",
+    "aDescription": "Renders an authored or ad-hoc projection slice as agent-ready context within an optional token budget.",
+    "b": "Next command",
+    "bDescription": "Reports planned subjects in a projection in declared dependency order with per-subject evidence coverage.",
+    "lexical": 0.8,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "new-command|next-command",
+    "a": "New command",
+    "aDescription": "Scaffolds a projection document through a validated write that refuses to persist an invalid candidate.",
+    "b": "Next command",
+    "bDescription": "Reports planned subjects in a projection in declared dependency order with per-subject evidence coverage.",
+    "lexical": 0.833,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "new-command|view-command",
+    "a": "New command",
+    "aDescription": "Scaffolds a projection document through a validated write that refuses to persist an invalid candidate.",
+    "b": "View command",
+    "bDescription": "Rendered a projection result as deterministic Markdown for reviewers, the human-facing counterpart to the JSON context of the same projection.",
+    "lexical": 0.833,
+    "currentRule": true,
+    "label": null
+  },
+  {
+    "pair": "likec4-generated-project-schema-source|likec4-generated-project-v2-schema-source",
+    "a": "schema/yarramate-likec4-generated-project.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-likec4-generated-project-v2.schema.json",
+    "bDescription": null,
+    "lexical": 0.946,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "likec4-diagnostic-result-schema-source|visual-diagnostic-result-schema-source",
+    "a": "schema/yarramate-likec4-diagnostic-result.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-diagnostic-result.schema.json",
+    "bDescription": null,
+    "lexical": 0.906,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "apply-result-schema-source|ask-result-schema-source",
+    "a": "schema/yarramate-apply-result.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-ask-result.schema.json",
+    "bDescription": null,
+    "lexical": 0.902,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "ask-result-schema-source|check-result-schema-source",
+    "a": "schema/yarramate-ask-result.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-check-result.schema.json",
+    "bDescription": null,
+    "lexical": 0.902,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-graph-schema-source|visual-status-schema-source",
+    "a": "schema/yarramate-visual-graph.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-status.schema.json",
+    "bDescription": null,
+    "lexical": 0.902,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "new-command-source|next-command-source",
+    "a": "src/new-command.ts",
+    "aDescription": null,
+    "b": "src/next-command.ts",
+    "bDescription": null,
+    "lexical": 0.895,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-handoff-schema-source|visual-layout-schema-source",
+    "a": "schema/yarramate-visual-handoff.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-layout.schema.json",
+    "bDescription": null,
+    "lexical": 0.884,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-event-schema-source|visual-layout-schema-source",
+    "a": "schema/yarramate-visual-event.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-layout.schema.json",
+    "bDescription": null,
+    "lexical": 0.881,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-layout-schema-source|visual-status-schema-source",
+    "a": "schema/yarramate-visual-layout.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-status.schema.json",
+    "bDescription": null,
+    "lexical": 0.881,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "apply-result-schema-source|check-result-schema-source",
+    "a": "schema/yarramate-apply-result.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-check-result.schema.json",
+    "bDescription": null,
+    "lexical": 0.878,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-event-schema-source|visual-graph-schema-source",
+    "a": "schema/yarramate-visual-event.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-graph.schema.json",
+    "bDescription": null,
+    "lexical": 0.878,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-event-schema-source|visual-model-schema-source",
+    "a": "schema/yarramate-visual-event.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-model.schema.json",
+    "bDescription": null,
+    "lexical": 0.878,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-model-schema-source|visual-status-schema-source",
+    "a": "schema/yarramate-visual-model.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-status.schema.json",
+    "bDescription": null,
+    "lexical": 0.878,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "operations-schema-source|projection-schema-source",
+    "a": "schema/yarramate-operations.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-projection.schema.json",
+    "bDescription": null,
+    "lexical": 0.872,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "diagnostic-result-schema-source|likec4-diagnostic-result-schema-source",
+    "a": "schema/yarramate-diagnostic-result.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-likec4-diagnostic-result.schema.json",
+    "bDescription": null,
+    "lexical": 0.868,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "diagnostic-result-schema-source|visual-diagnostic-result-schema-source",
+    "a": "schema/yarramate-diagnostic-result.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-diagnostic-result.schema.json",
+    "bDescription": null,
+    "lexical": 0.868,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-handoff-schema-source|visual-model-schema-source",
+    "a": "schema/yarramate-visual-handoff.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-model.schema.json",
+    "bDescription": null,
+    "lexical": 0.86,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "likec4-export-mapping-source|likec4-kind-profile-source",
+    "a": ".yarramate/integrations/likec4/subject-mapping.yaml",
+    "aDescription": null,
+    "b": ".yarramate/integrations/likec4/kind-mapping.yaml",
+    "bDescription": null,
+    "lexical": 0.857,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "relationship-drafting-source|relationship-reading-source",
+    "a": "src/relationship-drafting.ts",
+    "aDescription": null,
+    "b": "src/relationship-reading.ts",
+    "bDescription": null,
+    "lexical": 0.857,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-graph-schema-source|visual-layout-schema-source",
+    "a": "schema/yarramate-visual-graph.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-layout.schema.json",
+    "bDescription": null,
+    "lexical": 0.857,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-layout-schema-source|visual-layout-sidecar-source",
+    "a": "schema/yarramate-visual-layout.schema.json",
+    "aDescription": null,
+    "b": "src/adapters/visual/layout-sidecar.ts",
+    "bDescription": null,
+    "lexical": 0.857,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-layout-schema-source|visual-model-schema-source",
+    "a": "schema/yarramate-visual-layout.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-model.schema.json",
+    "bDescription": null,
+    "lexical": 0.857,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "check-result-schema-source|likec4-check-result-schema-source",
+    "a": "schema/yarramate-check-result.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-likec4-check-result.schema.json",
+    "bDescription": null,
+    "lexical": 0.854,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-cli-source|visual-protocol-client-source",
+    "a": "src/adapters/visual-cli.ts",
+    "aDescription": null,
+    "b": "src/adapters/visual/client.ts",
+    "bDescription": null,
+    "lexical": 0.85,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "projection-result-schema-source|projection-schema-source",
+    "a": "schema/yarramate-projection-result.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-projection.schema.json",
+    "bDescription": null,
+    "lexical": 0.848,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "profile-schema-source|projection-schema-source",
+    "a": "schema/yarramate-profile.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-projection.schema.json",
+    "bDescription": null,
+    "lexical": 0.846,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "operations-schema-source|pattern-schema-source",
+    "a": "schema/yarramate-operations.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-pattern.schema.json",
+    "bDescription": null,
+    "lexical": 0.842,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "operations-schema-source|profile-schema-source",
+    "a": "schema/yarramate-operations.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-profile.schema.json",
+    "bDescription": null,
+    "lexical": 0.842,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "evidence-report-schema-source|evidence-schema-source",
+    "a": "schema/yarramate-evidence-report.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-evidence.schema.json",
+    "bDescription": null,
+    "lexical": 0.841,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-graph-schema-source|visual-response-schema-source",
+    "a": "schema/yarramate-visual-graph.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-response.schema.json",
+    "bDescription": null,
+    "lexical": 0.841,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-handoff-schema-source|visual-response-schema-source",
+    "a": "schema/yarramate-visual-handoff.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-response.schema.json",
+    "bDescription": null,
+    "lexical": 0.841,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-layout-schema-source|visual-response-schema-source",
+    "a": "schema/yarramate-visual-layout.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-response.schema.json",
+    "bDescription": null,
+    "lexical": 0.841,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-model-schema-source|visual-response-schema-source",
+    "a": "schema/yarramate-visual-model.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-response.schema.json",
+    "bDescription": null,
+    "lexical": 0.841,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-local-host-source|visual-socket-host-source",
+    "a": "src/visual-app/local-host.ts",
+    "aDescription": null,
+    "b": "src/visual-app/socket-host.ts",
+    "bDescription": null,
+    "lexical": 0.84,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "adapter-mapping-schema-source|graph-schema-source",
+    "a": "schema/yarramate-adapter-mapping.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-graph-v2.schema.json",
+    "bDescription": null,
+    "lexical": 0.838,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-event-schema-source|visual-handoff-schema-source",
+    "a": "schema/yarramate-visual-event.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-handoff.schema.json",
+    "bDescription": null,
+    "lexical": 0.837,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-graph-schema-source|visual-handoff-schema-source",
+    "a": "schema/yarramate-visual-graph.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-handoff.schema.json",
+    "bDescription": null,
+    "lexical": 0.837,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-handoff-schema-source|visual-status-schema-source",
+    "a": "schema/yarramate-visual-handoff.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-status.schema.json",
+    "bDescription": null,
+    "lexical": 0.837,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "adapter-mapping-schema-source|pattern-schema-source",
+    "a": "schema/yarramate-adapter-mapping.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-pattern.schema.json",
+    "bDescription": null,
+    "lexical": 0.833,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "adapter-mapping-schema-source|profile-schema-source",
+    "a": "schema/yarramate-adapter-mapping.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-profile.schema.json",
+    "bDescription": null,
+    "lexical": 0.833,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "likec4-generated-project-schema-source|likec4-project-schema-source",
+    "a": "schema/yarramate-likec4-generated-project.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-likec4-project.schema.json",
+    "bDescription": null,
+    "lexical": 0.833,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "pattern-schema-source|profile-schema-source",
+    "a": "schema/yarramate-pattern.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-profile.schema.json",
+    "bDescription": null,
+    "lexical": 0.833,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "schema-validators-generated-source|schema-validators-operations-generated-source",
+    "a": "src/schema-validators.generated.ts",
+    "aDescription": null,
+    "b": "src/schema-validators-operations.generated.ts",
+    "bDescription": null,
+    "lexical": 0.833,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-cli-source|visual-main-source",
+    "a": "src/adapters/visual-cli.ts",
+    "aDescription": null,
+    "b": "src/visual-app/main.tsx",
+    "bDescription": null,
+    "lexical": 0.833,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-workspace-model-source|visual-workspace-state-source",
+    "a": "src/adapters/visual/workspace-model.ts",
+    "aDescription": null,
+    "b": "src/visual-app/workspace-state.ts",
+    "bDescription": null,
+    "lexical": 0.828,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "ask-result-schema-source|diagnostic-result-schema-source",
+    "a": "schema/yarramate-ask-result.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-diagnostic-result.schema.json",
+    "bDescription": null,
+    "lexical": 0.826,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "check-result-schema-source|projection-result-schema-source",
+    "a": "schema/yarramate-check-result.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-projection-result.schema.json",
+    "bDescription": null,
+    "lexical": 0.826,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "host-entry-source|tools-entry-source",
+    "a": "src/host-entry.ts",
+    "aDescription": null,
+    "b": "src/tools-entry.ts",
+    "bDescription": null,
+    "lexical": 0.824,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "pattern-schema-source|projection-schema-source",
+    "a": "schema/yarramate-pattern.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-projection.schema.json",
+    "bDescription": null,
+    "lexical": 0.821,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "interrogation-report-schema-source|reconciliation-report-schema-source",
+    "a": "schema/yarramate-interrogation-report.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-reconciliation-report.schema.json",
+    "bDescription": null,
+    "lexical": 0.82,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "evidence-schema-source|workspace-schema-source",
+    "a": "schema/yarramate-evidence.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-workspace.schema.json",
+    "bDescription": null,
+    "lexical": 0.816,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "profile-schema-source|workspace-schema-source",
+    "a": "schema/yarramate-profile.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-workspace.schema.json",
+    "bDescription": null,
+    "lexical": 0.816,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "likec4-check-result-schema-source|likec4-diagnostic-result-schema-source",
+    "a": "schema/yarramate-likec4-check-result.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-likec4-diagnostic-result.schema.json",
+    "bDescription": null,
+    "lexical": 0.811,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "adapter-mapping-schema-source|document-schema-source",
+    "a": "schema/yarramate-adapter-mapping.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-document.schema.json",
+    "bDescription": null,
+    "lexical": 0.811,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "adapter-mapping-schema-source|evidence-schema-source",
+    "a": "schema/yarramate-adapter-mapping.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-evidence.schema.json",
+    "bDescription": null,
+    "lexical": 0.811,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "document-schema-source|evidence-schema-source",
+    "a": "schema/yarramate-document.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-evidence.schema.json",
+    "bDescription": null,
+    "lexical": 0.811,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "document-schema-source|pattern-schema-source",
+    "a": "schema/yarramate-document.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-pattern.schema.json",
+    "bDescription": null,
+    "lexical": 0.811,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "document-schema-source|profile-schema-source",
+    "a": "schema/yarramate-document.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-profile.schema.json",
+    "bDescription": null,
+    "lexical": 0.811,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "evidence-schema-source|pattern-schema-source",
+    "a": "schema/yarramate-evidence.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-pattern.schema.json",
+    "bDescription": null,
+    "lexical": 0.811,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "evidence-schema-source|profile-schema-source",
+    "a": "schema/yarramate-evidence.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-profile.schema.json",
+    "bDescription": null,
+    "lexical": 0.811,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-context-menu-source|visual-model-schema-source",
+    "a": "src/visual-app/context-menu.tsx",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-model.schema.json",
+    "bDescription": null,
+    "lexical": 0.615,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-section-stack-source|visual-session-store-tests",
+    "a": "src/visual-app/section-stack.tsx",
+    "aDescription": null,
+    "b": "test/visual-session-store.test.ts",
+    "bDescription": null,
+    "lexical": 0.607,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-kind-icons-source|visual-raw-imports-types-source",
+    "a": "src/visual-app/kind-icons.ts",
+    "aDescription": null,
+    "b": "src/visual-app/raw-imports.d.ts",
+    "bDescription": null,
+    "lexical": 0.615,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "likec4-adapter-entry-source|source-store-source",
+    "a": "src/adapters/likec4.ts",
+    "aDescription": null,
+    "b": "src/source-store.ts",
+    "bDescription": null,
+    "lexical": 0.615,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-quick-filter-source|visual-state-source",
+    "a": "src/visual-app/quick-filter.tsx",
+    "aDescription": null,
+    "b": "src/visual-app/state.ts",
+    "bDescription": null,
+    "lexical": 0.615,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "apply-command|status-command",
+    "a": "Apply command",
+    "aDescription": "Applies an atomic batch of validated writes; the whole candidate workspace must compile before a single byte lands.",
+    "b": "Status command",
+    "bDescription": "Emits one machine-readable workspace orientation summary combining check, reconciliation, and inventory.",
+    "lexical": 0.615,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-badges-source|visual-handoff-schema-source",
+    "a": "src/visual-app/badges.ts",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-handoff.schema.json",
+    "bDescription": null,
+    "lexical": 0.607,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-editor-host-source|visual-quick-filter-source",
+    "a": "src/visual-app/editor-host.ts",
+    "aDescription": null,
+    "b": "src/visual-app/quick-filter.tsx",
+    "bDescription": null,
+    "lexical": 0.615,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "likec4-prepare-tests|visual-protocol-tests",
+    "a": "test/likec4-prepare.test.ts",
+    "aDescription": null,
+    "b": "test/visual-protocol.test.ts",
+    "bDescription": null,
+    "lexical": 0.607,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "adapter-mapping-tests|visual-cli-tests",
+    "a": "test/adapter-mapping.test.ts",
+    "aDescription": null,
+    "b": "test/visual-cli.test.ts",
+    "bDescription": null,
+    "lexical": 0.609,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-changeset-tray-source|visual-status-schema-source",
+    "a": "src/visual-app/changeset-tray.tsx",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-status.schema.json",
+    "bDescription": null,
+    "lexical": 0.607,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-inspector-source|visual-shipped-catalogue-source",
+    "a": "src/visual-app/subject-form.tsx",
+    "aDescription": null,
+    "b": "src/visual-app/shipped-catalogue.ts",
+    "bDescription": null,
+    "lexical": 0.613,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-event-schema-source|visual-kind-palette-source",
+    "a": "schema/yarramate-visual-event.schema.json",
+    "aDescription": null,
+    "b": "src/visual-app/kind-palette.tsx",
+    "bDescription": null,
+    "lexical": 0.615,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-query-fields-source|visual-style-presets-source",
+    "a": "src/visual-app/query-fields.tsx",
+    "aDescription": null,
+    "b": "src/visual-app/style-presets.ts",
+    "bDescription": null,
+    "lexical": 0.615,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "root-workspace-manifest|tools-workspace-source",
+    "a": ".yarramate/workspace.yaml",
+    "aDescription": null,
+    "b": "src/tools/workspace.ts",
+    "bDescription": null,
+    "lexical": 0.609,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-badges-source|visual-model-schema-source",
+    "a": "src/visual-app/badges.ts",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-model.schema.json",
+    "bDescription": null,
+    "lexical": 0.615,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-context-menu-source|visual-editor-host-source",
+    "a": "src/visual-app/context-menu.tsx",
+    "aDescription": null,
+    "b": "src/visual-app/editor-host.ts",
+    "bDescription": null,
+    "lexical": 0.615,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-editor-host-source|visual-status-schema-source",
+    "a": "src/visual-app/editor-host.ts",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-status.schema.json",
+    "bDescription": null,
+    "lexical": 0.615,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-kind-icons-source|visual-request-source",
+    "a": "src/visual-app/kind-icons.ts",
+    "aDescription": null,
+    "b": "src/adapters/visual/request.ts",
+    "bDescription": null,
+    "lexical": 0.609,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-canvas-source|visual-kind-palette-source",
+    "a": "src/visual-app/graph-canvas.tsx",
+    "aDescription": null,
+    "b": "src/visual-app/kind-palette.tsx",
+    "bDescription": null,
+    "lexical": 0.615,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "likec4-generated-project-v2-schema-source|projection-result-schema-source",
+    "a": "schema/yarramate-likec4-generated-project-v2.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-projection-result.schema.json",
+    "bDescription": null,
+    "lexical": 0.607,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-quick-filter-source|visual-slots-model-source",
+    "a": "src/visual-app/quick-filter.tsx",
+    "aDescription": null,
+    "b": "src/visual-app/slots-model.ts",
+    "bDescription": null,
+    "lexical": 0.615,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-protocol-client-source|visual-raw-imports-types-source",
+    "a": "src/adapters/visual/client.ts",
+    "aDescription": null,
+    "b": "src/visual-app/raw-imports.d.ts",
+    "bDescription": null,
+    "lexical": 0.615,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "workspace-manifest|workspace-schema",
+    "a": "Workspace manifest",
+    "aDescription": "Explicit versioned declaration of every workspace input; nothing is discovered implicitly.",
+    "b": "Workspace manifest JSON Schema",
+    "bDescription": "Normative structure for workspace manifests.",
+    "lexical": 0.611,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "graphify-tests|visual-canvas-layout-tests",
+    "a": "test/graphify-cli.test.ts",
+    "aDescription": null,
+    "b": "test/graph-canvas-layout.test.ts",
+    "bDescription": null,
+    "lexical": 0.613,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-kind-icons-source|visual-session-client-source",
+    "a": "src/visual-app/kind-icons.ts",
+    "aDescription": null,
+    "b": "src/visual-app/session-client.tsx",
+    "bDescription": null,
+    "lexical": 0.607,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-session-store-source|visual-style-presets-source",
+    "a": "src/adapters/visual/session-store.ts",
+    "aDescription": null,
+    "b": "src/visual-app/style-presets.ts",
+    "bDescription": null,
+    "lexical": 0.615,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-browser-shell|visual-mount-source",
+    "a": "src/visual-app/index.html",
+    "aDescription": null,
+    "b": "src/visual-app/mount.tsx",
+    "bDescription": null,
+    "lexical": 0.619,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-browser-source|visual-event-schema-source",
+    "a": "src/visual-app/App.tsx",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-event.schema.json",
+    "bDescription": null,
+    "lexical": 0.615,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "likec4-generated-project-schema-source|profile-schema-source",
+    "a": "schema/yarramate-likec4-generated-project.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-profile.schema.json",
+    "bDescription": null,
+    "lexical": 0.604,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-describe-query-source|visual-view-identity-source",
+    "a": "src/visual-app/describe-query.ts",
+    "aDescription": null,
+    "b": "src/adapters/visual/view-identity.ts",
+    "bDescription": null,
+    "lexical": 0.607,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-cli-source|visual-quick-filter-source",
+    "a": "src/adapters/visual-cli.ts",
+    "aDescription": null,
+    "b": "src/visual-app/quick-filter.tsx",
+    "bDescription": null,
+    "lexical": 0.615,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "compiler-source|compiler-tests",
+    "a": "src/compiler.ts",
+    "aDescription": null,
+    "b": "test/compiler.test.ts",
+    "bDescription": null,
+    "lexical": 0.6,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "likec4-export-mapping-source|likec4-prepare-source",
+    "a": ".yarramate/integrations/likec4/subject-mapping.yaml",
+    "aDescription": null,
+    "b": "src/adapters/likec4-prepare.ts",
+    "bDescription": null,
+    "lexical": 0.607,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "graph-claims-source|graph-projection-source",
+    "a": "src/graph-claims.ts",
+    "aDescription": null,
+    "b": "src/graph-projection.ts",
+    "bDescription": null,
+    "lexical": 0.609,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "graph-projection-source|graph-schema-source",
+    "a": "src/graph-projection.ts",
+    "aDescription": null,
+    "b": "schema/yarramate-graph-v2.schema.json",
+    "bDescription": null,
+    "lexical": 0.609,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-prompt-dialog-source|visual-quick-filter-source",
+    "a": "src/visual-app/prompt-dialog.tsx",
+    "aDescription": null,
+    "b": "src/visual-app/quick-filter.tsx",
+    "bDescription": null,
+    "lexical": 0.607,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "adapter-mapping-schema-source|visual-diagnostic-result-schema-source",
+    "a": "schema/yarramate-adapter-mapping.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-diagnostic-result.schema.json",
+    "bDescription": null,
+    "lexical": 0.604,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "likec4-diagnostic-result-schema-source|visual-session-descriptor-schema-source",
+    "a": "schema/yarramate-likec4-diagnostic-result.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-session-descriptor.schema.json",
+    "bDescription": null,
+    "lexical": 0.611,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-faults-source|visual-query-panel-source",
+    "a": "src/visual-app/faults.ts",
+    "aDescription": null,
+    "b": "src/visual-app/query-panel.tsx",
+    "bDescription": null,
+    "lexical": 0.6,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-canvas-source|visual-graph-schema-source",
+    "a": "src/visual-app/graph-canvas.tsx",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-graph.schema.json",
+    "bDescription": null,
+    "lexical": 0.615,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-describe-query-source|visual-edge-routes-source",
+    "a": "src/visual-app/describe-query.ts",
+    "aDescription": null,
+    "b": "src/visual-app/edge-routes.ts",
+    "bDescription": null,
+    "lexical": 0.607,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-socket-host-source|visual-status-schema-source",
+    "a": "src/visual-app/socket-host.ts",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-status.schema.json",
+    "bDescription": null,
+    "lexical": 0.615,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "compiler-tests|graph-schema-tests",
+    "a": "test/compiler.test.ts",
+    "aDescription": null,
+    "b": "test/graph-schema.test.ts",
+    "bDescription": null,
+    "lexical": 0.6,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "evidence-tests|visual-browser-tests",
+    "a": "test/evidence.test.ts",
+    "aDescription": null,
+    "b": "test/visual-app-state.test.ts",
+    "bDescription": null,
+    "lexical": 0.6,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "evidence-tests|graphify-tests",
+    "a": "test/evidence.test.ts",
+    "aDescription": null,
+    "b": "test/graphify-cli.test.ts",
+    "bDescription": null,
+    "lexical": 0.6,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-local-host-source|visual-raw-imports-types-source",
+    "a": "src/visual-app/local-host.ts",
+    "aDescription": null,
+    "b": "src/visual-app/raw-imports.d.ts",
+    "bDescription": null,
+    "lexical": 0.615,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "likec4-generated-project-schema-source|visual-session-started-schema-source",
+    "a": "schema/yarramate-likec4-generated-project.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-session-started.schema.json",
+    "bDescription": null,
+    "lexical": 0.642,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-main-source|visual-open-questions-source",
+    "a": "src/visual-app/main.tsx",
+    "aDescription": null,
+    "b": "src/visual-app/open-questions.tsx",
+    "bDescription": null,
+    "lexical": 0.607,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-event-schema-source|visual-save-view-source",
+    "a": "schema/yarramate-visual-event.schema.json",
+    "aDescription": null,
+    "b": "src/visual-app/save-view.tsx",
+    "bDescription": null,
+    "lexical": 0.654,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "apply-command|export-command",
+    "a": "Apply command",
+    "aDescription": "Applies an atomic batch of validated writes; the whole candidate workspace must compile before a single byte lands.",
+    "b": "Export command",
+    "bDescription": "Derives every persisted artifact - the canonical graph, projection markdown, the per-concept briefs handoff bundle, and the LikeC4 visualization project delegated to the sibling adapter binary in a separate process.",
+    "lexical": 0.643,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "digest-source|evidence-source",
+    "a": "src/digest.ts",
+    "aDescription": null,
+    "b": "src/evidence.ts",
+    "bDescription": null,
+    "lexical": 0.6,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-context-menu-source|visual-nesting-span-source",
+    "a": "src/visual-app/context-menu.tsx",
+    "aDescription": null,
+    "b": "src/visual-app/nesting-span.ts",
+    "bDescription": null,
+    "lexical": 0.615,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "evidence-schema-source|interrogation-report-schema-source",
+    "a": "schema/yarramate-evidence.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-interrogation-report.schema.json",
+    "bDescription": null,
+    "lexical": 0.653,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "likec4-generated-project-schema-source|visual-status-schema-source",
+    "a": "schema/yarramate-likec4-generated-project.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-status.schema.json",
+    "bDescription": null,
+    "lexical": 0.623,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "likec4-generated-project-schema-source|state-comparison-schema-source",
+    "a": "schema/yarramate-likec4-generated-project.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-state-comparison.schema.json",
+    "bDescription": null,
+    "lexical": 0.604,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "apply-result-schema-source|visual-event-schema-source",
+    "a": "schema/yarramate-apply-result.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-visual-event.schema.json",
+    "bDescription": null,
+    "lexical": 0.756,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "check-result-schema-source|reconciliation-report-schema-source",
+    "a": "schema/yarramate-check-result.schema.json",
+    "aDescription": null,
+    "b": "schema/yarramate-reconciliation-report.schema.json",
+    "bDescription": null,
+    "lexical": 0.7,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "likec4-export-projection-source|likec4-kind-profile-source",
+    "a": ".yarramate/projections/likec4-export-path.yaml",
+    "aDescription": null,
+    "b": ".yarramate/integrations/likec4/kind-mapping.yaml",
+    "bDescription": null,
+    "lexical": 0.613,
+    "currentRule": false,
+    "label": null
+  },
+  {
+    "pair": "visual-local-host-source|visual-protocol-source",
+    "a": "src/visual-app/local-host.ts",
+    "aDescription": null,
+    "b": "src/adapters/visual/protocol.ts",
+    "bDescription": null,
+    "lexical": 0.625,
+    "currentRule": false,
+    "label": null
+  }
+]

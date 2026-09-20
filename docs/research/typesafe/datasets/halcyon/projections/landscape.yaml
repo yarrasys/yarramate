@@ -1,0 +1,13 @@
+format: yarramate/projection/v1
+id: landscape
+version: "1.0"
+query:
+  documents:
+    - halcyon
+  statuses:
+    - current
+    - planned
+presentation:
+  title: Engagement landscape
+  description: Everything recorded so far, current and planned, with the relationships between them.
+  notation: archimate

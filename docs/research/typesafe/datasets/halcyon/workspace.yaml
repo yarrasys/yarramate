@@ -1,0 +1,15 @@
+format: yarramate/workspace/v1
+id: halcyon
+documents:
+  - architecture/*.yaml
+profiles:
+  - profiles/water-utility.yaml
+projections:
+  - projections/*.yaml
+patterns:
+  - patterns/metering-programme.yaml
+questions:
+  - questions/water-utility.yaml
+adapterMappings:
+  - integrations/likec4/subject-mapping.yaml
+evidence: []

@@ -1,0 +1,356 @@
+format: yarramate/question-catalogue/v1
+id: water-utility
+version: "1.0"
+profile: halcyon/water-utility@1.0
+presentation:
+  title: Water utility questions
+  description: >-
+    The questions a metering engagement at a water utility has to answer,
+    added to the core interview. Each one joins a core wave rather than
+    declaring its own, so it is asked at the moment the core interview
+    reaches that layer.
+
+# No waves of our own: every question below joins a wave the core
+# catalogue declares.
+waves: []
+
+questions:
+  # ---- motivation ----------------------------------------------------------
+  - id: accuracy-outcome-missing
+    wave: motivation
+    since: "1.0"
+    scope: workspace
+    trigger:
+      - condition: no-subject-of-kind
+        kinds:
+          - yarramate/core@0.1#outcome
+    question: >-
+      What number will show the board that billing accuracy improved?
+    askPlain: >-
+      When this is done, what figure do you want to put in front of the
+      board: fewer estimated bills, fewer disputed bills, something else?
+    materiality: >-
+      Without a measurable outcome the programme cannot be declared finished,
+      and the platform's read validation rules have no target to be tuned
+      against.
+    authority: human
+    resolution: >-
+      Add an outcome (for example an estimated-bill rate) and a realization
+      relationship from the outcome to the goal it makes measurable.
+
+  - id: estimate-baseline-missing
+    wave: motivation
+    since: "1.0"
+    scope: workspace
+    trigger:
+      - condition: no-subject-of-kind
+        kinds:
+          - yarramate/core@0.1#assessment
+    question: >-
+      Has anyone written down how many bills are estimated today?
+    askPlain: >-
+      What is the estimated-bill rate right now, and where does that number
+      come from? We need the starting line before we can show improvement.
+    materiality: >-
+      The baseline is what the outcome is measured against; without it the
+      programme can finish on time and still not be able to show it worked.
+    authority: human
+    resolution: >-
+      Add an assessment carrying today's figure and relate it to the driver
+      with an association or influence relationship.
+
+  - id: regulation-unowned
+    wave: motivation
+    since: "1.0"
+    scope: subject
+    subjects:
+      kinds:
+        - halcyon/water-utility@1.0#regulatory-constraint
+    trigger:
+      - condition: missing-claim
+        predicate: yarramate/ownership/owner
+    question: >-
+      Who at the utility answers for {subject.name}?
+    askPlain: >-
+      If the regulator asks whether "{subject.name}" is being met, who picks
+      up the phone?
+    materiality: >-
+      The owner of a regulatory constraint is who signs off the residency
+      evidence at go-live; without one the sign-off lands on the programme
+      sponsor by default.
+    authority: human
+    resolution: >-
+      Set owner on the constraint to the accountable business actor or
+      stakeholder.
+
+  # ---- interaction ---------------------------------------------------------
+  - id: crew-flow-content-unknown
+    wave: interaction
+    since: "1.0"
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#businessActor
+    trigger:
+      - condition: missing-flow-content
+    question: >-
+      What does {subject.name} actually send?
+    askPlain: >-
+      When {subject.name} sends something across, what is in it: a single
+      read, a photo of the dial, a meter swap record, all three?
+    materiality: >-
+      The content of the field flow decides whether ingestion validates
+      single reads or whole meter-change events, which changes the
+      platform's data model and the field app's scope.
+    authority: either
+    resolution: >-
+      Add content to the flow relationship naming what travels.
+
+  # ---- business ------------------------------------------------------------
+  - id: residency-unbound-data
+    wave: business
+    since: "1.0"
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#dataObject
+    trigger:
+      - condition: missing-constraint
+        kinds:
+          - halcyon/water-utility@1.0#regulatory-constraint
+    question: >-
+      Is {subject.name} covered by the data residency rule?
+    askPlain: >-
+      Does "{subject.name}" count as customer data that has to stay in the
+      state? If it does, who decided that, and if it does not, who decided
+      that?
+    materiality: >-
+      Whether a data object is bound by the residency rule decides where it
+      may be stored and processed, which decides which regions and which
+      vendors are eligible to hold it.
+    authority: human
+    resolution: >-
+      Add a constraints entry on the data object referring to the regulatory
+      constraint, or record in its description why it is out of scope.
+
+  - id: billing-run-reads-unknown
+    wave: business
+    since: "1.0"
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#businessProcess
+    trigger:
+      - condition: missing-linkage
+        kinds:
+          - yarramate/core@0.1#access
+        direction: outgoing
+        counterpartKinds:
+          - yarramate/core@0.1#dataObject
+          - yarramate/core@0.1#businessObject
+    question: >-
+      Which reads does {subject.name} bill from?
+    askPlain: >-
+      When {subject.name} runs, where do its meter reads come from, and what
+      happens to a connection that has no read this month?
+    materiality: >-
+      Whether the run reads validated reads from the platform or keeps
+      estimating inside the legacy system decides where estimation logic
+      lives and whether the 24 hour requirement can be tested at all.
+    authority: either
+    resolution: >-
+      Add an access relationship from the process to the read it consumes
+      (mode read) or the account it updates.
+
+  # ---- application ---------------------------------------------------------
+  - id: residency-unbound-platform
+    wave: application
+    since: "1.0"
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#applicationComponent
+      statuses:
+        - planned
+    trigger:
+      - condition: missing-constraint
+        kinds:
+          - halcyon/water-utility@1.0#regulatory-constraint
+    question: >-
+      Which regulation keeps {subject.name} inside the state?
+    askPlain: >-
+      {subject.name} is new. Is it bound by the residency rule, or is
+      someone assuming it is?
+    materiality: >-
+      A planned component that is not bound to the residency constraint can
+      be procured from any region; binding it is what makes the in-state
+      region a requirement rather than a preference.
+    authority: human
+    resolution: >-
+      Add a constraints entry on the component referring to the regulatory
+      constraint.
+
+  - id: field-channel-missing
+    wave: application
+    since: "1.0"
+    scope: subject
+    subjects:
+      kinds:
+        - halcyon/water-utility@1.0#metering-platform
+    trigger:
+      - condition: missing-part
+        patternKinds:
+          - halcyon/water-utility@1.0#metering-platform
+        slots:
+          - field-channel
+    question: >-
+      How do reads get from the field into {subject.name}?
+    askPlain: >-
+      What do the meters and the crews actually talk to: a vendor head-end,
+      a field app, a file drop? {subject.name} has no field-facing interface
+      recorded yet.
+    materiality: >-
+      The field channel decides whether the utility buys a vendor head-end or
+      builds its own ingestion interface, the largest cost line in the
+      programme after the meters themselves.
+    authority: either
+    resolution: >-
+      Add an application interface for the field channel and bind it to the
+      platform's field-channel part.
+
+  - id: service-realizes-no-requirement
+    wave: application
+    since: "1.0"
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#applicationService
+      statuses:
+        - planned
+    trigger:
+      - condition: missing-linkage
+        kinds:
+          - yarramate/core@0.1#realization
+        direction: outgoing
+        counterpartKinds:
+          - yarramate/core@0.1#requirement
+    question: >-
+      Which requirement does {subject.name} exist to meet?
+    askPlain: >-
+      What is the test that says {subject.name} is good enough? The 24 hour
+      rule is the obvious candidate, but nothing says so yet.
+    materiality: >-
+      A planned service that realizes no requirement cannot be accepted or
+      rejected at go-live; naming the requirement is what makes the
+      acceptance test writable.
+    authority: either
+    resolution: >-
+      Add a realization relationship from the service to the requirement it
+      meets.
+
+  - id: outage-handling-unattested
+    wave: application
+    since: "1.0"
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#applicationService
+      statuses:
+        - planned
+    trigger:
+      - condition: missing-attestation
+        topic: outage-handling
+    question: >-
+      What happens to reads when {subject.name} is down?
+    askPlain: >-
+      If {subject.name} is offline for a day, what happens to the reads taken
+      that day, and does billing notice?
+    materiality: >-
+      Whether reads buffer in the field, at the head-end, or not at all
+      decides whether the 24 hour requirement needs a store-and-forward
+      design or a manual re-read process.
+    authority: human
+    resolution: >-
+      Record an attestation with topic outage-handling on the service, naming
+      the decision and who made it.
+
+  # ---- technology ----------------------------------------------------------
+  - id: host-outside-residency
+    wave: technology
+    since: "1.0"
+    scope: subject
+    subjects:
+      kinds:
+        - yarramate/core@0.1#node
+    trigger:
+      - condition: fills-pattern-slot
+        patternKinds:
+          - halcyon/water-utility@1.0#metering-platform
+        slots:
+          - host
+      - condition: missing-constraint
+        kinds:
+          - halcyon/water-utility@1.0#regulatory-constraint
+    question: >-
+      Is {subject.name}, which hosts the metering platform, bound by the
+      residency rule?
+    askPlain: >-
+      The platform runs on {subject.name}. Has anyone recorded that this is
+      inside the state, or is it only in the name?
+    materiality: >-
+      The host is where the residency rule is actually enforced; a host not
+      bound to it can be swapped for a cheaper region without anything in
+      the record objecting.
+    authority: human
+    resolution: >-
+      Add a constraints entry on the node referring to the regulatory
+      constraint.
+
+  # ---- implementation ------------------------------------------------------
+  - id: metering-programme-missing
+    wave: implementation
+    since: "1.0"
+    scope: workspace
+    trigger:
+      - condition: no-subject-of-kind
+        kinds:
+          - halcyon/water-utility@1.0#metering-programme
+    question: >-
+      Where is the meter replacement recorded as a programme of work?
+    askPlain: >-
+      The record says the fleet is ageing and a platform is planned. Where is
+      the programme that actually replaces the meters?
+    materiality: >-
+      Until the replacement is a programme with parts, nothing ties the
+      platform, the fleet and the cutover together, and nothing can be
+      assigned to anyone.
+    authority: human
+    resolution: >-
+      Add a metering programme and bind its platform part; the compiler
+      wires the rest.
+
+  - id: fleet-unbound
+    wave: implementation
+    since: "1.0"
+    scope: subject
+    subjects:
+      kinds:
+        - halcyon/water-utility@1.0#metering-programme
+    trigger:
+      - condition: missing-part
+        patternKinds:
+          - halcyon/water-utility@1.0#metering-programme
+        slots:
+          - fleet
+    question: >-
+      Which meters does {subject.name} replace?
+    askPlain: >-
+      Which meters are in scope for {subject.name}: every residential meter,
+      only the ones past their read accuracy life, commercial meters too?
+    materiality: >-
+      The fleet in scope sets the number of meter swaps, which sets crew
+      capacity and the programme's duration.
+    authority: human
+    resolution: >-
+      Add a meter fleet subject describing the meters in scope and bind it to
+      the programme's fleet part.

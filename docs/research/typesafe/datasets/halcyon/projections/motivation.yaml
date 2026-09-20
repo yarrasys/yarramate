@@ -1,0 +1,21 @@
+format: yarramate/projection/v1
+id: motivation
+version: "1.0"
+query:
+  documents:
+    - halcyon
+  kinds:
+    - yarramate/core@0.1#stakeholder
+    - yarramate/core@0.1#driver
+    - yarramate/core@0.1#goal
+    - yarramate/core@0.1#outcome
+    - yarramate/core@0.1#requirement
+    - yarramate/core@0.1#constraint
+  kindMatching: descendants
+  statuses:
+    - current
+    - planned
+presentation:
+  title: Why this engagement exists
+  description: The stakeholders, drivers, goals and requirements the solution answers to.
+  notation: archimate

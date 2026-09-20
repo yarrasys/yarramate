@@ -1,0 +1,21 @@
+format: yarramate/profile/v1
+id: halcyon/water-utility
+version: "1.0"
+extends: yarramate/core@0.1
+# The vocabulary this engagement needs on top of the core kinds: only the
+# terms the record and the sector questions actually use. Each kind names
+# the core kind it specialises, so every core check still applies to it.
+conceptKinds:
+  - id: metering-programme
+    name: Metering programme
+    parent: yarramate/core@0.1#workPackage
+  - id: metering-platform
+    name: Metering platform
+    parent: yarramate/core@0.1#applicationComponent
+  - id: meter-fleet
+    name: Meter fleet
+    parent: yarramate/core@0.1#equipment
+  - id: regulatory-constraint
+    name: Regulatory constraint
+    parent: yarramate/core@0.1#constraint
+relationshipKinds: []

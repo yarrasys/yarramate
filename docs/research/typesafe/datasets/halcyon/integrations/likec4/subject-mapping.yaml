@@ -1,0 +1,101 @@
+format: yarramate/adapter-mapping/v1
+id: halcyon-likec4
+version: "1.0"
+adapter: likec4
+mappings:
+  - native: ageing-meter-fleet
+    external: ageingMeterFleet
+    type: concept
+  - native: api-serves-legacy
+    external: apiServesLegacy
+    type: relationship
+  - native: bill-from-actual-reads
+    external: billFromActualReads
+    type: concept
+  - native: billing-serves-customer
+    external: billingServesCustomer
+    type: relationship
+  - native: cloud-hosts-platform
+    external: cloudHostsPlatform
+    type: relationship
+  - native: cloud-region
+    external: cloudRegion
+    type: concept
+  - native: crew-to-platform-reads
+    external: crewToPlatformReads
+    type: relationship
+  - native: customer
+    external: customer
+    type: concept
+  - native: customer-account
+    external: customerAccount
+    type: concept
+  - native: data-stays-in-region
+    external: dataStaysInRegion
+    type: concept
+  - native: dc-hosts-legacy
+    external: dcHostsLegacy
+    type: relationship
+  - native: field-crew
+    external: fieldCrew
+    type: concept
+  - native: fleet-influences-goal
+    external: fleetInfluencesGoal
+    type: relationship
+  - native: legacy-accesses-account
+    external: legacyAccessesAccount
+    type: relationship
+  - native: legacy-billing
+    external: legacyBilling
+    type: concept
+  - native: legacy-serves-run
+    external: legacyServesRun
+    type: relationship
+  - native: meter-data-platform
+    external: meterDataPlatform
+    type: concept
+  - native: meter-read
+    external: meterRead
+    type: concept
+  - native: meter-replacement-programme
+    external: meterReplacementProgramme
+    type: concept
+  - native: meter-replacement-programme-realization-platform
+    external: meterReplacementProgrammeRealizationPlatform
+    type: relationship
+  - native: monthly-billing-run
+    external: monthlyBillingRun
+    type: concept
+  - native: operations-director
+    external: operationsDirector
+    type: concept
+  - native: platform-accesses-reads
+    external: platformAccessesReads
+    type: relationship
+  - native: platform-composes-api
+    external: platformComposesApi
+    type: relationship
+  - native: platform-realizes-ingestion
+    external: platformRealizesIngestion
+    type: relationship
+  - native: read-ingestion
+    external: readIngestion
+    type: concept
+  - native: reads-api
+    external: readsApi
+    type: concept
+  - native: reads-within-24h
+    external: readsWithin24h
+    type: concept
+  - native: regional-data-centre
+    external: regionalDataCentre
+    type: concept
+  - native: requirement-realizes-goal
+    external: requirementRealizesGoal
+    type: relationship
+  - native: run-realizes-billing
+    external: runRealizesBilling
+    type: relationship
+  - native: water-billing
+    external: waterBilling
+    type: concept
