@@ -1544,6 +1544,27 @@ a.brand:focus-visible {
   list-style: none;
 }
 
+/* The kind ArchiMate practice expects between these two kinds (#571, ADR 0162).
+   Quiet on purpose: the button is still the button, and the other kinds beside
+   it are still offered. A convention is not a rule.
+
+   The list item groups the button with its marker at a gap visibly tighter
+   than the gap between items. Without that the marker sits in the same rhythm
+   as the buttons and reads as though it belonged to the NEXT kind, which is
+   the opposite of what it says. Found by looking at it. */
+.connection-kinds li {
+  display: inline-flex;
+  align-items: baseline;
+  gap: calc(var(--step) * 0.3);
+}
+
+.connection-usual {
+  font-family: var(--utility);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--quiet);
+}
+
 .connection-search-label {
   display: block;
   margin: 0 0 calc(var(--step) * 0.5);

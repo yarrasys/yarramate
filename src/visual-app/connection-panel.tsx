@@ -3,6 +3,7 @@ import { useState } from 'react'
 import type { CanvasGraph } from '../graph-projection.js'
 import type { YarramateOperation } from '../operations.js'
 import type { RelationshipKind } from '../profile.js'
+import { conventionalRelationshipKind } from '../relationship-convention.js'
 import {
   connectableKinds,
   draftRelationship,
@@ -173,9 +174,23 @@ export const ConnectionPanel = ({
   // permits stays reachable below a rule, because the question is one reading
   // of the gap and the reviewer may know better.
   const asked = new Set((draft.kinds ?? []).map(kindLabelOf))
-  const narrowed = permitted.filter((kind) => asked.has(kind))
-  const others = permitted.filter((kind) => !asked.has(kind))
-  const kinds = narrowed.length === 0 ? permitted : narrowed
+  // What practice expects between these two kinds, where practice expects
+  // anything (#571, ADR 0162). The table permits six kinds between a component
+  // and a function and practice writes `assignment`; offering six in authored
+  // order made the usual answer the reader's problem to know. It orders the
+  // list and is named on its button. It never removes a kind: the other five
+  // stay, in their own order, because a convention is not a rule.
+  const usual = conventionalRelationshipKind(
+    graph.nodes.find((node) => node.id === source)?.coreKindLabel ?? '',
+    graph.nodes.find((node) => node.id === sink)?.coreKindLabel ?? '',
+  )
+  const leadWithUsual = (list: readonly RelationshipKind[]): RelationshipKind[] =>
+    usual === null || !list.includes(usual.kind)
+      ? [...list]
+      : [usual.kind, ...list.filter((kind) => kind !== usual.kind)]
+  const narrowed = leadWithUsual(permitted.filter((kind) => asked.has(kind)))
+  const others = leadWithUsual(permitted.filter((kind) => !asked.has(kind)))
+  const kinds = narrowed.length === 0 ? leadWithUsual(permitted) : narrowed
   const stage = (kind: RelationshipKind): void => {
     const operation = draftRelationship(graph, source, kind, sink, reservedIds)
     // Null here would mean this panel offered a kind the table does not
@@ -206,9 +221,18 @@ export const ConnectionPanel = ({
         <ul className="connection-kinds">
           {kinds.map((kind: RelationshipKind) => (
             <li key={kind}>
+              {/* The marker sits BESIDE the button, never inside it: a button
+                  whose accessible name is "assignment usually" is a worse
+                  button, and the label is what a screen reader and a test both
+                  read. */}
               <button type="button" onClick={() => stage(kind)}>
                 {kind}
               </button>
+              {usual !== null && kind === usual.kind ? (
+                <span className="connection-usual" title={usual.because}>
+                  usually
+                </span>
+              ) : null}
             </li>
           ))}
         </ul>

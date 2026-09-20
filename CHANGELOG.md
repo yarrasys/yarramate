@@ -1,5 +1,29 @@
 # Changelog
 
+## Unreleased
+
+### The table permits, practice narrows, and the engine says which (#571)
+
+`connectableKinds` answers which relationship kinds the ArchiMate table
+permits between two subjects, and between an application component and an
+application function it answers with six. Across this repository's own model
+and the ApertureX reference, 970 relationships over 72 core-kind pairs, the
+author wrote `assignment` there 87 times out of 88, and for 34 of the pairs
+the table let them choose among, they used exactly one kind.
+
+`conventionalRelationshipKind(fromKind, toKind)` now answers the other half:
+the kind practice expects, the named rule that decided it, and a sentence
+saying why, or `null` where the language genuinely permits several readings,
+which is the common answer (ADR 0162). It is read off ArchiMate's definitions
+rather than fitted to any record, so it stays silent on one adopter's house
+conventions; the records are a test, not a source. It never contradicts the
+table and `check` never reads it: an unusual kind is a choice, not a finding.
+
+In the editor, the connection panel leads with the expected kind and marks it
+`usually`, and the properties form carries it for marking without reordering a
+list someone is reading. Every kind the table permits is still offered in both.
+Exported from the package root for agents choosing a kind.
+
 ## 1.35.0
 
 ### A responsibility edge carries the `connected` walk only when the view shows it (#563)

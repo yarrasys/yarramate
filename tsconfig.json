@@ -20,6 +20,7 @@
     "test/visual-workspace-state.test.ts",
     "test/visual-app-render.test.ts",
     "test/visual-responsibility.test.ts",
+    "test/visual-relationship-convention.test.ts",
     "test/visual-governance.test.ts",
     "test/visual-context-menu.test.ts",
     "test/graph-canvas.test.ts",

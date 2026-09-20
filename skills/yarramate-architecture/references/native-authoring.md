@@ -93,6 +93,14 @@ requirement  realizes a principle; is influenced by a driver
 deliverable  realizes a plateau; is associated with a gap
 ```
 
+Those idioms are also machine-readable. `conventionalRelationshipKind(from, to)`
+answers with the kind practice expects for a pair of core kinds, the rule that
+decided it, and a sentence saying why - or `null` where the language genuinely
+permits several readings, which is the common answer. It never contradicts the
+table and it is never a diagnostic: an unusual kind is a choice, not an error
+(#571, ADR 0162). When you are choosing a kind and the table offers six, ask
+for the convention first and depart from it deliberately.
+
 Every relationship on one junction must be the same kind (`YM414`).
 
 ## Interactions between components

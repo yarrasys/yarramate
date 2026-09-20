@@ -39,6 +39,10 @@ observations:
     result: confirmed
     evidence:
       uri: repo:src/relationship-matrix.ts
+  - subject: relationship-convention-source
+    result: confirmed
+    evidence:
+      uri: repo:src/relationship-convention.ts
   - subject: architecture-state-engine
     result: confirmed
     evidence:
@@ -431,6 +435,10 @@ observations:
     result: confirmed
     evidence:
       uri: repo:src/profile.ts
+  - subject: relationship-conventions
+    result: confirmed
+    evidence:
+      uri: repo:src/relationship-convention.ts
   - subject: render-likec4-state-comparison
     result: confirmed
     evidence:

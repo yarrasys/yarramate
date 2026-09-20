@@ -798,6 +798,12 @@ mappings:
   - native: relationship-matrix-source
     external: relationshipMatrixSource
     type: concept
+  - native: relationship-convention-source
+    external: relationshipConventionSource
+    type: concept
+  - native: relationship-conventions
+    external: relationshipConventions
+    type: concept
   - native: relationship-table-source-realizes-table
     external: relationshipTableSourceRealizesTable
     type: relationship
@@ -809,6 +815,9 @@ mappings:
     type: relationship
   - native: relationship-matrix-source-realizes-policies
     external: relationshipMatrixSourceRealizesPolicies
+    type: relationship
+  - native: relationship-convention-source-realizes-conventions
+    external: relationshipConventionSourceRealizesConventions
     type: relationship
   - native: run-discovery-journey
     external: runDiscoveryJourney

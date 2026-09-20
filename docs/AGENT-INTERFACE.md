@@ -281,6 +281,16 @@ verbs. No aliases: old names are removed, and the release notes carry
 the map above. `ask --kinds` ships alongside (#89): the declarable
 vocabulary as a read.
 
+The vocabulary answers two questions, and an agent choosing a relationship
+kind should ask both. `connectableKinds(graph, from, to)` answers what the
+ArchiMate table PERMITS, which is what `check` enforces and is often more than
+one: six kinds between an application component and an application function.
+`conventionalRelationshipKind(fromKind, toKind)` answers what practice
+EXPECTS, with the rule that decided it and a sentence saying why, or `null`
+where the language genuinely permits several readings (#571, ADR 0162). The
+second never contradicts the first and is never a diagnostic: departing from a
+convention is a choice an author is entitled to make, and nothing refuses it.
+
 ## Problem map — observed problem → owning verb
 
 | Observed problem (evidence) | Owner | Status |

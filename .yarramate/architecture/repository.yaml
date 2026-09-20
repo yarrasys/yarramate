@@ -56,6 +56,10 @@ concepts:
     kind: repository-file
     name: src/relationship-matrix.ts
     status: current
+  - id: relationship-convention-source
+    kind: repository-file
+    name: src/relationship-convention.ts
+    status: current
   - id: architecture-state-source
     kind: repository-file
     name: src/architecture-state.ts
@@ -1026,6 +1030,10 @@ relationships:
     kind: realization
     from: relationship-matrix-source
     to: relationship-policy-catalogue
+  - id: relationship-convention-source-realizes-conventions
+    kind: realization
+    from: relationship-convention-source
+    to: relationship-conventions
   - id: state-source-realizes-engine
     kind: realization
     from: architecture-state-source

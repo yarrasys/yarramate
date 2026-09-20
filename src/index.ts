@@ -188,6 +188,11 @@ export {
   proposeRelationshipId,
   stagedSubjectIds,
 } from './relationship-drafting.js'
+export {
+  conventionalRelationshipKind,
+  CONVENTION_RULES,
+  type RelationshipConvention,
+} from './relationship-convention.js'
 export { draftConcept, proposeConceptId } from './concept-drafting.js'
 export {
   deletionBlockers,
