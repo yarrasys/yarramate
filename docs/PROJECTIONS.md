@@ -92,9 +92,12 @@ happen to exist between the subjects it shows.
 
 This used to be two answers. Every read surface honoured the selectors, and
 the canvas drew any edge whose endpoints were both visible, so a view showing
-the right subjects also showed wiring it had excluded — measured at 100 edges
+the right subjects also showed wiring it had excluded — measured at 103 edges
 across eight of this repository's twenty-two projections, including six on a
-view declaring `relationships: none`.
+view declaring `relationships: none`. Both `between` and `connected` views
+were affected: `between` is narrowed by `relationshipKinds` while the canvas
+was not, and either kind of view draws the edges of a box pulled on screen
+only to hold a selected member.
 
 **Expansion follows relationships, and only relationships.** A subject that
 another subject *references* — through `constraints[].ref` or

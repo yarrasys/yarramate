@@ -14,25 +14,38 @@ read it as a set of *nodes*: an edge was drawn whenever both its ends were
 visible, whatever the query had said about it.
 
 Measured on this repository's own model, comparing each projection's selected
-relationships against every model edge between its selected concepts:
+relationships against every model edge between the nodes the canvas actually
+shows. That set is not the query's selected concepts: `applyFilter` pulls in
+every visible node's ancestor chain along the view's nesting kinds
+(`graph-canvas.tsx:1014-1022`), selected or not, so a box shown to hold a
+member brought its own edges with it.
 
-| projection | concepts | selected | drawn | extra |
-|---|---|---|---|---|
-| starter-information-structure | 120 | 117 | 163 | **46** |
-| starter-landscape | 148 | 180 | 211 | **31** |
-| starter-technology-deployment | 46 | 36 | 42 | 6 |
-| engine-components | 18 | **0** | 6 | **6** |
-| starter-strategy | 22 | 30 | 35 | 5 |
-| starter-application-cooperation | 51 | 69 | 71 | 2 |
-| starter-implementation-roadmap | 14 | 9 | 11 | 2 |
-| starter-motivation | 19 | 25 | 27 | 2 |
+| projection | `relationships` | selected | extra drawn |
+|---|---|---|---|
+| starter-information-structure | connected | 117 | **46** |
+| starter-landscape | connected | 180 | **33** |
+| starter-technology-deployment | connected | 36 | 7 |
+| engine-components | **none** | **0** | **6** |
+| starter-strategy | connected | 30 | 5 |
+| starter-application-cooperation | between | 69 | 2 |
+| starter-implementation-roadmap | connected | 9 | 2 |
+| starter-motivation | connected | 25 | 2 |
 
-Eight of twenty-two projections, 100 edges. `starter-information-structure`
+Eight of twenty-two projections, 103 edges. `starter-information-structure`
 asks for `access`, `aggregation`, `association` and `composition`, and drew 26
 `serving` edges on top: a view about how information is structured, carrying
 the application layer's service wiring through it, 39% more edges than the
 query selected. `engine-components` declares `relationships: none` and drew
 six.
+
+Two of these are only reachable through the ancestor pull-in, which is why it
+is stated above: `starter-landscape` and `starter-technology-deployment` each
+draw one edge belonging to a box the query never selected. And the defect is
+not confined to `connected` views. `starter-application-cooperation` is
+`between`, where a relationship needs both endpoints selected, and still drew
+two `implements` edges because `between` is narrowed by `relationshipKinds`
+and the canvas was not. A `between` view with nesting can move for the
+ancestor reason as well.
 
 ## The decision
 

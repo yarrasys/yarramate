@@ -13,13 +13,17 @@ ends were visible, whatever the view had said about it. An edge is now drawn
 only where the view selected it **and** both its ends are on screen.
 
 Measured across this repository's own projections, eight of twenty-two drew
-edges they had not selected, 100 in total:
+edges they had not selected, 103 in total:
 
-| projection | selected | drawn | extra |
+| projection | `relationships` | selected | extra drawn |
 |---|---|---|---|
-| starter-information-structure | 117 | 163 | 46 |
-| starter-landscape | 180 | 211 | 31 |
-| engine-components | **0** | 6 | 6 |
+| starter-information-structure | connected | 117 | 46 |
+| starter-landscape | connected | 180 | 33 |
+| engine-components | **none** | **0** | 6 |
+
+It is not only `connected` views. A `between` view is narrowed by
+`relationshipKinds` while the canvas was not, and both kinds of view show a
+box pulled on screen to hold a selected member, whose own edges came with it.
 
 `starter-information-structure` asks for `access`, `aggregation`,
 `association` and `composition`, and drew 26 `serving` edges through it.
