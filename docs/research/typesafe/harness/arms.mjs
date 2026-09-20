@@ -294,8 +294,27 @@ export const substringCandidates = (canvas, query, limit = CUTS.askShortlist) =>
 
 export const buildAsk = (ds, queries) => {
   const nodes = nodeById(ds.canvas)
-  const items = queries.map((q, index) => {
-    const candidates = substringCandidates(ds.canvas, q.query)
+  // Intended ids may be written qualified ("halcyon#customer") while a one-document
+  // canvas carries local ids; accept either spelling, and refuse an id that is neither.
+  const resolveId = (id) => {
+    if (nodes.has(id)) return id
+    const local = id.slice(id.indexOf('#') + 1)
+    if (nodes.has(local)) return local
+    throw new Error(`ask query names an unknown subject: ${id}`)
+  }
+  const items = queries.filter((q) => q.skip === undefined).map((q, index) => {
+    const intended = (q.intended ?? []).map(resolveId)
+    // Shortlist rule (PROTOCOL.md, amendment 2): substring hits first, then pad to the
+    // shortlist size with the remaining subjects in id order, so a query the substring
+    // stage cannot see still reaches the rerank. Queries with no substring hit are counted.
+    const hits = substringCandidates(ds.canvas, q.query)
+    const seen = new Set(hits.map((c) => c.id))
+    const padding = ds.canvas.nodes
+      .filter((n) => !seen.has(n.id))
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .slice(0, Math.max(0, CUTS.askShortlist - hits.length))
+      .map((n) => ({ id: n.id, name: n.name, score: 0 }))
+    const candidates = [...hits, ...padding]
     const questions = { any: { type: 'noul', instructions: 'Does at least one of the `candidates` answer `question`?' } }
     for (const c of candidates) {
       const n = nodes.get(c.id)
@@ -305,8 +324,9 @@ export const buildAsk = (ds, queries) => {
       }
     }
     return {
-      index, query: q.query, intended: q.intended ?? [], source: q.source ?? 'unknown',
-      substringTop5: candidates.slice(0, 5).map((c) => c.id),
+      index, query: q.query, intended, source: q.source ?? 'unknown', note: q.note ?? null,
+      substringHits: hits.length,
+      substringTop5: hits.slice(0, 5).map((c) => c.id),
       candidates: candidates.map((c) => c.id),
       request: {
         state: {
@@ -331,7 +351,7 @@ export const scoreAsk = (items, answers) => {
     const reranked = ranked.filter((c) => c.noul >= CUTS.askCandidate).map((c) => c.id)
     const hit = (list, k) => item.intended.length > 0 && list.slice(0, k).some((id) => item.intended.includes(id))
     return {
-      query: item.query, source: item.source, intended: item.intended, any,
+      query: item.query, source: item.source, intended: item.intended, any, substringHits: item.substringHits,
       substringTop1: hit(item.substringTop5, 1), substringTop5: hit(item.substringTop5, 5),
       rerankTop1: hit(reranked, 1), rerankTop5: hit(reranked, 5),
       honestEmpty: item.intended.length === 0 ? (any !== null && any < CUTS.askAnswers) : null,
@@ -341,8 +361,14 @@ export const scoreAsk = (items, answers) => {
   const withIntent = rows.filter((r) => r.intended.length > 0)
   const noAnswer = rows.filter((r) => r.intended.length === 0)
   const rate = (xs, key) => (xs.length === 0 ? null : xs.filter((r) => r[key]).length / xs.length)
+  const bySource = Object.fromEntries([...new Set(rows.map((r) => r.source))].map((src) => {
+    const xs = withIntent.filter((r) => r.source === src)
+    return [src, { n: xs.length, substringTop1: rate(xs, 'substringTop1'), rerankTop1: rate(xs, 'rerankTop1'), substringTop5: rate(xs, 'substringTop5'), rerankTop5: rate(xs, 'rerankTop5') }]
+  }))
   return {
     n: rows.length, withIntent: withIntent.length, noAnswer: noAnswer.length,
+    zeroSubstringHits: rows.filter((r) => r.substringHits === 0).length,
+    bySource,
     substringTop1: rate(withIntent, 'substringTop1'), substringTop5: rate(withIntent, 'substringTop5'),
     rerankTop1: rate(withIntent, 'rerankTop1'), rerankTop5: rate(withIntent, 'rerankTop5'),
     honestEmpty: rate(noAnswer, 'honestEmpty'),

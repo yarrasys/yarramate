@@ -165,3 +165,24 @@ In every case the engine's README sentence stays as it is.
   and the shipped rule alike. Arm 2 therefore reports its metrics twice: over
   all labelled pairs, and over pairs where at least one subject is not
   path-named. The win condition applies to the second.
+- 2026-09-20, before any call, arm 4 on Halcyon: the website session supplied
+  29 queries (24 with an intended subject, 5 intended empty), validated against
+  the showcase. Their source is registered as `site-session`: one non-author's
+  guesses at visitor phrasing, drawn from the site's deck and docs copy, not
+  observed visitor queries. Their wording deliberately avoids the record's own
+  names, which is the condition under test; the baseline is the shipped
+  substring stage as it is, and the write-up must say the baseline is lexical.
+  One query is excluded (`skip`): "show me everything that is only planned" is
+  a status filter the roster mode answers exactly, not a rerank question. Two
+  are kept with a note: a relationship question and a question for a number,
+  whose intended subjects are still the seeds a slice would start from. A
+  second batch of in-vocabulary but unmodelled empties ("smart meter rollout
+  schedule") is requested and will be scored as its own line.
+- 2026-09-20, before any call, shortlist rule: two of the 29 queries have no
+  substring hit at all, so a rerank of substring hits alone could not find
+  them. The shortlist is therefore substring hits first, then the remaining
+  subjects in id order up to the shortlist size of 30. On a workspace of 30
+  subjects or fewer this is every subject; on a larger one the padding is
+  arbitrary and the count of zero-hit queries is reported so that limit is
+  visible. Intended ids may be written qualified or local; the harness accepts
+  both and refuses an unknown id.
