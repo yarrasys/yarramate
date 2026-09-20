@@ -304,6 +304,7 @@ export const buildAsk = (ds, queries) => {
   }
   const items = queries.filter((q) => q.skip === undefined).map((q, index) => {
     const intended = (q.intended ?? []).map(resolveId)
+    const names = (q.names ?? []).map(resolveId)
     // Shortlist rule (PROTOCOL.md, amendment 2): substring hits first, then pad to the
     // shortlist size with the remaining subjects in id order, so a query the substring
     // stage cannot see still reaches the rerank. Queries with no substring hit are counted.
@@ -324,7 +325,7 @@ export const buildAsk = (ds, queries) => {
       }
     }
     return {
-      index, query: q.query, intended, source: q.source ?? 'unknown', note: q.note ?? null,
+      index, query: q.query, intended, names, batch: q.batch ?? null, source: q.source ?? 'unknown', note: q.note ?? null,
       substringHits: hits.length,
       substringTop5: hits.slice(0, 5).map((c) => c.id),
       candidates: candidates.map((c) => c.id),
@@ -355,6 +356,11 @@ export const scoreAsk = (items, answers) => {
       substringTop1: hit(item.substringTop5, 1), substringTop5: hit(item.substringTop5, 5),
       rerankTop1: hit(reranked, 1), rerankTop5: hit(reranked, 5),
       honestEmpty: item.intended.length === 0 ? (any !== null && any < CUTS.askAnswers) : null,
+      batch: item.batch,
+      // For a present-vocabulary empty: did the rerank hand back the subject the query
+      // names (the same error as the baseline, with more confidence) or something else?
+      returnedNamed: item.intended.length === 0 && item.names.length > 0 ? reranked.slice(0, 1).some((id) => item.names.includes(id)) : null,
+      baselineReturnedNamed: item.intended.length === 0 && item.names.length > 0 ? item.substringTop5.slice(0, 1).some((id) => item.names.includes(id)) : null,
       reranked: reranked.slice(0, 5),
     }
   })
@@ -372,6 +378,10 @@ export const scoreAsk = (items, answers) => {
     substringTop1: rate(withIntent, 'substringTop1'), substringTop5: rate(withIntent, 'substringTop5'),
     rerankTop1: rate(withIntent, 'rerankTop1'), rerankTop5: rate(withIntent, 'rerankTop5'),
     honestEmpty: rate(noAnswer, 'honestEmpty'),
+    emptyByBatch: Object.fromEntries([...new Set(noAnswer.map((r) => r.batch))].map((b) => {
+      const xs = noAnswer.filter((r) => r.batch === b)
+      return [b, { n: xs.length, honestEmpty: rate(xs, 'honestEmpty'), rerankReturnedNamed: rate(xs, 'returnedNamed'), baselineReturnedNamed: rate(xs, 'baselineReturnedNamed') }]
+    })),
     rows,
   }
 }

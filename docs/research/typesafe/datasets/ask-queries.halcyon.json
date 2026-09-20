@@ -1,31 +1,249 @@
 [
-  { "query": "why are they replacing the meters", "intended": ["halcyon#ageing-meter-fleet", "halcyon#meter-replacement-programme"], "source": "site-session" },
-  { "query": "what problem started all this", "intended": ["halcyon#ageing-meter-fleet"], "source": "site-session" },
-  { "query": "what are they actually trying to achieve", "intended": ["halcyon#bill-from-actual-reads"], "source": "site-session" },
-  { "query": "stop estimating bills", "intended": ["halcyon#bill-from-actual-reads"], "source": "site-session" },
-  { "query": "how many customers still get estimated bills", "intended": ["halcyon#ageing-meter-fleet", "halcyon#bill-from-actual-reads"], "source": "site-session", "note": "asks for a number the record does not hold; the subjects are still the right seeds" },
-  { "query": "what is the 24 hour rule", "intended": ["halcyon#reads-within-24h"], "source": "site-session" },
-  { "query": "how fast do reads have to reach billing", "intended": ["halcyon#reads-within-24h"], "source": "site-session" },
-  { "query": "can customer data leave the state", "intended": ["halcyon#data-stays-in-region"], "source": "site-session" },
-  { "query": "what compliance rules do they have to follow", "intended": ["halcyon#data-stays-in-region"], "source": "site-session" },
-  { "query": "who cares about billing accuracy", "intended": ["halcyon#operations-director"], "source": "site-session" },
-  { "query": "who is the sponsor", "intended": ["halcyon#operations-director"], "source": "site-session" },
-  { "query": "who reads the meters", "intended": ["halcyon#field-crew"], "source": "site-session" },
-  { "query": "what is the old billing system", "intended": ["halcyon#legacy-billing"], "source": "site-session" },
-  { "query": "what new platform are they building", "intended": ["halcyon#meter-data-platform"], "source": "site-session" },
-  { "query": "how do meter reads get into billing", "intended": ["halcyon#read-ingestion", "halcyon#reads-api"], "source": "site-session" },
-  { "query": "is there an api for reads", "intended": ["halcyon#reads-api"], "source": "site-session" },
-  { "query": "what runs every month", "intended": ["halcyon#monthly-billing-run"], "source": "site-session" },
-  { "query": "what do customers actually get", "intended": ["halcyon#water-billing"], "source": "site-session" },
-  { "query": "where does customer data live today", "intended": ["halcyon#regional-data-centre", "halcyon#customer-account"], "source": "site-session" },
-  { "query": "are they moving to the cloud", "intended": ["halcyon#cloud-region"], "source": "site-session" },
-  { "query": "what counts as a meter read here", "intended": ["halcyon#meter-read"], "source": "site-session" },
-  { "query": "show me everything that is only planned", "intended": ["halcyon#meter-data-platform", "halcyon#read-ingestion", "halcyon#reads-api", "halcyon#cloud-region", "halcyon#meter-replacement-programme"], "source": "site-session", "skip": "a status filter, which the roster mode answers exactly; not a rerank question" },
-  { "query": "who is the customer in this model", "intended": ["halcyon#customer"], "source": "site-session" },
-  { "query": "what talks to the legacy billing system", "intended": ["halcyon#legacy-billing", "halcyon#read-ingestion"], "source": "site-session", "note": "a relationship question; the seeds are still the subjects a slice would start from" },
-  { "query": "how much does a water bill cost", "intended": [], "source": "site-session" },
-  { "query": "who is the ceo of halcyon regional water", "intended": [], "source": "site-session" },
-  { "query": "how many staff does halcyon employ", "intended": [], "source": "site-session" },
-  { "query": "what does their mobile app do", "intended": [], "source": "site-session" },
-  { "query": "when is the next board meeting", "intended": [], "source": "site-session" }
+  {
+    "query": "why are they replacing the meters",
+    "intended": [
+      "halcyon#ageing-meter-fleet",
+      "halcyon#meter-replacement-programme"
+    ],
+    "source": "site-session"
+  },
+  {
+    "query": "what problem started all this",
+    "intended": [
+      "halcyon#ageing-meter-fleet"
+    ],
+    "source": "site-session"
+  },
+  {
+    "query": "what are they actually trying to achieve",
+    "intended": [
+      "halcyon#bill-from-actual-reads"
+    ],
+    "source": "site-session"
+  },
+  {
+    "query": "stop estimating bills",
+    "intended": [
+      "halcyon#bill-from-actual-reads"
+    ],
+    "source": "site-session"
+  },
+  {
+    "query": "how many customers still get estimated bills",
+    "intended": [
+      "halcyon#ageing-meter-fleet",
+      "halcyon#bill-from-actual-reads"
+    ],
+    "source": "site-session",
+    "note": "asks for a number the record does not hold; the subjects are still the right seeds"
+  },
+  {
+    "query": "what is the 24 hour rule",
+    "intended": [
+      "halcyon#reads-within-24h"
+    ],
+    "source": "site-session"
+  },
+  {
+    "query": "how fast do reads have to reach billing",
+    "intended": [
+      "halcyon#reads-within-24h"
+    ],
+    "source": "site-session"
+  },
+  {
+    "query": "can customer data leave the state",
+    "intended": [
+      "halcyon#data-stays-in-region"
+    ],
+    "source": "site-session"
+  },
+  {
+    "query": "what compliance rules do they have to follow",
+    "intended": [
+      "halcyon#data-stays-in-region"
+    ],
+    "source": "site-session"
+  },
+  {
+    "query": "who cares about billing accuracy",
+    "intended": [
+      "halcyon#operations-director"
+    ],
+    "source": "site-session"
+  },
+  {
+    "query": "who is the sponsor",
+    "intended": [
+      "halcyon#operations-director"
+    ],
+    "source": "site-session"
+  },
+  {
+    "query": "who reads the meters",
+    "intended": [
+      "halcyon#field-crew"
+    ],
+    "source": "site-session"
+  },
+  {
+    "query": "what is the old billing system",
+    "intended": [
+      "halcyon#legacy-billing"
+    ],
+    "source": "site-session"
+  },
+  {
+    "query": "what new platform are they building",
+    "intended": [
+      "halcyon#meter-data-platform"
+    ],
+    "source": "site-session"
+  },
+  {
+    "query": "how do meter reads get into billing",
+    "intended": [
+      "halcyon#read-ingestion",
+      "halcyon#reads-api"
+    ],
+    "source": "site-session"
+  },
+  {
+    "query": "is there an api for reads",
+    "intended": [
+      "halcyon#reads-api"
+    ],
+    "source": "site-session"
+  },
+  {
+    "query": "what runs every month",
+    "intended": [
+      "halcyon#monthly-billing-run"
+    ],
+    "source": "site-session"
+  },
+  {
+    "query": "what do customers actually get",
+    "intended": [
+      "halcyon#water-billing"
+    ],
+    "source": "site-session"
+  },
+  {
+    "query": "where does customer data live today",
+    "intended": [
+      "halcyon#regional-data-centre",
+      "halcyon#customer-account"
+    ],
+    "source": "site-session"
+  },
+  {
+    "query": "are they moving to the cloud",
+    "intended": [
+      "halcyon#cloud-region"
+    ],
+    "source": "site-session"
+  },
+  {
+    "query": "what counts as a meter read here",
+    "intended": [
+      "halcyon#meter-read"
+    ],
+    "source": "site-session"
+  },
+  {
+    "query": "show me everything that is only planned",
+    "intended": [
+      "halcyon#meter-data-platform",
+      "halcyon#read-ingestion",
+      "halcyon#reads-api",
+      "halcyon#cloud-region",
+      "halcyon#meter-replacement-programme"
+    ],
+    "source": "site-session",
+    "skip": "a status filter, which the roster mode answers exactly; not a rerank question"
+  },
+  {
+    "query": "who is the customer in this model",
+    "intended": [
+      "halcyon#customer"
+    ],
+    "source": "site-session"
+  },
+  {
+    "query": "what talks to the legacy billing system",
+    "intended": [
+      "halcyon#legacy-billing",
+      "halcyon#read-ingestion"
+    ],
+    "source": "site-session",
+    "note": "a relationship question; the seeds are still the subjects a slice would start from"
+  },
+  {
+    "query": "how much does a water bill cost",
+    "intended": [],
+    "source": "site-session",
+    "batch": "absent-vocabulary"
+  },
+  {
+    "query": "who is the ceo of halcyon regional water",
+    "intended": [],
+    "source": "site-session",
+    "batch": "absent-vocabulary"
+  },
+  {
+    "query": "how many staff does halcyon employ",
+    "intended": [],
+    "source": "site-session",
+    "batch": "absent-vocabulary"
+  },
+  {
+    "query": "what does their mobile app do",
+    "intended": [],
+    "source": "site-session",
+    "batch": "absent-vocabulary"
+  },
+  {
+    "query": "when is the next board meeting",
+    "intended": [],
+    "source": "site-session",
+    "batch": "absent-vocabulary"
+  },
+  {
+    "query": "what does the meter data platform cost to run",
+    "intended": [],
+    "names": [
+      "halcyon#meter-data-platform"
+    ],
+    "batch": "present-vocabulary",
+    "source": "site-session"
+  },
+  {
+    "query": "what is the uptime target for the reads api",
+    "intended": [],
+    "names": [
+      "halcyon#reads-api"
+    ],
+    "batch": "present-vocabulary",
+    "source": "site-session"
+  },
+  {
+    "query": "how long are customer accounts kept after someone closes theirs",
+    "intended": [],
+    "names": [
+      "halcyon#customer-account"
+    ],
+    "batch": "present-vocabulary",
+    "source": "site-session",
+    "note": "retention is a policy fact, not a record fact; stays empty for Halcyon"
+  },
+  {
+    "query": "which field crew covers the northern region",
+    "intended": [],
+    "names": [
+      "halcyon#field-crew"
+    ],
+    "batch": "present-vocabulary",
+    "source": "site-session"
+  }
 ]

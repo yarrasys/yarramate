@@ -186,3 +186,13 @@ In every case the engine's README sentence stays as it is.
   arbitrary and the count of zero-hit queries is reported so that limit is
   visible. Intended ids may be written qualified or local; the harness accepts
   both and refuses an unknown id.
+- 2026-09-20, before any call, arm 4 second batch: four present-vocabulary
+  empties from the website session, each naming a real subject and asking for
+  a property the record does not carry (running cost, service level,
+  retention, territory). A fifth, "who supplies the new meters", is dropped on
+  the author's own advice because a marker could accept the replacement
+  programme as its answer. Empties are scored on two lines, absent-vocabulary
+  and present-vocabulary, and for the second the rerank's top answer is
+  classed as "the named subject" or "something else", beside the same for the
+  substring baseline. Returning the named subject with more confidence is the
+  baseline's error, not an improvement.
