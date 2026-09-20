@@ -139,6 +139,12 @@ export type AskSlice = AskResultBase & {
   readonly topic?: string
   readonly seeds?: readonly string[]
   readonly matched?: number
+  /**
+   * Every concept a term touched, ranked, present on a free-text slice (#569).
+   * The seeds are the first few of these; a caller with a judgment to spend
+   * reorders the list and asks again with `subjects` addressing.
+   */
+  readonly candidates?: readonly SeedCandidate[]
   readonly changed?: {
     readonly range: string
     readonly concepts: readonly string[]
@@ -292,10 +298,44 @@ export const conceptEntries = (graph: SemanticGraph): readonly ConceptEntry[] =>
 
 const seedLimit = 5
 
+/**
+ * How many ranked candidates `resolveSeeds` hands back beside the seeds. Thirty
+ * is the shortlist the #569 measurement reranked, and it is a cap rather than a
+ * target: most queries match fewer.
+ */
+export const candidateLimit = 30
+
+export interface SeedCandidate {
+  readonly id: string
+  /** How many distinct query terms this concept's text contains. The whole of the ranking. */
+  readonly terms: number
+}
+
 export interface SeedResolution {
   readonly addressing: 'free-text' | 'subjects'
   readonly seeds: readonly string[]
   readonly matched: number
+  /**
+   * Every concept a term touched, ranked, not just the handful that seeded the
+   * slice (#569).
+   *
+   * The term count finds the right subject and then buries it. Measured on the
+   * Halcyon showcase against 32 questions written by someone other than the
+   * author: the subject the asker meant was inside this list 87% of the time
+   * and was the FIRST seed only 43% of the time. Retrieval was not the
+   * weakness; ordering was.
+   *
+   * The engine cannot fix that on its own, because deciding which of several
+   * term-matching concepts actually answers a question is a judgment and this
+   * is a deterministic CLI (ADR 0059). So it hands the list over instead. A
+   * caller with a judgment to spend - an agent, a host with a decision model -
+   * reorders these and calls back with `subjects` addressing, which already
+   * exists. A caller with none uses `seeds` exactly as before.
+   *
+   * Capped, so a one-word query against a large workspace cannot return the
+   * whole record: `candidateLimit`, which a caller may raise.
+   */
+  readonly candidates: readonly SeedCandidate[]
 }
 
 // Free text is the default addressing mode: terms match concept ids,
@@ -311,11 +351,20 @@ export interface SeedResolution {
 export const resolveSeeds = (
   terms: readonly string[],
   entries: readonly ConceptEntry[],
+  options: { readonly candidates?: number } = {},
 ): SeedResolution => {
   const known = new Set(entries.map(({ id }) => id))
   const unique = [...new Set(terms)]
   if (unique.every((term) => known.has(term))) {
-    return { addressing: 'subjects', seeds: unique, matched: unique.length }
+    // Precise addressing named the subjects outright. There is nothing to
+    // rank, so the candidates ARE the seeds: a caller reranking whatever it is
+    // given never has to ask which addressing produced them.
+    return {
+      addressing: 'subjects',
+      seeds: unique,
+      matched: unique.length,
+      candidates: unique.map((id) => ({ id, terms: 1 })),
+    }
   }
   const lowered = [
     ...new Set(
@@ -343,6 +392,9 @@ export const resolveSeeds = (
     addressing: 'free-text',
     seeds: scored.slice(0, seedLimit).map(({ id }) => id),
     matched: scored.length,
+    candidates: scored
+      .slice(0, Math.max(seedLimit, options.candidates ?? candidateLimit))
+      .map(({ id, score }) => ({ id, terms: score })),
   }
 }
 
@@ -906,6 +958,12 @@ export const askSlice = (
         topic,
         seeds: resolution.seeds,
         matched: resolution.matched,
+        // Everything a term touched, ranked, so an agent can reorder the list
+        // and ask again with `subjects` rather than take the term count's word
+        // for which five mattered (#569). Only where there was ranking to do.
+        ...(resolution.addressing === 'free-text'
+          ? { candidates: resolution.candidates }
+          : {}),
         ...(neighbourhood === undefined ? {} : { neighbourhood }),
         result: evaluated,
         rendered: renderSlice(evaluated, compiled, options.budget),

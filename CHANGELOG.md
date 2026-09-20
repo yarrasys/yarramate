@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+### A free-text `ask` says what else was in the running (#569)
+
+A free-text slice now carries `candidates`: every concept a query term
+touched, ranked by how many distinct terms it contains, not only the five
+that seeded the slice. `resolveSeeds` returns the same list and takes an
+optional cap.
+
+The term count finds the right subject and then buries it. Measured against
+32 questions written for the Halcyon showcase by someone other than its
+author, the subject the asker meant was inside the candidate list 87% of the
+time and was the first seed only 43% of the time: retrieval was not the
+weakness, ordering was. Deciding which of several term-matching concepts
+actually answers a question is a judgment, and the engine does not make
+judgments (ADR 0059), so it hands the ranked list over instead. A caller
+that can judge reorders the candidates and asks again by id, which precise
+addressing already does; a caller that cannot uses `seeds` exactly as
+before. Nothing in the engine calls out, nothing is off by a flag, and the
+document is additive.
+
 ### The table permits, practice narrows, and the engine says which (#571)
 
 `connectableKinds` answers which relationship kinds the ArchiMate table
