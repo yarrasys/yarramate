@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.38.0
 
 ### What a view selects is what it draws (#579)
 
