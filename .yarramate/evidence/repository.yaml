@@ -1151,6 +1151,10 @@ observations:
     result: confirmed
     evidence:
       uri: repo:src/edge-label.ts
+  - subject: canvas-scene-source
+    result: confirmed
+    evidence:
+      uri: repo:src/canvas-scene.ts
   - subject: nesting-source
     result: confirmed
     evidence:

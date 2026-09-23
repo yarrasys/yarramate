@@ -96,6 +96,17 @@ describe('package export purity', () => {
     expect(files).toEqual(['edge-label.ts', 'layout-mode.ts', 'relationship-reading.ts'])
   })
 
+  it('the canvas scene reaches no package, so a Worker can resolve a view without the editor (#577)', () => {
+    const { files, hits } = runtimeImportGraph('canvas-scene.ts')
+    expect(hits).toEqual([])
+    expect(files).toEqual([
+      'canvas-scene.ts',
+      'fold-tree.ts',
+      'visual-app/nesting-span.ts',
+      'visual-app/subject-filter.ts',
+    ])
+  })
+
   it('notation/archimate import graph stays free of Node, ws, session, and compiler runtime', () => {
     const { hits } = runtimeImportGraph('notation/archimate.ts')
     expect(hits).toEqual([])

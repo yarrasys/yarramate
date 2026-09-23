@@ -2163,6 +2163,9 @@ mappings:
   - native: edge-label-source
     external: edgeLabelSource
     type: concept
+  - native: canvas-scene-source
+    external: canvasSceneSource
+    type: concept
   - native: nesting-source
     external: nestingSource
     type: concept
