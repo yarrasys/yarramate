@@ -642,6 +642,10 @@ concepts:
     kind: repository-file
     name: src/relationship-reading.ts
     status: current
+  - id: edge-label-source
+    kind: repository-file
+    name: src/edge-label.ts
+    status: current
   - id: archimate-notation-source
     kind: repository-file
     name: src/notation/archimate.ts
@@ -1574,6 +1578,10 @@ relationships:
   - id: relationship-reading-realizes-visual-model
     kind: realization
     from: relationship-reading-source
+    to: render-visual-model
+  - id: edge-label-realizes-visual-model
+    kind: realization
+    from: edge-label-source
     to: render-visual-model
   - id: archimate-notation-realizes-kind-icons
     kind: realization
