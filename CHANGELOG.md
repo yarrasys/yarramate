@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.40.0
 
 ### A saved layout names the view's subjects, not the whole model (#578)
 
