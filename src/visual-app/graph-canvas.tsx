@@ -718,6 +718,12 @@ const kindLabelOfId = (kind: string) => kind.split('#')[1] ?? kind
 // Convert CanvasGraph nodes and edges to cytoscape ElementDefinition format.
 // Exported for the headless tests: the parallel-edge class assignment below is
 // a rendering guarantee (#306) that has to be assertable without a DOM.
+// What a lifted edge says: its kind, and how many relationships it stands for
+// when that is more than one. Shared by the build below and by `applyFilter`,
+// which restates the count against the view's selection (#584).
+export const liftLabel = (kindLabel: string, count: number): string =>
+  count > 1 ? `${kindLabel} \u00d7${count}` : kindLabel
+
 export function graphToElements(
   graph: CanvasGraph,
   nesting: readonly NestingKind[],
@@ -917,10 +923,7 @@ export function graphToElements(
                 target: edge.to,
                 // "kind xN" rather than a name: a lifted edge stands for
                 // several relationships and has no name of its own.
-                label:
-                  edge.count === 1
-                    ? kindLabelOfId(edge.kind)
-                    : `${kindLabelOfId(edge.kind)} \u00d7${edge.count}`,
+                label: liftLabel(kindLabelOfId(edge.kind), edge.count),
                 wrapLabel: withWrapPoints(kindLabelOfId(edge.kind)),
                 name: null,
                 kindLabel: kindLabelOfId(edge.kind),
@@ -1123,6 +1126,28 @@ export function applyFilter(
     if (!visibleNodeIds.has(source) || !visibleNodeIds.has(target)) continue
     if (!viewSelected(edge)) continue
     visibleIds.add(edge.id())
+  }
+
+  // A lifted edge stands for the relationships the VIEW selected, not for
+  // every relationship the model holds between the two boxes (#584).
+  // `foldGraph` runs over the whole model, so the count it wrote would read
+  // ×5 over a view that selected two. Restated here, in the pass that already
+  // decides the lift's admission, and restored to the full count when the
+  // structural filter goes. The stylesheet's edge label is a mapper over this
+  // data, so the visible label follows without a rebuild.
+  for (const edge of cy.edges('.lifted')) {
+    const stands = edge.data('relationshipIds') as unknown
+    if (!Array.isArray(stands)) continue
+    const ids = stands as readonly string[]
+    const count =
+      selectedIds === null
+        ? ids.length
+        : ids.filter((id) => selectedIds.has(id)).length
+    if (edge.data('liftedCount') === count) continue
+    edge.data({
+      liftedCount: count,
+      label: liftLabel(String(edge.data('kindLabel') ?? ''), count),
+    })
   }
 
   // Subtracted last: a box-to-member edge can satisfy both conditions above
