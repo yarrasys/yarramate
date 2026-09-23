@@ -2160,6 +2160,9 @@ mappings:
   - native: relationship-reading-source
     external: relationshipReadingSource
     type: concept
+  - native: edge-label-source
+    external: edgeLabelSource
+    type: concept
   - native: nesting-source
     external: nestingSource
     type: concept
