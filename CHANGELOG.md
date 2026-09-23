@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.41.1
 
 ### `yarramate/adapter/visual-graph` loads again (1.41.0 regression)
 
