@@ -14,6 +14,7 @@
       "$ref": "https://yarramate.org/schema/projection/v1#/$defs/id"
     },
     "positions": {
+      "description": "Where the canvas put each subject the view draws, keyed by subject id, in absolute canvas coordinates. Written for the view's own subjects and the boxes that hold them, including any the quick filter or a fold hides at save time; a subject outside the view has no entry (#578). Entries are of three kinds, and only two are INPUT. A LEAF's entry is input: the canvas pins the subject there. A FOLDED box's entry is input: a folded box is drawn as a leaf, so it is pinned there like one. An UNFOLDED box's entry is TESTIMONY, not input: a box's centre is derived from its members (#507), so the entry records where the canvas drew it at save time, a few pixels stale if saved mid-drag, and is never read back. A reader drawing the same picture must place an unfolded box from its members, not from this entry. Files written before 1.40 may carry entries for subjects outside the view; they are inert (#273).",
       "$ref": "#/$defs/positions"
     },
     "folded": {

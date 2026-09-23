@@ -1,5 +1,29 @@
 # Changelog
 
+## Unreleased
+
+### A saved layout names the view's subjects, not the whole model (#578)
+
+The canvas holds the whole model as elements, and a layout save wrote an
+entry for every one of them: 306 entries for a six-subject view, measured by
+an adopter, nearly all for subjects the view never draws. The canvas never
+read those back (#273). A save now writes the view's own subjects and the
+boxes that hold them, and nothing else.
+
+Scoped by the view, not by what is on screen at the moment of the save. A
+subject the quick filter hides, or a member inside a folded box, keeps its
+entry, so a drag made with the filter on does not erase it and opening a box
+still puts its members back where they were.
+
+The layout schema now says what each entry is. A leaf's entry and a
+**folded** box's entry are input: the canvas pins them there. An **unfolded**
+box's entry is testimony: where the canvas drew the box, derived from its
+members (#507) and never read back. A reader drawing the same picture places
+an unfolded box from its members.
+
+**On upgrade:** nothing to do. Files already on disk still load, and their
+extra entries stay inert until the next save rewrites them.
+
 ## 1.39.0
 
 ### The edge label rule is reachable without the editor (#587)
