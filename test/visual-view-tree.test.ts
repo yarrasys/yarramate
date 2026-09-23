@@ -14,7 +14,7 @@ import {
   countMatchingSubjects,
   normalizeFilterText,
   subjectMatchesQuickFilter,
-} from "../src/visual-app/subject-filter.js";
+} from "../src/subject-filter.js";
 
 const view = (overrides: Partial<VisualViewSummary> = {}): VisualViewSummary => ({
   id: "current-engine",

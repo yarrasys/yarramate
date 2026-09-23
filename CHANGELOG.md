@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+### `yarramate/adapter/visual-graph` loads again (1.41.0 regression)
+
+**1.41.0 shipped a `yarramate/adapter/visual-graph` that could not be
+imported.** The new `canvas-scene` module imported two pure helpers that
+lived under `src/visual-app/`, which the package build does not compile, so
+the published `dist/` had no such files and importing the subpath threw
+`ERR_MODULE_NOT_FOUND`. The whole subpath failed, `foldTree` and
+`edgeLabelText` included. Do not use 1.41.0.
+
+The two helpers (`nesting-span`, `subject-filter`) now live beside the
+modules that import them, so the package build compiles them. Nothing about
+what they do changed.
+
+Every test imported `src/`, which is why verify passed. A new test now
+imports every published entry from the built package, the way a consumer
+does; on 1.41.0's layout it fails on exactly this subpath.
+
 ## 1.41.0
 
 ### What the canvas puts on screen, as plain data (#577)

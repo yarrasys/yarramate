@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { spansNesting } from '../src/visual-app/nesting-span.js'
+import { spansNesting } from '../src/nesting-span.js'
 
 // #439, field-reported by an adopter and reproduced here from a five-concept
 // model. Composition maps onto cytoscape's compound `parent`, so a pair that
