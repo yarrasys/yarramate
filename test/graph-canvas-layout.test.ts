@@ -1,6 +1,7 @@
 import cytoscape from 'cytoscape'
 import { describe, expect, it, vi } from 'vitest'
 import {
+  applyFilter,
   applySavedPositions,
   buildPositionMap,
   effectiveSavedRoutes,
@@ -194,6 +195,51 @@ describe('layout drag-save and position pinning', () => {
     })
     // The positions the routes were computed for ride in the same save.
     expect(Object.keys(payload?.positions ?? {}).sort()).toEqual(['a', 'b', 'c', 'd', 'e', 'f'])
+    handle.dispose()
+    vi.useRealTimers()
+  })
+
+  it('saves the view\'s own subjects only, whatever the filter or a fold hides right now (#578)', () => {
+    vi.useFakeTimers()
+    // The canvas holds the whole model; the view draws a box with two members,
+    // a subject the quick filter will hide, and a folded box with one member.
+    // `out` is outside the view but matches the quick filter, so it is the
+    // view and not the filter that keeps it out of the file.
+    const node = (id: string, label: string, x: number, y: number, parent?: string) => ({
+      group: 'nodes' as const,
+      data: { id, label, ...(parent === undefined ? {} : { parent, compositionParent: parent }) },
+      position: { x, y },
+    })
+    const cy = cytoscape({
+      styleEnabled: true,
+      layout: { name: 'preset' },
+      elements: [
+        node('box', 'alpha container', 0, 0),
+        node('a', 'alpha one', 10, 10, 'box'),
+        node('b', 'alpha two', 20, 20, 'box'),
+        node('c', 'gamma', 30, 30),
+        node('fbox', 'alpha folded', 40, 40),
+        node('fm', 'alpha member', 50, 50, 'fbox'),
+        node('out', 'alpha outside', 60, 60),
+      ],
+    })
+    cy.getElementById('fbox').addClass('folded')
+    applyFilter(cy, ['a', 'b', 'c', 'fbox', 'fm'], 'alpha')
+    expect(cy.getElementById('c').visible()).toBe(false)
+    expect(cy.getElementById('fm').visible()).toBe(false)
+
+    let saved: VisualLayoutSavePayload | null = null
+    const handle = registerDragSave(cy, () => 'view1', (payload) => {
+      saved = payload
+    })
+    cy.getElementById('a').emit('dragfree')
+    vi.advanceTimersByTime(DRAG_SAVE_DEBOUNCE_MS)
+
+    expect(Object.keys(saved!.positions).sort()).toEqual(['a', 'b', 'box', 'c', 'fbox', 'fm'])
+    // The unfiltered canvas is the whole model, so it would name everything.
+    applyFilter(cy, null, '')
+    expect(Object.keys(buildPositionMap(cy.nodes(), null))).toContain('out')
+
     handle.dispose()
     vi.useRealTimers()
   })

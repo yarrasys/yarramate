@@ -1024,6 +1024,12 @@ export function applyFilter(
     }
   }
 
+  // What the VIEW draws, before the quick filter or a fold takes anything
+  // away: its matched subjects and the boxes that hold them. A layout save
+  // names exactly these (#578); the rest of the model is on the canvas as
+  // elements only, and an entry for it was inert (#273) and most of the file.
+  cy.scratch(VIEW_NODE_IDS, matchedIds === null ? null : withAncestors(matchedIds, canonicalParentOf))
+
   // A FOLDED ancestor hides everything under it, whatever the view said
   // (#473). Precedence, and it has to be this way round: a reader who shut a
   // box asked not to see inside it, and a view naming a member cannot overrule
@@ -1160,6 +1166,30 @@ export function applyFilter(
   cy.elements()
     .filter((ele) => visibleIds.has(ele.id()))
     .style('display', 'element')
+}
+
+// The scratch key `applyFilter` records the active view's own subjects under
+// (#578), null for the unfiltered canvas, which draws the whole model.
+const VIEW_NODE_IDS = '_viewNodeIds'
+
+function withAncestors(
+  ids: readonly string[],
+  parentOf: (id: string) => string | undefined,
+): ReadonlySet<string> {
+  const out = new Set<string>(ids)
+  for (const id of ids) {
+    let ancestor = parentOf(id)
+    while (ancestor !== undefined && !out.has(ancestor)) {
+      out.add(ancestor)
+      ancestor = parentOf(ancestor)
+    }
+  }
+  return out
+}
+
+/** The subjects the active view draws, or null when it is the whole model. */
+export function viewNodeIds(cy: Core): ReadonlySet<string> | null {
+  return (cy.scratch(VIEW_NODE_IDS) as ReadonlySet<string> | null | undefined) ?? null
 }
 
 // The scratch key a layout run stamps its generation under, so a run that
@@ -1454,9 +1484,21 @@ export const DRAG_SAVE_DEBOUNCE_MS = 500
 // id. `layout.save` always writes the full map, never a partial patch, so
 // the server's `yarramate/visual-layout/v1` document stays self-consistent
 // with whatever the canvas showed at save time.
-export function buildPositionMap(nodes: NodeCollection): VisualLayoutPositions {
+//
+// Scoped to the view's own subjects when `inView` is given (#578). The canvas
+// holds the whole model, so an unscoped map was model-sized: 306 entries for
+// a six-subject view, nearly all for subjects the view never draws, which
+// `applySavedPositions` skips (#273). Scoped by the VIEW, not by what is on
+// screen: a subject the quick filter hides right now, or a member inside a
+// folded box, keeps its entry, so a drag made with the filter on does not
+// erase it and opening the box restores its members where they were.
+export function buildPositionMap(
+  nodes: NodeCollection,
+  inView: ReadonlySet<string> | null = null,
+): VisualLayoutPositions {
   const positions: Record<string, { readonly x: number; readonly y: number }> = {}
   nodes.forEach((node) => {
+    if (inView !== null && !inView.has(node.id())) return
     const { x, y } = node.position()
     positions[node.id()] = { x, y }
   })
@@ -1586,7 +1628,7 @@ export function registerDragSave(
       const routes = buildRouteMap(cy.edges())
       onSaveLayout({
         projectionId,
-        positions: buildPositionMap(cy.nodes()),
+        positions: buildPositionMap(cy.nodes(), viewNodeIds(cy)),
         ...(Object.keys(routes).length === 0 ? {} : { routes }),
       })
     }, DRAG_SAVE_DEBOUNCE_MS)
