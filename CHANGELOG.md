@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+### The edge label rule is reachable without the editor (#587)
+
+`yarramate/adapter/visual-graph` now exports `edgeLabelText`, `EdgeLabelData`,
+`LAYOUT_MODES`, `DEFAULT_LAYOUT` and `LayoutMode`, beside `foldTree`. The
+rule itself is unchanged; it moved into a module that imports nothing with a
+runtime of its own.
+
+1.38.0 exported these from `yarramate/visual-app` only (#576), and that entry
+is the mounted editor. A server-side renderer importing the one pure function
+took React and cytoscape with it: an adopter's SVG Worker grew from 3,490 KiB
+to 5,246 KiB and the swap was reverted, so the mirror #576 was meant to retire
+stayed. The rule could not simply be re-exported from where it lived, because
+that module loads ELK.
+
+`yarramate/visual-app` keeps exporting the same names. Nothing to change on
+upgrade; a consumer that wants the rule outside a browser switches its import.
+
 ## 1.38.0
 
 ### What a view selects is what it draws (#579)

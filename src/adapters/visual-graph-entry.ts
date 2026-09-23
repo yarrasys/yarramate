@@ -24,3 +24,9 @@ export {
   type NestingConflict,
   type SlotWiring,
 } from '../fold-tree.js'
+// What an edge says (ADR 0147) and the mode list it depends on (#587). The
+// editor entry has exported these since #576, but that entry is the mounted
+// editor, so a Worker importing one pure function from it took React and
+// cytoscape too. `edge-label.ts` and `layout-mode.ts` reach no package.
+export { edgeLabelText, type EdgeLabelData } from '../edge-label.js'
+export { DEFAULT_LAYOUT, LAYOUT_MODES, type LayoutMode } from '../layout-mode.js'

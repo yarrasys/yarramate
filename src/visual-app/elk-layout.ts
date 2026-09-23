@@ -31,7 +31,11 @@ import {
   routesEdges,
   type LayoutMode,
 } from '../layout-mode.js'
-import { humanizeKind, relationshipReading } from '../relationship-reading.js'
+import { edgeLabelText, type EdgeLabelData } from '../edge-label.js'
+
+// Kept here too, because `graph-canvas.tsx` and the editor entry read it from
+// this module; the rule itself lives in `../edge-label.ts` (#587).
+export { edgeLabelText, type EdgeLabelData }
 
 // cytoscape draws a compound parent's box itself: the container rectangle is
 // its children's bounding box grown by cytoscape's own `padding`. ELK
@@ -145,52 +149,6 @@ export const rootLayoutOptions = (direction: LayoutDirection, mode: LayoutMode):
     : {}),
   ...(partitionsByLayer(mode) ? { 'elk.partitioning.activate': 'true' } : {}),
 })
-
-/** The data fields an edge's label is decided from. */
-export interface EdgeLabelData {
-  readonly name?: string | null
-  readonly kindLabel?: string
-  readonly coreKindLabel?: string
-  /** An extension kind with a reading of its own (ADR 0159), else absent. */
-  readonly readingKind?: string
-  /** A reading the endpoints decided (ADR 0160), else absent. */
-  readonly reading?: string
-  readonly liftedCount?: number
-}
-
-/**
- * The one place that decides what an edge says (ADR 0147).
- *
- * A named relationship says its name. An unnamed one says its reading -
- * "serves", or "served by" where the mode layers the served element above -
- * unless kind labels are off, in which case the line style and arrowhead
- * carry the kind alone. An extension kind has no reading in the table and is
- * spelled out from its own name ("deploys to" for `deploys-to`), in the active
- * voice whichever way it is layered, because nobody can conjugate a verb they
- * have not seen. A lifted edge stands for several relationships and says how
- * many.
- */
-export const edgeLabelText = (
-  data: EdgeLabelData,
-  mode: LayoutMode,
-  showKindLabels: boolean,
-): string => {
-  if (typeof data.name === 'string' && data.name !== '') return data.name
-  if (!showKindLabels) return ''
-  const core = data.coreKindLabel ?? ''
-  const kind = data.kindLabel ?? core
-  const readingKind = data.readingKind
-  const reading =
-    data.reading !== undefined && data.reading !== ''
-      ? data.reading
-      : readingKind !== undefined && readingKind !== core
-        ? relationshipReading(readingKind)
-        : kind !== core && kind !== ''
-          ? humanizeKind(kind)
-          : relationshipReading(core, reversesForLayering(mode) && LAYERING_REVERSED_KINDS.has(core))
-  const count = typeof data.liftedCount === 'number' ? data.liftedCount : 0
-  return count > 1 ? `${reading} ×${count}` : reading
-}
 
 /**
  * How much room ELK reserves for a label: an estimate of what cytoscape will

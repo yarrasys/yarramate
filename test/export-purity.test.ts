@@ -87,6 +87,15 @@ describe('package export purity', () => {
     expect(hits).toEqual([])
   })
 
+  it('the edge label rule reaches no package, so a Worker can take it without the editor (#587)', () => {
+    // A server-side renderer imports `edgeLabelText` from this subpath to draw
+    // what the canvas draws. From the editor entry it cost ~1.7 MB of React and
+    // cytoscape; this pins the files so elkjs or a UI module cannot creep back.
+    const { files, hits } = runtimeImportGraph('edge-label.ts')
+    expect(hits).toEqual([])
+    expect(files).toEqual(['edge-label.ts', 'layout-mode.ts', 'relationship-reading.ts'])
+  })
+
   it('notation/archimate import graph stays free of Node, ws, session, and compiler runtime', () => {
     const { hits } = runtimeImportGraph('notation/archimate.ts')
     expect(hits).toEqual([])
