@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.41.0
 
 ### What the canvas puts on screen, as plain data (#577)
 
