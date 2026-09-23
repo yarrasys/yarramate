@@ -1,5 +1,38 @@
 # Changelog
 
+## Unreleased
+
+### What the canvas puts on screen, as plain data (#577)
+
+`yarramate/adapter/visual-graph` now exports `canvasSceneInput` and
+`resolveCanvasScene`. Given the canvas graph, a view's match set, the fold
+state and the quick-filter text, they answer what the canvas shows:
+
+- which subjects are drawn
+- which boxes are pulled in only to hold them
+- which box each subject sits in while both are on screen
+- what a folded box's chip counts
+- which edges draw
+- how many relationships a lifted edge stands for in this view
+- which box-to-member edges are left undrawn because the nesting says it
+
+They are not a description of the canvas; the canvas runs them. `applyFilter`
+and `graphToElements` now call these two functions and only apply the answer
+to cytoscape, so a host drawing the same picture somewhere else, a
+server-side figure renderer, reads the same decisions instead of restating
+them. An adopter's restated copy of the edge-label rule alone was found wrong
+twice (#576, #587).
+
+**Positions are not included, deliberately.** Every rebuild, view switch and
+fold runs ELK over what is visible, and a saved layout is pinned over the
+result afterwards. A subject the saved layout does not name sits wherever ELK
+put it, and a box's bounds are cytoscape's, derived from its members. Neither
+can be reproduced without the layout engine, so a host drawing an unsaved view
+places it by its own rules.
+
+**On upgrade:** nothing to do. The canvas draws what it drew before; every
+canvas test passes unchanged.
+
 ## 1.40.0
 
 ### A saved layout names the view's subjects, not the whole model (#578)

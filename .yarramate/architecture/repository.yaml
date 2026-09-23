@@ -646,6 +646,10 @@ concepts:
     kind: repository-file
     name: src/edge-label.ts
     status: current
+  - id: canvas-scene-source
+    kind: repository-file
+    name: src/canvas-scene.ts
+    status: current
   - id: archimate-notation-source
     kind: repository-file
     name: src/notation/archimate.ts
@@ -1582,6 +1586,10 @@ relationships:
   - id: edge-label-realizes-visual-model
     kind: realization
     from: edge-label-source
+    to: render-visual-model
+  - id: canvas-scene-realizes-visual-model
+    kind: realization
+    from: canvas-scene-source
     to: render-visual-model
   - id: archimate-notation-realizes-kind-icons
     kind: realization

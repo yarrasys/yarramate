@@ -30,3 +30,18 @@ export {
 // cytoscape too. `edge-label.ts` and `layout-mode.ts` reach no package.
 export { edgeLabelText, type EdgeLabelData } from '../edge-label.js'
 export { DEFAULT_LAYOUT, LAYOUT_MODES, type LayoutMode } from '../layout-mode.js'
+// What the canvas puts on screen for a view, as plain data (#577): visibility,
+// containment as drawn, fold chips, which edges draw and what a lifted edge
+// counts. The canvas runs these two functions itself, so a host drawing the
+// same picture elsewhere reads the same decisions. No positions: those are
+// ELK's and the saved layout's. `canvas-scene.ts` reaches no package.
+export {
+  canvasSceneInput,
+  drawnCanvasEdges,
+  resolveCanvasScene,
+  type CanvasScene,
+  type CanvasSceneEdge,
+  type CanvasSceneFold,
+  type CanvasSceneInput,
+  type CanvasSceneNode,
+} from '../canvas-scene.js'

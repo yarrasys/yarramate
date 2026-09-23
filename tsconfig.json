@@ -37,6 +37,7 @@
     "test/style-presets.test.ts",
     "test/graph-canvas-nesting.test.ts",
     "test/graph-canvas-fold.test.ts",
+    "test/canvas-scene.test.ts",
     "test/kind-palette-patterns.test.ts",
     "test/instance-draft-panel.test.ts",
     "test/projection-instances.test.ts",

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import cytoscape from 'cytoscape'
 import type { Core, CollectionReturnValue, EdgeSingular, ElementDefinition, NodeCollection, NodeSingular } from 'cytoscape'
 import { spansNesting } from './nesting-span.js'
+import { canvasSceneInput, drawnCanvasEdges, resolveCanvasScene } from '../canvas-scene.js'
 import type {
   CanvasGraph,
   CanvasNode,
@@ -10,8 +11,6 @@ import type {
 } from '../graph-projection.js'
 import { DEFAULT_NESTING, type NestingKind } from '../nesting.js'
 import {
-  foldGraph,
-  foldTree,
   nestingTree,
   type FoldMembership,
   type FoldTree,
@@ -748,49 +747,22 @@ export function graphToElements(
     readonly showResponsibility?: boolean
   }
 ): ElementDefinition[] {
-  // CORE kinds, not the authored ones (#473). The rule that decides whether an
-  // assignment may nest reads what a subject IS, and a profile's
-  // `mule-api-operation` is an `applicationService` however it is spelled.
-  // This used to pass `node.kind`, which happens to work for a subject
-  // authored as a core kind - the identity ends with "Service" too - and
-  // silently does not for any profile that named one of its own.
-  const coreKindById = new Map(
-    graph.nodes.map((node) => [node.id, node.coreKindLabel])
-  )
-  const tree = foldTree({
-    nodes: graph.nodes.map((node) => ({
-      id: node.id,
-      kind: node.kind,
-      coreKind: node.coreKindLabel,
-    })),
-    edges: graph.edges,
-    memberships: fold?.memberships ?? [],
-    nesting,
+  // The structure - who nests in what, what a folded box stands for, which
+  // edges draw, what lifts onto a fold - is the pure scene every host shares
+  // (#577); this function only dresses it as cytoscape elements.
+  const scene = canvasSceneInput(graph, nesting, {
+    ...(fold?.folded === undefined ? {} : { folded: fold.folded }),
+    ...(fold?.memberships === undefined ? {} : { memberships: fold.memberships }),
+    ...(fold?.showResponsibility === undefined ? {} : { showResponsibility: fold.showResponsibility }),
   })
-  warnAboutNesting(tree)
-  const consumedEdgeIds = tree.consumedEdgeIds
-
-  // What each folded box stands for, and what it must therefore say. Counted
-  // over the WHOLE tree rather than what this view shows; `applyFilter` narrows
-  // the chip to the view when it hides what the view leaves out.
-  const insideIds = new Map<string, string[]>()
-  for (const id of tree.parentOf.keys()) {
-    let ancestor = tree.parentOf.get(id)
-    const seen = new Set<string>([id])
-    while (ancestor !== undefined && !seen.has(ancestor)) {
-      seen.add(ancestor)
-      const held = insideIds.get(ancestor)
-      if (held === undefined) insideIds.set(ancestor, [id])
-      else held.push(id)
-      ancestor = tree.parentOf.get(ancestor)
-    }
-  }
-  const folded = fold?.folded ?? new Set<string>()
+  warnAboutNesting(scene.tree)
+  const sceneNodeById = new Map(scene.nodes.map((node) => [node.id, node]))
 
   const nodeElements = graph.nodes.map((node): ElementDefinition => {
-    const parent = tree.parentOf.get(node.id)
-    const inside = insideIds.get(node.id) ?? []
-    const isFolded = folded.has(node.id)
+    const sceneNode = sceneNodeById.get(node.id)!
+    const parent = sceneNode.parent
+    const inside = sceneNode.insideIds
+    const isFolded = sceneNode.folded
     return {
       data: {
         id: node.id,
@@ -847,11 +819,7 @@ export function graphToElements(
     }
   })
 
-  const drawnEdges = graph.edges.filter(
-    (edge) =>
-      !consumedEdgeIds.has(edge.id) &&
-      (fold?.showResponsibility === true || (edge.responsibility ?? null) === null)
-  )
+  const drawnEdges = drawnCanvasEdges(graph, scene.tree, fold?.showResponsibility === true)
 
   // How many drawn edges share each unordered endpoint pair. Members of a
   // multiple get the `parallel` class, which swaps their curve style to one
@@ -903,39 +871,31 @@ export function graphToElements(
   // ORIGINALS stay in the element list and are hidden by `applyFilter`
   // instead of being removed, so a fold that is later opened has nothing to
   // rebuild and `layout.save` still knows where every member sits (review F4).
-  const liftedElements =
-    folded.size === 0
-      ? []
-      : foldGraph(
-          { nodes: graph.nodes, edges: drawnEdges },
-          tree,
-          folded
-        )
-          .edges.filter(
-            (edge): edge is Extract<typeof edge, { count: number }> =>
-              'count' in edge
-          )
-          .map(
-            (edge): ElementDefinition => ({
-              data: {
-                id: edge.id,
-                source: edge.from,
-                target: edge.to,
-                // "kind xN" rather than a name: a lifted edge stands for
-                // several relationships and has no name of its own.
-                label: liftLabel(kindLabelOfId(edge.kind), edge.count),
-                wrapLabel: withWrapPoints(kindLabelOfId(edge.kind)),
-                name: null,
-                kindLabel: kindLabelOfId(edge.kind),
-                coreKindLabel: kindLabelOfId(edge.kind),
-                lifted: true,
-                liftedCount: edge.count,
-                relationshipIds: edge.relationshipIds,
-              },
-              group: 'edges',
-              classes: 'lifted',
-            })
-          )
+  const liftedElements = scene.edges
+    .filter((edge) => edge.relationshipIds !== undefined)
+    .map((edge): ElementDefinition => {
+      const kindLabel = kindLabelOfId(edge.liftedKind ?? '')
+      const count = edge.relationshipIds!.length
+      return {
+        data: {
+          id: edge.id,
+          source: edge.from,
+          target: edge.to,
+          // "kind xN" rather than a name: a lifted edge stands for
+          // several relationships and has no name of its own.
+          label: liftLabel(kindLabel, count),
+          wrapLabel: withWrapPoints(kindLabel),
+          name: null,
+          kindLabel,
+          coreKindLabel: kindLabel,
+          lifted: true,
+          liftedCount: count,
+          relationshipIds: edge.relationshipIds,
+        },
+        group: 'edges',
+        classes: 'lifted',
+      }
+    })
 
   return [...nodeElements, ...edgeElements, ...liftedElements]
 }
@@ -981,92 +941,47 @@ export function applyFilter(
   matchedIds: readonly string[] | null,
   quickFilterText: string
 ): void {
-  const trimmedQuickFilter = quickFilterText.trim().toLowerCase()
-  const baseNodeIds = matchedIds === null ? cy.nodes().map((node) => node.id()) : matchedIds
-
-  const nodeMatchesQuickFilter = (id: string): boolean => {
-    const node = cy.getElementById(id)
-    return subjectMatchesQuickFilter(
-      trimmedQuickFilter,
-      id,
-      node.data('label'),
-      node.data('kindLabel'),
-    )
-  }
-
-  const visibleNodeIds = new Set(
-    trimmedQuickFilter === ''
-      ? baseNodeIds
-      : baseNodeIds.filter(nodeMatchesQuickFilter)
+  // Every decision is the pure scene's (#577), read off the elements as they
+  // stand; what is left here is applying it to cytoscape. Read before any
+  // `move`, since moving re-creates elements and invalidates live lookups.
+  // `compositionParent` rather than the live `parent`: a node detached by an
+  // earlier pass has no live parent left to read.
+  const scene = resolveCanvasScene(
+    {
+      nodes: cy.nodes().map((node) => {
+        const claimed = node.data('compositionParent') as unknown
+        const inside = node.data('insideIds') as unknown
+        return {
+          id: node.id(),
+          name: node.data('label') as string | undefined,
+          kindLabel: node.data('kindLabel') as string | undefined,
+          ...(typeof claimed === 'string' ? { parent: claimed } : {}),
+          folded: node.hasClass('folded'),
+          insideIds: Array.isArray(inside) ? (inside as string[]) : [],
+        }
+      }),
+      edges: cy.edges().map((edge) => {
+        const stands = edge.data('relationshipIds') as unknown
+        return {
+          id: edge.id(),
+          from: edge.data('source') as string,
+          to: edge.data('target') as string,
+          ...(Array.isArray(stands) ? { relationshipIds: stands as string[] } : {}),
+        }
+      }),
+    },
+    matchedIds,
+    quickFilterText,
   )
-  // What the view and the filter chose, before folding takes anything away.
-  // The chip below counts against THIS, so a member hidden by its own box
-  // still counts as inside it while one the view never selected does not.
-  const baseVisible = new Set(visibleNodeIds)
+  cy.scratch(VIEW_NODE_IDS, scene.viewNodeIds)
 
-  // A compound child that matches the filter needs its container(s) shown
-  // too, or it renders as a stray top-level node instead of the nested part
-  // the model claims it is - pull in every visible node's ancestor chain.
-  // The walk follows the model's own `compositionParent` claim rather than
-  // cytoscape's live `parent`, because a node detached by an earlier filter
-  // pass has no live parent left to walk.
-  const canonicalParentOf = (id: string): string | undefined => {
-    const claimed = cy.getElementById(id).data('compositionParent')
-    return typeof claimed === 'string' ? claimed : undefined
-  }
-  for (const id of [...visibleNodeIds]) {
-    const seen = new Set<string>([id])
-    let ancestor = canonicalParentOf(id)
-    while (ancestor !== undefined && !seen.has(ancestor)) {
-      seen.add(ancestor)
-      visibleNodeIds.add(ancestor)
-      ancestor = canonicalParentOf(ancestor)
-    }
-  }
-
-  // What the VIEW draws, before the quick filter or a fold takes anything
-  // away: its matched subjects and the boxes that hold them. A layout save
-  // names exactly these (#578); the rest of the model is on the canvas as
-  // elements only, and an entry for it was inert (#273) and most of the file.
-  cy.scratch(VIEW_NODE_IDS, matchedIds === null ? null : withAncestors(matchedIds, canonicalParentOf))
-
-  // A FOLDED ancestor hides everything under it, whatever the view said
-  // (#473). Precedence, and it has to be this way round: a reader who shut a
-  // box asked not to see inside it, and a view naming a member cannot overrule
-  // a gesture made after the view was chosen.
-  //
-  // HIDDEN, never removed (review F4). The nodes stay in the graph with their
-  // positions intact, so opening the box has nothing to rebuild and
-  // `layout.save` still names every member. Removing them would lose exactly
-  // the coordinates a save is for.
-  for (const id of [...visibleNodeIds]) {
-    const seen = new Set<string>([id])
-    let ancestor = canonicalParentOf(id)
-    while (ancestor !== undefined && !seen.has(ancestor)) {
-      seen.add(ancestor)
-      if (cy.getElementById(ancestor).hasClass('folded')) {
-        visibleNodeIds.delete(id)
-        break
-      }
-      ancestor = canonicalParentOf(ancestor)
-    }
-  }
-
-  // Containment is a rendering device, so it only holds while both ends of the
-  // claim are on screen. cytoscape derives a compound parent's position from
-  // its children, and a hidden child keeps the coordinates the last full-graph
-  // layout gave it - so a container whose parts are all filtered out gets
-  // dragged back to its old position the instant a scoped layout places it,
-  // stranding it thousands of pixels from the view it belongs to. Detaching
-  // hidden children leaves the whole as an ordinary node, which the layout can
-  // place; re-attaching restores the nesting when the parts come back.
-  // Decisions are read from canonical data and collected before any `move`,
-  // since moving re-creates elements and invalidates live parent lookups.
+  // Containment as drawn. Detaching a hidden child leaves its box an ordinary
+  // node the layout can place; a box whose parts are all filtered out would
+  // otherwise be dragged back to where its hidden children last sat.
   const reparents: { readonly node: string; readonly parent: string | null }[] = []
   for (const node of cy.nodes()) {
-    const canonical = canonicalParentOf(node.id())
-    if (canonical === undefined) continue
-    const desired = visibleNodeIds.has(node.id()) && visibleNodeIds.has(canonical) ? canonical : null
+    if (typeof node.data('compositionParent') !== 'string') continue
+    const desired = scene.parentOf.get(node.id()) ?? null
     const current = node.parent().nonempty() ? node.parent().first().id() : null
     if (current !== desired) reparents.push({ node: node.id(), parent: desired })
   }
@@ -1074,81 +989,12 @@ export function applyFilter(
   // land before the display pass below rather than after it.
   for (const { node, parent } of reparents) cy.getElementById(node).move({ parent })
 
-  // The chip counts what THIS VIEW shows, not what the tree holds: a box whose
-  // members are all filtered out draws no chip, because there is nothing in
-  // there to open (#473).
-  for (const node of cy.nodes('.folded')) {
-    const inside = node.data('insideIds')
-    const held = Array.isArray(inside) ? (inside as string[]) : []
-    node.data(
-      'insideCount',
-      held.filter((id) => {
-        const element = cy.getElementById(id)
-        return element.nonempty() && baseVisible.has(id)
-      }).length
-    )
-  }
+  for (const [id, count] of scene.insideCount) cy.getElementById(id).data('insideCount', count)
 
-  // An edge between a box and one of its own members is implied by the
-  // nesting and is not drawn (ADR 0147, superseding ADR 0139's "never from the
-  // graph"). cytoscape cannot draw one: it files the edge as a compound loop
-  // and computes no geometry for it, so these had been vanishing all along
-  // without anyone deciding so. Decided after the reparent pass above, against
-  // the containment actually on screen; the relationship stays in the model
-  // and the fact panel.
-  const implied = new Set<string>(
-    nestedPairEdges(cy.elements()).map((edge) => edge.id()),
-  )
-  const visibleIds = new Set<string>(visibleNodeIds)
-  // The seed carries relationship ids, because a match set names relationships
-  // as well as subjects (`between` and `connected` queries do). Every edge is
-  // taken back out of it and decided below on its own terms: being named was
-  // keeping an edge on screen after the quick filter had taken one of its
-  // ends, which is the opposite of what this function documents.
-  for (const edge of cy.edges()) visibleIds.delete(edge.id())
-
-  // Two conditions, both necessary. The endpoints, because an edge to nowhere
-  // is not a relationship anyone can read. And the view's own selection,
-  // because a view that names what it draws means it (#579, ADR 0164):
-  // measured on this repository's own model, eight of twenty-two projections
-  // drew edges they had not selected, 103 in total, and `engine-components`
-  // drew six while declaring `relationships: none`. Counted against the nodes
-  // the canvas shows, ancestor pull-in above included, not against the query's
-  // selected concepts.
-  const selectedIds = matchedIds === null ? null : new Set(matchedIds)
-  const viewSelected = (edge: EdgeSingular): boolean => {
-    if (selectedIds === null) return true
-    // A lifted edge is synthetic (`lift:` ids) and never in a match set. It
-    // stands for the relationships it names, so it draws while the view
-    // selected any of them, and goes when it selected none.
-    const stands = edge.data('relationshipIds') as unknown
-    return Array.isArray(stands)
-      ? (stands as readonly string[]).some((id) => selectedIds.has(id))
-      : selectedIds.has(edge.id())
-  }
-  for (const edge of cy.edges()) {
-    const source = edge.data('source') as string
-    const target = edge.data('target') as string
-    if (!visibleNodeIds.has(source) || !visibleNodeIds.has(target)) continue
-    if (!viewSelected(edge)) continue
-    visibleIds.add(edge.id())
-  }
-
-  // A lifted edge stands for the relationships the VIEW selected, not for
-  // every relationship the model holds between the two boxes (#584).
-  // `foldGraph` runs over the whole model, so the count it wrote would read
-  // ×5 over a view that selected two. Restated here, in the pass that already
-  // decides the lift's admission, and restored to the full count when the
-  // structural filter goes. The stylesheet's edge label is a mapper over this
-  // data, so the visible label follows without a rebuild.
-  for (const edge of cy.edges('.lifted')) {
-    const stands = edge.data('relationshipIds') as unknown
-    if (!Array.isArray(stands)) continue
-    const ids = stands as readonly string[]
-    const count =
-      selectedIds === null
-        ? ids.length
-        : ids.filter((id) => selectedIds.has(id)).length
+  // Restated to the view (#584); the stylesheet's edge label is a mapper over
+  // this data, so the visible label follows without a rebuild.
+  for (const [id, count] of scene.liftedCount) {
+    const edge = cy.getElementById(id)
     if (edge.data('liftedCount') === count) continue
     edge.data({
       liftedCount: count,
@@ -1156,36 +1002,17 @@ export function applyFilter(
     })
   }
 
-  // Subtracted last: a box-to-member edge can satisfy both conditions above
-  // and still be implied by the nesting rather than drawn. Measured: 20 of API
-  // tiers' 24 came back through the seed before the seed dropped edges, and
-  // they would come back through the endpoint rule now.
-  for (const id of implied) visibleIds.delete(id)
-
   cy.elements().style('display', 'none')
   cy.elements()
-    .filter((ele) => visibleIds.has(ele.id()))
+    .filter((ele) =>
+      ele.isNode() ? scene.visibleNodeIds.has(ele.id()) : scene.visibleEdgeIds.has(ele.id()),
+    )
     .style('display', 'element')
 }
 
 // The scratch key `applyFilter` records the active view's own subjects under
 // (#578), null for the unfiltered canvas, which draws the whole model.
 const VIEW_NODE_IDS = '_viewNodeIds'
-
-function withAncestors(
-  ids: readonly string[],
-  parentOf: (id: string) => string | undefined,
-): ReadonlySet<string> {
-  const out = new Set<string>(ids)
-  for (const id of ids) {
-    let ancestor = parentOf(id)
-    while (ancestor !== undefined && !out.has(ancestor)) {
-      out.add(ancestor)
-      ancestor = parentOf(ancestor)
-    }
-  }
-  return out
-}
 
 /** The subjects the active view draws, or null when it is the whole model. */
 export function viewNodeIds(cy: Core): ReadonlySet<string> | null {
