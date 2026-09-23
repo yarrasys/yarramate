@@ -102,8 +102,8 @@ describe('package export purity', () => {
     expect(files).toEqual([
       'canvas-scene.ts',
       'fold-tree.ts',
-      'visual-app/nesting-span.ts',
-      'visual-app/subject-filter.ts',
+      'nesting-span.ts',
+      'subject-filter.ts',
     ])
   })
 

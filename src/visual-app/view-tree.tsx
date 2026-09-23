@@ -13,7 +13,7 @@ import {
   type ModelTreeGroup,
   type ViewTreeRow,
 } from "./view-tree-model.js";
-import { countMatchingSubjects } from "./subject-filter.js";
+import { countMatchingSubjects } from "../subject-filter.js";
 
 /**
  * The rail: the saved views and the whole model, as one tree.

@@ -812,11 +812,11 @@ concepts:
     status: current
   - id: visual-nesting-span-source
     kind: repository-file
-    name: src/visual-app/nesting-span.ts
+    name: src/nesting-span.ts
     status: current
   - id: visual-subject-filter-source
     kind: repository-file
-    name: src/visual-app/subject-filter.ts
+    name: src/subject-filter.ts
     status: current
   - id: visual-view-tree-model-source
     kind: repository-file

@@ -1330,11 +1330,11 @@ observations:
   - subject: visual-nesting-span-source
     result: confirmed
     evidence:
-      uri: repo:src/visual-app/nesting-span.ts
+      uri: repo:src/nesting-span.ts
   - subject: visual-subject-filter-source
     result: confirmed
     evidence:
-      uri: repo:src/visual-app/subject-filter.ts
+      uri: repo:src/subject-filter.ts
   - subject: visual-view-tree-model-source
     result: confirmed
     evidence:

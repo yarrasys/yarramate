@@ -30,8 +30,8 @@
 import type { CanvasEdge, CanvasGraph } from './graph-projection.js'
 import { foldGraph, foldTree, type FoldMembership, type FoldTree } from './fold-tree.js'
 import type { NestingKind } from './nesting.js'
-import { spansNesting } from './visual-app/nesting-span.js'
-import { subjectMatchesQuickFilter } from './visual-app/subject-filter.js'
+import { spansNesting } from './nesting-span.js'
+import { subjectMatchesQuickFilter } from './subject-filter.js'
 
 /** One node of the scene, carrying what {@link resolveCanvasScene} reads. */
 export interface CanvasSceneNode {

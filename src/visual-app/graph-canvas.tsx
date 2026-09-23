@@ -2,7 +2,7 @@ import type React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import cytoscape from 'cytoscape'
 import type { Core, CollectionReturnValue, EdgeSingular, ElementDefinition, NodeCollection, NodeSingular } from 'cytoscape'
-import { spansNesting } from './nesting-span.js'
+import { spansNesting } from '../nesting-span.js'
 import { canvasSceneInput, drawnCanvasEdges, resolveCanvasScene } from '../canvas-scene.js'
 import type {
   CanvasGraph,
@@ -37,7 +37,7 @@ import { KIND_MIME } from './kind-palette.js'
 // The one substring judgement the canvas pass, the shell's empty-state
 // honesty, and the rail's tree filter share, so what hides and what is
 // reported can never drift (#307, #317).
-import { subjectMatchesQuickFilter } from './subject-filter.js'
+import { subjectMatchesQuickFilter } from '../subject-filter.js'
 import { ASPECT_SHAPES, LAYER_COLORS, RELATIONSHIP_NOTATION } from '../notation/archimate.js'
 import {
   CONTAINER_PADDING,

@@ -10,7 +10,7 @@
  * the canvas module registers cytoscape-elk. So the predicate lives in this
  * small pure module and both surfaces import it from here.
  */
-import type { CanvasNode } from "../graph-projection.js";
+import type { CanvasNode } from "./graph-projection.js";
 
 /**
  * The slice of a subject the predicate reads — the render data both the

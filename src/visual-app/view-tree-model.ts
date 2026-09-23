@@ -24,7 +24,7 @@ import {
   normalizeFilterText,
   subjectMatchesQuickFilter,
   type FilterableSubject,
-} from "./subject-filter.js";
+} from "../subject-filter.js";
 
 export const VIEWS_ROOT_KEY = "views";
 export const MODEL_ROOT_KEY = "model";
