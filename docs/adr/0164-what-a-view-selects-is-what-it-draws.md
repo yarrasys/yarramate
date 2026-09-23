@@ -77,12 +77,17 @@ it stays, alongside the selection it was never asked about.
 ids were already being computed, already sent, and already arriving at the
 canvas, which named them in a comment and then ignored them for visibility.
 
-**A lifted edge is judged by what it stands for.** Its `lift:` id is synthetic
-and never in a match set, so it draws while the view selected any of the
-relationships it aggregates and goes when it selected none. Its count is still
-taken over the model rather than the view, which is unchanged by this decision
-and is only reachable where a projection both folds and names relationship
-kinds; nothing in this repository or the reference adopter does.
+**A lifted edge is judged by what it stands for, and counts the same way.**
+Its `lift:` id is synthetic and never in a match set, so it draws while the
+view selected any of the relationships it aggregates and goes when it selected
+none. Its `×N` is restated in the same pass to the number of those
+relationships the view selected, and restored when the structural filter goes
+(#584). `foldGraph` runs over the whole model, so the count it writes includes
+relationships the query never selected, and any folding view with a structural
+filter can reach that: `relationships: connected` alone selects a strict subset
+of the model edges between visible boxes. An earlier draft of this paragraph
+said it needed `relationshipKinds` as well; that was too narrow, and the
+reference adopter's folding `connected` landscape is exactly the case.
 
 **One inconsistency was fixed on the way.** The match set was seeded whole into
 the visible set, so an edge the view named survived even after the quick filter

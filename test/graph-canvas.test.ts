@@ -15,6 +15,7 @@ import type {
   CanvasGraph,
   CanvasNode,
 } from '../src/graph-projection.js'
+import { edgeLabelText, type EdgeLabelData } from '../src/visual-app/elk-layout.js'
 
 // A small headless cytoscape instance (no container/DOM needed for hide/show
 // and data queries) - mirrors the shape graphToElements produces, without
@@ -803,3 +804,76 @@ describe('a view draws the relationships it selected (#579)', () => {
     expect(hidden.getElementById('lift:a:b').style('display')).toBe('none')
   })
 })
+
+// #584: `foldGraph` counts every model relationship between two boxes, and the
+// view may have selected fewer. After #579 the originals it did not select are
+// hidden, so a label that kept the model's count would say ×5 over a canvas
+// drawing two. The count must say what the canvas draws, and must come back
+// when the structural filter goes.
+describe('a lifted edge counts what the view selected (#584)', () => {
+  const build = () =>
+    cytoscape({
+      styleEnabled: true,
+      layout: { name: 'preset' },
+      elements: [
+        { data: { id: 'a' }, position: { x: 0, y: 0 }, group: 'nodes' },
+        { data: { id: 'b' }, position: { x: 200, y: 0 }, group: 'nodes' },
+        {
+          data: {
+            id: 'lift:a:b',
+            source: 'a',
+            target: 'b',
+            lifted: true,
+            name: null,
+            kindLabel: 'serving',
+            coreKindLabel: 'serving',
+            liftedCount: 2,
+            label: 'serving ×2',
+            relationshipIds: ['r1', 'r2'],
+          },
+          group: 'edges',
+          classes: 'lifted',
+        },
+      ],
+    })
+  const lift = (cy: cytoscape.Core) => cy.getElementById('lift:a:b')
+
+  it('restates the count to the selected constituents and drops ×N at one', () => {
+    const cy = build()
+    applyFilter(cy, ['a', 'b', 'r1'], '')
+    expect(lift(cy).style('display')).toBe('element')
+    expect(lift(cy).data('liftedCount')).toBe(1)
+    expect(lift(cy).data('label')).toBe('serving')
+  })
+
+  it('keeps the full count when the view selected them all', () => {
+    const cy = build()
+    applyFilter(cy, ['a', 'b', 'r1', 'r2'], '')
+    expect(lift(cy).data('liftedCount')).toBe(2)
+    expect(lift(cy).data('label')).toBe('serving ×2')
+  })
+
+  it('restores the full count when the structural filter goes', () => {
+    const cy = build()
+    applyFilter(cy, ['a', 'b', 'r1'], '')
+    expect(lift(cy).data('liftedCount')).toBe(1)
+    applyFilter(cy, null, '')
+    expect(lift(cy).data('liftedCount')).toBe(2)
+    expect(lift(cy).data('label')).toBe('serving ×2')
+  })
+
+  it('says how many the stylesheet will paint, through the edge-label rule', () => {
+    const cy = build()
+    applyFilter(cy, ['a', 'b', 'r1'], '')
+    // The same decision the stylesheet's mapper makes (ADR 0147), read from
+    // the restated data rather than from the count the fold wrote.
+    expect(
+      edgeLabelText(lift(cy).data() as EdgeLabelData, 'layered', true),
+    ).toBe('serves')
+    applyFilter(cy, null, '')
+    expect(
+      edgeLabelText(lift(cy).data() as EdgeLabelData, 'layered', true),
+    ).toBe('serves ×2')
+  })
+})
+

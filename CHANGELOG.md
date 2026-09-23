@@ -38,9 +38,12 @@ visibility. No schema moves, and `check`, `compile` and `apply` are not
 involved.
 
 A lifted edge (a folded box's aggregate) draws while the view selected any of
-the relationships it stands for. On the way, an edge the view named stopped
-surviving the quick filter taking one of its ends, which the function had
-always documented and not done.
+the relationships it stands for, and its `×N` says how many of them the view
+selected rather than how many the model holds, restored when the filter goes
+(#584): `foldGraph` counts over the whole model, so without this a folding
+`connected` view could read `×5` over a canvas drawing two. On the way, an edge
+the view named stopped surviving the quick filter taking one of its ends,
+which the function had always documented and not done.
 
 See ADR 0164.
 
