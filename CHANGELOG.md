@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.39.0
 
 ### The edge label rule is reachable without the editor (#587)
 
